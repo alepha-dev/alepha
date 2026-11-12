@@ -129,7 +129,16 @@ export class DbCommand {
             continue;
           }
 
-          const lastSnapshot = await this.resolveLastSnapshot(migrationDir);
+          let lastSnapshot = await this.resolveLastSnapshot(migrationDir);
+          // drizzle-kit writes a later Postgres snapshot as a diff of the one
+          // before: the state is rebuilt from the whole folder (#Q3509).
+          if (lastSnapshot?.type === "diff") {
+            lastSnapshot = await this.reconstructSnapshot(
+              drizzleKitProvider,
+              dialect,
+              migrationDir,
+            );
+          }
 
           // No snapshot is not "nothing to compare"  -  it is a comparison
           // against an empty database, and `generateMigration` already does
@@ -1640,6 +1649,34 @@ if (typeof registerHooks === "function") {
    * Returns `null` when nothing is recorded yet, so callers can tell that
    * apart from "found a snapshot" without inspecting shape.
    */
+  /**
+   * The schema state at the leaf of a folder whose last snapshot is a diff:
+   * every migration's `snapshot.json`, handed to drizzle-kit's `reconstruct`
+   * (Postgres writes later snapshots as diffs; SQLite never does).
+   */
+  protected async reconstructSnapshot(
+    kitProvider: DrizzleKitProvider,
+    dialect: "sqlite" | "postgresql",
+    migrationDir: string,
+  ): Promise<unknown> {
+    const kit = kitProvider.importDrizzleKit(dialect);
+    if (!kit.reconstruct) {
+      throw new CommandError(
+        `The last snapshot in '${migrationDir}' is a diff, and drizzle-kit's ${dialect} payload has no reconstruct to rebuild the state from.`,
+      );
+    }
+    const files: Record<string, unknown> = {};
+    for (const entry of await this.fs.ls(migrationDir).catch(() => [])) {
+      const name = entry.split("/").pop() as string;
+      if (name === "meta" || name === ".archive") continue;
+      const path = this.fs.join(migrationDir, name, "snapshot.json");
+      if (await this.fs.exists(path)) {
+        files[name] = JSON.parse(await this.fs.readTextFile(path));
+      }
+    }
+    return await kit.reconstruct(files);
+  }
+
   protected async resolveLastSnapshot(migrationDir: string): Promise<any> {
     // v1 layout: folder names are timestamp-prefixed (YYYYMMDDHHMMSS_name),
     // so a plain string sort orders them chronologically  -  the same

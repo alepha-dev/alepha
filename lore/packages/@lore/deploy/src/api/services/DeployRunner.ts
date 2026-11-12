@@ -11,6 +11,7 @@ import {
   WorkerCloudflareAdapter,
 } from "alepha/cli/infra-lib";
 import { $logger } from "alepha/logger";
+import { DatabaseUrlParser } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 
@@ -184,6 +185,17 @@ export class DeployRunner {
    */
   protected static readonly PROGRESS_EVERY = 250;
 
+  /**
+   * Whether a copy's `DATABASE_URL` names a Postgres server (#Q3509).
+   */
+  protected isPostgres(url: string | undefined): boolean {
+    try {
+      return new DatabaseUrlParser().isPostgres(url);
+    } catch {
+      return false;
+    }
+  }
+
   public async run(request: DeployRequest): Promise<{
     urls: string[];
     domain?: string;
@@ -247,6 +259,16 @@ export class DeployRunner {
         },
       });
 
+      // A copy that ran on D1 and now names a Postgres URL (#Q3509): said in
+      // the log every member reads, since nothing is moved. Moving the data
+      // is `alepha db copy`'s, a follow-up.
+      if (request.known?.d1 && this.isPostgres(request.secrets?.DATABASE_URL)) {
+        await this.registry.line(
+          deployment,
+          `Moving to Postgres: the D1 database '${request.known.d1.name}' is kept, and nothing is copied from it. This copy starts on whatever the Postgres database holds.`,
+        );
+      }
+
       const adapter = alepha
         .inject(WorkerCloudflareAdapter)
         .use(request.credential)
@@ -278,6 +300,13 @@ export class DeployRunner {
         // What a later rollback past this run reads, to ask only when it
         // crosses a schema change (#Q3479).
         migrationsApplied: adapter.migrationsApplied,
+        // Which database this version is bound to, so a fast rollback never
+        // silently moves the copy back onto another one (#Q3509).
+        database: adapter.provisionedResources.hyperdrive
+          ? `hyperdrive:${adapter.provisionedResources.hyperdrive.name}`
+          : adapter.provisionedResources.d1
+            ? `d1:${adapter.provisionedResources.d1.name}`
+            : undefined,
       });
       // ⚠️ Carried out so the copy can record what Lore created for it. A
       // teardown that had to recompute these names would delete whatever bears

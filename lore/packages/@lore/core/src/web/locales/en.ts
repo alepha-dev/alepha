@@ -2033,7 +2033,9 @@ export default {
   "app.tab.environment": "Environment",
   "app.environment": "Variables and secrets",
   "app.environment.description":
-    "What this copy runs with. A variable (declared `secret: false` by the app) shows its value; a secret is encrypted and never shown again - replace one rather than read it. DATABASE_URL, R2_BUCKET_NAME and the CLOUDFLARE_* names are set by the deploy itself.",
+    "What this copy runs with. A variable (declared `secret: false` by the app) shows its value; a secret is encrypted and never shown again - replace one rather than read it. R2_BUCKET_NAME and the CLOUDFLARE_* names are set by the deploy itself, and so is DATABASE_URL unless you set it to a Postgres URL: the copy then runs on that database through Hyperdrive instead of D1.",
+  "app.environment.database.d1": "Database: D1",
+  "app.environment.database.postgres": "Database: Postgres, $1",
   "app.environment.loading": "Loading...",
   "app.environment.error": "Could not read this copy's environment.",
   "app.environment.empty":

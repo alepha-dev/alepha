@@ -31,6 +31,12 @@ export interface DrizzleKitPayload {
   generateMigration(prev: unknown, cur: unknown): Promise<string[]>;
   up(snapshot: unknown): unknown;
   pushSchema(...args: never[]): Promise<PushSchemaResult>;
+  /**
+   * Postgres only: the schema state at the leaf of a folder of snapshots,
+   * keyed by migration folder. Postgres writes a later migration's snapshot
+   * as a DIFF of the one before, so the last file alone is not the state.
+   */
+  reconstruct?(files: Record<string, unknown>, id?: string): Promise<unknown>;
 }
 
 /**

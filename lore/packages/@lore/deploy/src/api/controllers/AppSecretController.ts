@@ -79,19 +79,31 @@ export class AppSecretController {
          * sends (#Q2468). The writes still refuse them on their own.
          */
         reserved: z.array(z.string()),
+        /**
+         * The database this copy runs on (#Q3509): D1, or Postgres with its
+         * host and database, never the password. Absent on a Bay copy.
+         */
+        database: z
+          .object({
+            kind: z.enum(["d1", "postgres"]),
+            place: z.text({ size: "long" }).optional(),
+          })
+          .optional(),
       }),
     },
     handler: async ({ params }) => {
       await this.assertInstance(params.projectId, params.instanceId);
-      const [rows, declared, reserved] = await Promise.all([
+      const [rows, declared, reserved, database] = await Promise.all([
         this.secrets.list(params.instanceId),
         this.secrets.declared(params.instanceId),
         this.secrets.reservedKeys(params.instanceId),
+        this.secrets.databaseOf(params.instanceId),
       ]);
       return {
         items: rows.map((row) => this.resource(row)),
         declared,
         reserved,
+        database,
       };
     },
   });

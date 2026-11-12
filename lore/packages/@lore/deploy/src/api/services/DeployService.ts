@@ -460,8 +460,24 @@ export class DeployService {
       return;
     }
     try {
+      // Merged, never replaced (#Q3509): a copy that moves from D1 to
+      // Postgres keeps its D1 named (still purgeable, and reused if it moves
+      // back), and one that moves back keeps its Hyperdrive config named
+      // until teardown. A key this deploy wrote wins over the one before.
+      const current = await this.instances.findById(instanceId);
+      let previous: Record<string, unknown> = {};
+      try {
+        const parsed = current?.resources
+          ? (JSON.parse(current.resources) as unknown)
+          : undefined;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          previous = parsed as Record<string, unknown>;
+        }
+      } catch {
+        // An unreadable record is replaced, as before.
+      }
       await this.instances.updateById(instanceId, {
-        resources: JSON.stringify(resources),
+        resources: JSON.stringify({ ...previous, ...resources }),
       });
     } catch (error) {
       this.log.warn("Could not record what this deploy provisioned", {

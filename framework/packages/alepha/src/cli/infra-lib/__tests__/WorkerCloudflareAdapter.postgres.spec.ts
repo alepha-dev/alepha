@@ -74,6 +74,10 @@ class TestAdapter extends WorkerCloudflareAdapter {
   public testBuildEnv() {
     return this.buildEnv();
   }
+
+  public testSecretsFor(ctx: InfraContext<any>) {
+    return this.secretsFor(ctx);
+  }
 }
 
 class RecordingD1Migrations extends D1MigrationsService {
@@ -119,6 +123,7 @@ describe("the worker-side Cloudflare adapter on Postgres", () => {
       },
     } as unknown as InfraContext<any>;
     return {
+      fs: alepha.inject(MemoryFileSystemProvider),
       adapter: alepha.inject(WorkerCloudflareAdapter) as TestAdapter,
       postgres: alepha.inject(RecordingPostgresMigrations),
       d1: alepha.inject(RecordingD1Migrations),
@@ -175,7 +180,11 @@ describe("the worker-side Cloudflare adapter on Postgres", () => {
   it("provisions Hyperdrive instead of D1 on a Postgres instance, and records it", async ({
     expect,
   }) => {
-    const { adapter, ctx } = setup();
+    const { adapter, ctx, fs } = setup();
+    await fs.writeFile(
+      "/deploy/migrations/postgres/20261112000000_baseline/migration.sql",
+      'CREATE TABLE "notes" ("id" integer PRIMARY KEY);',
+    );
     const name = ctx.naming.hyperdrive();
     adapter
       .use({ apiToken: "t", accountId: "a" })
@@ -215,5 +224,31 @@ describe("the worker-side Cloudflare adapter on Postgres", () => {
     expect(adapter.memory.calls).toEqual(["deleteHyperdrive hd-1"]);
     expect(result.removed).toEqual(["hyperdrive"]);
     expect(result.kept).toEqual([]);
+  });
+
+  it("refuses a build with no migrations/postgres before provisioning anything (#Q3509)", async ({
+    expect,
+  }) => {
+    const { adapter, ctx } = setup();
+    adapter
+      .use({ apiToken: "t", accountId: "a" })
+      .withSecrets({ DATABASE_URL: "postgres://app:pw@db.example.app/app" });
+
+    await expect(adapter.provision(ctx, run)).rejects.toThrow(
+      /carries no migrations\/postgres\/.*Nothing was provisioned/,
+    );
+    expect(adapter.memory.calls).toEqual([]);
+  });
+
+  it("never uploads the copy's DATABASE_URL as a Worker secret (#Q3509)", async ({
+    expect,
+  }) => {
+    const { adapter, ctx } = setup();
+    adapter.withSecrets({
+      DATABASE_URL: "postgres://app:pw@db.example.app/app",
+      API_KEY: "k",
+    });
+
+    expect(adapter.testSecretsFor(ctx)).toEqual({ API_KEY: "k" });
   });
 });

@@ -109,6 +109,20 @@ export class RollbackService {
       };
     }
 
+    // A fast rollback re-points the Worker at that version AND its bindings,
+    // so a version bound to another database would silently move the copy
+    // back onto it (#Q3509). Not offered: the artifact path redeploys that
+    // build against the database the copy runs on today.
+    const current = await this.latestDatabase(target.instanceId);
+    if (target.database && current && target.database !== current) {
+      return {
+        path: "artifact",
+        deployment: target,
+        migrationsSince,
+        reason: `That version runs on ${target.database}, and this copy now runs on ${current}: a fast rollback would put it back on the old database, so a rollback redeploys the stored artifact against the current one.`,
+      };
+    }
+
     if (!target.versionId) {
       return {
         path: "artifact",
@@ -237,6 +251,25 @@ export class RollbackService {
       await this.registry.failed(row.id, message);
       throw new AlephaError(`Rollback failed: ${message}`);
     }
+  }
+
+  /**
+   * The database the copy's latest successful run is bound to, or undefined
+   * when no run recorded one.
+   */
+  protected async latestDatabase(
+    instanceId: string,
+  ): Promise<string | undefined> {
+    const [latest] = await this.rows.findMany({
+      where: {
+        instanceId: { eq: instanceId },
+        status: { eq: "succeeded" },
+        database: { isNotNull: true },
+      },
+      orderBy: [{ column: "createdAt", direction: "desc" }],
+      limit: 1,
+    });
+    return latest?.database;
   }
 
   /**

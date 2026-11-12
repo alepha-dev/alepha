@@ -1,0 +1,63 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f36a7112-76a7-437b-b94a-1acd4c5400e7",
+  "prevIds": ["ee5e5343-bae6-4b44-8384-afa16d56882a"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "app_secrets", "label"],
+      "writes": [
+        "s|col|public.app_secrets.label",
+        "n|col|public.app_secrets.label",
+        "e|col|public.app_secrets.label"
+      ],
+      "reads": ["n|tbl|public.app_secrets", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "deployments", "database"],
+      "writes": [
+        "s|col|public.deployments.database",
+        "n|col|public.deployments.database",
+        "e|col|public.deployments.database"
+      ],
+      "reads": ["n|tbl|public.deployments", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "app_secrets",
+        "name": "label",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "deployments",
+        "name": "database",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

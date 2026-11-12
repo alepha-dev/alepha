@@ -154,6 +154,25 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   }
 
   /**
+   * That the artifact carries `migrations/postgres/` before anything is
+   * provisioned (#Q3509). A build made before both folders existed would
+   * provision Hyperdrive, migrate nothing and fail every request behind a
+   * green deploy.
+   */
+  protected async assertPostgresMigrations(
+    ctx: InfraContext<EnvironmentOptions>,
+  ): Promise<void> {
+    const migrations = await this.postgresMigrations.discover(
+      this.fs.join(ctx.root, "migrations", "postgres"),
+    );
+    if (migrations.length === 0) {
+      throw new AlephaError(
+        "This copy runs on Postgres (its DATABASE_URL), and this build carries no migrations/postgres/: it was made before every app kept both folders. Run 'alepha db baseline create --provider postgres', push a new build, and deploy that one. Nothing was provisioned.",
+      );
+    }
+  }
+
+  /**
    * The instance's Postgres `DATABASE_URL`, when its secrets carry one
    * (`postgres:` or `postgresql:`): the database is then Postgres through
    * Hyperdrive instead of D1. Undefined otherwise.
@@ -266,6 +285,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       ? await this.postgresUrl()
       : undefined;
     if (postgres) {
+      await this.assertPostgresMigrations(ctx);
       // A Postgres instance (#Q3510): a Hyperdrive config instead of a D1
       // database, PATCHed with the instance's URL on every deploy (a rotated
       // password cannot be detected) and caching off. Only the config this
@@ -817,15 +837,21 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     ctx: InfraContext<EnvironmentOptions>,
     config: WranglerConfig = {},
   ): Record<string, string> {
+    // ⚠️ Never the copy's DATABASE_URL (#Q3509). A Postgres URL there is
+    // what selected Hyperdrive: it went to provisioning and migrations, and
+    // Cloudflare holds it in the config. The build writes
+    // `vars.DATABASE_URL = hyperdrive://HYPERDRIVE`, and Cloudflare refuses
+    // a secret beside a var of the same name; the Worker never needs the URL.
+    const { DATABASE_URL: _url, ...secrets } = this.appSecrets;
     const domain = ctx.options.domain;
     if (
       !domain ||
-      this.appSecrets.PUBLIC_URL ||
+      secrets.PUBLIC_URL ||
       config.vars?.PUBLIC_URL !== undefined
     ) {
-      return this.appSecrets;
+      return secrets;
     }
-    return { ...this.appSecrets, PUBLIC_URL: `https://${domain}` };
+    return { ...secrets, PUBLIC_URL: `https://${domain}` };
   }
 
   /**

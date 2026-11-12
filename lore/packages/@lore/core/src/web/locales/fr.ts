@@ -2020,7 +2020,9 @@ export default {
   "app.tab.environment": "Environnement",
   "app.environment": "Variables et secrets",
   "app.environment.description":
-    "Ce avec quoi cette copie tourne. Une variable (déclarée `secret: false` par l'app) affiche sa valeur ; un secret est chiffré et n'est plus jamais affiché - remplacez-le plutôt que de le lire. DATABASE_URL, R2_BUCKET_NAME et les noms CLOUDFLARE_* sont définis par le déploiement lui-même.",
+    "Ce avec quoi cette copie tourne. Une variable (déclarée `secret: false` par l'app) affiche sa valeur ; un secret est chiffré et n'est plus jamais affiché - remplacez-le plutôt que de le lire. R2_BUCKET_NAME et les noms CLOUDFLARE_* sont définis par le déploiement lui-même, tout comme DATABASE_URL, sauf si vous lui donnez une URL Postgres : la copie tourne alors sur cette base via Hyperdrive au lieu de D1.",
+  "app.environment.database.d1": "Base de données : D1",
+  "app.environment.database.postgres": "Base de données : Postgres, $1",
   "app.environment.loading": "Chargement...",
   "app.environment.error":
     "Impossible de lire l\u2019environnement de cette copie.",

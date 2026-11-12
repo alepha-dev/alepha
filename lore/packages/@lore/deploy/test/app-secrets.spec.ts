@@ -345,9 +345,9 @@ describe("a deployed copy's environment", () => {
       await expect(
         importing(w, [
           { key: "GOOD_KEY", value: "a-good-value-1234" },
-          { key: "DATABASE_URL", value: "postgres://nope" },
+          { key: "R2_BUCKET_NAME", value: "a-bucket-name" },
         ]),
-      ).rejects.toThrow(/DATABASE_URL is set by the deploy/);
+      ).rejects.toThrow(/R2_BUCKET_NAME is set by the deploy/);
       expect((await list(w)).items).toHaveLength(0);
     });
   });
@@ -398,14 +398,14 @@ describe("a deployed copy's environment", () => {
     }) => {
       const w = await world();
 
-      await expect(set(w, "database_url", "postgres://x")).rejects.toThrow(
+      await expect(set(w, "r2_bucket_name", "my-bucket")).rejects.toThrow(
         /set by the deploy, not here/,
       );
     });
   });
 
   describe("the derived names", () => {
-    it.each(["DATABASE_URL", "R2_BUCKET_NAME"])(
+    it.each(["R2_BUCKET_NAME"])(
       "refuses %s, naming why rather than storing it",
       async (key) => {
         // Folio #1209: the deploy provisions first and derives both from the
@@ -425,7 +425,7 @@ describe("a deployed copy's environment", () => {
     }) => {
       const w = await world();
 
-      const error = await set(w, "DATABASE_URL", "anything").catch(
+      const error = await set(w, "R2_BUCKET_NAME", "anything").catch(
         (reason: unknown) => reason,
       );
 
@@ -513,6 +513,80 @@ describe("a deployed copy's environment", () => {
     });
   });
 
+  describe("DATABASE_URL, a Postgres URL or nothing (#Q3509)", () => {
+    const url = "postgresql://app:hunter2-secret@db.example.app:6543/app";
+
+    it("takes a Postgres URL, seals it, and shows where it points, never the password", async ({
+      expect,
+    }) => {
+      const w = await world();
+
+      const written = (await set(w, "DATABASE_URL", url)).data;
+      expect(written.value).toBeUndefined();
+      expect(written.kind).toBe("secret");
+
+      const listed = await list(w);
+      expect(listed.database).toEqual({
+        kind: "postgres",
+        place: "db.example.app:6543/app",
+      });
+      expect(JSON.stringify(listed)).not.toContain("hunter2-secret");
+      expect(listed.reserved).not.toContain("DATABASE_URL");
+
+      const row = await alepha.inject(TestRows).secrets.findOne({
+        where: { instanceId: { eq: w.instance.id } },
+      });
+      expect(row?.valueSealed).not.toContain("hunter2-secret");
+      // The deploy opens it, to hand it to provisioning and migrations.
+      expect(
+        (await alepha.inject(AppSecretService).open(w.instance.id))
+          .DATABASE_URL,
+      ).toBe(url);
+    });
+
+    it.each(["d1://DB", "sqlite:///data/app.db", "./app.db"])(
+      "refuses %s, saying a Postgres URL is the only value it takes",
+      async (value) => {
+        const w = await world();
+
+        await expect(set(w, "DATABASE_URL", value)).rejects.toThrow(
+          /takes a Postgres URL only/,
+        );
+        expect((await list(w)).items).toEqual([]);
+      },
+    );
+
+    it("says D1 for a copy that names none", async ({ expect }) => {
+      const w = await world();
+
+      expect((await list(w)).database).toEqual({ kind: "d1" });
+    });
+
+    it("refuses a second copy on the same database, which would share its journal", async ({
+      expect,
+    }) => {
+      const first = await world();
+      await set(first, "DATABASE_URL", url);
+
+      const second = await world();
+      await expect(
+        set(
+          second,
+          "DATABASE_URL",
+          "postgres://other:pw@DB.example.app:6543/app",
+        ),
+      ).rejects.toThrow(/already runs on db\.example\.app:6543\/app/);
+      // Another database on the same server is fine.
+      await expect(
+        set(
+          second,
+          "DATABASE_URL",
+          "postgres://other:pw@db.example.app:6543/app2",
+        ),
+      ).resolves.toBeDefined();
+    });
+  });
+
   describe("the names Bay writes itself", () => {
     /**
      * Points the copy at a Bay estate lent to its project.
@@ -532,7 +606,13 @@ describe("a deployed copy's environment", () => {
       await rows.instances.updateById(w.instance.id, { estateId: estate.id });
     };
 
-    it.each(["APP_SECRET", "APP_NAME", "S3_BUCKET_NAME", "data_dir"])(
+    it.each([
+      "APP_SECRET",
+      "APP_NAME",
+      "S3_BUCKET_NAME",
+      "data_dir",
+      "DATABASE_URL",
+    ])(
       "refuses %s on a copy that deploys to a Bay estate, naming why",
       async (key) => {
         // Bay writes these into every instance itself and the secret pull

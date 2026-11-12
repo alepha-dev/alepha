@@ -68,6 +68,13 @@ export const appSecrets = $entity({
      */
     valuePrefix: db.default(z.string().max(8), ""),
     /**
+     * What the value points at, said without the value (#Q3509): for a
+     * Postgres `DATABASE_URL`, `host:port/database`, never the user or the
+     * password. Written when the value is set, so a read path never opens
+     * the seal to describe it. Absent for every other key.
+     */
+    label: z.string().max(300).optional(),
+    /**
      * The plaintext, for a VARIABLE only: a key the app's manifest lists under
      * `variables` (declared `secret: false`), so its value may be shown and
      * edited in place (#Q2467).

@@ -5,7 +5,7 @@ import {
   EXCLUDED_SECRET_KEYS,
 } from "alepha/cli/infra-lib";
 import { CryptoProvider } from "alepha/crypto";
-import { $repository } from "alepha/orm";
+import { $repository, DatabaseUrlParser } from "alepha/orm";
 import { BadRequestError, ValidationError } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
@@ -172,10 +172,15 @@ export class AppSecretService {
    * estate. The server still refuses them itself; this is the preview.
    */
   public async reservedKeys(instanceId: string): Promise<string[]> {
+    const bay = await this.bayCopy(instanceId);
     return [
       ...new Set([
-        ...EXCLUDED_SECRET_KEYS,
-        ...((await this.bayCopy(instanceId)) ? BAY_OWNED_SECRET_KEYS : []),
+        // DATABASE_URL is settable on a Cloudflare copy, to a Postgres URL
+        // (#Q3509); a Bay copy refuses it as one of Bay's own names below.
+        ...[...EXCLUDED_SECRET_KEYS].filter(
+          (key) => key !== AppSecretService.DATABASE_URL_KEY,
+        ),
+        ...(bay ? BAY_OWNED_SECRET_KEYS : []),
       ]),
     ].sort();
   }
@@ -243,6 +248,7 @@ export class AppSecretService {
     const key = this.assertKey(input.key, input.keyPath);
     await this.assertDeliverable(input.instanceId, key);
     this.assertValue(key, input.value);
+    await this.assertDatabaseUnshared(input.instanceId, key, input.value);
 
     const existing = await this.find(input.instanceId, key);
     if (!existing) {
@@ -275,6 +281,7 @@ export class AppSecretService {
       variables.has(key) || key === AppSecretService.SIGIL_CONFIG_KEY;
 
     const values = {
+      label: this.labelOf(key, input.value) ?? null,
       valueSealed: await this.seal.seal(input.value, AppSecretService.PURPOSE),
       // Sealed only, and the readable copy cleared, when it is a secret: a key
       // that stopped being a variable must not keep its plaintext.
@@ -291,6 +298,7 @@ export class AppSecretService {
       instanceId: input.instanceId,
       key,
       ...values,
+      label: values.label ?? undefined,
       value: variable ? input.value : undefined,
     });
   }
@@ -313,6 +321,7 @@ export class AppSecretService {
       const key = this.assertKey(entry.key);
       await this.assertDeliverable(input.instanceId, key);
       this.assertValue(key, entry.value);
+      await this.assertDatabaseUnshared(input.instanceId, key, entry.value);
       entries.set(key, entry.value);
     }
 
@@ -609,6 +618,17 @@ export class AppSecretService {
     if (key.length > 100) {
       throw refuse(`"${raw}" is longer than 100 characters.`);
     }
+    // The one reserved name a copy may set (#Q3509): a Postgres URL, which
+    // moves the copy onto Hyperdrive. Special-cased here and nowhere else:
+    // `EXCLUDED_SECRET_KEYS` is the CLI's list too, and dropping the name
+    // there would push a laptop's DATABASE_URL as a Worker secret. The value
+    // never becomes one either: the deploy strips it from the upload and
+    // hands it to provisioning and migrations only.
+    // Its value is checked in `assertValue`, after a Bay copy has refused
+    // the name outright.
+    if (key === AppSecretService.DATABASE_URL_KEY) {
+      return key;
+    }
     if (AppSecretService.reserved(key)) {
       throw refuse(
         `${key} is set by the deploy, not here. Lore provisions this copy's resources and derives DATABASE_URL, R2_BUCKET_NAME and the CLOUDFLARE_* names from the ids it gets back, so a value stored under one of them would be overwritten - or would win, and point a fresh deploy at somebody else's database.`,
@@ -674,6 +694,110 @@ export class AppSecretService {
     }
     if (key === AppSecretService.SIGIL_CONFIG_KEY) {
       this.assertSigilConfig(value);
+    }
+    if (key === AppSecretService.DATABASE_URL_KEY && !this.postgresUrl(value)) {
+      throw new BadRequestError(
+        "DATABASE_URL takes a Postgres URL only (postgres:// or postgresql://), which moves this copy onto Postgres through Hyperdrive. Leave it unset for D1: Lore provisions the D1 database and derives the URL itself.",
+      );
+    }
+  }
+
+  /**
+   * What a value points at, for {@link appSecrets.label}: `host:port/database`
+   * for a Postgres `DATABASE_URL`, nothing for anything else.
+   */
+  protected labelOf(key: string, value: string): string | undefined {
+    if (key !== AppSecretService.DATABASE_URL_KEY) {
+      return undefined;
+    }
+    const url = this.postgresUrl(value);
+    return url
+      ? `${url.hostname}:${url.port || "5432"}/${decodeURIComponent(url.pathname.replace(/^\//, ""))}`
+      : undefined;
+  }
+
+  /**
+   * The database this copy runs on, as its Environment tab shows it: D1, or
+   * the Postgres server its `DATABASE_URL` names. Undefined on a Bay copy,
+   * whose database is Bay's own.
+   */
+  public async databaseOf(
+    instanceId: string,
+  ): Promise<{ kind: "d1" | "postgres"; place?: string } | undefined> {
+    if (await this.bayCopy(instanceId)) {
+      return undefined;
+    }
+    const row = await this.find(instanceId, AppSecretService.DATABASE_URL_KEY);
+    return row ? { kind: "postgres", place: row.label } : { kind: "d1" };
+  }
+
+  /**
+   * The reserved name a copy may set to a Postgres URL (#Q3509).
+   */
+  public static readonly DATABASE_URL_KEY = "DATABASE_URL";
+
+  /**
+   * The parsed URL when `value` names a Postgres server, else undefined. An
+   * unparsable value is undefined too: it is refused as "not Postgres".
+   */
+  protected postgresUrl(value: string): URL | undefined {
+    try {
+      if (!new DatabaseUrlParser().isPostgres(value)) {
+        return undefined;
+      }
+      return new URL(value);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * That no other copy already holds a `DATABASE_URL` naming the same host,
+   * port and database (#Q3509).
+   *
+   * `POSTGRES_SCHEMA` stays reserved, so every copy migrates the `public`
+   * schema and shares one journal, `drizzle.migrations_public`: two copies on
+   * one database would apply each other's migrations into one set of tables.
+   * Refused rather than documented, since the failure would be silent.
+   *
+   * ⚠️ Opens the other copies' sealed URLs to compare them, server side and
+   * nowhere else; neither value is returned or logged.
+   */
+  protected async assertDatabaseUnshared(
+    instanceId: string,
+    key: string,
+    value: string,
+  ): Promise<void> {
+    if (key !== AppSecretService.DATABASE_URL_KEY) {
+      return;
+    }
+    const target = this.postgresUrl(value);
+    if (!target) {
+      return;
+    }
+    const place = (url: URL) =>
+      `${url.hostname.toLowerCase()}:${url.port || "5432"}/${decodeURIComponent(url.pathname.replace(/^\//, ""))}`;
+    const rows = await this.rows.findMany({
+      where: { key: { eq: AppSecretService.DATABASE_URL_KEY } },
+    });
+    for (const row of rows) {
+      if (row.instanceId === instanceId) {
+        continue;
+      }
+      let other: URL | undefined;
+      try {
+        other = this.postgresUrl(
+          await this.seal.open(row.valueSealed, AppSecretService.PURPOSE),
+        );
+      } catch {
+        continue;
+      }
+      if (other && place(other) === place(target)) {
+        const instance = await this.instances.findById(row.instanceId);
+        throw new BadRequestError(
+          `Another copy${instance ? ` (${instance.env})` : ""} already runs on ${place(target)}. Two copies on one database would share one migrations journal and one set of tables; give this one a database of its own.`,
+        );
+      }
     }
   }
 

@@ -41,9 +41,11 @@ import {
  * ## The empty state is the normal one
  *
  * A copy starts with no variables and deploys perfectly well with none:
- * `DATABASE_URL`, `R2_BUCKET_NAME` and the `CLOUDFLARE_*` names are derived by
- * the deploy from the resources it provisions, which is why they are refused
- * here rather than offered as fields to fill in.
+ * `R2_BUCKET_NAME` and the `CLOUDFLARE_*` names are derived by the deploy from
+ * the resources it provisions, which is why they are refused here rather than
+ * offered as fields to fill in. `DATABASE_URL` is too, on D1; set to a
+ * Postgres URL it moves the copy onto that database through Hyperdrive
+ * (#Q3509), and the header says which database the copy runs on.
  *
  * ⚠️ A UI affordance and not the boundary: a member sees the table read-only
  * because the write endpoints are gated server-side, and hiding a button
@@ -152,6 +154,15 @@ const AppEnvironment = () => {
               <h2 className="text-base font-medium">{tr("app.environment")}</h2>
               {items.length > 0 ? (
                 <Badge variant="tint">{items.length}</Badge>
+              ) : null}
+              {data?.database ? (
+                <span className="text-muted-foreground text-sm">
+                  {data.database.kind === "postgres"
+                    ? tr("app.environment.database.postgres", {
+                        args: [data.database.place ?? ""],
+                      })
+                    : tr("app.environment.database.d1")}
+                </span>
               ) : null}
             </div>
           }

@@ -123,6 +123,7 @@ export class DeployRegistry {
       url?: string;
       versionId?: string;
       migrationsApplied?: number;
+      database?: string;
     } = {},
   ): Promise<boolean> {
     if (outcome.url) {
@@ -134,6 +135,7 @@ export class DeployRegistry {
       url: outcome.url,
       versionId: outcome.versionId,
       migrationsApplied: outcome.migrationsApplied,
+      database: outcome.database,
       finishedAt: new Date(this.dateTime.nowMillis()).toISOString(),
     });
   }

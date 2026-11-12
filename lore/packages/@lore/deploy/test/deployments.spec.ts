@@ -1173,6 +1173,35 @@ describe("a deployment", () => {
         worker: "from-an-earlier-deploy",
       });
     });
+
+    it("merges a run's record into the one before, so a database switch keeps both (#Q3509)", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const rows = alepha.inject(TestRows);
+      await rows.instances.updateById(w.instance.id, {
+        resources: JSON.stringify({
+          worker: "my-app",
+          d1: { name: "my-app-db", id: "d1-1" },
+        }),
+      });
+
+      await alepha
+        .inject(DeployService)
+        // @ts-expect-error reaching the protected recorder directly, as above.
+        .recordResources(w.instance.id, {
+          worker: "my-app",
+          hyperdrive: { name: "my-app-hd", id: "hd-1" },
+        });
+
+      const after = await rows.instances.findById(w.instance.id);
+      // The D1 stays named (purgeable, and reused if the copy moves back).
+      expect(JSON.parse(after?.resources as string)).toEqual({
+        worker: "my-app",
+        d1: { name: "my-app-db", id: "d1-1" },
+        hyperdrive: { name: "my-app-hd", id: "hd-1" },
+      });
+    });
   });
 
   /**
@@ -1952,6 +1981,43 @@ describe("rolling back", () => {
 
     expect(plan.path).toBe("artifact");
     expect(plan.reason).toMatch(/keeps no version history/);
+  });
+
+  it("never offers the fast path onto a version bound to another database (#Q3509)", async ({
+    expect,
+  }) => {
+    // A fast rollback re-points the Worker at that version AND its bindings:
+    // onto a D1-bound version, a copy now on Postgres would silently move
+    // back onto its old database.
+    const { project, instance, deployment, rows } = await world(
+      {
+        slug: "zug",
+        type: "cloudflare",
+        accountId: "acct",
+        credential: "sealed",
+      },
+      { versionId: "v1", database: "d1:my-app-db", migrationsApplied: 0 },
+    );
+    await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: "my-app",
+      tag: "1.2.4",
+      sha256: "f".repeat(64),
+      status: "succeeded",
+      versionId: "v2",
+      migrationsApplied: 1,
+      database: "hyperdrive:my-app-hd",
+    } as never);
+
+    const plan = await alepha
+      .inject(RollbackService)
+      .plan(project.id, deployment.id);
+
+    expect(plan.path).toBe("artifact");
+    expect(plan.reason).toMatch(
+      /runs on d1:my-app-db, and this copy now runs on hyperdrive:my-app-hd/,
+    );
   });
 
   it("falls back when the run recorded no version", async ({ expect }) => {

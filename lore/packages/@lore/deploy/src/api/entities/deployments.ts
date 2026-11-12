@@ -87,6 +87,14 @@ export const deployments = $entity({
      */
     migrationsApplied: z.integer().min(0).optional(),
     /**
+     * The database this run's Worker version is bound to (#Q3509):
+     * `d1:<name>` or `hyperdrive:<name>`. Absent for a run from before the
+     * column, a Bay deploy, or a build with no database. A fast rollback
+     * onto a version bound to another database than the copy's latest is
+     * not offered: it would move the copy back onto that database.
+     */
+    database: z.string().max(200).optional(),
+    /**
      * Where it landed, when the adapter is what put the host into effect.
      */
     url: z.string().max(500).optional(),
