@@ -115,7 +115,10 @@ test.describe("the stack console", () => {
     });
 
     await test.step("variables: the missing one is named, then set, and never shown", async () => {
-      await page.getByTestId("stack-tab-variables").click();
+      await page
+        .getByTestId("stack-tabs")
+        .getByRole("radio", { name: "Variables", exact: true })
+        .click();
       await expect(page.getByTestId("stack-variables-missing")).toContainText(
         "DB_PASSWORD",
       );
@@ -152,7 +155,10 @@ test.describe("the stack console", () => {
         },
       );
       await page.reload();
-      await page.getByTestId("stack-tab-routes").click();
+      await page
+        .getByTestId("stack-tabs")
+        .getByRole("radio", { name: "Routes", exact: true })
+        .click();
       await expect(page.getByTestId("stack-route-row")).toContainText(
         "shop.example.test",
       );
@@ -186,7 +192,10 @@ test.describe("the stack console", () => {
         },
       );
       await page.reload();
-      await page.getByTestId("stack-tab-revisions").click();
+      await page
+        .getByTestId("stack-tabs")
+        .getByRole("radio", { name: "Revisions", exact: true })
+        .click();
       await expect(page.getByTestId("stack-revision-row")).toHaveCount(2);
       const diff = page.getByTestId("stack-revision-diff");
       await expect(diff).toContainText("- ");
@@ -194,9 +203,15 @@ test.describe("the stack console", () => {
     });
 
     await test.step("volumes and settings render, and the base domain saves", async () => {
-      await page.getByTestId("stack-tab-volumes").click();
+      await page
+        .getByTestId("stack-tabs")
+        .getByRole("radio", { name: "Volumes", exact: true })
+        .click();
       await expect(page.getByTestId("stack-volumes")).toBeVisible();
-      await page.getByTestId("stack-tab-settings").click();
+      await page
+        .getByTestId("stack-tabs")
+        .getByRole("radio", { name: "Settings", exact: true })
+        .click();
       await expect(page.getByTestId("stack-settings")).toBeVisible();
     });
   });

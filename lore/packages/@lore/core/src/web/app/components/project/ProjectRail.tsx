@@ -195,7 +195,7 @@ const ProjectRail = () => {
     <nav
       aria-label={tr("project.rail.label")}
       data-testid="project-rail"
-      className="hidden w-16 shrink-0 flex-col items-center border-r md:flex"
+      className="hidden w-16 shrink-0 flex-col items-center md:flex"
     >
       <span id={hintId} className="sr-only">
         {tr("dock.reorder.hint")}

@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
   ArtifactController,
+  ArtifactSchemaStore,
   ArtifactService,
   ArtifactTarReader,
   DeployAssetCache,
@@ -145,6 +146,7 @@ describe("artifacts", () => {
       file: File;
       maps?: File;
       assets?: File;
+      schema?: File;
     },
   ) =>
     ctx.artifactController.pushArtifact.fetch(
@@ -159,6 +161,7 @@ describe("artifacts", () => {
           file: body.file,
           maps: body.maps,
           assets: body.assets,
+          schema: body.schema,
         },
       },
       { user },
@@ -703,6 +706,52 @@ describe("artifacts", () => {
           }),
         ),
       ).toBe(400);
+    });
+  });
+
+  describe("the migrations' schema sent beside the bytes (#Q3542)", () => {
+    const schema = new File(
+      [
+        JSON.stringify({
+          version: 1,
+          dialects: {
+            sqlite: {
+              version: "7",
+              ddl: [
+                { name: "users", entityType: "tables" },
+                {
+                  table: "users",
+                  name: "id",
+                  type: "integer",
+                  notNull: true,
+                  default: null,
+                  entityType: "columns",
+                },
+              ],
+            },
+          },
+        }),
+      ],
+      "schema.json",
+      { type: "application/json" },
+    );
+
+    it("stores its reduction under this project, keyed by the archive", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      const pushed = await push(projectId, owner, {
+        file: await packedArtifact(),
+        schema,
+      });
+
+      const stored = await ctx.alepha
+        .inject(ArtifactSchemaStore)
+        .read(ArtifactService.BUCKET, projectId, pushed.data.artifact.sha256);
+      expect(Object.keys(stored?.dialects.sqlite.tables ?? {})).toEqual([
+        "users",
+      ]);
     });
   });
 

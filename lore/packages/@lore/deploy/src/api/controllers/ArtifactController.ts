@@ -146,6 +146,14 @@ export class ArtifactController {
          * ways: an older CLI sends none and the first deploy computes it.
          */
         assets: z.file({ maxBytes: 4 * 1024 * 1024 }).optional(),
+        /**
+         * The newest Drizzle `snapshot.json` of each dialect the build ships
+         * migrations for (#Q3542), as `schema.json`. A rollback compares it
+         * with the live run's to say whether the older build still fits the
+         * schema. Optional both ways, and a part this Lore cannot read is
+         * dropped rather than refused: nothing deploys from it.
+         */
+        schema: z.file({ maxBytes: 4 * 1024 * 1024 }).optional(),
       }),
       response: artifactPushResultSchema,
     },
@@ -161,6 +169,7 @@ export class ArtifactController {
         file: body.file,
         maps: body.maps,
         assets: body.assets,
+        schema: body.schema,
       });
 
       return { artifact: this.resource(artifact), stored };

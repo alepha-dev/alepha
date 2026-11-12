@@ -51,14 +51,9 @@ const routes = (instance: AppInstanceResource) =>
   appTabsFor(instance).map((tab) => tab.route);
 
 describe("the instance's tab set", () => {
-  it("gives an instance with nothing three tabs", ({ expect }) => {
-    // The normal state right after creation. Artifacts is unconditional
-    // because builds come from CI rather than from telemetry.
-    expect(routes(anInstance())).toEqual([
-      "app",
-      "appArtifacts",
-      "appSettings",
-    ]);
+  it("gives an instance with nothing two tabs", ({ expect }) => {
+    // The normal state right after creation.
+    expect(routes(anInstance())).toEqual(["app", "appSettings"]);
   });
 
   it("unlocks four more with a sigil that collects everything", ({
@@ -70,7 +65,6 @@ describe("the instance's tab set", () => {
       "appVitals",
       "appErrors",
       "appExplore",
-      "appArtifacts",
       "appSettings",
     ]);
   });
@@ -89,11 +83,7 @@ describe("the instance's tab set", () => {
   }) => {
     // The honest answer: the credential exists and is allowed to collect
     // nothing, so there is nothing behind any of the four.
-    expect(routes(anInstance([]))).toEqual([
-      "app",
-      "appArtifacts",
-      "appSettings",
-    ]);
+    expect(routes(anInstance([]))).toEqual(["app", "appSettings"]);
   });
 
   it("adds Deploy and Environment for an estate, and only for an estate", ({
@@ -105,7 +95,6 @@ describe("the instance's tab set", () => {
     // Choosing one on the Settings tab is what makes the pair appear.
     expect(routes(anInstance(undefined, aBayEstate()))).toEqual([
       "app",
-      "appArtifacts",
       "appDeploy",
       "appEnvironment",
       "appBackups",
@@ -188,7 +177,7 @@ describe("the instance's tab set", () => {
     const instance = anInstance(["beacon", "blights"]);
     expect(
       appTabsFor(instance, { track: false }).map((tab) => tab.route),
-    ).toEqual(["app", "appArtifacts", "appSettings"]);
+    ).toEqual(["app", "appSettings"]);
     // And gives them all back untouched when it returns: the project switch
     // narrows, it never rewrites what each instance unlocked.
     expect(
@@ -202,15 +191,15 @@ describe("the instance's tab set", () => {
     // not a caller declining to filter.
     expect(
       appTabsFor(anInstance(["beacon", "blights"]), {}).map((tab) => tab.route),
-    ).toEqual(["app", "appArtifacts", "appSettings"]);
+    ).toEqual(["app", "appSettings"]);
   });
 
   it("gives every gated tab an option and every baseline tab none", ({
     expect,
   }) => {
-    // Overview, Artifacts and Settings are the Apps baseline per
+    // Overview and Settings are the Apps baseline per
     // `appsCapabilityOptionsSchema`, so they answer to no switch at all.
-    const baseline = new Set(["app", "appArtifacts", "appSettings"]);
+    const baseline = new Set(["app", "appSettings"]);
     for (const tab of APP_TABS) {
       if (baseline.has(tab.route)) {
         expect(tab.unlockedBy).toBeUndefined();
@@ -242,7 +231,6 @@ describe("the instance's tab set", () => {
 
     expect(routesOf({ track: false, deploy: true })).toEqual([
       "app",
-      "appArtifacts",
       "appDeploy",
       "appEnvironment",
       "appBackups",
@@ -250,7 +238,6 @@ describe("the instance's tab set", () => {
     ]);
     expect(routesOf({ track: true, deploy: false })).toEqual([
       "app",
-      "appArtifacts",
       "appSettings",
     ]);
   });
@@ -266,9 +253,8 @@ describe("the instance's tab set", () => {
 describe("the two axes of a tab's gate", () => {
   /**
    * A tab set with one tab per option, which `APP_TABS` cannot be until epic
-   * #1's Deploy tab and #1813's Environment tab exist. `appArtifacts` stands in
-   * for the Deploy route purely because `AppTabRoute` has no name for it yet -
-   * nothing here depends on which route it is, only on which option it names.
+   * #1's Deploy tab and #1813's Environment tab exist. Nothing here depends on
+   * which route a tab is, only on which option it names.
    */
   const gatedOn = (option: AppTabOption, route: AppTabRoute): GatedAppTab => ({
     route,
@@ -280,7 +266,7 @@ describe("the two axes of a tab's gate", () => {
   const twoAxes: AppTab[] = [
     { route: "app", labelKey: "app.tab.overview" },
     gatedOn("track", "appAnalytics"),
-    gatedOn("deploy", "appArtifacts"),
+    gatedOn("deploy", "appDeploy"),
     { route: "appSettings", labelKey: "app.tab.settings" },
   ];
 
@@ -294,7 +280,7 @@ describe("the two axes of a tab's gate", () => {
     // labelled for telemetry.
     expect(routesOf({ track: false, deploy: true })).toEqual([
       "app",
-      "appArtifacts",
+      "appDeploy",
       "appSettings",
     ]);
   });

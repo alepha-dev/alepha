@@ -98,7 +98,7 @@ export default {
   "automation.channel.email": "E-mail",
   "automation.preset.feedback-created.title": "Nouveau retour",
   "automation.preset.feedback-created.description":
-    "Notifier un membre lors de la création d’un retour, sans divulguer les coordonnées de son auteur.",
+    "Notifier un membre lors de la création d’un retour, avec sa description et un lien vers lui, sans divulguer les coordonnées de son auteur.",
   "automation.preset.weekly-report-digest.title": "Rapport hebdomadaire",
   "automation.preset.weekly-report-digest.description":
     "Envoie le résumé des rapports des sept derniers jours à un membre, chaque lundi à 08:00 UTC. Il peut s'en désabonner dans ses réglages de notification.",
@@ -1980,7 +1980,6 @@ export default {
   "app.tab.vitals": "Vitals",
   "app.tab.errors": "Erreurs",
   "app.tab.explore": "Explorer",
-  "app.tab.artifacts": "Artefacts",
   "app.tab.deploy": "Déploiement",
   "apps.table.version": "Version",
   "apps.filter.version": "Version",
@@ -1993,15 +1992,14 @@ export default {
     "Ce domaine exécute $1, et aucun build de ce tag n\u2019a été produit pour lui.",
   "app.deploy.imageOnly":
     "Ce tag n\u2019existe que sous forme d\u2019image de conteneur, et Lore déploie des builds empaquetés.",
-  "app.deploy.runs": "Déploiements",
   "app.deploy.loading": "Chargement...",
   "app.deploy.error": "Impossible de lire les déploiements de cette copie.",
   "app.deploy.empty": "Rien n\u2019a encore été déployé ici.",
   "app.deploy.log.show": "Journal",
-  "app.deploy.log.hide": "Masquer le journal",
   "app.deploy.status.queued": "En attente",
   "app.deploy.status.running": "En cours",
   "app.deploy.status.succeeded": "En ligne",
+  "app.deploy.status.superseded": "Réussi",
   "app.deploy.status.failed": "Échec",
   "app.deploy.status.cancelled": "Annulé",
   "app.deploy.rollback": "Revenir en arrière",
@@ -2012,7 +2010,28 @@ export default {
     "Cette version n\u2019est plus disponible : le build stocké sera redéployé.",
   "app.deploy.rollback.migrations":
     "⚠️ $1 migration(s) ont été appliquées depuis. Un retour en arrière change le code et pas la base, donc cette version s\u2019exécuterait sur le schéma actuel.",
+  "app.deploy.rollback.schemaSafe":
+    "Le schéma actuel ne fait qu\u2019ajouter à ce que ce build attend : il s\u2019exécute dessus.",
+  "app.deploy.rollback.schemaBreaks":
+    "⚠️ Ce build cassera sur le schéma actuel : $1. Un retour en arrière change le code et pas la base.",
+  "app.deploy.rollback.schemaRisky":
+    "⚠️ Le schéma actuel peut refuser certaines écritures de ce build : $1. Un retour en arrière change le code et pas la base.",
   "app.deploy.rollback.confirm": "Revenir en arrière",
+  "app.deploy.rollback.what":
+    "Lore déploie $1 ($2) à la place de $3, qui tourne ici actuellement.",
+  "app.deploy.rollback.whatNoCurrent": "Lore déploie $1 ($2) ici.",
+  "app.deploy.rollback.code":
+    "Seul le code change. La base de données, les variables d\u2019environnement et les fichiers stockés restent tels quels.",
+  "app.deploy.rollback.planning":
+    "Vérification de ce que demanderait le retour en arrière...",
+  "app.deploy.rollback.unavailable": "Impossible de revenir à ce déploiement.",
+  "app.deploy.new": "Déployer un nouvel artefact",
+  "app.deploy.log.title": "Journal de $1",
+  "app.deploy.log.empty": "Ce déploiement n\u2019a écrit aucun journal.",
+  "app.deploy.table.status": "Statut",
+  "app.deploy.table.build": "Build",
+  "app.deploy.table.when": "Date",
+  "app.deploy.table.error": "Erreur",
   "app.deploy.rollback.started": "Retour en arrière lancé",
   "app.deploy.noEstate.description":
     "Cette copie n\u2019a pas encore de domaine, donc il n\u2019y a nulle part où la déployer. Choisissez-en un dans son onglet Paramètres.",
@@ -2068,9 +2087,6 @@ export default {
   "app.sigil.excludedPaths": "Masquer le bouton sur",
   "app.sigil.excludedPaths.desc":
     "Un chemin par ligne. * correspond à un segment, ** à plusieurs.",
-  "app.sigil.outsideProduction": "Rapporter hors production",
-  "app.sigil.outsideProduction.desc":
-    "Envoyer aussi depuis un serveur hors production, comme la préproduction. Le navigateur ne rapporte toujours que depuis les pages de production.",
   "app.sigil.save": "Enregistrer",
   "app.sigil.savedNextDeploy": "Enregistré. Effectif au prochain déploiement.",
   "app.sigil.redeploy.title": "Redéployer pour l'appliquer ?",
@@ -2118,7 +2134,6 @@ export default {
   "app.dashboard.resourceName": "Ressources",
   "app.dashboard.resourceName.hint":
     "Le nom sous lequel son domaine le connaît : son Worker, sa base et son bucket sur Cloudflare, son instance sur une machine Bay. Fixé au premier déploiement, il reste le même si le projet est renommé.",
-  "app.switcher.label": "Changer d\u2019environnement",
   "app.nextSteps.title": "Prochaines étapes",
   "app.nextSteps.description":
     "Aucune n\u2019est obligatoire. Cette copie est déjà suivie ; chaque étape ci-dessous apporte une chose de plus.",
@@ -2134,7 +2149,7 @@ export default {
     "Où cette copie est déployée, parmi les domaines prêtés à ce projet.",
   "app.dashboard.address": "Adresse",
   "app.dashboard.address.unknown": "Aucune",
-  "app.dashboard.address.pinned": "Fixée dans l'onglet Paramètres",
+  "app.dashboard.address.pinned": "Fixée dans les Paramètres",
   "app.dashboard.address.detected":
     "Détectée depuis le dernier rapport de l'app",
   "app.dashboard.lastReport": "Dernier rapport",
@@ -2150,13 +2165,12 @@ export default {
   "app.dashboard.off": "Désactivé",
   "app.dashboard.unknown": "Inconnu",
   "app.dashboard.mismatch": "L'app et Lore ne sont pas d'accord sur ce point",
-  "app.dashboard.feedbackButton": "Bouton de retour : $1",
+  "app.dashboard.feedbackButton": "Bouton en $1",
   "app.dashboard.excludedPaths": "Bouton masqué sur : $1",
-  "app.dashboard.reportedAt": "Déclaré par l'app le $1.",
+  "app.dashboard.reported": "Configuration déclarée",
+  "app.dashboard.configure": "Configurer",
   "app.dashboard.neverReported":
     "Cette app n'a pas déclaré sa configuration. Les anciennes versions n'en envoient pas, et une app qui n'a jamais rapporté ne nous a rien dit non plus.",
-  "app.dashboard.configHint":
-    "Ce que l'app envoie est décidé par SIGIL_CONFIG dans son propre déploiement. Quand Lore déploie cette copie, réglez-le dans les Paramètres.",
   "app.dashboard.acceptsNothing": "Lore n'accepte rien de cette app",
   "app.artifacts": "Artefacts",
   "app.artifacts.loading": "Lecture de ce que cette app a construit…",
@@ -2180,6 +2194,7 @@ export default {
   "insights.errors.worst.note":
     "Les compteurs sont le total de chaque défaillance depuis toujours, pas celui de la période. Le graphique ci-dessus, lui, correspond à la période.",
   "app.settings.general": "Général",
+  "app.settings.outline": "Sur cette page",
   "app.settings.rename.save": "Renommer",
   "app.settings.rename.confirmTitle": "Renommer $1 ?",
   "app.settings.rename.confirmDescription":
@@ -2384,8 +2399,8 @@ export default {
     "Copiez ce jeton maintenant : il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, seule variable nécessaire. Ajoutez SIGIL_SINK pointant vers cette instance si ce n’est pas le collecteur par défaut de l’application.",
   "sigils.token.copy": "Copier le jeton",
   "sigils.token.done": "Terminé",
-  "sigils.lastSeen": "dernière remontée $1",
-  "sigils.neverSeen": "aucune remontée",
+  "sigils.lastSeen": "Dernière remontée",
+  "sigils.neverSeen": "Aucune remontée",
   "sigils.action.rotate": "Renouveler",
   "sigils.action.delete": "Supprimer",
   "sigils.rotate.confirmTitle": "Renouveler le jeton de $1 ?",

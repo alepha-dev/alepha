@@ -4,7 +4,7 @@ import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import type { ArtifactResource } from "../../../../../api/schemas/artifactResourceSchema.ts";
 import ArtifactManifest from "./ArtifactManifest.tsx";
@@ -46,6 +46,16 @@ const variant = (over: Partial<ArtifactResource> = {}) =>
  * one click away (#Q3286).
  */
 describe("ArtifactManifest", () => {
+  // The view switch is a `Segmented`, which tracks its thumb with a
+  // ResizeObserver, and jsdom ships none.
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as never;
+  });
+
   const show = async (shown: ArtifactResource, lang = "en") => {
     cleanup();
     const alepha = Alepha.create()
@@ -117,14 +127,14 @@ describe("ArtifactManifest", () => {
   it("switches to the verbatim JSON and back", async () => {
     await show(variant());
 
-    fireEvent.click(screen.getByRole("tab", { name: "Raw" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Raw" }));
 
     expect(screen.getByTestId("artifact-manifest-raw").textContent).toBe(
       JSON.stringify(MANIFEST, null, 2),
     );
     expect(screen.queryByTestId("artifact-manifest-runtimes")).toBeNull();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Structured" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Structured" }));
     expect(screen.getByTestId("artifact-manifest-runtimes")).toBeTruthy();
   });
 

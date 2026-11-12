@@ -122,7 +122,7 @@ test("opens a build from the table and reads what it declares", async ({
   // ...and the verbatim document one click away.
   await page
     .getByTestId("artifact-manifest")
-    .getByRole("tab", { name: "Raw" })
+    .getByRole("radio", { name: "Raw" })
     .click();
   await expect(page.getByTestId("artifact-manifest-raw")).toContainText(
     '"entry": "index.node.js"',
@@ -134,11 +134,12 @@ test("opens a build from the table and reads what it declares", async ({
 
 /**
  * The docs link under an empty artifact list follows its frame (#Q3266):
- * centred under the centred sentence on the project page, left under the
- * left-aligned one in an app's card. It sat hard left in both, which only a
- * real layout can show.
+ * centred under the centred sentence on the project page. It sat hard left,
+ * which only a real layout can show. The other frame, an app's card, now
+ * lives in the Deploy tab's "Deploy new artifact" dialog, behind an estate
+ * this case does not set up (#Q3544).
  */
-test("places the empty state's docs link where its sentence is, in both frames", async ({
+test("places the empty state's docs link where its sentence is", async ({
   page,
 }) => {
   await registerAndVerify(
@@ -182,20 +183,4 @@ test("places the empty state's docs link where its sentence is, in both frames",
   expect(Math.abs(centred.linkCentre - centred.frameCentre)).toBeLessThan(2);
   // Not vacuous: a link this narrow, centred, is well clear of the left edge.
   expect(centred.linkLeft - centred.frameLeft).toBeGreaterThan(20);
-
-  const created = await page.evaluate(async (projectId) => {
-    const r = await fetch(`/api/projects/${projectId}/apps`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ app: "my-app", env: "production" }),
-    });
-    return r.ok;
-  }, project.id);
-  expect(created).toBe(true);
-
-  await page.goto(`/${project.slug}/apps/my-app/production/artifacts`);
-  const left = await boxes();
-  expect(Math.abs(left.linkLeft - left.textLeft)).toBeLessThan(2);
-  expect(Math.abs(left.linkLeft - left.frameLeft)).toBeLessThan(2);
 });

@@ -108,8 +108,6 @@ Any other registry needs the project's credential first: see
   downloads the archive.
 - Opening a build shows what it needs, where it runs, its manifest and its
   deployments, with a **Deploy** menu when the project deploys through Lore.
-- An app instance's **Artifacts** tab lists that app's builds, one row per
-  tag.
 - A release shows, on its **Artifacts** tab, the builds whose tag equals the
   release's tag. Nothing links the two, so changing the release's tag changes
   what it shows.

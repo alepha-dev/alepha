@@ -116,6 +116,72 @@ export class LoreArtifactPusher {
     return JSON.stringify(list);
   }
 
+  /**
+   * The newest Drizzle `snapshot.json` of each dialect under `migrations/`
+   * (#Q3542), as `{ version: 1, dialects: { <dialect>: <snapshot> } }`, or
+   * `undefined` for a build with no migrations.
+   *
+   * ⚠️ Read from the same `migrations/` the pack just put in the archive, so
+   * the schema sent is the one those bytes migrate to. Newest is the last
+   * folder by name: drizzle-kit names each `<timestamp>_<words>`, so the
+   * name order is the order they apply in.
+   *
+   * Sent raw, as drizzle-kit wrote it: Lore reduces it, so this CLI needs no
+   * knowledge of the format and a newer drizzle-kit needs no newer CLI.
+   */
+  protected async schemaOf(root: string): Promise<string | undefined> {
+    const migrations = this.fs.join(root, "migrations");
+    if (!(await this.fs.exists(migrations))) {
+      return undefined;
+    }
+    const dialects: Record<string, unknown> = {};
+    try {
+      const byName = (a: string, b: string) => a.localeCompare(b);
+      for (const dialect of (await this.fs.ls(migrations)).sort(byName)) {
+        const folders = (
+          await this.fs.ls(this.fs.join(migrations, dialect)).catch(() => [])
+        ).sort((a, b) => byName(b, a));
+        for (const folder of folders) {
+          const path = this.fs.join(
+            migrations,
+            dialect,
+            folder,
+            "snapshot.json",
+          );
+          if (await this.fs.exists(path)) {
+            dialects[dialect] = JSON.parse(await this.fs.readTextFile(path));
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      // Only a rollback warning rides on it: a push never fails for it.
+      this.log.warn(
+        "The migrations' schema could not be read, and is not sent",
+        {
+          error,
+        },
+      );
+      return undefined;
+    }
+    if (Object.keys(dialects).length === 0) {
+      return undefined;
+    }
+    const json = JSON.stringify({ version: 1, dialects });
+    if (json.length > LoreArtifactPusher.MAX_SCHEMA_BYTES) {
+      this.log.warn("The migrations' schema is too large to send, and is not", {
+        size: json.length,
+      });
+      return undefined;
+    }
+    return json;
+  }
+
+  /**
+   * The largest `schema.json` Lore reads.
+   */
+  protected static readonly MAX_SCHEMA_BYTES = 4 * 1024 * 1024;
+
   public async push(input: {
     root: string;
     project: string;
@@ -159,6 +225,7 @@ export class LoreArtifactPusher {
         filename,
         manifest: await this.manifestOf(root),
         assets: await this.assetsOf(root),
+        schema: await this.schemaOf(root),
         // The sibling source-map archive, when the build produced one
         // (#1515). Absent is normal, not an error: the maps are excluded
         // from the artifact and stored beside it, so nothing is discarded.

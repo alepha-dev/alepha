@@ -14,6 +14,10 @@ import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
  * a reporter contact, deployment log or credential through this boundary.
  */
 export class AutomationContextBuilder {
+  /**
+   * Query parameters a relative Lore URL keeps: page item selectors, digits only.
+   */
+  public static readonly KEPT_PARAMS = ["feedback"] as const;
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly collections = $inject(AutomationCollections);
   protected readonly security = $inject(AutomationProjectSecurity);
@@ -177,8 +181,19 @@ export class AutomationContextBuilder {
       throw new BadRequestError(
         "Context URL must be a safe HTTP resource link",
       );
-    parsed.search = "";
-    return relative ? `${parsed.pathname}${parsed.hash}` : parsed.toString();
+    // A query may carry a credential (`?token=`), so it is dropped, except a
+    // Lore page's own item selector on a Lore path: `?feedback=94` opens one
+    // report in the feedback inbox, and is never a secret (#Q3541).
+    const kept = new URLSearchParams();
+    if (relative)
+      for (const name of AutomationContextBuilder.KEPT_PARAMS) {
+        const selected = parsed.searchParams.get(name);
+        if (selected && /^\d{1,9}$/.test(selected)) kept.set(name, selected);
+      }
+    parsed.search = kept.toString();
+    return relative
+      ? `${parsed.pathname}${parsed.search}${parsed.hash}`
+      : parsed.toString();
   }
 }
 

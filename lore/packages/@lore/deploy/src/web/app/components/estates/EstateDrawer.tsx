@@ -2,6 +2,7 @@ import {
   Badge,
   Button,
   Input,
+  Segmented,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -376,35 +377,29 @@ const EstateDrawer = (props: EstateDrawerProps) => {
                       {tr("account.estates.interval.description")}
                     </span>
                   </span>
-                  <div className="flex flex-wrap gap-1" role="group">
-                    {INTERVALS.map((seconds) => (
-                      <Button
-                        key={seconds}
-                        type="button"
-                        size="sm"
-                        variant={
-                          estate.statsIntervalSeconds === seconds
-                            ? "solid"
-                            : "outlined"
-                        }
-                        disabled={!canUpdate || busy}
-                        aria-pressed={estate.statsIntervalSeconds === seconds}
-                        onClick={() => {
-                          if (estate.statsIntervalSeconds !== seconds) {
-                            void update({ statsIntervalSeconds: seconds });
-                          }
-                        }}
-                      >
-                        {seconds < 3600
+                  <Segmented
+                    size="sm"
+                    className="self-start"
+                    value={String(estate.statsIntervalSeconds)}
+                    disabled={!canUpdate || busy}
+                    onChange={(value) => {
+                      const seconds = Number(value);
+                      if (estate.statsIntervalSeconds !== seconds) {
+                        void update({ statsIntervalSeconds: seconds });
+                      }
+                    }}
+                    options={INTERVALS.map((seconds) => ({
+                      value: String(seconds),
+                      label:
+                        seconds < 3600
                           ? tr("account.estates.interval.minutes", {
                               args: [String(seconds / 60)],
                             })
                           : tr("account.estates.interval.hours", {
                               args: [String(seconds / 3600)],
-                            })}
-                      </Button>
-                    ))}
-                  </div>
+                            }),
+                    }))}
+                  />
                 </div>
               )}
             </div>

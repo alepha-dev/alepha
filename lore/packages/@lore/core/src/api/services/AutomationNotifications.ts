@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $repository, type SQLLike } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
@@ -25,6 +25,7 @@ import { CoreAutomationReferences } from "./CoreAutomationReferences.ts";
  * separately by the ordinary notification outbox and its transport receipts.
  */
 export class AutomationNotifications {
+  protected readonly alepha = $inject(Alepha);
   protected readonly renderer = $inject(AutomationTemplateRenderer);
   protected readonly channels = $inject(AutomationChannels);
   protected readonly catalog = $inject(AutomationCatalog);
@@ -74,9 +75,13 @@ export class AutomationNotifications {
             JSON.stringify(this.htmlPrefix + this.htmlSuffix),
           ).byteLength - 2
         : 0;
+    // Only the in-app inbox resolves a path against Lore. Anywhere else (a
+    // mail client) `{{url}}` must be absolute to be a link at all (#Q3541).
     const rendered = this.renderer.render(
       input.action,
-      input.context,
+      preliminary.raw.channel === "inbox"
+        ? input.context
+        : this.absoluteUrl(input.context),
       input.variables,
       adapter.target,
       16_384 - overhead,
@@ -122,6 +127,10 @@ export class AutomationNotifications {
         rendered,
       };
     const project = await this.security.projects.getById(input.rule.projectId);
+    const href =
+      typeof input.context.values.url === "string"
+        ? input.context.values.url
+        : `/${project.slug}`;
     const variables = automationNotificationVariablesSchema.parse({
       title: action.title,
       text: action.text,
@@ -129,10 +138,9 @@ export class AutomationNotifications {
         adapter.target === "html"
           ? `${this.htmlPrefix}${rendered.action.text}${this.htmlSuffix}`
           : rendered.action.text,
-      href:
-        typeof input.context.values.url === "string"
-          ? input.context.values.url
-          : `/${project.slug}`,
+      href,
+      url: this.absolute(href),
+      manageUrl: this.absolute(`/${project.slug}/automations/${input.rule.id}`),
       projectTitle: project.title,
       scope: `project:${project.id}`,
       automationId: input.rule.id,
@@ -155,6 +163,26 @@ export class AutomationNotifications {
         sensitive: true,
         lang: this.templates.lang,
       },
+    };
+  }
+
+  /**
+   * A Lore path made absolute against `PUBLIC_URL`; an absolute URL is kept.
+   */
+  protected absolute(href: string): string {
+    if (!href.startsWith("/") || href.startsWith("//")) return href;
+    const base = (this.alepha.env.PUBLIC_URL ?? "").replace(/\/+$/, "");
+    return `${base}${href}`;
+  }
+
+  protected absoluteUrl(
+    context: AutomationRenderContext,
+  ): AutomationRenderContext {
+    const url = context.values.url;
+    if (typeof url !== "string") return context;
+    return {
+      ...context,
+      values: { ...context.values, url: this.absolute(url) },
     };
   }
 

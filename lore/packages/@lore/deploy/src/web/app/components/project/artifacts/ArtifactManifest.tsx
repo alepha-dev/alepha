@@ -1,4 +1,4 @@
-import { Tabs, TabsList, TabsTrigger } from "@alepha/ui";
+import { Segmented } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
@@ -35,21 +35,19 @@ const ArtifactManifest = (props: ArtifactManifestProps) => {
   return (
     <div data-testid="artifact-manifest" className="flex flex-col gap-4 p-4">
       {drawable && (
-        <Tabs
+        <Segmented
+          size="sm"
+          className="self-start"
           value={view}
-          onValueChange={(value) =>
-            setView(value === "raw" ? "raw" : "structured")
-          }
-        >
-          <TabsList>
-            <TabsTrigger value="structured">
-              {tr("artifact.manifest.view.structured")}
-            </TabsTrigger>
-            <TabsTrigger value="raw">
-              {tr("artifact.manifest.view.raw")}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+          onChange={(value) => setView(value === "raw" ? "raw" : "structured")}
+          options={[
+            {
+              value: "structured",
+              label: tr("artifact.manifest.view.structured"),
+            },
+            { value: "raw", label: tr("artifact.manifest.view.raw") },
+          ]}
+        />
       )}
 
       {!manifest ? (

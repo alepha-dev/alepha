@@ -174,14 +174,10 @@ export class ArtifactUploader {
         // `RequestInit` has no such field - it is a fetch extension, not a
         // spec type. Without it node refuses the request outright.
         duplex: "half",
-        body: this.body(
-          boundary,
-          fields,
-          input.filename,
-          stream,
-          maps,
-          input.assets,
-        ),
+        body: this.body(boundary, fields, input.filename, stream, maps, {
+          assets: input.assets,
+          schema: input.schema,
+        }),
         schema: { response: ArtifactUploader.RESPONSE },
       } as never,
     );
@@ -209,9 +205,9 @@ export class ArtifactUploader {
     filename: string,
     file: AsyncIterable<unknown>,
     maps?: { filename: string; stream: AsyncIterable<unknown> },
-    assets?: string,
+    extras: ArtifactUploadExtras = {},
   ): ReadableStream<Uint8Array> {
-    const chunks = this.chunks(boundary, fields, filename, file, maps, assets);
+    const chunks = this.chunks(boundary, fields, filename, file, maps, extras);
     return new ReadableStream<Uint8Array>({
       async pull(controller) {
         const next = await chunks.next();
@@ -235,7 +231,7 @@ export class ArtifactUploader {
     filename: string,
     file: AsyncIterable<unknown>,
     maps?: { filename: string; stream: AsyncIterable<unknown> },
-    assets?: string,
+    { assets, schema }: ArtifactUploadExtras = {},
   ): AsyncGenerator<Uint8Array> {
     const encoder = new TextEncoder();
 
@@ -262,6 +258,18 @@ export class ArtifactUploader {
         "assets",
         "assets.json",
         [encoder.encode(assets)],
+        "application/json",
+      );
+    }
+
+    // The newest Drizzle snapshot per dialect (#Q3542), JSON, for Lore to
+    // tell a rollback whether an older build fits the live schema.
+    if (schema) {
+      yield* this.filePart(
+        boundary,
+        "schema",
+        "schema.json",
+        [encoder.encode(schema)],
         "application/json",
       );
     }
@@ -356,6 +364,20 @@ export interface ArtifactUploadInput {
    * An older Lore ignores the part, so sending it is always safe.
    */
   assets?: string;
+
+  /**
+   * The newest Drizzle `snapshot.json` of each dialect, JSON (#Q3542): sent
+   * as the `schema` part when present. An older Lore ignores the part.
+   */
+  schema?: string;
+}
+
+/**
+ * The optional JSON parts sent after the archive.
+ */
+export interface ArtifactUploadExtras {
+  assets?: string;
+  schema?: string;
 }
 
 export interface ArtifactUploaded {

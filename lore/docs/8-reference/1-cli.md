@@ -387,8 +387,9 @@ Compose file.
 - `--purge` is for a copy on a Bay whose data should go as well. Lore never
   asks a machine to delete data: the flag sends nothing, and prints the
   `bay remove --purge` command to run on the machine.
-- `--acknowledge-migrations` is required when migrations landed since that
-  run: the old build will run against the current schema.
+- `--acknowledge-migrations` is required when that build will not fit the
+  current schema (the refusal names each change), or, when its schema is
+  unknown, when migrations landed since that run.
 
 See [Deploying an app](/lore/docs/apps-deploying) for the whole flow.
 

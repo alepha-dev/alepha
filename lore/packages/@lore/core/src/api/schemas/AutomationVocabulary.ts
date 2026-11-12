@@ -23,7 +23,12 @@ export class AutomationVocabulary {
   constructor() {
     this.event(
       "feedback.created",
-      { feedback_id: "number", shortId: "number" },
+      {
+        feedback_id: "number",
+        shortId: "number",
+        reference: "text",
+        description: "text",
+      },
       "feedback:read",
       "support",
     );

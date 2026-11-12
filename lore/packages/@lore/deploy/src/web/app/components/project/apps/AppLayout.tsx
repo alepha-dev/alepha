@@ -1,17 +1,20 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import { PlateLayout, type PlateTab } from "@alepha/ui/shell";
 import {
   capabilityOption,
   currentProjectAtom,
   type I18n,
 } from "@lore/core/web";
-import { useStore } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { ClientOnly, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { ExternalLink } from "lucide-react";
 import { useEffect } from "react";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import AppLayoutSwitcher from "./AppLayoutSwitcher.tsx";
+import { appLiveness } from "./appLiveness.ts";
+import AppStatusDot from "./AppStatusDot.tsx";
 import { appTabsFor } from "./appTabs.ts";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
 import { APP_INSIGHTS_FILTER_KEYS } from "./useAppInsights.ts";
@@ -29,7 +32,6 @@ const APP_TAB_ROUTES = new Set([
   "appVitals",
   "appErrors",
   "appExplore",
-  "appArtifacts",
   "appSettings",
 ]);
 
@@ -40,7 +42,7 @@ const APP_TAB_ROUTES = new Set([
  * ## Tabs are unlocks, not configuration
  *
  * The set comes from `appTabsFor`, a predicate per tab over the instance
- * resource, so an instance with nothing shows Overview, Artifacts and
+ * resource, so an instance with nothing shows Overview and
  * Settings, and each capability adds its own. The order and the "Settings is
  * always last" rule live there; read that file before adding one.
  *
@@ -74,6 +76,7 @@ const AppLayout = () => {
 
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
+  const dateTime = useInject(DateTimeProvider);
 
   const activeRoute = routerState.name ?? "";
   const tabs = instance
@@ -158,7 +161,9 @@ const AppLayout = () => {
       tabsTestId="app-tabs"
       tabs={plateTabs}
       active={activeRoute}
-      // Explore owns its scrolling. `AdminAnalytics` is a two-pane layout that
+      // Explore and Deploy own their scrolling. Deploy's history is a
+      // `DataTable` that fills the plate and scrolls its own rows.
+      // `AdminAnalytics` is a two-pane layout that
       // never scrolls as a page - only the panel's clause list and the results
       // grid do - and it says so on itself. Handing it a scroll region would
       // give it a second scrollbar and, more to the point, a height it can
@@ -169,24 +174,27 @@ const AppLayout = () => {
       // Keyed on the route rather than on a flag each tab sets, because the
       // property belongs to the tab's layout and `PlateLayout` is rendered
       // once here, above the tab that would set it.
-      scroll={activeRoute !== "appExplore"}
+      scroll={activeRoute !== "appExplore" && activeRoute !== "appDeploy"}
       plate={
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-6 pt-6 pb-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-4 pb-3">
           {/*
             The pair, split: the app muted and the copy at full strength. Two
             instances of one app differ in the second half, and that is the half
             a reader is looking for.
           */}
-          <h1 className="text-xl font-semibold">
-            <span className="text-muted-foreground font-normal">
-              {instance.app} /{" "}
+          {/*
+            The same dot as the copy's row on the Apps list, so the page
+            says whether it is alive before the tabs say anything.
+          */}
+          <h1 className="flex items-center gap-2.5 text-xl font-semibold">
+            <AppStatusDot state={appLiveness(instance, dateTime.nowMillis())} />
+            <span>
+              <span className="text-muted-foreground font-normal">
+                {instance.app} /{" "}
+              </span>
+              {instance.env}
             </span>
-            {instance.env}
           </h1>
-
-          {/* The chevron sits on the instance half, over the sibling envs of
-              the same app. */}
-          <AppLayoutSwitcher />
 
           {/*
           The copy's own address, beside its name. A plain `<a>` rather than the
@@ -208,7 +216,7 @@ const AppLayout = () => {
               href={url}
               target="_blank"
               rel="noopener noreferrer nofollow"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs transition-colors"
+              className="text-muted-foreground hover:text-foreground ml-3 inline-flex items-center gap-1 text-xs transition-colors"
             >
               {appUrlLabel(url)}
               <ExternalLink className="size-3" aria-hidden />
@@ -222,11 +230,37 @@ const AppLayout = () => {
           */}
           {sigil && (
             <span className="text-muted-foreground ml-auto text-xs">
-              {sigil.lastSeenAt
-                ? tr("sigils.lastSeen", {
-                    args: [l(sigil.lastSeenAt, { date: "lll" })],
-                  })
-                : tr("sigils.neverSeen")}
+              {sigil.lastSeenAt ? (
+                <>
+                  {tr("sigils.lastSeen")}{" "}
+                  {/*
+                    Relative, because the question here is "is it alive", and
+                    the dotted underline says the exact time is a hover away.
+                    `ClientOnly` because a `fromNow` string differs between the
+                    server render and hydration; the server writes the exact
+                    form instead, as `TimeAgo` does. Not `TimeAgo` itself: its
+                    native `title` would stack a second tooltip on this one.
+                  */}
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <span className="text-foreground cursor-help underline decoration-dotted underline-offset-4" />
+                      }
+                    >
+                      <ClientOnly
+                        fallback={l(sigil.lastSeenAt, { date: "lll" })}
+                      >
+                        {l(sigil.lastSeenAt, { date: "fromNow" })}
+                      </ClientOnly>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {l(sigil.lastSeenAt, { date: "llll" })}
+                    </TooltipContent>
+                  </Tooltip>
+                </>
+              ) : (
+                tr("sigils.neverSeen")
+              )}
             </span>
           )}
         </div>
@@ -238,7 +272,7 @@ const AppLayout = () => {
           (#1747, feedback #2078): it used to be a shared `p-4` here, which
           Explore had no way to opt out of, so the query builder sat in a
           gutter with a strip of plate showing underneath it. Overview,
-          Analytics, Vitals, Artifacts and Settings each carry their own `p-4`
+          Analytics, Vitals and Settings each carry their own `p-4`
           and render identically; Explore carries none. ⚠️ These tabs are card
           and chart surfaces, not tables, so the 8px frame #Q2266 gave the
           table pages is not theirs: it was applied here too and reverted by

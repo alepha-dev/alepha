@@ -249,7 +249,9 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* 0.53, not shadcn's 0.556: 4.8:1 on `--muted`, where 0.556 was 4.34:1 and
+   * failed WCAG 1.4.3 on every `bg-muted` surface (#Q3487). */
+  --muted-foreground: oklch(0.53 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   /*

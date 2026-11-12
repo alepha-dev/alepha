@@ -15,6 +15,7 @@ import { Button } from "../core/Button.tsx";
 import { Separator } from "../core/Separator.tsx";
 import { Control } from "../form/Control.tsx";
 import { iconFor } from "../form/iconHint.tsx";
+import { AuthLink } from "./AuthLink.tsx";
 import { AuthRegisterPasswordRules } from "./AuthRegisterPasswordRules.tsx";
 import { AuthRegisterRealmHeader } from "./AuthRegisterRealmHeader.tsx";
 import {
@@ -248,12 +249,9 @@ export const AuthRegisterFormPhase = (props: AuthRegisterFormPhaseProps) => {
             {tr("auth.register.haveAccount", {
               default: "Already have an account?",
             })}{" "}
-            <a
-              href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
-              className="text-foreground underline underline-offset-4"
-            >
+            <AuthLink href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}>
               {tr("auth.register.signIn", { default: "Sign in" })}
-            </a>
+            </AuthLink>
           </p>
         </>
       )}

@@ -7,7 +7,6 @@ export type AppTabRoute =
   | "appVitals"
   | "appErrors"
   | "appExplore"
-  | "appArtifacts"
   | "appDeploy"
   | "appEnvironment"
   | "appBackups"
@@ -19,7 +18,6 @@ export type AppTabLabelKey =
   | "app.tab.vitals"
   | "app.tab.errors"
   | "app.tab.explore"
-  | "app.tab.artifacts"
   | "app.tab.deploy"
   | "app.tab.environment"
   | "app.tab.backups"
@@ -47,7 +45,7 @@ export interface UngatedAppTab {
   labelKey: AppTabLabelKey;
   /**
    * The Apps baseline: always there, whatever the project switched on. True of
-   * exactly three - Overview, Artifacts and Settings - and that is the set
+   * exactly two - Overview and Settings - and that is the set
    * `appsCapabilityOptionsSchema` calls the baseline.
    */
   unlockedBy?: undefined;
@@ -92,8 +90,8 @@ export interface GatedAppTab {
  *
  * ⚠️ No count badge on Errors, and no Changelog tab - the changelog and the
  * areas that feed it left epic #30 on 2026-09-05 (#1776, #1777, shelved). If
- * it returns, the likely home is inside the Artifacts tab, per tag, so no slot
- * is reserved here.
+ * it returns, the likely home is the project's artifact page, per tag, so no
+ * slot is reserved here.
  */
 export const APP_TABS: AppTab[] = [
   { route: "app", labelKey: "app.tab.overview" },
@@ -126,15 +124,6 @@ export const APP_TABS: AppTab[] = [
     unlockedBy: (instance) => collects(instance, "beacon"),
     option: "track",
   },
-  // Unconditional: builds come from CI through `lore artifacts push`, not from
-  // what the instance collects, so an instance with no sigil still has a build
-  // history.
-  //
-  // ⚠️ Artifacts belong to the APP, so every instance of `acme` shows the
-  // identical list and nothing on screen says why. Carried knowingly: on an
-  // instance page the list reads as "what can I deploy here", and a badge
-  // explaining the difference would be a control that changes nothing.
-  { route: "appArtifacts", labelKey: "app.tab.artifacts" },
   // ⚠️ `deploy`, never `track`, for both of the two below. A project that
   // deploys through Lore with telemetry off would otherwise lose them with
   // nothing on screen saying why - the trap `AppTab`'s union was made to close.
@@ -205,7 +194,7 @@ const collects = (instance: AppInstanceResource, kind: string): boolean =>
  * project with `deploy` on and `track` off would have lost epic #1's Deploy tab
  * with nothing on screen saying why; `AppTab` now makes each tab name its own.
  *
- * Overview, Artifacts and Settings are the baseline and answer to neither.
+ * Overview and Settings are the baseline and answer to neither.
  *
  * An absent `options` means no project narrowing at all, which is what a unit
  * test wants. A bag that IS passed is read strictly - a missing key is off -

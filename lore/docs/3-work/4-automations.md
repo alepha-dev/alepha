@@ -53,7 +53,7 @@ The presets:
 
 | Preset                               | What it does                                                                                                 |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| **New feedback**                     | Notifies one member when feedback is created. The reporter's contact details are left out.                   |
+| **New feedback**                     | Emails or notifies one member when feedback is created, with its description and a link to the report.       |
 | **Nightly tagged quests**            | Sends one digest of the open quests carrying a chosen tag, at 00:00 UTC. An empty digest is skipped.         |
 | **Weekly report**                    | Sends the Reports summary of the last seven days to one member, every Monday at 08:00 UTC.                   |
 | **Epic completed**                   | Notifies one member when an epic in progress completes.                                                      |

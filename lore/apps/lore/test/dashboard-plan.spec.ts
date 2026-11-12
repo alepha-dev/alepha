@@ -166,6 +166,19 @@ describe("dashboard plan tiles", () => {
       expect(value.detail.neededPerDay).toBe(1.5);
       expect(value.detail.doingPerDay).toBe(0.5);
     });
+
+    it("draws 100 when every quest is done, and marks it ready to publish", async ({
+      expect,
+    }) => {
+      const chosen = await release({ defaultSince: dateTime.nowISOString() });
+      await quests(chosen.id, 3, 0);
+
+      const value = await resolve("releaseOutlook");
+
+      expect(value.value).toBe(100);
+      expect(value.detail.readyToPublish).toBe(true);
+      expect(value.segments?.map((it) => it.value)).toEqual([3, 0, 0]);
+    });
   });
 
   describe("releasesToPublish", () => {

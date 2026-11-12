@@ -1,10 +1,13 @@
+import { capabilityOption, currentProjectAtom } from "@lore/core/web";
 import { useStore } from "alepha/react";
+import { useRouter } from "alepha/react/router";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppDashboardCapabilities from "./AppDashboardCapabilities.tsx";
 import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
 import AppDashboardNextSteps from "./AppDashboardNextSteps.tsx";
 import AppDashboardUptime from "./AppDashboardUptime.tsx";
+import { sigilConfigurable } from "./appTabs.ts";
 
 /**
  * The app's front page: what this thing is, and what it is doing.
@@ -29,10 +32,27 @@ import AppDashboardUptime from "./AppDashboardUptime.tsx";
  */
 const AppDashboard = () => {
   const [instance] = useStore(currentInstanceAtom);
+  const [project] = useStore(currentProjectAtom);
+  const router = useRouter();
 
   if (!instance) {
     return null;
   }
+
+  // The same gate the Settings tab's Sigil features section shows on, so the
+  // link never leads to a page without the switches it promises.
+  const configureHref =
+    project &&
+    sigilConfigurable(instance) &&
+    capabilityOption(project, "apps", "deploy")
+      ? router.path("appSettings", {
+          params: {
+            projectSlug: project.slug,
+            app: instance.app,
+            env: instance.env,
+          },
+        })
+      : undefined;
 
   // An instance with nothing unlocked gets next steps rather than a card grid
   // with holes in it: both cards below read a sigil, so without one the
@@ -54,7 +74,10 @@ const AppDashboard = () => {
               has been minted.
             */}
             {instance.sigil && (
-              <AppDashboardCapabilities sigil={instance.sigil} />
+              <AppDashboardCapabilities
+                sigil={instance.sigil}
+                configureHref={configureHref}
+              />
             )}
           </>
         )}

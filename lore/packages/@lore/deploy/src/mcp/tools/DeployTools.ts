@@ -126,7 +126,7 @@ export class DeployTools {
   deploy_rollback = $tool({
     title: "Roll a copy back",
     description:
-      "Point a deployed copy back at something it ran before. Takes the fast path when Cloudflare still holds that version - seconds, no upload - and redeploys the stored build when it does not, saying which it did. ⚠️ **A rollback changes the code and not the database.** If migrations have landed since that run shipped, this refuses once and names how many; pass `acknowledge_migrations` to proceed knowing the old build will run against the current schema. Needs `deploy:manage`.",
+      "Point a deployed copy back at something it ran before. Takes the fast path when Cloudflare still holds that version - seconds, no upload - and redeploys the stored build when it does not, saying which it did. ⚠️ **A rollback changes the code and not the database.** If that build will not fit the current schema (a dropped table or column, a new NOT NULL column with no default, a tightened constraint), this refuses once and names each change; a rollback past migrations that only added to the schema goes through. A build pushed without its schema falls back to refusing when migrations have landed since, and names how many. Pass `acknowledge_migrations` to proceed knowing the old build will run against the current schema. Needs `deploy:manage`.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: deployRollbackParamsSchema,
@@ -157,10 +157,11 @@ export class DeployTools {
       // enforces it server-side. Redeploying an artifact goes through
       // `startDeploy`, which knows nothing about rollback, so the check has to
       // happen here or this path would silently skip it.
-      const migrations = Number(plan.migrationsSince ?? 0);
-      if (migrations > 0 && !params.acknowledge_migrations) {
+      // `warning` is the plan's own sentence (#Q3542): from the schema check
+      // when the snapshots allow one, from the migration count otherwise.
+      if (plan.warning && !params.acknowledge_migrations) {
         throw new BadRequestError(
-          `${migrations} migration(s) have been applied since that build shipped. A rollback changes the code and not the database, so it would run against the current schema. Pass acknowledge_migrations to proceed.`,
+          `${plan.warning} Pass acknowledge_migrations to proceed.`,
         );
       }
 

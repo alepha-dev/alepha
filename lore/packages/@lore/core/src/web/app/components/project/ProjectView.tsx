@@ -211,7 +211,13 @@ const ProjectView = () => {
           the viewport and sits beside the rail instead of under it. */}
       <div className="flex h-full min-h-0">
         <ProjectRail />
-        <div className="flex min-w-0 flex-1 flex-col">
+        {/*
+          The line between the rail and the shell is the shell's own border,
+          not the rail's, so it can turn the corner: the shell reads as a
+          window resting beside the rail, with a rounded top-left. Only where
+          the rail shows (md and up); below that the shell is the whole page.
+        */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden md:mt-2 md:rounded-tl-2xl md:border-t md:border-l">
           <AppShell
             embedded
             fill

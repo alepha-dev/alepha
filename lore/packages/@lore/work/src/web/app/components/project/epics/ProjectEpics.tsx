@@ -37,6 +37,7 @@ import {
   Play,
   Plus,
   Trash2,
+  TriangleAlert,
   Undo2,
   Wrench,
 } from "lucide-react";
@@ -734,9 +735,12 @@ const ProjectEpics = () => {
                   {(epic.status === "draft" || epic.status === "ready") &&
                   (epic.openQuestions ?? 0) > 0 ? (
                     <span
-                      className="text-warning-text ml-auto shrink-0 text-xs"
+                      className="text-warning-text ml-auto inline-flex shrink-0 items-center gap-1 text-xs"
                       data-testid={`epic-open-questions-${epic.number}`}
                     >
+                      {/* Sized to the line (`size-3` on `text-xs`), so the
+                          row keeps its height (#Q3532). */}
+                      <TriangleAlert aria-hidden="true" className="size-3" />
                       {tr("epic.list.openQuestions", {
                         args: [String(epic.openQuestions)],
                       })}

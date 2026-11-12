@@ -62,7 +62,6 @@ const NAV_ROUTE_NAMES = [
   "appAnalyticsDimension",
   "appVitals",
   "appExplore",
-  "appArtifacts",
   "projectArtifact",
   "appSettings",
   // Settings sections and tabs — projectSettingsSections.ts, read by the
@@ -166,9 +165,6 @@ describe("the route table", () => {
     ).toBe(`/demo/apps/${app}/${env}/analytics/path`);
     expect(router.path("appExplore", { params })).toBe(
       `/demo/apps/${app}/${env}/explore`,
-    );
-    expect(router.path("appArtifacts", { params })).toBe(
-      `/demo/apps/${app}/${env}/artifacts`,
     );
     expect(router.path("appSettings", { params })).toBe(
       `/demo/apps/${app}/${env}/settings`,

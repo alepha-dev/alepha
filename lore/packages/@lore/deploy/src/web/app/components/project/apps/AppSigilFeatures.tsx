@@ -70,6 +70,9 @@ const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
       // One glob per line: a textarea reads better than an add-a-row list
       // for what is usually zero or one entry.
       feedbackButtonExcludedPaths: z.string().max(2_000).optional(),
+      // ⚠️ Kept in the values, though no field shows it: the form saves the
+      // whole config, so a value set before the switch was hidden survives a
+      // save instead of being reset to its default.
       reportOutsideProduction: z.boolean(),
     }),
     initialValues: {
@@ -160,7 +163,6 @@ const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
               "feedback",
               "feedbackButton",
               "feedbackButtonExcludedPaths",
-              "reportOutsideProduction",
             ],
           },
         ]}
@@ -208,10 +210,6 @@ const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
             // A row-layout control sizes to its content, which leaves an
             // empty textarea a sliver wide.
             inputProps: { className: "w-72 font-mono text-sm" },
-          },
-          reportOutsideProduction: {
-            label: tr("app.sigil.outsideProduction"),
-            description: tr("app.sigil.outsideProduction.desc"),
           },
         }}
       />

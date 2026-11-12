@@ -457,7 +457,7 @@ test.describe("Apps", () => {
       await waitForInstance(page, projectId, appName, envName, true);
     });
 
-    await test.step("a copy with nothing unlocked has three tabs and next steps", async () => {
+    await test.step("a copy with nothing unlocked has two tabs and next steps", async () => {
       // ⚠️ Assert the bar RENDERED before asserting what is missing from it: a
       // negative assertion passes happily against a page that has not painted.
       const tabs = page.getByTestId("app-tabs");
@@ -465,11 +465,9 @@ test.describe("Apps", () => {
         tabs.getByRole("link", { name: "Overview", exact: true }),
       ).toBeVisible({ timeout: 15_000 });
 
-      for (const label of ["Artifacts", "Settings"]) {
-        await expect(
-          tabs.getByRole("link", { name: label, exact: true }),
-        ).toBeVisible();
-      }
+      await expect(
+        tabs.getByRole("link", { name: "Settings", exact: true }),
+      ).toBeVisible();
       for (const label of ["Analytics", "Vitals", "Errors", "Explore"]) {
         await expect(
           tabs.getByRole("link", { name: label, exact: true }),
@@ -804,7 +802,6 @@ test.describe("Apps", () => {
         // decision does not fork, which merges every enrolled app into one row.
         "Errors",
         "Explore",
-        "Artifacts",
         "Settings",
       ]) {
         await expect(
@@ -876,8 +873,7 @@ test.describe("Apps", () => {
       // has to say so rather than render it as off.
       const capabilities = page.getByTestId("app-capabilities");
       await expect(capabilities.getByText("Page views")).toBeVisible();
-      // `exact`, because the copy below the table names the same thing in a
-      // sentence — which is the copy the last assertion in this step is about.
+      // `exact`, so the header is what matches and not a sentence naming it.
       await expect(
         capabilities.getByText("Lore accepts", { exact: true }),
       ).toBeVisible();
@@ -885,20 +881,25 @@ test.describe("Apps", () => {
         capabilities.getByText(/has not reported its configuration/),
       ).toBeVisible();
 
-      // Read-only, and the copy points at the two places each column is
-      // actually changed.
+      // Read-only. Lore does not deploy this copy, so what it sends is out
+      // of Lore's reach and the card offers no Configure link either.
       await expect(capabilities.getByRole("switch")).toHaveCount(0);
-      await expect(capabilities.getByText(/SIGIL_CONFIG/)).toBeVisible();
+      await expect(
+        capabilities.getByTestId("app-capabilities-configure"),
+      ).toHaveCount(0);
     });
 
     await test.step("the header names where the app answers, from what it reported", async () => {
       // Nobody typed this. It is the `host` of the batch three steps up,
       // stamped onto the sigil beside `lastSeenAt` — which is the whole point
-      // of detecting it rather than asking for it.
-      const link = page.getByRole("link", {
-        name: "docs.alepha.dev",
-        exact: true,
-      });
+      // of detecting it rather than asking for it. `first()`: the Overview's
+      // identity card links the same address, below the header.
+      const link = page
+        .getByRole("link", {
+          name: "docs.alepha.dev",
+          exact: true,
+        })
+        .first();
       await expect(link).toBeVisible({ timeout: 15_000 });
       await expect(link).toHaveAttribute("href", "https://docs.alepha.dev");
       // It leaves Lore, so it must not hand `window.opener` to a page Lore
@@ -993,11 +994,11 @@ test.describe("Apps", () => {
       // Entry pages share a card with pages now: six leaderboards in four
       // cards is what buys the overview its density.
       await topPaths
-        .getByRole("tab", { name: "Landing pages", exact: true })
+        .getByRole("radio", { name: "Landing pages", exact: true })
         .click();
       await expect(topPaths.getByText(/1\s*·\s*100%/)).toBeVisible();
       await topPaths
-        .getByRole("tab", { name: "Top pages", exact: true })
+        .getByRole("radio", { name: "Top pages", exact: true })
         .click();
 
       // One engagement against two views, so half of them showed no reader.
@@ -1016,11 +1017,11 @@ test.describe("Apps", () => {
       // Campaigns share the referrers card, for the same reason entry pages
       // share the pages one: they answer the neighbouring question.
       await referrers
-        .getByRole("tab", { name: "Campaigns", exact: true })
+        .getByRole("radio", { name: "Campaigns", exact: true })
         .click();
       await expect(referrers.getByText("hn", { exact: true })).toBeVisible();
       await referrers
-        .getByRole("tab", { name: "Top referrers", exact: true })
+        .getByRole("radio", { name: "Top referrers", exact: true })
         .click();
 
       const devices = page.getByTestId("insights-devices");
@@ -1029,11 +1030,17 @@ test.describe("Apps", () => {
       // Device, browser and system share one card: the same question asked
       // three ways. Both new dimensions sort EARLY, so they only exist at all
       // because the slot map is append-only now.
-      await devices.getByRole("tab", { name: "Browsers", exact: true }).click();
+      await devices
+        .getByRole("radio", { name: "Browsers", exact: true })
+        .click();
       await expect(devices.getByText("safari")).toBeVisible();
-      await devices.getByRole("tab", { name: "Systems", exact: true }).click();
+      await devices
+        .getByRole("radio", { name: "Systems", exact: true })
+        .click();
       await expect(devices.getByText("ios")).toBeVisible();
-      await devices.getByRole("tab", { name: "Devices", exact: true }).click();
+      await devices
+        .getByRole("radio", { name: "Devices", exact: true })
+        .click();
 
       // This deployment runs the relational backend, where `estimated` is
       // always false — the qualifier must not appear. Pins "no false
@@ -1077,32 +1084,30 @@ test.describe("Apps", () => {
       await expect(topPaths.getByText("/checkout")).toBeVisible();
       await expect(visitors.getByText("2", { exact: true })).toBeVisible();
 
-      await traffic.getByRole("button", { name: "Bots", exact: true }).click();
+      await traffic.getByRole("radio", { name: "Bots", exact: true }).click();
       await expect(topPaths.getByText("/crawled")).toBeVisible();
       await expect(topPaths.getByText("/checkout")).toHaveCount(0);
       // The headline moves with the rest. It did not, until it did.
       await expect(visitors.getByText("1", { exact: true })).toBeVisible();
 
-      await traffic
-        .getByRole("button", { name: "Humans", exact: true })
-        .click();
+      await traffic.getByRole("radio", { name: "Humans", exact: true }).click();
       await expect(topPaths.getByText("/checkout")).toBeVisible();
       await expect(topPaths.getByText("/crawled")).toHaveCount(0);
       await expect(visitors.getByText("1", { exact: true })).toBeVisible();
 
       // Back to `all`, so the steps after this one see the page they expect.
-      await traffic.getByRole("button", { name: "All", exact: true }).click();
+      await traffic.getByRole("radio", { name: "All", exact: true }).click();
       await expect(topPaths.getByText("/crawled")).toBeVisible();
     });
 
     await test.step("the window and the population survive a reload, and stay off Settings", async () => {
       await page
         .getByTestId("app-range")
-        .getByRole("button", { name: "30 days", exact: true })
+        .getByRole("radio", { name: "30 days", exact: true })
         .click();
       await page
         .getByTestId("app-traffic")
-        .getByRole("button", { name: "Humans", exact: true })
+        .getByRole("radio", { name: "Humans", exact: true })
         .click();
 
       // In the URL, which is the whole reason they left the shell: a reload
@@ -1113,7 +1118,7 @@ test.describe("Apps", () => {
       await page.reload();
       await page.waitForLoadState("networkidle");
       await expect(
-        page.getByTestId("app-range").getByRole("button", { name: "30 days" }),
+        page.getByTestId("app-range").getByRole("radio", { name: "30 days" }),
       ).toBeVisible({ timeout: 15_000 });
       await expect(page).toHaveURL(/range=30d/);
 

@@ -1,8 +1,16 @@
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  TimeAgo,
+} from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { AlertTriangle } from "lucide-react";
-import { Fragment } from "react";
+import { Link } from "alepha/react/router";
+import { AlertTriangle, Settings2 } from "lucide-react";
 
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
 
@@ -62,16 +70,23 @@ export interface AppDashboardCapabilitiesProps {
    * credential's other columns.
    */
   sigil: NonNullable<AppInstanceResource["sigil"]>;
+  /**
+   * Where what the app sends is switched, when Lore deploys this copy: its
+   * Settings tab, whose Sigil features section writes the deploy's config.
+   * Absent for a copy Lore only hears from, whose sending is decided in its
+   * own deploy, out of Lore's reach - and then the card offers no link.
+   */
+  configureHref?: string;
 }
 
 /**
  * What the app says it sends, beside what this sink accepts.
  *
- * Neither column is editable. `kinds` is changed on Settings; the reported side
- * is changed in the app's own `SIGIL_CONFIG`, in its deploy, and offering a
- * switch here would be offering one that half-works: the sink cannot change
- * what an app decides, and pretending otherwise is how a reader ends up
- * believing they turned something off.
+ * Neither column is editable here. What the app sends is switched on its
+ * Settings tab when Lore deploys it (the header's Configure link), and what
+ * Lore accepts is the sigil's `kinds`. A switch on this card would be one that
+ * half-works: the sink cannot change what an app decides, and pretending
+ * otherwise is how a reader ends up believing they turned something off.
  *
  * Absent reported state reads as **unknown**, never as off. An older client
  * reports nothing, and an app that has never reported at all has told us
@@ -79,7 +94,7 @@ export interface AppDashboardCapabilitiesProps {
  * nothing".
  */
 const AppDashboardCapabilities = (props: AppDashboardCapabilitiesProps) => {
-  const { tr, l } = useI18n<I18n, "en">();
+  const { tr } = useI18n<I18n, "en">();
   const { sigil } = props;
   const config = sigil.reportedConfig;
 
@@ -94,75 +109,104 @@ const AppDashboardCapabilities = (props: AppDashboardCapabilitiesProps) => {
     return key === "feedback" ? config.feedback : config.trackers?.[key];
   };
 
+  /**
+   * One side's answer as a tag: on in green, off in grey, unknown outlined so
+   * it never reads as either.
+   */
+  const stateTag = (state: boolean | undefined) =>
+    state === undefined ? (
+      <Badge variant="outline" className="text-muted-foreground">
+        {tr("app.dashboard.unknown")}
+      </Badge>
+    ) : (
+      <Badge variant="tint" tone={state ? "success" : "neutral"}>
+        {state ? tr("app.dashboard.on") : tr("app.dashboard.off")}
+      </Badge>
+    );
+
+  const excluded = config?.feedbackButtonExcludedPaths ?? [];
+
   return (
     <Card data-testid="app-capabilities">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-base">
           {tr("app.dashboard.capabilities")}
         </CardTitle>
+        {props.configureHref ? (
+          <Button
+            variant="outlined"
+            size="sm"
+            nativeButton={false}
+            render={<Link href={props.configureHref} />}
+            data-testid="app-capabilities-configure"
+          >
+            <Settings2 className="size-3.5" />
+            {tr("app.dashboard.configure")}
+          </Button>
+        ) : null}
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 text-sm">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-6 gap-y-2">
-          <span />
-          <span className="text-muted-foreground text-xs tracking-wide uppercase">
-            {tr("app.dashboard.sends")}
-          </span>
-          <span className="text-muted-foreground text-xs tracking-wide uppercase">
-            {tr("app.dashboard.accepts")}
-          </span>
+      <CardContent className="flex flex-col gap-3 text-sm">
+        <table className="w-full">
+          <thead>
+            <tr className="text-muted-foreground text-xs">
+              <th className="pb-2 text-start font-normal" />
+              <th className="w-28 pb-2 text-start font-normal">
+                {tr("app.dashboard.sends")}
+              </th>
+              <th className="w-28 pb-2 text-start font-normal">
+                {tr("app.dashboard.accepts")}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {CAPABILITIES.map((capability) => {
+              const sends = reportedState(capability.reported);
+              const accepts = sigil.kinds.includes(capability.accepted);
+              // Only a real disagreement, so unknown never reads as a fault:
+              // an app that has told us nothing is not an app contradicting us.
+              const disagrees = sends !== undefined && sends !== accepts;
 
-          {CAPABILITIES.map((capability) => {
-            const sends = reportedState(capability.reported);
-            const accepts = sigil.kinds.includes(capability.accepted);
-            // Only a real disagreement, so unknown never reads as a fault: an
-            // app that has told us nothing is not an app contradicting us.
-            const disagrees = sends !== undefined && sends !== accepts;
+              return (
+                <tr key={capability.reported}>
+                  <td className="py-2 pe-3">
+                    <span className="flex items-center gap-2">
+                      {tr(capability.labelKey)}
+                      {disagrees && (
+                        <AlertTriangle
+                          className="size-3.5 text-amber-600"
+                          aria-label={tr("app.dashboard.mismatch")}
+                        />
+                      )}
+                    </span>
+                    {/*
+                      The button's corner belongs to the feedback row, not to
+                      a footnote under the table.
+                    */}
+                    {capability.reported === "feedback" && config?.feedback ? (
+                      <span className="text-muted-foreground block text-xs">
+                        {tr("app.dashboard.feedbackButton", {
+                          args: [config.feedbackButton ?? "?"],
+                        })}
+                        {excluded.length > 0
+                          ? ` - ${tr("app.dashboard.excludedPaths", {
+                              args: [excluded.join(", ")],
+                            })}`
+                          : ""}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="py-2">{stateTag(sends)}</td>
+                  <td className="py-2">{stateTag(accepts)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
-            return (
-              <Fragment key={capability.reported}>
-                <span className="flex items-center gap-2">
-                  {tr(capability.labelKey)}
-                  {disagrees && (
-                    <AlertTriangle
-                      className="size-3.5 text-amber-600"
-                      aria-label={tr("app.dashboard.mismatch")}
-                    />
-                  )}
-                </span>
-                <span
-                  className={
-                    sends === undefined ? "text-muted-foreground" : undefined
-                  }
-                >
-                  {sends === undefined
-                    ? tr("app.dashboard.unknown")
-                    : sends
-                      ? tr("app.dashboard.on")
-                      : tr("app.dashboard.off")}
-                </span>
-                <span>
-                  {accepts ? tr("app.dashboard.on") : tr("app.dashboard.off")}
-                </span>
-              </Fragment>
-            );
-          })}
-        </div>
-
-        {config && (
-          <div className="text-muted-foreground flex flex-col gap-1 text-xs">
-            <span>
-              {tr("app.dashboard.feedbackButton", {
-                args: [config.feedbackButton ?? "?"],
-              })}
-            </span>
-            {(config.feedbackButtonExcludedPaths?.length ?? 0) > 0 && (
-              <span>
-                {tr("app.dashboard.excludedPaths", {
-                  args: [(config.feedbackButtonExcludedPaths ?? []).join(", ")],
-                })}
-              </span>
-            )}
-          </div>
+        {sigil.kinds.length === 0 && (
+          <Badge variant="outline" className="w-fit">
+            {tr("app.dashboard.acceptsNothing")}
+          </Badge>
         )}
 
         {/*
@@ -172,22 +216,15 @@ const AppDashboardCapabilities = (props: AppDashboardCapabilitiesProps) => {
           `lastSeenAt`.
         */}
         <p className="text-muted-foreground text-xs">
-          {config && sigil.reportedConfigAt
-            ? tr("app.dashboard.reportedAt", {
-                args: [l(sigil.reportedConfigAt, { date: "lll" })],
-              })
-            : tr("app.dashboard.neverReported")}
+          {config && sigil.reportedConfigAt ? (
+            <>
+              {tr("app.dashboard.reported")}{" "}
+              <TimeAgo value={sigil.reportedConfigAt} />
+            </>
+          ) : (
+            tr("app.dashboard.neverReported")
+          )}
         </p>
-
-        <p className="text-muted-foreground text-xs">
-          {tr("app.dashboard.configHint")}
-        </p>
-
-        {sigil.kinds.length === 0 && (
-          <Badge variant="outline" className="w-fit">
-            {tr("app.dashboard.acceptsNothing")}
-          </Badge>
-        )}
       </CardContent>
     </Card>
   );

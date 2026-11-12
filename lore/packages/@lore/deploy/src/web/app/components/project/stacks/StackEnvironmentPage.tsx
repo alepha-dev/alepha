@@ -1,4 +1,4 @@
-import { Spinner, Tabs, TabsContent, TabsList, TabsTrigger } from "@alepha/ui";
+import { Segmented, Spinner } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { NotFound } from "alepha/react/router";
@@ -115,24 +115,19 @@ const StackEnvironmentPage = (props: StackEnvironmentPageProps) => {
             : tr("stacks.revision.none")}
         </p>
       </div>
-      <Tabs value={tab} onValueChange={(value) => setTab(String(value))}>
-        <TabsList>
-          {tabs.map((t) => (
-            <TabsTrigger
-              key={t.key}
-              value={t.key}
-              data-testid={`stack-tab-${t.key}`}
-            >
-              {t.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        {tabs.map((t) => (
-          <TabsContent key={t.key} value={t.key} className="pt-4">
-            {t.body}
-          </TabsContent>
+      <Segmented
+        size="sm"
+        className="self-start"
+        data-testid="stack-tabs"
+        value={tab}
+        onChange={setTab}
+        options={tabs.map((t) => ({ value: t.key, label: t.label }))}
+      />
+      {tabs
+        .filter((t) => t.key === tab)
+        .map((t) => (
+          <div key={t.key}>{t.body}</div>
         ))}
-      </Tabs>
     </div>
   );
 };

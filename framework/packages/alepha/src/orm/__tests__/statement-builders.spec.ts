@@ -23,8 +23,18 @@ const notes = $entity({
   }),
 });
 
+const comments = $entity({
+  name: "test_statement_builder_comments",
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    noteId: z.uuid(),
+    body: z.text(),
+  }),
+});
+
 class App {
   notes = $repository(notes);
+  comments = $repository(comments);
   seen: string[] = [];
   onCreate = $hook({
     on: "repository:create:after",
@@ -174,6 +184,21 @@ const builders = async (alepha: Alepha) => {
     }),
   ).rejects.toThrow("roll back");
   expect(app.seen).toEqual([]);
+
+  // A parent and its child in one batch: the child's REQUIRED column is a
+  // subquery on the parent, which counts as present (#Q3533).
+  const parent = crypto.randomUUID();
+  await database.atomicBatch([
+    repo.insertStatement({ id: parent, title: "Parent", status: "open" }),
+    app.comments.insertStatement({
+      id: crypto.randomUUID(),
+      noteId: repo.scalar({ title: { eq: "Parent" } }, "id"),
+      body: "first",
+    }),
+  ]);
+  expect(
+    await app.comments.findMany({ where: { noteId: { eq: parent } } }),
+  ).toEqual([expect.objectContaining({ noteId: parent, body: "first" })]);
   await alepha.stop();
 };
 

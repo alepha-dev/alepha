@@ -8,7 +8,7 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
@@ -75,6 +75,16 @@ const groupOf = (over: Record<string, unknown> = {}) => ({
  * figures against a window and be wrong invisibly.
  */
 describe("AppErrors", () => {
+  // The range control is a `Segmented`, which tracks its thumb with a
+  // ResizeObserver, and jsdom ships none.
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as never;
+  });
+
   const show = async (insights: Record<string, unknown>) => {
     cleanup();
     const alepha = Alepha.create()

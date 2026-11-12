@@ -253,10 +253,23 @@ you only ever push `latest`. When that version is gone, or the copy's estate
 has changed, Lore redeploys the stored build instead. The confirmation says
 which of the two it will do.
 
-⚠️ **A rollback changes the code and not the database.** If migrations have
-been applied since the version you are going back to, the confirmation says
-how many, and you have to acknowledge it: the old code will run against the
-new schema.
+⚠️ **A rollback changes the code and not the database.** The old code will
+run against the current schema, so Lore checks whether it fits. Every
+`lore artifacts push` sends the newest Drizzle `snapshot.json` of each
+dialect under `migrations/`, and Lore compares the schema the old build
+expects with the one every later deploy left behind:
+
+| Since that build                                           | The rollback                       |
+| ---------------------------------------------------------- | ---------------------------------- |
+| tables, nullable or defaulted columns, plain indexes added | goes through, no acknowledgement   |
+| a table or column dropped or renamed                       | names it: the old build will break |
+| a `NOT NULL` column added with no default                  | names it: the old build will break |
+| a column type changed, a constraint or unique index added  | names it: some writes may fail     |
+
+Anything it names has to be acknowledged. A data migration (an `UPDATE` that
+changes no structure) leaves the snapshot as it was, so the check cannot see
+it. When a build was pushed without its schema (an older CLI), the
+confirmation falls back to saying how many migrations were applied since.
 
 ## 9. Take it down
 

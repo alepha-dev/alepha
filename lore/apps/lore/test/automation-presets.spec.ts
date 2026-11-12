@@ -240,7 +240,11 @@ describe("Stock automation presets", () => {
     expect(jobs).toHaveLength(1);
     const payload = JSON.stringify(jobs[0].payload!.variables);
     expect(payload).toContain("A <safe> title");
-    expect(payload).not.toContain("PRIVATE REPORT BODY");
+    // The report body is the substance a member is told about (#Q3541); the
+    // reporter's contact details stay out.
+    expect(payload).toContain("PRIVATE REPORT BODY");
+    expect(payload).toContain("#P");
+    expect(payload).toContain("/feedback?feedback=");
     expect(payload).not.toContain("private@example.test");
     expect(payload).not.toContain("Other project");
     expect(jobs[0].payload).toMatchObject({ type: "inbox", lang: "en" });

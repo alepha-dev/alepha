@@ -85,10 +85,9 @@ test.describe("Attachment viewer - an HTML file", () => {
     await page.getByTitle("mock.html").first().click();
 
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("tab", { name: "Preview" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    await expect(
+      dialog.getByRole("radio", { name: "Preview" }),
+    ).toHaveAttribute("aria-checked", "true");
 
     await test.step("the preview runs the file with no way back to Lore", async () => {
       const frame = dialog.getByTestId("attachment-html-preview");
@@ -110,7 +109,7 @@ test.describe("Attachment viewer - an HTML file", () => {
     });
 
     await test.step("the code view scrolls inside the dialog", async () => {
-      await dialog.getByRole("tab", { name: "Code" }).click();
+      await dialog.getByRole("radio", { name: "Code" }).click();
       const pre = dialog.getByTestId("attachment-text-preview").locator("pre");
       await expect(pre).toContainText("getElementById");
 
