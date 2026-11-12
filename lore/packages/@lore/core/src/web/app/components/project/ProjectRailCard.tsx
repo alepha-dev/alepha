@@ -1,5 +1,4 @@
-import { BrandIcon, cn } from "@alepha/ui";
-import { GitBranch } from "lucide-react";
+import { cn } from "@alepha/ui";
 import type { ReactNode } from "react";
 
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
@@ -30,11 +29,11 @@ export interface ProjectRailCardProps {
  * What the project rail shows on hover (#Q3370): the project's image, its
  * name, and its repository when one is set.
  *
- * The repository line keeps the rules of the header button it replaced: the GitHub
- * mark only for a GitHub host, a neutral branch icon for any other, and no
- * line at all for a stored value that does not parse as a URL. It shows the
- * path (`owner/repo`) rather than the whole URL, which the card is too narrow
- * for and which says nothing more.
+ * The repository line is the path (`owner/repo`) alone, with no icon
+ * (#Q3482): rather than the whole URL, which the card is too narrow for and
+ * which says nothing more, and no line at all for a stored value that does
+ * not parse as a URL. The host, which the path does not say, is in the
+ * link's label and its tooltip.
  *
  * Account > Projects draws each row with it too (#Q3411), and the project
  * sidebar its header (#Q3420), both `compact`, so the three show a project
@@ -82,17 +81,13 @@ export const ProjectRailCard = (props: ProjectRailCardProps) => {
             target="_blank"
             rel="noreferrer noopener"
             data-testid="project-rail-card-repository"
-            // The host is the part of the destination an icon cannot say.
+            // The host is the part of the destination the path does not say.
             aria-label={`${repository.label} (${repository.host})`}
             // Never the row's own click, where a caller's row navigates.
             onClick={(event) => event.stopPropagation()}
-            className="text-muted-foreground hover:text-foreground flex min-w-0 items-center gap-1.5 text-xs"
+            title={repository.host}
+            className="text-muted-foreground hover:text-foreground flex min-w-0 items-center text-xs"
           >
-            {repository.github ? (
-              <BrandIcon provider="github" className="size-3.5 shrink-0" />
-            ) : (
-              <GitBranch className="size-3.5 shrink-0" />
-            )}
             <span className="truncate">{repository.label}</span>
           </a>
         )}
@@ -110,8 +105,6 @@ const parseRepository = (url?: string | null) => {
     return undefined;
   }
   const host = parsed.host;
-  // Endswith rather than includes, so `github.com.example.org` is not GitHub.
-  const github = host === "github.com" || host.endsWith(".github.com");
   const path = parsed.pathname.replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
-  return { url, github, host, label: path || host };
+  return { url, host, label: path || host };
 };
