@@ -9,7 +9,7 @@ import {
 } from "@dnd-kit/core";
 import { useAlepha, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { Home, LayoutGrid, Plus } from "lucide-react";
 import {
   type KeyboardEvent,
@@ -28,6 +28,7 @@ import type { I18n } from "../../services/I18n.ts";
 import { ProjectRailItem } from "./ProjectRailItem.tsx";
 import { ProjectRailMenu } from "./ProjectRailMenu.tsx";
 import { useDock } from "./useDock.ts";
+import { useLeavingProject } from "./useLeavingProject.ts";
 
 /**
  * The dock: a column of project icons left of the sidebar, one click switches
@@ -57,6 +58,10 @@ const ProjectRail = () => {
   const router = useRouter();
   const account = useSettingsDialog("account");
   const [project] = useStore(currentProjectAtom);
+  // The icon clicked is marked at once, not when its project has loaded: the
+  // atom above names the next project only halfway through the switch.
+  const routerState = useRouterState();
+  const leavingTo = useLeavingProject(routerState.params.projectSlug);
   const [overview] = useStore(userProjectsAtom);
   const [dock] = useStore(userDockAtom);
   const alepha = useAlepha();
@@ -242,7 +247,7 @@ const ProjectRail = () => {
             <ProjectRailItem
               key={it.id}
               project={it}
-              active={it.id === project.id}
+              active={leavingTo ? it.slug === leavingTo : it.id === project.id}
               dragging={dragging}
               picked={picked?.id === it.id}
               onKeyDown={onKeyDown(it.id)}
