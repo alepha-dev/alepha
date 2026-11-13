@@ -350,8 +350,14 @@ describe.each(jobStepsDialects)("job steps, step.run on $name", (dialect) => {
             // Return only once a renewal (fenced on attempt 2) is in flight.
             await provider.renewalStarted;
           });
+          // Wait for two renewals rather than a fixed 800 ms: a loaded CI
+          // runner once landed a single one in that window (#Q3550). A
+          // stopped heartbeat still fails, by reaching the deadline.
           const before = provider.renewals;
-          await new Promise((r) => setTimeout(r, 800));
+          const deadline = Date.now() + 4000;
+          while (provider.renewals - before < 2 && Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, 50));
+          }
           renewalsAfterWrite = provider.renewals - before;
         },
       });
