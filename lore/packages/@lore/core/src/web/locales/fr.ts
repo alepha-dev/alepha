@@ -3056,6 +3056,10 @@ export default {
   "epic.status.actions.backToDraft": "Repasser en brouillon",
   "epic.status.actions.shelve": "Mettre de côté",
   "epic.status.actions.unshelve": "Reprendre",
+  "epic.workOnIt.confirm.title": "Marquer cette épopée comme prête ?",
+  "epic.workOnIt.confirm.description":
+    "Y travailler copie le prompt et marque « $1 » comme prête : elle quitte le brouillon, et ses quêtes peuvent être acceptées.",
+  "epic.workOnIt.confirm.action": "Copier et marquer prête",
   "epic.shelve.title": "Mettre cette épopée de côté ?",
   "epic.shelve.confirm":
     "Mettre $1 de côté met aussi de côté ses $2 quêtes ouvertes : elles sont désassignées et mises de côté, et rien dans l'épopée ne peut avancer avant qu'elle soit reprise. Les quêtes terminées le restent, et les épopées qui en dépendent restent bloquées.",

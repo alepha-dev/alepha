@@ -708,12 +708,13 @@ describe("ProjectEpics - the status filter", () => {
     });
 
     /**
-     * One click, two acts (feedback #P2226, #Q3228): the prompt on the
-     * clipboard, and the epic marked ready behind the same Undo toast as the
-     * row's Mark as ready. Without the second a draft epic's quests refuse
-     * to be accepted and the prompt is useless.
+     * Two acts (feedback #P2226, #Q3228): the prompt on the clipboard, and
+     * the epic marked ready behind the same Undo toast as the row's Mark as
+     * ready. Without the second a draft epic's quests refuse to be accepted
+     * and the prompt is useless. Asked first since #Q3583: the status change
+     * used to be silent, and the confirm's own click does both.
      */
-    it("copies Work on it on a draft epic and marks the epic ready", async () => {
+    it("confirms, then copies Work on it on a draft epic and marks the epic ready", async () => {
       const written = stubClipboard();
       await mount();
       const fake = alepha!.inject(FakeLinkProvider);
@@ -723,6 +724,14 @@ describe("ProjectEpics - the status filter", () => {
       );
       fireEvent.click(items.find((item) => item.textContent === "Work on it")!);
 
+      const confirm = await screen.findByRole("alertdialog");
+      expect(confirm.textContent).toContain("Mark this epic ready?");
+      expect(written).toHaveLength(0);
+      expect(fake.statusCalls).toEqual([]);
+      fireEvent.click(
+        within(confirm).getByRole("button", { name: "Copy and mark ready" }),
+      );
+
       await waitFor(() => expect(written).toHaveLength(1));
       expect(written[0]).toContain("to completion, quest by quest");
       expect(written[0]).toContain("#E1");
@@ -730,6 +739,23 @@ describe("ProjectEpics - the status filter", () => {
         expect(fake.statusCalls).toEqual([{ id: 1, status: "ready" }]),
       );
       await undoIn("#E1 is ready");
+    });
+
+    it("copies nothing and keeps the draft when the confirm is cancelled", async () => {
+      const written = stubClipboard();
+      await mount();
+      const fake = alepha!.inject(FakeLinkProvider);
+
+      const items = await openAgentPrompts(
+        await openRowMenu("#E1 - Draft epic"),
+      );
+      fireEvent.click(items.find((item) => item.textContent === "Work on it")!);
+      const confirm = await screen.findByRole("alertdialog");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+      expect(written).toHaveLength(0);
+      expect(fake.statusCalls).toEqual([]);
     });
 
     it("copies Work on it on a ready epic without touching its status", async () => {

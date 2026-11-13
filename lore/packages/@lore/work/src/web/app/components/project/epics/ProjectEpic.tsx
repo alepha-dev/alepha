@@ -430,6 +430,19 @@ const ProjectEpic = (props: ProjectEpicProps) => {
                         epic.status === "draft"
                           ? () => void markReadyAction.run()
                           : undefined,
+                      // A draft epic becomes ready with the copy: said
+                      // first, not done silently (#Q3583).
+                      confirm:
+                        epic.status === "draft"
+                          ? {
+                              title: tr("epic.workOnIt.confirm.title"),
+                              description: tr(
+                                "epic.workOnIt.confirm.description",
+                                { args: [epic.title] },
+                              ),
+                              confirmLabel: tr("epic.workOnIt.confirm.action"),
+                            }
+                          : undefined,
                     },
                   ]
                 : []),

@@ -40,6 +40,14 @@ export interface ConfirmOptions {
    * When `true`, styles the confirm button as destructive.
    */
   destructive?: boolean;
+  /**
+   * Run inside the confirm button's own click, before the promise resolves.
+   *
+   * For an act that needs the user's gesture, such as writing to the
+   * clipboard: Safari refuses it once an `await` has passed, so code after
+   * `await dialog.confirm(...)` is too late. Not called on cancel.
+   */
+  onConfirm?: () => void;
 }
 
 export interface AlertOptions {
@@ -250,6 +258,8 @@ export const DialogProvider = (props: DialogProviderProps) => {
                 } else if (pending?.kind === "alert") {
                   resolve(undefined);
                 } else {
+                  // In the click itself: see `ConfirmOptions.onConfirm`.
+                  (opts as ConfirmOptions)?.onConfirm?.();
                   resolve(true);
                 }
               }}

@@ -1,3 +1,4 @@
+import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import {
   currentProjectAtom,
@@ -63,9 +64,12 @@ describe("AgentPromptsMenu", () => {
 
     return render(
       <AlephaContext.Provider value={alepha}>
-        <AgentPromptsMenu
-          items={items.map((it) => ({ ...it, subject: () => subject }))}
-        />
+        {/* The app's layout mounts it; a Work on it that confirms asks through it. */}
+        <DialogProvider>
+          <AgentPromptsMenu
+            items={items.map((it) => ({ ...it, subject: () => subject }))}
+          />
+        </DialogProvider>
       </AlephaContext.Provider>,
     );
   };

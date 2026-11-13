@@ -1040,16 +1040,35 @@ const ProjectEpics = () => {
                               row: EpicResource,
                               ctx: RowActionContext<EpicResource>,
                             ) => {
-                              // The copy first, inside the click: Safari's
-                              // clipboard activation does not survive an
-                              // await.
-                              void agentPrompt.copy(
-                                "epicActivate",
-                                promptSubject.forEpic(row),
-                              );
-                              if (row.status === "draft") {
-                                setStatus(row, "ready", ctx);
+                              // The copy inside a click: Safari's clipboard
+                              // activation does not survive an await.
+                              const copy = () =>
+                                void agentPrompt.copy(
+                                  "epicActivate",
+                                  promptSubject.forEpic(row),
+                                );
+                              if (row.status !== "draft") {
+                                copy();
+                                return;
                               }
+                              // A draft epic becomes ready with it: asked
+                              // first (#Q3583), and the copy runs in the
+                              // confirm button's own click.
+                              void dialog.confirm({
+                                title: tr("epic.workOnIt.confirm.title"),
+                                description: tr(
+                                  "epic.workOnIt.confirm.description",
+                                  { args: [row.title] },
+                                ),
+                                confirmLabel: tr(
+                                  "epic.workOnIt.confirm.action",
+                                ),
+                                cancelLabel: tr("common.cancel"),
+                                onConfirm: () => {
+                                  copy();
+                                  setStatus(row, "ready", ctx);
+                                },
+                              });
                             },
                           },
                         ]

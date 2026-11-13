@@ -3056,6 +3056,10 @@ export default {
   "epic.status.actions.backToDraft": "Back to draft",
   "epic.status.actions.shelve": "Shelve",
   "epic.status.actions.unshelve": "Unshelve",
+  "epic.workOnIt.confirm.title": "Mark this epic ready?",
+  "epic.workOnIt.confirm.description":
+    'Work on it copies the prompt and marks "$1" ready: it leaves draft, and its quests can be accepted.',
+  "epic.workOnIt.confirm.action": "Copy and mark ready",
   "epic.shelve.title": "Shelve this epic?",
   "epic.shelve.confirm":
     "Shelving $1 sets aside its $2 open quests: they are unassigned and shelved, and nothing in the epic can be worked until it is unshelved. Completed quests stay completed, and epics that depend on it stay blocked.",
