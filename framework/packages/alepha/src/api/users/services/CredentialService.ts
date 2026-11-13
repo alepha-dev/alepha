@@ -415,9 +415,16 @@ export class CredentialService {
       body.newPassword,
     );
 
-    // Update the identity with new password
-    await this.identities(intent.realmName).updateById(intent.identityId, {
+    // Update the identity with new password. A reset by email is the user
+    // choosing their own password, so it clears a temporary-password mark.
+    const identities = this.identities(intent.realmName);
+    const identity = await identities.findById(intent.identityId);
+    await identities.updateById(intent.identityId, {
       password: hashedPassword,
+      providerData: {
+        ...(identity?.providerData as Record<string, unknown> | undefined),
+        mustChangePassword: false,
+      },
     });
 
     // Invalidate all existing sessions for this user

@@ -533,6 +533,9 @@ export class QuestCommand {
         .optional(),
       objectives: z
         .text({
+          // A JSON list of every objective: without a size it kept the
+          // 255-character default and refused any real list (#Q3578).
+          size: "rich",
           atFile: true,
           description:
             "The whole list as JSON, for rewording or reordering: it REPLACES the old one, so carry each surviving item's id. To tick one: lore quest objective set.",
