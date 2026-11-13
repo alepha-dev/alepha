@@ -154,11 +154,12 @@ describe("CapabilityRegistry", () => {
     ).toThrow();
   });
 
-  it("preselects only apps.track", ({ expect }) => {
+  it("preselects only apps.track and work.automations", ({ expect }) => {
     // Board and Releases were on by default before this epic. A board is a
     // way to look at quests, not a reason to have them; the same argument
     // applied consistently takes Releases with it. Apps keeps its one,
-    // because the capability's own label says "watch".
+    // because the capability's own label says "watch". Automations is on
+    // since #Q3563: a project had none until an owner found the switch.
     expect(ctx.registry.preselectedOptionsOf("work")).toEqual({
       board: false,
       epics: false,
@@ -167,7 +168,7 @@ describe("CapabilityRegistry", () => {
       chrono: false,
       reminder: false,
       agentPrompts: false,
-      automations: false,
+      automations: true,
     });
     expect(ctx.registry.preselectedOptionsOf("apps")).toEqual({
       track: true,

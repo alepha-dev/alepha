@@ -6,8 +6,8 @@ as notifying a member, appending to a folio or creating a quest. A rule does
 exactly what it says, every time. No AI runs inside it.
 
 Automations are the **Automations** option of the **Plan and track work**
-capability, and the option starts off: see
-[Capabilities](/lore/docs/project-capabilities). Turning it on grants nothing by
+capability, and the option starts on: see
+[Capabilities](/lore/docs/project-capabilities). Having it on grants nothing by
 itself. A rank also needs the **Automations** permissions, which only the owner
 holds by default (see [Members](/lore/docs/project-members)):
 
