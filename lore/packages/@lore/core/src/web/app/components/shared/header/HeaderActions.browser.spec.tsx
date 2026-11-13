@@ -5,6 +5,7 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
+import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -15,10 +16,23 @@ import HeaderActions from "./HeaderActions.tsx";
 /**
  * Feedback #P2138 in Lore's header. Since #Q2229 `ButtonUser` draws the
  * avatar itself and this header passes nothing, so what these pin is that
- * Lore's header still gets it: the plain glyph without a picture, the picture
- * when there is one, and the fallback when it fails to load. The kit's own
- * spec (`ButtonUserAvatar.browser.spec.tsx`) owns the contract.
+ * Lore's header still gets it: the viewer's initials without a picture
+ * (#Q3577), the picture when there is one, and the initials when it fails to
+ * load. The kit's own spec (`ButtonUserAvatar.browser.spec.tsx`) owns the
+ * contract.
  */
+/**
+ * The realm's avatar endpoint, which `ButtonUser` reads to know the app uses
+ * pictures.
+ */
+class Links extends LinkProvider {
+  override client(): any {
+    return new Proxy({} as Record<string, unknown>, {
+      get: () => Object.assign(async () => ({}), { can: () => true }),
+    });
+  }
+}
+
 describe("HeaderActions' account avatar", () => {
   let alepha: Alepha | undefined;
 
@@ -33,6 +47,7 @@ describe("HeaderActions' account avatar", () => {
 
   const mount = async (picture?: string) => {
     alepha = Alepha.create()
+      .with({ provide: LinkProvider, use: Links })
       .with(AlephaLogger)
       .with(AlephaDateTime)
       .with(AlephaReact)
@@ -59,15 +74,12 @@ describe("HeaderActions' account avatar", () => {
 
   const trigger = () => screen.getByLabelText("Account menu");
 
-  it("keeps the plain glyph for a viewer with no picture", async () => {
-    // ⚠️ Deliberate, not an omission. `UserAvatar` would draw its own glyph
-    // inside a filled circle, which reads as a different KIND of control
-    // beside three bare ghost icons - so a viewer who never set a picture
-    // sees exactly what they saw before this shipped.
+  it("draws the viewer's initials when they have no picture", async () => {
+    // The bare glyph it used to keep identified nobody (#Q3577).
     await mount(undefined);
 
     expect(trigger().querySelector("img")).toBeNull();
-    expect(trigger().querySelector("svg")).not.toBeNull();
+    expect(trigger().textContent).toBe("AD");
   });
 
   it("serves the picture through the authenticated file route", async () => {
@@ -82,7 +94,7 @@ describe("HeaderActions' account avatar", () => {
     );
   });
 
-  it("falls back to the glyph when the picture fails to load", async () => {
+  it("falls back to the initials when the picture fails to load", async () => {
     // The deleted-or-forbidden case. Only the id is known up here, so
     // nothing before the browser can tell it will 404 - `FileImage`'s
     // `onError` is what has to catch it, and this is the surface where a
@@ -92,6 +104,6 @@ describe("HeaderActions' account avatar", () => {
     fireEvent.error(trigger().querySelector("img")!);
 
     expect(trigger().querySelector("img")).toBeNull();
-    expect(trigger().querySelector("svg")).not.toBeNull();
+    expect(trigger().textContent).toBe("AD");
   });
 });
