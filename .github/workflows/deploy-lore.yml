@@ -71,6 +71,10 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
+      # Not a secret: Lore's own routes its feedback button stays off. The
+      # feedback form itself is one, where the button would open the page
+      # already shown. `*` is one path segment: `/acme/request` only.
+      SIGIL_CONFIG: '{"feedbackButtonExcludedPaths":["/*/request"]}'
 
     steps:
       - name: Git Checkout
