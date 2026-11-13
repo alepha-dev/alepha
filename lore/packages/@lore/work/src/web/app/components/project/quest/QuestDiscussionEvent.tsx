@@ -20,7 +20,7 @@ import {
   Signature,
   SquareSlash,
   Sunrise,
-  Swords,
+  CircleCheck,
   UserMinus,
 } from "lucide-react";
 
@@ -267,7 +267,7 @@ const ICONS: Record<string, LucideIcon> = {
   created: Sunrise,
   assigned: Signature,
   unassigned: UserMinus,
-  completed: Swords,
+  completed: CircleCheck,
   objective_completed: CheckSquare,
   reminder_sent: BellRing,
   shelved: Archive,

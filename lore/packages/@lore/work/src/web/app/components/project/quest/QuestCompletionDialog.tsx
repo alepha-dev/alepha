@@ -11,7 +11,7 @@ import {
 import { currentProjectAtom, type I18n, LoreEditor } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { SquareSlash, Swords } from "lucide-react";
+import { SquareSlash, CircleCheck } from "lucide-react";
 import { useState } from "react";
 
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
@@ -160,7 +160,7 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
             }
             className="bg-green-600 text-white hover:bg-green-700"
           >
-            <Swords className="size-4" />
+            <CircleCheck className="size-4" />
             {tr("quest.view.complete.submit")}
           </Button>
         </DialogFooter>

@@ -13,7 +13,7 @@ import {
   Pencil,
   RotateCcw,
   Send,
-  Swords,
+  SquareCheckBig,
   Target,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -162,7 +162,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
       ),
     },
     {
-      icon: Swords,
+      icon: SquareCheckBig,
       // `total`, matching the ratio in the card to the right of it. Declined
       // work is outside that denominator and is reported by the bar's own
       // tooltip rather than by a second count here that would not add up

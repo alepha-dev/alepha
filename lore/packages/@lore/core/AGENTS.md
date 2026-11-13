@@ -516,7 +516,7 @@ Lore has **no gamification currency**: no XP, no gold, no levels, no achievement
 What survives, deliberately:
 
 - The RPG **vocabulary** for the work inside a project (quests, folios, blights, sigils) — flavor, not mechanics. **This is the whole of it**: the identity principle settled on 2026-08-20 is that Lore's RPG surface is vocabulary only, because "quest" names the agent-facing unit of work better than "task" (which can mean a markdown checkbox, a Jira ticket, anything). Mechanics are not identity. The container itself is deliberately _not_ RPG-flavored — see "The Lore of Lore" above for why it's `project`, not `campaign`.
-- Two glyphs: `Swords` on Complete and `Signature` on Accept / "took the quest".
+- One glyph with a game heritage, `Signature` on Accept / "took the quest". The icons read sober since #Q3588: a quest is `SquareCheckBig` everywhere it is shown, and Complete is `CircleCheck`, the done status's glyph.
 
 Do not reintroduce progression mechanics without an explicit decision — the goal is a neutral tool usable with other people; the metaphor describes the work, never the person.
 

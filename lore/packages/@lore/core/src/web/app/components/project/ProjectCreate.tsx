@@ -22,7 +22,7 @@ import {
   Hammer,
   Inbox,
   LoaderCircle,
-  Swords,
+  SquareCheckBig,
   Tag,
   X,
 } from "lucide-react";
@@ -55,7 +55,7 @@ const CAPABILITY_ICONS: Record<
   CapabilityKey,
   React.ComponentType<{ className?: string }>
 > = {
-  work: Swords,
+  work: SquareCheckBig,
   knowledge: BookOpen,
   apps: AppWindow,
   support: Inbox,

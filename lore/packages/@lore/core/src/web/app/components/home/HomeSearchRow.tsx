@@ -8,7 +8,7 @@ import {
   Layers,
   Lock,
   type LucideIcon,
-  Swords,
+  SquareCheckBig,
 } from "lucide-react";
 
 import type { ProjectOverviewResource } from "../../../../api/schemas/projectResourceSchema.ts";
@@ -93,7 +93,7 @@ export const HomeSearchRow = (props: HomeSearchRowProps) => {
  * The glyph of a hit's kind.
  */
 const hitIcon = (hit: HomeSearchHit): LucideIcon => {
-  if (hit.kind === "quest") return Swords;
+  if (hit.kind === "quest") return SquareCheckBig;
   if (hit.kind === "epic") return Layers;
   if (hit.kind === "release") return Flag;
   if (hit.kind === "feedback") return Inbox;

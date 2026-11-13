@@ -24,7 +24,7 @@ import {
   Newspaper,
   MessageSquarePlus,
   ScrollText,
-  Swords,
+  SquareCheckBig,
   Wrench,
   Workflow,
 } from "lucide-react";
@@ -178,7 +178,7 @@ export class WorkShell {
       order: 30,
       labelKey: "project.settings.nav.plan",
       descriptionKey: "project.settings.section.work",
-      icon: Swords,
+      icon: SquareCheckBig,
       capability: "work",
       tabs: [
         {

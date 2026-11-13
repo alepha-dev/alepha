@@ -27,7 +27,7 @@ import {
   Paperclip,
   PlayCircle,
   Signature,
-  Swords,
+  CircleCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -743,7 +743,7 @@ const QuestView = (props: QuestViewProps) => {
                     disabled={busy || !questApi.completeQuest.can()}
                     onClick={() => setShowCompleteDialog(true)}
                   >
-                    <Swords className="size-4" />
+                    <CircleCheck className="size-4" />
                     <span className="hidden sm:inline">
                       {tr("quest.view.actions.complete")}
                     </span>

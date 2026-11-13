@@ -20,7 +20,7 @@ import {
   LayoutGrid,
   Lock,
   PanelsTopLeft,
-  Swords,
+  SquareCheckBig,
 } from "lucide-react";
 import { type ReactElement, useEffect, useState } from "react";
 
@@ -241,7 +241,7 @@ const Spotlight = (): ReactElement => {
   // The epic, release and feedback glyphs are their sidebar entries' own
   // (`capabilityNav.ts`), so a row reads as the page it opens.
   const iconFor = (hit: SpotlightHit) => {
-    if (hit.kind === "quest") return <Swords />;
+    if (hit.kind === "quest") return <SquareCheckBig />;
     if (hit.kind === "epic") return <Layers />;
     if (hit.kind === "release") return <Flag />;
     if (hit.kind === "feedback") return <Inbox />;

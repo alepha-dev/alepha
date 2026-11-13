@@ -24,7 +24,7 @@ import {
   FileText,
   History,
   Pencil,
-  Swords,
+  SquareCheckBig,
   Workflow,
 } from "lucide-react";
 import { useState } from "react";
@@ -359,7 +359,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     },
     {
       value: "quests",
-      icon: Swords,
+      icon: SquareCheckBig,
       label: tr("epic.tab.quests"),
       // `count`, not folded into the label: the segmented control colours it
       // from the segment's own state, and a `text-muted-foreground` written
