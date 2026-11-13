@@ -1,8 +1,9 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { expectAccessible } from "alepha/testing/react";
 import { describe, expect, it } from "vitest";
 
 import { UserAvatar } from "../UserAvatar.tsx";
+import { userAvatarTone } from "../userInitials.ts";
 
 /**
  * `user.picture` is a file id in the `avatars` bucket, or an absolute URL:
@@ -79,5 +80,77 @@ describe("UserAvatar", () => {
     expect(img(container)?.getAttribute("src")).toBe(
       "/api/files/javascript:alert(1)",
     );
+  });
+
+  /**
+   * #Q3577: every user has an avatar, the picture when there is one, else
+   * two initials on a colour of the user's own.
+   */
+  describe("with a user and no picture", () => {
+    const ada = {
+      id: "0192e4c4-0000-7000-8000-000000000001",
+      firstName: "Ada",
+      lastName: "Lovelace",
+    };
+
+    it("draws the initials, named for a screen reader, with no file request", () => {
+      const { container } = render(<UserAvatar user={ada} />);
+
+      const avatar = screen.getByRole("img", { name: "Ada Lovelace" });
+      expect(avatar.textContent).toBe("AL");
+      // The letters are hidden: a screen reader says the name, not "A L".
+      expect(avatar.querySelector('[aria-hidden="true"]')?.textContent).toBe(
+        "AL",
+      );
+      // No picture, no `<img>`: nothing asks `/api/files`.
+      expect(img(container)).toBeNull();
+    });
+
+    it("wears the colour of the user's id, whatever their name", () => {
+      const tone = userAvatarTone(ada.id).split(" ")[0];
+      const first = render(<UserAvatar user={ada} />);
+      expect(first.container.firstElementChild?.classList.contains(tone)).toBe(
+        true,
+      );
+      first.unmount();
+
+      const renamed = render(
+        <UserAvatar user={{ ...ada, firstName: "Augusta" }} />,
+      );
+      expect(
+        renamed.container.firstElementChild?.classList.contains(tone),
+      ).toBe(true);
+    });
+
+    it("draws the picture when there is one, and none for fileId null", () => {
+      const withPicture = {
+        ...ada,
+        picture: "00000000-0000-4000-8000-0000000000aa",
+      };
+      const shown = render(<UserAvatar user={withPicture} />);
+      expect(img(shown.container)?.getAttribute("src")).toBe(
+        "/api/files/00000000-0000-4000-8000-0000000000aa",
+      );
+      shown.unmount();
+
+      const off = render(<UserAvatar user={withPicture} fileId={null} />);
+      expect(img(off.container)).toBeNull();
+      expect(off.container.textContent).toBe("AL");
+    });
+
+    it("falls back to the initials when the picture fails to load", () => {
+      const { container } = render(
+        <UserAvatar
+          user={{ ...ada, picture: "https://lh3.googleusercontent.com/a/x" }}
+        />,
+      );
+      fireEvent.error(img(container)!);
+      expect(container.textContent).toBe("AL");
+    });
+
+    it("keeps the glyph when there is nothing to draw initials from", () => {
+      const { container } = render(<UserAvatar user={{ id: ada.id }} />);
+      expect(container.querySelector("svg")).not.toBeNull();
+    });
   });
 });

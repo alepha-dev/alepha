@@ -120,7 +120,8 @@ export const AdminUsers = (props: AdminUsersProps) => {
    * Pictures have no realm setting of their own: the signal is the realm's
    * `avatars` feature, which registers `AdminAvatarController`, so its action
    * is in `/api/_links` exactly when the app uses pictures - the same gate
-   * the detail page's avatar control reads.
+   * the detail page's avatar control reads. Without it every row shows the
+   * user's initials (#Q3577), and no picture is fetched.
    */
   const realmClient = useClient<RealmController>();
   const realmQuery = useQuery(
@@ -432,34 +433,14 @@ export const AdminUsers = (props: AdminUsersProps) => {
         // are real anchors too, for a new tab.
         onRowClick={(u) => void router.push(detailHref(u))}
         columns={applyDefaultHidden(props.defaultHiddenColumns, {
-          ...(usesPictures
-            ? {
-                avatar: {
-                  label: tr("admin.users.colPicture", { default: "Picture" }),
-                  cell: (u: UserEntity) => {
-                    const initial = (
-                      u.email ||
-                      u.username ||
-                      u.firstName ||
-                      u.lastName ||
-                      "?"
-                    )
-                      .charAt(0)
-                      .toUpperCase();
-                    // The picture when there is one, the initial when there
-                    // is none or it fails to load. The authenticated route
-                    // serves an admin every user's picture, where the public
-                    // one depends on the app opening the bucket.
-                    return (
-                      <UserAvatar
-                        fileId={u.picture}
-                        fallback={<span className="text-sm">{initial}</span>}
-                      />
-                    );
-                  },
-                },
-              }
-            : {}),
+          // Every user has an avatar (#Q3577): the picture when the app
+          // uses pictures and the user set one, else their initials.
+          avatar: {
+            label: tr("admin.users.colPicture", { default: "Picture" }),
+            cell: (u: UserEntity) => (
+              <UserAvatar user={u} fileId={usesPictures ? u.picture : null} />
+            ),
+          },
           ...(usesEmail
             ? {
                 email: {

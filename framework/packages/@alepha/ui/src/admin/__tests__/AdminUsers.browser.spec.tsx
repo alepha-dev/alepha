@@ -319,20 +319,36 @@ describe("AdminUsers", () => {
       expect(screen.queryByRole("columnheader", { name: "Email" })).toBeNull();
     });
 
-    it("shows the picture column only when the app uses pictures", async () => {
+    it("draws initials, and fetches no picture, when the app does not use pictures (#Q3577)", async () => {
       await mount((links) => {
         links.denied = ["updateUserAvatar"];
+        links.users = [
+          user({
+            firstName: "Ada",
+            lastName: "Lovelace",
+            picture: "00000000-0000-4000-8000-00000000000e",
+          }),
+        ];
       });
-      expect(
-        screen.queryByRole("columnheader", { name: "Picture" }),
-      ).toBeNull();
-    });
 
-    it("shows the picture column when avatars are on", async () => {
-      await mount();
       expect(
         screen.getByRole("columnheader", { name: "Picture" }),
       ).toBeTruthy();
+      expect(document.querySelector("tbody img")).toBeNull();
+      expect(
+        screen.getByRole("img", { name: "Ada Lovelace" }).textContent,
+      ).toBe("AL");
+    });
+
+    it("draws the picture when avatars are on", async () => {
+      await mount((links) => {
+        links.users = [
+          user({ picture: "00000000-0000-4000-8000-00000000000f" }),
+        ];
+      });
+      expect(document.querySelector("tbody img")?.getAttribute("src")).toBe(
+        "/api/files/00000000-0000-4000-8000-00000000000f",
+      );
     });
   });
 });
