@@ -36,9 +36,13 @@ test.describe("Project switch", () => {
         const active = document.querySelector(
           '[data-testid="project-rail-item"][aria-current="page"]',
         );
-        const quests = document.querySelector(
-          'nav a[aria-current="page"][href$="/quests"]',
-        );
+        // Visible only: the page being left stays mounted, hidden, under
+        // the skeleton, and its Plate's folder tabs are a nav of links too.
+        const quests = [
+          ...document.querySelectorAll<HTMLElement>(
+            'nav a[aria-current="page"][href$="/quests"]',
+          ),
+        ].some((link) => link.checkVisibility());
         if (active?.getAttribute("aria-label") === next && quests) {
           w.__stale.push(location.pathname);
         }
