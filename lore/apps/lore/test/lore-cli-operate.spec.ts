@@ -630,15 +630,24 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     ).not.toContain(ref);
 
     const read = await lore.json("quest get", [ref]);
+    // Over 255 characters on purpose: the flag once kept the default text
+    // cap and refused any list longer than two or three items (#Q3578).
+    const added = [1, 2, 3].map((n) => ({
+      title: `Added objective ${n}, worded at the length a real objective takes`,
+      completed: false,
+    }));
     const updated = await lore.json("quest update", [
       ref,
       "--due-at",
       "2030-01-02T03:04:05.000Z",
       "--objectives",
-      JSON.stringify([{ ...read.objectives[0], title: "Reworded" }]),
+      JSON.stringify([{ ...read.objectives[0], title: "Reworded" }, ...added]),
     ]);
     expect(updated.dueAt).toContain("2030-01-02");
-    expect(updated.objectives[0].title).toBe("Reworded");
+    expect(updated.objectives.map((o: { title: string }) => o.title)).toEqual([
+      "Reworded",
+      ...added.map((o) => o.title),
+    ]);
 
     const cleared = await lore.json("quest update", [ref, "--due-at", ""]);
     expect(cleared.dueAt).toBeUndefined();
