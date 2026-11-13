@@ -9,6 +9,10 @@ import type { AutomationRun } from "../entities/automationRuns.ts";
 import { automations, type Automation } from "../entities/automations.ts";
 import type { AutomationVariable } from "../entities/automationVariables.ts";
 import { users, type User } from "../entities/users.ts";
+import {
+  automationCreateBodySchema,
+  type AutomationCreateBody,
+} from "../schemas/automationCreateBodySchema.ts";
 import { AutomationCron } from "../schemas/AutomationCron.ts";
 import {
   automationListQuerySchema,
@@ -72,17 +76,33 @@ export class AutomationService {
   protected readonly bounds = $inject(BoundParameters);
   protected readonly time = $inject(DateTimeProvider);
 
+  /**
+   * Create a rule, as a draft or enabled (#Q3573).
+   *
+   * ⚠️ **Enabled is one write, not create-then-enable.** The checks the
+   * Enable action runs (the author's permission, a compatibility rule's
+   * adoption, the inputs `prepare` validates, the shared-variable approval
+   * fence) run here first, and the rule is inserted enabled under the same
+   * fence or not at all: a refusal leaves nothing half-made, where the old
+   * two steps left a disabled rule behind a refused enable.
+   */
   public async create(
     projectId: number,
     user: UserAccountToken,
-    input: AutomationWriteBody,
+    input: AutomationCreateBody,
     presetKey?: string,
     expectedVariables: readonly AutomationVariableApproval[] = [],
     nativeEffects?: (rule: Automation) => AutomationConfigurationExtension,
   ) {
     return this.database.primary(async () => {
       await this.access.assert(projectId, user, "automation:write");
-      const body = automationWriteBodySchema.parse(input);
+      const body = automationCreateBodySchema.parse(input);
+      const enabled = body.enabled === true;
+      if (enabled && body.rule.compatibility)
+        // The sentence `setEnabled` refuses with, for the same reason.
+        throw new ForbiddenError(
+          "Use explicit policy adoption before enabling this compatibility rule",
+        );
       const provenance = await this.access.provenance(user);
       const now = this.time.nowISOString();
       const id = this.crypto.randomUUID();
@@ -93,7 +113,7 @@ export class AutomationService {
         ...provenance,
         title: body.title,
         rule: body.rule,
-        enabled: false,
+        enabled,
         health: "active",
         requiresApproval: false,
         revision: 0,
@@ -124,6 +144,9 @@ export class AutomationService {
         ...candidate,
         approvedVariables: prepared.approved,
         scheduleCron: prepared.scheduleCron,
+        ...(enabled && prepared.scheduleCron
+          ? { nextRunAt: this.cron.next(prepared.scheduleCron, now) }
+          : {}),
       };
       const extension = nativeEffects?.(data);
       await this.writes.commit(
@@ -138,6 +161,14 @@ export class AutomationService {
             revision: 0,
             authorUserId: user.id,
           }),
+          ...(enabled
+            ? [
+                this.audit.statement(projectId, user, "enable", id, {
+                  revision: 0,
+                  authorUserId: user.id,
+                }),
+              ]
+            : []),
           ...(extension?.statements ?? []),
         ],
       );
@@ -146,6 +177,7 @@ export class AutomationService {
       await this.cache.invalidateTable("automations");
       await this.cache.invalidateTable("audits");
       await this.audit.activity(projectId, user, "create");
+      if (enabled) await this.audit.activity(projectId, user, "enable");
       return this.get(projectId, id, user);
     });
   }

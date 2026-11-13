@@ -1,4 +1,11 @@
-import { Badge, Button, useDialog } from "@alepha/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  useDialog,
+} from "@alepha/ui";
 import {
   useAction,
   useClient,
@@ -8,7 +15,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Braces, Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { Braces, Pause, Pencil, Play, PowerOff, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
@@ -217,10 +224,19 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
           )}
         </div>
       )}
-      {!rule.enabled && rule.canEnable && !editing && (
-        <p className="text-muted-foreground text-sm">
-          {tr("automation.setup.enableDescription")}
-        </p>
+      {!rule.enabled && !editing && (
+        // Unmistakable (#Q3573): a rule created and never enabled read as
+        // "automations are not working". Said as an alert, for every
+        // reader; the how-to line only for one who may enable it.
+        <Alert data-testid="automation-disabled-notice">
+          <PowerOff />
+          <AlertTitle>{tr("automation.disabledNotice.title")}</AlertTitle>
+          {rule.canEnable && (
+            <AlertDescription>
+              {tr("automation.setup.enableDescription")}
+            </AlertDescription>
+          )}
+        </Alert>
       )}
       {conflict && (
         <div

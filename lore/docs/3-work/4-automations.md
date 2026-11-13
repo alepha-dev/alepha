@@ -28,7 +28,7 @@ A rule is in one of four states:
 
 | State        | Meaning                                                                             |
 | ------------ | ----------------------------------------------------------------------------------- |
-| **Disabled** | Saved, and not running. Every new rule starts here.                                 |
+| **Disabled** | Saved, and not running: a draft. Its page says so until it is enabled.              |
 | **Active**   | Enabled and healthy.                                                                |
 | **Paused**   | Stopped until its author reviews it. See [Who a rule runs as](#who-a-rule-runs-as). |
 | **Broken**   | Something it needs is missing, such as a capability or a channel.                   |
@@ -44,10 +44,11 @@ notifications**.
    allow.
 2. Pick a preset and fill its few inputs. Members, folios and apps are chosen
    from pickers that search the project.
-3. Click **Create automation**. The rule is saved **disabled** and its page
-   opens.
-4. On the rule's page, click **Run test** to see what it would do, then
-   **Enable** it.
+3. Click **Create and enable**. Lore checks your permissions and the inputs,
+   saves the rule enabled, and opens its page. If a check fails, nothing is
+   saved and the form says why.
+4. Or click **Save as draft** to keep it **disabled**: on its page, click
+   **Run test** to see what it would do, then **Enable** it.
 
 The presets:
 
@@ -320,10 +321,12 @@ parts:
 ```
 
 The UUIDs stand for a folio and a member of the same project (a member is a
-user id, not an email address). The rule is created disabled. `automation_test`
-previews it, with `source: { "kind": "subject", "id": 12 }` naming a release of
-the project, and `automation_update` with the current `expectedRevision` and
-`enabled: true` turns it on.
+user id, not an email address). The rule is created disabled, a draft;
+`"enabled": true` beside `title` and `rule` creates it enabled in the same
+write, or refuses and creates nothing. `automation_test` previews a draft, with
+`source: { "kind": "subject", "id": 12 }` naming a release of the project, and
+`automation_update` with the current `expectedRevision` and `enabled: true`
+turns it on.
 
 The full list is in [MCP tools](/lore/docs/reference-mcp-tools).
 

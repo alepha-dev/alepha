@@ -1,6 +1,6 @@
 import type { AutomationController } from "@lore/core/api";
 import { $inject, z } from "alepha";
-import { $command, CommandError, UsageError } from "alepha/command";
+import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
@@ -215,14 +215,16 @@ export class AutomationCommand {
   public readonly create = $command({
     name: "create",
     description:
-      "Create an automation as yourself. It starts disabled; --enabled then enables it, in a second step",
+      "Create an automation as yourself, as a draft, or enabled in the same write with --enabled",
     flags: z.object({
       ...AutomationCommand.PROJECT_FLAG,
       title: z.text({ description: "What the rule is for." }),
       ...AutomationCommand.RULE_FLAG,
       enabled: z
         .boolean()
-        .describe("Enable it once created. Revalidated by the server.")
+        .describe(
+          "Create it enabled, in one write, after the checks enabling runs. Refused, nothing is created.",
+        )
         .optional(),
       ...LoreOutput.FLAGS,
     }),
@@ -232,50 +234,22 @@ export class AutomationCommand {
         const rule = this.parsed(flags.rule, "--rule");
         const { projectId } = await this.projects.named(flags.project, context);
 
+        // One write (#Q3573): enabled or a draft, never a draft left behind
+        // a refused enable.
         const created = await this.api.createAutomation({
           params: { projectId },
-          body: { title: flags.title, rule: rule as any },
+          body: {
+            title: flags.title,
+            rule: rule as any,
+            ...(flags.enabled ? { enabled: true } : {}),
+          },
         });
-
-        if (!flags.enabled) {
-          this.render.written(
-            print,
-            flags.output,
-            created,
-            `Created ${created.id} ${created.title}, disabled`,
-          );
-          return;
-        }
-
-        try {
-          const enabled = await this.api.setAutomationEnabled({
-            params: { projectId, id: created.id },
-            body: { enabled: true, expectedRevision: created.revision },
-          });
-          this.render.written(
-            print,
-            flags.output,
-            enabled,
-            `Created ${enabled.id} ${enabled.title}, enabled`,
-          );
-        } catch (error) {
-          // The rule exists: stdout says so, so a retry of the create does not
-          // make a second one, and the exit code is 1 because something was
-          // written.
-          this.render.written(
-            print,
-            flags.output,
-            created,
-            `Created ${created.id} ${created.title}, disabled`,
-          );
-          throw new CommandError(
-            { exitCode: LoreRefusals.EXIT_FAILURE },
-            {
-              message: `${created.id} was created, disabled, and enabling it was refused: ${error instanceof Error ? error.message : String(error)}`,
-              cause: error,
-            },
-          );
-        }
+        this.render.written(
+          print,
+          flags.output,
+          created,
+          `Created ${created.id} ${created.title}, ${created.enabled ? "enabled" : "disabled"}`,
+        );
       });
     },
   });

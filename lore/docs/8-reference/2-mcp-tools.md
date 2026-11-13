@@ -177,7 +177,7 @@ See [Automations](/lore/docs/work-automations).
 | `automation_catalog`             | What rules can be built here: events, selections, actions, channels and limits. |
 | `automation_list`                | The rules you may read, paged.                                                  |
 | `automation_get`                 | One rule with its health, author and revision.                                  |
-| `automation_create`              | Create a rule, always disabled first.                                           |
+| `automation_create`              | Create a rule, as a draft, or enabled in one write with `enabled: true`.        |
 | `automation_update`              | Change a rule or enable it, against `expectedRevision`.                         |
 | `automation_delete`              | Delete a rule. To keep it, disable it instead.                                  |
 | `automation_test`                | Preview a saved rule with no writes and no delivery.                            |

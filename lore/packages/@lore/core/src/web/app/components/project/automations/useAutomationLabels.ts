@@ -28,7 +28,9 @@ export const useAutomationLabels = () => {
     AutomationResource["displayState"],
     "neutral" | "success" | "warning" | "danger"
   > = {
-    disabled: "neutral",
+    // Warning, not grey (#Q3573): a disabled rule does nothing, and a grey
+    // chip let a careful reader take a draft for a working rule.
+    disabled: "warning",
     active: "success",
     paused: "warning",
     broken: "danger",

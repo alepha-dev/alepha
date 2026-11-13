@@ -3856,9 +3856,12 @@ export default {
   "automation.summary.assignRelease": "Assign the quest to release $1",
   "automation.summary.addTag": 'Tag the quest "$1"',
   "automation.summary.nextRun": "Next run",
-  "automation.setup.startsDisabled":
-    "The automation is created disabled. Its page lets you test it, then enable it.",
-  "automation.preset.create": "Create automation",
+  "automation.setup.enableOrDraft":
+    "Create and enable turns it on now. Save as draft keeps it off: its page lets you test it, then enable it.",
+  "automation.preset.createAndEnable": "Create and enable",
+  "automation.preset.saveDraft": "Save as draft",
+  "automation.disabledNotice.title":
+    "Disabled: this automation does nothing until it is enabled.",
   "automation.editor.fixed": "Fixed value",
   "automation.history.triggered": "Triggered $1",
   "automation.variables.empty":

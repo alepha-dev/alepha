@@ -5,6 +5,7 @@ import { automationAdoptionBodySchema } from "../schemas/automationAdoptionBodyS
 import { automationAdoptionParamsSchema } from "../schemas/automationAdoptionParamsSchema.ts";
 import { automationAdoptionPreviewSchema } from "../schemas/automationAdoptionPreviewSchema.ts";
 import { automationCatalogSchema } from "../schemas/automationCatalogSchema.ts";
+import { automationCreateBodySchema } from "../schemas/automationCreateBodySchema.ts";
 import { automationDependentPageSchema } from "../schemas/automationDependentPageSchema.ts";
 import { automationEnableBodySchema } from "../schemas/automationEnableBodySchema.ts";
 import { automationEvaluationReportSchema } from "../schemas/automationEvaluationReportSchema.ts";
@@ -28,7 +29,6 @@ import { automationVariablePageSchema } from "../schemas/automationVariablePageS
 import { automationVariableParamsSchema } from "../schemas/automationVariableParamsSchema.ts";
 import { automationVariableSetBodySchema } from "../schemas/automationVariableSetBodySchema.ts";
 import { automationVariableSetResponseSchema } from "../schemas/automationVariableSetResponseSchema.ts";
-import { automationWriteBodySchema } from "../schemas/automationWriteBodySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AutomationAdoptionService } from "../services/AutomationAdoptionService.ts";
 import { AutomationPresetService } from "../services/AutomationPresetService.ts";
@@ -121,7 +121,7 @@ export class AutomationController {
     path: "/projects/:projectId/automations",
     schema: {
       params: automationProjectParamsSchema,
-      body: automationWriteBodySchema,
+      body: automationCreateBodySchema,
       response: automationResourceSchema,
     },
     handler: ({ params, body, user }) =>

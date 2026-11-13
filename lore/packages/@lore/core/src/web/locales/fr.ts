@@ -3865,9 +3865,12 @@ export default {
   "automation.summary.assignRelease": "Affecter la quête à la version $1",
   "automation.summary.addTag": "Étiqueter la quête « $1 »",
   "automation.summary.nextRun": "Prochaine exécution",
-  "automation.setup.startsDisabled":
-    "L'automatisation est créée désactivée. Sa page permet de la tester, puis de l'activer.",
-  "automation.preset.create": "Créer l'automatisation",
+  "automation.setup.enableOrDraft":
+    "Créer et activer la met en marche tout de suite. Enregistrer comme brouillon la laisse désactivée : sa page permet de la tester, puis de l'activer.",
+  "automation.preset.createAndEnable": "Créer et activer",
+  "automation.preset.saveDraft": "Enregistrer comme brouillon",
+  "automation.disabledNotice.title":
+    "Désactivée : cette automatisation ne fait rien tant qu'elle n'est pas activée.",
   "automation.editor.fixed": "Valeur fixe",
   "automation.history.triggered": "Déclenchée le $1",
   "automation.variables.empty":
