@@ -1,9 +1,14 @@
-import { TimeAgo, Button } from "@alepha/ui";
+import { TimeAgo, Button, Skeleton } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
-import { useRank, currentProjectAtom, type I18n } from "@lore/core/web";
+import {
+  capabilityOption,
+  useRank,
+  currentProjectAtom,
+  type I18n,
+} from "@lore/core/web";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject, useStore } from "alepha/react";
+import { useClient, useInject, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -18,9 +23,11 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import type { MonitorController } from "../../../../../api/controllers/MonitorController.ts";
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { artifactHref } from "../artifacts/artifactView.ts";
+import { monitorOfInstance } from "../uptime/instanceMonitors.ts";
 import AppCreateDialog from "./AppCreateDialog.tsx";
 import { appLiveness } from "./appLiveness.ts";
 import AppStatusDot from "./AppStatusDot.tsx";
@@ -91,6 +98,31 @@ const ProjectApps = () => {
   const [creating, setCreating] = useState(false);
   // Delete from the list (#Q3586): a row's menu, or the selection.
   const deleteApps = useDeleteApps();
+
+  // The Uptime column's data (#Q3587): the project's monitors over the
+  // window the app dashboard's card uses, under the same key so a monitor
+  // added from either page shows on both. Read only with the Apps `uptime`
+  // option on, and after the table's first paint, a `useQuery` firing from
+  // its effect: the list never waits on it.
+  const monitorApi = useClient<MonitorController>();
+  const uptimeOn = Boolean(
+    project && capabilityOption(project, "apps", "uptime"),
+  );
+  const monitors = useQuery(
+    {
+      enabled: uptimeOn,
+      key: ["uptime-monitors", project?.id, "24h"],
+      handler: async () =>
+        project
+          ? monitorApi.listMonitors({
+              params: { projectId: project.id },
+              query: { window: "24h" },
+            })
+          : undefined,
+      onError: () => {},
+    },
+    [monitorApi, project?.id, uptimeOn],
+  );
 
   if (!project) {
     return null;
@@ -582,6 +614,46 @@ const ProjectApps = () => {
                 <span />
               ),
           },
+          ...(uptimeOn
+            ? {
+                uptime: {
+                  label: tr("uptime.title"),
+                  align: "right" as const,
+                  cell: (instance: AppInstanceResource) => {
+                    if (!monitors.data) {
+                      // Still loading: a placeholder the size of a value.
+                      return (
+                        <Skeleton
+                          className="ms-auto h-4 w-12"
+                          data-testid="apps-uptime-loading"
+                        />
+                      );
+                    }
+                    const monitor = monitorOfInstance(
+                      instance,
+                      monitors.data.items ?? [],
+                    );
+                    if (!monitor) {
+                      return (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      );
+                    }
+                    return (
+                      <span className="text-xs whitespace-nowrap tabular-nums">
+                        {monitor.uptimePct === null
+                          ? tr("uptime.notMeasured")
+                          : l(monitor.uptimePct / 100, {
+                              number: {
+                                style: "percent",
+                                maximumFractionDigits: 2,
+                              },
+                            })}
+                      </span>
+                    );
+                  },
+                },
+              }
+            : {}),
           estate: {
             label: tr("apps.table.estate"),
             sortable: true,

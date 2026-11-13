@@ -80,6 +80,15 @@ class FakeLinkProvider extends LinkProvider {
    */
   deleted: string[] = [];
 
+  /**
+   * What `listMonitors` answers, once `releaseMonitors` lets it.
+   */
+  monitors: unknown[] = [];
+  releaseMonitors: () => void = () => {};
+  monitorsHeld = new Promise<void>((resolve) => {
+    this.releaseMonitors = resolve;
+  });
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return new Proxy(
@@ -87,14 +96,19 @@ class FakeLinkProvider extends LinkProvider {
       {
         get: (_target, key: string) => {
           const fn: any =
-            key === "deleteApp"
-              ? async (request: { params: { app: string; env: string } }) => {
-                  this.deleted.push(
-                    `${request.params.app}/${request.params.env}`,
-                  );
-                  return { ok: true };
+            key === "listMonitors"
+              ? async () => {
+                  await this.monitorsHeld;
+                  return { items: this.monitors };
                 }
-              : async () => ({});
+              : key === "deleteApp"
+                ? async (request: { params: { app: string; env: string } }) => {
+                    this.deleted.push(
+                      `${request.params.app}/${request.params.env}`,
+                    );
+                    return { ok: true };
+                  }
+                : async () => ({});
           fn.can = () => true;
           return fn;
         },
@@ -123,7 +137,7 @@ describe("the Apps list", () => {
 
   const mount = async (
     instances: AppInstanceResource[] | undefined,
-    { owner = true }: { owner?: boolean } = {},
+    { owner = true, uptime = true }: { owner?: boolean; uptime?: boolean } = {},
   ) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
@@ -144,7 +158,13 @@ describe("the Apps list", () => {
     alepha.store.set(
       currentProjectAtom,
       (owner
-        ? aProject
+        ? uptime
+          ? aProject
+          : projectFixture({
+              title: "Alepha",
+              slug: "alepha",
+              options: { apps: { uptime: false } },
+            })
         : projectFixture({
             title: "Alepha",
             slug: "alepha",
@@ -685,6 +705,61 @@ describe("the Apps list", () => {
       expect(
         screen.queryByRole("button", { name: "Open row actions" }),
       ).toBeNull();
+    });
+  });
+
+  /**
+   * The Uptime column (#Q3587): each copy's uptime from its HTTP monitor,
+   * loaded after the table, a dash with no monitor, and absent with the
+   * uptime option off.
+   */
+  describe("the Uptime column", () => {
+    const watched = () =>
+      anInstance("acme", "production", { url: "https://acme.example.com" });
+
+    it("shows a placeholder until the monitors load, then each copy's uptime or a dash", async ({
+      expect,
+    }) => {
+      const { alepha, view } = await mount([
+        watched(),
+        anInstance("lore", "production", { url: "https://lore.example.com" }),
+      ]);
+      const fake = alepha.inject(FakeLinkProvider);
+
+      // The rows are there before the monitors are.
+      expect(rowText(view)).toHaveLength(2);
+      expect(screen.getByRole("columnheader", { name: "Uptime" })).toBeTruthy();
+      await waitFor(() =>
+        expect(screen.getAllByTestId("apps-uptime-loading")).toHaveLength(2),
+      );
+
+      fake.monitors = [
+        {
+          id: "00000000-0000-4000-8000-0000000000m1",
+          kind: "http",
+          target: "https://acme.example.com/",
+          uptimePct: 99.5,
+        },
+      ];
+      fake.releaseMonitors();
+
+      await waitFor(() =>
+        expect(screen.queryAllByTestId("apps-uptime-loading")).toHaveLength(0),
+      );
+      const acme = rowText(view).find((text) => text.includes("acme"))!;
+      const lore = rowText(view).find((text) => text.includes("lore"))!;
+      expect(acme).toContain("99.5%");
+      expect(lore).toMatch(/-$/);
+    });
+
+    it("is absent, and asks for nothing, with the uptime option off", async ({
+      expect,
+    }) => {
+      const { view } = await mount([watched()], { uptime: false });
+
+      expect(rowText(view)).toHaveLength(1);
+      expect(screen.queryByRole("columnheader", { name: "Uptime" })).toBeNull();
+      expect(screen.queryByTestId("apps-uptime-loading")).toBeNull();
     });
   });
 });
