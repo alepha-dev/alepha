@@ -50,6 +50,7 @@ describe("PlateLayout", () => {
         tabs={stateTabs}
         active="overview"
         tabsTestId="probe-tabs"
+        tabsVariant="underline"
       >
         <p>body</p>
       </PlateLayout>,
@@ -65,6 +66,36 @@ describe("PlateLayout", () => {
   });
 
   /**
+   * Folder tiles by default since #Q3579: a page with views is a Plate, and
+   * its tabs are the tiles DataTable used to draw.
+   */
+  it("draws folder tabs by default, underline only when asked", async () => {
+    const folder = await mount(
+      <PlateLayout tabs={stateTabs} active="overview" tabsTestId="probe-tabs">
+        <p>body</p>
+      </PlateLayout>,
+    );
+    expect(folder.getByTestId("probe-tabs").getAttribute("data-slot")).toBe(
+      "plate-folder-tabs",
+    );
+    folder.unmount();
+
+    const underline = await mount(
+      <PlateLayout
+        tabs={stateTabs}
+        active="overview"
+        tabsTestId="probe-tabs"
+        tabsVariant="underline"
+      >
+        <p>body</p>
+      </PlateLayout>,
+    );
+    expect(
+      underline.getByTestId("probe-tabs").getAttribute("data-slot"),
+    ).toBeNull();
+  });
+
+  /**
    * `plate` has always been optional and had never been exercised, which is
    * how the tab bar's top rule came to be unconditional: with no plate it
    * drew a stray line immediately under the container's own top edge
@@ -73,7 +104,12 @@ describe("PlateLayout", () => {
    */
   it("drops the tab bar's top rule when there is no plate", async () => {
     const view = await mount(
-      <PlateLayout tabs={stateTabs} active="overview" tabsTestId="probe-tabs">
+      <PlateLayout
+        tabs={stateTabs}
+        active="overview"
+        tabsTestId="probe-tabs"
+        tabsVariant="underline"
+      >
         <p>body</p>
       </PlateLayout>,
     );
@@ -130,7 +166,8 @@ describe("PlateLayout", () => {
     );
 
     const bar = view.getByTestId("probe-tabs");
-    expect(bar.getAttribute("role")).toBe("navigation");
+    // A `<nav>` in the folder look, `role="navigation"` in the underline one.
+    expect(view.getByRole("navigation")).toBe(bar);
     expect(view.getAllByRole("link").length).toBe(2);
 
     const active = view.getByRole("link", { name: "Details" });

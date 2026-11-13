@@ -30,7 +30,6 @@ import { DataTablePresetRail } from "./DataTablePresetRail.tsx";
 import { isEmptyFilterValue } from "./dataTablePresets.ts";
 import { DATA_TABLE_SQUARE_RIGHT } from "./dataTableSquareRight.ts";
 import { DataTableSummaryPanel } from "./DataTableSummaryPanel.tsx";
-import { DataTableTabs } from "./DataTableTabs.tsx";
 import { DataTableToolbar } from "./DataTableToolbar.tsx";
 import type {
   DataTableCellContext,
@@ -507,10 +506,6 @@ export const DataTable = <
     !compactPager &&
     ((props.pageSizes ?? PAGE_SIZES).length > 0 ||
       Boolean(meta?.totalPages && meta.totalPages > 1));
-  const showTabs = Boolean(props.tabs?.length);
-  // The classes of the band that joins under the tabs: flattened top, no top
-  // border, `-mt-2` against the wrapper's gap, as below the summary.
-  const underTabs = showTabs && "-mt-2 rounded-t-none border-t-0";
   const showColumnPicker = !props.hideColumnPicker && allColumnKeys.length > 0;
   const showActionsMenu = !props.hideActionsMenu;
 
@@ -582,12 +577,6 @@ export const DataTable = <
           the wrapper's gap. The panel's own bottom border is the line
           between them.
         */}
-      {showTabs && (
-        <DataTableTabs
-          tabs={props.tabs!}
-          className={cn(squareRight?.top, flatTop, props.chromeClassName)}
-        />
-      )}
 
       {showSummary && (
         <DataTableSummaryPanel
@@ -600,11 +589,7 @@ export const DataTable = <
           cards={summary.cards}
           loading={summary.loading}
           content={hasSummaryContent ? summaryContent : undefined}
-          className={cn(
-            showTabs ? underTabs : squareRight?.top,
-            flatTop,
-            props.chromeClassName,
-          )}
+          className={cn(squareRight?.top, flatTop, props.chromeClassName)}
         />
       )}
 
@@ -635,9 +620,7 @@ export const DataTable = <
           isRefreshing={isRefreshing}
           handleRefreshClick={handleRefreshClick}
           className={cn(
-            showSummary || showTabs
-              ? "-mt-2 rounded-t-none border-t-0"
-              : squareRight?.top,
+            showSummary ? "-mt-2 rounded-t-none border-t-0" : squareRight?.top,
             flatTop,
             props.chromeClassName,
           )}
@@ -667,13 +650,12 @@ export const DataTable = <
       <div
         className={cn(
           "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
-          (showToolbar || showSummary || showTabs) &&
-            "-mt-2 rounded-t-none border-t-0",
+          (showToolbar || showSummary) && "-mt-2 rounded-t-none border-t-0",
           showFooter ? "rounded-b-none border-b-0" : squareRight?.bottom,
           flatRows,
           // With no toolbar and no summary the rows open the table, so
           // their top-right corner is the one `squareRight` squares.
-          !showToolbar && !showSummary && !showTabs && squareRight?.top,
+          !showToolbar && !showSummary && squareRight?.top,
           // `<Table>` wraps the table in a container div whose classes it
           // hardcodes, and only this table needs that container to grow,
           // so the one class it needs is set from out here instead.

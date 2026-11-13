@@ -6,17 +6,13 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { DataTable } from "../DataTable.tsx";
-import type { DataTableTab } from "../DataTableTabs.tsx";
+import { type PlateFolderTab, PlateFolderTabs } from "../PlateFolderTabs.tsx";
 
-interface Row {
-  id: number;
-  title: string;
-}
-
-const rows: Row[] = [{ id: 1, title: "Alpha" }];
-
-describe("DataTable (tabs)", () => {
+/**
+ * `PlateLayout`'s folder tabs, which were DataTable's own tab band until a
+ * page with views became a Plate (#Q3579).
+ */
+describe("PlateFolderTabs", () => {
   let alepha: Alepha | undefined;
 
   beforeAll(() => {
@@ -28,18 +24,13 @@ describe("DataTable (tabs)", () => {
     alepha = undefined;
   });
 
-  const mount = async (tabs?: DataTableTab[], dir?: "rtl") => {
+  const mount = async (tabs: PlateFolderTab[], dir?: "rtl") => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
     await alepha.start();
     return render(
       <AlephaContext.Provider value={alepha}>
         <div dir={dir}>
-          <DataTable<Row>
-            rowKey={(r) => String(r.id)}
-            data={rows}
-            tabs={tabs}
-            columns={{ title: { label: "Title", cell: (r: Row) => r.title } }}
-          />
+          <PlateFolderTabs tabs={tabs} />
         </div>
       </AlephaContext.Provider>,
     );
@@ -59,9 +50,26 @@ describe("DataTable (tabs)", () => {
     expect(onSelect).toHaveBeenCalledOnce();
   });
 
-  it("renders a link tab as an anchor", async () => {
-    await mount([{ key: "a", label: "A", href: "/a", active: true }]);
-    const tab = await screen.findByRole("tab");
+  it("draws a bar of links as a navigation, the current one aria-current", async () => {
+    await mount([
+      { key: "a", label: "A", href: "/a", active: true },
+      { key: "b", label: "B", href: "/b" },
+    ]);
+    // Links, not tabs: they leave the page rather than swap a panel.
+    expect(screen.getByRole("navigation")).toBeTruthy();
+    expect(screen.queryByRole("tab")).toBeNull();
+    const links = screen.getAllByRole("link");
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/a", "/b"]);
+    expect(links[0]!.getAttribute("aria-current")).toBe("page");
+    expect(links[1]!.getAttribute("aria-current")).toBeNull();
+  });
+
+  it("keeps a link among state tabs a tab of the tablist", async () => {
+    await mount([
+      { key: "a", label: "A", href: "/a", active: true },
+      { key: "b", label: "B", onSelect: () => {} },
+    ]);
+    const tab = screen.getAllByRole("tab")[0]!;
     expect(tab.tagName).toBe("A");
     expect(tab.getAttribute("href")).toBe("/a");
   });
@@ -120,11 +128,5 @@ describe("DataTable (tabs)", () => {
     expect(document.activeElement).toBe(tabs[1]);
     fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
     expect(document.activeElement).toBe(tabs[0]);
-  });
-
-  it("draws no band without tabs", async () => {
-    await mount([]);
-    expect(await screen.findByText("Alpha")).toBeTruthy();
-    expect(screen.queryByRole("tablist")).toBeNull();
   });
 });
