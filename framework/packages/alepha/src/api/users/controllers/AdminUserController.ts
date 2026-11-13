@@ -174,6 +174,12 @@ export class AdminUserController {
       }),
       body: z.object({
         password: z.string().min(1),
+        mustChangePassword: z
+          .boolean()
+          .optional()
+          .describe(
+            "Mark the password as temporary: the user is asked to replace it at their next sign-in.",
+          ),
       }),
       response: okSchema,
     },
@@ -182,6 +188,7 @@ export class AdminUserController {
         params.id,
         body.password,
         this.securityProvider.assertRealmScope(user, query.userRealmName),
+        { mustChangePassword: body.mustChangePassword },
       );
       return { ok: true, id: params.id };
     },

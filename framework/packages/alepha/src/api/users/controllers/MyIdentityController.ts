@@ -3,6 +3,7 @@ import { $secure } from "alepha/security";
 import { $action, BadRequestError, NotFoundError } from "alepha/server";
 
 import { RealmProvider } from "../providers/RealmProvider.ts";
+import { credentialsMustChangePassword } from "../schemas/credentialsIdentityDataSchema.ts";
 import { myIdentitySchema } from "../schemas/myIdentitySchema.ts";
 import { MfaService } from "../services/MfaService.ts";
 import { PasskeyService } from "../services/PasskeyService.ts";
@@ -79,6 +80,8 @@ export class MyIdentityController {
         id: identity.id,
         provider: identity.provider,
         providerUserId: identity.providerUserId,
+        mustChangePassword:
+          credentialsMustChangePassword(identity) || undefined,
         createdAt: identity.createdAt,
         updatedAt: identity.updatedAt,
       }));

@@ -179,12 +179,6 @@ export default {
   "spotlight.group.folios": "Folios",
   "spotlight.group.projects": "Projects",
 
-  "quest-log.quests": "Quests:",
-  "quest-log.search": "Find by name, area...",
-  "quest-log.empty": "No quests yet",
-  "quest-log.empty-description":
-    "Quests are how this project tracks its work. Create one to get started.",
-
   "home.nav": "Home",
   "home.title": "Welcome",
   "home.welcome.title": "Time to make great things",
@@ -480,6 +474,33 @@ export default {
   "board.filter.epic": "Epic",
   "board.filter.allEpics": "All epics",
   "board.filter.noEpic": "None",
+  "quests.view.list": "List",
+  "quests.view.board": "Board",
+  "quest.presets.mine": "Mine",
+  "quest.presets.mine.hint": "Assigned to you, not done",
+  "quest.presets.urgent": "Urgent",
+  "quest.presets.urgent.hint": "High priority, not done",
+  "quest.presets.backlog": "Backlog",
+  "quest.presets.backlog.hint": "Every quest not done yet",
+  "quest.presets.done": "Done",
+  "quest.presets.done.hint": "Completed in the last 7 days",
+  "quest.presets.asks": "Asks",
+  "quest.presets.asks.hint":
+    "Tagged need-answer: someone is waiting on a reply",
+  "quest.presets.stale": "Stale",
+  "quest.presets.stale.hint": "In progress for more than 14 days",
+  "quest.presets.next": "Next",
+  "quest.presets.next.hint": "Not done, planned for $1",
+  "quest.presets.all": "All",
+  "quest.presets.all.hint": "Every quest, no filter",
+  "board.filter.assignee": "Assignee",
+  "board.filter.assignee.me": "You",
+  "board.filter.assignee.none": "Nobody",
+  "board.filter.priority": "Priority",
+  "board.filter.allPriorities": "All priorities",
+  "board.filter.stale": "Taken over",
+  "board.filter.completedWithin": "Completed within",
+  "board.filter.days": "$1 days",
   "board.table.epic": "Epic",
   "board.table.linked": "Linked",
   "board.table.linked.tooltip": "Blocked by another quest",
@@ -534,7 +555,6 @@ export default {
   "project.menu.dashboard": "Dashboard",
   "project.menu.activity": "Activity",
   "project.menu.quests": "Quests",
-  "project.menu.kanban": "Kanban",
   "project.menu.reports": "Reports",
   "project.menu.artifacts": "Artifacts",
   // ⚠️ The two empty states are distinct, and collapsing them is the defect
@@ -902,10 +922,13 @@ export default {
 
   "project.settings.general.title": "Project",
   // The settings group in the sidebar, one entry per section, and the tabs
-  // inside each (#Q2565). A capability's section is named with the sidebar's
-  // own noun (`project.menu.quests`), so it has no key here.
+  // inside each (#Q2565).
   "project.settings.nav.general": "General",
   "project.settings.nav.members": "Members",
+  "project.settings.nav.automations": "Automations",
+  "project.settings.nav.plan": "Plan",
+  "project.settings.nav.remember": "Remember",
+  "project.settings.nav.ship": "Ship",
   "project.settings.nav.areas": "Areas",
   "project.settings.tab.details": "Details",
   "project.settings.tab.capabilities": "Capabilities",
@@ -917,13 +940,13 @@ export default {
     "The project itself, and which parts of Lore it uses.",
   "project.settings.section.members":
     "Who is in the project, and what each rank may do.",
+  "project.settings.section.automations":
+    "Rules that act on the project when something happens.",
   "project.settings.section.work":
     "How quests are estimated, tagged and shown on the board.",
   "project.settings.section.knowledge": "How folios are shown.",
   "project.settings.section.apps":
     "What apps report, where they deploy, and which errors are ignored.",
-  "project.settings.board.off":
-    "The board is off. Turn it on in General › Capabilities to configure its columns.",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
@@ -939,9 +962,6 @@ export default {
   // the one-word `.short` keys went with the second nav rail (#Q2565).
   "project.capability.work.label": "Plan and track work",
   "project.capability.work.description": "Quests, epics, releases, a board.",
-  "project.capability.work.option.board.label": "Board",
-  "project.capability.work.option.board.description":
-    "A kanban board, columns you name.",
   "project.capability.work.option.epics.label": "Epics",
   "project.capability.work.option.epics.description":
     "Phases, with a workflow.",
@@ -1853,19 +1873,7 @@ export default {
   "quest.view.duplicate.suffix": "(Copy)",
   "quest.view.timer.pause": "Pause timer",
   "quest.view.timer.start": "Start timer",
-  "quest.view.timer.running": "Timer Running",
-  "quest.view.timer.description": "Time tracking is active for this quest.",
 
-  "quest.item.estimate": "Estimated time",
-  "quest.item.bonus": "Bonus",
-  "quest.item.bonus.description": "This quest is optional.",
-  "quest.item.highPriority": "High Priority !",
-  "quest.item.highPriority.description": "Tackle this one first.",
-
-  "quest-log.collapse-all": "Collapse all",
-  "quest-log.expand-all": "Expand all",
-  "quest-log.collapse-panel": "Hide quest log",
-  "quest-log.expand-panel": "Show quest log",
   "account.nav.group.lore": "Lore",
   "account.nav.projects": "Projects",
   "account.nav.invitations": "Invitations",

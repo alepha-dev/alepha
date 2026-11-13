@@ -62,6 +62,16 @@ export const AdminUserDetailPasswordDialog = (
             input={props.form.input.password}
             password
           />
+          <Control
+            label={tr("admin.userDetail.mustChangePassword", {
+              default: "Require a new password at next sign-in",
+            })}
+            description={tr("admin.userDetail.mustChangePasswordHint", {
+              default:
+                "For a temporary password: the user must choose their own before using the app.",
+            })}
+            input={props.form.input.mustChangePassword}
+          />
         </form>
         <DialogFooter>
           <Button

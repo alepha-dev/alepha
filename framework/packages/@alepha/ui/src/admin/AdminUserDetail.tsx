@@ -328,11 +328,11 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
 
   const passwordForm = useForm({
     schema: passwordSchema,
-    handler: async ({ password }) => {
+    handler: async ({ password, mustChangePassword }) => {
       await userClient.setUserPassword({
         params: { id: userId },
         query: { userRealmName: props.userRealmName },
-        body: { password },
+        body: { password, mustChangePassword },
       });
       toast.success(
         tr("admin.userDetail.passwordSet", {
@@ -340,6 +340,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
         }),
       );
       passwordForm.input.password.set?.("");
+      passwordForm.input.mustChangePassword.set?.(false);
       setPasswordOpen(false);
     },
   });

@@ -303,8 +303,8 @@ const ProjectView = () => {
                 >
                   {aside ? (
                     <div className="flex min-h-0 flex-1">
-                      {/* The module's pane (Work's quest log), which owns its
-                    width, collapse state and breakpoint. */}
+                      {/* A module's pane, which owns its width, collapse
+                    state and breakpoint. */}
                       <aside.component />
                       {/* The list owns its own scroll, so this wrapper must NOT
                   also scroll — a nested `overflow-auto` here showed a spurious

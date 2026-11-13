@@ -13,6 +13,7 @@ import {
   readPersisted,
   reconcilePersistedFilters,
 } from "./dataTablePersistence.ts";
+import { isEmptyFilterValue } from "./dataTablePresets.ts";
 import type {
   DataTableFilterFields,
   DataTableFilterMode,
@@ -156,10 +157,11 @@ export const useDataTableFilterForm = <T>(
   const mergedFilterInitialValues = useMemo<Record<string, any>>(
     () => ({
       ...props.filters?.initialValues,
-      ...persistedFilterValues,
-      // Above the stored choice — see `seedValues`. A drill-through link that
-      // lost to a filter the reader set last week would be a link that does
-      // nothing.
+      // A link that carries filters REPLACES the stored choice rather than
+      // adding to it: a drill-through or a preset's values arriving by URL
+      // mean those rows, and a filter the reader set last week kept on top
+      // of them would silently narrow the list the link promised.
+      ...(hasQueryFilters(queryFilterValues) ? {} : persistedFilterValues),
       ...queryFilterValues,
       // Last: an explicit `seedValues` is the caller deciding for a case of
       // its own, and outranks what the URL happened to carry.
@@ -180,3 +182,9 @@ export const useDataTableFilterForm = <T>(
 
   return { form: definition ? internalForm : undefined, definition };
 };
+
+const hasQueryFilters = (values: Record<string, unknown> | undefined) =>
+  Boolean(values) &&
+  Object.values(values as Record<string, unknown>).some(
+    (value) => !isEmptyFilterValue(value),
+  );

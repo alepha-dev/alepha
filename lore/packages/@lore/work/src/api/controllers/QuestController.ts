@@ -8,7 +8,7 @@ import {
   ProjectSecurityService,
   ResourceLinkService,
 } from "@lore/core/api";
-import { type Project } from "@lore/core/schemas";
+import { type Project, prioritySchema } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, createPagination, z } from "alepha";
 import { FileService } from "alepha/api/files";
@@ -48,6 +48,15 @@ import {
   exceedsObjectiveCap,
   objectiveCapMessage,
 } from "../schemas/questObjectivesLimit.ts";
+import {
+  QUEST_PRESET_KEYS,
+  questFilterExtrasShape,
+  type QuestPresetKey,
+  type QuestPresetQuery,
+  type QuestPresets,
+  questPresetQuery,
+  questPresetsSchema,
+} from "../schemas/questPresets.ts";
 import { QUEST_RELEASE_NONE } from "../schemas/questReleaseFilter.ts";
 import {
   type QuestResource,
@@ -70,6 +79,27 @@ import { QuestShelvingService } from "../services/QuestShelvingService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
 import { WorkBuckets } from "../services/WorkBuckets.ts";
+
+/**
+ * What `questListWhere` reads of the quest list's query.
+ */
+interface QuestListQuery {
+  search?: string;
+  status?: string;
+  statusOp?: "is" | "not";
+  releaseId?: string;
+  epic?: number;
+  epicId?: string;
+  includeDrafts?: boolean;
+  area?: string;
+  tag?: string;
+  tagOp?: "any" | "all" | "none";
+  sort?: string;
+  assignee?: string;
+  priority?: string;
+  staleDays?: number;
+  completedDays?: number;
+}
 
 export class QuestController {
   protected readonly automationMutations = $inject(AutomationMutationContext);
@@ -277,24 +307,6 @@ export class QuestController {
       param: "id",
       capability: "work",
     });
-
-  /**
-   * Whether this project's board is on, for the three transitions that seed a
-   * quest's column.
-   *
-   * ⚠️ These are BEHAVIOUR, not a gate, which is why they are here rather
-   * than on the `use:` chain and why the review of this epic did not count
-   * them: seeding a column on a project with no board writes a value nothing
-   * reads, and the quest still transitions either way. The read is memoised
-   * per request, so a transition pays for it once.
-   */
-  protected async boardEnabled(projectId: number): Promise<boolean> {
-    return this.security.capabilityOption(
-      await this.security.capabilitiesOf(projectId),
-      "work",
-      "board",
-    );
-  }
 
   /**
    * Enrich a quest entity with computed metadata.
@@ -1226,6 +1238,219 @@ export class QuestController {
     },
   });
 
+  /**
+   * The `where` of the quest list for these filters: what `getQuests` lists
+   * and what `getQuestPresets` counts, so a preset's badge and the list it
+   * opens cannot disagree. Sets `query.sort` when one status implies a date
+   * to sort by.
+   */
+  protected async questListWhere(
+    projectId: number,
+    query: QuestListQuery,
+    userId: string | undefined,
+  ): Promise<Record<string, any>> {
+    const where = this.quests.createQueryWhere();
+    where.projectId = { eq: projectId };
+
+    if (query.search) {
+      // ID-by-search: a bare integer or `#N` form means "find this
+      // specific quest by its per-project shortId" (Lore #94 — UX
+      // shortcut for typing #42 into the same search box). Anything
+      // else stays title `ilike`.
+      const idMatch = query.search.trim().match(/^#?(\d+)$/);
+      if (idMatch) {
+        where.shortId = { eq: Number.parseInt(idMatch[1], 10) };
+      } else {
+        where.title = { ilike: `%${query.search}%` };
+      }
+    }
+
+    // Every multi-value filter is OR'd within itself and AND'd against the
+    // others, so `status=todo,in_progress` + `area=a,b` reads as "(todo or
+    // in progress) and (area a or b)". The groups collect here because `where`
+    // itself carries only one `or`.
+    const groups: Array<Record<string, any>> = [];
+
+    const release = this.parseReleaseFilter(query.releaseId);
+    if (release.unattached && release.ids.length > 0) {
+      // "No release" OR'd with named ones, through the same `groups` array
+      // the tag filter uses - `where` itself carries only one `or`.
+      groups.push({
+        or: [
+          { releaseId: { isNull: true } },
+          release.ids.length === 1
+            ? { releaseId: { eq: release.ids[0] } }
+            : { releaseId: { inArray: release.ids } },
+        ],
+      });
+    } else if (release.unattached) {
+      where.releaseId = { isNull: true };
+    } else if (release.ids.length === 1) {
+      where.releaseId = { eq: release.ids[0] };
+    } else if (release.ids.length > 1) {
+      where.releaseId = { inArray: release.ids };
+    }
+
+    if (query.epic) {
+      where.epicId = { eq: query.epic };
+    }
+
+    // Always a group, never `where.epicId`: `epic` above may hold that key.
+    const epic = this.parseEpicFilter(query.epicId);
+    const epicFiltered = epic.loose || epic.ids.length > 0;
+    if (epicFiltered) {
+      const named =
+        epic.ids.length === 1
+          ? { epicId: { eq: epic.ids[0] } }
+          : { epicId: { inArray: epic.ids } };
+      const none = { epicId: { isNull: true } };
+      groups.push(
+        epic.loose && epic.ids.length > 0
+          ? { or: [none, named] }
+          : epic.loose
+            ? none
+            : named,
+      );
+    }
+
+    const areas = this.parseList(query.area);
+    if (areas.length === 1) {
+      where.area = { eq: areas[0] };
+    } else if (areas.length > 1) {
+      where.area = { inArray: areas };
+    }
+
+    const tags = this.parseList(query.tag);
+    if (tags.length > 0) {
+      // tags are stored as a JSON array; LIKE the serialized form
+      // matches an exact (normalized) value. Mirrors folio tag search.
+      //
+      // ⚠️ LIKE rather than the ORM's `arrayContains` / `arrayOverlaps`,
+      // which refuse to run on sqlite/D1: the array is JSON text there, so
+      // postgres array operators have nothing to apply to.
+      //
+      // `any` (the default) is the reading the other filters get: a quest
+      // matching ANY of the asked-for tags qualifies. `all` is one LIKE per
+      // tag, AND'd through `groups`; `none` is one NOT LIKE per tag.
+      const pattern = (tag: string) => `%"${tag.toLowerCase()}"%`;
+      if (query.tagOp === "all") {
+        groups.push(...tags.map((tag) => ({ tags: { like: pattern(tag) } })));
+      } else if (query.tagOp === "none") {
+        groups.push(
+          ...tags.map((tag) => ({ tags: { notLike: pattern(tag) } })),
+        );
+      } else {
+        groups.push({
+          or: tags.map((tag) => ({ tags: { like: pattern(tag) } })),
+        });
+      }
+    }
+
+    const statuses = this.parseStatusList(query.status);
+    if (statuses.length > 0 && query.statusOp === "not") {
+      // "Is not" is the negation of the same conditions "is" applies, and
+      // it keeps the no-filter scope: shelved quests stay out unless the
+      // reader asks for them by name. "Everything but completed" is a
+      // question about the work still in scope, not an invitation to bring
+      // back what was set aside - the same reason an absent filter hides
+      // them (see below).
+      where.shelvedAt = { isNull: true };
+      groups.push({
+        not:
+          statuses.length === 1
+            ? this.statusConditions(statuses[0])
+            : { or: statuses.map((status) => this.statusConditions(status)) },
+      });
+    } else if (statuses.length === 0) {
+      // No status filter means "everything I still care about" — shelved
+      // quests are deliberately out of scope, so they only ever surface
+      // through the explicit `shelved` filter. An empty list and an absent
+      // filter are the same question: selecting nothing cannot mean
+      // "show nothing", and selecting all five means the same as neither.
+      //
+      // ⚠️ HELD quests are NOT excluded here, and the asymmetry with
+      // shelved is the point. Shelved means out of scope; held means
+      // blocked and still wanted, so hiding it by default would hide
+      // exactly the rows somebody needs to unblock.
+      where.shelvedAt = { isNull: true };
+    } else if (statuses.length === 1) {
+      Object.assign(where, this.statusConditions(statuses[0]));
+      // A default sort belongs to ONE chosen status. With several selected
+      // there is no single date the list is about, so `-updatedAt` stands.
+      if (statuses[0] === "completed") query.sort ??= "-completedAt";
+      if (statuses[0] === "shelved") query.sort ??= "-shelvedAt";
+      if (statuses[0] === "on_hold") query.sort ??= "-heldAt";
+    } else {
+      groups.push({
+        or: statuses.map((status) => this.statusConditions(status)),
+      });
+    }
+
+    // The preset bar's filters (`questPresets.ts`). Each is AND'd with the
+    // rest through `groups`, so none overwrites a key a status set.
+    if (query.assignee === "me" && userId) {
+      groups.push({ acceptedBy: { eq: userId } });
+    } else if (query.assignee === "none") {
+      groups.push({ acceptedBy: { isNull: true } });
+    }
+    const knownPriorities: string[] = z.schema.enumOptions(prioritySchema);
+    const priorities = this.parseList(query.priority).filter((value) =>
+      knownPriorities.includes(value),
+    );
+    if (priorities.length > 0) {
+      groups.push(
+        priorities.length === 1
+          ? { priority: { eq: priorities[0] } }
+          : { priority: { inArray: priorities } },
+      );
+    }
+    // Stale reads as Reports reads it: taken more than N days ago, still
+    // open. Not `updatedAt`, which any edit resets.
+    if (query.staleDays) {
+      groups.push({
+        acceptedAt: {
+          isNotNull: true,
+          lt: this.dt.now().subtract(query.staleDays, "day").toISOString(),
+        },
+      });
+    }
+    if (query.completedDays) {
+      groups.push({
+        completedAt: {
+          gte: this.dt.now().subtract(query.completedDays, "day").toISOString(),
+        },
+      });
+    }
+
+    if (groups.length > 0) {
+      where.and = groups;
+    }
+
+    // Quests of a `draft` epic are specified but not released into the
+    // backlog. This FILTERS; it never mutates a quest row.
+    //
+    // Two ways past it, and both are deliberate. `includeDrafts` is the
+    // explicit opt-out, set by the pickers that need the whole project
+    // (`EpicQuestPicker`, `QuestDependencyPicker`) and, since epic #31,
+    // offered by MCP `quest_list` as an optional parameter that defaults
+    // OFF, so the tool and the UI list the same backlog unless asked
+    // otherwise. `epic` is the implicit one: a caller addressing one epic
+    // is looking at that epic's own quests, draft or not, which is what
+    // lets an agent that just filed a quest into a draft epic read it
+    // back without any flag. `epicId` names its epics too, and a quest
+    // under no epic was never gated, so it passes the same way.
+    //
+    // `includeDrafts` is client-settable and that is fine — every caller
+    // has already passed the membership gate, so it exposes nothing the
+    // caller could not already read. This is a backlog-organisation
+    // affordance, NOT an authorization control. Do not "harden" it into one.
+    if (!query.includeDrafts && !query.epic && !epicFiltered) {
+      await this.epicVisibility.applyBacklogGate(where, projectId);
+    }
+
+    return where;
+  }
+
   getQuests = $action({
     path: "/getQuests/:projectId",
     method: "GET",
@@ -1291,172 +1516,16 @@ export class QuestController {
          * specific of the two.
          */
         offset: z.integer().min(0).optional(),
+        ...questFilterExtrasShape,
       }),
       response: db.page(questResourceSchema),
     },
     handler: async ({ params, query, user }) => {
-      const where = this.quests.createQueryWhere();
-      where.projectId = { eq: params.projectId };
-
-      if (query.search) {
-        // ID-by-search: a bare integer or `#N` form means "find this
-        // specific quest by its per-project shortId" (Lore #94 — UX
-        // shortcut for typing #42 into the same search box). Anything
-        // else stays title `ilike`.
-        const idMatch = query.search.trim().match(/^#?(\d+)$/);
-        if (idMatch) {
-          where.shortId = { eq: Number.parseInt(idMatch[1], 10) };
-        } else {
-          where.title = { ilike: `%${query.search}%` };
-        }
-      }
-
-      // Every multi-value filter is OR'd within itself and AND'd against the
-      // others, so `status=todo,in_progress` + `area=a,b` reads as "(todo or
-      // in progress) and (area a or b)". The groups collect here because `where`
-      // itself carries only one `or`.
-      const groups: Array<Record<string, any>> = [];
-
-      const release = this.parseReleaseFilter(query.releaseId);
-      if (release.unattached && release.ids.length > 0) {
-        // "No release" OR'd with named ones, through the same `groups` array
-        // the tag filter uses - `where` itself carries only one `or`.
-        groups.push({
-          or: [
-            { releaseId: { isNull: true } },
-            release.ids.length === 1
-              ? { releaseId: { eq: release.ids[0] } }
-              : { releaseId: { inArray: release.ids } },
-          ],
-        });
-      } else if (release.unattached) {
-        where.releaseId = { isNull: true };
-      } else if (release.ids.length === 1) {
-        where.releaseId = { eq: release.ids[0] };
-      } else if (release.ids.length > 1) {
-        where.releaseId = { inArray: release.ids };
-      }
-
-      if (query.epic) {
-        where.epicId = { eq: query.epic };
-      }
-
-      // Always a group, never `where.epicId`: `epic` above may hold that key.
-      const epic = this.parseEpicFilter(query.epicId);
-      const epicFiltered = epic.loose || epic.ids.length > 0;
-      if (epicFiltered) {
-        const named =
-          epic.ids.length === 1
-            ? { epicId: { eq: epic.ids[0] } }
-            : { epicId: { inArray: epic.ids } };
-        const none = { epicId: { isNull: true } };
-        groups.push(
-          epic.loose && epic.ids.length > 0
-            ? { or: [none, named] }
-            : epic.loose
-              ? none
-              : named,
-        );
-      }
-
-      const areas = this.parseList(query.area);
-      if (areas.length === 1) {
-        where.area = { eq: areas[0] };
-      } else if (areas.length > 1) {
-        where.area = { inArray: areas };
-      }
-
-      const tags = this.parseList(query.tag);
-      if (tags.length > 0) {
-        // tags are stored as a JSON array; LIKE the serialized form
-        // matches an exact (normalized) value. Mirrors folio tag search.
-        //
-        // ⚠️ LIKE rather than the ORM's `arrayContains` / `arrayOverlaps`,
-        // which refuse to run on sqlite/D1: the array is JSON text there, so
-        // postgres array operators have nothing to apply to.
-        //
-        // `any` (the default) is the reading the other filters get: a quest
-        // matching ANY of the asked-for tags qualifies. `all` is one LIKE per
-        // tag, AND'd through `groups`; `none` is one NOT LIKE per tag.
-        const pattern = (tag: string) => `%"${tag.toLowerCase()}"%`;
-        if (query.tagOp === "all") {
-          groups.push(...tags.map((tag) => ({ tags: { like: pattern(tag) } })));
-        } else if (query.tagOp === "none") {
-          groups.push(
-            ...tags.map((tag) => ({ tags: { notLike: pattern(tag) } })),
-          );
-        } else {
-          groups.push({
-            or: tags.map((tag) => ({ tags: { like: pattern(tag) } })),
-          });
-        }
-      }
-
-      const statuses = this.parseStatusList(query.status);
-      if (statuses.length > 0 && query.statusOp === "not") {
-        // "Is not" is the negation of the same conditions "is" applies, and
-        // it keeps the no-filter scope: shelved quests stay out unless the
-        // reader asks for them by name. "Everything but completed" is a
-        // question about the work still in scope, not an invitation to bring
-        // back what was set aside - the same reason an absent filter hides
-        // them (see below).
-        where.shelvedAt = { isNull: true };
-        groups.push({
-          not:
-            statuses.length === 1
-              ? this.statusConditions(statuses[0])
-              : { or: statuses.map((status) => this.statusConditions(status)) },
-        });
-      } else if (statuses.length === 0) {
-        // No status filter means "everything I still care about" — shelved
-        // quests are deliberately out of scope, so they only ever surface
-        // through the explicit `shelved` filter. An empty list and an absent
-        // filter are the same question: selecting nothing cannot mean
-        // "show nothing", and selecting all five means the same as neither.
-        //
-        // ⚠️ HELD quests are NOT excluded here, and the asymmetry with
-        // shelved is the point. Shelved means out of scope; held means
-        // blocked and still wanted, so hiding it by default would hide
-        // exactly the rows somebody needs to unblock.
-        where.shelvedAt = { isNull: true };
-      } else if (statuses.length === 1) {
-        Object.assign(where, this.statusConditions(statuses[0]));
-        // A default sort belongs to ONE chosen status. With several selected
-        // there is no single date the list is about, so `-updatedAt` stands.
-        if (statuses[0] === "completed") query.sort ??= "-completedAt";
-        if (statuses[0] === "shelved") query.sort ??= "-shelvedAt";
-        if (statuses[0] === "on_hold") query.sort ??= "-heldAt";
-      } else {
-        groups.push({
-          or: statuses.map((status) => this.statusConditions(status)),
-        });
-      }
-
-      if (groups.length > 0) {
-        where.and = groups;
-      }
-
-      // Quests of a `draft` epic are specified but not released into the
-      // backlog. This FILTERS; it never mutates a quest row.
-      //
-      // Two ways past it, and both are deliberate. `includeDrafts` is the
-      // explicit opt-out, set by the pickers that need the whole project
-      // (`EpicQuestPicker`, `QuestDependencyPicker`) and, since epic #31,
-      // offered by MCP `quest_list` as an optional parameter that defaults
-      // OFF, so the tool and the UI list the same backlog unless asked
-      // otherwise. `epic` is the implicit one: a caller addressing one epic
-      // is looking at that epic's own quests, draft or not, which is what
-      // lets an agent that just filed a quest into a draft epic read it
-      // back without any flag. `epicId` names its epics too, and a quest
-      // under no epic was never gated, so it passes the same way.
-      //
-      // `includeDrafts` is client-settable and that is fine — every caller
-      // has already passed the membership gate, so it exposes nothing the
-      // caller could not already read. This is a backlog-organisation
-      // affordance, NOT an authorization control. Do not "harden" it into one.
-      if (!query.includeDrafts && !query.epic && !epicFiltered) {
-        await this.epicVisibility.applyBacklogGate(where, params.projectId);
-      }
+      const where = await this.questListWhere(
+        params.projectId,
+        query,
+        user?.id,
+      );
 
       query.sort ??= "-updatedAt";
 
@@ -1546,6 +1615,65 @@ export class QuestController {
       return mine.map((quest) => this.questMapper.mapQuestToResource(quest));
     },
   });
+
+  /**
+   * How many quests each preset of the bar beside the Quests pages opens,
+   * and which release Next means. Counted through `questListWhere` from the
+   * presets' own queries, so every badge equals the list its click shows.
+   */
+  getQuestPresets = $action({
+    method: "GET",
+    use: [this.ownsProject("quest:read")],
+    path: "/projects/:projectId/quests/presets",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: questPresetsSchema,
+    },
+    handler: async ({ params, user }) => {
+      const [next] = await this.releases.findMany({
+        where: {
+          projectId: { eq: params.projectId },
+          releasedAt: { isNull: true },
+        },
+        orderBy: [{ column: "number", direction: "asc" }],
+        limit: 1,
+      });
+      const count = async (key: QuestPresetKey) => {
+        const preset = questPresetQuery(key, next?.id);
+        if (!preset) return 0;
+        const where = await this.questListWhere(
+          params.projectId,
+          this.presetListQuery(preset),
+          user?.id,
+        );
+        return this.quests.count(where);
+      };
+      const counts = await Promise.all(QUEST_PRESET_KEYS.map(count));
+      return {
+        nextRelease: next
+          ? { id: next.id, label: next.tag ?? next.title }
+          : undefined,
+        counts: Object.fromEntries(
+          QUEST_PRESET_KEYS.map((key, i) => [key, counts[i]]),
+        ) as QuestPresets["counts"],
+      };
+    },
+  });
+
+  /**
+   * A preset's URL query as `getQuests` reads it.
+   */
+  protected presetListQuery(preset: QuestPresetQuery): QuestListQuery {
+    return {
+      status: preset.status,
+      assignee: preset.assignee,
+      priority: preset.priority,
+      tag: preset.tag,
+      releaseId: preset.release,
+      staleDays: preset.stale ? Number(preset.stale) : undefined,
+      completedDays: preset.completed ? Number(preset.completed) : undefined,
+    };
+  }
 
   countOpenQuests = $action({
     method: "GET",
@@ -2250,11 +2378,9 @@ export class QuestController {
           action: "unshelved",
         });
       }
-      // When the board is on, drop the freshly-accepted quest into the first
-      // configured sub-column so it has a place to live on it.
-      if (await this.boardEnabled(project.id)) {
-        quest.kanbanColumn = project.kanbanColumns?.[0];
-      }
+      // Drop the freshly-accepted quest into the board's first configured
+      // sub-column so it has a place to live on it.
+      quest.kanbanColumn = project.kanbanColumns?.[0];
       quest.history.push({
         at: this.dt.nowISOString(),
         by: user.id,
@@ -2373,7 +2499,7 @@ export class QuestController {
           action: "unshelved",
         });
       }
-      if ((await this.boardEnabled(project.id)) && !quest.kanbanColumn) {
+      if (!quest.kanbanColumn) {
         quest.kanbanColumn = project.kanbanColumns?.[0];
       }
 

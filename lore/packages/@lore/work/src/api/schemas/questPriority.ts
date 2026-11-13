@@ -17,9 +17,8 @@ export type QuestPriority = Quest["priority"];
  * than the label keeps ordering in SQL; `priority` is a text enum". This
  * table is what the label costs.
  *
- * Three places order by priority and all three must use this:
+ * Every place that orders by priority must use this:
  * - `KanbanController.orderForBoard` (JS, on the board's fallback order)
- * - `QuestGroup` (JS, the grouped quest list)
  * - `ProjectReportsController` (SQL, via a CASE built from these ranks)
  */
 export const QUEST_PRIORITY_ORDER: Record<QuestPriority, number> = {

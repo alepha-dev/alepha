@@ -119,7 +119,6 @@ describe("CapabilityRegistry", () => {
     // never said anything about it, and every optional key in
     // `projects.features` is absent on every project that predates it.
     expect(ctx.registry.optionsOf("work", {})).toEqual({
-      board: false,
       epics: false,
       releases: false,
       estimate: false,
@@ -155,13 +154,12 @@ describe("CapabilityRegistry", () => {
   });
 
   it("preselects only apps.track and work.automations", ({ expect }) => {
-    // Board and Releases were on by default before this epic. A board is a
-    // way to look at quests, not a reason to have them; the same argument
-    // applied consistently takes Releases with it. Apps keeps its one,
-    // because the capability's own label says "watch". Automations is on
-    // since #Q3563: a project had none until an owner found the switch.
+    // Releases was on by default before this epic, with a board that is
+    // now always there: a way to look at quests is not a reason to have
+    // them. Apps keeps its one, because the capability's own label says
+    // "watch". Automations is on since #Q3563: a project had none until an
+    // owner found the switch.
     expect(ctx.registry.preselectedOptionsOf("work")).toEqual({
-      board: false,
       epics: false,
       releases: false,
       estimate: false,
@@ -304,13 +302,13 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
 
   it("reads a row as on, with its options defaulted", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha, {
-      capabilities: [{ key: "work", options: { board: true } }],
+      capabilities: [{ key: "work", options: { releases: true } }],
     });
 
     const set = await ctx.security.capabilitiesOf(project.id);
     expect(ctx.security.hasCapability(set, "work")).toBe(true);
     expect(ctx.security.hasCapability(set, "apps")).toBe(false);
-    expect(ctx.security.capabilityOption(set, "work", "board")).toBe(true);
+    expect(ctx.security.capabilityOption(set, "work", "releases")).toBe(true);
     expect(ctx.security.capabilityOption(set, "work", "epics")).toBe(false);
     // An option of a capability that is OFF is off, whatever it says. That is
     // the one rule about capabilities reading each other: narrow, never widen.

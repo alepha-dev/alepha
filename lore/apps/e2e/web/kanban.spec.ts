@@ -11,7 +11,7 @@ import {
  *
  * `quest.spec.ts` owns the view bar and the `defaultSurface` landing, since
  * those are about the Quests page as much as this one. What lives here is
- * the board itself: its sidebar entry, how a card reacts to a lifecycle
+ * the board itself: its tab on the Quests page, how a card reacts to a lifecycle
  * change made in its drawer, and the column configuration behind it.
  *
  * Three of these are regression guards for bugs found by reading the board
@@ -19,11 +19,10 @@ import {
  */
 test.describe("Kanban", () => {
   /**
-   * #1211. The board had no sidebar entry between the 2026-08 rename and
-   * this epic, which is the whole reason the view bar had to be invented:
-   * it was unreachable from the UI at all.
+   * #1211, then #Q3580. The board is reached from the Quests page's Board
+   * tab, a link to its own route: never unreachable, and never a mode.
    */
-  test("the sidebar entry opens the board", async ({ page }) => {
+  test("the Board tab opens the board", async ({ page }) => {
     test.setTimeout(60_000);
 
     const t = Date.now();
@@ -33,12 +32,17 @@ test.describe("Kanban", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board"] } },
+      {},
     );
 
     await page.goto(`/${projectSlug}/quests`);
-    await page.locator(`a[href="/${projectSlug}/kanban"]`).first().click();
-    await page.waitForURL(`**/${projectSlug}/kanban`, { timeout: 15_000 });
+    await page
+      .getByTestId("quests-view-tabs")
+      .locator(`a[href="/${projectSlug}/quests/board"]`)
+      .click();
+    await page.waitForURL(`**/${projectSlug}/quests/board`, {
+      timeout: 15_000,
+    });
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
     });
@@ -66,7 +70,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board"] } },
+      {},
     );
 
     const { shortId } = await apiPost<{ shortId: number }>(
@@ -83,7 +87,7 @@ test.describe("Kanban", () => {
       },
     );
 
-    await page.goto(`/${projectSlug}/kanban`);
+    await page.goto(`/${projectSlug}/quests/board`);
     const card = page.locator(
       `[data-testid="kanban-card"][data-quest-short-id="${shortId}"]`,
     );
@@ -130,7 +134,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board"] } },
+      {},
     );
 
     const { shortId } = await apiPost<{ shortId: number }>(
@@ -147,7 +151,7 @@ test.describe("Kanban", () => {
       },
     );
 
-    await page.goto(`/${projectSlug}/kanban`);
+    await page.goto(`/${projectSlug}/quests/board`);
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
     });
@@ -164,9 +168,10 @@ test.describe("Kanban", () => {
         boardReads += 1;
       }
     });
-    const sidebar = page.locator('[data-slot="sidebar"]').first();
-    const kanbanEntry = sidebar.locator(`a[href="/${projectSlug}/kanban"]`);
-    const activeBefore = await kanbanEntry.getAttribute("data-active");
+    const boardTab = page
+      .getByTestId("quests-view-tabs")
+      .locator(`a[href="/${projectSlug}/quests/board"]`);
+    const activeBefore = await boardTab.getAttribute("aria-current");
 
     const card = page.locator(
       `[data-testid="kanban-card"][data-quest-short-id="${shortId}"]`,
@@ -199,12 +204,12 @@ test.describe("Kanban", () => {
       "data-spec-mark",
       "still-here",
     );
-    expect(await kanbanEntry.getAttribute("data-active")).toBe(activeBefore);
+    expect(await boardTab.getAttribute("aria-current")).toBe(activeBefore);
     expect(await scrollY()).toBe(offset);
 
     // Closing goes back to the board, through history.
     await page.getByRole("button", { name: /back/i }).first().click();
-    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`), {
+    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests/board$`), {
       timeout: 10_000,
     });
     await expect(sheet).toHaveCount(0);
@@ -241,7 +246,7 @@ test.describe("Kanban", () => {
     await expect(sheet).toHaveCount(0);
 
     // The old card URL still lands somewhere.
-    await page.goto(`/${projectSlug}/kanban/${shortId}`);
+    await page.goto(`/${projectSlug}/quests/board/${shortId}`);
     await expect(page).toHaveURL(
       new RegExp(`/${projectSlug}/quests/${shortId}$`),
       { timeout: 10_000 },
@@ -273,7 +278,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board"] } },
+      {},
     );
 
     for (const title of [kept, filtered]) {
@@ -288,7 +293,7 @@ test.describe("Kanban", () => {
       });
     }
 
-    await page.goto(`/${projectSlug}/kanban`);
+    await page.goto(`/${projectSlug}/quests/board`);
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 15_000,
     });
@@ -338,7 +343,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board"] } },
+      {},
     );
 
     // A narrow viewport, so the seven columns cannot possibly fit and the
@@ -351,7 +356,7 @@ test.describe("Kanban", () => {
       await addKanbanColumn(page, projectId, name);
     }
 
-    await page.goto(`/${projectSlug}/kanban`);
+    await page.goto(`/${projectSlug}/quests/board`);
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
     });
@@ -401,7 +406,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board"] } },
+      {},
     );
 
     await addKanbanColumn(page, projectId, "Review");
@@ -468,7 +473,7 @@ test.describe("Kanban", () => {
     );
 
     // And the board renders the new order.
-    await page.goto(`/${projectSlug}/kanban`);
+    await page.goto(`/${projectSlug}/quests/board`);
     const columns = page.getByTestId("kanban-column");
     await expect(columns).toHaveCount(4, { timeout: 10_000 });
     await expect(columns.nth(1)).toHaveAttribute(
@@ -506,11 +511,11 @@ test.describe("Kanban", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board"] } },
+      {},
     );
 
     await page.setViewportSize({ width: 411, height: 845 });
-    await page.goto(`/${projectSlug}/kanban`);
+    await page.goto(`/${projectSlug}/quests/board`);
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 15_000,
     });
@@ -569,11 +574,11 @@ test.describe("Kanban", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board"] } },
+      {},
     );
 
     await page.setViewportSize({ width: 411, height: 845 });
-    await page.goto(`/${projectSlug}/kanban`);
+    await page.goto(`/${projectSlug}/quests/board`);
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 15_000,
     });
@@ -622,7 +627,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board"] } },
+      {},
     );
 
     // One area per lane. Six is well past a laptop viewport once each lane
@@ -643,7 +648,7 @@ test.describe("Kanban", () => {
     // A short viewport, so the stack overflows on any machine rather than
     // only on the one that wrote the test.
     await page.setViewportSize({ width: 1280, height: 700 });
-    await page.goto(`/${projectSlug}/kanban`);
+    await page.goto(`/${projectSlug}/quests/board`);
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 15_000,
     });

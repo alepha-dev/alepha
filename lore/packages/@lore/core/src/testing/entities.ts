@@ -138,7 +138,6 @@ export const createTestProject = async (
     {
       key: "work",
       options: {
-        board: true,
         epics: true,
         releases: true,
         estimate: true,

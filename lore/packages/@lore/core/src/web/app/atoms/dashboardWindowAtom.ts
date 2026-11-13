@@ -9,8 +9,8 @@ import { $atom, z } from "alepha";
  * different windows, and a window is how somebody reads, not what the
  * project is.
  *
- * `persist: "cookie"`, for the reason `questLogCollapsedAtom` gives: the
- * route loader reads it during SSR, where web storage does not exist.
+ * `persist: "cookie"`: the route loader reads it during SSR, where web
+ * storage does not exist.
  *
  * Wrapped in an object because `$atom` schemas must be object or array.
  */

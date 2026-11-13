@@ -186,12 +186,6 @@ export default {
   "spotlight.group.folios": "Folios",
   "spotlight.group.projects": "Projets",
 
-  "quest-log.quests": "Quêtes :",
-  "quest-log.search": "Chercher par nom, domaine ou difficulté...",
-  "quest-log.empty": "Aucune quête en attente",
-  "quest-log.empty-description":
-    "Les quêtes servent à suivre le travail du projet. Créez-en une pour commencer.",
-
   "home.nav": "Accueil",
   "home.title": "Bienvenue dans l’aventure Lore",
   "home.welcome.title": "Il est temps de créer de grandes choses",
@@ -474,7 +468,6 @@ export default {
   "project.menu.dashboard": "Tableau de bord",
   "project.menu.activity": "Activité",
   "project.menu.quests": "Quêtes",
-  "project.menu.kanban": "Kanban",
   "project.menu.reports": "Rapports",
   "project.menu.artifacts": "Artefacts",
   "artifact.notFound": "Aucun build de $1 avec le tag $2 dans ce projet.",
@@ -628,6 +621,33 @@ export default {
   "board.filter.epic": "Épopée",
   "board.filter.allEpics": "Toutes les épopées",
   "board.filter.noEpic": "Aucune",
+  "quests.view.list": "Liste",
+  "quests.view.board": "Tableau",
+  "quest.presets.mine": "Les miennes",
+  "quest.presets.mine.hint": "Assignées à vous, pas terminées",
+  "quest.presets.urgent": "Urgent",
+  "quest.presets.urgent.hint": "Priorité haute, pas terminées",
+  "quest.presets.backlog": "À faire",
+  "quest.presets.backlog.hint": "Toutes les quêtes pas encore terminées",
+  "quest.presets.done": "Finies",
+  "quest.presets.done.hint": "Terminées ces 7 derniers jours",
+  "quest.presets.asks": "Questions",
+  "quest.presets.asks.hint":
+    "Étiquetées need-answer : quelqu'un attend une réponse",
+  "quest.presets.stale": "Figées",
+  "quest.presets.stale.hint": "En cours depuis plus de 14 jours",
+  "quest.presets.next": "Prochaine",
+  "quest.presets.next.hint": "Pas terminées, prévues pour $1",
+  "quest.presets.all": "Toutes",
+  "quest.presets.all.hint": "Toutes les quêtes, sans filtre",
+  "board.filter.assignee": "Assignée à",
+  "board.filter.assignee.me": "Vous",
+  "board.filter.assignee.none": "Personne",
+  "board.filter.priority": "Priorité",
+  "board.filter.allPriorities": "Toutes les priorités",
+  "board.filter.stale": "Prise depuis",
+  "board.filter.completedWithin": "Terminée depuis",
+  "board.filter.days": "$1 jours",
   "board.table.epic": "Épopée",
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par une autre quête",
@@ -889,6 +909,10 @@ export default {
   "project.settings.general.title": "Projet",
   "project.settings.nav.general": "Général",
   "project.settings.nav.members": "Membres",
+  "project.settings.nav.automations": "Automatisations",
+  "project.settings.nav.plan": "Planifier",
+  "project.settings.nav.remember": "Mémoriser",
+  "project.settings.nav.ship": "Livrer",
   "project.settings.nav.areas": "Domaines",
   "project.settings.tab.details": "Détails",
   "project.settings.tab.capabilities": "Capacités",
@@ -900,13 +924,13 @@ export default {
     "Le projet lui-même, et les parties de Lore qu'il utilise.",
   "project.settings.section.members":
     "Qui fait partie du projet, et ce que chaque rang peut faire.",
+  "project.settings.section.automations":
+    "Les règles qui agissent sur le projet quand quelque chose se produit.",
   "project.settings.section.work":
     "Comment les quêtes sont estimées, étiquetées et affichées sur le tableau.",
   "project.settings.section.knowledge": "Comment les folios sont affichés.",
   "project.settings.section.apps":
     "Ce que les apps remontent, où elles se déploient, et les erreurs ignorées.",
-  "project.settings.board.off":
-    "Le tableau est désactivé. Activez-le dans Général › Capacités pour configurer ses colonnes.",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
@@ -917,9 +941,6 @@ export default {
   "project.capability.work.label": "Planifier et suivre le travail",
   "project.capability.work.description":
     "Quêtes, épopées, versions, un tableau.",
-  "project.capability.work.option.board.label": "Tableau",
-  "project.capability.work.option.board.description":
-    "Un tableau kanban, avec vos propres colonnes.",
   "project.capability.work.option.epics.label": "Épopées",
   "project.capability.work.option.epics.description":
     "Des phases, avec un cycle de vie.",
@@ -1841,20 +1862,7 @@ export default {
   "quest.view.duplicate.suffix": "(Copie)",
   "quest.view.timer.pause": "Mettre en pause",
   "quest.view.timer.start": "Démarrer le chrono",
-  "quest.view.timer.running": "Chrono actif",
-  "quest.view.timer.description":
-    "Le suivi du temps est actif pour cette quête.",
 
-  "quest.item.estimate": "Temps estimé",
-  "quest.item.bonus": "Bonus",
-  "quest.item.bonus.description": "Cette quête est optionnelle.",
-  "quest.item.highPriority": "Priorité haute !",
-  "quest.item.highPriority.description": "À traiter en priorité.",
-
-  "quest-log.collapse-all": "Tout réduire",
-  "quest-log.expand-all": "Tout déplier",
-  "quest-log.collapse-panel": "Masquer le journal",
-  "quest-log.expand-panel": "Afficher le journal",
   "account.nav.group.lore": "Lore",
   "account.nav.projects": "Projets",
   "account.nav.invitations": "Invitations",

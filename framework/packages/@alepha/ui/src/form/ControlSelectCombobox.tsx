@@ -526,12 +526,18 @@ export const ControlSelectCombobox = (props: ControlSelectComboboxProps) => {
             never pick from it. So a list with no search field still gets an
             input, visually hidden, to carry the keyboard; what it types is
             ignored above, so it never filters a list nobody can see filtered.
+
+            ⚠️ Hidden by a wrapper, never by `sr-only` on the input itself:
+            there it landed on the InputGroup, whose own `relative` and the
+            popup's `h-8 m-1` for its input group beat it, and every select
+            opened on an empty band the height of a search field.
           */
-          <ComboboxInput
-            showTrigger={false}
-            className="sr-only"
-            aria-label={props.label || undefined}
-          />
+          <div className="sr-only">
+            <ComboboxInput
+              showTrigger={false}
+              aria-label={props.label || undefined}
+            />
+          </div>
         )}
         {popupBody}
       </ComboboxContent>

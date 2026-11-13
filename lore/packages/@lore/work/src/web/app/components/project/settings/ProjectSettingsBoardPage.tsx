@@ -17,7 +17,6 @@ import {
   currentProjectAtom,
   setCurrentProject,
   type I18n,
-  capabilityOption,
 } from "@lore/core/web";
 import { z } from "alepha";
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
@@ -56,9 +55,7 @@ const columnOrder = new KanbanColumnOrder();
  *
  * Split off the Work page (#Q2565), which had grown into the capability's
  * switches, the columns, the tag colours, the roadmap and the agent prompts
- * on one scroll. The tab is listed only while the `board` option is on;
- * reached by URL with it off, the page says so rather than editing columns
- * nobody sees.
+ * on one scroll. Always listed: the board is always on with Work.
  */
 const ProjectSettingsBoardPage = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -66,7 +63,6 @@ const ProjectSettingsBoardPage = () => {
   const projectApi = useClient<ProjectController>();
   const kanbanApi = useClient<KanbanController>();
   const [project] = useStore(currentProjectAtom);
-  const boardEnabled = capabilityOption(project, "work", "board");
 
   const persisted = project?.kanbanColumns ?? ["In Progress"];
   // Seeded once, on mount. There is deliberately no "the project changed
@@ -187,14 +183,6 @@ const ProjectSettingsBoardPage = () => {
 
     void reorderAction.run(next, columns);
   };
-
-  if (!boardEnabled) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        {tr("project.settings.board.off")}
-      </p>
-    );
-  }
 
   return (
     <Card className={cn(settingsCardEdge, "py-4")}>

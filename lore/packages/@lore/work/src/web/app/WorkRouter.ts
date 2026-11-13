@@ -57,8 +57,39 @@ export class WorkRouter {
    * (`router.path("projectQuests", …)`), so the path change touched no
    * call site; a bare `/:projectSlug` bookmark now lands on Activity.
    */
-  projectQuests = $pageProject({
+  /**
+   * The Quests page's layout: the List | Board plate tabs (`QuestsPlate`)
+   * over a `NestedView`, so switching tabs swaps only the body. The tabs
+   * used to be drawn by each view, and every switch unmounted the plate with
+   * its page: a blank flash on every click.
+   *
+   * It also carries the capability and rank gate both tabs share. Its path
+   * is `/quests`, beside `projectQuest` at `/quests/:shortId`, the shape the
+   * Apps layout already has at `/apps/:app/:env` beside `/apps/:app`.
+   */
+  projectQuestsLayout = $pageProject({
+    name: "projectQuestsLayout",
     path: "/quests",
+    children: () => [this.projectQuests, this.projectKanban],
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Quests`,
+    }),
+    // ⚠️ The loader GATES and fetches nothing. It used to redirect to
+    // `/kanban` when the project's `defaultSurface` said so; the setting is
+    // gone (feedback #2066), and the prohibition is unchanged: a bare
+    // `/:projectSlug` lands on `projectDashboard` and nothing may send a
+    // project URL anywhere, because a redirect there is the shape #156 was
+    // about. What it does now is the capability check every capability's
+    // landing route carries - see `projectFolios` for the rule.
+    loader: async () => this.gateQuests(),
+    lazy: () => import("./components/project/QuestsPlate.tsx"),
+  });
+
+  projectQuests = $page({
+    name: "projectQuests",
+    // Empty, not "/": the layout's own `/quests` is the List tab's URL,
+    // with no trailing slash.
+    path: "",
     schema: {
       /**
        * The quests table's filters, seeded from the URL on arrival — the
@@ -94,61 +125,63 @@ export class WorkRouter {
         area: z.text().optional(),
         tag: z.text().optional(),
         release: z.text().optional(),
+        // The presets' filters (`questPresets.ts`).
+        assignee: z.text().optional(),
+        priority: z.text().optional(),
+        stale: z.text().optional(),
+        completed: z.text().optional(),
       }),
     },
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Quests`,
-    }),
     lazy: () => import("./components/project/ProjectQuestsTable.tsx"),
-    // ⚠️ The loader GATES and fetches nothing. It used to redirect to
-    // `/kanban` when the project's `defaultSurface` said so; the setting is
-    // gone (feedback #2066), and the prohibition is unchanged: a bare
-    // `/:projectSlug` lands on `projectDashboard` and nothing may send a
-    // project URL anywhere, because a redirect there is the shape #156 was
-    // about. What it does now is the capability check every capability's
-    // landing route carries - see `projectFolios` for the rule.
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      if (!hasCapability(project, "work")) {
-        throw new NotFoundError("Work is not enabled for this project");
-      }
-      // ⚠️ A permission NAME, and a module-level function rather than
-      // `useRank()`: a `$page` loader runs outside React and cannot call a
-      // hook, and the loader and the component must not disagree about which
-      // pages exist. Same arrangement as `hasCapability` beside it.
-      //
-      // 404 rather than 403, matching the capability guard above it: a page
-      // the reader may not open is a page that does not exist for them, and a
-      // 403 would confirm what is behind it.
-      if (!canInProject(project, "quest:read")) {
-        throw new NotFoundError("Your rank does not open quests here");
-      }
-    },
   });
 
   /**
-   * The Kanban board as a destination rather than a mode.
+   * The Board tab of the Quests page, a route of its own rather than a mode
+   * of `projectQuests`: a linkable URL, addressable cards, and tabs that are
+   * plain links (`QuestsPlate`). Always there with Work: the board
+   * option is gone, a board costs nothing to whoever never opens it.
    *
-   * ⚠️ Sibling of `projectQuests`, which sits at `/quests` - it has not held
-   * `path: "/"` since Activity took the project root, and the root is the
-   * dashboard's now. Giving the board a real route is what lets it have a
-   * sidebar entry, a linkable URL and addressable cards.
+   * ⚠️ `/quests/board` sits beside `/quests/:shortId`, whose `shortId` is an
+   * integer, so `board` can never be read as a quest number.
    */
-  projectKanban = $pageProject({
+  projectKanban = $page({
     name: "projectKanban",
     children: () => [this.projectKanbanCard],
-    path: "/kanban",
+    path: "/board",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Kanban`,
+      title: `${previous?.title ?? ""} › Board`,
     }),
-    // No loader: `ProjectKanbanPage` fetches the board itself, because the
-    // board reloads in place when the header creates a quest and the loader
-    // machinery does not re-run for that.
+    // No loader: the layout gates, and `ProjectKanbanPage` fetches the board
+    // itself, because the board reloads in place when the header creates a
+    // quest and the loader machinery does not re-run for that.
     lazy: () => import("./components/project/ProjectKanbanPage.tsx"),
   });
+
+  /**
+   * The capability and rank check of the Quests layout, so of both its tabs
+   * (`/quests` and `/quests/board`): the landing route of Work, so it refuses
+   * with Work off, as every capability's landing route does.
+   */
+  protected gateQuests(): void {
+    const project = this.alepha.store.get(currentProjectAtom);
+    if (!project) {
+      throw new NotFoundError("Project not found");
+    }
+    if (!hasCapability(project, "work")) {
+      throw new NotFoundError("Work is not enabled for this project");
+    }
+    // ⚠️ A permission NAME, and a module-level function rather than
+    // `useRank()`: a `$page` loader runs outside React and cannot call a
+    // hook, and the loader and the component must not disagree about which
+    // pages exist. Same arrangement as `hasCapability` beside it.
+    //
+    // 404 rather than 403, matching the capability guard above it: a page
+    // the reader may not open is a page that does not exist for them, and a
+    // 403 would confirm what is behind it.
+    if (!canInProject(project, "quest:read")) {
+      throw new NotFoundError("Your rank does not open quests here");
+    }
+  }
 
   projectQuest = $pageProject({
     loading: ProjectPageSkeleton,

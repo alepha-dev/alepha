@@ -1,6 +1,6 @@
 import { AutomationAccess, ProjectController } from "@lore/core/api";
 import { createPresetRanks } from "@lore/core/testing";
-import { ProjectShellRegistry } from "@lore/core/web";
+import { ProjectShellRegistry, visibleSettingsTabs } from "@lore/core/web";
 import { WorkShell } from "@lore/work/web";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
@@ -87,13 +87,21 @@ describe("automation permissions for a privileged identity", () => {
     return {
       claimed: data.permissions.filter((it) => it.startsWith("automation:")),
       allowed,
-      nav: shell
-        .offeredNav(data, {
-          routeName: "projectQuests",
-          params: {},
-          get: () => undefined,
-        })
-        .map((entry) => entry.route),
+      // The sidebar's entries and its Settings sections' pages: Automations
+      // is a Settings section, not a sidebar entry.
+      nav: [
+        ...shell
+          .offeredNav(data, {
+            routeName: "projectQuests",
+            params: {},
+            get: () => undefined,
+          })
+          .map((entry) => entry.route),
+        ...shell
+          .settingsSections()
+          .flatMap((section) => visibleSettingsTabs(section, data))
+          .map((tab) => tab.route),
+      ],
       everythingElse: data.permissions.filter(
         (it) => !it.startsWith("automation:"),
       ),

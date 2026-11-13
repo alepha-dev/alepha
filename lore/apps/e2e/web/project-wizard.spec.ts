@@ -107,13 +107,13 @@ test.describe("Project wizard", () => {
 
     await page.getByRole("button", { name: /^next$/i }).click();
 
-    // Step 3 - set it up. Board and Releases start OFF now: a board is a way
-    // to look at quests, not a reason to have them, and the same argument
-    // applied consistently takes Releases with it.
-    const board = page.getByRole("button", { name: /^board/i }).first();
-    await expect(board).toHaveAttribute("aria-pressed", "false");
-    await board.click();
-    await expect(board).toHaveAttribute("aria-pressed", "true");
+    // Step 3 - set it up. Epics and Releases start OFF: a new project gets a
+    // quest list and its board, and adopts the rest later. Turning one on is
+    // the draft the submit must carry.
+    const epics = page.getByRole("button", { name: /^epics/i }).first();
+    await expect(epics).toHaveAttribute("aria-pressed", "false");
+    await epics.click();
+    await expect(epics).toHaveAttribute("aria-pressed", "true");
 
     await page.getByRole("button", { name: /create project/i }).click();
     await page.waitForURL(
@@ -135,11 +135,9 @@ test.describe("Project wizard", () => {
     expect(created.map((it) => it.key).sort()).toEqual(["knowledge", "work"]);
     const work = created.find((it) => it.key === "work");
     // The toggle above.
-    expect(work?.options.board).toBe(true);
-    // Left off, and off is what a new project gets: a board is a way to look
-    // at quests, not a reason to have them.
+    expect(work?.options.epics).toBe(true);
+    // Left off, and off is what a new project gets.
     expect(work?.options.releases).toBe(false);
-    expect(work?.options.epics).toBe(false);
   });
 
   test("skips the setup step when nothing has anything to set up", async ({

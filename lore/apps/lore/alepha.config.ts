@@ -253,6 +253,8 @@ export default defineConfig({
         "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [
+        // The quest preset bar: each button's label and hint, by preset key.
+        "quest.presets.",
         // The assistant's tool steps (#Q3211), named after the tool.
         "assistant.tool.",
         // The assistant's confirmation cards (#Q3210), titled by tool.

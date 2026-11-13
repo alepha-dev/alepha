@@ -91,8 +91,8 @@ export const projects = $entity({
      */
     coverageTarget: z.integer().min(0).max(100).optional(),
     /**
-     * The Kanban board's configurable column NAMES, in order. Only
-     * meaningful when the `work.board` option is on. Capped at 5 by the
+     * The Kanban board's configurable column NAMES, in order. The board is
+     * always there with Work. Capped at 5 by the
      * controller. Default is a single "In Progress" lane so existing
      * accepted quests keep a coherent column to live in.
      *

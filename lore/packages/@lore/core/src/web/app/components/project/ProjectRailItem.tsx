@@ -1,9 +1,9 @@
 import {
   ContextMenu,
   ContextMenuTrigger,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   cn,
 } from "@alepha/ui";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
@@ -19,7 +19,6 @@ import {
 } from "react";
 
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
-import { ProjectRailCard } from "./ProjectRailCard.tsx";
 
 export interface ProjectRailItemProps {
   project: {
@@ -27,7 +26,6 @@ export interface ProjectRailItemProps {
     title: string;
     slug: string;
     icon?: string | null;
-    repositoryUrl?: string | null;
   };
   /**
    * The project being looked at: full-height marker, ring, and scrolled into
@@ -40,7 +38,7 @@ export interface ProjectRailItemProps {
    */
   temporary?: boolean;
   /**
-   * Some icon of the dock is being dragged: no hover card opens meanwhile.
+   * Some icon of the dock is being dragged: no tooltip opens meanwhile.
    */
   dragging?: boolean;
   /**
@@ -59,8 +57,8 @@ export interface ProjectRailItemProps {
 }
 
 /**
- * One project icon on the dock (#E139): a link to the project, with the hover
- * card of #Q3370. A pinned one is also a drag handle and a drop target for
+ * One project icon on the dock (#E139): a link to the project, its name in a
+ * tooltip on hover, as the dock's other buttons have. A pinned one is also a drag handle and a drop target for
  * reordering the dock (#Q3438).
  */
 export const ProjectRailItem = (props: ProjectRailItemProps) => {
@@ -100,7 +98,7 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
         setDragRef(node);
         setDropRef(node);
       }}
-      // In the capture phase: the context-menu and hover-card triggers
+      // In the capture phase: the context-menu and tooltip triggers
       // inside handle `pointerdown` themselves, and a bubbling listener here
       // never heard it, so no drag ever started.
       onPointerDownCapture={
@@ -122,17 +120,13 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
     >
       <ContextMenu>
         <ContextMenuTrigger render={<div className="flex" />}>
-          <HoverCard
-            // A card left open when a drag starts would ride along with the
-            // pointer: shut while anything is dragged.
+          <Tooltip
+            // A tooltip left open when a drag starts would ride along with
+            // the pointer: shut while anything is dragged.
             open={open && !props.dragging}
             onOpenChange={(next) => setOpen(next && !props.dragging)}
           >
-            <HoverCardTrigger
-              // One second (#Q3413): at 150 ms a card flashed open for every icon
-              // the pointer crossed on its way down the rail.
-              delay={1000}
-              closeDelay={100}
+            <TooltipTrigger
               render={
                 <Link
                   href={router.path("project", {
@@ -181,11 +175,11 @@ export const ProjectRailItem = (props: ProjectRailItemProps) => {
                   isDragging && "opacity-70 shadow-lg",
                 )}
               />
-            </HoverCardTrigger>
-            <HoverCardContent side="right" align="start" sideOffset={12}>
-              <ProjectRailCard project={project} />
-            </HoverCardContent>
-          </HoverCard>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-sm font-semibold">
+              {project.title}
+            </TooltipContent>
+          </Tooltip>
         </ContextMenuTrigger>
         {props.menu}
       </ContextMenu>

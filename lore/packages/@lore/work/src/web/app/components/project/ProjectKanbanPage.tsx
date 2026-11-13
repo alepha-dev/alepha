@@ -5,10 +5,12 @@ import { useEffect } from "react";
 import type { KanbanController } from "../../../../api/controllers/KanbanController.ts";
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
 import KanbanBoard from "../kanban/KanbanBoard.tsx";
+import KanbanBoardSkeleton from "../kanban/KanbanBoardSkeleton.tsx";
 import { preloadQuestView } from "./quest/LazyQuestView.tsx";
 
 /**
- * The Kanban board, at `/:projectSlug/kanban`.
+ * The Kanban board, the Board tab of the Quests page, at
+ * `/:projectSlug/quests/board`.
  *
  * It was a *mode* of the Quests page until this route existed — no URL, no
  * sidebar entry, no way to link a card — which is what
@@ -64,8 +66,10 @@ const ProjectKanbanPage = () => {
         ? NO_QUESTS
         : undefined;
 
+  // The board's shape while the first read is in flight, never a blank
+  // page under the tabs.
   if (!project || !quests) {
-    return null;
+    return <KanbanBoardSkeleton />;
   }
 
   return (

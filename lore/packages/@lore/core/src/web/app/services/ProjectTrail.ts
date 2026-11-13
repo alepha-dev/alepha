@@ -72,10 +72,14 @@ export class ProjectTrail {
           : undefined,
       });
     }
-    // A settings page adds its section, "Project › Settings › Quests", since
+    // A settings page adds its section, "Project › Settings › Plan", since
     // the sidebar group is the only other thing naming it (#Q2565).
     const activeSettings = this.shell.findSettingsTab(routeName);
-    if (activeSettings) {
+    // Automations pages already carry their own "Automations" crumb.
+    if (
+      activeSettings &&
+      crumbs.at(-1)?.label !== tr(activeSettings.section.labelKey)
+    ) {
       crumbs.push({ label: tr(activeSettings.section.labelKey) });
     }
     // A detail page's own leaf, each contributed by the module that owns

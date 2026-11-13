@@ -37,6 +37,8 @@ export type {
   DataTableFilterValues,
   DataTableNoFilterFields,
   DataTablePersistedFacets,
+  DataTablePreset,
+  DataTablePresets,
   DataTableSource,
   DataTableStatCard,
   DataTableSummary,

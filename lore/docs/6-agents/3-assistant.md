@@ -50,8 +50,8 @@ name with the agent badge and the client `lore-ai`.
 
 - Each message goes to the model with the page you are on (the project's id,
   name and language) and the results of the tools it runs, which can include a
-  quest's description or a folio's body. On lore.alepha.dev the model runs on
-  Cloudflare Workers AI.
+  quest's description or a folio's body. The model runs on Anthropic when the
+  operator set an Anthropic key, otherwise on Cloudflare Workers AI.
 - Conversations are stored in your Lore, visible to you only, and deleted 30
   days after their last message.
 - Each user has a token budget (200,000 tokens per 24 hours by default) and a
@@ -65,9 +65,16 @@ This part is for whoever runs the Lore instance.
 The assistant is off on every instance until the environment variable
 `AI_ASSISTANT_ENABLED` is set to any value other than empty, `false` or `0`.
 
-⚠️ It needs Cloudflare Workers AI. Lore running on Cloudflare Workers has the
-model at hand. A self-hosted instance running anywhere else has no model to
-talk to, and refuses to start with the variable set.
+The model comes from one of two vendors, picked by the environment:
+
+- **`AI_API_KEY` set:** Anthropic, on any runtime. `AI_MODEL` names the model,
+  for example `claude-sonnet-5-5`, and is required. `AI_BASE_URL` sends the
+  calls through another endpoint, such as Cloudflare AI Gateway.
+- **No key, on Cloudflare Workers:** Cloudflare Workers AI, through the
+  Worker's `ai` binding. No key is needed, and `AI_MODEL` replaces the default
+  model.
+- **No key, anywhere else:** no model to talk to. Lore refuses to start with
+  `AI_ASSISTANT_ENABLED` set.
 
 The budget, the rate and the retention are the `api.ai` parameter, which an
 administrator edits at runtime from the admin console's parameters.

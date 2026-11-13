@@ -809,19 +809,24 @@ export class ViteDevServerProvider {
 
     // Reload handler: polls /__alepha/ready before reloading to avoid
     // hitting the server while it's still restarting.
+    //
+    // ⚠️ Its own hot context from `/@vite/client`, never `import.meta.hot`:
+    // this script is inline in the SSR HTML and Vite never transforms it, so
+    // `import.meta.hot` is undefined here and a listener guarded by it was
+    // never registered. Every server-side reload then left the browser on the
+    // old code until a manual refresh.
     tags.push(`<script type="module">
-if (import.meta.hot) {
-  import.meta.hot.on("alepha:reload", async () => {
-    for (let i = 0; i < 50; i++) {
-      try {
-        const res = await fetch("/__alepha/ready");
-        if (res.ok) { window.location.reload(); return; }
-      } catch {}
-      await new Promise(r => setTimeout(r, 200));
-    }
-    window.location.reload();
-  });
-}
+import { createHotContext } from "/@vite/client";
+createHotContext("/@alepha/reload").on("alepha:reload", async () => {
+  for (let i = 0; i < 50; i++) {
+    try {
+      const res = await fetch("/__alepha/ready");
+      if (res.ok) { window.location.reload(); return; }
+    } catch {}
+    await new Promise(r => setTimeout(r, 200));
+  }
+  window.location.reload();
+});
 </script>`);
 
     if (style) {
