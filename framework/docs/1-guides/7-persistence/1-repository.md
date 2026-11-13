@@ -4,7 +4,7 @@ Alepha ORM is built on top of [Drizzle ORM](https://orm.drizzle.team/) and Drizz
 
 `$entity` defines a database table. `$repository` creates a type-safe data access layer for that table.
 
-PostgreSQL and SQLite (including Cloudflare D1) are both supported. SQLite is the default driver of `alepha/orm`, and a `postgres://` `DATABASE_URL` selects PostgreSQL, with nothing else to register (see [Database URL Configuration](/docs/guides-persistence-migrations#database-url-configuration)).
+PostgreSQL and SQLite (including Cloudflare D1) are both supported. SQLite is the default driver of `alepha/orm`, and a `postgres://` `DATABASE_URL` selects PostgreSQL, with nothing else to register (see [Database URL Configuration](/docs/guides-persistence-migrations#database-url-configuration)). To choose between them, and to move an app from one to the other, see [SQLite or Postgres](/docs/guides-persistence-sqlite-or-postgres).
 
 The API is mostly database-agnostic, but some features (e.g. certain column types or operators) may be database-specific.
 

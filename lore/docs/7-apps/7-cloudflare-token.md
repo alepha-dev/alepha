@@ -22,6 +22,12 @@ estate deploys to:
 All six are required: Lore refuses a token that is missing any of them. All
 six are **Account** permissions, and there are no Zone rows to add.
 
+A copy that runs on **Postgres** (its `DATABASE_URL` names a Postgres server)
+also needs **Hyperdrive**, Edit. Lore does not check it when you save, since
+most copies never use it: without it, the deploy stops at its Hyperdrive
+step with Cloudflare's "Authentication error". Add it to the token at
+Cloudflare; the estate needs no change.
+
 The quickest way:
 
 1. Open Cloudflare's token form with the six permissions already added:
