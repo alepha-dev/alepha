@@ -985,7 +985,8 @@ export class QuestCommand {
 
   public readonly shelve = $command({
     name: "shelve",
-    description: "Set a todo quest aside as out of scope, without deleting it",
+    description:
+      "Set a quest aside as out of scope, without deleting it; an accepted one is unassigned in the same step",
     args: QuestCommand.REF_ARG,
     flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
     handler: async ({ args, flags, print }) => {

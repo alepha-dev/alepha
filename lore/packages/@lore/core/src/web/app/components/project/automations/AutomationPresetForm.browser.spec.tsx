@@ -35,6 +35,7 @@ describe("Automation preset setup form", () => {
     expect,
   }) => {
     const memberId = crypto.randomUUID();
+    const modes: boolean[] = [];
     const saved: unknown[] = [];
     const preset: AutomationPresetDescriptor = {
       key: "tagged-quest-digest",
@@ -68,8 +69,9 @@ describe("Automation preset setup form", () => {
         <AutomationPresetForm
           preset={preset}
           choices={{ recipient: [{ value: memberId, label: "Myself" }] }}
-          onSubmit={async (values) => {
+          onSubmit={async (values, _bindings, enabled) => {
             saved.push(values);
+            modes.push(enabled);
           }}
         />
       </AlephaContext.Provider>,
@@ -84,12 +86,14 @@ describe("Automation preset setup form", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Tag" }), {
       target: { value: "daily" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create automation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create and enable" }));
     await waitFor(() =>
       expect(saved).toEqual([
         { recipient: memberId, channel: "inbox", tag: "daily" },
       ]),
     );
+    // The primary button creates it enabled (#Q3573).
+    expect(modes).toEqual([true]);
   });
   it("submits an explicitly selected shared identity and version without creating a variable", async ({
     expect,
@@ -137,8 +141,8 @@ describe("Automation preset setup form", () => {
               value: { kind: "member", value: memberId },
             },
           ]}
-          onSubmit={async (values, bindings) => {
-            saved.push({ values, bindings });
+          onSubmit={async (values, bindings, enabled) => {
+            saved.push({ values, bindings, enabled });
           }}
         />
       </AlephaContext.Provider>,
@@ -157,7 +161,8 @@ describe("Automation preset setup form", () => {
     fireEvent.click(
       await screen.findByRole("option", { name: "teamRecipient (v3)" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Create automation" }));
+    // Save as draft: the same write, disabled (#Q3573).
+    fireEvent.click(screen.getByRole("button", { name: "Save as draft" }));
     await waitFor(() =>
       expect(saved).toEqual([
         {
@@ -165,6 +170,7 @@ describe("Automation preset setup form", () => {
           bindings: {
             recipient: { id: variableId, key: "teamRecipient", version: 3 },
           },
+          enabled: false,
         },
       ]),
     );
@@ -242,7 +248,7 @@ describe("Automation preset setup form", () => {
       screen.getByRole("textbox", { name: "New variable key" }),
       { target: { value: "teamRecipient" } },
     );
-    fireEvent.click(screen.getByRole("button", { name: "Create automation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create and enable" }));
     await waitFor(() => expect(attempts).toBe(1));
     await waitFor(() =>
       expect(
@@ -251,7 +257,7 @@ describe("Automation preset setup form", () => {
           .getAttribute("aria-checked"),
       ).toBe("true"),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Create automation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create and enable" }));
     await waitFor(() =>
       expect(saved).toEqual([
         {

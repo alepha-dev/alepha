@@ -221,23 +221,29 @@ test.describe("agent prompts", () => {
       expect(copied).toBe(`Edited review of #E${epic.number}.`);
     });
 
-    await test.step("Work on it on a draft epic copies the prompt and marks the epic ready", async () => {
-      // A draft epic's quests refuse to be accepted, so the click that hands
-      // it over also marks it ready: one click, not Mark as ready and then
-      // Work on it (feedback #P2226, #Q3228). Review Epic sits beside it.
+    await test.step("Work on it on a draft epic confirms, copies the prompt and marks the epic ready", async () => {
+      // A draft epic's quests refuse to be accepted, so handing it over also
+      // marks it ready (feedback #P2226, #Q3228), after a confirm that says
+      // so (#Q3583): the confirm's own click copies and marks. Review Epic
+      // sits beside it.
       await page.getByRole("button", { name: "Open row actions" }).click();
       await page.getByRole("menuitem", { name: /agent prompts/i }).click();
       await expect(
         page.getByRole("menuitem", { name: /^review epic$/i }),
       ).toBeVisible();
       await page.getByRole("menuitem", { name: /^work on it$/i }).click();
+      const confirm = page.getByRole("alertdialog");
+      await expect(confirm).toContainText("Mark this epic ready?");
+      await confirm
+        .getByRole("button", { name: "Copy and mark ready" })
+        .click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
       // epicActivate's own default, not the review's.
       expect(copied).toContain("to completion, quest by quest");
       expect(copied).toContain(`#E${epic.number}`);
 
-      // The status write goes out with the click, behind an Undo toast.
+      // The status write goes out with the confirm, behind an Undo toast.
       await expect
         .poll(
           () =>

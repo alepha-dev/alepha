@@ -1,13 +1,7 @@
 import { $inject, Alepha } from "alepha";
-import { $logger } from "alepha/logger";
 import { $tool } from "alepha/mcp";
 import { currentUserAtom } from "alepha/security";
-import {
-  BadRequestError,
-  UnauthorizedError,
-  isHttpError,
-  okSchema,
-} from "alepha/server";
+import { BadRequestError, UnauthorizedError, okSchema } from "alepha/server";
 
 import { automationAdoptionPreviewSchema } from "../../api/schemas/automationAdoptionPreviewSchema.ts";
 import { automationCatalogSchema } from "../../api/schemas/automationCatalogSchema.ts";
@@ -24,7 +18,6 @@ import { AutomationVariableService } from "../../api/services/AutomationVariable
 import { automationAdoptionPreviewParamsSchema } from "../schemas/automationAdoptionPreviewParamsSchema.ts";
 import { automationAdoptParamsSchema } from "../schemas/automationAdoptParamsSchema.ts";
 import { automationCreateParamsSchema } from "../schemas/automationCreateParamsSchema.ts";
-import { automationCreateResultSchema } from "../schemas/automationCreateResultSchema.ts";
 import { automationDeleteParamsSchema } from "../schemas/automationDeleteParamsSchema.ts";
 import { automationGetParamsSchema } from "../schemas/automationGetParamsSchema.ts";
 import { automationListParamsSchema } from "../schemas/automationListParamsSchema.ts";
@@ -44,7 +37,6 @@ import { ProjectTools } from "./ProjectTools.ts";
  */
 export class AutomationTools {
   protected readonly alepha = $inject(Alepha);
-  protected readonly log = $logger();
   protected readonly projects = $inject(ProjectTools);
   protected readonly service = $inject(AutomationService);
   protected readonly adoption = $inject(AutomationAdoptionService);
@@ -96,42 +88,18 @@ export class AutomationTools {
   });
   automation_create = $tool({
     description:
-      "Create a typed automation as yourself. Discover slots with automation_catalog. The rule is always created disabled; with enabled=true the tool then enables it in a second, validated step. If that step is refused, the created rule is still returned, disabled, with enableRefusal saying why: fix the cause, then enable it with automation_update (enabled=true, expectedRevision). The author and credential are immutable. No AI executes inside a rule.",
+      "Create a typed automation as yourself. Discover slots with automation_catalog. With enabled=true the rule is created enabled in one atomic write, after the checks enabling runs; if they refuse, nothing is created and the refusal says why. Without it the rule is a draft, disabled until automation_update enables it. The author and credential are immutable. No AI executes inside a rule.",
     schema: {
       params: automationCreateParamsSchema,
-      result: automationCreateResultSchema,
+      result: automationResourceSchema,
     },
     handler: async ({ params }) => {
       const projectId = await this.project(params);
-      const user = this.user();
-      const rule = await this.service.create(projectId, user, {
+      return this.service.create(projectId, this.user(), {
         title: params.title,
         rule: params.rule,
+        enabled: params.enabled,
       });
-      if (!params.enabled) return rule;
-      try {
-        return await this.service.setEnabled(
-          projectId,
-          rule.id,
-          user,
-          true,
-          rule.revision,
-        );
-      } catch (error) {
-        // The rule exists: answering only the error would lose its id, and a
-        // retry of the create would make a second one.
-        if (isHttpError(error) && error.status < 500)
-          return { ...rule, enableRefusal: error.message.slice(0, 1024) };
-        this.log.warn("automation_create: enable failed after create", {
-          automationId: rule.id,
-          error,
-        });
-        return {
-          ...rule,
-          enableRefusal:
-            "Enabling failed; the rule was created disabled. Retry with automation_update.",
-        };
-      }
     },
   });
   automation_list = $tool({

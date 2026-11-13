@@ -4,6 +4,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  useDialog,
 } from "@alepha/ui";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -43,6 +44,13 @@ export interface AgentPromptsMenuItem {
    * the hand-over is one click (feedback #P2226, #Q3228).
    */
   onSelect?: () => void;
+  /**
+   * Ask first, when the click does more than copy (#Q3583): a draft epic's
+   * Work on it marks the epic ready, which used to happen silently. The copy
+   * and `onSelect` then run in the confirm button's own click, never after
+   * an `await`, so Safari still lets the copy through.
+   */
+  confirm?: { title: string; description: string; confirmLabel: string };
 }
 
 export interface AgentPromptsMenuProps {
@@ -87,6 +95,7 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
   const { tr } = useI18n<I18n, "en">();
   const kinds = useInject(AgentPromptRegistry);
   const agentPrompt = useAgentPrompt();
+  const dialog = useDialog();
 
   if (!agentPrompt.enabled || props.items.length === 0) {
     return null;
@@ -116,8 +125,19 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
             <DropdownMenuItem
               key={item.kind}
               onClick={() => {
-                void agentPrompt.copy(item.kind, item.subject());
-                item.onSelect?.();
+                const act = () => {
+                  void agentPrompt.copy(item.kind, item.subject());
+                  item.onSelect?.();
+                };
+                if (!item.confirm) {
+                  act();
+                  return;
+                }
+                void dialog.confirm({
+                  ...item.confirm,
+                  cancelLabel: tr("common.cancel"),
+                  onConfirm: act,
+                });
               }}
             >
               <meta.icon />

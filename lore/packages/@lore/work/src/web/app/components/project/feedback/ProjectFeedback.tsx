@@ -1,5 +1,9 @@
 import { Segmented, cn } from "@alepha/ui";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
+import {
+  AutomationSubscriptionBell,
+  currentProjectAtom,
+  type I18n,
+} from "@lore/core/web";
 import {
   useClient,
   useInfiniteQuery,
@@ -311,6 +315,13 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               })}
               size="lg"
               fullWidth
+            />
+            <AutomationSubscriptionBell
+              presetKey="feedback-created"
+              label={tr("feedback.subscription.label")}
+              description={tr("feedback.subscription.description")}
+              offDescription={tr("feedback.subscription.offDescription")}
+              testId="feedback-subscription-bell"
             />
           </div>
 

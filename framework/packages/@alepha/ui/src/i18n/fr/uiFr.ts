@@ -712,6 +712,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   // `nav.*Key` on `AdminRouter` names these; the English `label` beside the key
   // is the default an application without this catalogue keeps seeing.
   "admin.nav.admin": "Administration",
+  "admin.nav.adminPanel": "Panneau d'administration",
   "admin.nav.analytics": "Analytique",
   "admin.nav.audits": "Journal d'audit",
   "admin.nav.backToSite": "Retour au site",
@@ -1151,6 +1152,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.users.cantDisableSelf":
     "Vous ne pouvez pas désactiver votre propre compte",
   "admin.users.colEmail": "Adresse e-mail",
+  "admin.users.colPicture": "Photo",
   "admin.users.colFirstName": "Prénom",
   "admin.users.colJoined": "Inscrit le",
   "admin.users.colLastLogin": "Dernière connexion",
@@ -1196,7 +1198,6 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.users.statusVerified": "Vérifié",
   "admin.users.thisUser": "cet utilisateur",
   "admin.users.verified": "Vérifié",
-  "admin.users.viewProfile": "Voir le profil",
 
   // ─── The account kit (components/account/*) ───────────────────────────────
   "account.connections.colApp": "Application",

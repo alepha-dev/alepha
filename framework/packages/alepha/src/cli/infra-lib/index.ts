@@ -3,9 +3,7 @@ import { $module } from "alepha";
 import { BayAdapter } from "./adapters/BayAdapter.ts";
 import { CloudflareAdapter } from "./adapters/CloudflareAdapter.ts";
 import type { EnvironmentDescriptor } from "./adapters/InfraAdapter.ts";
-import { GitHubSecretStore } from "./providers/GitHubSecretStore.ts";
 import { InfraCacheProvider } from "./providers/InfraCacheProvider.ts";
-import { MemorySecretStore } from "./providers/MemorySecretStore.ts";
 import type { BayEnvironmentOptions } from "./schemas/bayEnvironmentOptions.ts";
 import type { CloudflareEnvironmentOptions } from "./schemas/cloudflareEnvironmentOptions.ts";
 import { CloudflareCredentialSource } from "./services/CloudflareCredentialSource.ts";
@@ -14,7 +12,6 @@ import { InfraInspector } from "./services/InfraInspector.ts";
 import { InfraOrchestrator } from "./services/InfraOrchestrator.ts";
 import { NamingService } from "./services/NamingService.ts";
 import { PostgresMigrationsService } from "./services/PostgresMigrationsService.ts";
-import { SecretFilterService } from "./services/SecretFilterService.ts";
 import { WranglerApi } from "./services/WranglerApi.ts";
 
 /**
@@ -43,10 +40,7 @@ export const AlephaInfraLibPlugin = $module({
     PostgresMigrationsService,
     WranglerApi,
     InfraCacheProvider,
-    GitHubSecretStore,
-    MemorySecretStore,
     NamingService,
-    SecretFilterService,
     InfraInspector,
     InfraOrchestrator,
   ],
@@ -108,10 +102,7 @@ export * from "./schemas/bayBackupOptions.ts";
 export * from "./schemas/bayEnvironmentOptions.ts";
 export * from "./schemas/cloudflareEnvironmentOptions.ts";
 export * from "./schemas/environmentOptions.ts";
-export * from "./providers/GitHubSecretStore.ts";
-export * from "./providers/MemorySecretStore.ts";
 export * from "./providers/InfraCacheProvider.ts";
-export * from "./providers/SecretStoreProvider.ts";
 export * from "./schemas/cloudflare.ts";
 export * from "./schemas/infra.ts";
 export * from "./secretKeys.ts";
@@ -124,5 +115,4 @@ export * from "./services/PostgresMigrationsService.ts";
 export * from "./services/NamingService.ts";
 export * from "./services/InfraInspector.ts";
 export * from "./services/InfraOrchestrator.ts";
-export * from "./services/SecretFilterService.ts";
 export * from "./services/WranglerApi.ts";

@@ -16,7 +16,7 @@
  *   through `CloudflareCredentialSource`. {@link WorkerCloudflareAdapter} is
  *   what runs here, composing #1517's deploy client, #288's provisioning client and
  *   the migration service.
- * - `GitHubSecretStore` and `InfraCacheProvider` read the disk.
+ * - `InfraCacheProvider` reads the disk.
  *
  * Nor does it export the `cloudflare()` and `bay()` factories: a factory
  * imports its adapter class eagerly. A Worker that deploys (Lore's
@@ -29,20 +29,16 @@
 import { $module } from "alepha";
 
 import { WorkerCloudflareAdapter } from "./adapters/WorkerCloudflareAdapter.ts";
-import { MemorySecretStore } from "./providers/MemorySecretStore.ts";
 import { D1MigrationsService } from "./services/D1MigrationsService.ts";
 import { InfraInspector } from "./services/InfraInspector.ts";
 import { InfraOrchestrator } from "./services/InfraOrchestrator.ts";
 import { NamingService } from "./services/NamingService.ts";
 import { PostgresMigrationsService } from "./services/PostgresMigrationsService.ts";
-import { SecretFilterService } from "./services/SecretFilterService.ts";
 
 export * from "./adapters/InfraAdapter.ts";
 export * from "./adapters/WorkerCloudflareAdapter.ts";
 export * from "./atoms/infraOptions.ts";
 export * from "./schemas/environmentOptions.ts";
-export * from "./providers/MemorySecretStore.ts";
-export * from "./providers/SecretStoreProvider.ts";
 export * from "./schemas/cloudflare.ts";
 export * from "./schemas/infra.ts";
 export * from "./secretKeys.ts";
@@ -54,7 +50,6 @@ export * from "./services/PostgresMigrationsService.ts";
 export * from "./services/NamingService.ts";
 export * from "./services/InfraInspector.ts";
 export * from "./services/InfraOrchestrator.ts";
-export * from "./services/SecretFilterService.ts";
 
 export const AlephaInfraLibPlugin = $module({
   name: "alepha.cli.infra-lib",
@@ -62,9 +57,7 @@ export const AlephaInfraLibPlugin = $module({
     WorkerCloudflareAdapter,
     D1MigrationsService,
     PostgresMigrationsService,
-    MemorySecretStore,
     NamingService,
-    SecretFilterService,
     InfraInspector,
     InfraOrchestrator,
   ],

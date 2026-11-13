@@ -56,6 +56,8 @@ export {
   type DetailTab,
 } from "./DetailLayout.tsx";
 export { inboxUnreadAtom } from "./inboxUnreadAtom.ts";
+export { navCrumbsAtom } from "./navCrumbsAtom.ts";
+export { useNavCrumbs } from "./useNavCrumbs.ts";
 export {
   NavigationProgress,
   type NavigationProgressProps,

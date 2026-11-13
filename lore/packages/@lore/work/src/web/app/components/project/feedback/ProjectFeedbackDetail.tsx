@@ -211,7 +211,17 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
             {tr("feedback.back")}
           </Button>
         )}
-        <h2 className="flex-1 text-base font-semibold">{feedback.title}</h2>
+        {/* `#P120 - Title`, the shape a quest's and an epic's titles have
+            (#Q3574): the number in the title's own colour, the separator
+            muted, truncated with the whole line in the tooltip. */}
+        <h2
+          className="min-w-0 flex-1 truncate text-base font-semibold"
+          title={`${formatReference("feedback", feedback.shortId)} - ${feedback.title}`}
+          data-testid="feedback-detail-title"
+        >
+          {formatReference("feedback", feedback.shortId)}{" "}
+          <span className="text-muted-foreground">-</span> {feedback.title}
+        </h2>
         <Badge variant="secondary" className="uppercase">
           {tr(`feedback.filter.${feedback.status}`)}
         </Badge>

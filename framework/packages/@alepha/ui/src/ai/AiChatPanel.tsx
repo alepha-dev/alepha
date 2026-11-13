@@ -116,7 +116,9 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
 
   return (
     <div data-testid="ai-chat" className="flex h-full min-h-0 w-full flex-col">
-      <div className="border-border flex items-center gap-2 border-b py-2.5 ps-4 pe-2.5">
+      {/* `h-14`, the height of `AppShell`'s header: docked beside a page, the
+          two headers' bottom lines continue each other (#Q3584). */}
+      <div className="border-border flex h-14 shrink-0 items-center gap-2 border-b ps-4 pe-2.5">
         <Sparkles className="text-primary size-4 shrink-0" />
         {props.renderTitle ? (
           props.renderTitle(title, titleClassName)

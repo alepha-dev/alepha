@@ -388,6 +388,116 @@ const ProjectEpics = () => {
     });
   };
 
+  /**
+   * Shelve every selected epic that can be (#Q3561), as the row menu does
+   * one at a time.
+   *
+   * Confirmed first, because it reaches past the epics: their open quests
+   * are unassigned and shelved with them. The confirm counts those quests
+   * and names the epics left out (completed or shelved already), which are
+   * never sent. Then HELD until the toast closes, like the row's shelve:
+   * its inverse is lossy, so Undo must keep the write from ever landing.
+   */
+  const bulkShelve = async (
+    selected: EpicResource[],
+    ctx: BulkActionContext<EpicResource>,
+  ) => {
+    const shelvable = selected.filter(isShelvable);
+    const skipped = selected.filter((epic) => !isShelvable(epic));
+    const n = String(shelvable.length);
+    const quests = shelvable.reduce((sum, epic) => sum + openQuestsOf(epic), 0);
+    const description = [
+      tr("epic.bulk.shelve.description", { args: [String(quests)] }),
+      ...(skipped.length > 0
+        ? [
+            tr("epic.bulk.shelve.skipped", {
+              args: [
+                skipped
+                  .map((epic) => `#E${epic.number} ${epic.title}`)
+                  .join(", "),
+              ],
+            }),
+          ]
+        : []),
+    ].join(" ");
+    const confirmed = await dialog.confirm({
+      title: tr("epic.bulk.shelve.title", { args: [n] }),
+      description,
+      confirmLabel: tr("epic.bulk.shelve.confirm", { args: [n] }),
+      cancelLabel: tr("common.cancel"),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    ctx.clearSelection();
+    const handles = shelvable.map((epic) =>
+      ctx.optimistic.patch(epic, { ...epic, status: "shelved" }),
+    );
+    void undoable.run({
+      message: tr("epic.undo.bulkShelved", { args: [n] }),
+      undoLabel: tr("board.undo.undo"),
+      apply: () => ({
+        rollback: () => handles.forEach((h) => h.rollback()),
+        settle: () => handles.forEach((h) => h.settle()),
+      }),
+      commit: async () => {
+        const outcome = await settleBulk(
+          shelvable.map((epic) => epic.id),
+          (id) => epicApi.shelveEpic({ params: { id } }),
+        );
+        if (outcome.failed.length > 0) reportBulk(outcome, "");
+      },
+      onCommitted: invalidateWork,
+    });
+  };
+
+  /**
+   * Unshelve every selected shelved epic, sent at once with Undo shelving
+   * them again, as the row's unshelve does: the quests come back unassigned
+   * whichever way, so the round trip loses nothing.
+   */
+  const bulkUnshelve = (
+    selected: EpicResource[],
+    ctx: BulkActionContext<EpicResource>,
+  ) => {
+    const shelved = selected.filter((epic) => epic.status === "shelved");
+    const skipped = selected.length - shelved.length;
+    let done: number[] = [];
+    ctx.clearSelection();
+    const handles = shelved.map((epic) =>
+      ctx.optimistic.patch(epic, {
+        ...epic,
+        // The server's own rule: back to in progress if it ever started.
+        status: epic.startedAt ? "in_progress" : "ready",
+      }),
+    );
+    void undoable.run({
+      message: tr("epic.undo.bulkUnshelved", {
+        args: [String(shelved.length)],
+      }),
+      description:
+        skipped > 0
+          ? tr("epic.bulk.unshelve.skipped", { args: [String(skipped)] })
+          : undefined,
+      undoLabel: tr("board.undo.undo"),
+      apply: () => ({
+        rollback: () => handles.forEach((h) => h.rollback()),
+        settle: () => handles.forEach((h) => h.settle()),
+      }),
+      commit: async () => {
+        const outcome = await settleBulk(
+          shelved.map((epic) => epic.id),
+          (id) => epicApi.unshelveEpic({ params: { id } }),
+        );
+        done = outcome.done;
+        if (outcome.failed.length > 0) reportBulk(outcome, "");
+      },
+      undo: () =>
+        settleBulk(done, (id) => epicApi.shelveEpic({ params: { id } })),
+      onCommitted: invalidateWork,
+      onUndone: invalidateWork,
+    });
+  };
+
   // Page-wide: every row and bulk write waits while any of them runs. The
   // bulk bar has no disabled state, so its buttons are hidden for that time.
   const busy = setReleaseAction.loading || bulkReleaseAction.loading;
@@ -618,6 +728,27 @@ const ProjectEpics = () => {
         selected.length > 0 &&
         selected.every((epic) => epic.status === "draft"),
       onClick: (selected, ctx) => bulkReady(selected, ctx),
+    });
+  }
+
+  // Shelve when the selection holds an epic that can be shelved, Unshelve
+  // when it holds a shelved one; a mixed selection gets both (#Q3561).
+  if (epicApi.shelveEpic.can()) {
+    bulkActions.push({
+      icon: Archive,
+      label: tr("epic.status.actions.shelve"),
+      visible: (selected) => !busy && selected.some(isShelvable),
+      onClick: (selected, ctx) => void bulkShelve(selected, ctx),
+    });
+  }
+
+  if (epicApi.unshelveEpic.can()) {
+    bulkActions.push({
+      icon: ArchiveRestore,
+      label: tr("epic.status.actions.unshelve"),
+      visible: (selected) =>
+        !busy && selected.some((epic) => epic.status === "shelved"),
+      onClick: (selected, ctx) => bulkUnshelve(selected, ctx),
     });
   }
 
@@ -909,16 +1040,35 @@ const ProjectEpics = () => {
                               row: EpicResource,
                               ctx: RowActionContext<EpicResource>,
                             ) => {
-                              // The copy first, inside the click: Safari's
-                              // clipboard activation does not survive an
-                              // await.
-                              void agentPrompt.copy(
-                                "epicActivate",
-                                promptSubject.forEpic(row),
-                              );
-                              if (row.status === "draft") {
-                                setStatus(row, "ready", ctx);
+                              // The copy inside a click: Safari's clipboard
+                              // activation does not survive an await.
+                              const copy = () =>
+                                void agentPrompt.copy(
+                                  "epicActivate",
+                                  promptSubject.forEpic(row),
+                                );
+                              if (row.status !== "draft") {
+                                copy();
+                                return;
                               }
+                              // A draft epic becomes ready with it: asked
+                              // first (#Q3583), and the copy runs in the
+                              // confirm button's own click.
+                              void dialog.confirm({
+                                title: tr("epic.workOnIt.confirm.title"),
+                                description: tr(
+                                  "epic.workOnIt.confirm.description",
+                                  { args: [row.title] },
+                                ),
+                                confirmLabel: tr(
+                                  "epic.workOnIt.confirm.action",
+                                ),
+                                cancelLabel: tr("common.cancel"),
+                                onConfirm: () => {
+                                  copy();
+                                  setStatus(row, "ready", ctx);
+                                },
+                              });
                             },
                           },
                         ]
@@ -1181,3 +1331,11 @@ const releaseOf = (
  */
 const isDeletable = (epic: Pick<EpicResource, "status">): boolean =>
   epic.status === "draft" || epic.status === "ready";
+
+/**
+ * Whether the server will shelve this epic: any status but `completed`,
+ * the server's own rule (`EpicWorkflowService.assertShelvable`, #E78), and
+ * not one already shelved, which would have nothing to do.
+ */
+const isShelvable = (epic: Pick<EpicResource, "status">): boolean =>
+  epic.status !== "completed" && epic.status !== "shelved";

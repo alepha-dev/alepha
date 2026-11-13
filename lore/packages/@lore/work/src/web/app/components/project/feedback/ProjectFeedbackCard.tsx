@@ -1,5 +1,5 @@
 import { TimeAgo, cn } from "@alepha/ui";
-import type { I18n } from "@lore/core/web";
+import { formatReference, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import {
   ChevronRight,
@@ -54,8 +54,12 @@ const ProjectFeedbackCard = (props: ProjectFeedbackCardProps) => {
         {statusIcon(feedback.status)}
       </span>
       <div className="ml-1 flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-sm leading-tight font-semibold">
-          {feedback.title}
+        <span
+          className="truncate text-sm leading-tight font-semibold"
+          title={`${formatReference("feedback", feedback.shortId)} - ${feedback.title}`}
+        >
+          {formatReference("feedback", feedback.shortId)}{" "}
+          <span className="text-muted-foreground">-</span> {feedback.title}
         </span>
         <span className="text-muted-foreground flex min-w-0 items-center gap-1 text-xs leading-tight">
           <Clock className="size-3 shrink-0" />

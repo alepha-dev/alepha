@@ -47,7 +47,6 @@ const QuestsPlate = () => {
           : (routerState.name ?? "projectQuests")
       }
       tabsTestId="quests-view-tabs"
-      tabsVariant="folder"
       // Both views own their scrolling: the table its rows, the board its
       // columns.
       scroll={false}

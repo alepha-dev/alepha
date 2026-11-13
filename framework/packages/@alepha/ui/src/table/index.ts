@@ -8,9 +8,9 @@
  * naming a `column` also behind a funnel in that column's header. Above that
  * bar it can hold a collapsible summary (`DataTableSummary`): stat cards
  * (`DataTableStatCard`) given or fetched with the table's filters, and any
- * node beside them, and above everything a band of `tabs` (`DataTableTab`),
- * views of the same page with their counts. A `help` node sits behind a `?` at the end of the
- * toolbar's icons.
+ * node beside them. A `help` node sits behind a `?` at the end of the
+ * toolbar's icons. A page with views of one table is a `PlateLayout`, whose
+ * folder tabs sit above it.
  * `DataTableFilterMenu`, `DataTableFilterDialog` and `DataTableBulkMenu`
  * are its parts, and `useTableSelection` its selection state. `PermissionMatrix` is the grid of
  * roles against permissions the admin and account kits draw.
@@ -21,11 +21,6 @@
 export { PAGE_SIZES } from "./DataTableFooter.tsx";
 export { DataTable, type DataTableProps } from "./DataTable.tsx";
 export type { DataTableBaseProps } from "./dataTableBaseProps.ts";
-export {
-  DataTableTabs,
-  type DataTableTab,
-  type DataTableTabsProps,
-} from "./DataTableTabs.tsx";
 export type {
   DataTableEmptyState,
   DataTableFilterField,

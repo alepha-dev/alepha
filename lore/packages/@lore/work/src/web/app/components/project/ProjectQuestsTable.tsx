@@ -307,11 +307,12 @@ const ProjectQuestsTable = () => {
     selected: QuestResource[],
     ctx: BulkActionContext<QuestResource>,
   ) => {
-    // Only a `todo` quest can be shelved, and the server refuses the
-    // rest one by one. They are counted here and never sent, so an
-    // accepted row in the selection costs a note, not the batch.
+    // Any open quest can be shelved, an accepted or held one included
+    // (#Q3546: the server hands it back in the same write). A completed or
+    // already shelved row is counted here and never sent, so it costs a
+    // note, not the batch.
     const eligible = selected.filter(
-      (quest) => !quest.acceptedAt && !quest.completedAt && !quest.shelvedAt,
+      (quest) => !quest.completedAt && !quest.shelvedAt,
     );
     const skipped = selected.length - eligible.length;
     if (eligible.length === 0) {

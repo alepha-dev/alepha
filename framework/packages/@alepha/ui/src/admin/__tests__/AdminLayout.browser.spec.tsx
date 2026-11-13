@@ -50,6 +50,19 @@ describe("AdminLayout options", () => {
     );
   };
 
+  it("draws a back arrow to home and Admin Panel, with no icon, by default (#Q3570)", async () => {
+    const { container } = await mount({});
+
+    const back = screen.getByRole("link", { name: "Back to site" });
+    // No `home` route here: the arrow falls back to `/` rather than throw.
+    expect(back.getAttribute("href")).toBe("/");
+    expect(screen.getByText("Admin Panel")).toBeTruthy();
+    // The brand's only glyph is the arrow inside the link.
+    const brand = back.parentElement!;
+    expect(brand.querySelectorAll("svg")).toHaveLength(1);
+    expect(container.textContent).not.toContain("Administration");
+  });
+
   it("merges options.className onto the shell root", async () => {
     const { container } = await mount({ className: "admin-fence" });
 

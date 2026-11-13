@@ -118,15 +118,74 @@ describe("QuestController — shelving", () => {
     expect(res.data.history.at(-1)?.action).toBe("shelved");
   });
 
-  it("refuses to shelve an accepted quest", async ({ expect }) => {
+  it("shelves an accepted quest in one step, unassigning it and stopping its timer (#Q3546)", async ({
+    expect,
+  }) => {
     const user = await createUser(ctx);
     const cid = await createProject(ctx, user);
     const quest = await createQuest(ctx, user, cid, "In flight");
     await ctx.quests.acceptQuest.fetch({ params: { id: quest.id } }, { user });
+    await ctx.quests.startTimer.fetch({ params: { id: quest.id } }, { user });
 
-    await expect(
-      ctx.quests.shelveQuest.fetch({ params: { id: quest.id } }, { user }),
-    ).rejects.toThrow();
+    const res = await ctx.quests.shelveQuest.fetch(
+      { params: { id: quest.id } },
+      { user },
+    );
+
+    expect(res.data.metadata.status).toBe("shelved");
+    expect(res.data.acceptedBy).toBeUndefined();
+    expect(res.data.acceptedAt).toBeUndefined();
+    expect(res.data.timerSessions?.at(-1)?.stoppedAt).toBeTruthy();
+    // Both moves are in the history, in order.
+    expect(res.data.history.slice(-2).map((h) => h.action)).toEqual([
+      "unassigned",
+      "shelved",
+    ]);
+  });
+
+  it("shelves a held quest, lifting the hold with its own history event", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const cid = await createProject(ctx, user);
+    const quest = await createQuest(ctx, user, cid, "Blocked");
+    await ctx.quests.acceptQuest.fetch({ params: { id: quest.id } }, { user });
+    await ctx.quests.holdQuest.fetch(
+      { params: { id: quest.id }, body: { reason: "Waiting on a key" } },
+      { user },
+    );
+
+    const res = await ctx.quests.shelveQuest.fetch(
+      { params: { id: quest.id } },
+      { user },
+    );
+
+    expect(res.data.metadata.status).toBe("shelved");
+    expect(res.data.heldAt).toBeUndefined();
+    expect(res.data.acceptedBy).toBeUndefined();
+    expect(res.data.history.slice(-3).map((h) => h.action)).toEqual([
+      "unheld",
+      "unassigned",
+      "shelved",
+    ]);
+  });
+
+  it("unshelves a quest shelved while accepted back to todo, unassigned", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const cid = await createProject(ctx, user);
+    const quest = await createQuest(ctx, user, cid, "Round trip");
+    await ctx.quests.acceptQuest.fetch({ params: { id: quest.id } }, { user });
+    await ctx.quests.shelveQuest.fetch({ params: { id: quest.id } }, { user });
+
+    const res = await ctx.quests.unshelveQuest.fetch(
+      { params: { id: quest.id } },
+      { user },
+    );
+
+    expect(res.data.metadata.status).toBe("todo");
+    expect(res.data.acceptedBy).toBeUndefined();
   });
 
   it("refuses to shelve a completed quest", async ({ expect }) => {

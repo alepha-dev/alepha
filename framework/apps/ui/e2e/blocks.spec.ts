@@ -390,7 +390,7 @@ test.describe("DataTable", () => {
     // Geometry, so a jsdom spec cannot see it: `overflow-x-auto` alone makes
     // the band scroll vertically too, and a tab reaching past its bottom edge
     // drew a scrollbar wherever scrollbars are always shown.
-    const band = page.locator('[data-slot="data-table-tabs"]');
+    const band = page.locator('[data-slot="plate-folder-tabs"]');
     const overflow = await band.evaluate((el) => ({
       scrollHeight: el.scrollHeight,
       clientHeight: el.clientHeight,
@@ -951,7 +951,9 @@ test.describe("layout blocks", () => {
     // `tabsTestId` earns its keep here: every tab label is an ordinary word
     // that the tab BODY prints too.
     const bar = page.getByTestId("plate-tabs");
-    await expect(bar).toHaveAttribute("role", "navigation");
+    // A `<nav>` since folder became the Plate's default look (#Q3579): the
+    // navigation role is the element's own, with no attribute to read.
+    expect(await bar.evaluate((el) => el.tagName)).toBe("NAV");
 
     // A routed tab has to stay a link. `role="tab"` on an anchor would take it
     // out of `getByRole("link")` and tell a screen reader it swaps a panel

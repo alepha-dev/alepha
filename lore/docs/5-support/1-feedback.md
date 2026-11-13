@@ -167,8 +167,15 @@ stored, because every member of the project can read it.
 
 ## Getting help with triage
 
-The **New feedback** preset in [Automations](/lore/docs/work-automations)
-notifies one member when a report arrives.
+The bell above the inbox's status filter notifies you of every new report.
+Turning it on asks how, **In-app** or **Email**, and creates a rule of yours
+from the **New feedback** preset, enabled at once. It stays an ordinary rule,
+listed under [Automations](/lore/docs/work-automations), where you can edit it.
+Turning the bell off, after a confirmation, deletes that rule. The bell shows
+only to a member who can create automations, in a project with automations on.
+
+The **New feedback** preset itself notifies any one member you choose when a
+report arrives.
 
 [Agent prompts](/lore/docs/agents-prompts) offers two prompts on an open
 report: **Triage the inbox**, and **Work on it** unless the report is rejected.

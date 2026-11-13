@@ -175,9 +175,6 @@ test.describe("Dock", () => {
     await page.getByRole("button", { name: "Manage pins" }).click();
     // The account dialog, on its Projects section, over the page.
     await expect(page.locator('[data-slot="settings-dialog"]')).toBeVisible();
-    await expect(page.getByTestId("account-projects-pinned-count")).toHaveText(
-      "20 / 20 pinned",
-    );
     const pinSwitch = (id: number) =>
       page.locator(
         `[data-testid="account-project-pin"][data-project-id="${id}"]`,
@@ -201,13 +198,10 @@ test.describe("Dock", () => {
     await expect(pinSwitch(extraId)).toBeDisabled();
 
     await pinSwitch(first.id).click();
-    await expect(page.getByTestId("account-projects-pinned-count")).toHaveText(
-      "19 / 20 pinned",
-    );
+    await expect(pinSwitch(first.id)).toHaveAttribute("aria-checked", "false");
+    await expect(pinSwitch(extraId)).toBeEnabled();
     await pinSwitch(extraId).click();
-    await expect(page.getByTestId("account-projects-pinned-count")).toHaveText(
-      "20 / 20 pinned",
-    );
+    await expect(pinSwitch(extraId)).toHaveAttribute("aria-checked", "true");
 
     await page.goto(extraHref!);
     await expect(pin(page, extra)).toHaveAttribute("aria-current", "page");

@@ -688,9 +688,8 @@ export default {
   "board.bulk.released": "$1 ajoutée(s) à $2.",
   "board.bulk.failed": "$1 n'ont pas pu être mises à jour.",
   "board.bulk.shelve.none":
-    "Aucune des quêtes sélectionnées ne peut être mise de côté : seule une quête encore à faire le peut.",
-  "board.bulk.shelve.skipped":
-    "$1 ignorée(s) : seule une quête encore à faire peut être mise de côté.",
+    "Aucune des quêtes sélectionnées ne peut être mise de côté : elles sont déjà terminées ou de côté.",
+  "board.bulk.shelve.skipped": "$1 ignorée(s) : déjà terminée(s) ou de côté.",
   "board.bulk.unshelve.none": "Aucune des quêtes sélectionnées n'est de côté.",
   "board.bulk.unshelve.skipped": "$1 ignorée(s) : pas de côté.",
   "quest.create.title": "Nom",
@@ -1867,13 +1866,13 @@ export default {
   "account.nav.group.lore": "Lore",
   "account.nav.projects": "Projets",
   "account.nav.invitations": "Invitations",
+  "account.nav.inbox": "Boîte de réception",
   "account.nav.notifications": "Notifications",
   "account.nav.feedback": "Retours",
   "account.projects.create": "Nouveau projet",
   "account.projects.col.project": "Projet",
   "account.projects.col.role": "Votre rôle",
   "account.projects.col.pinned": "Épinglé",
-  "account.projects.pinned-count": "$1 / $2 épinglés",
   "account.projects.pin": "Épingler $1 au dock",
   "account.projects.col.openQuests": "Quêtes ouvertes",
   "account.projects.col.lastActivity": "Dernière activité",
@@ -1900,7 +1899,8 @@ export default {
   "account.projects.filter.role": "Rôle",
   "account.projects.filter.allRoles": "Tous les rôles",
   "account.projects.filter.archived": "Archivés",
-  "account.projects.filter.active": "Non archivés",
+  "account.projects.filter.archived.yes": "Oui",
+  "account.projects.filter.archived.no": "Non",
   "account.projects.filter.allStates": "Archivés ou non",
   "account.projects.archived": "Archivé",
 
@@ -2233,6 +2233,18 @@ export default {
     "Cette copie fait partie de l'environnement de stack $1 : elle s'y déploie, sur le domaine qu'utilise cet environnement, et seul son propre service est redéployé. Le domaine se règle dans les paramètres de la stack.",
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
   "app.settings.danger": "Zone dangereuse",
+  "apps.delete.title": "Supprimer $1 applications ?",
+  "apps.delete.confirm": "Supprimer $1 applications",
+  "apps.delete.one":
+    "Supprime l’enregistrement de $1 dans Lore et son historique de déploiements.",
+  "apps.delete.many":
+    "Supprime l’enregistrement de ces $1 copies dans Lore et leur historique de déploiements.",
+  "apps.delete.sigil":
+    "Un sigil part aussi, avec tout ce qu’il a rapporté : pages vues, signaux web, visiteurs uniques et budget d’erreurs. Les fléaux déjà enregistrés sont conservés.",
+  "apps.delete.lastEnv":
+    "C’est le dernier environnement de $1, qui quitte la liste des applications avec lui.",
+  "apps.delete.nothingUndeployed":
+    "Rien n’est retiré : chaque copie continue de tourner là où elle tourne.",
   "app.settings.delete.title": "Supprimer cette app",
   "app.settings.delete.description":
     "Retire cette copie déployée de Lore. Cela ne déploie ni ne retire rien.",
@@ -2750,6 +2762,11 @@ export default {
     "Les retours refusés sont conservés ici comme trace.",
   "feedback.empty.detail.openForm": "Ouvrir le formulaire de retour",
   "feedback.back": "Retour",
+  "feedback.subscription.label": "Me notifier des nouveaux retours",
+  "feedback.subscription.description":
+    "Une règle vous notifiera de chaque nouveau retour dans ce projet.",
+  "feedback.subscription.offDescription":
+    "Vous ne serez plus notifié des nouveaux retours dans ce projet.",
   "feedback.filter.pending": "En attente",
   "feedback.filter.accepted": "Acceptés",
   "feedback.filter.rejected": "Rejetés",
@@ -2810,7 +2827,7 @@ export default {
   "inbox.unread": "Non lu",
   "inbox.loadMore": "Charger plus",
   "inbox.scope.all": "Tous les projets",
-  "inbox.scope.project": "Ce projet",
+  "inbox.filter.project": "Projet",
   "inbox.markAllRead": "Tout marquer comme lu",
   "inbox.seeAll": "Tout voir",
   "feedback.thread.title": "Discussion",
@@ -3011,6 +3028,14 @@ export default {
   "epic.undo.deleted": "$1 supprimée",
   "epic.undo.bulkReady": "$1 épopée(s) prête(s)",
   "epic.undo.bulkDeleted": "$1 épopée(s) supprimée(s)",
+  "epic.undo.bulkShelved": "$1 épopée(s) mise(s) de côté",
+  "epic.undo.bulkUnshelved": "$1 épopée(s) remise(s) en jeu",
+  "epic.bulk.shelve.title": "Mettre $1 épopées de côté ?",
+  "epic.bulk.shelve.confirm": "Mettre $1 épopées de côté",
+  "epic.bulk.shelve.description":
+    "Leurs $1 quêtes ouvertes sont mises de côté avec elles : désassignées et mises de côté jusqu'à ce que les épopées soient reprises. Les quêtes terminées le restent.",
+  "epic.bulk.shelve.skipped": "Exclues, car déjà terminées ou de côté : $1.",
+  "epic.bulk.unshelve.skipped": "$1 ignorée(s) : pas de côté.",
   "epic.bulk.delete.title": "Supprimer $1 épopées ?",
   "epic.bulk.delete.confirm": "Supprimer $1 épopées",
   "epic.bulk.delete.description":
@@ -3048,6 +3073,10 @@ export default {
   "epic.status.actions.backToDraft": "Repasser en brouillon",
   "epic.status.actions.shelve": "Mettre de côté",
   "epic.status.actions.unshelve": "Reprendre",
+  "epic.workOnIt.confirm.title": "Marquer cette épopée comme prête ?",
+  "epic.workOnIt.confirm.description":
+    "Y travailler copie le prompt et marque « $1 » comme prête : elle quitte le brouillon, et ses quêtes peuvent être acceptées.",
+  "epic.workOnIt.confirm.action": "Copier et marquer prête",
   "epic.shelve.title": "Mettre cette épopée de côté ?",
   "epic.shelve.confirm":
     "Mettre $1 de côté met aussi de côté ses $2 quêtes ouvertes : elles sont désassignées et mises de côté, et rien dans l'épopée ne peut avancer avant qu'elle soit reprise. Les quêtes terminées le restent, et les épopées qui en dépendent restent bloquées.",
@@ -3828,6 +3857,17 @@ export default {
   "automation.adoption.reminderCount": "$1 rappels de quête configurés",
   "automation.adoption.replacement": "Règle de remplacement",
   "automation.adoption.create": "Créer ma règle de compatibilité",
+  "automation.subscription.on":
+    "Abonné : cliquez pour arrêter les notifications",
+  "automation.subscription.channel": "Me notifier par",
+  "automation.subscription.channel.inbox": "Dans l'app",
+  "automation.subscription.channel.email": "E-mail",
+  "automation.subscription.rule":
+    "Cela crée une automatisation à votre nom, listée dans Automatisations, où vous pouvez la modifier.",
+  "automation.subscription.confirm": "S'abonner",
+  "automation.subscription.cancel": "Annuler",
+  "automation.subscription.offTitle": "Se désabonner ?",
+  "automation.subscription.offConfirm": "Se désabonner",
   "automation.adoption.adopt": "Consentir et adopter",
   "automation.adoption.resume": "Reprendre mon adoption",
   "automation.adoption.open": "Ouvrir la règle de remplacement",
@@ -3865,9 +3905,12 @@ export default {
   "automation.summary.assignRelease": "Affecter la quête à la version $1",
   "automation.summary.addTag": "Étiqueter la quête « $1 »",
   "automation.summary.nextRun": "Prochaine exécution",
-  "automation.setup.startsDisabled":
-    "L'automatisation est créée désactivée. Sa page permet de la tester, puis de l'activer.",
-  "automation.preset.create": "Créer l'automatisation",
+  "automation.setup.enableOrDraft":
+    "Créer et activer la met en marche tout de suite. Enregistrer comme brouillon la laisse désactivée : sa page permet de la tester, puis de l'activer.",
+  "automation.preset.createAndEnable": "Créer et activer",
+  "automation.preset.saveDraft": "Enregistrer comme brouillon",
+  "automation.disabledNotice.title":
+    "Désactivée : cette automatisation ne fait rien tant qu'elle n'est pas activée.",
   "automation.editor.fixed": "Valeur fixe",
   "automation.history.triggered": "Déclenchée le $1",
   "automation.variables.empty":
@@ -4171,6 +4214,32 @@ export default {
   "assistant.suggest.open": "Qu'est-ce qui reste ouvert dans ce projet ?",
   "assistant.suggest.epic": "Que manque-t-il encore à l'epic en cours ?",
   "assistant.suggest.file": "Créer une quête pour ...",
+  "assistant.suggest.reports.week":
+    "Qu’est-ce qui a changé dans ce projet cette semaine ?",
+  "assistant.suggest.reports.slow":
+    "Quels domaines ralentissent, et pourquoi ?",
+  "assistant.suggest.reports.summary":
+    "Résume ces rapports pour un point d’avancement",
+  "assistant.suggest.quest.left": "Que reste-t-il à faire sur cette quête ?",
+  "assistant.suggest.quest.discussion": "Résume la discussion de cette quête",
+  "assistant.suggest.quest.dependencies":
+    "De quoi dépend cette quête, et est-elle prête ?",
+  "assistant.suggest.epic.lack": "Que manque-t-il encore à cette épopée ?",
+  "assistant.suggest.epic.blocked":
+    "Quelles quêtes de cette épopée sont bloquées ou en attente ?",
+  "assistant.suggest.epic.next": "Quelle quête de cette épopée faire ensuite ?",
+  "assistant.suggest.feedback.pending":
+    "Quels retours attendent encore d’être triés ?",
+  "assistant.suggest.feedback.group":
+    "Regroupe les retours en attente par sujet",
+  "assistant.suggest.feedback.file":
+    "Crée une quête pour le problème le plus signalé",
+  "assistant.suggest.apps.deploys":
+    "Quels déploiements ont échoué récemment, et pourquoi ?",
+  "assistant.suggest.apps.errors":
+    "Quelles applications signalent le plus d’erreurs ?",
+  "assistant.suggest.apps.silent":
+    "Quelles applications ont cessé de rapporter ?",
   "assistant.tool.failed": "Échec : $1",
   "assistant.tool.denied": "Annulé : $1",
   "assistant.tool.project_list.running": "Liste de vos projets",

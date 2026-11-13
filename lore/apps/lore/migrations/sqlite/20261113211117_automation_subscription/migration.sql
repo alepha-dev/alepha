@@ -1,0 +1,1 @@
+ALTER TABLE `automations` ADD `subscription` integer DEFAULT false NOT NULL;

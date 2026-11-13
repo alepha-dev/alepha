@@ -65,6 +65,10 @@ export interface ProjectViewNavPublisherProps {
  * A third source rather than a hidden nav entry: an entry that is in the nav
  * data and not in the nav is a flag every future reader has to learn, and the
  * two consumers already disagree about instances on purpose.
+ *
+ * Since #Q3564 the list is the account dialog's Inbox section, not a page:
+ * the entry's href is the project's root with `?account=inbox`, which the
+ * settings dialogs open on arrival.
  */
 const ProjectViewNavPublisher = (props: ProjectViewNavPublisherProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -121,9 +125,9 @@ const ProjectViewNavPublisher = (props: ProjectViewNavPublisherProps) => {
     ? [
         {
           label: tr("project.menu.inbox"),
-          href: router.path("projectInbox", {
+          href: `${router.path("project", {
             params: { projectSlug: project.slug },
-          }),
+          })}?account=inbox`,
           kind: "page",
         },
       ]

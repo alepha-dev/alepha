@@ -86,10 +86,10 @@ const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
         queries.invalidate(["automation-catalog", project.id]);
         return result.variable;
       }}
-      onSubmit={async (values, bindings) => {
+      onSubmit={async (values, bindings, enabled) => {
         const result = await api.createAutomationFromPreset({
           params: { projectId: project.id },
-          body: { key: props.preset.key, values, bindings },
+          body: { key: props.preset.key, values, bindings, enabled },
         });
         queries.invalidate(["automations", project.id]);
         await router.push("projectAutomationDetail", {

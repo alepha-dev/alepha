@@ -40,6 +40,11 @@ export interface AutomationPresetFormProps {
   onSubmit: (
     values: ReturnType<typeof automationPresetCreateSchema.shape.values.parse>,
     bindings: Record<string, AutomationVariableApproval>,
+    /**
+     * Whether to create it enabled (Create and enable) or as a draft (Save
+     * as draft), #Q3573.
+     */
+    enabled: boolean,
   ) => Promise<unknown>;
   // The form handler awaits this callback, preserving rejection and form state.
   onCreateShared?: (
@@ -140,7 +145,7 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
           } else if (raw[name] !== undefined)
             values[name] = automationFilterValueSchema.parse(raw[name]);
         }
-        await props.onSubmit(values, bindings);
+        await props.onSubmit(values, bindings, raw.enableOnCreate !== false);
       },
     },
     [schema],
@@ -313,7 +318,7 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
         })}
       </div>
       <p className="text-muted-foreground text-sm">
-        {tr("automation.setup.startsDisabled")}
+        {tr("automation.setup.enableOrDraft")}
       </p>
       <div className="flex gap-2">
         <Button
@@ -321,8 +326,20 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
           intent="primary"
           loading={loading}
           disabled={busy}
+          // Which of the two submit buttons was clicked: a click runs
+          // before the submit it causes, so each says what it wants first
+          // (#Q3573).
+          onClick={() => form.input.enableOnCreate.set(true)}
         >
-          {tr("automation.preset.create")}
+          {tr("automation.preset.createAndEnable")}
+        </Button>
+        <Button
+          type="submit"
+          variant="outlined"
+          disabled={busy}
+          onClick={() => form.input.enableOnCreate.set(false)}
+        >
+          {tr("automation.preset.saveDraft")}
         </Button>
         {props.onCancel && (
           <Button

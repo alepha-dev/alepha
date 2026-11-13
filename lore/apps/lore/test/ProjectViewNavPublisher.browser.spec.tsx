@@ -24,13 +24,12 @@ class Routes {
     component: () => null,
   });
   /**
-   * Needed since the Notifications entry left the rail (feedback #P2127) and
-   * this publisher started appending it from its own source: the palette
-   * would otherwise lose the page that the sidebar no longer offers.
+   * The project root, which the Notifications entry links with
+   * `?account=inbox` since the list moved into the account dialog (#Q3564).
    */
-  projectInbox = $page({
-    name: "projectInbox",
-    path: "/:projectSlug/inbox",
+  project = $page({
+    name: "project",
+    path: "/:projectSlug",
     component: () => null,
   });
 }
@@ -111,7 +110,11 @@ describe("what the palette is offered", () => {
         // Not in the `nav` this spec passes, and that is the point: it comes
         // from the publisher's own third source, because the rail no longer
         // carries it.
-        { label: "Notifications", href: "/alepha/inbox", kind: "page" },
+        {
+          label: "Notifications",
+          href: "/alepha?account=inbox",
+          kind: "page",
+        },
         {
           label: "acme / production",
           href: "/alepha/apps/acme/production",
@@ -154,7 +157,7 @@ describe("what the palette is offered", () => {
     await waitFor(() =>
       expect(alepha.store.get(projectNavAtom)).toContainEqual({
         label: "Notifications",
-        href: "/alepha/inbox",
+        href: "/alepha?account=inbox",
         kind: "page",
       }),
     );

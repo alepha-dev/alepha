@@ -53,6 +53,9 @@ export class AutomationPresetForms {
       fields[`local_${name}`] = automationFilterValueSchema.optional();
       fields[`binding_${name}`] = automationVariableResourceSchema.optional();
     }
+    // Which button submitted: Create and enable, or Save as draft (#Q3573).
+    // Not a slot, so no preset value: the form reads it and sends `enabled`.
+    fields.enableOnCreate = z.boolean().optional();
     return z.object(fields).strict();
   }
 

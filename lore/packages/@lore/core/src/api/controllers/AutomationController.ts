@@ -5,6 +5,7 @@ import { automationAdoptionBodySchema } from "../schemas/automationAdoptionBodyS
 import { automationAdoptionParamsSchema } from "../schemas/automationAdoptionParamsSchema.ts";
 import { automationAdoptionPreviewSchema } from "../schemas/automationAdoptionPreviewSchema.ts";
 import { automationCatalogSchema } from "../schemas/automationCatalogSchema.ts";
+import { automationCreateBodySchema } from "../schemas/automationCreateBodySchema.ts";
 import { automationDependentPageSchema } from "../schemas/automationDependentPageSchema.ts";
 import { automationEnableBodySchema } from "../schemas/automationEnableBodySchema.ts";
 import { automationEvaluationReportSchema } from "../schemas/automationEvaluationReportSchema.ts";
@@ -20,6 +21,9 @@ import { automationRunPageSchema } from "../schemas/automationRunPageSchema.ts";
 import { automationRunResourceSchema } from "../schemas/automationRunResourceSchema.ts";
 import { automationSetupOptionPageSchema } from "../schemas/automationSetupOptionPageSchema.ts";
 import { automationSetupQuerySchema } from "../schemas/automationSetupQuerySchema.ts";
+import { automationSubscriptionParamsSchema } from "../schemas/automationSubscriptionParamsSchema.ts";
+import { automationSubscriptionSchema } from "../schemas/automationSubscriptionSchema.ts";
+import { automationSubscriptionSetBodySchema } from "../schemas/automationSubscriptionSetBodySchema.ts";
 import { automationTestBodySchema } from "../schemas/automationTestBodySchema.ts";
 import { automationUpdateBodySchema } from "../schemas/automationUpdateBodySchema.ts";
 import { automationVariableDeleteBodySchema } from "../schemas/automationVariableDeleteBodySchema.ts";
@@ -28,12 +32,12 @@ import { automationVariablePageSchema } from "../schemas/automationVariablePageS
 import { automationVariableParamsSchema } from "../schemas/automationVariableParamsSchema.ts";
 import { automationVariableSetBodySchema } from "../schemas/automationVariableSetBodySchema.ts";
 import { automationVariableSetResponseSchema } from "../schemas/automationVariableSetResponseSchema.ts";
-import { automationWriteBodySchema } from "../schemas/automationWriteBodySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AutomationAdoptionService } from "../services/AutomationAdoptionService.ts";
 import { AutomationPresetService } from "../services/AutomationPresetService.ts";
 import { AutomationService } from "../services/AutomationService.ts";
 import { AutomationSetupOptions } from "../services/AutomationSetupOptions.ts";
+import { AutomationSubscriptionService } from "../services/AutomationSubscriptionService.ts";
 import { AutomationVariableService } from "../services/AutomationVariableService.ts";
 
 /**
@@ -45,6 +49,7 @@ export class AutomationController {
   protected readonly setupOptions = $inject(AutomationSetupOptions);
   protected readonly presets = $inject(AutomationPresetService);
   protected readonly service = $inject(AutomationService);
+  protected readonly subscriptions = $inject(AutomationSubscriptionService);
   protected readonly variables = $inject(AutomationVariableService);
   protected readonly mutationGate = $ownsProject({
     param: "projectId",
@@ -121,7 +126,7 @@ export class AutomationController {
     path: "/projects/:projectId/automations",
     schema: {
       params: automationProjectParamsSchema,
-      body: automationWriteBodySchema,
+      body: automationCreateBodySchema,
       response: automationResourceSchema,
     },
     handler: ({ params, body, user }) =>
@@ -138,6 +143,37 @@ export class AutomationController {
     },
     handler: ({ params, body, user }) =>
       this.presets.create(params.projectId, user, body),
+  });
+  /**
+   * The caller's subscription to a preset: whether a toggle such as the
+   * feedback page's bell left them an enabled rule from it.
+   */
+  getAutomationSubscription = $action({
+    use: [this.gate("automation:read")],
+    method: "GET",
+    path: "/projects/:projectId/automation-subscriptions/:key",
+    schema: {
+      params: automationSubscriptionParamsSchema,
+      response: automationSubscriptionSchema,
+    },
+    handler: ({ params, user }) =>
+      this.subscriptions.get(params.projectId, user, params.key),
+  });
+  /**
+   * Turn the caller's subscription to a preset on (a rule created enabled,
+   * notifying them) or off (their toggle's rules deleted).
+   */
+  setAutomationSubscription = $action({
+    use: [this.gate("automation:write")],
+    method: "PUT",
+    path: "/projects/:projectId/automation-subscriptions/:key",
+    schema: {
+      params: automationSubscriptionParamsSchema,
+      body: automationSubscriptionSetBodySchema,
+      response: automationSubscriptionSchema,
+    },
+    handler: ({ params, body, user }) =>
+      this.subscriptions.set(params.projectId, user, params.key, body),
   });
   updateAutomation = $action({
     use: [this.gate("automation:write")],

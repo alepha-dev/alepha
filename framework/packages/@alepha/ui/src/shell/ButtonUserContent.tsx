@@ -2,8 +2,10 @@ import * as React from "react";
 
 void React;
 
+import type { MyAvatarController } from "alepha/api/users";
+import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
-import { LogIn, User } from "lucide-react";
+import { LogIn } from "lucide-react";
 
 import { Button } from "../core/Button.tsx";
 import {
@@ -28,6 +30,10 @@ export type ButtonUserContentProps = ButtonUserProps;
  */
 export const ButtonUserContent = (props: ButtonUserContentProps) => {
   const auth = useAuth();
+  // Whether the app uses pictures: `MyAvatarController` is registered only by
+  // `$realm({ features: { avatars: true } })`. Without it the button draws
+  // the initials, never a provider's URL or a stale file id.
+  const usesPictures = useClient<MyAvatarController>().updateMyAvatar.can();
 
   if (!auth.user) {
     const signInLabel = props.signInLabel ?? "Sign in";
@@ -52,13 +58,13 @@ export const ButtonUserContent = (props: ButtonUserContentProps) => {
   }
 
   const menuLabel = props.menuLabel ?? "Account menu";
-  const face =
-    props.avatar ??
-    (auth.user.picture ? (
-      <UserAvatar fileId={auth.user.picture} className="size-7" />
-    ) : (
-      <User className="size-4" />
-    ));
+  const face = props.avatar ?? (
+    <UserAvatar
+      user={auth.user}
+      fileId={usesPictures ? auth.user.picture : null}
+      className="size-7"
+    />
+  );
   return (
     <DropdownMenu>
       <Tooltip>

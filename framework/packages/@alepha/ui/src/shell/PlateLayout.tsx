@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "../core/utils.ts";
-import { DataTableTabs } from "../table/DataTableTabs.tsx";
+import { PlateFolderTabs } from "./PlateFolderTabs.tsx";
 import { type PlateTab, PlateTabBar } from "./PlateTabBar.tsx";
 
 export interface PlateLayoutProps {
@@ -30,9 +30,12 @@ export interface PlateLayoutProps {
    */
   tabsTestId?: string;
   /**
-   * How the tabs are drawn. `underline`, the default, is the plate's own
-   * bottom row; `folder` is DataTable's tiles, the active one opening into
-   * the body below it.
+   * How the tabs are drawn. `folder`, the default, is a band of tiles, the
+   * active one opening into the body below it, like a browser's tabs;
+   * `underline` is a plain bottom row with an underline under the active
+   * tab.
+   *
+   * @default "folder"
    */
   tabsVariant?: "underline" | "folder";
   /**
@@ -71,24 +74,24 @@ export const PlateLayout = (props: PlateLayoutProps) => (
   >
     <div className="bg-card/30 border-border shrink-0 border-b">
       {props.plate}
-      {props.tabsVariant === "folder" ? (
-        <div data-testid={props.tabsTestId}>
-          <DataTableTabs
-            className="rounded-none border-x-0 border-t-0 bg-transparent px-4"
-            tabs={props.tabs.map((tab) => ({
-              key: tab.key,
-              label: tab.label,
-              icon: tab.icon,
-              count: tab.count,
-              href: tab.href,
-              active: tab.key === props.active,
-              onSelect:
-                tab.href === undefined
-                  ? () => props.onSelect?.(tab.key)
-                  : undefined,
-            }))}
-          />
-        </div>
+      {props.tabsVariant !== "underline" ? (
+        <PlateFolderTabs
+          testId={props.tabsTestId}
+          className="rounded-none border-x-0 border-t-0 bg-transparent px-4"
+          tabs={props.tabs.map((tab) => ({
+            key: tab.key,
+            label: tab.label,
+            icon: tab.icon,
+            count: tab.count,
+            href: tab.href,
+            prefetch: tab.prefetch,
+            active: tab.key === props.active,
+            onSelect:
+              tab.href === undefined
+                ? () => props.onSelect?.(tab.key)
+                : undefined,
+          }))}
+        />
       ) : (
         <PlateTabBar
           tabs={props.tabs}

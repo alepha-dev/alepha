@@ -152,3 +152,33 @@ jobs:
         run: yarn lore quality push --branch "lore/${GITHUB_REF_NAME}"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+  # Lore's whole suite on Postgres (#Q3473). Verify Lore runs only the specs
+  # reaching Lore's raw SQL there, since the whole suite takes 18 to 27 min on
+  # one runner; this catches what that subset misses, once a day with nothing
+  # waiting on it. The Postgres setup is Verify Lore's `test-postgres`, whose
+  # comments say why the server is started by hand with those flags.
+  lore-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      POSTGRES_TEST_URL: postgres://postgres:postgres@127.0.0.1:15432/postgres
+    defaults:
+      run:
+        working-directory: lore
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Start Postgres
+        run: |
+          docker run -d --name postgres -p 15432:5432 --shm-size=1g \
+            -e POSTGRES_DB=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+            postgres -c max_locks_per_transaction=1024
+          until docker exec postgres pg_isready -U postgres; do sleep 1; done
+
+      - name: Test Project on Postgres
+        run: yarn alepha test --dialect postgres

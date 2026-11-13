@@ -291,11 +291,12 @@ export class DeployService {
       // everything else Lore is doing, so letting a third one in is an OOM
       // that takes the other two with it.
       //
-      // ⚠️ Answered, NOT thrown. `deploys.run` declares no retry, so a
-      // throw here was the end of the execution: the row sat `queued` until
-      // the sweep failed it as "stopped reporting". `DeployJobs.runDeploy`
-      // reschedules on this answer instead, which is what makes the cap a
-      // queue rather than a loss.
+      // ⚠️ Answered, NOT thrown. `deploys.run` retries only a database that
+      // did not answer (#Q3551), so a throw here was the end of the
+      // execution: the row sat `queued` until the sweep failed it as
+      // "stopped reporting". `DeployJobs.runDeploy` reschedules on this
+      // answer instead, which is what makes the cap a queue rather than a
+      // loss.
       return "busy";
     }
 

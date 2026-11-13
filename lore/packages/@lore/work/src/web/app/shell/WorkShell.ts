@@ -11,6 +11,7 @@ import {
   capabilityOption,
   hasCapability,
   canInProject,
+  AssistantSuggestionRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import {
@@ -24,7 +25,7 @@ import {
   Newspaper,
   MessageSquarePlus,
   ScrollText,
-  Swords,
+  SquareCheckBig,
   Wrench,
   Workflow,
 } from "lucide-react";
@@ -77,8 +78,34 @@ export class WorkShell {
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly deletion = $inject(AccountDeletionRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
+  protected readonly suggestions = $inject(AssistantSuggestionRegistry);
 
   constructor() {
+    // The assistant's prompts on Work's pages (#Q3585).
+    this.suggestions.register({
+      routes: (name) => name === "projectQuest",
+      keys: [
+        "assistant.suggest.quest.left",
+        "assistant.suggest.quest.discussion",
+        "assistant.suggest.quest.dependencies",
+      ],
+    });
+    this.suggestions.register({
+      routes: (name) => name === "projectEpic",
+      keys: [
+        "assistant.suggest.epic.lack",
+        "assistant.suggest.epic.blocked",
+        "assistant.suggest.epic.next",
+      ],
+    });
+    this.suggestions.register({
+      routes: (name) => name === "projectFeedback",
+      keys: [
+        "assistant.suggest.feedback.pending",
+        "assistant.suggest.feedback.group",
+        "assistant.suggest.feedback.file",
+      ],
+    });
     this.shell.registerNav("work", [
       {
         route: "projectQuests",
@@ -178,7 +205,7 @@ export class WorkShell {
       order: 30,
       labelKey: "project.settings.nav.plan",
       descriptionKey: "project.settings.section.work",
-      icon: Swords,
+      icon: SquareCheckBig,
       capability: "work",
       tabs: [
         {

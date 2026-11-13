@@ -17,6 +17,7 @@ import { LoreAccountSections } from "./app/components/account/LoreAccountSection
 import { CoreRouter } from "./app/CoreRouter.ts";
 import { CoreWebBoot } from "./app/CoreWebBoot.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
+import { AssistantSuggestionRegistry } from "./app/registries/AssistantSuggestionRegistry.ts";
 import { ShellExtensionRegistry } from "./app/registries/ShellExtensionRegistry.ts";
 import { I18n } from "./app/services/I18n.ts";
 import { ThemesProvider } from "./app/services/ThemesProvider.ts";
@@ -59,6 +60,8 @@ export const LoreCoreWeb = $module({
     // Read by `Layout` and `HeaderActions` on every page, so it exists before
     // the container locks whether or not the app registers anything on it.
     alepha.inject(ShellExtensionRegistry);
+    // Filled by every module's shell at boot, read by the app's assistant.
+    alepha.inject(AssistantSuggestionRegistry);
     // Core's boot work (the 401 redirect, the global head, the reports tab
     // and services), apart from its pages so the router holds pages only
     // (#Q3400).
@@ -229,6 +232,11 @@ export {
 } from "./app/registries/ProjectBlockerRegistry.ts";
 export { AgentPromptRegistry } from "./app/registries/AgentPromptRegistry.ts";
 export {
+  type AssistantSuggestionEntry,
+  type AssistantSuggestionKey,
+  AssistantSuggestionRegistry,
+} from "./app/registries/AssistantSuggestionRegistry.ts";
+export {
   type DashboardPickerContext,
   DashboardPickerRegistry,
   type DashboardScopeOption,
@@ -280,6 +288,10 @@ export {
   hasCapability,
 } from "./app/services/projectCapabilities.ts";
 export { canInProject } from "./app/services/projectRank.ts";
+export {
+  AutomationSubscriptionBell,
+  type AutomationSubscriptionBellProps,
+} from "./app/components/shared/AutomationSubscriptionBell.tsx";
 
 // ---- modules a route or a lazy boundary loads (#E75, #Q2611) ----
 //

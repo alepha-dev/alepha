@@ -153,11 +153,12 @@ describe("CapabilityRegistry", () => {
     ).toThrow();
   });
 
-  it("preselects only apps.track", ({ expect }) => {
+  it("preselects only apps.track and work.automations", ({ expect }) => {
     // Releases was on by default before this epic, with a board that is
     // now always there: a way to look at quests is not a reason to have
-    // them. Apps keeps its one,
-    // because the capability's own label says "watch".
+    // them. Apps keeps its one, because the capability's own label says
+    // "watch". Automations is on since #Q3563: a project had none until an
+    // owner found the switch.
     expect(ctx.registry.preselectedOptionsOf("work")).toEqual({
       epics: false,
       releases: false,
@@ -165,7 +166,7 @@ describe("CapabilityRegistry", () => {
       chrono: false,
       reminder: false,
       agentPrompts: false,
-      automations: false,
+      automations: true,
     });
     expect(ctx.registry.preselectedOptionsOf("apps")).toEqual({
       track: true,

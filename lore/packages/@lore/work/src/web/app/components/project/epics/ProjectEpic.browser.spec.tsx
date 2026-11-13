@@ -8,7 +8,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
-import { AlephaReactRouter } from "alepha/react/router";
+import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -233,4 +233,124 @@ describe("ProjectEpic, the Edit button", () => {
       expect(edit()).toBeNull();
     },
   );
+});
+
+/**
+ * The epic page's Agent Prompts > Work on it on a draft epic (#Q3583): it
+ * marks the epic ready with the copy, so it asks first, and the confirm's own
+ * click copies and marks, as on the epics list.
+ */
+describe("ProjectEpic, Work on it on a draft epic", () => {
+  let alepha: Alepha | undefined;
+
+  beforeAll(() => {
+    setupJsdomMocks();
+  });
+
+  afterEach(async () => {
+    await alepha?.stop();
+    alepha = undefined;
+  });
+
+  /**
+   * The epic page, which the prompt's link resolves against.
+   */
+  class Routes {
+    epic = $page({
+      name: "projectEpic",
+      path: "/:projectSlug/epics/:epicNumber",
+      component: () => null,
+    });
+  }
+
+  class StatusLinks extends FakeLinkProvider {
+    statusCalls: string[] = [];
+
+    override client(): any {
+      const base = super.client();
+      return new Proxy(base, {
+        get: (target, key: string) =>
+          key === "setEpicStatus"
+            ? Object.assign(
+                async (request: { body: { status: string } }) => {
+                  this.statusCalls.push(request.body.status);
+                  return { ...epicOf(5), status: request.body.status };
+                },
+                { can: () => true },
+              )
+            : target[key],
+      });
+    }
+  }
+
+  const mount = async () => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          written.push(text);
+        },
+      },
+    });
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: StatusLinks })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(Routes);
+    alepha.inject(I18n);
+    alepha.inject(ResourceTabRegistry);
+    alepha.inject(WorkShell);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture());
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <Toaster visibleToasts={20} />
+          <ActionErrorToaster />
+          <ProjectEpic epic={epicOf(5)} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    await screen.findByRole("radio", { name: /Quests/ });
+    return { written, fake: alepha.inject(StatusLinks) };
+  };
+
+  const workOnIt = async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Agent Prompts" }));
+    const item = await screen.findByRole("menuitem", { name: "Work on it" });
+    fireEvent.click(item);
+    return await screen.findByRole("alertdialog");
+  };
+
+  it("asks first, then copies and marks the epic ready in the confirm's click", async () => {
+    const { written, fake } = await mount();
+
+    const confirm = await workOnIt();
+    expect(confirm.textContent).toContain("Mark this epic ready?");
+    expect(written).toHaveLength(0);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Copy and mark ready" }),
+    );
+
+    await waitFor(() => expect(written).toHaveLength(1));
+    expect(written[0]).toContain("#E5");
+    await waitFor(() => expect(fake.statusCalls).toEqual(["ready"]));
+  });
+
+  it("does nothing when the confirm is cancelled", async () => {
+    const { written, fake } = await mount();
+
+    await workOnIt();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(written).toHaveLength(0);
+    expect(fake.statusCalls).toEqual([]);
+  });
 });

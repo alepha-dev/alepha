@@ -24,7 +24,7 @@ import {
   FileText,
   History,
   Pencil,
-  Swords,
+  SquareCheckBig,
   Workflow,
 } from "lucide-react";
 import { useState } from "react";
@@ -359,7 +359,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     },
     {
       value: "quests",
-      icon: Swords,
+      icon: SquareCheckBig,
       label: tr("epic.tab.quests"),
       // `count`, not folded into the label: the segmented control colours it
       // from the segment's own state, and a `text-muted-foreground` written
@@ -429,6 +429,19 @@ const ProjectEpic = (props: ProjectEpicProps) => {
                       onSelect:
                         epic.status === "draft"
                           ? () => void markReadyAction.run()
+                          : undefined,
+                      // A draft epic becomes ready with the copy: said
+                      // first, not done silently (#Q3583).
+                      confirm:
+                        epic.status === "draft"
+                          ? {
+                              title: tr("epic.workOnIt.confirm.title"),
+                              description: tr(
+                                "epic.workOnIt.confirm.description",
+                                { args: [epic.title] },
+                              ),
+                              confirmLabel: tr("epic.workOnIt.confirm.action"),
+                            }
                           : undefined,
                     },
                   ]

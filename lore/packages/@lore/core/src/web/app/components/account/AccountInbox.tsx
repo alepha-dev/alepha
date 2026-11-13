@@ -1,0 +1,369 @@
+import { TimeAgo, Button } from "@alepha/ui";
+import { AccountPage } from "@alepha/ui/account";
+import { Control } from "@alepha/ui/form";
+import { inboxUnreadAtom } from "@alepha/ui/shell";
+import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
+import { z } from "alepha";
+import type { NotificationInboxController } from "alepha/api/notifications";
+import { DateTimeProvider } from "alepha/datetime";
+import {
+  useAction,
+  useClient,
+  useInfiniteQuery,
+  useInject,
+  useStore,
+} from "alepha/react";
+import { useForm } from "alepha/react/form";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
+import { CheckCheck } from "lucide-react";
+import { useMemo, useState } from "react";
+
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import type { I18n } from "../../services/I18n.ts";
+import { useUserProjects } from "./useUserProjects.ts";
+
+interface InboxRow {
+  id: string;
+  title: string;
+  body?: string;
+  href: string;
+  createdAt: string;
+  readAt?: string;
+  scope?: string;
+  scopeLabel?: string;
+}
+
+const PAGE_SIZE = 25;
+
+/**
+ * Every message addressed to the viewer, in the account dialog's Inbox
+ * section (#Q3564).
+ *
+ * ## ⚠️ The account's, not a project's
+ *
+ * The list was a project page, `/:project/inbox`, with `?scope=` choosing
+ * this project or all of them, on the reasoning that an account inbox would
+ * be a second page for the same list. It was the only page of a project
+ * that showed every project's messages, so it moved: a cross-project list
+ * belongs to the account, and the project page went rather than becoming a
+ * second copy. The header bell's "See all" opens this section, on all
+ * projects, which it has to: that dropdown is cross-project, and a footer
+ * showing fewer rows than the menu it came from reads as messages going
+ * missing. The Project filter narrows it to one.
+ *
+ * ## Two different emptinesses
+ *
+ * "This scope has no messages" and "your search matched none of them" are
+ * different answers and the table already distinguishes them by
+ * `activeFilterCount`. The scope is NOT one of the table's filters: it drives
+ * the server fetch, so folding it in would have the table re-filtering in
+ * memory rows the server already narrowed, and "no match" would then be shown
+ * for a scope that is simply empty.
+ *
+ * ## Paging is the controller's cursor
+ *
+ * Every page loaded so far lives in one `useInfiniteQuery` entry, flattened
+ * into one array which the table sorts and searches in memory.
+ * The list is append-heavy, which is exactly why the controller pages by
+ * cursor rather than offset, and why "Load more" adds to what is on screen
+ * instead of replacing it.
+ */
+const AccountInbox = () => {
+  const { tr } = useI18n<I18n, "en">();
+  // Untyped on purpose: this navigates to a message's href, which the
+  // server built and core's registered routers cannot name.
+  const router = useRouter<any>();
+  const api = useClient<NotificationInboxController>();
+  const dateTime = useInject(DateTimeProvider);
+
+  // The Project filter's options: the projects this account belongs to.
+  useUserProjects();
+  const [overview] = useStore(userProjectsAtom);
+  const [, setUnreadEverywhere] = useStore(inboxUnreadAtom);
+
+  /**
+   * The project the list is narrowed to, or none for all of them (the
+   * default). A one-field form, since a field is always a `Control`; it
+   * drives the server read, so it is not one of the table's own filters
+   * (see "Two different emptinesses" above).
+   */
+  const [projectId, setProjectId] = useState<string | undefined>();
+  const filter = useForm({
+    schema: z.object({ project: z.string().optional() }),
+    initialValues: {},
+    handler: async () => {},
+    onChange: (_key, next) => setProjectId(next ? String(next) : undefined),
+  });
+  const scope = projectId ? `project:${projectId}` : undefined;
+
+  /**
+   * Every page read so far, one `useInfiniteQuery` keyed on the scope by the
+   * controller's cursor (#E59, #Q2328, #Q3362): a scope switched while the
+   * previous one loads can no longer land its rows on the new one, and a
+   * scope change starts again from the first page. A failed read toasts; it
+   * used to leave an empty table that read as "no messages".
+   */
+  const inbox = useInfiniteQuery(
+    {
+      key: ["inbox", scope ?? "all"],
+      handler: async (_ctx, cursor: string | undefined) => {
+        const page = await api.listInbox({
+          query: {
+            limit: PAGE_SIZE,
+            ...(scope ? { scope } : {}),
+            ...(cursor ? { cursor } : {}),
+          },
+        });
+        // ⚠️ Only an all-projects read may speak for the bell, whose count
+        // is cross-project. A filtered page's `unreadCount` is this
+        // project's, so writing it into `inboxUnreadAtom` would understate
+        // every other project's unread at once. The scoped branch used to
+        // feed the rail's own badge, which went with the rail entry
+        // (feedback #P2127), so it now updates nothing - the bell keeps the
+        // number the loader gave it until the next navigation.
+        if (!scope) {
+          setUnreadEverywhere({ count: page.unreadCount });
+        }
+        return page;
+      },
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.nextCursor,
+    },
+    [api, scope],
+  );
+
+  /**
+   * What this screen has marked read and when, over whatever the server
+   * sent. `all` is the mark-all instant, which covers rows loaded after it
+   * too: the server marked the whole scope.
+   */
+  const [readMarks, setReadMarks] = useState<{
+    ids: Record<string, string>;
+    all?: string;
+  }>({ ids: {} });
+
+  const items = useMemo(
+    () => inbox.pages.flatMap((page) => page.items as InboxRow[]),
+    [inbox.pages],
+  );
+  // Memoised: the table runs in static-data mode and re-renders on the
+  // array's identity.
+  const rows = useMemo(
+    () =>
+      items.map((row) => {
+        const at = row.readAt ?? readMarks.ids[row.id] ?? readMarks.all;
+        return at === row.readAt ? row : { ...row, readAt: at };
+      }),
+    [items, readMarks],
+  );
+  const busy = inbox.loading || inbox.loadingMore;
+
+  /**
+   * Mark one row read, optimistically. Quiet on failure (`onError`): the row
+   * stays marked on screen. Re-reading it is cheap and being wrong the other
+   * way costs the reader their place in the list.
+   */
+  const markReadAction = useAction<[row: InboxRow], void>(
+    {
+      handler: async (_ctx, row) => {
+        setReadMarks((current) => ({
+          ...current,
+          ids: { ...current.ids, [row.id]: dateTime.nowISOString() },
+        }));
+        await api.markInboxRead({ params: { id: row.id } });
+      },
+      onError: () => {},
+    },
+    [api, dateTime],
+  );
+
+  const open = async (row: InboxRow) => {
+    if (!row.readAt) {
+      // Awaited but not trusted: the navigation happens whether or not the
+      // mark landed, which is the point of marking it quietly.
+      await markReadAction.run(row);
+    }
+    void router.push(row.href);
+  };
+
+  const markAllAction = useAction<[], void>(
+    {
+      handler: async () => {
+        setReadMarks((current) => ({
+          ...current,
+          all: dateTime.nowISOString(),
+        }));
+        try {
+          await api.markAllInboxRead({ query: scope ? { scope } : {} });
+        } finally {
+          // Same rule as the first page: zero is the whole inbox's answer
+          // only when the whole inbox is what was marked.
+          if (!scope) {
+            setUnreadEverywhere({ count: 0 });
+          }
+        }
+      },
+    },
+    [api, dateTime, scope],
+  );
+
+  const unreadOnScreen = rows.filter((it) => !it.readAt).length;
+
+  const filterFields = {
+    // Spans the title and the body preview, so it is not a field the table
+    // can match by name: the `filter` predicate does it.
+    search: {
+      preset: "search",
+      control: {
+        // ⚠️ The kit's plain "Search" is the placeholder, like every filter
+        // bar (#Q1750), and that is thin for a screen reader on a page
+        // carrying several controls - so the accessible name keeps the
+        // fuller phrase.
+        inputProps: { "aria-label": tr("inbox.filter.searchLabel") },
+      },
+    },
+  } satisfies DataTableFilterFields;
+
+  return (
+    <AccountPage variant="table">
+      <div data-testid="inbox-table" className="flex min-h-0 flex-1 flex-col">
+        <DataTable<InboxRow, typeof filterFields>
+          className="min-h-0 flex-1"
+          data={rows}
+          defaultSort={{ field: "createdAt", direction: "desc" }}
+          rowKey={(row) => row.id}
+          onRowClick={(row) => void open(row)}
+          actions={[
+            {
+              icon: CheckCheck,
+              label: tr("inbox.markAllRead"),
+              onClick: () => void markAllAction.run(),
+              disabled: unreadOnScreen === 0 || markAllAction.loading,
+            },
+          ]}
+          toolbar={
+            <div className="w-48">
+              <Control
+                input={filter.input.project}
+                label=""
+                select
+                clearable
+                clearLabel={tr("inbox.scope.all")}
+                placeholder={tr("inbox.scope.all")}
+                items={(overview?.projects ?? []).map((project) => ({
+                  value: String(project.id),
+                  label: project.title,
+                }))}
+                inputProps={{
+                  "aria-label": tr("inbox.filter.project"),
+                  "data-testid": "inbox-project-filter",
+                }}
+              />
+            </div>
+          }
+          emptyState={{
+            title: tr("inbox.empty"),
+            description: tr("inbox.empty.description"),
+          }}
+          noMatchState={{
+            title: tr("inbox.noMatch"),
+            description: tr("inbox.noMatch.description"),
+          }}
+          filters={{ fields: filterFields }}
+          filter={(row, values) => {
+            const search = (values.search ?? "").toLowerCase();
+            if (!search) return true;
+            return (
+              row.title.toLowerCase().includes(search) ||
+              (row.body ?? "").toLowerCase().includes(search)
+            );
+          }}
+          columns={{
+            title: {
+              label: tr("inbox.table.message"),
+              sortable: true,
+              // The same pair the Quests and Releases tables use, and it needs
+              // both halves: the table is auto-layout, so `max-width: 0` is
+              // what stops this column claiming its content width and
+              // `width: 100%` is what makes it absorb whatever the others
+              // leave. Without the pair the column grows to fit the longest
+              // message and the ellipsis never fires.
+              //
+              // `min-w-48` is the floor. Once the other columns' intrinsic
+              // widths fill the container there is nothing for `width: 100%`
+              // to claim and `max-width: 0` collapses this to literally zero;
+              // min-width wins over max-width, so it stops there and the
+              // table's own `overflow-x-auto` takes over.
+              className: "w-full max-w-0 min-w-48",
+              cell: (row) => (
+                <span className="flex min-w-0 items-center gap-2">
+                  {!row.readAt && (
+                    <span
+                      data-testid="inbox-row-unread"
+                      className="bg-primary size-1.5 shrink-0 rounded-full"
+                      aria-label={tr("inbox.unread")}
+                    />
+                  )}
+                  <span className="flex min-w-0 flex-col">
+                    {/* Read and unread differ by weight AND by the dot above:
+                      a weight change alone is not a difference somebody
+                      scanning a list will see. */}
+                    <span
+                      className={
+                        row.readAt ? "truncate" : "truncate font-medium"
+                      }
+                    >
+                      {row.title}
+                    </span>
+                    {row.body && (
+                      <span className="text-muted-foreground truncate text-xs">
+                        {row.body}
+                      </span>
+                    )}
+                  </span>
+                </span>
+              ),
+            },
+            scopeLabel: {
+              label: tr("inbox.table.project"),
+              sortable: true,
+              // The label the message carries. `scope` is opaque and is never
+              // parsed here either.
+              cell: (row) => (
+                <span className="text-muted-foreground text-xs">
+                  {row.scopeLabel ?? ""}
+                </span>
+              ),
+            },
+            createdAt: {
+              label: tr("inbox.table.when"),
+              sortable: true,
+              cell: (row) => (
+                <TimeAgo
+                  value={row.createdAt}
+                  className="text-muted-foreground text-xs"
+                />
+              ),
+            },
+          }}
+        />
+
+        {inbox.hasMore && (
+          <div className="flex justify-center pt-3">
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={busy}
+              onClick={() => void inbox.loadMore()}
+            >
+              {tr("inbox.loadMore")}
+            </Button>
+          </div>
+        )}
+      </div>
+    </AccountPage>
+  );
+};
+
+export default AccountInbox;

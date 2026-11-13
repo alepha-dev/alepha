@@ -14,7 +14,7 @@ import { AutomationService } from "./AutomationService.ts";
 
 /**
  * Presets only construct stock ASTs; normal authoring owns every validation,
- * immutable credential, approval fence and disabled-by-default write.
+ * immutable credential, approval fence and the draft-or-enabled write.
  */
 export class AutomationPresetService {
   protected readonly persistence = $inject(AutomationPersistence);
@@ -26,6 +26,7 @@ export class AutomationPresetService {
     projectId: number,
     user: UserAccountToken,
     input: AutomationPresetCreate,
+    options: { subscription?: boolean } = {},
   ) {
     await this.access.assert(projectId, user, "automation:write");
     const body = automationPresetCreateSchema.parse(input);
@@ -75,8 +76,10 @@ export class AutomationPresetService {
     return this.service.create(
       projectId,
       user,
-      { title: body.title ?? preset.title, rule },
-      preset.key,
+      { title: body.title ?? preset.title, rule, enabled: body.enabled },
+      options.subscription
+        ? { key: preset.key, subscription: true }
+        : preset.key,
       Object.values(body.bindings ?? {}),
     );
   }

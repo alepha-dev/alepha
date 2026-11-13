@@ -38,7 +38,6 @@ import { AlephaCliInfraCommands } from "./commands.ts";
  * - `alepha infra db migrate`  -  run database migrations
  * - `alepha infra db export`   -  pull the deployed DB into a local snapshot
  * - `alepha infra db baseline mark`  -  mark a baseline on the deployed DB
- * - `alepha infra secrets`     -  manage external secret stores
  * - `alepha infra login|logout`  -  manage the stored provider token
  *
  * Configuration in `alepha.config.ts`:
@@ -115,7 +114,6 @@ export const infra = (options: InfraOptions) => {
 export { bay, cloudflare };
 
 export * from "./commands/infra.ts";
-export * from "./commands/SecretsCommand.ts";
 
 /**
  * Shared command module loaded by the Node CLI during configuration.

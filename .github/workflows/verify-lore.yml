@@ -112,10 +112,15 @@ jobs:
       - name: Test Project
         run: yarn alepha test --shard ${{ matrix.shard }}/2
 
-  # Lore's suite on Postgres (#Q3473). Every app keeps migrations/postgres/,
-  # and SQL nothing applies only looks supported, so this job applies Lore's
-  # to an empty database, then runs every spec that names no database (or an
-  # in-memory SQLite one) on Postgres through `alepha test --dialect postgres`.
+  # Lore on Postgres (#Q3473). Every app keeps migrations/postgres/, and SQL
+  # nothing applies only looks supported, so this job applies Lore's to an
+  # empty database, then runs the specs that reach Lore's raw SQL on Postgres
+  # through `alepha test --dialect postgres`.
+  #
+  # Only those specs, not the suite: the whole suite on one runner took 18 to
+  # 27 min and doubled Verify Lore, which every deploy waits on, while the
+  # Drizzle query builder underneath is the framework's and its Postgres specs
+  # run in Verify Framework. The whole suite runs on Postgres in Nightly.
   #
   # ⚠️ NOT blocking, on purpose: `continue-on-error` keeps a red run from
   # failing Verify Lore, so it never holds a deploy back. Lore's raw SQL is
@@ -158,8 +163,33 @@ jobs:
             docker exec -i postgres psql -U postgres -d lore_migrations -v ON_ERROR_STOP=1 -q < "$file"
           done
 
-      - name: Test Project on Postgres
+      # The specs naming a module that writes raw SQL (`sql\``, `sql.raw`,
+      # `.execute(`), plus those reaching the uncovered ones through their
+      # controller: project counts and recency (home-open-counts,
+      # owns-project-query-count, quest-count, open-blight-counter) and
+      # UptimeReadService (uptime-controller). Vitest takes each word as a
+      # path filter, so `automation-` picks up a new automation spec unasked;
+      # a spec for a new raw-SQL module elsewhere needs adding here.
+      - name: Test Raw SQL on Postgres
         run: yarn alepha test --dialect postgres
+        env:
+          VITEST_ARGS: >-
+            apps/lore/test/automation-
+            apps/lore/test/guarded-statements.spec.ts
+            apps/lore/test/sigil-self-report.spec.ts
+            apps/lore/test/home-open-counts.spec.ts
+            apps/lore/test/owns-project-query-count.spec.ts
+            packages/@lore/deploy/test/SigilIngest
+            packages/@lore/deploy/test/sigil-
+            packages/@lore/deploy/test/insights-controller.spec.ts
+            packages/@lore/deploy/test/lore-analytics.spec.ts
+            packages/@lore/deploy/test/uptime-retention.spec.ts
+            packages/@lore/deploy/test/uptime-controller.spec.ts
+            packages/@lore/deploy/test/open-blight-counter.spec.ts
+            packages/@lore/knowledge/test/folio-
+            packages/@lore/work/test/WorkAutomationSelections.spec.ts
+            packages/@lore/work/test/release-default.spec.ts
+            packages/@lore/work/test/quest-count.spec.ts
 
   e2e-lore:
     runs-on: ubuntu-26.04

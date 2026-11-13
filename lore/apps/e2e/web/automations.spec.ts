@@ -302,7 +302,7 @@ test.describe("Automations", () => {
               ?.includes('"action":"createAutomationFromPreset"') === true)),
     );
     await page
-      .getByRole("button", { name: "Create automation", exact: true })
+      .getByRole("button", { name: "Save as draft", exact: true })
       .click();
     const response = await saved;
     expect(response.ok()).toBe(true);
@@ -421,7 +421,7 @@ test.describe("Automations", () => {
               ?.includes('"action":"createAutomationFromPreset"') === true)),
     );
     await page
-      .getByRole("button", { name: "Create automation", exact: true })
+      .getByRole("button", { name: "Save as draft", exact: true })
       .click();
     const response = await saved;
     expect(response.ok()).toBe(true);
@@ -525,7 +525,7 @@ test.describe("Automations", () => {
       fullPage: true,
     });
     await page
-      .getByRole("button", { name: "Create automation", exact: true })
+      .getByRole("button", { name: "Save as draft", exact: true })
       .click();
     await expect(page).toHaveURL(
       new RegExp(`/${project.slug}/automations/[^/]+$`),
@@ -951,7 +951,7 @@ test.describe("Automations", () => {
               ?.includes('"action":"createAutomationFromPreset"') === true)),
     );
     await page
-      .getByRole("button", { name: "Create automation", exact: true })
+      .getByRole("button", { name: "Save as draft", exact: true })
       .click();
     expect((await written).ok()).toBe(true);
     await expect(page).toHaveURL(

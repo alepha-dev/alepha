@@ -6,8 +6,8 @@ as notifying a member, appending to a folio or creating a quest. A rule does
 exactly what it says, every time. No AI runs inside it.
 
 Automations are the **Automations** option of the **Plan and track work**
-capability, and the option starts off: see
-[Capabilities](/lore/docs/project-capabilities). Turning it on grants nothing by
+capability, and the option starts on: see
+[Capabilities](/lore/docs/project-capabilities). Having it on grants nothing by
 itself. A rank also needs the **Automations** permissions, which only the owner
 holds by default (see [Members](/lore/docs/project-members)):
 
@@ -28,7 +28,7 @@ A rule is in one of four states:
 
 | State        | Meaning                                                                             |
 | ------------ | ----------------------------------------------------------------------------------- |
-| **Disabled** | Saved, and not running. Every new rule starts here.                                 |
+| **Disabled** | Saved, and not running: a draft. Its page says so until it is enabled.              |
 | **Active**   | Enabled and healthy.                                                                |
 | **Paused**   | Stopped until its author reviews it. See [Who a rule runs as](#who-a-rule-runs-as). |
 | **Broken**   | Something it needs is missing, such as a capability or a channel.                   |
@@ -44,10 +44,11 @@ notifications**.
    allow.
 2. Pick a preset and fill its few inputs. Members, folios and apps are chosen
    from pickers that search the project.
-3. Click **Create automation**. The rule is saved **disabled** and its page
-   opens.
-4. On the rule's page, click **Run test** to see what it would do, then
-   **Enable** it.
+3. Click **Create and enable**. Lore checks your permissions and the inputs,
+   saves the rule enabled, and opens its page. If a check fails, nothing is
+   saved and the form says why.
+4. Or click **Save as draft** to keep it **disabled**: on its page, click
+   **Run test** to see what it would do, then **Enable** it.
 
 The presets:
 
@@ -64,6 +65,12 @@ The presets:
 
 Every input belongs to this rule alone unless you choose **Share with other
 automations**, which uses or creates a [shared variable](#shared-variables).
+
+A page can also offer a preset as a subscription of your own: the bell above
+the [feedback inbox](/lore/docs/support-feedback) creates a **New feedback**
+rule that notifies you, and deletes it when you turn the bell off. The rule
+shows on the automations page like any other. If you disable it there, the bell
+reads as off, and turning it on again replaces it.
 
 ### Testing a rule
 
@@ -320,10 +327,12 @@ parts:
 ```
 
 The UUIDs stand for a folio and a member of the same project (a member is a
-user id, not an email address). The rule is created disabled. `automation_test`
-previews it, with `source: { "kind": "subject", "id": 12 }` naming a release of
-the project, and `automation_update` with the current `expectedRevision` and
-`enabled: true` turns it on.
+user id, not an email address). The rule is created disabled, a draft;
+`"enabled": true` beside `title` and `rule` creates it enabled in the same
+write, or refuses and creates nothing. `automation_test` previews a draft, with
+`source: { "kind": "subject", "id": 12 }` naming a release of the project, and
+`automation_update` with the current `expectedRevision` and `enabled: true`
+turns it on.
 
 The full list is in [MCP tools](/lore/docs/reference-mcp-tools).
 

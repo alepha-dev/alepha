@@ -1,5 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
-import { Bug, Inbox, Layers, Swords } from "lucide-react";
+import { Bug, Inbox, Layers, SquareCheckBig } from "lucide-react";
 
 import type { ProjectOverviewResource } from "../../../../api/schemas/projectResourceSchema.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -30,7 +30,7 @@ export const useHomeOpenTags = (
       tags.push({
         kind: "quests",
         route: "projectQuests",
-        icon: Swords,
+        icon: SquareCheckBig,
         count: project.openQuestCount,
         label: tr("home.table.open.quests", {
           args: [String(project.openQuestCount)],

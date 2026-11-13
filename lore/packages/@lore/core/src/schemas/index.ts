@@ -187,6 +187,14 @@ export {
   automationPresetCreateSchema,
   type AutomationPresetCreate,
 } from "../api/schemas/automationPresetCreateSchema.ts";
+export {
+  automationSubscriptionSchema,
+  type AutomationSubscription,
+} from "../api/schemas/automationSubscriptionSchema.ts";
+export {
+  automationSubscriptionSetBodySchema,
+  type AutomationSubscriptionSetBody,
+} from "../api/schemas/automationSubscriptionSetBodySchema.ts";
 export { automationCatalogPresetSchema } from "../api/schemas/automationCatalogPresetSchema.ts";
 
 export { AutomationPresetForms } from "../api/schemas/AutomationPresetForms.ts";

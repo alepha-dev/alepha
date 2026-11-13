@@ -1,10 +1,14 @@
 import { $inject, z } from "alepha";
-import { $job } from "alepha/api/jobs";
+import {
+  $job,
+  type JobRescheduleOptions,
+  jobExecutionEntity,
+} from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, DbConnectionError, DbTimeoutError } from "alepha/orm";
 
-import { deployments } from "../entities/deployments.ts";
+import { type Deployment, deployments } from "../entities/deployments.ts";
 import { DeployLimits } from "../services/DeployLimits.ts";
 import { DeployRegistry } from "../services/DeployRegistry.ts";
 import { DeployService } from "../services/DeployService.ts";
@@ -59,6 +63,7 @@ export class DeployJobs {
   protected readonly limits = $inject(DeployLimits);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly rows = $repository(deployments);
+  protected readonly executions = $repository(jobExecutionEntity);
 
   /**
    * The key one deployment's execution is pushed under.
@@ -138,11 +143,32 @@ export class DeployJobs {
    */
   public static readonly RUN_TIMEOUT_MS = DeployLimits.MAX_TIMEOUT_MS + 60_000;
 
+  /**
+   * How many times a run that hit a transient database error is tried again.
+   *
+   * ⚠️ **Only a database that did not answer** (#Q3551). On 2026-11-12 a
+   * deploy's very first read, the row itself, timed out on D1; with no retry
+   * the execution died there, the row stayed `queued`, and the operator
+   * waited 15 minutes for the sweep. A transient D1 timeout is ordinary in
+   * production, and the run is idempotent (see the class doc), so trying it
+   * again is safe. Any other failure is a real answer and is not retried: a
+   * refused gate or a missing artifact would only be refused again.
+   *
+   * Three retries on a 2 s doubling curve, capped at 15 s, so at most about
+   * half a minute of waiting before the failure is written to the row.
+   */
+  public static readonly RUN_RETRIES = 3;
+
   public readonly runDeploy = $job({
     name: "deploys.run",
     description:
       "Runs one deployment, waiting for a free slot, and fails it once past its timeout.",
     timeout: [DeployJobs.RUN_TIMEOUT_MS, "milliseconds"],
+    retry: {
+      retries: DeployJobs.RUN_RETRIES,
+      when: (error) => this.isTransient(error),
+      backoff: { initial: [2, "seconds"], max: [15, "seconds"] },
+    },
     // A few deploys a day, and an operator wants both outcomes: a queue job
     // keeps no successes by default, which made every deploy look failed.
     retention: { ok: { days: 30 }, error: { days: 30 } },
@@ -156,69 +182,158 @@ export class DeployJobs {
        */
       stage: z.enum(["deploy"]).default("deploy"),
     }),
-    handler: async ({ payload, reschedule }) => {
-      const row = await this.rows.findById(payload.deploymentId);
-      if (!row) {
-        // The row went with its instance or its project. Nothing to deploy and
-        // nothing to report against, so this is a no-op rather than a failure:
-        // a retry would find the same absence.
-        this.log.warn("Deploy row is gone; nothing to run", {
-          deploymentId: payload.deploymentId,
-        });
-        return;
+    handler: async ({ payload, reschedule, attempt }) => {
+      try {
+        await this.runOnce(payload.deploymentId, reschedule);
+      } catch (error) {
+        // ⚠️ The retry decision is the job's, made from the same predicate:
+        // a transient error with attempts left goes back to the queue
+        // untouched, anything else is the end of this deploy, said on its row
+        // NOW rather than by the sweep 15 minutes later.
+        if (!this.isTransient(error) || attempt > DeployJobs.RUN_RETRIES) {
+          await this.failForGood(payload.deploymentId, error);
+        }
+        throw error;
       }
-
-      if (row.status !== "queued" && row.status !== "running") {
-        // Already terminal. A replayed execution must not restart a deploy the
-        // operator has seen finish.
-        this.log.info("Deploy already finished; not re-running", {
-          deploymentId: row.id,
-          status: row.status,
-        });
-        return;
-      }
-
-      if ((await this.deploys.run(row)) === "done") {
-        return;
-      }
-
-      // ⚠️ No slot in this isolate. Waiting is not a failure, so this is a
-      // `reschedule`, never a `retry` policy: a reschedule resets `attempt`
-      // and leaves the row `queued`, where a retry would spend a budget meant
-      // for real failures and could run out halfway through a burst. And it
-      // RETURNS after the call rather than throwing: `reschedule` only
-      // records an intent, and a handler that throws takes the retry path on
-      // the old payload and drops it.
-      //
-      // The next look may well land in another isolate with a slot free,
-      // which is fine: the cap bounds one isolate's memory, not the account.
-      const budgetMs = await this.limits.timeoutMs();
-      const waitedMs =
-        this.dateTime.nowMillis() - new Date(row.createdAt).getTime();
-      if (waitedMs >= budgetMs) {
-        // Bounded by the same timeout a run gets, so a wedged pair of deploys
-        // cannot leave a third one looking for a slot forever.
-        await this.registry.failed(
-          row.id,
-          `This deploy waited ${Math.round(waitedMs / 60_000)} minutes for a free slot and never got one: this Lore instance was already running as many deploys as it may. Nothing reached Cloudflare; retry it once the others have finished.`,
-        );
-        return;
-      }
-
-      // Said once on the row, so its log tells waiting for a slot apart from
-      // waiting for delivery; every later look would only fill the log's cap.
-      if (
-        !(row.log ?? []).some((line) => line.text === DeployJobs.WAITING_LINE)
-      ) {
-        await this.registry.line(row.id, DeployJobs.WAITING_LINE);
-      }
-      this.log.info("No free deploy slot; waiting for one", {
-        deploymentId: row.id,
-        retryInSeconds: DeployJobs.SLOT_RETRY_SECONDS,
-      });
-      reschedule({ delay: [DeployJobs.SLOT_RETRY_SECONDS, "seconds"] });
     },
   });
+
+  /**
+   * Whether a failure is the database not answering, the one kind
+   * {@link runDeploy} retries.
+   *
+   * Found in the cause chain, since drizzle demotes the driver's error to
+   * `cause` and throws its own on top.
+   */
+  public isTransient(error: unknown): boolean {
+    return (
+      DbTimeoutError.find(error) !== undefined ||
+      DbConnectionError.find(error) !== undefined
+    );
+  }
+
+  /**
+   * Write a run's final failure to its deployment row, with the real reason.
+   *
+   * ⚠️ **Best-effort.** The database may still not be answering, and this
+   * must not replace the error the execution records with its own: a write
+   * that fails here leaves the row to the sweep, which then reads the
+   * execution's error (see {@link sweepAbandoned}).
+   */
+  protected async failForGood(
+    deploymentId: string,
+    error: unknown,
+  ): Promise<void> {
+    try {
+      const row = await this.rows.findById(deploymentId);
+      if (!row || (row.status !== "queued" && row.status !== "running")) {
+        // Gone, or already terminal: `DeployService.run` writes its own
+        // failures, and the first terminal write is the one that stands.
+        return;
+      }
+      await this.registry.failed(row.id, this.failureReason(row, error));
+    } catch (writeError) {
+      this.log.warn("Could not record a deploy's failure on its row", {
+        deploymentId,
+        error: writeError,
+      });
+    }
+  }
+
+  /**
+   * What the operator reads on a row whose run failed for good.
+   *
+   * A row still `queued` never reached the runner, which records the start
+   * before anything leaves for Cloudflare, so it can say nothing shipped.
+   */
+  protected failureReason(row: Deployment, error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+    const shipped =
+      row.status === "queued"
+        ? "Nothing reached Cloudflare, so it is safe to retry."
+        : "It may have reached Cloudflare; check the Worker before retrying.";
+    if (this.isTransient(error)) {
+      return `The database did not answer (${message}), and still did not after ${DeployJobs.RUN_RETRIES} retries. ${shipped}`;
+    }
+    return `${message} ${shipped}`;
+  }
+
+  /**
+   * One pass of {@link runDeploy}.
+   */
+  protected async runOnce(
+    deploymentId: string,
+    reschedule: (options: JobRescheduleOptions) => void,
+  ): Promise<void> {
+    const row = await this.load(deploymentId);
+    if (!row) {
+      // The row went with its instance or its project. Nothing to deploy and
+      // nothing to report against, so this is a no-op rather than a failure:
+      // a retry would find the same absence.
+      this.log.warn("Deploy row is gone; nothing to run", {
+        deploymentId,
+      });
+      return;
+    }
+
+    if (row.status !== "queued" && row.status !== "running") {
+      // Already terminal. A replayed execution must not restart a deploy the
+      // operator has seen finish.
+      this.log.info("Deploy already finished; not re-running", {
+        deploymentId: row.id,
+        status: row.status,
+      });
+      return;
+    }
+
+    if ((await this.deploys.run(row)) === "done") {
+      return;
+    }
+
+    // ⚠️ No slot in this isolate. Waiting is not a failure, so this is a
+    // `reschedule`, never a `retry` policy: a reschedule resets `attempt`
+    // and leaves the row `queued`, where a retry would spend a budget meant
+    // for real failures and could run out halfway through a burst. And it
+    // RETURNS after the call rather than throwing: `reschedule` only
+    // records an intent, and a handler that throws takes the retry path on
+    // the old payload and drops it.
+    //
+    // The next look may well land in another isolate with a slot free,
+    // which is fine: the cap bounds one isolate's memory, not the account.
+    const budgetMs = await this.limits.timeoutMs();
+    const waitedMs =
+      this.dateTime.nowMillis() - new Date(row.createdAt).getTime();
+    if (waitedMs >= budgetMs) {
+      // Bounded by the same timeout a run gets, so a wedged pair of deploys
+      // cannot leave a third one looking for a slot forever.
+      await this.registry.failed(
+        row.id,
+        `This deploy waited ${Math.round(waitedMs / 60_000)} minutes for a free slot and never got one: this Lore instance was already running as many deploys as it may. Nothing reached Cloudflare; retry it once the others have finished.`,
+      );
+      return;
+    }
+
+    // Said once on the row, so its log tells waiting for a slot apart from
+    // waiting for delivery; every later look would only fill the log's cap.
+    if (
+      !(row.log ?? []).some((line) => line.text === DeployJobs.WAITING_LINE)
+    ) {
+      await this.registry.line(row.id, DeployJobs.WAITING_LINE);
+    }
+    this.log.info("No free deploy slot; waiting for one", {
+      deploymentId: row.id,
+      retryInSeconds: DeployJobs.SLOT_RETRY_SECONDS,
+    });
+    reschedule({ delay: [DeployJobs.SLOT_RETRY_SECONDS, "seconds"] });
+  }
+
+  /**
+   * The deployment row a run is for. Its own method so a spec can make the
+   * first read fail the way D1 does in production.
+   */
+  protected async load(deploymentId: string): Promise<Deployment | undefined> {
+    return await this.rows.findById(deploymentId);
+  }
 
   /**
    * Rows whose run stopped existing, closed.
@@ -300,6 +415,22 @@ export class DeployJobs {
         }
         const minutes = Math.round(budgetMs / 60_000);
         if (row.status === "queued") {
+          // ⚠️ A run may have picked it up and failed before writing a thing
+          // (#Q3551): its own failure write is best-effort, and lost when the
+          // database is what failed. That is a failure with a reason, not a
+          // delivery nobody made, and the operator is told which.
+          const failed = await this.failedExecutionOf(row);
+          if (failed) {
+            this.log.warn("Deploy run failed before starting; marking it", {
+              deploymentId: row.id,
+              executionId: failed.id,
+            });
+            await this.registry.failed(
+              row.id,
+              `This deploy failed before it started: ${failed.error ?? "its run ended in an error"}. Nothing reached Cloudflare, so it is safe to retry.`,
+            );
+            continue;
+          }
           this.log.warn("Deploy never started; marking it failed", {
             deploymentId: row.id,
             since,
@@ -322,4 +453,31 @@ export class DeployJobs {
       }
     },
   });
+
+  /**
+   * The errored execution of a deployment's run, if one exists.
+   *
+   * ⚠️ **By payload, never by key.** The framework clears an execution's key
+   * the moment it is terminal (`ok`, `error`, `cancelled`), so the unique
+   * `(jobName, key)` index frees it for a later push: `deploy:<id>` finds a
+   * run only while it is `pending` or `scheduled`, which is all `cancelByKey`
+   * needs. A finished run is found by its `deploymentId`, among the runs
+   * created since the row was, a handful at most.
+   */
+  protected async failedExecutionOf(
+    row: Deployment,
+  ): Promise<{ id: string; error?: string } | undefined> {
+    const executions = await this.executions.findMany({
+      where: {
+        jobName: { eq: this.runDeploy.name },
+        status: { eq: "error" },
+        createdAt: { gte: row.createdAt },
+      },
+      orderBy: [{ column: "createdAt", direction: "desc" }],
+      limit: 50,
+    });
+    return executions.find(
+      (execution) => execution.payload?.deploymentId === row.id,
+    );
+  }
 }

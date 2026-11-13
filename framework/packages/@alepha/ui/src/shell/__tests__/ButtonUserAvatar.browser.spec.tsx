@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactRouter } from "alepha/react/router";
+import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -19,6 +20,23 @@ import { ButtonUser } from "../ButtonUser.tsx";
  * route, the bare glyph without a picture, the fallback on a failed load,
  * and that the slot still wins.
  */
+/**
+ * Whether the app uses pictures: `updateMyAvatar` exists only when the realm
+ * turns `features.avatars` on.
+ */
+class Links extends LinkProvider {
+  public avatars = true;
+
+  override client(): any {
+    return new Proxy({} as Record<string, unknown>, {
+      get: (_target, key: string) =>
+        Object.assign(async () => ({}), {
+          can: () => key !== "updateMyAvatar" || this.avatars,
+        }),
+    });
+  }
+}
+
 describe("ButtonUser's avatar", () => {
   let alepha: Alepha | undefined;
 
@@ -35,8 +53,11 @@ describe("ButtonUser's avatar", () => {
     avatar?: ReactNode;
     signedIn?: boolean;
     picture?: string;
+    avatars?: boolean;
   }) => {
-    alepha = Alepha.create().with(AlephaReactRouter);
+    alepha = Alepha.create()
+      .with({ provide: LinkProvider, use: Links })
+      .with(AlephaReactRouter);
     if (options.signedIn !== false) {
       alepha.store.set("alepha.security.user", {
         id: "u-1",
@@ -45,6 +66,7 @@ describe("ButtonUser's avatar", () => {
       });
     }
     await alepha.start();
+    alepha.inject(Links).avatars = options.avatars !== false;
 
     return render(
       <AlephaContext.Provider value={alepha}>
@@ -55,15 +77,25 @@ describe("ButtonUser's avatar", () => {
 
   const trigger = () => screen.getByLabelText("Account menu");
 
-  it("draws the generic glyph for a viewer with no picture", async () => {
+  it("draws the viewer's initials when they have no picture (#Q3577)", async () => {
     await mount({});
 
-    expect(trigger().querySelector("svg")).not.toBeNull();
     expect(trigger().querySelector("img")).toBeNull();
-    // The BARE glyph, not `UserAvatar`'s glyph-in-a-circle: beside the
-    // ghost icons of `AppActions`, a filled circle reads as another kind of
-    // control.
-    expect(trigger().querySelector(".rounded-full")).toBeNull();
+    // The initials identify the account, which the bare glyph never did.
+    expect(trigger().textContent).toBe("AD");
+    expect(
+      trigger().querySelector('[role="img"]')?.getAttribute("aria-label"),
+    ).toBe("ada@example.com");
+  });
+
+  it("never fetches a picture when the app does not use pictures", async () => {
+    await mount({
+      picture: "00000000-0000-4000-8000-00000000000d",
+      avatars: false,
+    });
+
+    expect(trigger().querySelector("img")).toBeNull();
+    expect(trigger().textContent).toBe("AD");
   });
 
   it("draws the viewer's picture through the authenticated file route", async () => {
@@ -79,13 +111,13 @@ describe("ButtonUser's avatar", () => {
     expect(trigger().querySelector(".size-7")).not.toBeNull();
   });
 
-  it("falls back when the picture fails to load", async () => {
+  it("falls back to the initials when the picture fails to load", async () => {
     await mount({ picture: "00000000-0000-4000-8000-00000000000b" });
 
     fireEvent.error(trigger().querySelector("img")!);
 
     expect(trigger().querySelector("img")).toBeNull();
-    expect(trigger().querySelector("svg")).not.toBeNull();
+    expect(trigger().textContent).toBe("AD");
   });
 
   it("draws the slot INSTEAD of the glyph when one is passed", async () => {

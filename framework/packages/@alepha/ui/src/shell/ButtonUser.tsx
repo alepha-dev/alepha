@@ -48,13 +48,15 @@ export interface ButtonUserProps {
    * Overrides what the signed-in button shows. Rarely needed: by default the
    * button already draws the viewer's own avatar (feedback #P2138, #Q2229).
    *
-   * **The default.** When `useAuth().user.picture` is set, the button draws
-   * {@link UserAvatar} at `size-7` inside the `size-9` icon button, so the
-   * face fills the control the way the `size-4` glyph it replaces does not.
-   * A viewer with NO picture keeps the bare `User` glyph rather than a glyph
-   * in a filled circle: beside the ghost icons of `AppActions`, a filled
-   * circle reads as a different kind of control. A picture that fails to
-   * load lands on `UserAvatar`'s own fallback.
+   * **The default.** The button draws {@link UserAvatar} for the viewer at
+   * `size-7` inside the `size-9` icon button: their picture when they have
+   * one, else their two initials on a colour of their own. The initials
+   * replace the bare `User` glyph a viewer with no picture used to get,
+   * which was chosen because a filled circle reads as a different kind of
+   * control beside the ghost icons of `AppActions`; the initials identify the
+   * account, which the glyph never did, and that is worth the difference.
+   * When the realm does not use pictures (`features.avatars` off, read as
+   * `MyAvatarController` being registered) the picture is never fetched.
    *
    * **Which file route, and why.** `user.picture` is a file id in the
    * `avatars` bucket, and both routes that serve it belong to

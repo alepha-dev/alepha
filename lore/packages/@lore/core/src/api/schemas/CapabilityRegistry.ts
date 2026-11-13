@@ -221,7 +221,10 @@ export class CapabilityRegistry {
           descriptionKey:
             "project.capability.work.option.automations.description",
           wizard: false,
-          preselected: false,
+          // On by default (#Q3563): a project had no automations until an
+          // owner found the switch. Existing Work rows that never stored it
+          // were backfilled on by migration `automations_on_by_default`.
+          preselected: true,
         },
       ],
       mcpTools: [

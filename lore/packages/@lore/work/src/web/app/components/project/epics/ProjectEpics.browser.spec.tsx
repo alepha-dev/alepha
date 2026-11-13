@@ -708,12 +708,13 @@ describe("ProjectEpics - the status filter", () => {
     });
 
     /**
-     * One click, two acts (feedback #P2226, #Q3228): the prompt on the
-     * clipboard, and the epic marked ready behind the same Undo toast as the
-     * row's Mark as ready. Without the second a draft epic's quests refuse
-     * to be accepted and the prompt is useless.
+     * Two acts (feedback #P2226, #Q3228): the prompt on the clipboard, and
+     * the epic marked ready behind the same Undo toast as the row's Mark as
+     * ready. Without the second a draft epic's quests refuse to be accepted
+     * and the prompt is useless. Asked first since #Q3583: the status change
+     * used to be silent, and the confirm's own click does both.
      */
-    it("copies Work on it on a draft epic and marks the epic ready", async () => {
+    it("confirms, then copies Work on it on a draft epic and marks the epic ready", async () => {
       const written = stubClipboard();
       await mount();
       const fake = alepha!.inject(FakeLinkProvider);
@@ -723,6 +724,14 @@ describe("ProjectEpics - the status filter", () => {
       );
       fireEvent.click(items.find((item) => item.textContent === "Work on it")!);
 
+      const confirm = await screen.findByRole("alertdialog");
+      expect(confirm.textContent).toContain("Mark this epic ready?");
+      expect(written).toHaveLength(0);
+      expect(fake.statusCalls).toEqual([]);
+      fireEvent.click(
+        within(confirm).getByRole("button", { name: "Copy and mark ready" }),
+      );
+
       await waitFor(() => expect(written).toHaveLength(1));
       expect(written[0]).toContain("to completion, quest by quest");
       expect(written[0]).toContain("#E1");
@@ -730,6 +739,23 @@ describe("ProjectEpics - the status filter", () => {
         expect(fake.statusCalls).toEqual([{ id: 1, status: "ready" }]),
       );
       await undoIn("#E1 is ready");
+    });
+
+    it("copies nothing and keeps the draft when the confirm is cancelled", async () => {
+      const written = stubClipboard();
+      await mount();
+      const fake = alepha!.inject(FakeLinkProvider);
+
+      const items = await openAgentPrompts(
+        await openRowMenu("#E1 - Draft epic"),
+      );
+      fireEvent.click(items.find((item) => item.textContent === "Work on it")!);
+      const confirm = await screen.findByRole("alertdialog");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+      expect(written).toHaveLength(0);
+      expect(fake.statusCalls).toEqual([]);
     });
 
     it("copies Work on it on a ready epic without touching its status", async () => {
@@ -1212,6 +1238,112 @@ describe("ProjectEpics - the status filter", () => {
       expect(screen.queryByRole("alertdialog")).toBeNull();
       await undoIn("#E2 unshelved");
       await waitFor(() => expect(fake.unshelveCalls).toEqual([2]));
+    });
+
+    /**
+     * Bulk Shelve and Unshelve (#Q3561), the row menu's shelve over a
+     * selection: Shelve confirms, naming how many epics and open quests it
+     * sets aside and the epics it leaves out, then holds the write behind
+     * its Undo toast; Unshelve is sent at once.
+     */
+    describe("bulk Shelve and Unshelve", () => {
+      const withShelved = () => [
+        ...fixture(),
+        withQuests(epicOf(5, "Parked epic", "shelved"), 3),
+      ];
+
+      it("offers Shelve for a selection holding a shelvable epic, Unshelve for a shelved one", async () => {
+        await mount([], withShelved());
+
+        selectRow("#E4 - Completed epic");
+        await waitFor(() =>
+          expect(
+            screen.getByRole("button", { name: /Add to release/ }),
+          ).toBeTruthy(),
+        );
+        expect(screen.queryByRole("button", { name: "Shelve" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "Unshelve" })).toBeNull();
+
+        selectRow("#E3 - Started epic");
+        await waitFor(() =>
+          expect(screen.getByRole("button", { name: "Shelve" })).toBeTruthy(),
+        );
+        expect(screen.queryByRole("button", { name: "Unshelve" })).toBeNull();
+
+        selectRow("#E5 - Parked epic");
+        await waitFor(() =>
+          expect(screen.getByRole("button", { name: "Unshelve" })).toBeTruthy(),
+        );
+        expect(screen.getByRole("button", { name: "Shelve" })).toBeTruthy();
+      });
+
+      it("confirms with the epics and open quests it sets aside, names the ones it skips, and holds the write", async () => {
+        await mount([], withShelved());
+        const fake = alepha!.inject(FakeLinkProvider);
+
+        selectRow("#E1 - Draft epic");
+        selectRow("#E3 - Started epic");
+        selectRow("#E4 - Completed epic");
+        selectRow("#E5 - Parked epic");
+        fireEvent.click(await screen.findByRole("button", { name: "Shelve" }));
+        const confirm = await screen.findByRole("alertdialog");
+
+        expect(confirm.textContent).toContain("Shelve 2 epics?");
+        expect(confirm.textContent).toContain("Their 6 open quests");
+        expect(confirm.textContent).toContain("#E4 Completed epic");
+        expect(confirm.textContent).toContain("#E5 Parked epic");
+        expect(confirm.textContent).not.toContain("#E1 Draft epic");
+        fireEvent.click(
+          within(confirm).getByRole("button", { name: "Shelve 2 epics" }),
+        );
+
+        // Held behind its Undo toast, like the row's shelve: closing the
+        // toast is what sends it.
+        const toast = await waitFor(() => {
+          const found = [
+            ...document.querySelectorAll("[data-sonner-toast]"),
+          ].find((it) => it.textContent?.includes("2 epic(s) shelved"));
+          if (!found) throw new Error("no undo toast yet");
+          return found as HTMLElement;
+        });
+        expect(fake.shelveCalls).toEqual([]);
+        fireEvent.click(within(toast).getByRole("button", { name: /close/i }));
+        await waitFor(() => expect(fake.shelveCalls).toEqual([1, 3]));
+      });
+
+      it("sends nothing when the confirm is cancelled", async () => {
+        await mount([], withShelved());
+        const fake = alepha!.inject(FakeLinkProvider);
+
+        selectRow("#E3 - Started epic");
+        fireEvent.click(await screen.findByRole("button", { name: "Shelve" }));
+        const confirm = await screen.findByRole("alertdialog");
+        fireEvent.click(
+          within(confirm).getByRole("button", { name: "Cancel" }),
+        );
+
+        await waitFor(() =>
+          expect(screen.queryByRole("alertdialog")).toBeNull(),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(fake.shelveCalls).toEqual([]);
+      });
+
+      it("unshelves the shelved epics at once and reports the rest as skipped", async () => {
+        await mount([], withShelved());
+        const fake = alepha!.inject(FakeLinkProvider);
+
+        selectRow("#E2 - Ready epic");
+        selectRow("#E5 - Parked epic");
+        fireEvent.click(
+          await screen.findByRole("button", { name: "Unshelve" }),
+        );
+
+        expect(screen.queryByRole("alertdialog")).toBeNull();
+        await undoIn("1 epic(s) unshelved");
+        expect(screen.getByText("1 skipped: not shelved.")).toBeTruthy();
+        await waitFor(() => expect(fake.unshelveCalls).toEqual([5]));
+      });
     });
 
     it("hides the bulk delete when nothing selected can be deleted", async () => {

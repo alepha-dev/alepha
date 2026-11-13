@@ -2002,13 +2002,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      // `on_hold` is allowed, and it is the one verb where it is. A held quest
-      // keeps its assignee, so handing it back is a real thing to want, and
-      // unassigning does not touch `heldAt`: the quest stays blocked and
-      // becomes unassigned, which is exactly what happened. Shelving, by
-      // contrast, WOULD have to clear the hold - a quest that is out of
-      // scope is not waiting for anything - so it refuses instead of doing
-      // that silently.
+      // `on_hold` is allowed. A held quest keeps its assignee, so handing it
+      // back is a real thing to want, and unassigning does not touch
+      // `heldAt`: the quest stays blocked and becomes unassigned, which is
+      // exactly what happened. Shelving, by contrast, clears the hold too -
+      // a quest that is out of scope is not waiting for anything - and says
+      // so with its own `unheld` history event (#Q3546).
       const { quest } = this.getQuestForTransition("unassign", [
         "in_progress",
         "on_hold",
@@ -2050,9 +2049,15 @@ export class QuestController {
    * denominators — the backlog stops showing work nobody intends to do
    * right now, but the idea survives.
    *
-   * Only quests still in "todo" status can be shelved: an accepted quest
-   * must be unassigned first, so that clearing the assignee, timer and
-   * reminders stays an explicit act rather than a side-effect of shelving.
+   * An accepted or held quest is shelved in the same step (#Q3546): it is
+   * handed back first, exactly as `unassignQuest` and `unholdQuest` would,
+   * with its running timer stopped, and then shelved, in one write whose
+   * history keeps every move (`unheld`, `unassigned`, `shelved`). Making the
+   * caller unassign first was meant to keep that clearing explicit; in
+   * practice it was a refusal toast on the row menu for a move nobody
+   * misreads, since a quest out of scope has nobody working it. A hold is
+   * lifted the same way rather than refused, as the epic shelve already did
+   * (#E78): a quest set aside is not waiting for anything.
    *
    * Deliberately NOT behind the epic phase gate (epic #31). Shelving moves
    * a quest toward resolution, and it is the only exit for a `todo` quest
@@ -2075,6 +2080,8 @@ export class QuestController {
       // "shelved" is allowed so re-shelving stays idempotent below.
       const { quest } = this.getQuestForTransition("shelve", [
         "todo",
+        "in_progress",
+        "on_hold",
         "shelved",
       ]);
 
@@ -2086,7 +2093,9 @@ export class QuestController {
       }
 
       // The write is `QuestShelvingService`, shared with the epic shelve
-      // (#E78), so both shelve a quest the same way.
+      // (#E78), so both shelve a quest the same way: handed back to `todo`
+      // in memory, then saved once with every history event.
+      this.shelving.release(quest, user);
       await this.shelving.shelve(quest, user);
       // After the save, so the count sees this quest resolved.
       await this.epicWorkflow.completeIfResolved(quest, user);

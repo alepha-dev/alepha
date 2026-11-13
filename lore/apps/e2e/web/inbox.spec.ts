@@ -216,40 +216,24 @@ test.describe("Inbox", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await expect(bell).toBeVisible({ timeout: 10_000 });
 
-    // ⚠️ The crumb is the only thing naming where the reader is now that the
-    // rail entry is gone, and the page had none at all (feedback #P2128):
-    // `projectInbox` was missing from `SECTION_LABEL_KEYS`, so the header
-    // read the project title and stopped.
+    // "See all" opens the account dialog's Inbox (#Q3564): the list is the
+    // account's, not a project page, and `/inbox` is gone.
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(`/${slug}/inbox`);
-    await page.waitForLoadState("networkidle");
-    const crumbs = page.getByRole("navigation", { name: /breadcrumb/i });
-    await expect(crumbs).toContainText(title, { timeout: 15_000 });
-    await expect(crumbs).toContainText("Notifications");
+    await bell.click();
+    await page.getByRole("menuitem", { name: "See all" }).click();
+    const dialog = page.locator('[data-slot="settings-dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+    await expect(dialog.getByTestId("inbox-table")).toBeVisible();
+    await expect(
+      dialog.getByRole("combobox", { name: "Project" }),
+    ).toBeVisible();
+    // Opened in place: the page under the dialog did not move.
+    expect(new URL(page.url()).pathname).toBe(`/${slug}/quests`);
 
-    /*
-     * ⚠️ The table fills the content area (feedback #P2129). `projectInbox`
-     * was missing from `ROUTES_FULL_WIDTH`, so the shell capped it at
-     * `max-w-5xl` and the messages sat in a ~1024px column with the project
-     * background down both sides, truncating while the space was there.
-     *
-     * ⚠️ At 1920, and the width matters: `max-w-5xl` IS 1024px, so at the
-     * 1280 viewport above a capped table and an uncapped one measure the
-     * same and the assertion passes either way. The report was at 1920 for
-     * this reason. Asserted as a share of the viewport rather than in pixels
-     * so the sidebar's own width is not baked in.
-     */
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    const share = await page.evaluate(() => {
-      const table = document.querySelector('[data-testid="inbox-table"]');
-      return (table?.getBoundingClientRect().width ?? 0) / window.innerWidth;
-    });
-    expect(share).toBeGreaterThan(0.6);
-
-    // And it survives a narrow viewport, where the cap never applied and the
-    // risk is the opposite one: a floor that overflows the page.
+    // And it survives a narrow viewport: a floor that overflows the page is
+    // the risk there.
     await page.setViewportSize({ width: 375, height: 812 });
-    await expect(page.getByTestId("inbox-table")).toBeVisible();
+    await expect(dialog.getByTestId("inbox-table")).toBeVisible();
     const overflows = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth + 1,
     );

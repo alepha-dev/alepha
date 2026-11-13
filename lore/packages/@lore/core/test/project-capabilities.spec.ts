@@ -129,6 +129,11 @@ describe("Project capabilities", () => {
       "knowledge",
       "work",
     ]);
+    // Automations is on by default (#Q3563).
+    expect(
+      created.data.capabilities.find((it) => it.key === "work")?.options
+        .automations,
+    ).toBe(true);
   });
 
   it("creates a project with no capability at all", async ({ expect }) => {

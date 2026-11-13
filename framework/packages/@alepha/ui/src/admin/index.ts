@@ -30,6 +30,7 @@ export { AdminFiles } from "./AdminFiles.tsx";
 export { AdminJobDetail, type AdminJobDetailProps } from "./AdminJobDetail.tsx";
 export { AdminJobs } from "./AdminJobs.tsx";
 export { AdminKeys } from "./AdminKeys.tsx";
+export { AdminBrand, type AdminBrandProps } from "./AdminBrand.tsx";
 export { AdminLayout } from "./AdminLayout.tsx";
 export { AdminNotifications } from "./AdminNotifications.tsx";
 export { AdminPage, type AdminPageProps } from "./AdminPage.tsx";

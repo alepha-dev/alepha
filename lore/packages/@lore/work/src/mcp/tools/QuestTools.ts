@@ -579,7 +579,7 @@ export class QuestTools {
    */
   quest_shelve = $tool({
     description:
-      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from project progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'todo' status can be shelved; call `quest_unassign` first on an accepted one. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now. Shelving the last open quest of an in-progress epic completes the epic.",
+      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from project progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Any quest not completed can be shelved: an accepted one is unassigned (its timer stopped, its reminders cleared) and a held one has its hold lifted, in the same step, each move recorded in its history. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now. Shelving the last open quest of an in-progress epic completes the epic.",
     title: "Shelve quest",
     annotations: {
       readOnlyHint: false,
@@ -713,7 +713,7 @@ export class QuestTools {
   quest_unassign = $tool({
     description:
       "Send an accepted quest back to the backlog as 'todo': clears the assignee and any reminders, and keeps everything written on it (description, objectives, comments, history). Use it when you took a quest you are not going to work, or when handing one back. " +
-      "It is also the step before `quest_shelve` on an accepted quest, which only accepts quests in 'todo'. Nothing is deleted; `quest_delete` is the destructive one.",
+      "To set an accepted quest aside for good, `quest_shelve` it directly: it unassigns in the same step. Nothing is deleted; `quest_delete` is the destructive one.",
     title: "Unassign quest",
     annotations: {
       readOnlyHint: false,

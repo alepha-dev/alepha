@@ -541,9 +541,8 @@ export default {
   "board.bulk.released": "$1 added to $2.",
   "board.bulk.failed": "$1 could not be updated.",
   "board.bulk.shelve.none":
-    "None of the selected quests can be shelved: only a quest still to do can be.",
-  "board.bulk.shelve.skipped":
-    "$1 skipped: only a quest still to do can be shelved.",
+    "None of the selected quests can be shelved: they are completed or shelved already.",
+  "board.bulk.shelve.skipped": "$1 skipped: completed or shelved already.",
   "board.bulk.unshelve.none": "None of the selected quests is shelved.",
   "board.bulk.unshelve.skipped": "$1 skipped: not shelved.",
 
@@ -1878,13 +1877,13 @@ export default {
   "account.nav.group.lore": "Lore",
   "account.nav.projects": "Projects",
   "account.nav.invitations": "Invitations",
+  "account.nav.inbox": "Inbox",
   "account.nav.notifications": "Notifications",
   "account.nav.feedback": "Feedback",
   "account.projects.create": "New project",
   "account.projects.col.project": "Project",
   "account.projects.col.role": "Your role",
   "account.projects.col.pinned": "Pinned",
-  "account.projects.pinned-count": "$1 / $2 pinned",
   "account.projects.pin": "Pin $1 to the dock",
   "account.projects.col.openQuests": "Open quests",
   "account.projects.col.lastActivity": "Last activity",
@@ -1911,7 +1910,8 @@ export default {
   "account.projects.filter.role": "Role",
   "account.projects.filter.allRoles": "All roles",
   "account.projects.filter.archived": "Archived",
-  "account.projects.filter.active": "Not archived",
+  "account.projects.filter.archived.yes": "Yes",
+  "account.projects.filter.archived.no": "No",
   "account.projects.filter.allStates": "Archived or not",
   "account.projects.archived": "Archived",
 
@@ -2242,6 +2242,17 @@ export default {
     "This copy is a member of the stack environment $1: it deploys there, to the estate that environment uses, and only its own service is redeployed. The estate is set on the stack's settings.",
   "app.settings.estate.saved": "Deploy target saved",
   "app.settings.danger": "Danger zone",
+  "apps.delete.title": "Delete $1 apps?",
+  "apps.delete.confirm": "Delete $1 apps",
+  "apps.delete.one": "Removes Lore’s record of $1 and its deploy history.",
+  "apps.delete.many":
+    "Removes Lore’s record of these $1 copies and their deploy history.",
+  "apps.delete.sigil":
+    "A sigil goes too, with everything it reported: page views, web vitals, unique visitors and the error budget. Blights already filed are kept.",
+  "apps.delete.lastEnv":
+    "This is the last environment of $1, which leaves the Apps list with it.",
+  "apps.delete.nothingUndeployed":
+    "Nothing is undeployed: each copy keeps running wherever it runs.",
   "app.settings.delete.title": "Delete this app",
   "app.settings.delete.description":
     "Removes this deployed copy from Lore. It does not undeploy anything.",
@@ -2749,6 +2760,11 @@ export default {
     "Feedback you turn down is kept here as a record.",
   "feedback.empty.detail.openForm": "Open the feedback form",
   "feedback.back": "Back",
+  "feedback.subscription.label": "Notify me of new feedback",
+  "feedback.subscription.description":
+    "A rule will notify you of every new feedback in this project.",
+  "feedback.subscription.offDescription":
+    "You will no longer be notified of new feedback in this project.",
   "feedback.filter.pending": "Pending",
   "feedback.filter.accepted": "Accepted",
   "feedback.filter.rejected": "Rejected",
@@ -2811,7 +2827,7 @@ export default {
   "inbox.unread": "Unread",
   "inbox.loadMore": "Load more",
   "inbox.scope.all": "All projects",
-  "inbox.scope.project": "This project",
+  "inbox.filter.project": "Project",
   "inbox.markAllRead": "Mark all read",
   "inbox.seeAll": "See all",
   "feedback.thread.title": "Discussion",
@@ -3012,6 +3028,15 @@ export default {
   "epic.undo.deleted": "$1 deleted",
   "epic.undo.bulkReady": "$1 epic(s) ready",
   "epic.undo.bulkDeleted": "$1 epic(s) deleted",
+  "epic.undo.bulkShelved": "$1 epic(s) shelved",
+  "epic.undo.bulkUnshelved": "$1 epic(s) unshelved",
+  "epic.bulk.shelve.title": "Shelve $1 epics?",
+  "epic.bulk.shelve.confirm": "Shelve $1 epics",
+  "epic.bulk.shelve.description":
+    "Their $1 open quests are set aside with them: unassigned and shelved until the epics are unshelved. Completed quests stay completed.",
+  "epic.bulk.shelve.skipped":
+    "Left out, because they are completed or shelved already: $1.",
+  "epic.bulk.unshelve.skipped": "$1 skipped: not shelved.",
   "epic.bulk.delete.title": "Delete $1 epics?",
   "epic.bulk.delete.confirm": "Delete $1 epics",
   "epic.bulk.delete.description":
@@ -3047,6 +3072,10 @@ export default {
   "epic.status.actions.backToDraft": "Back to draft",
   "epic.status.actions.shelve": "Shelve",
   "epic.status.actions.unshelve": "Unshelve",
+  "epic.workOnIt.confirm.title": "Mark this epic ready?",
+  "epic.workOnIt.confirm.description":
+    'Work on it copies the prompt and marks "$1" ready: it leaves draft, and its quests can be accepted.',
+  "epic.workOnIt.confirm.action": "Copy and mark ready",
   "epic.shelve.title": "Shelve this epic?",
   "epic.shelve.confirm":
     "Shelving $1 sets aside its $2 open quests: they are unassigned and shelved, and nothing in the epic can be worked until it is unshelved. Completed quests stay completed, and epics that depend on it stay blocked.",
@@ -3819,6 +3848,16 @@ export default {
   "automation.adoption.reminderCount": "$1 configured quest reminders",
   "automation.adoption.replacement": "Replacement rule",
   "automation.adoption.create": "Create my compatibility rule",
+  "automation.subscription.on": "Subscribed: click to stop notifications",
+  "automation.subscription.channel": "Notify me by",
+  "automation.subscription.channel.inbox": "In-app",
+  "automation.subscription.channel.email": "Email",
+  "automation.subscription.rule":
+    "This creates an automation of yours, listed under Automations, where you can edit it.",
+  "automation.subscription.confirm": "Subscribe",
+  "automation.subscription.cancel": "Cancel",
+  "automation.subscription.offTitle": "Unsubscribe?",
+  "automation.subscription.offConfirm": "Unsubscribe",
   "automation.adoption.adopt": "Consent and adopt",
   "automation.adoption.resume": "Resume my adoption",
   "automation.adoption.open": "Open replacement rule",
@@ -3855,9 +3894,12 @@ export default {
   "automation.summary.assignRelease": "Assign the quest to release $1",
   "automation.summary.addTag": 'Tag the quest "$1"',
   "automation.summary.nextRun": "Next run",
-  "automation.setup.startsDisabled":
-    "The automation is created disabled. Its page lets you test it, then enable it.",
-  "automation.preset.create": "Create automation",
+  "automation.setup.enableOrDraft":
+    "Create and enable turns it on now. Save as draft keeps it off: its page lets you test it, then enable it.",
+  "automation.preset.createAndEnable": "Create and enable",
+  "automation.preset.saveDraft": "Save as draft",
+  "automation.disabledNotice.title":
+    "Disabled: this automation does nothing until it is enabled.",
   "automation.editor.fixed": "Fixed value",
   "automation.history.triggered": "Triggered $1",
   "automation.variables.empty":
@@ -4154,6 +4196,25 @@ export default {
   "assistant.suggest.open": "What is still open in this project?",
   "assistant.suggest.epic": "What does the current epic still lack?",
   "assistant.suggest.file": "File a quest for ...",
+  "assistant.suggest.reports.week": "What changed in this project this week?",
+  "assistant.suggest.reports.slow": "Which areas are slowing down, and why?",
+  "assistant.suggest.reports.summary":
+    "Summarize these reports for a status update",
+  "assistant.suggest.quest.left": "What is left to do on this quest?",
+  "assistant.suggest.quest.discussion": "Summarize this quest’s discussion",
+  "assistant.suggest.quest.dependencies":
+    "What does this quest depend on, and is it ready?",
+  "assistant.suggest.epic.lack": "What does this epic still lack?",
+  "assistant.suggest.epic.blocked":
+    "Which quests in this epic are blocked or on hold?",
+  "assistant.suggest.epic.next": "Which quest of this epic should come next?",
+  "assistant.suggest.feedback.pending":
+    "What feedback is still waiting for triage?",
+  "assistant.suggest.feedback.group": "Group the pending feedback by topic",
+  "assistant.suggest.feedback.file": "File a quest for the most reported issue",
+  "assistant.suggest.apps.deploys": "Which deploys failed recently, and why?",
+  "assistant.suggest.apps.errors": "Which apps report the most errors?",
+  "assistant.suggest.apps.silent": "Which apps have stopped reporting?",
   "assistant.tool.failed": "$1 failed",
   "assistant.tool.denied": "$1 cancelled",
   "assistant.tool.project_list.running": "Listing your projects",

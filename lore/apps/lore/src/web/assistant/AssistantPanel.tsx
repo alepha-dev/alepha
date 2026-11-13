@@ -1,8 +1,14 @@
 import { Button } from "@alepha/ui";
 import { AiChat, type AiChatSuggestion } from "@alepha/ui/ai";
-import { currentProjectAtom, type I18n, loreDocsUrl } from "@lore/core/web";
-import { useStore } from "alepha/react";
+import {
+  AssistantSuggestionRegistry,
+  currentProjectAtom,
+  type I18n,
+  loreDocsUrl,
+} from "@lore/core/web";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouterState } from "alepha/react/router";
 import { CircleHelp } from "lucide-react";
 
 import { assistantConfirmCards } from "./assistantConfirmCards.ts";
@@ -28,16 +34,28 @@ const AssistantPanel = () => {
   const [project] = useStore(currentProjectAtom);
   const toolLabel = useAssistantToolLabel();
   const refresh = useAssistantInvalidates();
+  const registry = useInject(AssistantSuggestionRegistry);
+  const routerState = useRouterState();
 
   if (!enabled || project?.id === undefined) {
     return null;
   }
 
-  const suggestions: AiChatSuggestion[] = [
-    { label: tr("assistant.suggest.open") },
-    { label: tr("assistant.suggest.epic") },
-    { label: tr("assistant.suggest.file") },
+  // The open page's own prompts (#Q3585), registered by the module that owns
+  // it; a page nobody registered keeps the generic three.
+  const keys = registry.suggestionsFor(
+    (routerState.layers ?? []).flatMap((layer) =>
+      layer.route?.name ? [layer.route.name] : [],
+    ),
+  ) ?? [
+    "assistant.suggest.open",
+    "assistant.suggest.epic",
+    "assistant.suggest.file",
   ];
+  const suggestions: AiChatSuggestion[] = keys.map((key) => ({
+    // A registered key is a plain string; the catalogue has every one.
+    label: tr(key as Parameters<typeof tr>[0]),
+  }));
 
   return (
     <AiChat

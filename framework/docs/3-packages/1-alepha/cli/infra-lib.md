@@ -27,7 +27,4 @@ call `orchestrator.up({ ... })` directly. For CLI usage
 
 ### Providers
 
-- [`GitHubSecretStore`](/docs/reference-providers-githubsecretstore) - GitHub Actions secret store backed by the `gh` CLI.
 - [`InfraCacheProvider`](/docs/reference-providers-infracacheprovider) - Caches cloud provider login state to avoid slow auth checks.
-- [`MemorySecretStore`](/docs/reference-providers-memorysecretstore) - In-memory implementation of SecretStoreProvider for testing.
-- [`SecretStoreProvider`](/docs/reference-providers-secretstoreprovider) - Abstract provider for managing secrets in an external store.

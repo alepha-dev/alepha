@@ -108,10 +108,9 @@ test.describe("Feedback", () => {
       await page.waitForURL(new RegExp(`/${projectSlug}/feedback$`), {
         timeout: 15_000,
       });
-      // Twice on the page: its row in the list, and the opened detail.
-      await expect(
-        page.getByText(feedbackTitle, { exact: true }).first(),
-      ).toBeVisible({
+      // Twice on the page: its row in the list, and the opened detail. Not
+      // `exact`: both read `#P<n> - <title>` (#Q3574).
+      await expect(page.getByText(feedbackTitle).first()).toBeVisible({
         timeout: 10_000,
       });
     });

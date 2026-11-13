@@ -144,8 +144,8 @@ export const CORE_NAV: CapabilityNavEntry[] = [
   },
   /*
    * ⚠️ **No Notifications entry, and it is not an omission** (feedback
-   * #P2127). The header bell is the only door to `/inbox`: two controls for
-   * one page, both badged with the same count, one of them three centimetres
+   * #P2127). The header bell is the door to the inbox: two controls for
+   * one list, both badged with the same count, one of them three centimetres
    * from the other.
    *
    * What that entry's own note argued still holds for the page and the bell,
@@ -156,10 +156,9 @@ export const CORE_NAV: CapabilityNavEntry[] = [
    * with no door to them; hang it off `support` and the common case loses
    * it.
    *
-   * ⚠️ **The URL stays `/inbox`.** The entry was labelled "Notifications"
-   * only because the `Inbox` icon already belongs to the Feedback entry, and
-   * removing the row settles that clash - but a segment is not a label, and
-   * `projectInbox` and its path do not move.
+   * The list is no longer a project page at all (#Q3564): it is the
+   * account dialog's Inbox section, since it shows every project's
+   * messages, and `/inbox` is gone.
    */
   {
     route: "projectReports",

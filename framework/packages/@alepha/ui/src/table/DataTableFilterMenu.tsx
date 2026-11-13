@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../core/DropdownMenu.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 
 export interface DataTableFilterMenuProps {
   /**
@@ -71,19 +72,29 @@ export const DataTableFilterMenu = (props: DataTableFilterMenuProps) => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            type="button"
-            size="sm"
-            variant="minimal"
-            className="h-9 w-9 p-0"
-            aria-label={label}
-          />
-        }
-      >
-        <Funnel className="size-4" />
-      </DropdownMenuTrigger>
+      {/* Dropdown trigger AND tooltip trigger, composed the way the column
+          picker's is: without the tooltip this was the toolbar's one
+          icon-only button that said nothing on hover. */}
+      <Tooltip>
+        <DropdownMenuTrigger
+          render={
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="minimal"
+                  className="h-9 w-9 p-0"
+                  aria-label={label}
+                />
+              }
+            />
+          }
+        >
+          <Funnel className="size-4" />
+        </DropdownMenuTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         {props.onShare && (
           <DropdownMenuItem disabled={idle} onClick={props.onShare}>

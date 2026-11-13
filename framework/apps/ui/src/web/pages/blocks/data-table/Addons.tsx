@@ -1,4 +1,5 @@
 import { useToast } from "@alepha/ui";
+import { PlateLayout } from "@alepha/ui/shell";
 import {
   DataTable,
   type DataTableFilterFields,
@@ -46,11 +47,12 @@ import { memberColumns } from "@/web/pages/blocks/data-table/memberColumns.tsx";
  * filter, so picking "Invited" recounts every invited member rather than the
  * page on screen. And behind the `?` at the end of the icons, the page's help.
  *
- * On top of it all, the tab band: three views of the same page, the members,
- * the invitations nobody answered and the archived members. Three, so two
- * resting tabs sit side by side and show their divider. The archive is empty,
- * which is the point of having it: switching to it shows the empty state
- * under the same frame.
+ * On top of it all, the page's tabs: three views of the same page, the
+ * members, the invitations nobody answered and the archived members. A page
+ * with views is a `PlateLayout`, whose folder tabs sit above the table: the
+ * table has no tabs of its own. Three, so two resting tabs sit side by side
+ * and show their divider. The archive is empty, which is the point of having
+ * it: switching to it shows the empty state under the same tabs.
  */
 const FILTER_FIELDS = {
   search: { preset: "search" },
@@ -151,83 +153,69 @@ const Addons = () => {
     <Showcase
       id="blocks/data-table/Addons"
       title="DataTable: addons"
-      description="The same members, with the table's add-ons: a band of tabs, a section title before the search, a locked filter, a summary counted over the filtered set, and a help card."
+      description="The same members, with the table's add-ons under a Plate's folder tabs: a section title before the search, a locked filter, a summary counted over the filtered set, and a help card."
       fill
     >
       {() => (
-        <DataTable<ShowcaseMember, typeof FILTER_FIELDS>
-          // Remounted per view, so the archive starts from its own first page.
-          key={view}
-          className="min-h-0 flex-1"
-          persistenceKey="ui.members.addons"
+        <PlateLayout
           tabs={[
-            {
-              key: "members",
-              label: "Members",
-              icon: Users,
-              active: view === "members",
-              onSelect: () => setView("members"),
-            },
-            {
-              key: "invited",
-              label: "Invitations",
-              icon: MailPlus,
-              count: 11,
-              active: view === "invited",
-              onSelect: () => setView("invited"),
-            },
-            {
-              key: "archived",
-              label: "Archived",
-              icon: Archive,
-              count: 0,
-              active: view === "archived",
-              onSelect: () => setView("archived"),
-            },
+            { key: "members", label: "Members", icon: Users },
+            { key: "invited", label: "Invitations", icon: MailPlus, count: 11 },
+            { key: "archived", label: "Archived", icon: Archive, count: 0 },
           ]}
-          fetch={
-            view === "archived"
-              ? fetchArchived
-              : view === "invited"
-                ? (params) =>
-                    fetcher({
-                      ...params,
-                      filters: { ...params.filters, status: "invited" },
-                    })
-                : fetcher
-          }
-          filters={{
-            fields: FILTER_FIELDS,
-            initialValues: { status: "all" },
-          }}
-          // The figures count members; the archive has none to count.
-          summary={view === "members" ? { fetch: fetchSummary } : undefined}
-          leading={
-            <>
-              <Users className="text-muted-foreground size-4" />
-              <span className="font-medium">Members</span>
-            </>
-          }
-          actions={[
-            {
-              icon: UserPlus,
-              label: "Invite member",
-              primary: true,
-              onClick: () => toast.success("Invitation sent"),
-            },
-          ]}
-          help={
-            <div className="flex flex-col gap-1.5">
-              <p className="font-medium">How this list is counted</p>
-              <p className="text-muted-foreground">
-                Members are paged, sorted and filtered on the server. The
-                summary above the filters counts every member the status
-                matches, not only the page on screen.
-              </p>
-            </div>
-          }
-          columns={memberColumns}
-        />
+          active={view}
+          onSelect={(key) => setView(key as typeof view)}
+          scroll={false}
+        >
+          <DataTable<ShowcaseMember, typeof FILTER_FIELDS>
+            // Remounted per view, so the archive starts from its own first page.
+            key={view}
+            className="min-h-0 flex-1"
+            persistenceKey="ui.members.addons"
+            fetch={
+              view === "archived"
+                ? fetchArchived
+                : view === "invited"
+                  ? (params) =>
+                      fetcher({
+                        ...params,
+                        filters: { ...params.filters, status: "invited" },
+                      })
+                  : fetcher
+            }
+            filters={{
+              fields: FILTER_FIELDS,
+              initialValues: { status: "all" },
+            }}
+            // The figures count members; the archive has none to count.
+            summary={view === "members" ? { fetch: fetchSummary } : undefined}
+            leading={
+              <>
+                <Users className="text-muted-foreground size-4" />
+                <span className="font-medium">Members</span>
+              </>
+            }
+            actions={[
+              {
+                icon: UserPlus,
+                label: "Invite member",
+                primary: true,
+                onClick: () => toast.success("Invitation sent"),
+              },
+            ]}
+            help={
+              <div className="flex flex-col gap-1.5">
+                <p className="font-medium">How this list is counted</p>
+                <p className="text-muted-foreground">
+                  Members are paged, sorted and filtered on the server. The
+                  summary above the filters counts every member the status
+                  matches, not only the page on screen.
+                </p>
+              </div>
+            }
+            columns={memberColumns}
+          />
+        </PlateLayout>
       )}
     </Showcase>
   );

@@ -44,6 +44,10 @@ import { useUserProjects } from "./useUserProjects.ts";
  * Archived. Archived projects are hidden on load (`initialValues`): they
  * left the switcher, Spotlight and Home (#Q2601), and this page is where
  * they are found again, by asking for them.
+ *
+ * #Q3547 took the "n / 20 pinned" counter out too. The cap still holds:
+ * at twenty, an unpinned project's switch is held off and its tooltip says
+ * why (`MyProjectsPinSwitch`), so the refusal is explained where it happens.
  */
 const MyProjects = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -95,10 +99,14 @@ const MyProjects = () => {
       label: tr("account.projects.filter.archived"),
       icon: Archive,
       mode: "default",
+      // Yes and No (#Q3562): the filter's label already says what it asks,
+      // so the chip reads "Archived: No" rather than "Archived: Not
+      // archived". The values stay `active` / `archived`, which a saved
+      // filter in the browser already holds.
       optionLabel: (state: "active" | "archived") =>
-        state === "active"
-          ? tr("account.projects.filter.active")
-          : tr("account.projects.archived"),
+        state === "archived"
+          ? tr("account.projects.filter.archived.yes")
+          : tr("account.projects.filter.archived.no"),
       control: { clearLabel: tr("account.projects.filter.allStates") },
     },
   } satisfies DataTableFilterFields;
@@ -146,16 +154,6 @@ const MyProjects = () => {
           (!values.role || (values.role === "owner") === project.owner) &&
           (!values.archived ||
             (values.archived === "archived") === !!project.archivedAt)
-        }
-        toolbar={
-          <span
-            className="text-muted-foreground text-xs tabular-nums"
-            data-testid="account-projects-pinned-count"
-          >
-            {tr("account.projects.pinned-count", {
-              args: [String(pinned.size), String(USER_DOCK_CAP)],
-            })}
-          </span>
         }
         actions={
           overview?.canCreate

@@ -14,6 +14,10 @@ export const automationPresetCreateSchema = z
     values: z
       .record(z.string().max(64), automationFilterValueSchema)
       .refine((values) => Object.keys(values).length <= 16),
+    /**
+     * Create the rule enabled, in the same write (#Q3573). Absent, a draft.
+     */
+    enabled: z.boolean().optional(),
   })
   .strict();
 export type AutomationPresetCreate = Infer<typeof automationPresetCreateSchema>;

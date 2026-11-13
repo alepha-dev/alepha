@@ -457,26 +457,52 @@ describe("Automation MCP transport uses shared application policy", () => {
     ).toEqual({ ok: true });
   });
 
-  it("returns the created rule with the refusal when enabling it on create is refused", async ({
+  /**
+   * Creating enabled is one write (#Q3573): the rule is inserted enabled, or
+   * nothing is. It used to be created, then enabled in a second step, which
+   * left a disabled rule behind a refused enable.
+   */
+  it("creates a rule enabled in one write, or as a draft", async ({
     expect,
   }) => {
+    const before = (await persistence.rules.findMany()).length;
+    const enabled = value(
+      await call("automation_create", {
+        title: "On at once",
+        rule: rule(),
+        enabled: true,
+      }),
+    );
+    expect(enabled.enabled).toBe(true);
+    expect(enabled.revision).toBe(0);
+    expect(await persistence.rules.getById(enabled.id)).toMatchObject({
+      enabled: true,
+      health: "active",
+    });
+
+    const draft = value(
+      await call("automation_create", { title: "A draft", rule: rule() }),
+    );
+    expect(draft.enabled).toBe(false);
+    expect(await persistence.rules.findMany()).toHaveLength(before + 2);
+  });
+
+  it("refuses to create enabled a rule enabling would refuse, and creates nothing", async ({
+    expect,
+  }) => {
+    const before = (await persistence.rules.findMany()).length;
     const compatibility = { ...rule(), compatibility: "release-notifications" };
-    const made = value(
+
+    const refusal = failed(
       await call("automation_create", {
         title: "Needs adoption",
         rule: compatibility,
         enabled: true,
       }),
     );
-    expect(made.id).toBeDefined();
-    expect(made.enabled).toBe(false);
-    expect(made.enableRefusal).toMatch(/adoption/i);
-    expect(await persistence.rules.getById(made.id)).toMatchObject({
-      enabled: false,
-    });
-    expect(
-      value(await call("automation_create", { title: "Plain", rule: rule() })),
-    ).not.toHaveProperty("enableRefusal");
+
+    expect(refusal).toMatch(/adoption/i);
+    expect(await persistence.rules.findMany()).toHaveLength(before);
   });
   it("rejects invalid slots, foreign targets and scoped keys without the source grant", async ({
     expect,

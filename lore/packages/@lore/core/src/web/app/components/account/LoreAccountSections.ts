@@ -1,8 +1,9 @@
 import { AccountDialog } from "@alepha/ui/account";
 import { $settingsSection } from "@alepha/ui/settings";
 import { $inject } from "alepha";
+import type { NotificationInboxController } from "alepha/api/notifications";
 import { $client } from "alepha/server/links";
-import { Bell, FolderKanban, Mail } from "lucide-react";
+import { Bell, FolderKanban, Inbox, Mail } from "lucide-react";
 import { createElement } from "react";
 
 import type { InvitationController } from "../../../../api/controllers/InvitationController.ts";
@@ -32,6 +33,7 @@ export class LoreAccountSections {
   protected readonly invitationApi = $client<InvitationController>();
   protected readonly notificationApi =
     $client<NotificationPreferenceController>();
+  protected readonly inboxApi = $client<NotificationInboxController>();
 
   /**
    * The complete project list, behind Home's and the switcher's five.
@@ -62,6 +64,25 @@ export class LoreAccountSections {
     order: 101,
     can: () => this.invitationApi.listMyInvitations.can(),
     lazy: () => import("./AccountInvitations.tsx"),
+  });
+
+  /**
+   * Every message addressed to this account, from every project, with a
+   * Project filter (#Q3564). It was the project page `/:project/inbox`; a
+   * cross-project list is the account's. The header bell's "See all" opens
+   * it.
+   */
+  inbox = $settingsSection({
+    dialog: this.account.dialog,
+    name: "inbox",
+    label: "Inbox",
+    labelKey: "account.nav.inbox",
+    icon: createElement(Inbox),
+    group: "Lore",
+    groupKey: "account.nav.group.lore",
+    order: 103,
+    can: () => this.inboxApi.listInbox.can(),
+    lazy: () => import("./AccountInbox.tsx"),
   });
 
   /**
