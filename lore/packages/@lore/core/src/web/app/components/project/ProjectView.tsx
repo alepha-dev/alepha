@@ -224,6 +224,8 @@ const ProjectView = () => {
           window resting beside the rail, with a rounded top-left. Only where
           the rail shows (md and up); below that the shell is the whole page.
         */}
+        {/* `md:mt-2 md:border-t` is the frame's top, which the assistant's
+            dock slot in `Layout` repeats so the dock lines up (#Q3584). */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden md:mt-2 md:rounded-tl-2xl md:border-t md:border-l">
           <AppShell
             embedded
