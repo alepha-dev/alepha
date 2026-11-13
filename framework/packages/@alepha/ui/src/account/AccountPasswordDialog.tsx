@@ -29,6 +29,13 @@ export interface AccountPasswordDialogProps {
   onOpenChange: (open: boolean) => void;
 
   /**
+   * The password is temporary and must be replaced before the app can be
+   * used: the dialog explains why, has no Cancel button and refuses every
+   * close request. Only a successful change dismisses it.
+   */
+  required?: boolean;
+
+  /**
    * Called after a successful change so the caller can refresh its identity
    * list — setting a first password creates one.
    */
@@ -60,10 +67,14 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const close = () => {
+  const reset = () => {
     setCurrentPassword("");
     setPassword("");
     setConfirmPassword("");
+  };
+
+  const close = () => {
+    reset();
     props.onOpenChange(false);
   };
 
@@ -101,7 +112,13 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
         close();
       },
     },
-    [currentPassword, password, props.hasPassword, props.onDone],
+    [
+      currentPassword,
+      password,
+      props.hasPassword,
+      props.onDone,
+      props.onOpenChange,
+    ],
   );
   const submitting = save.loading;
 
@@ -124,21 +141,31 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
     : tr("account.password.setTitle", { default: "Set a password" });
 
   return (
-    <Dialog open={props.open} onOpenChange={(next) => !next && close()}>
-      <DialogContent>
+    <Dialog
+      open={props.open}
+      // A required change refuses Escape and outside clicks: `open` stays
+      // true, so ignoring the request leaves them nothing to do.
+      onOpenChange={(next) => !next && !props.required && close()}
+    >
+      <DialogContent showCloseButton={!props.required}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <span className="text-muted-foreground text-sm">
-            {props.hasPassword
-              ? tr("account.password.changeDescription", {
-                  default: "Every other device will be signed out.",
-                })
-              : tr("account.password.setDescription", {
+            {props.required
+              ? tr("account.password.requiredDescription", {
                   default:
-                    "You will be able to sign in with your password as well as your existing method.",
-                })}
+                    "Your password was set by an administrator. Choose your own to continue. Every other device will be signed out.",
+                })
+              : props.hasPassword
+                ? tr("account.password.changeDescription", {
+                    default: "Every other device will be signed out.",
+                  })
+                : tr("account.password.setDescription", {
+                    default:
+                      "You will be able to sign in with your password as well as your existing method.",
+                  })}
           </span>
           {props.hasPassword ? (
             <ControlPassword
@@ -171,9 +198,11 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
             required
           />
           <DialogFooter>
-            <Button type="button" variant="minimal" onClick={close}>
-              {tr("account.password.cancel", { default: "Cancel" })}
-            </Button>
+            {props.required ? null : (
+              <Button type="button" variant="minimal" onClick={close}>
+                {tr("account.password.cancel", { default: "Cancel" })}
+              </Button>
+            )}
             <Button type="submit" disabled={submitting}>
               {title}
             </Button>

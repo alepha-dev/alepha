@@ -1066,6 +1066,10 @@ export const uiFr: Record<string, DictionaryEntry> = {
     "Une application d'authentification vérifiée après le mot de passe.",
   "admin.userDetail.name": "Nom",
   "admin.userDetail.never": "Jamais",
+  "admin.userDetail.mustChangePassword":
+    "Exiger un nouveau mot de passe à la prochaine connexion",
+  "admin.userDetail.mustChangePasswordHint":
+    "Pour un mot de passe temporaire : l'utilisateur doit choisir le sien avant d'utiliser l'application.",
   "admin.userDetail.newPassword": "Nouveau mot de passe",
   "admin.userDetail.noIdentities": "Aucun compte lié.",
   "admin.userDetail.noPasskeys": "Aucune clé d'accès.",
@@ -1365,6 +1369,8 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "account.passkeys.unusable": "Inutilisable ici",
   "account.password.mismatch": "Les deux mots de passe ne correspondent pas",
   "account.password.new": "Nouveau mot de passe",
+  "account.password.requiredDescription":
+    "Votre mot de passe a été défini par un administrateur. Choisissez le vôtre pour continuer. Tous les autres appareils seront déconnectés.",
   "account.password.set": "Mot de passe défini",
   "account.password.setDescription":
     "Vous pourrez vous connecter avec votre mot de passe en plus de votre méthode actuelle.",
