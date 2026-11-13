@@ -121,16 +121,16 @@ describe("admin shell labels follow the language", () => {
       } as any);
     });
 
-    // Two matches for the root: the sidebar brand and the first crumb, both
-    // of which have to move.
-    expect(screen.getAllByText("Admin").length).toBe(2);
+    // The root's crumb (the sidebar brand reads "Admin Panel" since
+    // #Q3570, a key of its own, covered below).
+    expect(screen.getAllByText("Admin").length).toBe(1);
     expect(screen.getByText("User")).toBeTruthy();
 
     await act(async () => {
       await alepha!.inject(I18nProvider).setLang("fr");
     });
 
-    expect(screen.getAllByText("Administration").length).toBe(2);
+    expect(screen.getAllByText("Administration").length).toBe(1);
     expect(screen.getByText("Utilisateur")).toBeTruthy();
   });
 
@@ -139,14 +139,16 @@ describe("admin shell labels follow the language", () => {
 
     // The brand and the ⌘K affordance, declared in the layout rather than on
     // a route - the other half of "the chrome is English".
-    expect(screen.getByText("Admin")).toBeTruthy();
+    expect(screen.getByText("Admin Panel")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to site" })).toBeTruthy();
     expect(screen.getByText("Search…")).toBeTruthy();
 
     await act(async () => {
       await alepha!.inject(I18nProvider).setLang("fr");
     });
 
-    expect(screen.getByText("Administration")).toBeTruthy();
+    expect(screen.getByText("Panneau d'administration")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Retour au site" })).toBeTruthy();
     expect(screen.getByText("Rechercher…")).toBeTruthy();
   });
 });

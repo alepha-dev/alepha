@@ -1,15 +1,12 @@
 import type { AdminRouterOptions } from "@alepha/ui/admin";
 
-import { AdminBrand } from "./AdminBrand.tsx";
-
 /**
- * Lore's admin chrome. The brand is the back-arrow-plus-title cluster the
- * deleted `AppAdminLayout` carried; `defaultHiddenColumns` keeps the users
- * table as lore has always shown it, since lore does not populate
- * `firstName` / `lastName`.
+ * Lore's admin chrome. The brand is the framework's default since #Q3570,
+ * the back arrow to home and "Admin Panel" that Lore used to draw itself;
+ * `defaultHiddenColumns` keeps the users table as lore has always shown it,
+ * since lore does not populate `firstName` / `lastName`.
  */
 export const loreAdminOptions: AdminRouterOptions = {
-  brand: <AdminBrand />,
   pages: {
     users: {
       defaultHiddenColumns: ["firstName", "lastName"],

@@ -1,13 +1,14 @@
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ColorScheme } from "alepha/react/ui";
-import { LayoutDashboard, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
 
 import { cn } from "../core/utils.ts";
 import { ButtonSettings } from "../shell/ButtonSettings.tsx";
 import { NavShell } from "../shell/NavShell.tsx";
 import { Spotlight } from "../shell/Spotlight.tsx";
+import { AdminBrand } from "./AdminBrand.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
 
 /**
@@ -55,14 +56,7 @@ export const AdminLayout = () => {
         fill
         extraNav={options.extraNav}
         brand={
-          options.brand ?? (
-            <div className="flex items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
-              <LayoutDashboard className="size-4 shrink-0" />
-              <span className="text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-                {tr("admin.nav.admin", { default: "Admin" })}
-              </span>
-            </div>
-          )
+          options.brand ?? <AdminBrand homeRouteName={options.homeRouteName} />
         }
         topbarActions={
           <div className="flex items-center gap-1">

@@ -709,6 +709,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   // `nav.*Key` on `AdminRouter` names these; the English `label` beside the key
   // is the default an application without this catalogue keeps seeing.
   "admin.nav.admin": "Administration",
+  "admin.nav.adminPanel": "Panneau d'administration",
   "admin.nav.analytics": "Analytique",
   "admin.nav.audits": "Journal d'audit",
   "admin.nav.backToSite": "Retour au site",

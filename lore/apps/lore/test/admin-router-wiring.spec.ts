@@ -73,10 +73,12 @@ describe("LoreWebAdmin wiring", () => {
  * file fails this test even though the object it would have passed is fine.
  */
 describe("lore's admin chrome", () => {
-  it("loreAdminOptions carries lore's brand and hidden columns", ({
+  it("loreAdminOptions carries lore's hidden columns, and the framework's brand", ({
     expect,
   }) => {
-    expect(loreAdminOptions.brand).toBeTruthy();
+    // The back arrow and "Admin Panel" are the framework's default since
+    // #Q3570, so Lore no longer draws a brand of its own.
+    expect(loreAdminOptions.brand).toBeUndefined();
     expect(loreAdminOptions.pages?.users?.defaultHiddenColumns).toContain(
       "firstName",
     );
