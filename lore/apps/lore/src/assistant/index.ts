@@ -1,4 +1,5 @@
 import { $module, type Alepha } from "alepha";
+import { AlephaAiAnthropic } from "alepha/ai/anthropic";
 import { AlephaAiCloudflare } from "alepha/ai/cloudflare";
 import { AiController, AiSettings, AlephaApiAi } from "alepha/api/ai";
 
@@ -28,7 +29,8 @@ export { type LoreAiTool, LoreAiToolset } from "./LoreAiToolset.ts";
 
 /**
  * Lore's in-app assistant, the server half (#E120): `alepha/api/ai` on
- * Workers AI, behind the `AI_ASSISTANT_ENABLED` switch and a sign-in gate.
+ * Anthropic when `AI_API_KEY` is set, else on Workers AI, behind the
+ * `AI_ASSISTANT_ENABLED` switch and a sign-in gate.
  *
  * Registered by `main.server.ts` after every `@lore/*` module, since the
  * assistant's tools are theirs. Always registered, switch or not, so the
@@ -44,6 +46,13 @@ export { type LoreAiTool, LoreAiToolset } from "./LoreAiToolset.ts";
 export const LoreAssistant = $module({
   name: "lore.assistant",
   register: (alepha: Alepha) => {
+    // The vendor, by env: `AI_API_KEY` set picks Anthropic on every runtime,
+    // else the Workers AI binding answers on Workers, else none (off Workers,
+    // `LoreAiSwitch` then refuses a production boot). Anthropic first, since
+    // the first substitution wins and it must beat the binding on Workers.
+    if (alepha.env.AI_API_KEY) {
+      alepha.with(AlephaAiAnthropic);
+    }
     alepha.with(AlephaAiCloudflare);
     alepha.with({ provide: AiController, use: LoreAiController });
     alepha.with({ provide: AiSettings, use: LoreAiSettings });

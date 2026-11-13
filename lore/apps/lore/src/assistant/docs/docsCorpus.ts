@@ -983,13 +983,13 @@ export const docsCorpus: DocsSection[] = [
     guide: "Assistant",
     section: "What it sends, and what is kept",
     url: "https://alepha.dev/lore/docs/agents-assistant#what-it-sends-and-what-is-kept",
-    text: "- Each message goes to the model with the page you are on (the project's id,\n  name and language) and the results of the tools it runs, which can include a\n  quest's description or a folio's body. On lore.alepha.dev the model runs on\n  Cloudflare Workers AI.\n- Conversations are stored in your Lore, visible to you only, and deleted 30\n  days after their last message.\n- Each user has a token budget (200,000 tokens per 24 hours by default) and a\n  limit of 20 messages a minute. Past either, the assistant refuses until the\n  window moves on.",
+    text: "- Each message goes to the model with the page you are on (the project's id,\n  name and language) and the results of the tools it runs, which can include a\n  quest's description or a folio's body. The model runs on Anthropic when the\n  operator set an Anthropic key, otherwise on Cloudflare Workers AI.\n- Conversations are stored in your Lore, visible to you only, and deleted 30\n  days after their last message.\n- Each user has a token budget (200,000 tokens per 24 hours by default) and a\n  limit of 20 messages a minute. Past either, the assistant refuses until the\n  window moves on.",
   },
   {
     guide: "Assistant",
     section: "Turning it on",
     url: "https://alepha.dev/lore/docs/agents-assistant#turning-it-on",
-    text: "This part is for whoever runs the Lore instance.\n\nThe assistant is off on every instance until the environment variable\n`AI_ASSISTANT_ENABLED` is set to any value other than empty, `false` or `0`.\n\n⚠️ It needs Cloudflare Workers AI. Lore running on Cloudflare Workers has the\nmodel at hand. A self-hosted instance running anywhere else has no model to\ntalk to, and refuses to start with the variable set.\n\nThe budget, the rate and the retention are the `api.ai` parameter, which an\nadministrator edits at runtime from the admin console's parameters.",
+    text: "This part is for whoever runs the Lore instance.\n\nThe assistant is off on every instance until the environment variable\n`AI_ASSISTANT_ENABLED` is set to any value other than empty, `false` or `0`.\n\nThe model comes from one of two vendors, picked by the environment:\n\n- **`AI_API_KEY` set:** Anthropic, on any runtime. `AI_MODEL` names the model,\n  for example `claude-sonnet-5-5`, and is required. `AI_BASE_URL` sends the\n  calls through another endpoint, such as Cloudflare AI Gateway.\n- **No key, on Cloudflare Workers:** Cloudflare Workers AI, through the\n  Worker's `ai` binding. No key is needed, and `AI_MODEL` replaces the default\n  model.\n- **No key, anywhere else:** no model to talk to. Lore refuses to start with\n  `AI_ASSISTANT_ENABLED` set.\n\nThe budget, the rate and the retention are the `api.ai` parameter, which an\nadministrator edits at runtime from the admin console's parameters.",
   },
   {
     guide: "Assistant",
