@@ -107,7 +107,7 @@ export class WorkFlowDashboardMetrics {
       icon: "kanban",
       presentation: "status",
       filters: boardColumnsFiltersSchema,
-      needs: { capability: "work", option: "board" },
+      needs: { capability: "work" },
       link: (_scope, target) =>
         target.projectSlug
           ? {

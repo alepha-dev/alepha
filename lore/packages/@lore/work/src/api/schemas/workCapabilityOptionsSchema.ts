@@ -3,10 +3,10 @@ import { type Infer, z } from "alepha";
 /**
  * The switches inside the Work capability.
  *
- * A quest list is always there when Work is on; these organize it. `board`,
- * `epics` and `releases` are surfaces; `estimate`, `chrono` and `reminder` are
- * the three quest toggles, one methodology in three parts, adopted later
- * rather than picked at creation. `agentPrompts` is neither: it adds a menu to
+ * A quest list and its board are always there when Work is on; these
+ * organize them. `epics` and `releases` are surfaces; `estimate`, `chrono`
+ * and `reminder` are the three quest toggles, one methodology in three parts,
+ * adopted later rather than picked at creation. `agentPrompts` is neither: it adds a menu to
  * surfaces the other options decide the existence of, and its templates are
  * edited on this same Settings page.
  *
@@ -28,7 +28,6 @@ import { type Infer, z } from "alepha";
  * is the closed variant, and it is the only place a typo can be caught.
  */
 export const workCapabilityOptionsSchema = z.object({
-  board: z.boolean().default(false),
   epics: z.boolean().default(false),
   releases: z.boolean().default(false),
   estimate: z.boolean().default(false),

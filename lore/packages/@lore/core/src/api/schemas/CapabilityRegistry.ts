@@ -170,13 +170,6 @@ export class CapabilityRegistry {
       preselectedCapability: true,
       options: [
         {
-          key: "board",
-          labelKey: "project.capability.work.option.board.label",
-          descriptionKey: "project.capability.work.option.board.description",
-          wizard: true,
-          preselected: false,
-        },
-        {
           key: "epics",
           labelKey: "project.capability.work.option.epics.label",
           descriptionKey: "project.capability.work.option.epics.description",

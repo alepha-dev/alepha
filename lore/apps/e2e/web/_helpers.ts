@@ -419,7 +419,7 @@ export interface WizardSetup {
    */
   capabilities?: CapabilityKey[];
   /**
-   * Per-capability options to turn on, e.g. `{ work: ["board"] }`.
+   * Per-capability options to turn on, e.g. `{ work: ["epics"] }`.
    */
   options?: Partial<Record<CapabilityKey, string[]>>;
 }

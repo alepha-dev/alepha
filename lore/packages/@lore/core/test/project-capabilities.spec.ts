@@ -85,7 +85,7 @@ describe("Project capabilities", () => {
         body: {
           title: "Test Project",
           capabilities: [
-            { key: "work", options: { board: true } },
+            { key: "work", options: { releases: true } },
             { key: "knowledge" },
           ],
         },
@@ -102,9 +102,8 @@ describe("Project capabilities", () => {
     expect(
       created.data.capabilities.find((it) => it.key === "work")?.options,
     ).toStrictEqual({
-      board: true,
       epics: false,
-      releases: false,
+      releases: true,
       estimate: false,
       chrono: false,
       reminder: false,
@@ -254,7 +253,7 @@ describe("Project capabilities", () => {
         body: {
           title: "Options Project",
           capabilities: [
-            { key: "work", options: { board: true, epics: true } },
+            { key: "work", options: { releases: true, epics: true } },
           ],
         },
       },
@@ -264,7 +263,7 @@ describe("Project capabilities", () => {
     const updated = await ctx.capabilityController.setCapability.fetch(
       {
         params: { projectId: created.data.id, key: "work" },
-        body: { enabled: true, options: { board: true } },
+        body: { enabled: true, options: { releases: true } },
       },
       { user },
     );
@@ -272,7 +271,7 @@ describe("Project capabilities", () => {
     // Sent whole, the rule `kanbanColumnConfig` and `tagColors` already
     // follow: omitting a key is how it is cleared, and a merge cannot say so.
     const work = updated.data.capabilities.find((it) => it.key === "work");
-    expect(work?.options.board).toBe(true);
+    expect(work?.options.releases).toBe(true);
     expect(work?.options.epics).toBe(false);
   });
 

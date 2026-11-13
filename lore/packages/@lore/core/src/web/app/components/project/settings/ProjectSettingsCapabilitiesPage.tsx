@@ -8,7 +8,7 @@ import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection
  * General > Capabilities: every switch that adds or removes a sidebar entry.
  *
  * Each capability's master, with the options a sidebar entry hangs off
- * nested under it (board, epics, releases, track). The options that only
+ * nested under it (epics, releases, track). The options that only
  * change how a capability behaves stay on its own settings page.
  *
  * ⚠️ The masters live HERE and nowhere else (#Q2565). A capability that is

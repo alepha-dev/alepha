@@ -35,7 +35,7 @@ import type { ProjectResource } from "../api/schemas/projectResourceSchema.ts";
  *
  * ```ts
  * projectFixture({ capabilities: ["knowledge"] })   // a knowledge-only project
- * projectFixture({ options: { work: { board: false } } })
+ * projectFixture({ options: { work: { epics: false } } })
  * ```
  *
  * `createTestProject` in `test/fixtures/entities.ts` defaults the same way,

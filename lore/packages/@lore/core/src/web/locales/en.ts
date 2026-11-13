@@ -474,6 +474,8 @@ export default {
   "board.filter.epic": "Epic",
   "board.filter.allEpics": "All epics",
   "board.filter.noEpic": "None",
+  "quests.view.list": "List",
+  "quests.view.board": "Board",
   "quest.presets.mine": "Mine",
   "quest.presets.mine.hint": "Assigned to you, not done",
   "quest.presets.urgent": "Urgent",
@@ -554,7 +556,6 @@ export default {
   "project.menu.dashboard": "Dashboard",
   "project.menu.activity": "Activity",
   "project.menu.quests": "Quests",
-  "project.menu.kanban": "Kanban",
   "project.menu.reports": "Reports",
   "project.menu.artifacts": "Artifacts",
   // ⚠️ The two empty states are distinct, and collapsing them is the defect
@@ -947,8 +948,6 @@ export default {
   "project.settings.section.knowledge": "How folios are shown.",
   "project.settings.section.apps":
     "What apps report, where they deploy, and which errors are ignored.",
-  "project.settings.board.off":
-    "The board is off. Turn it on in General › Capabilities to configure its columns.",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
@@ -964,9 +963,6 @@ export default {
   // the one-word `.short` keys went with the second nav rail (#Q2565).
   "project.capability.work.label": "Plan and track work",
   "project.capability.work.description": "Quests, epics, releases, a board.",
-  "project.capability.work.option.board.label": "Board",
-  "project.capability.work.option.board.description":
-    "A kanban board, columns you name.",
   "project.capability.work.option.epics.label": "Epics",
   "project.capability.work.option.epics.description":
     "Phases, with a workflow.",

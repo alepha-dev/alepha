@@ -162,13 +162,13 @@ describe("projectViewRoutes", () => {
     // and it redirects nowhere: a loader redirect on the project root is the
     // shape #156 was about, and a per-project landing setting is the one
     // feedback #2066 rejected.
-    // `/demo/` with the trailing slash, which is what a `path: "/"` child of
-    // the project shell builds - Activity produced exactly this string while
-    // it held the root, so the move changed the route NAME at `/` and nothing
-    // about the URL a bare project link resolves to.
+    // `/demo`, the project root: a `path: "/"` child of the project shell is
+    // the shell's own URL, with no trailing slash since #Q3582. The move from
+    // Activity changed the route NAME at `/` and nothing about the URL a bare
+    // project link resolves to.
     expect(
       router.path("projectDashboard", { params: { projectSlug: "demo" } }),
-    ).toBe("/demo/");
+    ).toBe("/demo");
     expect(
       router.path("projectActivity", { params: { projectSlug: "demo" } }),
     ).toBe("/demo/activity");

@@ -77,7 +77,8 @@ describe("the sidebar, derived from capabilities", () => {
     const routes = offered(projectFixture());
 
     expect(routes).toContain("projectQuests");
-    expect(routes).toContain("projectKanban");
+    // The board is a tab of Quests, not a sidebar entry.
+    expect(routes).not.toContain("projectKanban");
     expect(routes).toContain("projectEpics");
     expect(routes).toContain("projectReleases");
     expect(routes).toContain("projectFolios");
@@ -153,13 +154,12 @@ describe("the sidebar, derived from capabilities", () => {
     const routes = offered(
       projectFixture({
         capabilities: ["work"],
-        options: { work: { board: false, releases: false } },
+        options: { work: { releases: false } },
       }),
     );
 
     expect(routes).toContain("projectQuests");
     expect(routes).toContain("projectEpics");
-    expect(routes).not.toContain("projectKanban");
     expect(routes).not.toContain("projectReleases");
   });
 

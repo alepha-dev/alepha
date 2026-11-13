@@ -15,7 +15,6 @@ import {
 import { $inject } from "alepha";
 import {
   ClipboardCheck,
-  Columns3,
   Flag,
   Grid3x2,
   Inbox,
@@ -93,23 +92,12 @@ export class WorkShell {
         // were deepest inside was the one that said where you were not.
         activeOn: (name) =>
           name === "projectQuests" ||
+          name === "projectKanban" ||
           name === "project" ||
           name === "projectQuest" ||
           name === "projectQuestGraph",
         reads: [currentQuestCountAtom],
         badge: (ctx) => ctx.get(currentQuestCountAtom)?.count || undefined,
-      },
-      {
-        // A destination, so it gets an entry of its own. It had one until the
-        // 2026-08 rename took it, which is why `ProjectQuestsViewSwitcher`
-        // had to be invented - the board was unreachable from the UI at all.
-        route: "projectKanban",
-        permission: "quest:read",
-        labelKey: "project.menu.kanban",
-        icon: Columns3,
-        group: "work",
-        order: 20,
-        option: "board",
       },
       {
         // A lens on quests, so it sits right after them: scope, then the
@@ -207,7 +195,6 @@ export class WorkShell {
         {
           route: "projectSettingsBoard",
           labelKey: "project.settings.tab.board",
-          option: "board",
         },
         {
           route: "projectSettingsPrompts",

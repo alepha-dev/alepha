@@ -105,7 +105,7 @@ describe("dashboard rank waves", () => {
     const on = (keys: string[]) =>
       Object.fromEntries(keys.map((key) => [key, true]));
     for (const [key, options] of [
-      ["work", on(["board", "epics", "releases", "reminder"])],
+      ["work", on(["epics", "releases", "reminder"])],
       ["knowledge", {}],
       ["apps", on(["track"])],
       ["support", {}],

@@ -309,24 +309,6 @@ export class QuestController {
     });
 
   /**
-   * Whether this project's board is on, for the three transitions that seed a
-   * quest's column.
-   *
-   * ⚠️ These are BEHAVIOUR, not a gate, which is why they are here rather
-   * than on the `use:` chain and why the review of this epic did not count
-   * them: seeding a column on a project with no board writes a value nothing
-   * reads, and the quest still transitions either way. The read is memoised
-   * per request, so a transition pays for it once.
-   */
-  protected async boardEnabled(projectId: number): Promise<boolean> {
-    return this.security.capabilityOption(
-      await this.security.capabilitiesOf(projectId),
-      "work",
-      "board",
-    );
-  }
-
-  /**
    * Enrich a quest entity with computed metadata.
    */
   mapQuestToResource(quest: Quest): QuestResource {
@@ -2387,11 +2369,9 @@ export class QuestController {
           action: "unshelved",
         });
       }
-      // When the board is on, drop the freshly-accepted quest into the first
-      // configured sub-column so it has a place to live on it.
-      if (await this.boardEnabled(project.id)) {
-        quest.kanbanColumn = project.kanbanColumns?.[0];
-      }
+      // Drop the freshly-accepted quest into the board's first configured
+      // sub-column so it has a place to live on it.
+      quest.kanbanColumn = project.kanbanColumns?.[0];
       quest.history.push({
         at: this.dt.nowISOString(),
         by: user.id,
@@ -2510,7 +2490,7 @@ export class QuestController {
           action: "unshelved",
         });
       }
-      if ((await this.boardEnabled(project.id)) && !quest.kanbanColumn) {
+      if (!quest.kanbanColumn) {
         quest.kanbanColumn = project.kanbanColumns?.[0];
       }
 

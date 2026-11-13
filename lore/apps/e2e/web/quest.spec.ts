@@ -54,7 +54,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -173,7 +173,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       `CM${t}`.slice(0, 20),
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -301,7 +301,7 @@ test.describe("Quest", () => {
       const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
         page,
         `WV${height}${t}`.slice(0, 20),
-        { options: { work: ["board", "epics", "releases"] } },
+        { options: { work: ["epics", "releases"] } },
       );
 
       const { id: questId, shortId } = await apiPost<{
@@ -401,7 +401,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     // Reminders are an owner toggle, off by default — enable it before
@@ -486,7 +486,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
@@ -612,7 +612,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
@@ -711,7 +711,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
@@ -809,7 +809,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     // A folio to link to via the `[[#F<n>]]` form.
@@ -892,7 +892,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{
@@ -1002,7 +1002,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
@@ -1089,7 +1089,7 @@ test.describe("Quest", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const areaCombobox = page.getByRole("combobox", { name: "Area" });
@@ -1223,18 +1223,16 @@ test.describe("Quest", () => {
   });
 
   /**
-   * Kanban is its own route again (epic #2, quest #1211).
+   * The board is the Board tab of the Quests page, a route of its own
+   * (`/quests/board`), always there with Work; the Table and Board tabs are
+   * links between the two routes (#Q3580).
    *
-   * This test used to assert the opposite — the 2026-08 rename had turned the
-   * board into a view of the Quests page and `/:projectSlug/kanban` rendered
-   * nothing. It inverts rather than breaks: the final assertion, that the
-   * path renders no board, becomes the positive case.
-   *
-   * It drove the "Quest list | Kanban board" rail until #1510 removed it. The
-   * sidebar entry does the same navigation, and the rail's disappearance is
-   * only safe BECAUSE it does, so this now drives the sidebar.
+   * Before, it had its own sidebar entry behind a `board` option, and before
+   * that a "Quest list | Kanban board" rail (removed by #1510). What has not
+   * changed is the rule #156 set: switching views is a navigation, never a
+   * query param.
    */
-  test("kanban is a route, and the sidebar navigates to it", async ({
+  test("the board is a tab of Quests, and the tabs navigate between routes", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -1248,16 +1246,19 @@ test.describe("Quest", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     await page.goto(`/${projectSlug}/quests`);
-    await page.locator(`a[href="/${projectSlug}/kanban"]`).first().click();
+    await page
+      .getByTestId("quests-view-tabs")
+      .locator(`a[href="/${projectSlug}/quests/board"]`)
+      .click();
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
     });
     // The switch is a navigation now, so it is addressable.
-    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
+    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests/board$`));
 
     // The Quests entry is `/quests` now, not the bare project root: the root
     // is the project dashboard.
@@ -1269,7 +1270,7 @@ test.describe("Quest", () => {
     await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`));
 
     // Typing the URL reaches the board — the point of the whole change.
-    await page.goto(`/${projectSlug}/kanban`);
+    await page.goto(`/${projectSlug}/quests/board`);
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
     });
@@ -1299,7 +1300,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
@@ -1488,7 +1489,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
@@ -1602,7 +1603,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const sidebarLink = (href: string) =>
@@ -1613,20 +1614,26 @@ test.describe("Quest", () => {
       timeout: 10_000,
     });
 
-    await test.step("the rail is gone, and the sidebar is the way in", async () => {
-      await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
+    const viewTab = (href: string) =>
+      page
+        .getByTestId("quests-view-tabs")
+        .locator(`a[href="/${projectSlug}${href}"]`);
 
-      await sidebarLink("/kanban").click();
+    await test.step("the Board tab is the way in, and no sidebar entry", async () => {
+      await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
+      await expect(sidebarLink("/quests/board")).toHaveCount(0);
+
+      await viewTab("/quests/board").click();
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
-      // The board is a destination, so this is a navigation. Still never a
-      // QUERY param: `?view=kanban` is what #156 was about, and the seeding
-      // effect that kept it in sync bounced every sidebar link.
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
+      // A navigation, never a QUERY param: `?view=kanban` is what #156 was
+      // about, and the seeding effect that kept it in sync bounced every
+      // sidebar link.
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests/board$`));
       expect(new URL(page.url()).search).toBe("");
 
-      await sidebarLink("/quests").click();
+      await viewTab("/quests").click();
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
@@ -1652,7 +1659,7 @@ test.describe("Quest", () => {
     // second navigation landing after the first succeeded, so the URL has
     // to still be there once the outgoing page has finished unmounting.
     await test.step("leaving the board actually leaves it", async () => {
-      await sidebarLink("/kanban").click();
+      await viewTab("/quests/board").click();
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
@@ -1708,19 +1715,6 @@ test.describe("Quest", () => {
       ).toHaveCount(0);
       await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
     });
-
-    await test.step("kanban off removes the sidebar entry, not the route", async () => {
-      await setCapability(page, projectId, "work", {
-        options: { board: false },
-      });
-      await page.goto(`/${projectSlug}/quests`);
-      await expect(page.getByTestId("quests-table")).toBeVisible({
-        timeout: 10_000,
-      });
-      await expect(
-        page.locator(`a[href="/${projectSlug}/kanban"]`),
-      ).toHaveCount(0);
-    });
   });
 
   /**
@@ -1747,7 +1741,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -1858,7 +1852,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -1975,7 +1969,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     for (const [index, area] of areas.entries()) {
@@ -2059,7 +2053,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{ shortId: number }>(
@@ -2137,7 +2131,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     await apiPost(page, "createQuest", {
@@ -2238,7 +2232,7 @@ test.describe("Quest table — the Size column", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `Qs${t}`.slice(0, 20),
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
 
     for (const size of [3, 1, 5]) {
@@ -2321,7 +2315,7 @@ test.describe("Quest — the questline route", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `Ql${t}`.slice(0, 20),
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
     await setCapability(page, projectId, "work", {
       options: { epics: true },
@@ -2435,7 +2429,7 @@ test.describe("quest table columns", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `CO${t}`.slice(0, 20),
-      { options: { work: ["board", "epics", "releases"] } },
+      { options: { work: ["epics", "releases"] } },
     );
     await apiPost(page, "createQuest", {
       projectId,

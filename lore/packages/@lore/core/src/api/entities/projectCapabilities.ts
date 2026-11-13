@@ -49,7 +49,7 @@ export const projectCapabilities = $entity({
      */
     enabledAt: db.createdAt(),
     /**
-     * The switches inside this capability, e.g. `{ board: true }` for `work`
+     * The switches inside this capability, e.g. `{ epics: true }` for `work`
      * or `{ track: true, deploy: false }` for `apps`.
      *
      * **No required keys and no closed shape here on purpose.** The entity

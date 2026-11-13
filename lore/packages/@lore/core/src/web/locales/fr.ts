@@ -468,7 +468,6 @@ export default {
   "project.menu.dashboard": "Tableau de bord",
   "project.menu.activity": "Activité",
   "project.menu.quests": "Quêtes",
-  "project.menu.kanban": "Kanban",
   "project.menu.reports": "Rapports",
   "project.menu.artifacts": "Artefacts",
   "artifact.notFound": "Aucun build de $1 avec le tag $2 dans ce projet.",
@@ -622,6 +621,8 @@ export default {
   "board.filter.epic": "Épopée",
   "board.filter.allEpics": "Toutes les épopées",
   "board.filter.noEpic": "Aucune",
+  "quests.view.list": "Liste",
+  "quests.view.board": "Tableau",
   "quest.presets.mine": "Les miennes",
   "quest.presets.mine.hint": "Assignées à vous, pas terminées",
   "quest.presets.urgent": "Urgent",
@@ -931,8 +932,6 @@ export default {
   "project.settings.section.knowledge": "Comment les folios sont affichés.",
   "project.settings.section.apps":
     "Ce que les apps remontent, où elles se déploient, et les erreurs ignorées.",
-  "project.settings.board.off":
-    "Le tableau est désactivé. Activez-le dans Général › Capacités pour configurer ses colonnes.",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
@@ -943,9 +942,6 @@ export default {
   "project.capability.work.label": "Planifier et suivre le travail",
   "project.capability.work.description":
     "Quêtes, épopées, versions, un tableau.",
-  "project.capability.work.option.board.label": "Tableau",
-  "project.capability.work.option.board.description":
-    "Un tableau kanban, avec vos propres colonnes.",
   "project.capability.work.option.epics.label": "Épopées",
   "project.capability.work.option.epics.description":
     "Des phases, avec un cycle de vie.",

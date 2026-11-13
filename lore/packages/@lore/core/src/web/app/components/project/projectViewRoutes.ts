@@ -204,6 +204,7 @@ export const SECTION_HREF_ROUTES: Record<
   projectEpic: "projectEpics",
   projectQuest: "projectQuests",
   projectQuestGraph: "projectQuests",
+  projectKanban: "projectQuests",
   projectRelease: "projectReleases",
   projectAutomationAdoption: "projectAutomations",
   projectAutomationGallery: "projectAutomations",
@@ -263,6 +264,8 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
     "project.capability.work.option.automations.label",
   projectAutomationRun: "project.capability.work.option.automations.label",
   projectQuests: "project.menu.quests",
+  // The layout both Quests tabs render under.
+  projectQuestsLayout: "project.menu.quests",
   projectQuest: "project.menu.quests",
   // ⚠️ It had NO entry until #Q2104, so the questline page's crumb read
   // "Alepha" and stopped where every sibling reads "Alepha > Something". It
@@ -271,7 +274,9 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // `/quests/:shortId/graph` is a page under Quests exactly as `projectQuest`
   // is, so it takes the same label and the same crumb href.
   projectQuestGraph: "project.menu.quests",
-  projectKanban: "project.menu.kanban",
+  // The Board tab of the Quests page: the trail reads "Quests", as the
+  // sidebar's one entry does, and the tab says which view.
+  projectKanban: "project.menu.quests",
   projectEpics: "project.menu.epics",
   projectEpic: "project.menu.epics",
   projectReleases: "project.menu.releases",

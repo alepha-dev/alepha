@@ -193,11 +193,7 @@ describe("dashboard flow tiles", () => {
     it("places open quests in their lane and leaves completed out", async ({
       expect,
     }) => {
-      // The board is a Work option, off on a new project.
-      await repos.capabilities.updateMany(
-        { projectId: { eq: projectId }, key: { eq: "work" } },
-        { options: { board: true } },
-      );
+      // The board is always there with Work.
       await quest();
       await quest({ acceptedAt: dateTime.nowISOString() });
       await completeDaysAgo(1);

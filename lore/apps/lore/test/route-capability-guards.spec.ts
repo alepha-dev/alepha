@@ -18,10 +18,10 @@ import { bootLore } from "./fixtures/bootLore.ts";
  * ⚠️ **A CAPABILITY guards its routes; an OPTION does not.** That is the whole
  * rule, and the asymmetry it produces is a decision rather than an omission,
  * which is why the last case pins it. Each capability's landing route refuses
- * (`/quests`, `/folios`, `/apps` and its tabs, `/feedback`), while
- * `projectEpics`, the board, releases and the roadmap have no loader guard at
- * all: those hang off options inside Work, `projectKanban` set the rule that a
- * saved link keeps resolving, and the sidebar is what stops offering them. A
+ * (`/quests` and its Board tab, `/folios`, `/apps` and its tabs, `/feedback`),
+ * while `projectEpics`, releases and the roadmap have no loader guard at all:
+ * those hang off options inside Work, a saved link keeps resolving, and the
+ * sidebar is what stops offering them. A
  * future session will be tempted to make the set uniform in one direction or
  * the other; both cases below say which.
  */
@@ -92,7 +92,12 @@ describe("route guards on a capability", () => {
       projectFixture({ capabilities: ["apps"] }),
     );
 
-    for (const name of ["projectQuests", "projectFolios", "projectFeedback"]) {
+    // `projectQuestsLayout` is the gate of both Quests tabs, List and Board.
+    for (const name of [
+      "projectQuestsLayout",
+      "projectFolios",
+      "projectFeedback",
+    ]) {
       const loader = loaderOf(alepha, name);
       await expect(loader?.({} as never), name).rejects.toThrow(/not enabled/i);
     }
@@ -105,10 +110,10 @@ describe("route guards on a capability", () => {
       projectFixture({ capabilities: ["work"] }),
     );
 
-    // The pair again: `projectQuests`'s loader fetches nothing, so a guard
+    // The pair again: the Quests layout's loader fetches nothing, so a guard
     // that refused everything would look identical from the case above.
     await expect(
-      loaderOf(alepha, "projectQuests")?.({} as never),
+      loaderOf(alepha, "projectQuestsLayout")?.({} as never),
     ).resolves.toBeUndefined();
   });
 
@@ -219,12 +224,12 @@ describe("route guards on a capability", () => {
   }) => {
     const alepha = await bootRouter();
 
-    // No loader at all on these three, though `board`, `epics` and
-    // `releases` are all switches somebody can turn off. They are OPTIONS
-    // inside Work, and an option does not make a page stop existing: a link
-    // somebody saved keeps resolving, and the sidebar is what stops offering
-    // it. `/quests` above is the capability, and it does refuse.
-    for (const name of ["projectEpics", "projectKanban", "projectReleases"]) {
+    // No loader at all on these two, though `epics` and `releases` are both
+    // switches somebody can turn off. They are OPTIONS inside Work, and an
+    // option does not make a page stop existing: a link somebody saved keeps
+    // resolving, and the sidebar is what stops offering it. `/quests` and
+    // its Board tab above are the capability, and they do refuse.
+    for (const name of ["projectEpics", "projectReleases"]) {
       expect(loaderOf(alepha, name), name).toBeUndefined();
     }
   });

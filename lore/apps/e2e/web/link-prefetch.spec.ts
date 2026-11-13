@@ -29,7 +29,7 @@ const setup = async (page: Page, name: string) => {
   const { id: projectId, slug } = await createProjectViaWizard(
     page,
     `${name}${stamp}`.slice(0, 24),
-    { options: { work: ["board"] } },
+    {},
   );
   const { shortId } = await apiPost<{ shortId: number }>(page, "createQuest", {
     projectId,
@@ -163,7 +163,7 @@ test.describe("Link prefetching", () => {
       (window as unknown as { __mark: boolean }).__mark = true;
     });
     await page.route("**/*.js", (route) => route.abort());
-    await page.locator(`a[href="/${slug}/kanban"]`).first().hover();
+    await page.locator(`a[href="/${slug}/quests"]`).first().hover();
     await page.waitForTimeout(500);
 
     expect(
@@ -185,7 +185,7 @@ test.describe("Link prefetching", () => {
     await page.waitForLoadState("networkidle");
 
     const seen = scripts(page);
-    await page.locator(`a[href="/${slug}/kanban"]`).first().hover();
+    await page.locator(`a[href="/${slug}/quests"]`).first().hover();
     await page.waitForTimeout(500);
 
     expect(seen).toEqual([]);

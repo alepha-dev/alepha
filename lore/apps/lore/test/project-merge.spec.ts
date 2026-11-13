@@ -152,7 +152,7 @@ describe("ProjectMergeService across every module", () => {
     expect,
   }) => {
     const target = await createTestProject(ctx.alepha, {
-      capabilities: [{ key: "work", options: { board: false } }],
+      capabilities: [{ key: "work", options: { releases: false } }],
     });
     const source = await createTestProject(ctx.alepha);
     const sigil = await ctx.probe.sigils.create({
@@ -197,7 +197,7 @@ describe("ProjectMergeService across every module", () => {
       "work",
     ]);
     expect(capabilities.find((row) => row.key === "work")!.options).toEqual({
-      board: false,
+      releases: false,
     });
     const changed = plan.steps.flatMap((step) => step.changed);
     expect(changed).toContainEqual(

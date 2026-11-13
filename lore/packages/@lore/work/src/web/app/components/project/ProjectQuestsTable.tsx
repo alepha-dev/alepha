@@ -103,20 +103,9 @@ import { formatQuestSize } from "./quest/questSize.ts";
 import { releaseRowMenu } from "./releaseRowMenu.ts";
 
 /**
- * The Quests page (`projectQuests`): the grouped quest table, and nothing
- * else.
- *
- * It used to render the Kanban board instead when `questsViewAtom` said so,
- * which is what made the board a *mode* rather than a place. The board is
- * `projectKanban` at `/:projectSlug/kanban` now, and a bare `/:projectSlug`
- * always lands here. (For a while `project.defaultSurface` could send it to
- * the board through this route's loader; that setting went with feedback
- * #2066.)
- *
- * The view bar that switches the two lives in `ProjectView`, not here
- * (#153): a page rendered as the `NestedView` is necessarily to the RIGHT
- * of the quest log, and the bar switches the whole surface, not the table
- * inside it.
+ * The quests table, the Quests page's List tab (`projectQuests`); the Board
+ * tab is `projectKanban` at `/quests/board`, and the layout above both
+ * (`QuestsPlate`) draws the tabs.
  */
 const ProjectQuestsTable = () => {
   const [project] = useStore(currentProjectAtom);
@@ -734,11 +723,12 @@ const ProjectQuestsTable = () => {
   return (
     <div
       data-testid="quests-table"
-      // `p-2`: the inset the page had beside the quest log, which no longer
-      // frames it now that the list runs full width.
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-2"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
     >
       <DataTable<QuestResource, typeof filterFields>
+        // Flush with the page under the Quests plate's tabs: no frame, no
+        // inset, the table fills the view.
+        flat
         // The seed is part of the identity: `initialValues` are captured once
         // per mount, and arriving from a different drill-through link on a
         // route the app is already showing would otherwise change nothing.
