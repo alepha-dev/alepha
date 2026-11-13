@@ -1276,20 +1276,6 @@ test.describe("Quest", () => {
   });
 
   /**
-   * Collapsing the quest log leaves a rail, and the choice outlives the tab.
-   *
-   * Its own `test()` rather than a step on an existing one: the preference is
-   * cookie-backed and Playwright gives each test a fresh context, so this
-   * starts from "nobody has chosen yet" and cannot leak a collapsed pane into
-   * a sibling test that asserts `quest-log` is visible (two already do).
-   *
-   * The RELOAD is the assertion that matters. Collapsing and seeing the rail
-   * only proves a React state flip; the requirement is that the pane is still
-   * collapsed on a fresh document, which is the half that fails if the atom
-   * loses its `persist` or moves to localStorage — where `ProjectView`, which
-   * picks this layout during SSR, cannot read it.
-   */
-  /**
    * The header's back arrow (quest #1221). It replaced a close cross that
    * read as a dialog affordance on a page that is not a dialog.
    *
@@ -1398,54 +1384,82 @@ test.describe("Quest", () => {
     });
   });
 
-  test("the quest log collapses to a rail and remembers it", async ({
-    page,
-  }) => {
+  /**
+   * The presets rail beside the Quests table: each button sets the table's
+   * filters to its own, and only those, and its badge counts what the click
+   * lists.
+   *
+   * Its own `test()`: the table stores the reader's last filters, and both a
+   * preset's click and a link must replace them rather than add to them,
+   * which needs a fresh context to start from nothing stored.
+   */
+  test("the presets rail sets the quests table's filters", async ({ page }) => {
     test.setTimeout(60_000);
 
     const t = Date.now();
-    const email = `qlog${t}@example.com`;
-    const password = "QuestLog123!";
-    const projectTitle = `QL${t}`.slice(0, 20);
+    const email = `qpre${t}@example.com`;
+    const password = "QuestPresets123!";
+    const projectTitle = `QP${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const { slug: projectSlug } = await createProjectViaWizard(
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["board", "epics", "releases"] } },
     );
+    for (const [title, priority] of [
+      [`Hot${t}`, "high"],
+      [`Calm${t}`, "low"],
+    ] as const) {
+      await apiPost(page, "createQuest", {
+        projectId,
+        title,
+        description: "Seeded for the presets rail",
+        area: "Main",
+        priority,
+        objectives: [],
+        attachments: [],
+      });
+    }
 
-    // The log is a `lg:`-and-up fixture — below that breakpoint neither it nor
-    // the rail renders at all, so the viewport has to be wide enough for the
-    // pane to exist before anything here means anything.
+    // The rail is drawn from `md` up; below, the filter dialog is the
+    // table's filter surface.
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`/${projectSlug}/quests`);
-    await expect(page.getByTestId("quest-log")).toBeVisible({
-      timeout: 10_000,
-    });
-    await expect(page.getByTestId("quest-log-rail")).toHaveCount(0);
+    const rail = page.locator('[data-slot="data-table-presets"]');
+    const preset = (key: string) => rail.locator(`[data-preset="${key}"]`);
+    await expect(rail).toBeVisible({ timeout: 10_000 });
+    await expect(preset("urgent")).toContainText("1", { timeout: 10_000 });
 
-    await page.getByTestId("quest-log-collapse").click();
-    await expect(page.getByTestId("quest-log-rail")).toBeVisible({
+    // A click sets the filters in place: the URL is never written.
+    await preset("urgent").click();
+    await expect(page.getByText(`Hot${t}`)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(`Calm${t}`)).toHaveCount(0, {
       timeout: 10_000,
     });
-    await expect(page.getByTestId("quest-log")).toHaveCount(0);
+    await expect(preset("urgent")).toHaveAttribute("aria-pressed", "true");
+    expect(new URL(page.url()).search).toBe("");
 
-    await page.reload();
-    await expect(page.getByTestId("quest-log-rail")).toBeVisible({
-      timeout: 10_000,
-    });
-    await expect(page.getByTestId("quest-log")).toHaveCount(0);
+    // Backlog replaces Urgent's priority filter rather than adding to it.
+    await preset("backlog").click();
+    await expect(page.getByText(`Calm${t}`)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(`Hot${t}`)).toBeVisible();
+    await expect(preset("urgent")).toHaveAttribute("aria-pressed", "false");
 
-    // The rail is the kit's `PaneRail` (#Q3206): the same 36px strip as the
-    // folio rails, the whole of it the button.
-    const railBox = await page.getByTestId("quest-log-rail").boundingBox();
-    expect(railBox?.width).toBe(36);
-    await page.getByTestId("quest-log-rail").click();
-    await expect(page.getByTestId("quest-log")).toBeVisible({
+    // Nobody took either quest, so Mine is empty.
+    await preset("mine").click();
+    await expect(page.getByText(`Hot${t}`)).toHaveCount(0, {
       timeout: 10_000,
     });
-    await expect(page.getByTestId("quest-log-rail")).toHaveCount(0);
+
+    // A link carrying a preset's values lights it with no key of its own,
+    // and replaces the filters stored by the clicks above.
+    await page.goto(
+      `/${projectSlug}/quests?priority=high&status=todo,in_progress,on_hold`,
+    );
+    await expect(preset("urgent")).toHaveAttribute("aria-pressed", "true", {
+      timeout: 10_000,
+    });
+    await expect(page.getByText(`Hot${t}`)).toBeVisible({ timeout: 10_000 });
   });
 
   /**
@@ -1664,15 +1678,13 @@ test.describe("Quest", () => {
       );
     });
 
-    await test.step("the quest log still renders beside the list and the detail", async () => {
-      // What the deleted layout step was really protecting: the quest log's
-      // position. The rail used to sit above it and the assertions were
-      // about their relative y. With the rail gone the log is simply the top
-      // of the content area, on both routes that carry it.
+    await test.step("the presets sit beside the list, and the detail has none", async () => {
+      // The presets are the table's own rail, so the quest page, which has
+      // no table, gets its whole width.
       await page.goto(`/${projectSlug}/quests`);
-      await expect(page.getByTestId("quest-log")).toBeVisible({
-        timeout: 10_000,
-      });
+      await expect(
+        page.locator('[data-slot="data-table-presets"]'),
+      ).toBeVisible({ timeout: 10_000 });
 
       const { shortId } = await apiPost<{ shortId: number }>(
         page,
@@ -1691,9 +1703,9 @@ test.describe("Quest", () => {
       await expect(page.getByText(`RailProbe${t}`).first()).toBeVisible({
         timeout: 10_000,
       });
-      await expect(page.getByTestId("quest-log")).toBeVisible({
-        timeout: 10_000,
-      });
+      await expect(
+        page.locator('[data-slot="data-table-presets"]'),
+      ).toHaveCount(0);
       await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
     });
 

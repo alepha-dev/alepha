@@ -147,8 +147,7 @@ const KanbanCard = (props: KanbanCardProps) => {
 
   const objectives = quest.metadata.objectivesProgress;
   const attachmentCount = quest.attachments?.length ?? 0;
-  // Same rule as the quest log's `QuestItem`: the last session with no
-  // `stoppedAt` is a timer still running.
+  // The last session with no `stoppedAt` is a timer still running.
   const lastSession = quest.timerSessions?.[quest.timerSessions.length - 1];
   const timerRunning = Boolean(lastSession && !lastSession.stoppedAt);
   // A completed quest's deadline is history, not a warning — the card would

@@ -88,9 +88,7 @@ export const questPresetsSchema = z.object({
   /**
    * The open release with the lowest number, which Next opens.
    */
-  nextRelease: z
-    .object({ id: z.integer(), label: z.string() })
-    .optional(),
+  nextRelease: z.object({ id: z.integer(), label: z.string() }).optional(),
   counts: z.object({
     mine: z.integer(),
     urgent: z.integer(),
@@ -103,3 +101,28 @@ export const questPresetsSchema = z.object({
 });
 
 export type QuestPresets = Infer<typeof questPresetsSchema>;
+
+/**
+ * The quest list's filters the presets added to `getQuests`. Text or
+ * a bounded integer, never an enum: an unknown value filters nothing rather
+ * than failing a bookmarked link.
+ */
+export const questFilterExtrasShape = {
+  /**
+   * `me` for the reader's own quests, `none` for the ones nobody took.
+   * Anything else filters nothing.
+   */
+  assignee: z.string().optional(),
+  /**
+   * One priority, or several comma-separated.
+   */
+  priority: z.string().optional(),
+  /**
+   * Taken more than this many days ago: Reports' "stale".
+   */
+  staleDays: z.integer().min(1).max(365).optional(),
+  /**
+   * Completed within this many days.
+   */
+  completedDays: z.integer().min(1).max(365).optional(),
+};

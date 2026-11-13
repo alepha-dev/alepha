@@ -1,5 +1,4 @@
 import {
-  ROUTES_WITH_QUEST_LOG,
   formatReference,
   lazyPart,
   AccountDeletionRegistry,
@@ -141,17 +140,6 @@ export class WorkShell {
         activeOn: (name) =>
           name === "projectReleases" || name === "projectRelease",
       },
-      {
-        // Project configuration rather than a daily work surface, so it sits
-        // in the Config band, last before Settings (#Q2678).
-        route: "projectAutomations",
-        permission: "automation:read",
-        labelKey: "project.capability.work.option.automations.label",
-        icon: Workflow,
-        group: "config",
-        order: 10,
-        option: "automations",
-      },
     ]);
 
     this.shell.registerNav("support", [
@@ -169,10 +157,38 @@ export class WorkShell {
       },
     ]);
 
+    // Automations is project configuration, so it is a Settings section, after
+    // Members, rather than an entry of its own in the sidebar. Its pages keep
+    // their own layout; the section only lists them and lights while one is
+    // open.
+    this.shell.registerSettings({
+      key: "automations",
+      order: 25,
+      labelKey: "project.settings.nav.automations",
+      descriptionKey: "project.settings.section.automations",
+      icon: Workflow,
+      capability: "work",
+      tabs: [
+        {
+          route: "projectAutomations",
+          labelKey: "project.settings.tab.automations",
+          option: "automations",
+          requires: "automation:read",
+          alsoOn: [
+            "projectAutomationGallery",
+            "projectAutomationDetail",
+            "projectAutomationVariables",
+            "projectAutomationRun",
+            "projectAutomationAdoption",
+          ],
+        },
+      ],
+    });
+
     this.shell.registerSettings({
       key: "work",
       order: 30,
-      labelKey: "project.menu.quests",
+      labelKey: "project.settings.nav.plan",
       descriptionKey: "project.settings.section.work",
       icon: Swords,
       capability: "work",
@@ -334,14 +350,6 @@ export class WorkShell {
           ? { label: area.name }
           : undefined;
       },
-    });
-
-    this.shell.registerAside({
-      key: "quest-log",
-      routes: [...ROUTES_WITH_QUEST_LOG],
-      component: lazyPart(
-        () => import("../components/project/ProjectQuestLogAside.tsx"),
-      ),
     });
 
     // Picker order: after folios, and epics after quests because a project

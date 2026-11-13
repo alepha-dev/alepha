@@ -22,6 +22,7 @@ import {
   type BulkMenuAction,
   type RowActionContext,
 } from "@alepha/ui/table";
+import { prioritySchema } from "@lore/core/schemas";
 import {
   capabilityOption,
   currentProjectAtom,
@@ -48,11 +49,20 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
+  CalendarCheck,
+  CircleCheck,
   CircleDot,
+  Flame,
+  Hourglass,
+  Inbox,
+  MessageCircleQuestion,
+  Rocket,
+  UserRound,
   Bot,
   Hash,
   Layers,
   Link2,
+  type LucideIcon,
   MapPin,
   Pencil,
   Plus,
@@ -66,6 +76,11 @@ import { useState } from "react";
 
 import type { QuestController } from "../../../../api/controllers/QuestController.ts";
 import { QUEST_EPIC_NONE } from "../../../../api/schemas/questEpicFilter.ts";
+import {
+  type QuestPresetKey,
+  type QuestPresetQuery,
+  questPresetQuery,
+} from "../../../../api/schemas/questPresets.ts";
 import { QUEST_RELEASE_NONE } from "../../../../api/schemas/questReleaseFilter.ts";
 import {
   type QuestResource,
@@ -150,6 +165,22 @@ const ProjectQuestsTable = () => {
       },
       [questApi, project?.id],
     ).data ?? NO_TAGS;
+
+  // The presets' badges. Re-read whenever the table refreshes, so a quest
+  // taken, finished or re-prioritised here moves them. Quiet on failure: the
+  // rail then draws no badges.
+  const presetCounts = useQuery(
+    {
+      key: ["quest-presets", project?.id, reload],
+      enabled: !!project?.id,
+      handler: () =>
+        questApi.getQuestPresets({
+          params: { projectId: project?.id as number },
+        }),
+      onError: () => {},
+    },
+    [questApi, project?.id, reload],
+  ).data;
 
   // Every write below is a `useAction` (#E59, #Q2331). The eight
   // `useQuestMutations` calls keep rejecting (#E59 rule 2) and run inside
@@ -542,6 +573,51 @@ const ProjectQuestsTable = () => {
         clearLabel: tr("board.filter.allReleases"),
       },
     },
+    // The preset bar's filters (`questPresets.ts`). Each is offered under
+    // the "+" too, so a chip a preset set reads like any other filter and
+    // can be changed or removed the same way.
+    assignee: {
+      schema: z.enum(["me", "none"]),
+      label: tr("board.filter.assignee"),
+      icon: UserRound,
+      items: [
+        { value: "me", label: tr("board.filter.assignee.me") },
+        { value: "none", label: tr("board.filter.assignee.none") },
+      ],
+    },
+    priority: {
+      schema: z.array(prioritySchema),
+      label: tr("board.filter.priority"),
+      icon: Flame,
+      items: z.schema
+        .enumOptions(prioritySchema)
+        .toReversed()
+        .map((value) => ({
+          value,
+          label: tr(`dashboard.filterValue.${value}`),
+        })),
+      control: {
+        clearLabel: tr("board.filter.allPriorities"),
+      },
+    },
+    stale: {
+      schema: z.enum(["7", "14", "30"]),
+      label: tr("board.filter.stale"),
+      icon: Hourglass,
+      items: ["7", "14", "30"].map((days) => ({
+        value: days,
+        label: tr("board.filter.days", { args: [days] }),
+      })),
+    },
+    completed: {
+      schema: z.enum(["7", "14", "30"]),
+      label: tr("board.filter.completedWithin"),
+      icon: CalendarCheck,
+      items: ["7", "14", "30"].map((days) => ({
+        value: days,
+        label: tr("board.filter.days", { args: [days] }),
+      })),
+    },
     // Epic ids as strings, plus the sentinel, as for `release`. Offered with
     // no epic yet too: "None" is then every quest, which is true, and the
     // entry does not come and go with the first epic.
@@ -569,6 +645,31 @@ const ProjectQuestsTable = () => {
   const seedKey = dataTableFilterKeys(filterFields)
     .map((key) => `${key}=${router.query[key] ?? ""}`)
     .join("&");
+
+  // The presets rail beside the table: each one a set of this table's
+  // filters (`questPresets.ts`), with a badge counted by the server from the
+  // same query. Next appears only while a release is open.
+  const presetItems = PRESETS.flatMap((preset) => {
+    const query = questPresetQuery(preset.key, presetCounts?.nextRelease?.id);
+    if (!query) return [];
+    return [
+      {
+        key: preset.key,
+        label: tr(`quest.presets.${preset.key}`),
+        hint:
+          preset.key === "next" && presetCounts?.nextRelease
+            ? tr("quest.presets.next.hint", {
+                args: [presetCounts.nextRelease.label],
+              })
+            : tr(`quest.presets.${preset.key}.hint`),
+        icon: preset.icon,
+        group: preset.group,
+        tone: preset.tone,
+        count: preset.quiet ? undefined : presetCounts?.counts?.[preset.key],
+        values: presetValues(query),
+      },
+    ];
+  });
 
   // Triage in bulk: the checkbox column exists because this array is not
   // empty. Every action refreshes and then clears, in that order, since a
@@ -633,7 +734,9 @@ const ProjectQuestsTable = () => {
   return (
     <div
       data-testid="quests-table"
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      // `p-2`: the inset the page had beside the quest log, which no longer
+      // frames it now that the list runs full width.
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-2"
     >
       <DataTable<QuestResource, typeof filterFields>
         // The seed is part of the identity: `initialValues` are captured once
@@ -683,8 +786,8 @@ const ProjectQuestsTable = () => {
            * a value a schema refuses is dropped, so a stale bookmark lands on
            * the unfiltered list rather than an error page.
            *
-           * Its precedence is `seedValues`': a link outranks the filter the
-           * reader stored last time, or a drill-through would do nothing.
+           * A link that carries filters replaces the ones the reader stored
+           * last time, so a drill-through opens exactly the rows it names.
            *
            * ⚠️ Read-only, and it stays that way. Nothing writes a filter back
            * to the URL; the toolbar's Share item is the only write side. See
@@ -692,6 +795,13 @@ const ProjectQuestsTable = () => {
            * from.
            */
           fromQuery: true,
+          presets: {
+            items: presetItems,
+            all: {
+              label: tr("quest.presets.all"),
+              hint: tr("quest.presets.all.hint"),
+            },
+          },
         }}
         fetch={async ({ page, size, sort, filters: f }) => {
           // Comma-joined, and omitted entirely when empty. An empty list and
@@ -715,6 +825,10 @@ const ProjectQuestsTable = () => {
               tagOp: f?.tagOp,
               releaseId: list(f?.release),
               epicId: list(f?.epic),
+              assignee: f?.assignee,
+              priority: list(f?.priority),
+              staleDays: f?.stale ? Number(f.stale) : undefined,
+              completedDays: f?.completed ? Number(f.completed) : undefined,
             },
           });
         }}
@@ -1248,3 +1362,50 @@ export default ProjectQuestsTable;
  * tags load.
  */
 const NO_TAGS: string[] = [];
+
+/**
+ * The presets the rail offers, in its order: the reader's own and what needs
+ * them first, then the project's slices, divided by a rule.
+ */
+const PRESETS: Array<{
+  key: QuestPresetKey;
+  icon: LucideIcon;
+  group: "primary" | "secondary";
+  tone?: "danger";
+  /**
+   * No badge: a number of finished quests asks nothing of the reader.
+   */
+  quiet?: boolean;
+}> = [
+  { key: "mine", icon: UserRound, group: "primary" },
+  { key: "urgent", icon: Flame, group: "primary", tone: "danger" },
+  { key: "backlog", icon: Inbox, group: "primary" },
+  { key: "done", icon: CircleCheck, group: "primary", quiet: true },
+  {
+    key: "asks",
+    icon: MessageCircleQuestion,
+    group: "secondary",
+    tone: "danger",
+  },
+  { key: "stale", icon: Hourglass, group: "secondary" },
+  { key: "next", icon: Rocket, group: "secondary" },
+];
+
+/**
+ * A preset's URL query as this table's filter values: the list filters split
+ * on commas, the single-value ones as they are.
+ */
+const presetValues = (query: QuestPresetQuery) => {
+  const list = (value?: string) => (value ? value.split(",") : undefined);
+  return {
+    status: list(query.status) as QuestStatus[] | undefined,
+    priority: list(query.priority) as
+      | Array<"optional" | "low" | "medium" | "high">
+      | undefined,
+    tag: list(query.tag),
+    release: list(query.release),
+    assignee: query.assignee,
+    stale: query.stale as "7" | "14" | "30" | undefined,
+    completed: query.completed as "7" | "14" | "30" | undefined,
+  };
+};

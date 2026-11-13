@@ -380,12 +380,12 @@ test.describe("Home (switcher cap)", () => {
       });
     }
 
-    // The landing page shows the five most recent, and "Show more" opens the
+    // The landing page shows the eight most recent, and "Show more" opens the
     // account dialog's Projects section, which lists every one of them.
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     const rows = page.getByTestId("home-project-row");
-    await expect(rows).toHaveCount(5, { timeout: 15_000 });
+    await expect(rows).toHaveCount(8, { timeout: 15_000 });
     await page.getByRole("button", { name: "Show more" }).click();
     await expect(page.locator('[data-slot="settings-dialog"]')).toBeVisible();
     await expect(page.getByTestId("account-project-row")).toHaveCount(11);

@@ -129,7 +129,7 @@ export class DeployShell {
     this.shell.registerSettings({
       key: "apps",
       order: 50,
-      labelKey: "project.menu.apps",
+      labelKey: "project.settings.nav.ship",
       descriptionKey: "project.settings.section.apps",
       icon: AppWindow,
       capability: "apps",

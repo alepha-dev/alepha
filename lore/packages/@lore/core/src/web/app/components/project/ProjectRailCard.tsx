@@ -8,7 +8,6 @@ export interface ProjectRailCardProps {
     title: string;
     slug: string;
     icon?: string | null;
-    repositoryUrl?: string | null;
   };
   /**
    * A row's size rather than a card's: a smaller image, one line of title
@@ -26,21 +25,14 @@ export interface ProjectRailCardProps {
 }
 
 /**
- * What the project rail shows on hover (#Q3370): the project's image, its
- * name, and its repository when one is set.
- *
- * The repository line is the path (`owner/repo`) alone, with no icon
- * (#Q3482): rather than the whole URL, which the card is too narrow for and
- * which says nothing more, and no line at all for a stored value that does
- * not parse as a URL. The host, which the path does not say, is in the
- * link's label and its tooltip.
+ * What the project rail shows on hover (#Q3370): the project's image and its
+ * name.
  *
  * Account > Projects draws each row with it too (#Q3411), and the project
  * sidebar its header (#Q3420), both `compact`, so the three show a project
  * the same way.
  */
 export const ProjectRailCard = (props: ProjectRailCardProps) => {
-  const repository = parseRepository(props.project.repositoryUrl);
   return (
     <div
       className={cn(
@@ -75,36 +67,7 @@ export const ProjectRailCard = (props: ProjectRailCardProps) => {
           </span>
           {props.badge}
         </span>
-        {repository && (
-          <a
-            href={repository.url}
-            target="_blank"
-            rel="noreferrer noopener"
-            data-testid="project-rail-card-repository"
-            // The host is the part of the destination the path does not say.
-            aria-label={`${repository.label} (${repository.host})`}
-            // Never the row's own click, where a caller's row navigates.
-            onClick={(event) => event.stopPropagation()}
-            title={repository.host}
-            className="text-muted-foreground hover:text-foreground flex min-w-0 items-center text-xs"
-          >
-            <span className="truncate">{repository.label}</span>
-          </a>
-        )}
       </div>
     </div>
   );
-};
-
-const parseRepository = (url?: string | null) => {
-  if (!url) return undefined;
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return undefined;
-  }
-  const host = parsed.host;
-  const path = parsed.pathname.replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
-  return { url, host, label: path || host };
 };

@@ -124,7 +124,6 @@ export {
   ROUTES_APP,
   ROUTES_ESTATE,
   ROUTES_FULL_WIDTH,
-  ROUTES_WITH_QUEST_LOG,
   SECTION_HREF_ROUTES,
   SECTION_LABEL_KEYS,
 } from "./app/components/project/projectViewRoutes.ts";
@@ -249,6 +248,7 @@ export {
   type ProjectCreateDialogProps,
   ProjectShellRegistry,
 } from "./app/registries/ProjectShellRegistry.ts";
+export { visibleSettingsTabs } from "./app/components/project/settings/projectSettingsSections.ts";
 export {
   type ReportsFilter,
   type ReportsTab,

@@ -36,24 +36,26 @@ export interface SettingsTab {
 export interface SettingsSectionDef {
   key: string;
   /**
-   * Position in the Settings group, ascending: General 10, Members 20, then
-   * each capability's section as its module registers it.
+   * Position in the Settings group, ascending: General 10, Members 20,
+   * Automations 25, then each capability's section as its module registers
+   * it.
    */
   order: number;
   /**
-   * The sidebar's own noun for the section (Quests, Folios, Apps), never the
-   * capability's name: the settings group sits under entries saying exactly
-   * that, and "Work" beside "Quests" read as two different things.
+   * The section's name in the Settings group: General, Members, Automations,
+   * then a verb per capability (Plan, Remember, Ship).
    */
   labelKey:
     | "project.settings.nav.general"
     | "project.settings.nav.members"
-    | "project.menu.quests"
-    | "project.menu.folios"
-    | "project.menu.apps";
+    | "project.settings.nav.automations"
+    | "project.settings.nav.plan"
+    | "project.settings.nav.remember"
+    | "project.settings.nav.ship";
   descriptionKey:
     | "project.settings.section.general"
     | "project.settings.section.members"
+    | "project.settings.section.automations"
     | "project.settings.section.work"
     | "project.settings.section.knowledge"
     | "project.settings.section.apps";

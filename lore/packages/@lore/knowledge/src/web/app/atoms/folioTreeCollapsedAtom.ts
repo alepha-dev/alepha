@@ -15,8 +15,7 @@ import { $atom, z } from "alepha";
  * #14 arriving through a door its guard was never watching).
  *
  * An atom survives a remount by construction, which is the only property that
- * actually fixes it. `folioTreeSeedAtom` and `questLogCollapsedAtom` are the
- * same idea, here and elsewhere.
+ * actually fixes it. `folioTreeSeedAtom` is the same idea.
  *
  * `projectId` is carried WITH the set, not assumed: it is what makes the seed
  * run once per PROJECT rather than once per mount, which is what "one-time"

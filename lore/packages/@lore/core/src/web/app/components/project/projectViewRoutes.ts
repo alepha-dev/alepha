@@ -1,7 +1,6 @@
 /**
  * The route-name tables `ProjectView` reads to shape the shell around the
- * page that is open: which pages carry the quest log, which run full width,
- * and where each section's breadcrumb climbs back to.
+ * page that is open: which run full width, and where each section's breadcrumb climbs back to.
  *
  * Route names are plain strings here with nothing in the type system tying
  * them to the route table, so a `$page` added to a router and left out of
@@ -11,18 +10,6 @@
  * shipped (quest #1689), which is why these live in their own module: the
  * spec beside it walks the router and refuses the next half-registered tab.
  */
-
-/**
- * The quest list AND the quest detail. The log is how you move between
- * quests without going back to the list first, which is exactly what the
- * detail route wants; the collapse rail is what keeps it from costing the
- * quest its width when a reader does not want it.
- *
- * This set also drives the view bar, so both routes get it. Dropping it on
- * the detail route would shift the log up the moment a quest opened - which
- * is why, on that route, the bar navigates instead of switching in place.
- */
-export const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
 
 /**
  * The per-app page and its tabs.
@@ -112,6 +99,9 @@ export const ROUTES_FULL_WIDTH = new Set([
   // to `/activity` with the same treatment; the entry is keyed by route NAME,
   // so the path change touched nothing here.
   "projectActivity",
+  // The quests table, whose presets rail sits at its left: it fills the
+  // width the way it did beside the quest log it replaced.
+  "projectQuests",
   "projectQuest",
   "projectKanban",
   "projectAutomations",

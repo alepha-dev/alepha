@@ -18,9 +18,8 @@ import { $atom, z } from "alepha";
  * area names, which would render an empty board with no visible cause.
  * One project's worth of memory is all "survives navigation" needs.
  *
- * `persist: "cookie"` rather than `localStorage`, matching
- * `questLogCollapsedAtom`: the board renders during SSR, where web storage
- * does not exist.
+ * `persist: "cookie"` rather than `localStorage`: the board renders during
+ * SSR, where web storage does not exist.
  */
 export const kanbanFiltersAtom = $atom({
   name: "lor.kanban.filters",

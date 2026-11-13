@@ -20,9 +20,9 @@ import { $atom, z } from "alepha";
  *
  * ## `persist: "cookie"`, not localStorage
  *
- * Matching `questLogCollapsedAtom` and `kanbanFiltersAtom`, and for their
- * reason: the folio route is server-rendered, and `$atom`'s Web Storage
- * adapters are invisible to the server. Under localStorage every folio
+ * Matching `kanbanFiltersAtom`, and for its reason: the folio route is
+ * server-rendered, and `$atom`'s Web Storage adapters are invisible to the
+ * server. Under localStorage every folio
  * would paint at level 3 and snap to the reader's level on hydration, and
  * each server render would log the "persistence unavailable in this
  * environment" warning. A cookie is read while rendering, so the first

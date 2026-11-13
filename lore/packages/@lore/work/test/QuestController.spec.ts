@@ -546,4 +546,113 @@ describe("QuestController hold", () => {
       );
     });
   });
+
+  describe("the preset filters and their counts", () => {
+    const list = async (
+      project: { id: number; createdBy: string },
+      query: Record<string, string | number>,
+    ) => {
+      const page = await ctx.controller.getQuests(
+        { params: { projectId: project.id }, query: query as any },
+        { user: ownerToken(project) },
+      );
+      return page.content
+        .map((q: { id: number }) => q.id)
+        .sort((a, b) => a - b);
+    };
+    const daysAgo = (days: number) =>
+      ctx.dt.now().subtract(days, "day").toISOString();
+
+    it("filters by assignee, priority, staleness and completion window", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const me = project.createdBy;
+      const mineFresh = await createTestQuest(ctx.alepha, project, {
+        acceptedBy: me,
+        acceptedAt: daysAgo(1),
+      });
+      const mineStale = await createTestQuest(ctx.alepha, project, {
+        acceptedBy: me,
+        acceptedAt: daysAgo(20),
+        priority: "high",
+      });
+      const free = await createTestQuest(ctx.alepha, project, {
+        priority: "high",
+      });
+      const doneRecently = await createTestQuest(ctx.alepha, project, {
+        completedAt: daysAgo(2),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        completedAt: daysAgo(30),
+      });
+
+      expect(await list(project, { assignee: "me" })).toEqual(
+        [mineFresh.id, mineStale.id].sort((a, b) => a - b),
+      );
+      expect(await list(project, { assignee: "none", status: "todo" })).toEqual(
+        [free.id],
+      );
+      expect(await list(project, { priority: "high" })).toEqual(
+        [mineStale.id, free.id].sort((a, b) => a - b),
+      );
+      expect(await list(project, { staleDays: 14 })).toEqual([mineStale.id]);
+      expect(
+        await list(project, { status: "completed", completedDays: 7 }),
+      ).toEqual([doneRecently.id]);
+      // An unknown value filters nothing rather than failing the link: all
+      // five quests, the completed two included, as with no filter.
+      expect(
+        (await list(project, { assignee: "someone", priority: "urgent" }))
+          .length,
+      ).toBe(5);
+    });
+
+    it("counts each preset as the list it opens", async ({ expect }) => {
+      const project = await createTestProject(ctx.alepha);
+      const repos = WorkTestEntities.of(ctx.alepha);
+      const next = await repos.releases.create({
+        projectId: project.id,
+        number: 2,
+        tag: "0.2.0",
+        title: "0.2.0",
+      });
+      await repos.releases.create({
+        projectId: project.id,
+        number: 1,
+        tag: "0.1.0",
+        title: "0.1.0",
+        releasedAt: daysAgo(10),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        acceptedBy: project.createdBy,
+        acceptedAt: daysAgo(20),
+        priority: "high",
+        releaseId: next.id,
+      });
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["need-answer"],
+      });
+      await createTestQuest(ctx.alepha, project, {
+        completedAt: daysAgo(1),
+      });
+
+      const presets = await ctx.controller.getQuestPresets(
+        { params: { projectId: project.id } },
+        { user: ownerToken(project) },
+      );
+
+      expect(presets.nextRelease).toEqual({ id: next.id, label: "0.2.0" });
+      expect(presets.counts).toEqual({
+        mine: 1,
+        urgent: 1,
+        // Pending, taken or not: the taken quest and the asking one.
+        backlog: 2,
+        done: 1,
+        asks: 1,
+        stale: 1,
+        next: 1,
+      });
+    });
+  });
 });

@@ -94,6 +94,11 @@ export class WorkRouter {
         area: z.text().optional(),
         tag: z.text().optional(),
         release: z.text().optional(),
+        // The presets' filters (`questPresets.ts`).
+        assignee: z.text().optional(),
+        priority: z.text().optional(),
+        stale: z.text().optional(),
+        completed: z.text().optional(),
       }),
     },
     head: (_props, previous) => ({
