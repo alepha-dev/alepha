@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../core/Dialog.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 
 export interface DataTableFilterDialogProps {
   /**
@@ -85,27 +86,34 @@ export const DataTableFilterDialog = (props: DataTableFilterDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button
-            type="button"
-            size="sm"
-            variant="minimal"
-            className="h-9 gap-1.5 px-2"
-            aria-label={label}
-          />
-        }
-      >
-        <Funnel className="size-4" />
-        {props.activeCount > 0 && (
-          <Badge
-            variant="secondary"
-            className="h-5 min-w-5 justify-center px-1 text-[10px] tabular-nums"
-          >
-            {props.activeCount}
-          </Badge>
-        )}
-      </DialogTrigger>
+      <Tooltip>
+        <DialogTrigger
+          render={
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="minimal"
+                  className="h-9 gap-1.5 px-2"
+                  aria-label={label}
+                />
+              }
+            />
+          }
+        >
+          <Funnel className="size-4" />
+          {props.activeCount > 0 && (
+            <Badge
+              variant="secondary"
+              className="h-5 min-w-5 justify-center px-1 text-[10px] tabular-nums"
+            >
+              {props.activeCount}
+            </Badge>
+          )}
+        </DialogTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{label}</DialogTitle>
