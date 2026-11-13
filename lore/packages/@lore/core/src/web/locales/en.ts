@@ -3003,6 +3003,15 @@ export default {
   "epic.undo.deleted": "$1 deleted",
   "epic.undo.bulkReady": "$1 epic(s) ready",
   "epic.undo.bulkDeleted": "$1 epic(s) deleted",
+  "epic.undo.bulkShelved": "$1 epic(s) shelved",
+  "epic.undo.bulkUnshelved": "$1 epic(s) unshelved",
+  "epic.bulk.shelve.title": "Shelve $1 epics?",
+  "epic.bulk.shelve.confirm": "Shelve $1 epics",
+  "epic.bulk.shelve.description":
+    "Their $1 open quests are set aside with them: unassigned and shelved until the epics are unshelved. Completed quests stay completed.",
+  "epic.bulk.shelve.skipped":
+    "Left out, because they are completed or shelved already: $1.",
+  "epic.bulk.unshelve.skipped": "$1 skipped: not shelved.",
   "epic.bulk.delete.title": "Delete $1 epics?",
   "epic.bulk.delete.confirm": "Delete $1 epics",
   "epic.bulk.delete.description":

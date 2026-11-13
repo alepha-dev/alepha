@@ -3002,6 +3002,14 @@ export default {
   "epic.undo.deleted": "$1 supprimée",
   "epic.undo.bulkReady": "$1 épopée(s) prête(s)",
   "epic.undo.bulkDeleted": "$1 épopée(s) supprimée(s)",
+  "epic.undo.bulkShelved": "$1 épopée(s) mise(s) de côté",
+  "epic.undo.bulkUnshelved": "$1 épopée(s) remise(s) en jeu",
+  "epic.bulk.shelve.title": "Mettre $1 épopées de côté ?",
+  "epic.bulk.shelve.confirm": "Mettre $1 épopées de côté",
+  "epic.bulk.shelve.description":
+    "Leurs $1 quêtes ouvertes sont mises de côté avec elles : désassignées et mises de côté jusqu'à ce que les épopées soient reprises. Les quêtes terminées le restent.",
+  "epic.bulk.shelve.skipped": "Exclues, car déjà terminées ou de côté : $1.",
+  "epic.bulk.unshelve.skipped": "$1 ignorée(s) : pas de côté.",
   "epic.bulk.delete.title": "Supprimer $1 épopées ?",
   "epic.bulk.delete.confirm": "Supprimer $1 épopées",
   "epic.bulk.delete.description":

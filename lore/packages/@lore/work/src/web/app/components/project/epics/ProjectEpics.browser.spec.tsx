@@ -1214,6 +1214,112 @@ describe("ProjectEpics - the status filter", () => {
       await waitFor(() => expect(fake.unshelveCalls).toEqual([2]));
     });
 
+    /**
+     * Bulk Shelve and Unshelve (#Q3561), the row menu's shelve over a
+     * selection: Shelve confirms, naming how many epics and open quests it
+     * sets aside and the epics it leaves out, then holds the write behind
+     * its Undo toast; Unshelve is sent at once.
+     */
+    describe("bulk Shelve and Unshelve", () => {
+      const withShelved = () => [
+        ...fixture(),
+        withQuests(epicOf(5, "Parked epic", "shelved"), 3),
+      ];
+
+      it("offers Shelve for a selection holding a shelvable epic, Unshelve for a shelved one", async () => {
+        await mount([], withShelved());
+
+        selectRow("#E4 - Completed epic");
+        await waitFor(() =>
+          expect(
+            screen.getByRole("button", { name: /Add to release/ }),
+          ).toBeTruthy(),
+        );
+        expect(screen.queryByRole("button", { name: "Shelve" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "Unshelve" })).toBeNull();
+
+        selectRow("#E3 - Started epic");
+        await waitFor(() =>
+          expect(screen.getByRole("button", { name: "Shelve" })).toBeTruthy(),
+        );
+        expect(screen.queryByRole("button", { name: "Unshelve" })).toBeNull();
+
+        selectRow("#E5 - Parked epic");
+        await waitFor(() =>
+          expect(screen.getByRole("button", { name: "Unshelve" })).toBeTruthy(),
+        );
+        expect(screen.getByRole("button", { name: "Shelve" })).toBeTruthy();
+      });
+
+      it("confirms with the epics and open quests it sets aside, names the ones it skips, and holds the write", async () => {
+        await mount([], withShelved());
+        const fake = alepha!.inject(FakeLinkProvider);
+
+        selectRow("#E1 - Draft epic");
+        selectRow("#E3 - Started epic");
+        selectRow("#E4 - Completed epic");
+        selectRow("#E5 - Parked epic");
+        fireEvent.click(await screen.findByRole("button", { name: "Shelve" }));
+        const confirm = await screen.findByRole("alertdialog");
+
+        expect(confirm.textContent).toContain("Shelve 2 epics?");
+        expect(confirm.textContent).toContain("Their 6 open quests");
+        expect(confirm.textContent).toContain("#E4 Completed epic");
+        expect(confirm.textContent).toContain("#E5 Parked epic");
+        expect(confirm.textContent).not.toContain("#E1 Draft epic");
+        fireEvent.click(
+          within(confirm).getByRole("button", { name: "Shelve 2 epics" }),
+        );
+
+        // Held behind its Undo toast, like the row's shelve: closing the
+        // toast is what sends it.
+        const toast = await waitFor(() => {
+          const found = [
+            ...document.querySelectorAll("[data-sonner-toast]"),
+          ].find((it) => it.textContent?.includes("2 epic(s) shelved"));
+          if (!found) throw new Error("no undo toast yet");
+          return found as HTMLElement;
+        });
+        expect(fake.shelveCalls).toEqual([]);
+        fireEvent.click(within(toast).getByRole("button", { name: /close/i }));
+        await waitFor(() => expect(fake.shelveCalls).toEqual([1, 3]));
+      });
+
+      it("sends nothing when the confirm is cancelled", async () => {
+        await mount([], withShelved());
+        const fake = alepha!.inject(FakeLinkProvider);
+
+        selectRow("#E3 - Started epic");
+        fireEvent.click(await screen.findByRole("button", { name: "Shelve" }));
+        const confirm = await screen.findByRole("alertdialog");
+        fireEvent.click(
+          within(confirm).getByRole("button", { name: "Cancel" }),
+        );
+
+        await waitFor(() =>
+          expect(screen.queryByRole("alertdialog")).toBeNull(),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(fake.shelveCalls).toEqual([]);
+      });
+
+      it("unshelves the shelved epics at once and reports the rest as skipped", async () => {
+        await mount([], withShelved());
+        const fake = alepha!.inject(FakeLinkProvider);
+
+        selectRow("#E2 - Ready epic");
+        selectRow("#E5 - Parked epic");
+        fireEvent.click(
+          await screen.findByRole("button", { name: "Unshelve" }),
+        );
+
+        expect(screen.queryByRole("alertdialog")).toBeNull();
+        await undoIn("1 epic(s) unshelved");
+        expect(screen.getByText("1 skipped: not shelved.")).toBeTruthy();
+        await waitFor(() => expect(fake.unshelveCalls).toEqual([5]));
+      });
+    });
+
     it("hides the bulk delete when nothing selected can be deleted", async () => {
       await mount([], fixture());
 
