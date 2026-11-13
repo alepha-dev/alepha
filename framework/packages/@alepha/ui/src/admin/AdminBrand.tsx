@@ -14,7 +14,7 @@ export interface AdminBrandProps {
 
 /**
  * The admin sidebar's default brand: a back arrow to the application's home
- * beside "Admin Panel", with no icon (#Q3570).
+ * beside "Admin Panel", with no icon.
  *
  * It used to be an icon and "Admin", with no way out of `/admin`, so every
  * application that wanted the arrow drew its own brand. `brand` still
