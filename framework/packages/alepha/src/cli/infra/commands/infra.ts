@@ -20,8 +20,6 @@ import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
 import { ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
-import { SecretsCommand } from "./SecretsCommand.ts";
-
 export class InfraCommand {
   protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly hostCollection = $inject(ActorHostCollection);
@@ -33,7 +31,6 @@ export class InfraCommand {
   protected readonly viteBuild = $inject(ViteBuildProvider);
   protected readonly color = $inject(ConsoleColorProvider);
   protected readonly envUtils = $inject(EnvUtils);
-  protected readonly secretsCommand = $inject(SecretsCommand);
   protected readonly d1Migrations = $inject(D1MigrationsService);
 
   /**
@@ -842,7 +839,6 @@ export class InfraCommand {
       this.build,
       this.deployOnly,
       this.db,
-      this.secretsCommand.secrets,
     ],
     handler: async ({ help }) => {
       help();

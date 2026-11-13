@@ -64,13 +64,13 @@ Environment names are arbitrary explicit keys. The default is `production`; a pr
 
 `infra()` accepts the following options:
 
-| Option         | Type     | Default             | Description                                                                                          |
-| -------------- | -------- | ------------------- | ---------------------------------------------------------------------------------------------------- |
-| `name`         | `string` | `package.json` name | The **app** name: one workspace is one app. Used as the prefix of every resource name.               |
-| `project`      | `string` | -                   | The project the app belongs to. Set, it goes in front of the app name: `<project>-<app>-<env>`.      |
-| `default`      | `string` | `"production"`      | Default environment when `--env` is omitted.                                                         |
-| `secrets`      | `object` | -                   | The secret key set override (`keys`), and an external store - see [the secrets command](#secrets-1). |
-| `environments` | `Record` | -                   | Named environments, each the result of an adapter factory: `cloudflare(...)`, `bay(...)`.            |
+| Option         | Type     | Default             | Description                                                                                     |
+| -------------- | -------- | ------------------- | ----------------------------------------------------------------------------------------------- |
+| `name`         | `string` | `package.json` name | The **app** name: one workspace is one app. Used as the prefix of every resource name.          |
+| `project`      | `string` | -                   | The project the app belongs to. Set, it goes in front of the app name: `<project>-<app>-<env>`. |
+| `default`      | `string` | `"production"`      | Default environment when `--env` is omitted.                                                    |
+| `secrets`      | `object` | -                   | The secret key set override (`keys`) - see [Secrets](#secrets).                                 |
+| `environments` | `Record` | -                   | Named environments, each the result of an adapter factory: `cloudflare(...)`, `bay(...)`.       |
 
 `--env` can only name a key of `environments`: anything else is refused before an adapter runs. Each environment's options are validated against its adapter's own schema when it is resolved, and a bad one is refused by environment name.
 
@@ -292,24 +292,6 @@ alepha infra db export --env production --skipPlaceholders   # leave the blobs m
 
 Placeholders are also skipped when `--output` points somewhere other than the
 dev database, since the storage directory only serves the dev server.
-
-### secrets
-
-Sync secrets from `.env.{env}` to an external CI secret store - currently GitHub Actions environments via the `gh` CLI. This is separate from the runtime secrets pushed during `alepha deploy`. Alias: `alepha infra sec`.
-
-```bash
-alepha infra secrets list           # alias ls; remote secret names (--format=gha for a ready-to-paste env: block)
-alepha infra secrets diff           # compare local .env.{env} keys against the remote store
-alepha infra secrets apply          # push local secrets (upsert; never deletes) - --dry-run to preview
-```
-
-Configure the store in `infra()`:
-
-| Option                       | Type       | Default             | Description                                                          |
-| ---------------------------- | ---------- | ------------------- | -------------------------------------------------------------------- |
-| `secrets.store`              | `"github"` | -                   | Secret store backend                                                 |
-| `secrets.environmentPattern` | `string`   | `"{project}-{env}"` | Pattern for resolving environment names in the store                 |
-| `secrets.keys`               | `string[]` | auto                | Override the worker secret-key allowlist used during `alepha deploy` |
 
 ## Cloudflare Adapter
 
@@ -576,7 +558,7 @@ This is a source-breaking rename with no legacy command aliases or import barrel
 | `alepha platform deploy`, `alepha p deploy`                               | `alepha infra deploy` (granular)                             |
 | `alepha platform down`, `alepha p down`                                   | `alepha infra down --env <name>`                             |
 | `alepha platform db ...`, `alepha p db ...`                               | `alepha infra db ...` (`migrate`, `export`, `baseline mark`) |
-| `alepha platform secrets ...`, `alepha p secrets ...`, `alepha p sec ...` | `alepha infra secrets ...`, `alepha infra sec ...`           |
+| `alepha platform secrets ...`, `alepha p secrets ...`, `alepha p sec ...` | removed: secrets ride the deploy                             |
 
 The old `auth` and `up` groups do not exist under `infra`. Standalone `provision` and root `migrate` commands do not exist: provisioning belongs to full deployment, and deployed migrations use `infra db migrate`.
 

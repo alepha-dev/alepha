@@ -63,19 +63,6 @@ export const infraOptions = $atom({
            * itself the allowlist (legacy fallback).
            */
           keys: z.array(z.text()).optional(),
-
-          /**
-           * Secret store backend.
-           */
-          store: z.enum(["github"]).optional(),
-
-          /**
-           * Pattern for resolving environment names in the store.
-           * Placeholders: {project}, {env}.
-           *
-           * @default "{project}-{env}"
-           */
-          environmentPattern: z.text().optional(),
         })
         .optional(),
 
