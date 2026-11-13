@@ -197,7 +197,7 @@ describe("Explicit policy adoption and legacy parity", () => {
       capabilities: [
         {
           key: "work",
-          options: { automations: true, reminder: true, releases: true },
+          options: { reminder: true, releases: true },
         },
       ],
     });

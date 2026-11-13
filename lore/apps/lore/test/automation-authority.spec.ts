@@ -96,10 +96,7 @@ describe("Current automation authority", () => {
     persistence = alepha.inject(AutomationPersistence);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [
-        { key: "work", options: { automations: true } },
-        { key: "support" },
-      ],
+      capabilities: [{ key: "work", options: {} }, { key: "support" }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };
@@ -326,13 +323,15 @@ describe("Current automation authority", () => {
       }),
     ).rejects.toThrow("Member is no longer in this project");
     const last = await create();
-    await entities.capabilities.updateMany(
-      { projectId: project.id, key: "work" },
-      { options: { automations: false } },
-    );
+    // Automations are a baseline of Work (#Q3594): Work off is what stops
+    // them.
+    await entities.capabilities.deleteMany({
+      projectId: project.id,
+      key: "work",
+    });
     await expect(
       authority.check({ automationId: last.id, revision: 0 }),
-    ).rejects.toThrow("automations");
+    ).rejects.toThrow("work");
   });
 
   it("refuses foreign rule edits and destructive AST kinds while preserving immutable authorship", async ({

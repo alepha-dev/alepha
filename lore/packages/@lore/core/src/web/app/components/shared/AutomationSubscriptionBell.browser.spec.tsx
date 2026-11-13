@@ -72,9 +72,7 @@ describe("AutomationSubscriptionBell", () => {
     alepha = undefined;
   });
 
-  const show = async (
-    over: { subscribed?: boolean; automations?: boolean } = {},
-  ) => {
+  const show = async (over: { subscribed?: boolean; work?: boolean } = {}) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -90,7 +88,7 @@ describe("AutomationSubscriptionBell", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        options: { work: { automations: over.automations ?? true } },
+        capabilities: (over.work ?? true) ? ["work"] : [],
       }),
     );
     render(
@@ -166,10 +164,8 @@ describe("AutomationSubscriptionBell", () => {
     );
   });
 
-  it("is not drawn when the project has the automations option off", async ({
-    expect,
-  }) => {
-    const server = await show({ automations: false });
+  it("is not drawn when the project has Work off", async ({ expect }) => {
+    const server = await show({ work: false });
     expect(screen.queryByTestId("bell")).toBeNull();
     expect(server.gets).toBe(0);
   });

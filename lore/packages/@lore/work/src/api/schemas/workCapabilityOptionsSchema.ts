@@ -8,7 +8,8 @@ import { type Infer, z } from "alepha";
  * and `reminder` are the three quest toggles, one methodology in three parts,
  * adopted later rather than picked at creation. `agentPrompts` is neither: it adds a menu to
  * surfaces the other options decide the existence of, and its templates are
- * edited on this same Settings page.
+ * edited on this same Settings page. Automations are not an option: they are
+ * part of Work wherever Work is on (#Q3594).
  *
  * ⚠️ **`releases` is what `features.milestones` became.** That key could never
  * be fixed in place: renaming a required key inside `projects.features` leaves
@@ -34,7 +35,6 @@ export const workCapabilityOptionsSchema = z.object({
   chrono: z.boolean().default(false),
   reminder: z.boolean().default(false),
   agentPrompts: z.boolean().default(false),
-  automations: z.boolean().default(false),
 });
 
 export type WorkCapabilityOptions = Infer<typeof workCapabilityOptionsSchema>;

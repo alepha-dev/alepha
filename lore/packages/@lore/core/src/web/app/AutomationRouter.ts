@@ -3,7 +3,7 @@ import { NotFoundError } from "alepha/server";
 
 import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
-import { capabilityOption } from "./services/projectCapabilities.ts";
+import { hasCapability } from "./services/projectCapabilities.ts";
 import { canInProject } from "./services/projectRank.ts";
 
 export class AutomationRouter {
@@ -16,7 +16,7 @@ export class AutomationRouter {
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (
-        !capabilityOption(project, "work", "automations") ||
+        !hasCapability(project, "work") ||
         !canInProject(project, "automation:read")
       )
         throw new NotFoundError(
@@ -32,7 +32,7 @@ export class AutomationRouter {
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (
-        !capabilityOption(project, "work", "automations") ||
+        !hasCapability(project, "work") ||
         !canInProject(project, "automation:read") ||
         !canInProject(project, "automation:write")
       )
@@ -109,7 +109,7 @@ export class AutomationRouter {
   protected checkRead(): void {
     const project = this.alepha.store.get(currentProjectAtom);
     if (
-      !capabilityOption(project, "work", "automations") ||
+      !hasCapability(project, "work") ||
       !canInProject(project, "automation:read")
     )
       throw new NotFoundError(

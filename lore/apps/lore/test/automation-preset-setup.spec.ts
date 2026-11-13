@@ -91,7 +91,7 @@ describe("Preset setup, explicit bindings and project pickers", () => {
       capabilities: [
         {
           key: "work",
-          options: { automations: true, releases: true, epics: true },
+          options: { releases: true, epics: true },
         },
         { key: "knowledge" },
         { key: "support" },

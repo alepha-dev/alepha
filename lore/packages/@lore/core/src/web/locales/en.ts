@@ -125,9 +125,6 @@ export default {
   "automation.previous": "Previous",
   "automation.next": "Next",
 
-  "project.capability.work.option.automations.label": "Automations",
-  "project.capability.work.option.automations.description":
-    "Rules that notify or act when something happens, or on a schedule.",
   "permission.group.automation": "Automations",
   "permission.automation.read": "Read automations",
   "permission.automation.write": "Create and edit your own automations",

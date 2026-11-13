@@ -53,12 +53,15 @@ describe("Automation access", () => {
     await alepha.stop();
   });
 
-  it("defaults the Work option off and grants only new rank presets", async ({
+  it("has no Work option of its own and grants only new rank presets", async ({
     expect,
   }) => {
+    // A baseline of Work since #Q3594: a stored `automations` key is stripped.
     expect(
-      alepha.inject(CapabilityRegistry).optionsOf("work", {}).automations,
-    ).toBe(false);
+      alepha
+        .inject(CapabilityRegistry)
+        .optionsOf("work", { automations: false }),
+    ).not.toHaveProperty("automations");
     const presets = alepha.inject(ProjectRankPresets).presetsFor(["work"]);
     expect(
       presets
@@ -78,7 +81,7 @@ describe("Automation access", () => {
       ]),
     );
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: { automations: true } }],
+      capabilities: [{ key: "work", options: {} }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     const ranks = alepha.inject(RankService);
@@ -103,7 +106,7 @@ describe("Automation access", () => {
     expect,
   }) => {
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: { automations: true } }],
+      capabilities: [{ key: "work", options: {} }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     await createPresetRanks(alepha, project.id);
@@ -140,7 +143,7 @@ describe("Automation access", () => {
     expect,
   }) => {
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: { automations: true } }],
+      capabilities: [{ key: "work", options: {} }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     await createPresetRanks(alepha, project.id);

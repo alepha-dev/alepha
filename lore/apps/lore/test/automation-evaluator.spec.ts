@@ -197,7 +197,6 @@ describe("Pure automation evaluation and durable worker", () => {
         {
           key: "work",
           options: {
-            automations: true,
             releases: true,
             epics: true,
             reminder: true,

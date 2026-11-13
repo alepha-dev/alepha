@@ -253,7 +253,7 @@ describe("Automation configured notifications and durable outbox", () => {
       capabilities: [
         {
           key: "work",
-          options: { automations: true, reminder: true, releases: true },
+          options: { reminder: true, releases: true },
         },
       ],
     });

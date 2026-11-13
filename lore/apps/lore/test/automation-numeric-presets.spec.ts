@@ -142,7 +142,7 @@ describe("Numeric automation presets through actual registered metrics", () => {
     await boot();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: { automations: true } },
+        { key: "work", options: {} },
         { key: "apps", options: { track: true } },
       ],
     });

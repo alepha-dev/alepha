@@ -117,7 +117,7 @@ describe("Automation numeric guards and shared quality metrics", () => {
     time.pause();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: { automations: true } },
+        { key: "work", options: {} },
         { key: "apps", options: { track: true } },
       ],
     });

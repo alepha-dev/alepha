@@ -135,10 +135,7 @@ describe("Automation enable intent and health", () => {
     alepha.inject(RestartedHealth);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [
-        { key: "work", options: { automations: true } },
-        { key: "support" },
-      ],
+      capabilities: [{ key: "work", options: {} }, { key: "support" }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };
@@ -173,21 +170,21 @@ describe("Automation enable intent and health", () => {
       health: "active",
     });
   });
-  it("revalidates the Work option immediately and exposes owner diagnostics while it is off", async ({
+  it("revalidates Work immediately and exposes owner diagnostics while it is off", async ({
     expect,
   }) => {
     const rule = await create();
-    await capability("work", true, { automations: false });
+    await capability("work", false);
     expect(await persistence.rules.getById(rule.id)).toMatchObject({
       enabled: true,
       health: "broken",
-      reason: "Missing work.automations option",
+      reason: "Missing work capability",
     });
     await expect(
       alepha
         .inject(AutomationAuthority)
         .check({ automationId: rule.id, revision: rule.revision }),
-    ).rejects.toThrow("automations");
+    ).rejects.toThrow("work");
     const diagnostics = await alepha
       .inject(AutomationDiagnosticController)
       .getAutomationDiagnostics(
@@ -199,7 +196,7 @@ describe("Automation enable intent and health", () => {
         expect.objectContaining({ id: rule.id, health: "broken" }),
       ]),
     );
-    await capability("work", true, { automations: true });
+    await capability("work", true, {});
     expect((await persistence.rules.getById(rule.id)).health).toBe("active");
   });
   it("repairs missed propagation in bounded pages without repeated transition evidence", async ({

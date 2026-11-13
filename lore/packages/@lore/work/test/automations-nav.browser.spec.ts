@@ -6,13 +6,13 @@ import { describe, it } from "vitest";
 import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 
 describe("Automations in the project settings", () => {
-  const setup = (automations: boolean) => {
+  const setup = () => {
     const alepha = Alepha.create();
     alepha.inject(WorkShell);
     const shell = alepha.inject(ProjectShellRegistry);
     const project = projectFixture({
       capabilities: ["work"],
-      options: { work: { automations } },
+      options: { work: {} },
     });
     return { shell, project };
   };
@@ -22,7 +22,7 @@ describe("Automations in the project settings", () => {
   }) => {
     // Automations configures the project rather than being a daily work
     // surface (#Q2678), so it left the sidebar for Settings (#Q3567).
-    const { shell, project } = setup(true);
+    const { shell, project } = setup();
     const offered = shell.offeredNav(project, {
       routeName: "projectAutomations",
       params: {},
@@ -42,11 +42,17 @@ describe("Automations in the project settings", () => {
     ).toEqual(["projectAutomations"]);
   });
 
-  it("is not listed while the automations option is off", ({ expect }) => {
-    const { shell, project } = setup(false);
+  it("is listed whatever the Work options say: automations are a baseline of Work", ({
+    expect,
+  }) => {
+    // #Q3594: no `automations` option gates the tab any more.
+    const { shell, project } = setup();
     const section = shell
       .settingsSections()
       .find((it) => it.key === "automations");
-    expect(visibleSettingsTabs(section!, project)).toEqual([]);
+    expect(section?.capability).toBe("work");
+    expect(
+      visibleSettingsTabs(section!, project).map((tab) => tab.route),
+    ).toEqual(["projectAutomations"]);
   });
 });

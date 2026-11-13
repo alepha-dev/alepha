@@ -84,7 +84,6 @@ describe("Automation catalogue", () => {
         {
           key: "work",
           options: {
-            automations: true,
             epics: true,
             releases: true,
             reminder: true,
@@ -452,9 +451,7 @@ describe("Automation catalogue", () => {
     expect,
   }) => {
     const disabled = await createTestProject(alepha, {
-      capabilities: [
-        { key: "work", options: { automations: true, releases: false } },
-      ],
+      capabilities: [{ key: "work", options: { releases: false } }],
     });
     await entities.users.updateById(disabled.createdBy, { roles: ["user"] });
     const result = await catalog.describe(disabled.id, {

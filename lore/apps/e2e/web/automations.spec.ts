@@ -69,7 +69,7 @@ test.describe("Automations", () => {
     );
     const project = await createProjectViaWizard(page, "Automation list");
     await setCapability(page, project.id, "work", {
-      options: { automations: true },
+      options: {},
     });
     const me = await (await page.request.get("/api/users/me")).json();
     const createPath = (await apiPath(page, "createAutomation")).replace(
@@ -182,7 +182,7 @@ test.describe("Automations", () => {
     );
     const project = await createProjectViaWizard(page, "Automation empty");
     await setCapability(page, project.id, "work", {
-      options: { automations: true },
+      options: {},
     });
     await page.goto(`/${project.slug}/automations`);
     await expect(
@@ -249,7 +249,7 @@ test.describe("Automations", () => {
     );
     const project = await createProjectViaWizard(page, "Preset setup");
     await setCapability(page, project.id, "work", {
-      options: { automations: true },
+      options: {},
     });
     const me = await (await page.request.get("/api/users/me")).json();
     const variablePath = (await apiPath(page, "setAutomationVariable"))
@@ -368,7 +368,7 @@ test.describe("Automations", () => {
     );
     const project = await createProjectViaWizard(page, "Shared preset");
     await setCapability(page, project.id, "work", {
-      options: { automations: true },
+      options: {},
     });
     const me = await (await page.request.get("/api/users/me")).json();
     const variablePath = (await apiPath(page, "setAutomationVariable"))
@@ -470,7 +470,7 @@ test.describe("Automations", () => {
     );
     const project = await createProjectViaWizard(page, "Release preset");
     await setCapability(page, project.id, "work", {
-      options: { automations: true, releases: true },
+      options: { releases: true },
     });
     const folioResponse = await page.request.post(
       await apiPath(page, "create"),
@@ -574,7 +574,7 @@ test.describe("Automations", () => {
     );
     const project = await createProjectViaWizard(page, "Rule editor");
     await setCapability(page, project.id, "work", {
-      options: { automations: true },
+      options: {},
     });
     const me = await (await page.request.get("/api/users/me")).json();
     const createPath = (await apiPath(page, "createAutomation")).replace(
@@ -760,7 +760,7 @@ test.describe("Automations", () => {
       "Shared variable management",
     );
     await setCapability(page, project.id, "work", {
-      options: { automations: true },
+      options: {},
     });
     await page.goto(`/${project.slug}/automations/variables`);
     await expect(
@@ -913,7 +913,7 @@ test.describe("Automations", () => {
     );
     const project = await createProjectViaWizard(page, "Automation journey");
     await setCapability(page, project.id, "work", {
-      options: { automations: true },
+      options: {},
     });
     await setCapability(page, project.id, "support");
     const me = await (await page.request.get("/api/users/me")).json();
@@ -1113,7 +1113,7 @@ test.describe("Automations", () => {
     );
     const project = await createProjectViaWizard(page, "Automation access");
     await setCapability(page, project.id, "work", {
-      options: { automations: true },
+      options: {},
     });
     await createRankFromPreset(page, project.slug, "Contributor");
     await createRankFromPreset(page, project.slug, "Viewer");
@@ -1293,7 +1293,7 @@ test.describe("Automations", () => {
     );
     const project = await createProjectViaWizard(page, "Policy adoption");
     await setCapability(page, project.id, "work", {
-      options: { automations: true, reminder: true, releases: true },
+      options: { reminder: true, releases: true },
     });
     await page.goto(`/${project.slug}/automations`);
     await page

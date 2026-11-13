@@ -215,17 +215,10 @@ export class CapabilityRegistry {
           wizard: false,
           preselected: false,
         },
-        {
-          key: "automations",
-          labelKey: "project.capability.work.option.automations.label",
-          descriptionKey:
-            "project.capability.work.option.automations.description",
-          wizard: false,
-          // On by default (#Q3563): a project had no automations until an
-          // owner found the switch. Existing Work rows that never stored it
-          // were backfilled on by migration `automations_on_by_default`.
-          preselected: true,
-        },
+        // Automations were an option here until #Q3594: they are a
+        // baseline of Work now, there whenever Work is. A stored
+        // `automations` key is stripped on read by the lax options schema and
+        // dropped on the row's next write.
       ],
       mcpTools: [
         "automation_create",
@@ -289,7 +282,6 @@ export class CapabilityRegistry {
       activityKindOptions: {
         epic: "epics",
         release: "releases",
-        automation: "automations",
       },
       dashboardCards: [
         "activeQuests",

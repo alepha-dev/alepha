@@ -36,7 +36,6 @@ will never use. An option that is off hides its menu entry and its fields.
 | **Board**         | A Kanban board with columns you name. See [Quests](/lore/docs/work-quests).                                   |
 | **Epics**         | Bounded initiatives that group quests. See [Epics](/lore/docs/work-epics).                                    |
 | **Releases**      | Named versions that ship. See [Releases](/lore/docs/work-releases).                                           |
-| **Automations**   | Rules that notify or act on an event or a schedule. See [Automations](/lore/docs/work-automations).           |
 | **Estimates**     | A planned duration on each quest.                                                                             |
 | **Timer**         | The time a quest actually took.                                                                               |
 | **Reminders**     | A nudge to whoever holds a quest that has gone quiet.                                                         |

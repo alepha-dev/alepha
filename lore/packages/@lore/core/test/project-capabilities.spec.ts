@@ -108,7 +108,6 @@ describe("Project capabilities", () => {
       chrono: false,
       reminder: false,
       agentPrompts: false,
-      automations: false,
     });
   });
 
@@ -129,11 +128,10 @@ describe("Project capabilities", () => {
       "knowledge",
       "work",
     ]);
-    // Automations is on by default (#Q3563).
+    // Automations are a baseline of Work, not an option (#Q3594).
     expect(
-      created.data.capabilities.find((it) => it.key === "work")?.options
-        .automations,
-    ).toBe(true);
+      created.data.capabilities.find((it) => it.key === "work")?.options,
+    ).not.toHaveProperty("automations");
   });
 
   it("creates a project with no capability at all", async ({ expect }) => {

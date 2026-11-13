@@ -117,7 +117,7 @@ describe("route guards on a capability", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("requires the automation option and read permission on the automation route", async ({
+  it("requires Work and read permission on the automation route", async ({
     expect,
   }) => {
     const alepha = await bootRouter();
@@ -125,8 +125,7 @@ describe("route guards on a capability", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        capabilities: ["work"],
-        options: { work: { automations: false } },
+        capabilities: [],
       }),
     );
     await expect(loader?.({} as never)).rejects.toThrow("Automations");
@@ -134,7 +133,7 @@ describe("route guards on a capability", () => {
       currentProjectAtom,
       projectFixture({
         capabilities: ["work"],
-        options: { work: { automations: true } },
+        options: { work: {} },
         permissions: ["project:read"],
       }),
     );
@@ -143,7 +142,7 @@ describe("route guards on a capability", () => {
       currentProjectAtom,
       projectFixture({
         capabilities: ["work"],
-        options: { work: { automations: true } },
+        options: { work: {} },
         permissions: ["project:read", "automation:read"],
       }),
     );
@@ -158,7 +157,7 @@ describe("route guards on a capability", () => {
       currentProjectAtom,
       projectFixture({
         capabilities: ["work"],
-        options: { work: { automations: true } },
+        options: { work: {} },
         permissions: ["project:read", "project:delete"],
       }),
     );
@@ -193,7 +192,7 @@ describe("route guards on a capability", () => {
         currentProjectAtom,
         projectFixture({
           capabilities: ["work"],
-          options: { work: { automations: true } },
+          options: { work: {} },
           permissions,
         }),
       );
@@ -203,7 +202,7 @@ describe("route guards on a capability", () => {
       currentProjectAtom,
       projectFixture({
         capabilities: ["work"],
-        options: { work: { automations: true } },
+        options: { work: {} },
         permissions: ["project:read", "automation:read", "automation:write"],
       }),
     );
@@ -211,8 +210,7 @@ describe("route guards on a capability", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        capabilities: ["work"],
-        options: { work: { automations: false } },
+        capabilities: [],
         permissions: ["project:read", "automation:read", "automation:write"],
       }),
     );

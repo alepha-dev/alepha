@@ -130,7 +130,7 @@ describe("Automation schedules and named selections", () => {
       capabilities: [
         {
           key: "work",
-          options: { automations: true, reminder: true, epics: true },
+          options: { reminder: true, epics: true },
         },
         { key: "support" },
       ],

@@ -187,7 +187,6 @@ export class WorkShell {
         {
           route: "projectAutomations",
           labelKey: "project.settings.tab.automations",
-          option: "automations",
           requires: "automation:read",
           alsoOn: [
             "projectAutomationGallery",

@@ -27,7 +27,7 @@ import { useState } from "react";
 import type { AutomationController } from "../../../../api/controllers/AutomationController.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { capabilityOption } from "../../services/projectCapabilities.ts";
+import { hasCapability } from "../../services/projectCapabilities.ts";
 import { canInProject } from "../../services/projectRank.ts";
 
 /** The channels a subscription notifies on, as the stock presets name them. */
@@ -56,8 +56,8 @@ export interface AutomationSubscriptionBellProps {
  * and across devices, and goes dark when that rule is disabled or deleted
  * from the automations pages.
  *
- * Drawn only where the viewer could create the rule: the project has the
- * automations option and their rank writes automations. Elsewhere it is
+ * Drawn only where the viewer could create the rule: the project has Work
+ * and their rank writes automations. Elsewhere it is
  * nothing, not a disabled bell.
  *
  * A new surface adopts it with its preset key and three sentences; the
@@ -75,7 +75,7 @@ export const AutomationSubscriptionBell = (
   const [channel, setChannel] = useState<Channel>("inbox");
   const available =
     !!project &&
-    capabilityOption(project, "work", "automations") &&
+    hasCapability(project, "work") &&
     canInProject(project, "automation:read") &&
     canInProject(project, "automation:write");
   const projectId = project?.id ?? 0;

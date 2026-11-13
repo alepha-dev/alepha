@@ -205,7 +205,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
       capabilities: [
         {
           key: "work",
-          options: { automations: true, epics: true, releases: true },
+          options: { epics: true, releases: true },
         },
         { key: "knowledge" },
       ],

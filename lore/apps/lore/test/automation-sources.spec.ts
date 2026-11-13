@@ -164,7 +164,7 @@ describe("Automation domain source integration", () => {
         { key: "support" },
         {
           key: "work",
-          options: { automations: true, epics: true, releases: true },
+          options: { epics: true, releases: true },
         },
         { key: "apps", options: { deploy: true } },
       ],
@@ -191,14 +191,13 @@ describe("Automation domain source integration", () => {
     expect(event.payload.fields).not.toHaveProperty("reporterUserId");
     expect(probe.writes).toBe(1);
   });
-  it("commits the domain write without an event row while the automations option is off", async ({
+  it("commits the domain write without an event row while Work is off", async ({
     expect,
   }) => {
+    // Automations are a baseline of Work (#Q3594): a project without Work has
+    // no rules, so no event row is kept.
     const quiet = await createTestProject(alepha, {
-      capabilities: [
-        { key: "support" },
-        { key: "work", options: { epics: true, releases: true } },
-      ],
+      capabilities: [{ key: "support" }],
     });
     await rows.users.updateById(quiet.createdBy, { roles: ["user"] });
     await alepha.inject(FeedbackController).submitFeedback.fetch(

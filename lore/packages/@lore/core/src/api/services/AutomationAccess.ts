@@ -64,8 +64,8 @@ export class AutomationAccess {
     );
     if (!allowed.permissions.includes(permission))
       throw new ForbiddenError(`Missing ${permission}`);
+    // Work alone since #Q3594: automations are a baseline of Work.
     await this.security.assertCapability(projectId, "work", {
-      option: "automations",
       action: "use automations",
     });
     return {

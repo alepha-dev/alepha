@@ -5,9 +5,9 @@ schedule, Lore checks a condition and carries out a short list of actions, such
 as notifying a member, appending to a folio or creating a quest. A rule does
 exactly what it says, every time. No AI runs inside it.
 
-Automations are the **Automations** option of the **Plan and track work**
-capability, and the option starts on: see
-[Capabilities](/lore/docs/project-capabilities). Having it on grants nothing by
+Automations are part of the **Plan and track work** capability: every project
+that has it has automations, with no switch of their own (see
+[Capabilities](/lore/docs/project-capabilities)). That grants nothing by
 itself. A rank also needs the **Automations** permissions, which only the owner
 holds by default (see [Members](/lore/docs/project-members)):
 
@@ -243,8 +243,7 @@ windows above.
 
 ## Built-in notifications
 
-Two notifications work without any automation, and keep working whether
-Automations is on or off:
+Two notifications work without any automation:
 
 - **Per-quest reminders**: the email nudges a quest's holder sets on the
   quest, governed by the **Reminders** option.

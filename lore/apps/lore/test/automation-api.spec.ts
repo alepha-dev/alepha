@@ -164,7 +164,7 @@ describe("Shared automation application service and HTTP actions", () => {
     time.pause();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: { automations: true, releases: true } },
+        { key: "work", options: { releases: true } },
         { key: "knowledge" },
         { key: "support" },
         { key: "apps", options: { track: true } },
@@ -310,7 +310,7 @@ describe("Shared automation application service and HTTP actions", () => {
       ),
     ).rejects.toThrow();
     const other = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: { automations: true } }],
+      capabilities: [{ key: "work", options: {} }],
     });
     await createTestMember(alepha, other, user.id, { rank: "owner" });
     await expect(

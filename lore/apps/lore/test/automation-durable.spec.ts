@@ -161,10 +161,7 @@ describe("Durable automation dispatch", () => {
     provider = alepha.inject(DatabaseProvider);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [
-        { key: "work", options: { automations: true } },
-        { key: "support" },
-      ],
+      capabilities: [{ key: "work", options: {} }, { key: "support" }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };

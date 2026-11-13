@@ -241,15 +241,14 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // leaf with no detail route under it, so its crumb is the open page and
   // stays inert, the same reading as `projectQuests` on the list itself.
   projectActivity: "project.menu.activity",
-  projectAutomations: "project.capability.work.option.automations.label",
+  projectAutomations: "project.settings.nav.automations",
   // Every page under Automations reads "Automations" and links back to the
   // list, as an app's tabs do with Apps: the page names itself in its header.
-  projectAutomationAdoption: "project.capability.work.option.automations.label",
-  projectAutomationGallery: "project.capability.work.option.automations.label",
-  projectAutomationDetail: "project.capability.work.option.automations.label",
-  projectAutomationVariables:
-    "project.capability.work.option.automations.label",
-  projectAutomationRun: "project.capability.work.option.automations.label",
+  projectAutomationAdoption: "project.settings.nav.automations",
+  projectAutomationGallery: "project.settings.nav.automations",
+  projectAutomationDetail: "project.settings.nav.automations",
+  projectAutomationVariables: "project.settings.nav.automations",
+  projectAutomationRun: "project.settings.nav.automations",
   projectQuests: "project.menu.quests",
   // The layout both Quests tabs render under.
   projectQuestsLayout: "project.menu.quests",

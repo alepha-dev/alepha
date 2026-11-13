@@ -208,7 +208,7 @@ describe("Deployment and release publication presets", () => {
     time.pause();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: { automations: true, releases: true } },
+        { key: "work", options: { releases: true } },
         { key: "knowledge" },
         { key: "apps", options: { deploy: true } },
       ],

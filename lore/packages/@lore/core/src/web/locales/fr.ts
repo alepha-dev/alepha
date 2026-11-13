@@ -132,9 +132,6 @@ export default {
   "automation.previous": "Précédent",
   "automation.next": "Suivant",
 
-  "project.capability.work.option.automations.label": "Automatisations",
-  "project.capability.work.option.automations.description":
-    "Des règles qui notifient ou agissent quand quelque chose arrive, ou selon un horaire.",
   "permission.group.automation": "Automatisations",
   "permission.automation.read": "Consulter les automatisations",
   "permission.automation.write":

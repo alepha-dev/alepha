@@ -51,7 +51,7 @@ describe("Shared automation variables", () => {
     await alepha.start();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: { automations: true, releases: true } },
+        { key: "work", options: { releases: true } },
         { key: "support" },
         { key: "knowledge" },
       ],

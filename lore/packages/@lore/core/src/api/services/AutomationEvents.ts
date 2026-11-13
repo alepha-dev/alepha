@@ -57,10 +57,10 @@ export class AutomationEvents {
     numbers?: Record<string, SQLLike>;
   }): Promise<{
     /**
-     * Absent when the project has the Work `automations` option off: the
-     * domain write commits alone and no event row is kept for rules that
-     * cannot exist there. The option is read inside the same native batch,
-     * so a project switching it on is never seen through a stale cache.
+     * Absent when the project has Work off: the domain write commits alone
+     * and no event row is kept for rules that cannot exist there. Work is
+     * read inside the same native batch, so a project switching it on is
+     * never seen through a stale cache.
      */
     event?: AutomationEvent;
     committed: boolean;

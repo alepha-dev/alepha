@@ -97,7 +97,7 @@ describe("Stock automation presets", () => {
     time.pause();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: { automations: true, epics: true } },
+        { key: "work", options: { epics: true } },
         { key: "support" },
       ],
     });

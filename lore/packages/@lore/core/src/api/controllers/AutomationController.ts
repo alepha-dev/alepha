@@ -53,13 +53,13 @@ export class AutomationController {
   protected readonly variables = $inject(AutomationVariableService);
   protected readonly mutationGate = $ownsProject({
     param: "projectId",
-    capability: { key: "work", option: "automations" },
+    capability: { key: "work" },
   });
   protected gate = (permission: string) =>
     $ownsProject({
       param: "projectId",
       requires: permission,
-      capability: { key: "work", option: "automations" },
+      capability: { key: "work" },
     });
 
   previewAutomationAdoption = $action({

@@ -19,7 +19,7 @@ export class AutomationDependencies {
 
   public async assert(rule: Automation): Promise<void> {
     const capabilities = await this.security.capabilitiesOf(rule.projectId);
-    const needs = [{ capability: "work", option: "automations" }];
+    const needs = [{ capability: "work", option: "" }];
     const keys = [
       rule.rule.trigger.kind === "event"
         ? rule.rule.trigger.event
