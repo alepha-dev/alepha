@@ -193,14 +193,13 @@ describe("ProjectFeedback - Show more", () => {
       </AlephaContext.Provider>,
     );
 
+  /**
+   * The cards' titles, without the `#P<n> - ` each one leads with (#Q3574).
+   */
   const titles = (root: HTMLElement) =>
-    Array.from(root.querySelectorAll("aside *"))
-      .filter(
-        (el) =>
-          el.children.length === 0 &&
-          /^Report number \d+$/.test(el.textContent ?? ""),
-      )
-      .map((el) => el.textContent ?? "");
+    Array.from(root.querySelectorAll('aside [title^="#P"]')).map((el) =>
+      (el.textContent ?? "").replace(/^#P\d+ - /, ""),
+    );
 
   it("renders one page and appends the next, keeping the selection", async ({
     expect,
@@ -211,11 +210,15 @@ describe("ProjectFeedback - Show more", () => {
 
     expect(titles(root)).toHaveLength(FEEDBACK_PAGE_SIZE);
     expect(titles(root)[0]).toBe(`Report number ${TOTAL}`);
+    // The card leads with the number, as a quest's and an epic's do (#Q3574).
+    expect(root.querySelector('aside [title^="#P"]')?.textContent).toBe(
+      `#P${TOTAL} - Report number ${TOTAL}`,
+    );
 
     // Select something that is NOT the first row, so a reset would show.
     // The card is a `div[role=button]`, not a `<button>`.
-    const fourth = Array.from(root.querySelectorAll("aside *")).find(
-      (el) => el.textContent === "Report number 20" && el.children.length === 0,
+    const fourth = root.querySelector(
+      'aside [title="#P20 - Report number 20"]',
     );
     (fourth?.closest('[role="button"]') as HTMLElement | null)?.click();
     await waitFor(() =>

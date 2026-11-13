@@ -153,6 +153,12 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
       </AlephaContext.Provider>,
     );
 
+    // The header reads `#P1 - Title`, as a quest's and an epic's do
+    // (#Q3574), with the whole line in the tooltip.
+    const heading = await view.findByTestId("feedback-detail-title");
+    expect(heading.textContent).toBe("#P1 - The button does nothing");
+    expect(heading.getAttribute("title")).toBe("#P1 - The button does nothing");
+
     const accept = await view.findByTestId("feedback-accept-button");
     accept.click();
 
