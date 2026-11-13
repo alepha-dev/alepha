@@ -4198,6 +4198,32 @@ export default {
   "assistant.suggest.open": "Qu'est-ce qui reste ouvert dans ce projet ?",
   "assistant.suggest.epic": "Que manque-t-il encore à l'epic en cours ?",
   "assistant.suggest.file": "Créer une quête pour ...",
+  "assistant.suggest.reports.week":
+    "Qu’est-ce qui a changé dans ce projet cette semaine ?",
+  "assistant.suggest.reports.slow":
+    "Quels domaines ralentissent, et pourquoi ?",
+  "assistant.suggest.reports.summary":
+    "Résume ces rapports pour un point d’avancement",
+  "assistant.suggest.quest.left": "Que reste-t-il à faire sur cette quête ?",
+  "assistant.suggest.quest.discussion": "Résume la discussion de cette quête",
+  "assistant.suggest.quest.dependencies":
+    "De quoi dépend cette quête, et est-elle prête ?",
+  "assistant.suggest.epic.lack": "Que manque-t-il encore à cette épopée ?",
+  "assistant.suggest.epic.blocked":
+    "Quelles quêtes de cette épopée sont bloquées ou en attente ?",
+  "assistant.suggest.epic.next": "Quelle quête de cette épopée faire ensuite ?",
+  "assistant.suggest.feedback.pending":
+    "Quels retours attendent encore d’être triés ?",
+  "assistant.suggest.feedback.group":
+    "Regroupe les retours en attente par sujet",
+  "assistant.suggest.feedback.file":
+    "Crée une quête pour le problème le plus signalé",
+  "assistant.suggest.apps.deploys":
+    "Quels déploiements ont échoué récemment, et pourquoi ?",
+  "assistant.suggest.apps.errors":
+    "Quelles applications signalent le plus d’erreurs ?",
+  "assistant.suggest.apps.silent":
+    "Quelles applications ont cessé de rapporter ?",
   "assistant.tool.failed": "Échec : $1",
   "assistant.tool.denied": "Annulé : $1",
   "assistant.tool.project_list.running": "Liste de vos projets",

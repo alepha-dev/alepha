@@ -4181,6 +4181,25 @@ export default {
   "assistant.suggest.open": "What is still open in this project?",
   "assistant.suggest.epic": "What does the current epic still lack?",
   "assistant.suggest.file": "File a quest for ...",
+  "assistant.suggest.reports.week": "What changed in this project this week?",
+  "assistant.suggest.reports.slow": "Which areas are slowing down, and why?",
+  "assistant.suggest.reports.summary":
+    "Summarize these reports for a status update",
+  "assistant.suggest.quest.left": "What is left to do on this quest?",
+  "assistant.suggest.quest.discussion": "Summarize this quest’s discussion",
+  "assistant.suggest.quest.dependencies":
+    "What does this quest depend on, and is it ready?",
+  "assistant.suggest.epic.lack": "What does this epic still lack?",
+  "assistant.suggest.epic.blocked":
+    "Which quests in this epic are blocked or on hold?",
+  "assistant.suggest.epic.next": "Which quest of this epic should come next?",
+  "assistant.suggest.feedback.pending":
+    "What feedback is still waiting for triage?",
+  "assistant.suggest.feedback.group": "Group the pending feedback by topic",
+  "assistant.suggest.feedback.file": "File a quest for the most reported issue",
+  "assistant.suggest.apps.deploys": "Which deploys failed recently, and why?",
+  "assistant.suggest.apps.errors": "Which apps report the most errors?",
+  "assistant.suggest.apps.silent": "Which apps have stopped reporting?",
   "assistant.tool.failed": "$1 failed",
   "assistant.tool.denied": "$1 cancelled",
   "assistant.tool.project_list.running": "Listing your projects",
