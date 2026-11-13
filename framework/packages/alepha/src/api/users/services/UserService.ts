@@ -14,6 +14,7 @@ import type { UserEntity } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CreateUser } from "../schemas/createUserSchema.ts";
+import type { CredentialsIdentityData } from "../schemas/credentialsIdentityDataSchema.ts";
 import type { UpdateUser } from "../schemas/updateUserSchema.ts";
 import type { UserQuery } from "../schemas/userQuerySchema.ts";
 import { CredentialService } from "./CredentialService.ts";
@@ -500,11 +501,16 @@ export class UserService {
    * with the new hash. Used by admin password-set flows; does NOT
    * verify any old password or token — the caller is responsible for
    * authorization.
+   *
+   * `mustChangePassword` marks the new password as temporary: the user is
+   * asked to replace it at their next sign-in. It defaults to `false`, so a
+   * password the user sets themselves always clears an earlier mark.
    */
   public async setPassword(
     id: string,
     newPassword: string,
     userRealmName?: string,
+    options: { mustChangePassword?: boolean } = {},
   ): Promise<void> {
     this.log.trace("Setting password", { id, userRealmName });
     const user = await this.getUserById(id, userRealmName);
@@ -527,13 +533,22 @@ export class UserService {
       where: { userId: { eq: id }, provider: { eq: "credentials" } },
     });
 
+    const providerData: CredentialsIdentityData = {
+      ...(existing?.providerData as CredentialsIdentityData | undefined),
+      mustChangePassword: options.mustChangePassword === true,
+    };
+
     if (existing) {
-      await identities.updateById(existing.id, { password: hash });
+      await identities.updateById(existing.id, {
+        password: hash,
+        providerData,
+      });
     } else {
       await identities.create({
         userId: id,
         provider: "credentials",
         password: hash,
+        providerData,
       });
     }
 
@@ -544,7 +559,9 @@ export class UserService {
       userRealm: realm.name,
       resourceId: id,
       severity: "warning",
-      description: "Password set",
+      description: options.mustChangePassword
+        ? "Temporary password set, to be changed at next sign-in"
+        : "Password set",
     });
   }
 

@@ -35,6 +35,11 @@ export {
   type AccountProfileProps,
 } from "./AccountProfile.tsx";
 export {
+  AccountPasswordDialog,
+  type AccountPasswordDialogProps,
+} from "./AccountPasswordDialog.tsx";
+export { AccountPasswordGuard } from "./AccountPasswordGuard.tsx";
+export {
   AccountPasskeyProofDialog,
   type AccountPasskeyProofDialogProps,
 } from "./AccountPasskeyProofDialog.tsx";

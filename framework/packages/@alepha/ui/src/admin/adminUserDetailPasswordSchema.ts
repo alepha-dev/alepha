@@ -8,4 +8,9 @@ import { z } from "alepha";
  */
 export const passwordSchema = z.object({
   password: z.string().min(6),
+  /**
+   * Mark the password as temporary: the user is asked for a new one at their
+   * next sign-in.
+   */
+  mustChangePassword: z.boolean().optional(),
 });

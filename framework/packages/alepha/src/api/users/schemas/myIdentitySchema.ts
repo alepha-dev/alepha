@@ -27,6 +27,14 @@ export const myIdentitySchema = z.object({
   provider: z.string(),
 
   providerUserId: z.string().optional(),
+
+  /**
+   * On the `"credentials"` row only: the password is temporary, set by an
+   * admin who asked for a new one at the next sign-in. Absent otherwise.
+   * Read from `providerData`, which itself stays out of this schema.
+   */
+  mustChangePassword: z.boolean().optional(),
+
   createdAt: z.datetime(),
   updatedAt: z.datetime(),
 });
