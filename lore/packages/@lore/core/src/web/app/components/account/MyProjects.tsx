@@ -95,10 +95,14 @@ const MyProjects = () => {
       label: tr("account.projects.filter.archived"),
       icon: Archive,
       mode: "default",
+      // Yes and No (#Q3562): the filter's label already says what it asks,
+      // so the chip reads "Archived: No" rather than "Archived: Not
+      // archived". The values stay `active` / `archived`, which a saved
+      // filter in the browser already holds.
       optionLabel: (state: "active" | "archived") =>
-        state === "active"
-          ? tr("account.projects.filter.active")
-          : tr("account.projects.archived"),
+        state === "archived"
+          ? tr("account.projects.filter.archived.yes")
+          : tr("account.projects.filter.archived.no"),
       control: { clearLabel: tr("account.projects.filter.allStates") },
     },
   } satisfies DataTableFilterFields;

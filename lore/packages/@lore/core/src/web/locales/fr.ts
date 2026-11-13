@@ -1891,7 +1891,8 @@ export default {
   "account.projects.filter.role": "Rôle",
   "account.projects.filter.allRoles": "Tous les rôles",
   "account.projects.filter.archived": "Archivés",
-  "account.projects.filter.active": "Non archivés",
+  "account.projects.filter.archived.yes": "Oui",
+  "account.projects.filter.archived.no": "Non",
   "account.projects.filter.allStates": "Archivés ou non",
   "account.projects.archived": "Archivé",
 

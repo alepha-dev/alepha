@@ -127,7 +127,9 @@ describe("MyProjects", () => {
     expect(rows.map((it) => it.textContent)).toEqual(["Lore"]);
     // The counter is gone; the filters are on the bar instead.
     expect(screen.queryByTestId("project-quota")).toBeNull();
-    expect(screen.getAllByText("Not archived").length).toBeGreaterThan(0);
+    // The default reads "Archived: No" (#Q3562).
+    expect(screen.queryByText("Not archived")).toBeNull();
+    expect(screen.getAllByText("No").length).toBeGreaterThan(0);
   });
 
   it("lists an archived project with an Archived badge once asked for", async ({
@@ -144,6 +146,7 @@ describe("MyProjects", () => {
     const badges = screen.getAllByTestId("account-project-archived");
     expect(badges).toHaveLength(1);
     expect(badges[0].textContent).toBe("Archived");
+    expect(screen.getAllByText("Yes").length).toBeGreaterThan(0);
     window.localStorage.removeItem("lor.account.projects.filters");
   });
 
