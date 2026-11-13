@@ -165,17 +165,14 @@ describe("MyProjects", () => {
         [1],
       );
       await screen.findAllByTestId("account-project-row");
-      expect(
-        screen.getByTestId("account-projects-pinned-count").textContent,
-      ).toBe("1 / 20 pinned");
+      // No counter on the toolbar (#Q3547): the switches say it.
+      expect(screen.queryByText(/pinned/)).toBeNull();
       expect(pinSwitch(1).getAttribute("aria-checked")).toBe("true");
       expect(pinSwitch(2).getAttribute("aria-checked")).toBe("false");
 
       fireEvent.click(pinSwitch(2));
       await waitFor(() => expect(app.store.get(userDockAtom)).toEqual([1, 2]));
-      expect(
-        screen.getByTestId("account-projects-pinned-count").textContent,
-      ).toBe("2 / 20 pinned");
+      expect(pinSwitch(2).getAttribute("aria-checked")).toBe("true");
 
       fireEvent.click(pinSwitch(1));
       await waitFor(() => expect(app.store.get(userDockAtom)).toEqual([2]));
@@ -194,10 +191,11 @@ describe("MyProjects", () => {
       );
       await screen.findAllByTestId("account-project-row");
 
-      expect(
-        screen.getByTestId("account-projects-pinned-count").textContent,
-      ).toBe("20 / 20 pinned");
       expect(pinSwitch(21).hasAttribute("data-disabled")).toBe(true);
+      // The refusal is explained at the switch, now the counter is gone:
+      // a held-off switch sits in a tooltip trigger naming the cap.
+      expect(pinSwitch(21).parentElement?.tagName).toBe("SPAN");
+      expect(pinSwitch(1).parentElement?.tagName).not.toBe("SPAN");
       expect(pinSwitch(1).hasAttribute("data-disabled")).toBe(false);
     });
 
