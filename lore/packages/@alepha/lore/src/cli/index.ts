@@ -17,6 +17,7 @@ import { EstateCommand } from "./commands/EstateCommand.ts";
 import { FeedbackCommand } from "./commands/FeedbackCommand.ts";
 import { FolioCommand } from "./commands/FolioCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
+import { MonitorCommand } from "./commands/MonitorCommand.ts";
 import { ProjectCommand } from "./commands/ProjectCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
 import { QuestCommand } from "./commands/QuestCommand.ts";
@@ -126,6 +127,7 @@ export const AlephaLoreCli = $module({
     ReleaseCommand,
     SecretsCommand,
     SigilCommand,
+    MonitorCommand,
     EstateCommand,
     RegistryCommand,
     StackCommand,

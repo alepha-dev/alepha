@@ -48,6 +48,7 @@ const POSITIONAL = new Set([
   "shortId",
   "number",
   "blight_id",
+  "monitor_id",
   "key",
   "policy",
   "query",
@@ -80,6 +81,10 @@ const NOT_A_FLAG: Record<string, string[]> = {
   stack_rollback: ["stack", "revision"],
   // `--parent`, as on `directory create`.
   directory_move: ["new_parent_shortId"],
+  // One flag per key instead (#Q3591): `--expect-status`, `--keyword`,
+  // `--latency-budget`, `--cert-warning-days`, `--email`, `--recipient`.
+  monitor_create: ["expect", "notifications"],
+  monitor_update: ["expect", "notifications"],
 };
 
 const tools = (): any[] => {

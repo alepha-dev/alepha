@@ -7,6 +7,7 @@ import { BlightTools } from "./tools/BlightTools.ts";
 import { DeployTools } from "./tools/DeployTools.ts";
 import { EstateTools } from "./tools/EstateTools.ts";
 import { InsightsTools } from "./tools/InsightsTools.ts";
+import { MonitorTools } from "./tools/MonitorTools.ts";
 import { SigilTools } from "./tools/SigilTools.ts";
 import { StackTools } from "./tools/StackTools.ts";
 
@@ -31,6 +32,8 @@ export const LoreDeployMcp = $module({
     StackTools,
     // An estate's stats, read-only, for the members of its home project (#Q3047).
     EstateTools,
+    // Uptime monitors for agents (#Q3591).
+    MonitorTools,
   ],
 });
 
@@ -42,5 +45,6 @@ export { BlightTools } from "./tools/BlightTools.ts";
 export { DeployTools } from "./tools/DeployTools.ts";
 export { EstateTools } from "./tools/EstateTools.ts";
 export { InsightsTools } from "./tools/InsightsTools.ts";
+export { MonitorTools } from "./tools/MonitorTools.ts";
 export { SigilTools } from "./tools/SigilTools.ts";
 export { StackTools } from "./tools/StackTools.ts";

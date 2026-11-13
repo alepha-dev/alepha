@@ -76,6 +76,7 @@ describe("the Lore CLI command surface", () => {
       "insights",
       "login",
       "logout",
+      "monitor",
       "project",
       "quality",
       "quest",
@@ -168,6 +169,7 @@ describe("the Lore CLI command surface", () => {
         "attachment",
       ],
       insights: ["read"],
+      monitor: ["list", "get", "create", "update", "pause", "resume", "delete"],
       project: [
         "list",
         "info",

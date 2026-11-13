@@ -149,8 +149,22 @@ monitors cannot be changed, but nothing is deleted.
 
 ## From an agent
 
-There is no MCP tool and no `lore` command for monitors. An outage reaches an
-agent as a blight, so `blight_list` shows it under the name `UptimeOutage`.
+Monitors have a `lore monitor` command and `monitor_*` MCP tools, with the
+same permissions as the page:
+
+```bash
+lore monitor list --window 7d
+lore monitor create --name Website --kind http --target https://example.app
+lore monitor pause <id>
+```
+
+`monitor_list` and `monitor_get` read status, uptime and incidents;
+`monitor_create`, `monitor_update`, `monitor_pause`, `monitor_resume` and
+`monitor_delete` change them. See [The lore CLI](/lore/docs/reference-cli#monitors)
+and [MCP tools](/lore/docs/reference-mcp-tools#uptime).
+
+An outage also reaches an agent as a blight: `blight_list` shows it under the
+name `UptimeOutage`.
 
 ## Next
 

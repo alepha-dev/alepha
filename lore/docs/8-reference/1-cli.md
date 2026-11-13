@@ -427,6 +427,40 @@ A sigil is the key one copy reports its telemetry with. See
 `create` and `rotate` print the token once, and nothing can show it again. To
 revoke a leaked token, use `rotate`: `delete` throws the history away.
 
+## Monitors
+
+A monitor checks one target on an interval, or waits for a job to push. See
+[Healthchecks](/lore/docs/apps-healthchecks). A monitor is named by its id, as
+`lore monitor list` prints it, so only `list` and `create` take `--project`.
+
+| Command                    | What it does                                                                    | Flags                                        |
+| -------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
+| `lore monitor list`        | Every monitor, down first, with its status and uptime.                          | `--window` (`24h`, `7d`, `30d`)              |
+| `lore monitor get <id>`    | One monitor: settings, uptime over 24h, 7d and 30d, incidents, its last checks. |                                              |
+| `lore monitor create`      | Add a monitor. A push monitor's token is printed once.                          | `--name`, `--kind`, `--target`, the settings |
+| `lore monitor update <id>` | Change the settings passed, and keep the rest.                                  | The settings                                 |
+| `lore monitor pause <id>`  | Stop its checks, keeping its history.                                           |                                              |
+| `lore monitor resume <id>` | Start its checks again.                                                         |                                              |
+| `lore monitor delete <id>` | Remove it with its checks and incidents. This cannot be undone.                 | `--yes` (required)                           |
+
+| Setting               | Values                                                                             |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `--kind`              | `http`, `tcp` (host:port), `cert` (a certificate's expiry at host:port) or `push`. |
+| `--interval-secs`     | Seconds between checks, a multiple of 60. For a push monitor, the longest gap.     |
+| `--timeout-secs`      | Seconds before a check gives up, 1 to 30.                                          |
+| `--confirmations`     | Failed checks in a row before the monitor goes down.                               |
+| `--expect-status`     | The HTTP status a passing check answers.                                           |
+| `--keyword`           | Text a passing check's body contains.                                              |
+| `--latency-budget`    | Milliseconds over which a check counts as failed.                                  |
+| `--cert-warning-days` | Days before a certificate's expiry that count as failing.                          |
+| `--no-email`          | Do not mail the project's members on an outage.                                    |
+| `--recipient`         | An extra address to mail, repeated for several. On `update`, it replaces the list. |
+
+```bash
+lore monitor create --name Website --kind http --target https://example.app --expect-status 200
+lore monitor create --name "Nightly backup" --kind push --interval-secs 86400
+```
+
 ## Secrets
 
 `lore secrets` manages the variables a deployed copy runs with. `--env` is

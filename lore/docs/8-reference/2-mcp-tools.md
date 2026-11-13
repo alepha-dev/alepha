@@ -210,6 +210,20 @@ See [Apps and instances](/lore/docs/apps-instances) and
 | `blight_resolve`      | Close a blight. A later report does not reopen it.                                 |
 | `blight_forward`      | Turn a blight into a new quest.                                                    |
 
+## Uptime
+
+See [Healthchecks](/lore/docs/apps-healthchecks). Reading needs `app:read`;
+the rest needs `app:manage` and the **Healthchecks** option.
+
+| Tool                              | What it does                                                                       |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `monitor_list`                    | Every monitor, down first, with its status and uptime over 24 hours, 7 or 30 days. |
+| `monitor_get`                     | One monitor: its settings, uptime per window, incidents and its last ten checks.   |
+| `monitor_create`                  | Add a monitor. A push monitor's token is shown once.                               |
+| `monitor_update`                  | Change the settings passed, and keep the rest.                                     |
+| `monitor_pause`, `monitor_resume` | Stop a monitor's checks and start them again, keeping its history.                 |
+| `monitor_delete`                  | Remove a monitor with its checks and incidents. This cannot be undone.             |
+
 ## Deploys
 
 See [Deploying an app](/lore/docs/apps-deploying),
@@ -248,7 +262,6 @@ Some of Lore is not reachable over MCP. Reach for the page or the
 | Deleting a feedback report                                       | The Feedback page.                                                                        |
 | Deleting a blight                                                | The Blights page.                                                                         |
 | Blight ignore rules                                              | **Settings ▸ Apps**.                                                                      |
-| [Healthchecks](/lore/docs/apps-healthchecks)                     | The Uptime page. An outage shows up in `blight_list`.                                     |
 | Pushing a build                                                  | CI, with `lore artifacts push`.                                                           |
 | Building an app, or taking a deployed copy down                  | `lore deploy` and `lore apps destroy`.                                                    |
 | Secrets of a deployed copy                                       | `lore secrets`, and the Environment tab.                                                  |

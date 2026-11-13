@@ -1170,7 +1170,7 @@ export const docsCorpus: DocsSection[] = [
     section: "From an agent",
     url: "https://alepha.dev/lore/docs/apps-healthchecks#from-an-agent",
     capability: "apps",
-    text: "There is no MCP tool and no `lore` command for monitors. An outage reaches an\nagent as a blight, so `blight_list` shows it under the name `UptimeOutage`.",
+    text: "Monitors have a `lore monitor` command and `monitor_*` MCP tools, with the\nsame permissions as the page:\n\n```bash\nlore monitor list --window 7d\nlore monitor create --name Website --kind http --target https://example.app\nlore monitor pause <id>\n```\n\n`monitor_list` and `monitor_get` read status, uptime and incidents;\n`monitor_create`, `monitor_update`, `monitor_pause`, `monitor_resume` and\n`monitor_delete` change them. See [The lore CLI](/lore/docs/reference-cli#monitors)\nand [MCP tools](/lore/docs/reference-mcp-tools#uptime).\n\nAn outage also reaches an agent as a blight: `blight_list` shows it under the\nname `UptimeOutage`.",
   },
   {
     guide: "Healthchecks",
@@ -1749,6 +1749,12 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "The lore CLI",
+    section: "Monitors",
+    url: "https://alepha.dev/lore/docs/reference-cli#monitors",
+    text: "A monitor checks one target on an interval, or waits for a job to push. See\n[Healthchecks](/lore/docs/apps-healthchecks). A monitor is named by its id, as\n`lore monitor list` prints it, so only `list` and `create` take `--project`.\n\n| Command                    | What it does                                                                    | Flags                                        |\n| -------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |\n| `lore monitor list`        | Every monitor, down first, with its status and uptime.                          | `--window` (`24h`, `7d`, `30d`)              |\n| `lore monitor get <id>`    | One monitor: settings, uptime over 24h, 7d and 30d, incidents, its last checks. |                                              |\n| `lore monitor create`      | Add a monitor. A push monitor's token is printed once.                          | `--name`, `--kind`, `--target`, the settings |\n| `lore monitor update <id>` | Change the settings passed, and keep the rest.                                  | The settings                                 |\n| `lore...",
+  },
+  {
+    guide: "The lore CLI",
     section: "Secrets",
     url: "https://alepha.dev/lore/docs/reference-cli#secrets",
     text: "`lore secrets` manages the variables a deployed copy runs with. `--env` is\nrequired, and no command ever prints a whole value (`list` shows a masked\nprefix):\n\n```bash\nlore secrets set DATABASE_URL=postgres://... --env production\nlore secrets set DATABASE_URL --env production   # value read from $DATABASE_URL\nlore secrets set --file .env.production --env production\nlore secrets list --env production\nlore secrets unset DATABASE_URL --env production\n```\n\n`--file` (`-f`) sets every key of a dotenv file, `SIGIL_KEY` aside. `--app`\nnames another app than the current directory's.",
@@ -1848,6 +1854,12 @@ export const docsCorpus: DocsSection[] = [
     section: "Apps and telemetry",
     url: "https://alepha.dev/lore/docs/reference-mcp-tools#apps-and-telemetry",
     text: "See [Apps and instances](/lore/docs/apps-instances) and\n[Telemetry](/lore/docs/apps-telemetry).\n\n| Tool                  | What it does                                                                       |\n| --------------------- | ---------------------------------------------------------------------------------- |\n| `app_instance_list`   | Every deployed copy and what it has unlocked, plus the distinct app names.         |\n| `app_instance_get`    | One copy, by app and environment.                                                  |\n| `app_instance_create` | Track a copy. Nothing is minted.                                                   |\n| `app_instance_update` | Rename it, pin its address, or point it at an estate lent to the project.          |\n| `app_instance_delete` | Remove the copy and its sigil. It undeploys nothing, and is refused while it runs. |\n| `sigil_list`          | Every sigil, its copy, and when it last reported.                                  |\n| `sigil_create`        | Mint a copy's key. The token is shown once.                                        |\n| `sigil_rotate`        | Replace a leaked key and keep the history.                                    ...",
+  },
+  {
+    guide: "MCP tools",
+    section: "Uptime",
+    url: "https://alepha.dev/lore/docs/reference-mcp-tools#uptime",
+    text: "See [Healthchecks](/lore/docs/apps-healthchecks). Reading needs `app:read`;\nthe rest needs `app:manage` and the **Healthchecks** option.\n\n| Tool                              | What it does                                                                       |\n| --------------------------------- | ---------------------------------------------------------------------------------- |\n| `monitor_list`                    | Every monitor, down first, with its status and uptime over 24 hours, 7 or 30 days. |\n| `monitor_get`                     | One monitor: its settings, uptime per window, incidents and its last ten checks.   |\n| `monitor_create`                  | Add a monitor. A push monitor's token is shown once.                               |\n| `monitor_update`                  | Change the settings passed, and keep the rest.                                     |\n| `monitor_pause`, `monitor_resume` | Stop a monitor's checks and start them again, keeping its history.                 |\n| `monitor_delete`                  | Remove a monitor with its checks and incidents. This cannot be undone.             |",
   },
   {
     guide: "MCP tools",
