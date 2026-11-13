@@ -112,6 +112,12 @@ jobs:
           # `0` is off. The repository variable turns it on or off; a
           # redeploy applies it.
           AI_ASSISTANT_ENABLED: ${{ vars.AI_ASSISTANT_ENABLED }}
+          # Its vendor (#Q3572): the AI_API_KEY secret puts it on Anthropic,
+          # else the Workers AI binding answers. Anthropic refuses to start
+          # without a model, so a key with no AI_MODEL variable gets Sonnet;
+          # with no key, AI_MODEL replaces the Workers AI default.
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_MODEL: ${{ secrets.AI_API_KEY != '' && (vars.AI_MODEL || 'claude-sonnet-5-5') || vars.AI_MODEL }}
 
       - name: Build lore (node + workerd)
         working-directory: lore/apps/lore
