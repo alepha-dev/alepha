@@ -1,3 +1,4 @@
+import { DialogProvider, Toaster } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import {
   currentProjectAtom,
@@ -74,13 +75,26 @@ const withSigil = (lastSeenAt?: string) => ({
 });
 
 class FakeLinkProvider extends LinkProvider {
+  /**
+   * Every `deleteApp` asked for, as `app/env`.
+   */
+  deleted: string[] = [];
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return new Proxy(
       {},
       {
-        get: () => {
-          const fn: any = async () => ({});
+        get: (_target, key: string) => {
+          const fn: any =
+            key === "deleteApp"
+              ? async (request: { params: { app: string; env: string } }) => {
+                  this.deleted.push(
+                    `${request.params.app}/${request.params.env}`,
+                  );
+                  return { ok: true };
+                }
+              : async () => ({});
           fn.can = () => true;
           return fn;
         },
@@ -148,9 +162,13 @@ describe("the Apps list", () => {
     } as never);
     alepha.store.set(currentInstancesAtom, instances as never);
 
+    // The app's layout mounts the dialog provider the delete confirm uses.
     const view = render(
       <AlephaContext.Provider value={alepha}>
-        <ProjectApps />
+        <DialogProvider>
+          <Toaster />
+          <ProjectApps />
+        </DialogProvider>
       </AlephaContext.Provider>,
     );
 
@@ -562,7 +580,13 @@ describe("the Apps list", () => {
       // The same click one cell over DOES move the page, well inside the
       // window above. So the guard is narrow rather than a row that stopped
       // responding, and that window is generous rather than lucky.
-      fireEvent.click(view.container.querySelector("tbody td")!);
+      // The app's cell, not the first one: an owner's row starts with its
+      // selection checkbox, whose click selects rather than opens (#Q3586).
+      fireEvent.click(
+        [...view.container.querySelectorAll("tbody td")].find(
+          (cell) => cell.textContent === "acme",
+        )!,
+      );
       await settled();
     });
 
@@ -577,6 +601,90 @@ describe("the Apps list", () => {
 
       await waitFor(() => expect(rowText(view)).toHaveLength(1));
       expect(addressOf(view)).toBeNull();
+    });
+  });
+
+  /**
+   * Delete from the list (#Q3586): a row's menu, or the selection's bar.
+   * The confirm names what goes, and the app whose last environment it is.
+   */
+  describe("delete", () => {
+    it("deletes one copy from its row menu, after a confirm naming its last-environment app", async ({
+      expect,
+    }) => {
+      const { alepha, view } = await mount([
+        anInstance("api", "production", withSigil(agoHours(1))),
+        anInstance("acme", "production"),
+        anInstance("acme", "staging"),
+      ]);
+      const fake = alepha.inject(FakeLinkProvider);
+
+      const row = [...view.container.querySelectorAll("tbody tr")].find((it) =>
+        it.textContent?.includes("api"),
+      )!;
+      fireEvent.click(
+        within(row as HTMLElement).getByRole("button", {
+          name: "Open row actions",
+        }),
+      );
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
+
+      const confirm = await screen.findByRole("alertdialog");
+      expect(confirm.textContent).toContain("Delete api/production?");
+      expect(confirm.textContent).toContain("A sigil goes too");
+      expect(confirm.textContent).toContain("last environment of api");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
+
+      await waitFor(() => expect(fake.deleted).toEqual(["api/production"]));
+      await waitFor(() =>
+        expect(rowText(view).some((text) => text.includes("api"))).toBe(false),
+      );
+    });
+
+    it("deletes the selected copies in bulk", async ({ expect }) => {
+      const { alepha, view } = await mount([
+        anInstance("acme", "production"),
+        anInstance("acme", "staging"),
+        anInstance("lore", "production"),
+      ]);
+      const fake = alepha.inject(FakeLinkProvider);
+
+      for (const row of [...view.container.querySelectorAll("tbody tr")].filter(
+        (it) => it.textContent?.includes("acme"),
+      ))
+        fireEvent.click(within(row as HTMLElement).getByRole("checkbox"));
+      fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+
+      const confirm = await screen.findByRole("alertdialog");
+      expect(confirm.textContent).toContain("Delete 2 apps?");
+      expect(confirm.textContent).toContain("last environment of acme");
+      fireEvent.click(
+        within(confirm).getByRole("button", { name: "Delete 2 apps" }),
+      );
+
+      await waitFor(() =>
+        expect(fake.deleted.sort()).toEqual([
+          "acme/production",
+          "acme/staging",
+        ]),
+      );
+    });
+
+    it("offers no delete to a reader who may not manage apps", async ({
+      expect,
+    }) => {
+      const { view } = await mount([anInstance("acme", "production")], {
+        owner: false,
+      });
+
+      expect(
+        view.container.querySelector(
+          'tbody input[type="checkbox"], tbody [role="checkbox"]',
+        ),
+      ).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Open row actions" }),
+      ).toBeNull();
     });
   });
 });

@@ -13,6 +13,7 @@ import {
   Plus,
   Radio,
   Tag,
+  Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useState } from "react";
@@ -24,6 +25,7 @@ import AppCreateDialog from "./AppCreateDialog.tsx";
 import { appLiveness } from "./appLiveness.ts";
 import AppStatusDot from "./AppStatusDot.tsx";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
+import { useDeleteApps } from "./useDeleteApps.ts";
 
 /**
  * Every deployed copy of every app, in one flat table.
@@ -87,6 +89,8 @@ const ProjectApps = () => {
   const [project] = useStore(currentProjectAtom);
   const [instances] = useStore(currentInstancesAtom);
   const [creating, setCreating] = useState(false);
+  // Delete from the list (#Q3586): a row's menu, or the selection.
+  const deleteApps = useDeleteApps();
 
   if (!project) {
     return null;
@@ -383,6 +387,39 @@ const ProjectApps = () => {
           return true;
         }}
         onRowClick={openInstance}
+        // Delete is owner-only server-side (`app:manage`), so neither the
+        // checkboxes nor the row menu appear for a reader who would be
+        // refused. The checkbox column exists because this array is not
+        // empty.
+        bulkActions={
+          isOwner && deleteApps.can
+            ? [
+                {
+                  icon: Trash2,
+                  label: tr("board.bulk.delete"),
+                  destructive: true,
+                  visible: () => !deleteApps.busy,
+                  onClick: async (selected, ctx) => {
+                    if (await deleteApps.remove(selected)) ctx.clearSelection();
+                  },
+                },
+              ]
+            : undefined
+        }
+        rowActions={
+          isOwner && deleteApps.can
+            ? () => [
+                {
+                  icon: Trash2,
+                  label: tr("app.settings.delete.action"),
+                  destructive: true,
+                  disabled: () => deleteApps.busy,
+                  onClick: (row: AppInstanceResource) =>
+                    void deleteApps.remove([row]),
+                },
+              ]
+            : undefined
+        }
         columns={{
           // ⚠️ No width class here, and that is a decision rather than an
           // omission. It carried `w-full max-w-0 min-w-40`, the idiom the

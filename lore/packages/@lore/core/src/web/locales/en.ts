@@ -2242,6 +2242,17 @@ export default {
     "This copy is a member of the stack environment $1: it deploys there, to the estate that environment uses, and only its own service is redeployed. The estate is set on the stack's settings.",
   "app.settings.estate.saved": "Deploy target saved",
   "app.settings.danger": "Danger zone",
+  "apps.delete.title": "Delete $1 apps?",
+  "apps.delete.confirm": "Delete $1 apps",
+  "apps.delete.one": "Removes Lore’s record of $1 and its deploy history.",
+  "apps.delete.many":
+    "Removes Lore’s record of these $1 copies and their deploy history.",
+  "apps.delete.sigil":
+    "A sigil goes too, with everything it reported: page views, web vitals, unique visitors and the error budget. Blights already filed are kept.",
+  "apps.delete.lastEnv":
+    "This is the last environment of $1, which leaves the Apps list with it.",
+  "apps.delete.nothingUndeployed":
+    "Nothing is undeployed: each copy keeps running wherever it runs.",
   "app.settings.delete.title": "Delete this app",
   "app.settings.delete.description":
     "Removes this deployed copy from Lore. It does not undeploy anything.",

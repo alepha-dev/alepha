@@ -2233,6 +2233,18 @@ export default {
     "Cette copie fait partie de l'environnement de stack $1 : elle s'y déploie, sur le domaine qu'utilise cet environnement, et seul son propre service est redéployé. Le domaine se règle dans les paramètres de la stack.",
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
   "app.settings.danger": "Zone dangereuse",
+  "apps.delete.title": "Supprimer $1 applications ?",
+  "apps.delete.confirm": "Supprimer $1 applications",
+  "apps.delete.one":
+    "Supprime l’enregistrement de $1 dans Lore et son historique de déploiements.",
+  "apps.delete.many":
+    "Supprime l’enregistrement de ces $1 copies dans Lore et leur historique de déploiements.",
+  "apps.delete.sigil":
+    "Un sigil part aussi, avec tout ce qu’il a rapporté : pages vues, signaux web, visiteurs uniques et budget d’erreurs. Les fléaux déjà enregistrés sont conservés.",
+  "apps.delete.lastEnv":
+    "C’est le dernier environnement de $1, qui quitte la liste des applications avec lui.",
+  "apps.delete.nothingUndeployed":
+    "Rien n’est retiré : chaque copie continue de tourner là où elle tourne.",
   "app.settings.delete.title": "Supprimer cette app",
   "app.settings.delete.description":
     "Retire cette copie déployée de Lore. Cela ne déploie ni ne retire rien.",
