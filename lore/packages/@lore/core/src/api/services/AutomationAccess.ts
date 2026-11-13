@@ -76,24 +76,6 @@ export class AutomationAccess {
     };
   }
 
-  public async assertOwner(
-    projectId: number,
-    user: UserAccountToken,
-  ): Promise<void> {
-    const current = await this.currentUser(user);
-    const { member } = await this.membership(projectId, current);
-    if (
-      !(
-        await this.permissions.of(projectId, current, member)
-      ).permissions.includes("capability:manage")
-    )
-      throw new ForbiddenError("Owner diagnostics require capability:manage");
-    if (member.rank !== "owner")
-      throw new ForbiddenError(
-        "Automation diagnostics require the project owner",
-      );
-  }
-
   public async assertMutation(
     rule: Automation,
     user: UserAccountToken,

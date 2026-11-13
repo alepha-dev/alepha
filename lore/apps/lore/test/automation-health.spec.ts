@@ -25,7 +25,6 @@ import { $repository, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { AutomationDiagnosticController } from "../../../packages/@lore/core/src/api/controllers/AutomationDiagnosticController.ts";
 import { bootLore } from "./fixtures/bootLore.ts";
 import {
   createTestMember,
@@ -170,7 +169,7 @@ describe("Automation enable intent and health", () => {
       health: "active",
     });
   });
-  it("revalidates Work immediately and exposes owner diagnostics while it is off", async ({
+  it("revalidates Work immediately when it goes off and comes back", async ({
     expect,
   }) => {
     const rule = await create();
@@ -185,17 +184,6 @@ describe("Automation enable intent and health", () => {
         .inject(AutomationAuthority)
         .check({ automationId: rule.id, revision: rule.revision }),
     ).rejects.toThrow("work");
-    const diagnostics = await alepha
-      .inject(AutomationDiagnosticController)
-      .getAutomationDiagnostics(
-        { params: { projectId: project.id }, query: { offset: 0 } },
-        { user },
-      );
-    expect(diagnostics.items).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: rule.id, health: "broken" }),
-      ]),
-    );
     await capability("work", true, {});
     expect((await persistence.rules.getById(rule.id)).health).toBe("active");
   });

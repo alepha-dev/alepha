@@ -1,14 +1,9 @@
 import { useInject, useStore } from "alepha/react";
-import { lazy, Suspense } from "react";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { ProjectShellRegistry } from "../../../registries/ProjectShellRegistry.ts";
 import ProjectUpdate from "../ProjectUpdate.tsx";
 import ProjectSettingsDangerZoneSection from "./ProjectSettingsDangerZoneSection.tsx";
-
-const AutomationDiagnosticPanel = lazy(
-  () => import("./AutomationDiagnosticPanel.tsx"),
-);
 
 const ProjectSettingsGeneralPage = () => {
   const [project] = useStore(currentProjectAtom);
@@ -29,12 +24,6 @@ const ProjectSettingsGeneralPage = () => {
         <panel.component key={panel.key} />
       ))}
 
-      {/* Quests > Automations is its home (#Q2686). Here only while Work is
-          off, which takes that section out of the sidebar, and only once a
-          rule exists. */}
-      <Suspense fallback={null}>
-        <AutomationDiagnosticPanel fallback />
-      </Suspense>
       <ProjectSettingsDangerZoneSection />
     </div>
   );

@@ -130,11 +130,6 @@ export default {
   "permission.automation.write": "Create and edit your own automations",
   "permission.automation.manage":
     "Manage shared variables and disable or delete any automation",
-  "automation.diagnostics.title": "Automation diagnostics",
-  "automation.diagnostics.description":
-    "Every rule and its health, readable even while Automations is off. This view cannot run or edit rules.",
-  "automation.diagnostics.empty": "No automations in this project.",
-  "automation.diagnostics.more": "More rules are available on the next page.",
   "automation.state.disabled": "Disabled",
   "automation.state.active": "Active",
   "automation.state.paused": "Paused",

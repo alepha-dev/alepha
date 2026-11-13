@@ -138,12 +138,6 @@ export default {
     "Créer et modifier ses propres automatisations",
   "permission.automation.manage":
     "Gérer les variables partagées et désactiver ou supprimer toute automatisation",
-  "automation.diagnostics.title": "Diagnostic des automatisations",
-  "automation.diagnostics.description":
-    "Chaque règle et son état, lisibles même lorsque les automatisations sont désactivées. Cette vue ne permet ni de les exécuter ni de les modifier.",
-  "automation.diagnostics.empty": "Aucune automatisation dans ce projet.",
-  "automation.diagnostics.more":
-    "D’autres règles sont disponibles sur la page suivante.",
   "automation.state.disabled": "Désactivée",
   "automation.state.active": "Active",
   "automation.state.paused": "En pause",

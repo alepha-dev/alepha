@@ -3,7 +3,6 @@ import { RankService } from "alepha/api/organizations";
 import { type UserAccountToken } from "alepha/security";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { AutomationDiagnosticController } from "../src/api/controllers/AutomationDiagnosticController.ts";
 import { LoreCoreApi } from "../src/api/index.ts";
 import type { AutomationRule } from "../src/api/schemas/automationRuleSchema.ts";
 import { CapabilityRegistry } from "../src/api/schemas/CapabilityRegistry.ts";
@@ -176,45 +175,5 @@ describe("Automation access", () => {
     await expect(
       access.assert(project.id, outsider, "automation:manage"),
     ).rejects.toThrow("current member");
-  });
-
-  it("keeps owner-only diagnostic metadata readable with Work off and serializes no program payload", async ({
-    expect,
-  }) => {
-    const project = await createTestProject(alepha, { capabilities: [] });
-    await entities.users.updateById(project.createdBy, { roles: ["user"] });
-    await persistence.rules.create({
-      projectId: project.id,
-      authorUserId: project.createdBy,
-      title: "Inactive rule",
-      rule: definition,
-      health: "broken",
-      reason: "Work is off",
-    });
-    const user = { id: project.createdBy, roles: ["user"] } as UserAccountToken;
-    await expect(
-      access.assert(project.id, user, "automation:read"),
-    ).rejects.toThrow();
-    const controller = alepha.inject(AutomationDiagnosticController);
-    const result = await controller.getAutomationDiagnostics.fetch(
-      { params: { projectId: project.id }, query: { offset: 0 } },
-      { user },
-    );
-    expect(result.data.items).toHaveLength(1);
-    expect(result.data.items[0]).toMatchObject({
-      title: "Inactive rule",
-      health: "broken",
-      enabled: false,
-    });
-    expect(JSON.stringify(result.data)).not.toContain("DO_NOT_DISCLOSE");
-    expect(result.data.items[0]).not.toHaveProperty("rule");
-    const admin = await entities.users.create({ roles: ["user"] });
-    await createTestMember(alepha, project, admin.id, { rank: "member" });
-    await expect(
-      controller.getAutomationDiagnostics.fetch(
-        { params: { projectId: project.id }, query: { offset: 0 } },
-        { user: { id: admin.id, roles: ["user"] } as UserAccountToken },
-      ),
-    ).rejects.toThrow();
   });
 });

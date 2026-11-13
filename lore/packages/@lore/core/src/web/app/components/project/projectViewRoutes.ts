@@ -72,7 +72,6 @@ const ROUTES_SETTINGS = [
   "projectSettingsArea",
   "projectSettingsBoard",
   "projectSettingsPrompts",
-  "projectSettingsAutomations",
   "projectSettingsKnowledge",
   "projectSettingsApps",
   "projectSettingsEstates",

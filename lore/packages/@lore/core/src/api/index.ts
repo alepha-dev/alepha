@@ -18,7 +18,6 @@ import { DatabaseProvider, DatabaseUrlParser } from "alepha/orm";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AutomationController } from "./controllers/AutomationController.ts";
-import { AutomationDiagnosticController } from "./controllers/AutomationDiagnosticController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
@@ -256,7 +255,6 @@ export const LoreCoreApi = $module({
     AutomationRoster,
     AutomationContextBuilder,
     AutomationTemplateRenderer,
-    AutomationDiagnosticController,
     InvitationNotifications,
     // The inbox half: two templates, and the one HTML escaper the four
     // notification classes share.
