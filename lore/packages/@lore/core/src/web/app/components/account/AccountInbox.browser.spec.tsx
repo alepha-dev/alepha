@@ -1,17 +1,25 @@
 import { inboxUnreadAtom } from "@alepha/ui/shell";
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact, QueryCache } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
+import { AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
+import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
-import { projectFixture } from "../../../../../testing/projectFixture.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import ProjectInbox from "./ProjectInbox.tsx";
+import { projectFixture } from "../../../../testing/projectFixture.ts";
+import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import AccountInbox from "./AccountInbox.tsx";
 
 const PAGE_SIZE = 25;
 const TOTAL = 30;
@@ -64,27 +72,14 @@ class FakeLinkProvider extends LinkProvider {
   }
 }
 
-describe("ProjectInbox - Load more", () => {
+describe("AccountInbox - Load more and the Project filter", () => {
   beforeAll(() => {
-    globalThis.ResizeObserver ??= class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    };
+    setupJsdomMocks();
   });
 
   afterEach(() => {
     cleanup();
-    window.history.replaceState({}, "", "/");
   });
-
-  class Routes {
-    inbox = $page({
-      name: "projectInbox",
-      path: "/:projectSlug/inbox",
-      component: () => null,
-    });
-  }
 
   const mount = async () => {
     const alepha = Alepha.create()
@@ -94,35 +89,47 @@ describe("ProjectInbox - Load more", () => {
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
-    alepha.inject(Routes);
     await alepha.start();
-    alepha.store.set(currentProjectAtom, projectFixture());
-    const tree = () => (
+    // The Project filter's options, as the layout's loader leaves them.
+    alepha.store.set(userProjectsAtom, {
+      projects: [
+        {
+          ...projectFixture({ id: 7, title: "Lore", slug: "lore" }),
+          areaCount: 0,
+          openQuestCount: 0,
+          owner: true,
+          lastActivityAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+      totalCount: 1,
+      ownedCount: 1,
+      maxProjects: 50,
+      canCreate: true,
+    } as never);
+    const rendered = render(
       <AlephaContext.Provider value={alepha}>
-        <ProjectInbox />
-      </AlephaContext.Provider>
+        <AccountInbox />
+      </AlephaContext.Provider>,
     );
-    const rendered = render(tree());
-    // The page reads `?scope=` from the router at render; outside a routed
-    // layout nothing re-renders it on a navigation, so the spec does.
-    const navigate = async (query?: Record<string, string>) => {
-      const router = alepha.inject(ReactRouter);
-      await act(async () => {
-        await router.push(
-          router.path("projectInbox", {
-            params: { projectSlug: "lore" },
-          }) as `/${string}`,
-          query ? { query } : {},
-        );
-      });
-      rendered.rerender(tree());
-    };
     return {
       alepha,
       rendered,
-      navigate,
       fake: alepha.inject(FakeLinkProvider),
     };
+  };
+
+  /**
+   * Narrow the list to one project, through the Project filter.
+   */
+  const pickProject = async (title: string) => {
+    const trigger = await waitFor(() =>
+      screen.getByRole("combobox", { name: "inbox.filter.project" }),
+    );
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const option = await waitFor(() =>
+      screen.getByRole("option", { name: title }),
+    );
+    await act(async () => fireEvent.click(option));
   };
 
   /**
@@ -144,11 +151,10 @@ describe("ProjectInbox - Load more", () => {
   it("renders one page, and Load more appends the next with the cursor of the last", async ({
     expect,
   }) => {
-    const { alepha, fake, navigate, rendered } = await mount();
+    const { alepha, fake, rendered } = await mount();
     const root = rendered.container as HTMLElement;
 
-    // All projects: the read that speaks for the bell.
-    await navigate({ scope: "all" });
+    // All projects, the default: the read that speaks for the bell.
     await waitFor(() => expect(loaded(alepha, "all")).toBe(PAGE_SIZE));
     expect(root.textContent).toContain("Message number 1");
     expect(fake.calls.at(-1)?.scope).toBe(undefined);
@@ -161,27 +167,26 @@ describe("ProjectInbox - Load more", () => {
     await waitFor(() => expect(loadMoreButton(root)).toBe(undefined));
   });
 
-  it("a scope change starts again from the first page, and a scoped read never writes the bell", async ({
+  it("a project picked starts again from the first page, and a scoped read never writes the bell", async ({
     expect,
   }) => {
-    const { alepha, fake, navigate, rendered } = await mount();
+    const { alepha, fake, rendered } = await mount();
     const root = rendered.container as HTMLElement;
 
-    await navigate({ scope: "all" });
     await waitFor(() => expect(loaded(alepha, "all")).toBe(PAGE_SIZE));
     await act(async () => loadMoreButton(root)?.click());
     await waitFor(() => expect(loaded(alepha, "all")).toBe(TOTAL));
 
     alepha.store.set(inboxUnreadAtom, { count: 7 });
     fake.calls = [];
-    await navigate();
+    await pickProject("Lore");
     await waitFor(() =>
       expect(root.textContent).not.toContain("Message number 4"),
     );
     expect(root.textContent).toContain("Message number 3");
     expect(fake.calls).toHaveLength(1);
     expect(fake.calls[0]?.cursor).toBe(undefined);
-    expect(fake.calls[0]?.scope).toMatch(/^project:/);
+    expect(fake.calls[0]?.scope).toBe("project:7");
     expect(alepha.store.get(inboxUnreadAtom)?.count).toBe(7);
   });
 });

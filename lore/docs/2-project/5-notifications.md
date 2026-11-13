@@ -8,25 +8,23 @@ inbox, what reaches you, and which messages you can turn off.
 
 The bell in a project's header shows how many messages you have not read,
 across **every** project, and opens a list of the latest ones. **See all**
-opens the full inbox, on all projects.
-
-![The notification inbox](/screenshots/lore/inbox-light.png)
+opens the full inbox: the **Inbox** section of your account dialog, on all
+projects.
 
 In the inbox:
 
 - A message shows its title, a preview, its project and when it arrived. An
   unread one has a dot and a heavier title.
 - Clicking a message marks it read and opens what it is about.
-- **Mark all read** marks every message in the current scope.
-- **This project** and **All projects** switch the scope. The address carries
-  it as `?scope=all`.
+- **Mark all read** marks every message the list shows.
+- The **Project** filter narrows the list to one project; cleared, it reads
+  **All projects**, the default.
 - The search box filters what is loaded on the page, by title and preview, and
   **Load more** brings the next 25.
 
-The inbox has no sidebar entry: the bell and the command palette, under
-**Notifications**, are the ways in. Its address is `/<project-slug>/inbox`.
-It belongs to no capability, so every project has one, a project with only
-Support on included.
+The inbox belongs to your account, not to a project: the bell, the account
+dialog and the command palette, under **Notifications**, are the ways in. A
+link ending in `?account=inbox` opens it from anywhere in Lore.
 
 Messages are yours alone: nobody else can read them, and there is no permission
 to grant.
