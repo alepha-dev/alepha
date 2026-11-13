@@ -372,6 +372,8 @@ export interface DataTableBaseProps<
    * Drop the table's own outer frame: no rounded corners, and no border on
    * the left, right, top or bottom of the toolbar, the rows or the footer.
    * The lines BETWEEN them stay, since those separate the table's own bands.
+   * The presets rail loses its frame too, keeping only its line against the
+   * rows.
    *
    * For a table laid flush inside a frame something else draws - a page
    * whose gutters are its rules, a pane with its own border - where the

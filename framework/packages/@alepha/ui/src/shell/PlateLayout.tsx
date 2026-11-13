@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "../core/utils.ts";
+import { DataTableTabs } from "../table/DataTableTabs.tsx";
 import { type PlateTab, PlateTabBar } from "./PlateTabBar.tsx";
 
 export interface PlateLayoutProps {
@@ -28,6 +29,12 @@ export interface PlateLayoutProps {
    * Marks the tab bar for tests. See {@link PlateTabBarProps.testId}.
    */
   tabsTestId?: string;
+  /**
+   * How the tabs are drawn. `underline`, the default, is the plate's own
+   * bottom row; `folder` is DataTable's tiles, the active one opening into
+   * the body below it.
+   */
+  tabsVariant?: "underline" | "folder";
   /**
    * Whether the layout wraps the body in its own scroll region. Default
    * `true`, which is what keeps the plate still while the content moves.
@@ -64,13 +71,33 @@ export const PlateLayout = (props: PlateLayoutProps) => (
   >
     <div className="bg-card/30 border-border shrink-0 border-b">
       {props.plate}
-      <PlateTabBar
-        tabs={props.tabs}
-        active={props.active}
-        onSelect={props.onSelect}
-        testId={props.tabsTestId}
-        divided={props.plate !== undefined}
-      />
+      {props.tabsVariant === "folder" ? (
+        <div data-testid={props.tabsTestId}>
+          <DataTableTabs
+            className="rounded-none border-x-0 border-t-0 bg-transparent px-4"
+            tabs={props.tabs.map((tab) => ({
+              key: tab.key,
+              label: tab.label,
+              icon: tab.icon,
+              count: tab.count,
+              href: tab.href,
+              active: tab.key === props.active,
+              onSelect:
+                tab.href === undefined
+                  ? () => props.onSelect?.(tab.key)
+                  : undefined,
+            }))}
+          />
+        </div>
+      ) : (
+        <PlateTabBar
+          tabs={props.tabs}
+          active={props.active}
+          onSelect={props.onSelect}
+          testId={props.tabsTestId}
+          divided={props.plate !== undefined}
+        />
+      )}
     </div>
 
     {props.scroll === false ? (

@@ -549,7 +549,13 @@ export const DataTable = <
           );
         }}
         onAll={resetFilters}
-        className={props.chromeClassName}
+        className={cn(
+          // `flat`: no frame of its own either, only the line between the
+          // rail and the rows, which the table's flattened start edge no
+          // longer draws.
+          props.flat && "rounded-none border-y-0 border-s-0 border-e",
+          props.chromeClassName,
+        )}
       />
     ) : undefined;
 
