@@ -32,3 +32,4 @@ into its menu once signed in.
 ### React Hooks
 
 - [`useDetailTab`](/docs/reference-react-hooks-usedetailtab) - Binds a detail page's selected tab to `?tab=<key>`.
+- [`useNavCrumbs`](/docs/reference-react-hooks-usenavcrumbs) - Replace a detail page's breadcrumb with crumbs of its own.

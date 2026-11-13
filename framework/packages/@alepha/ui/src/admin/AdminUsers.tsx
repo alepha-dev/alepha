@@ -5,15 +5,19 @@ import TimeAgo from "../core/TimeAgo.tsx";
 void React;
 
 import { z } from "alepha";
-import type { AdminUserController, UserEntity } from "alepha/api/users";
+import type {
+  AdminAvatarController,
+  AdminUserController,
+  RealmController,
+  UserEntity,
+} from "alepha/api/users";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import {
   Check,
   CircleDot,
-  Eye,
   Trash2,
   UserCheck,
   UserPlus,
@@ -107,6 +111,35 @@ export const AdminUsers = (props: AdminUsersProps) => {
     [client, props.userRealmName],
   );
   const availableRoles = rolesQuery.data ?? [];
+
+  /*
+   * Which identity columns the app uses (#Q3571). A realm whose email
+   * requirement is `none` collects no email, so the column would be a row of
+   * dashes: it goes. Unknown (the config could not be read) keeps it.
+   *
+   * Pictures have no realm setting of their own: the signal is the realm's
+   * `avatars` feature, which registers `AdminAvatarController`, so its action
+   * is in `/api/_links` exactly when the app uses pictures - the same gate
+   * the detail page's avatar control reads.
+   */
+  const realmClient = useClient<RealmController>();
+  const realmQuery = useQuery(
+    {
+      handler: ({ signal }) =>
+        realmClient.getRealmConfig(
+          { query: { realmName: props.userRealmName } },
+          { request: { signal } },
+        ),
+      onError: () => {},
+    },
+    [realmClient, props.userRealmName],
+  );
+  const usesEmail = realmQuery.data?.settings?.email !== "none";
+  const usesPictures =
+    useClient<AdminAvatarController>().updateUserAvatar.can();
+  // ⚠️ A fixed path, as the row push always was: the UI showcase mounts
+  // this table outside `AdminRouter`, where no `userDetail` route exists.
+  const detailHref = (u: UserEntity) => `/admin/users/${u.id}`;
 
   const filterFields = {
     search: { preset: "search" },
@@ -395,53 +428,73 @@ export const AdminUsers = (props: AdminUsersProps) => {
             },
           },
         ]}
+        // The whole row opens the user (#Q3571); the email and username
+        // are real anchors too, for a new tab.
+        onRowClick={(u) => void router.push(detailHref(u))}
         columns={applyDefaultHidden(props.defaultHiddenColumns, {
-          email: {
-            label: tr("admin.users.colEmail", { default: "Email" }),
-            cell: (u) => {
-              const initial = (
-                u.email ||
-                u.username ||
-                u.firstName ||
-                u.lastName ||
-                "?"
-              )
-                .charAt(0)
-                .toUpperCase();
-              return (
-                <div className="flex items-center gap-3">
-                  {/* The picture when there is one, the initial when there
-                      is none or it fails to load. The authenticated route
-                      serves an admin every user's picture, where the public
-                      one depends on the app opening the bucket. */}
-                  <UserAvatar
-                    fileId={u.picture}
-                    fallback={<span className="text-sm">{initial}</span>}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/admin/users/${u.id}`)}
-                    className="hover:text-primary inline-flex items-center gap-1.5 truncate text-start font-medium underline-offset-2 hover:underline"
-                  >
-                    <span className="truncate">{u.email ?? "—"}</span>
-                    {u.emailVerified && u.email && (
-                      <Check
-                        className="size-3.5 shrink-0 text-emerald-500"
-                        aria-label={tr("admin.users.verified", {
-                          default: "Verified",
-                        })}
+          ...(usesPictures
+            ? {
+                avatar: {
+                  label: tr("admin.users.colPicture", { default: "Picture" }),
+                  cell: (u: UserEntity) => {
+                    const initial = (
+                      u.email ||
+                      u.username ||
+                      u.firstName ||
+                      u.lastName ||
+                      "?"
+                    )
+                      .charAt(0)
+                      .toUpperCase();
+                    // The picture when there is one, the initial when there
+                    // is none or it fails to load. The authenticated route
+                    // serves an admin every user's picture, where the public
+                    // one depends on the app opening the bucket.
+                    return (
+                      <UserAvatar
+                        fileId={u.picture}
+                        fallback={<span className="text-sm">{initial}</span>}
                       />
-                    )}
-                  </button>
-                </div>
-              );
-            },
-          },
+                    );
+                  },
+                },
+              }
+            : {}),
+          ...(usesEmail
+            ? {
+                email: {
+                  label: tr("admin.users.colEmail", { default: "Email" }),
+                  cell: (u: UserEntity) => (
+                    <Link
+                      href={detailHref(u)}
+                      onClick={(event) => event.stopPropagation()}
+                      className="hover:text-primary inline-flex max-w-full items-center gap-1.5 truncate font-medium underline-offset-2 hover:underline"
+                    >
+                      <span className="truncate">{u.email ?? "—"}</span>
+                      {u.emailVerified && u.email && (
+                        <Check
+                          className="size-3.5 shrink-0 text-emerald-500"
+                          aria-label={tr("admin.users.verified", {
+                            default: "Verified",
+                          })}
+                        />
+                      )}
+                    </Link>
+                  ),
+                },
+              }
+            : {}),
           username: {
             label: tr("admin.users.colUsername", { default: "Username" }),
             cell: (u) =>
               u.username ? (
-                <span className="truncate">@{u.username}</span>
+                <Link
+                  href={detailHref(u)}
+                  onClick={(event) => event.stopPropagation()}
+                  className="hover:text-primary truncate underline-offset-2 hover:underline"
+                >
+                  @{u.username}
+                </Link>
               ) : (
                 <span className="text-muted-foreground">—</span>
               ),
@@ -467,15 +520,22 @@ export const AdminUsers = (props: AdminUsersProps) => {
           roles: {
             label: tr("admin.users.colRoles", { default: "Roles" }),
             cell: (u) => (
-              <AdminUsersRolesPicker
-                user={u}
-                availableRoles={availableRoles}
-                onToggle={async (roles) => (await setRoles.run(u, roles)).ok}
-                rolesLabel={tr("admin.users.rolesLabel", { default: "Roles" })}
-                noRolesLabel={tr("admin.users.noRoles", {
-                  default: "No roles",
-                })}
-              />
+              // The picker is a control inside a clickable row: its click is
+              // its own, not the row's.
+              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+              <div onClick={(event) => event.stopPropagation()}>
+                <AdminUsersRolesPicker
+                  user={u}
+                  availableRoles={availableRoles}
+                  onToggle={async (roles) => (await setRoles.run(u, roles)).ok}
+                  rolesLabel={tr("admin.users.rolesLabel", {
+                    default: "Roles",
+                  })}
+                  noRolesLabel={tr("admin.users.noRoles", {
+                    default: "No roles",
+                  })}
+                />
+              </div>
             ),
           },
           enabled: {
@@ -510,13 +570,8 @@ export const AdminUsers = (props: AdminUsersProps) => {
               ),
           },
         })}
-        rowActions={(u) => [
-          {
-            label: tr("admin.users.viewProfile", { default: "View profile" }),
-            icon: Eye,
-            onClick: () => router.push(`/admin/users/${u.id}`),
-          },
-          ...(!isSelf(u)
+        rowActions={(u) =>
+          !isSelf(u)
             ? [
                 {
                   label: u.enabled
@@ -546,8 +601,8 @@ export const AdminUsers = (props: AdminUsersProps) => {
                   },
                 },
               ]
-            : []),
-        ]}
+            : []
+        }
       />
       {canCreate && (
         <AdminUsersCreateDialog

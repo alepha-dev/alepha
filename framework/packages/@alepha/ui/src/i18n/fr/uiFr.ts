@@ -1145,6 +1145,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.users.cantDisableSelf":
     "Vous ne pouvez pas désactiver votre propre compte",
   "admin.users.colEmail": "Adresse e-mail",
+  "admin.users.colPicture": "Photo",
   "admin.users.colFirstName": "Prénom",
   "admin.users.colJoined": "Inscrit le",
   "admin.users.colLastLogin": "Dernière connexion",
@@ -1190,7 +1191,6 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.users.statusVerified": "Vérifié",
   "admin.users.thisUser": "cet utilisateur",
   "admin.users.verified": "Vérifié",
-  "admin.users.viewProfile": "Voir le profil",
 
   // ─── The account kit (components/account/*) ───────────────────────────────
   "account.connections.colApp": "Application",

@@ -8,6 +8,7 @@ import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { uiFr } from "../../i18n/fr/uiFr.ts";
+import { navCrumbsAtom } from "../../shell/navCrumbsAtom.ts";
 import AdminLayout from "../AdminLayout.tsx";
 import { AdminRouter } from "../AdminRouter.tsx";
 
@@ -132,6 +133,60 @@ describe("admin shell labels follow the language", () => {
 
     expect(screen.getAllByText("Administration").length).toBe(1);
     expect(screen.getByText("Utilisateur")).toBeTruthy();
+  });
+
+  /**
+   * A detail page's own crumbs (#Q3571): `Admin > Users > Ada Lovelace`
+   * rather than the route chain's `Admin > User`, and only while that route
+   * is the open leaf.
+   */
+  it("puts a detail page's crumbs in place of its own", async () => {
+    await mount();
+
+    const pages = alepha!.inject(ReactRouter).pages;
+    const state = alepha!.store.get("alepha.react.router.state");
+    const layerFor = (name: string) => ({
+      name,
+      index: 0,
+      path: "/",
+      element: null,
+      route: pages.find((page) => page.name === name),
+    });
+
+    await act(async () => {
+      alepha!.store.set(navCrumbsAtom, {
+        route: "userDetail",
+        crumbs: [
+          { label: "Users", href: "/admin/users" },
+          { label: "Ada Lovelace" },
+        ],
+      });
+      alepha!.store.set("alepha.react.router.state", {
+        ...state,
+        layers: [layerFor("admin"), layerFor("userDetail")],
+      } as any);
+    });
+
+    const trail = screen.getByRole("navigation", { name: /breadcrumb/i });
+    expect(trail.textContent).toContain("Users");
+    expect(trail.textContent).toContain("Ada Lovelace");
+    expect(trail.textContent).not.toMatch(/User(?!s)/);
+    expect(
+      Array.from(trail.querySelectorAll("a")).map((a) =>
+        a.getAttribute("href"),
+      ),
+    ).toContain("/admin/users");
+
+    // Another leaf keeps its own crumb, whatever the atom still holds.
+    await act(async () => {
+      alepha!.store.set("alepha.react.router.state", {
+        ...state,
+        layers: [layerFor("admin"), layerFor("sessions")],
+      } as any);
+    });
+    expect(
+      screen.getByRole("navigation", { name: /breadcrumb/i }).textContent,
+    ).not.toContain("Ada Lovelace");
   });
 
   it("re-labels the shell's own chrome", async () => {

@@ -5,7 +5,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { AlephaReactRouter } from "alepha/react/router";
+import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -93,6 +93,18 @@ class Links extends LinkProvider {
   }
 }
 
+/**
+ * The two admin pages the table links, as `AdminRouter` declares them.
+ */
+class Routes {
+  users = $page({ name: "users", path: "/admin/users", component: () => null });
+  userDetail = $page({
+    name: "userDetail",
+    path: "/admin/users/:userId",
+    component: () => null,
+  });
+}
+
 describe("AdminUsers", () => {
   let alepha: Alepha | undefined;
 
@@ -105,7 +117,10 @@ describe("AdminUsers", () => {
     alepha = undefined;
   });
 
-  const mount = async (setup?: (links: Links) => void) => {
+  const mount = async (
+    setup?: (links: Links) => void,
+    ready = "ada@example.app",
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -113,6 +128,7 @@ describe("AdminUsers", () => {
       .with(AlephaReact)
       .with(AlephaReactRouter)
       .with(AlephaReactI18n);
+    alepha.inject(Routes);
     await alepha.start();
     const links = alepha.inject(Links);
     setup?.(links);
@@ -125,9 +141,7 @@ describe("AdminUsers", () => {
         </DialogProvider>
       </AlephaContext.Provider>,
     );
-    await waitFor(() =>
-      expect(screen.getByText("ada@example.app")).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(ready)).toBeTruthy());
     return links;
   };
 
@@ -230,9 +244,10 @@ describe("AdminUsers", () => {
   });
 
   it("asks for a username on a realm that collects one, and skips the password call when blank", async () => {
+    // No Email column on such a realm (#Q3571): wait on the status instead.
     const links = await mount((it) => {
       it.settings = { email: "none", username: "required" };
-    });
+    }, "Active");
     const username = await openDialog("username");
     expect(field("email")).toBeNull();
 
@@ -248,5 +263,76 @@ describe("AdminUsers", () => {
       it.denied = ["createUser"];
     });
     expect(screen.queryByRole("button", { name: /Create user/ })).toBeNull();
+  });
+
+  /**
+   * #Q3571: the whole row opens the user, the email and username are real
+   * anchors, there is no View profile action, and the Email and picture
+   * columns follow what the app uses.
+   */
+  describe("rows and identity columns", () => {
+    const detail = "/admin/users/0192e4c4-0000-7000-8000-000000000001";
+
+    it("opens the user from anywhere on the row", async () => {
+      await mount();
+
+      fireEvent.click(screen.getByText("Active"));
+
+      await waitFor(() =>
+        expect(alepha!.inject(ReactRouter).pathname).toBe(detail),
+      );
+    });
+
+    it("makes the email and the username anchors to the user", async () => {
+      await mount((links) => {
+        links.users = [user({ username: "ada" })];
+      });
+
+      expect(
+        screen.getByText("ada@example.app").closest("a")?.getAttribute("href"),
+      ).toBe(detail);
+      expect(screen.getByText("@ada").closest("a")?.getAttribute("href")).toBe(
+        detail,
+      );
+    });
+
+    it("offers no View profile row action", async () => {
+      await mount();
+
+      fireEvent.click(
+        screen.getAllByRole("button", { name: /row actions/i })[0],
+      );
+      await waitFor(() =>
+        expect(screen.getAllByRole("menuitem").length).toBeGreaterThan(0),
+      );
+      expect(
+        screen.queryByRole("menuitem", { name: /View profile/ }),
+      ).toBeNull();
+    });
+
+    it("drops the Email column when the realm collects no email", async () => {
+      await mount((links) => {
+        links.settings = { email: "none", username: "required" };
+        links.users = [user({ email: undefined, username: "ada" })];
+      }, "@ada");
+
+      expect(screen.queryByRole("columnheader", { name: "Email" })).toBeNull();
+    });
+
+    it("shows the picture column only when the app uses pictures", async () => {
+      await mount((links) => {
+        links.denied = ["updateUserAvatar"];
+      });
+      expect(
+        screen.queryByRole("columnheader", { name: "Picture" }),
+      ).toBeNull();
+    });
+
+    it("shows the picture column when avatars are on", async () => {
+      await mount();
+      expect(
+        screen.getByRole("columnheader", { name: "Picture" }),
+      ).toBeTruthy();
+    });
   });
 });
