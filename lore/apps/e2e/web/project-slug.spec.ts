@@ -69,7 +69,7 @@ test.describe("Project slug routing", () => {
     await page.getByRole("button", { name: "Rename", exact: true }).click();
 
     const nextSlug = renamed.toLowerCase();
-    await page.waitForURL(`**/${nextSlug}/settings/**`, { timeout: 15_000 });
+    await page.waitForURL(`**/${nextSlug}/settings`, { timeout: 15_000 });
 
     // The old slug is freed, not redirected.
     await page.goto(`/${slug}`);

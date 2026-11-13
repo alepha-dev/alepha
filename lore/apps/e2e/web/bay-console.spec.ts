@@ -293,10 +293,10 @@ test.describe("The Bay console", () => {
      */
     await expect(
       page.getByRole("link", { name: "lore", exact: true }).first(),
-      // Trailing slash: `app` is the index child of `projectApp`, so the
-      // dashboard's own path ends there. Matched exactly anyway - the thing
-      // being proved is that every segment is substituted.
-    ).toHaveAttribute("href", `/${project.slug}/apps/lore/production/`);
+      // No trailing slash: `app` is the index child of `projectApp`, and an
+      // index child's URL is its parent's (#Q3582). Matched exactly anyway -
+      // the thing being proved is that every segment is substituted.
+    ).toHaveAttribute("href", `/${project.slug}/apps/lore/production`);
 
     // Clicked on the release cell rather than on the row's own name, which is
     // that link. Any other cell reaches `onRowClick`.

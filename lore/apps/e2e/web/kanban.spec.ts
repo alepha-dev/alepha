@@ -209,7 +209,7 @@ test.describe("Kanban", () => {
 
     // Closing goes back to the board, through history.
     await page.getByRole("button", { name: /back/i }).first().click();
-    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`), {
+    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests/board$`), {
       timeout: 10_000,
     });
     await expect(sheet).toHaveCount(0);
@@ -246,7 +246,7 @@ test.describe("Kanban", () => {
     await expect(sheet).toHaveCount(0);
 
     // The old card URL still lands somewhere.
-    await page.goto(`/${projectSlug}/kanban/${shortId}`);
+    await page.goto(`/${projectSlug}/quests/board/${shortId}`);
     await expect(page).toHaveURL(
       new RegExp(`/${projectSlug}/quests/${shortId}$`),
       { timeout: 10_000 },

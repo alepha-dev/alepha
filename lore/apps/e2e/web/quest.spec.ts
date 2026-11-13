@@ -1606,8 +1606,12 @@ test.describe("Quest", () => {
       { options: { work: ["epics", "releases"] } },
     );
 
+    // Inside the sidebar only: the Board tab over the list links to the same
+    // URL, and an unscoped match would find it.
     const sidebarLink = (href: string) =>
-      page.locator(`a[href="/${projectSlug}${href}"]`).first();
+      page
+        .locator(`[data-slot="sidebar"] a[href="/${projectSlug}${href}"]`)
+        .first();
 
     await page.goto(`/${projectSlug}/quests`);
     await expect(page.getByTestId("quests-table")).toBeVisible({
