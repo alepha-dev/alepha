@@ -127,6 +127,16 @@ export class LoreDeployer {
   protected static readonly FOLLOW_TIMEOUT_MS = 15 * 60 * 1_000;
 
   /**
+   * How many polls in a row may fail before the follower gives up.
+   *
+   * A deploy runs on Lore, not here: a dropped connection while asking how it
+   * goes (a reset from the edge, seen in CI as `read ECONNRESET`) says nothing
+   * about the deploy, so one failed poll must not fail it. An HTTP answer from
+   * Lore below 500 is Lore's word and is never retried.
+   */
+  protected static readonly FOLLOW_MAX_MISSES = 5;
+
+  /**
    * Which build target an artifact's runtime implies.
    *
    * ⚠️ **The `node` row is an inference, not a lookup.** A manifest carries a
@@ -540,16 +550,39 @@ export class LoreDeployer {
   ): Promise<{ status: string; error?: string; url?: string }> {
     const startedAt = this.dateTime.nowMillis();
     let printed = 0;
+    let misses = 0;
 
     for (;;) {
-      const row = (await this.deploys.getDeployment({
-        params: { projectId, deploymentId },
-      })) as {
+      let row: {
         status?: string;
         error?: string;
         url?: string;
         log?: Array<{ text: string }>;
       };
+      try {
+        row = (await this.deploys.getDeployment({
+          params: { projectId, deploymentId },
+        })) as typeof row;
+        misses = 0;
+      } catch (error) {
+        // A status below 500 is Lore refusing; 5xx and no status at all are
+        // the way there failing.
+        const status = isHttpError(error)
+          ? ((error as { status?: number }).status ??
+            (error as { data?: { status?: number } }).data?.status ??
+            500)
+          : 500;
+        const answered = status < 500;
+        misses += 1;
+        if (answered || misses > LoreDeployer.FOLLOW_MAX_MISSES) {
+          throw error;
+        }
+        this.log.warn(
+          `Could not read deploy ${deploymentId} (${error instanceof Error ? error.message : String(error)}); asking again.`,
+        );
+        await this.dateTime.wait(LoreDeployer.POLL_INTERVAL_MS);
+        continue;
+      }
 
       const log = row?.log ?? [];
       for (const line of log.slice(printed)) {
