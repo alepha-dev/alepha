@@ -18,7 +18,7 @@ import { LoreProjectResolver } from "./LoreProjectResolver.ts";
  *
  * `lore artifacts push`, `lore deploy`'s build-and-push, and the platform
  * adapter's `build()` all store an artifact, and they must store it the same
- * way: the packing, the maps sibling, the `--force` semantics and the cleanup
+ * way: the packing, the `--force` semantics and the cleanup
  * on one path. `lore deploy` used to reach it by running the command object
  * through `CliProvider`, which a infra adapter cannot do, so the body moved
  * here and the command became its flag parser.
@@ -207,7 +207,7 @@ export class LoreArtifactPusher {
       // so the filename is derived ONCE. Deriving it a second time here is
       // exactly what let `pack` write one file while `BayAdapter` looked for
       // another.
-      const packed = await this.packer.pack({
+      await this.packer.pack({
         root,
         name: app,
         tag,
@@ -226,11 +226,6 @@ export class LoreArtifactPusher {
         manifest: await this.manifestOf(root),
         assets: await this.assetsOf(root),
         schema: await this.schemaOf(root),
-        // The sibling source-map archive, when the build produced one
-        // (#1515). Absent is normal, not an error: the maps are excluded
-        // from the artifact and stored beside it, so nothing is discarded.
-        mapsPath: packed.maps?.outputPath,
-        mapsFilename: packed.maps?.filename,
       });
 
       const { artifact } = result;
@@ -247,13 +242,8 @@ export class LoreArtifactPusher {
       await this.publishOutput(artifact.sha256);
     } finally {
       // A tarball left in `node_modules` is invisible until it is stale.
-      // `alepha pack` is what to run when the file itself is wanted. The
-      // maps archive is removed by name rather than from `packed`, which is
-      // out of scope in a `finally` that also runs when `pack` threw.
+      // `alepha pack` is what to run when the file itself is wanted.
       await this.fs.rm(archivePath, { force: true });
-      await this.fs.rm(this.fs.join(workDir, `${app}-${tag}.maps.tar.zst`), {
-        force: true,
-      });
     }
   }
 

@@ -347,14 +347,14 @@ The adapter chooses the database strategy based on `DATABASE_URL` in `.env.{env}
 
 **D1 (default)** - If no `DATABASE_URL` is set, or it names no Postgres server (`postgres:` or `postgresql:`), the adapter provisions a Cloudflare D1 database (SQLite at the edge). Before applying, a deploy without `--prebuilt` runs `alepha db migrations check --mode <env>` (or `migrations create` when `migrations/sqlite/` does not exist yet), so a schema change with no migration fails the deploy. Migrations are then applied file by file through D1's import API, the transport `wrangler d1 execute --remote --file` uses, never in the shape of `wrangler d1 migrations apply`, whose transaction wrapper cascade-deletes child rows on a table rebuild (see the Migrations guide). The bookkeeping table stays `d1_migrations`, readable by wrangler.
 
-**Hyperdrive** - If `DATABASE_URL` points to an external PostgreSQL database (`postgres://...` or `postgresql://...`), the adapter provisions a [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) config instead. Hyperdrive accelerates connections from Workers to your Postgres database through connection pooling and caching. Migrations run via `alepha db migrations apply --mode <env>` directly against the database.
+**Hyperdrive** - If `DATABASE_URL` points to an external PostgreSQL database (`postgres://...` or `postgresql://...`), the adapter provisions a [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) config instead. Hyperdrive pools the connections from Workers to your Postgres database; its query caching is turned off on every deploy, since it would serve a read made before the app's own write. The deploy applies `migrations/postgres/` to the server before the Worker ships, and sends the URL to Hyperdrive again each time, so a rotated password needs only a redeploy. The server needs a publicly trusted certificate on a DNS name: see [SQLite or Postgres](/docs/guides-persistence-sqlite-or-postgres#on-cloudflare).
 
 ```bash
 # .env.production: D1 (no DATABASE_URL, or d1:// protocol)
 # Nothing to set. D1 is created and wired automatically.
 
 # .env.production: Hyperdrive (external Postgres)
-DATABASE_URL=postgres://user:pass@db.neon.tech:5432/mydb
+DATABASE_URL=postgres://user:pass@db.example.com:5432/mydb?sslmode=require
 ```
 
 ### Build

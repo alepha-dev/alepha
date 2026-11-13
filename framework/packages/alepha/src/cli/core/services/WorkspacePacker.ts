@@ -58,17 +58,6 @@ export interface WorkspacePackResult {
    * joined with {@link WorkspacePackResult.filename}.
    */
   outputPath: string;
-
-  /**
-   * The sibling `.maps.tar.zst`, when the build produced any source map.
-   *
-   * Absent when it produced none, which is the honest answer and not an
-   * error: a caller uploads a maps object only when there is one.
-   */
-  maps?: {
-    filename: string;
-    outputPath: string;
-  };
 }
 
 /**
@@ -167,9 +156,13 @@ export class WorkspacePacker {
    * ⚠️ **`*.map` is on it, so this changes what EVERY `alepha pack`
    * produces**. Measured on Lore's `dist`, 266 of 267 server JS files had a
    * sibling map and they were roughly 5 MB of a 6.4 MB gzipped archive - a 4x
-   * on every push, every pull and every stored version. They are not
-   * discarded: {@link packMaps} writes them to a sibling archive in the same
-   * call, so an error report stays symbolicable.
+   * on every push, every pull and every stored version, and nothing read
+   * them: no runtime loads a map out of a tarball.
+   *
+   * A sibling maps archive was packed and stored beside every Lore artifact
+   * once (#Q1515), and removed unread (#Q3549): nothing symbolicated with it.
+   * Maybe one day symbolicated production stacks will want the maps back,
+   * from here or uploaded with the Worker, but not today.
    *
    * The entries are `tar` arguments, expanded by `tar` and not by the shell -
    * each is single-quoted at the call site, so an unquoted `*.map` cannot be
@@ -230,9 +223,7 @@ export class WorkspacePacker {
       await write();
     }
 
-    const maps = await this.packMaps(root, outputDir, project, tag);
-
-    return { filename, outputPath, maps };
+    return { filename, outputPath };
   }
 
   /**
@@ -281,24 +272,16 @@ export class WorkspacePacker {
     root: string,
     outputPath: string,
     operands: string,
-    options: { exclude?: boolean } = {},
   ): Promise<void> {
     /*
       macOS sets COPYFILE_DISABLE=0 by default; tar will then include
       AppleDouble `._*` files. Force it off here so the tarball is portable.
       The explicit excludes cover `node_modules`, `.DS_Store` and friends,
       which slip in via `dist/`.
-
-      ⚠️ **Opt-out, because `*.map` is on that list.** The maps archive exists
-      precisely to carry what the exclusion removes, so applying the same
-      excludes to it produces a valid, empty archive: 17 bytes that read as
-      "this build had no source maps". Nothing fails, and the diagnostic the
-      exclusion was only safe because of quietly stops existing.
     */
-    const excludes =
-      options.exclude === false
-        ? ""
-        : WorkspacePacker.EXCLUDES.map((p) => `--exclude='${p}'`).join(" ");
+    const excludes = WorkspacePacker.EXCLUDES.map(
+      (p) => `--exclude='${p}'`,
+    ).join(" ");
 
     const tarPath = `${outputPath}.tar`;
     // Wrap in `sh -c` so the env-var assignment is interpreted by the
@@ -313,69 +296,6 @@ export class WorkspacePacker {
     } finally {
       await this.fs.rm(tarPath, { force: true });
     }
-  }
-
-  /**
-   * The sibling archive holding every source map the build produced.
-   *
-   * ⚠️ **A separate object rather than a Sigil upload.** Nothing symbolicates
-   * today, so uploading into Sigil would commit to a consumer that does not
-   * exist and make a measured 4x size win wait on a feature nobody has scoped.
-   * The artifact already IS its digest, so a sibling beside it needs no table,
-   * no key and no lifecycle of its own: it is written and deleted with the
-   * artifact row.
-   *
-   * Two shell calls rather than one, and both are deliberate. `find` first, so
-   * a build with no maps produces no archive at all - an empty tarball would
-   * be a stored object that says something false. Then `tar -T <list>` rather
-   * than the paths as arguments, because a large build has thousands of maps
-   * and an argument list has a ceiling; a newline-separated list file is
-   * understood by GNU and BSD tar alike, where `--null -T -` is not.
-   */
-  protected async packMaps(
-    root: string,
-    outputDir: string,
-    project: string,
-    tag: string,
-  ): Promise<WorkspacePackResult["maps"]> {
-    // `dist` only. Maps are a build output, `migrations/` is SQL, and
-    // searching a tree that cannot contain one is a shell call for nothing.
-    const distDir = this.fs.join(root, this.build.output?.dist ?? "dist");
-    const listed = await this.shell.run(
-      `sh -c "find . -name '*.map' -type f -print"`,
-      { root: distDir, capture: true },
-    );
-
-    const paths = String(listed ?? "")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
-    if (paths.length === 0) {
-      return undefined;
-    }
-
-    const filename = `${project}-${tag}.maps.tar.zst`;
-    const outputPath = this.fs.join(outputDir, filename);
-    // Beside the archive rather than in a temp directory: `output` is already
-    // the place this call is allowed to write, and a list file left behind by
-    // a crash is then visible next to what it describes.
-    const listPath = this.fs.join(outputDir, `${filename}.list`);
-    await this.fs.writeFile(listPath, `${paths.join("\n")}\n`);
-
-    try {
-      // ⚠️ Rooted at `dist` like the main archive, so a map lands at
-      // `server/node/abc.js.map` beside the `server/node/abc.js` it describes.
-      // Rooted anywhere else, every path in it is off by one directory and
-      // nothing that symbolicates can line the two up.
-      await this.writeArchive(distDir, outputPath, `-T '${listPath}'`, {
-        // ⚠️ `*.map` is an exclude, and this archive is nothing BUT maps.
-        exclude: false,
-      });
-    } finally {
-      await this.fs.rm(listPath, { force: true });
-    }
-
-    return { filename, outputPath };
   }
 
   /**

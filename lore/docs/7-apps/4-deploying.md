@@ -132,9 +132,11 @@ Each row is one of two kinds:
 
 Three families of name are refused, and the refusal says so:
 
-- `DATABASE_URL`, `R2_BUCKET_NAME` and the `CLOUDFLARE_*` names. The deploy
-  creates those resources and derives the values itself. A value stored here
-  could point a fresh deploy at somebody else's database.
+- `R2_BUCKET_NAME` and the `CLOUDFLARE_*` names. The deploy creates those
+  resources and derives the values itself. A value stored here could point a
+  fresh deploy at somebody else's bucket. `DATABASE_URL` is the one exception
+  on Cloudflare, and only for a Postgres URL: see
+  [D1 or Postgres](#d1-or-postgres).
 - Settings the platform sets itself, like `LOG_LEVEL`.
 - On a copy that runs on a **Bay** (one deploying to a Bay estate, or a
   stack's app service), the names Bay writes into every instance:
@@ -184,6 +186,46 @@ moving a copy off a machine you do not control, change its key: with
 `bay secret replace` on its new Bay, or by setting `APP_SECRET` on this tab
 for a copy now on Cloudflare. Either one signs every session out and loses
 what was sealed with the old key, such as MFA enrolments.
+
+### D1 or Postgres
+
+On Cloudflare, each copy chooses its own database, and the build does not
+change. With no `DATABASE_URL`, the deploy creates a D1 database for the copy.
+Set `DATABASE_URL` to a Postgres URL and the copy runs on that server through
+Cloudflare Hyperdrive instead:
+
+```bash
+DATABASE_URL=postgres://app:secret@db.example.com:5432/app_prod?sslmode=require \
+  lore secrets set DATABASE_URL --env production
+```
+
+So one build can run `staging` on D1 and `production` on Postgres. The
+**Environment** tab says which database the copy runs on, naming the
+Postgres server and database, never the password.
+
+- **The URL is a secret, never sent to the app.** The deploy hands it to
+  Hyperdrive and to the migrations only; the Worker sees `hyperdrive://`.
+- **Each deploy migrates first.** The build's `migrations/postgres/` is applied
+  to the server before the new version ships. A build pushed before the app
+  kept that folder is refused, and nothing is created: run
+  `alepha db baseline create --provider postgres`, push a new build and deploy
+  that one.
+- **A rotated password needs only a redeploy.** Set the new URL, deploy: the
+  Hyperdrive config is updated on every run.
+- **Two copies cannot share one database.** Lore refuses a `DATABASE_URL`
+  naming the host, port and database another copy already uses: both would
+  apply their migrations to one set of tables.
+- **The server needs a publicly trusted certificate** on a DNS name, and the
+  estate's token needs **Hyperdrive: Edit** (see
+  [The Cloudflare token](/lore/docs/apps-cloudflare-token)).
+- **Backups are yours.** D1 has Time Travel; a Postgres server is backed up
+  by whoever runs it.
+
+⚠️ **Switching moves no data.** Setting `DATABASE_URL` on a copy that ran on
+D1, or removing it from one on Postgres, points the next deploy at the other
+database as it stands: empty, the first time. The old database is kept, so
+switching back finds it again; a move to Postgres says so in the deploy's
+log. Copying rows across is yours to do.
 
 ## 5. Push a build
 
@@ -266,6 +308,11 @@ expects with the one every later deploy left behind:
 | a `NOT NULL` column added with no default                  | names it: the old build will break |
 | a column type changed, a constraint or unique index added  | names it: some writes may fail     |
 
+A rollback across a database switch never brings the old database back:
+the fast path is refused, because an older Worker version is bound to the
+database it ran on, and Lore redeploys the stored build against the database
+the copy runs on today. The confirmation says so.
+
 Anything it names has to be acknowledged. A data migration (an `UPDATE` that
 changes no structure) leaves the snapshot as it was, so the check cannot see
 it. When a build was pushed without its schema (an older CLI), the
@@ -289,7 +336,8 @@ environment fails the check. There is no `--yes`.
 ### On Cloudflare
 
 The command removes what a redeploy puts back: the Worker, the job queue and
-its dead-letter queue, and the cache namespace. An app that uses websockets
+its dead-letter queue, the cache namespace, and the Hyperdrive config of a copy
+that ran on Postgres. The Postgres server and its data are never touched. An app that uses websockets
 also has a Durable Object namespace, which holds live connections and nothing
 else. It goes with the Worker.
 

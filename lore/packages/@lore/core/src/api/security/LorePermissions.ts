@@ -439,7 +439,7 @@ export class LorePermissions {
   });
 
   /**
-   * Removing a build from the registry, with its stored bytes and source maps.
+   * Removing a build from the registry, with its stored bytes.
    *
    * Not a member default, although pushing is: nothing a pipeline does needs
    * to take a build away. A forced push moves a pinned tag and drops the

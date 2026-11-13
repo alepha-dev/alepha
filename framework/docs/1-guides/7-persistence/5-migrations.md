@@ -107,7 +107,7 @@ The database driver is selected based on the `DATABASE_URL` environment variable
 | `d1://`                                | Cloudflare D1                                       |
 | `hyperdrive://`                        | Cloudflare Hyperdrive (Postgres from Workers)       |
 
-Any other scheme is refused at startup with an error naming the scheme. Every driver comes with `alepha/orm`, which any `$entity` registers: nothing to import or register to move from SQLite to Postgres, the URL decides. The Postgres drivers are loaded when the app connects, so a SQLite app never evaluates them.
+Any other scheme is refused at startup with an error naming the scheme. [SQLite or Postgres](/docs/guides-persistence-sqlite-or-postgres) covers choosing one, the two migration folders every app keeps, and switching on Cloudflare and in Docker. Every driver comes with `alepha/orm`, which any `$entity` registers: nothing to import or register to move from SQLite to Postgres, the URL decides. The Postgres drivers are loaded when the app connects, so a SQLite app never evaluates them.
 
 PostgreSQL also reads `POSTGRES_SCHEMA` (default `public`), `POOL_MAX`, and `POOL_IDLE_TIMEOUT` / `POOL_CONNECT_TIMEOUT` in seconds. Every driver reads `DATABASE_TIMEOUT` (milliseconds a query may take, `0` disables, `5000` on serverless and off elsewhere by default; see [Timeouts](/docs/guides-core-cancellation#timeouts)), and `DATABASE_TIMEOUT_SCOPE` (`all`, the default, or `reads` to leave writes without a timeout). The other D1 settings (`DATABASE_D1_MODE`) are covered in the [Cloudflare guide](/docs/guides-deployment-cloudflare).
 

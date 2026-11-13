@@ -130,12 +130,10 @@ export class ArtifactController {
         manifest: artifactManifestSchema.optional(),
         file: z.file({ maxBytes: 20 * 1024 * 1024 }),
         /**
-         * This build's source maps, as a sibling archive (#1515).
-         *
-         * ⚠️ Optional, and it has to stay optional in both directions. A build
-         * may produce none, and a CLI older than #1515 sends none because its
-         * maps are still inside the tarball - refusing those would turn every
-         * unupgraded pipeline red for a size optimisation.
+         * The source maps archive an older CLI still sends (#Q1515), read
+         * and dropped (#Q3549): nothing symbolicated with it. Maybe one day
+         * symbolicated production stacks will want maps stored again, but
+         * not today. Declared only so an unupgraded pipeline is not refused.
          */
         maps: z.file({ maxBytes: 20 * 1024 * 1024 }).optional(),
         /**
@@ -167,7 +165,6 @@ export class ArtifactController {
         force: body.force,
         manifest: body.manifest,
         file: body.file,
-        maps: body.maps,
         assets: body.assets,
         schema: body.schema,
       });
@@ -366,7 +363,6 @@ export class ArtifactController {
         variants: group.variants.map((variant) => ({
           ...this.resource(variant),
           manifest: this.manifestOf(variant),
-          hasMaps: Boolean(variant.mapsFileId),
         })),
         ...surroundings,
       };
@@ -412,53 +408,7 @@ export class ArtifactController {
   });
 
   /**
-   * The source maps of one stored build.
-   *
-   * ⚠️ **The only way back to them**, which is what makes excluding `*.map`
-   * from the tarball safe rather than a quiet deletion (#1515). A sibling
-   * object with no way to read it is a deletion with extra storage.
-   *
-   * `artifact:read`, like every other read of the registry. 404 when the artifact predates
-   * #1515 or its build produced none, and the message says which - "no maps"
-   * and "no such artifact" are different facts and an operator debugging a
-   * stack trace needs to know which one they have.
-   */
-  getArtifactMaps = $action({
-    use: [this.ownsProject("artifact:read")],
-    method: "GET",
-    path: "/projects/:projectId/artifacts/:artifactId/maps",
-    description: "Download the source maps stored beside one build.",
-    schema: {
-      params: z.object({
-        projectId: z.integer(),
-        artifactId: z.uuid(),
-      }),
-      response: z.file(),
-    },
-    handler: async ({ params, reply }) => {
-      const artifact = await this.artifacts.findById(
-        params.projectId,
-        params.artifactId,
-      );
-      if (!artifact) {
-        throw new NotFoundError("No such artifact in this project.");
-      }
-      if (!artifact.mapsFileId) {
-        throw new NotFoundError(
-          `${artifact.app} ${artifact.tag} (${artifact.runtime}) has no stored source maps. Builds pushed before source maps were split out carry them inside the artifact itself.`,
-        );
-      }
-
-      const file = await this.files.streamFile(artifact.mapsFileId, {
-        bucket: ArtifactService.BUCKET,
-      });
-      reply.setHeader("cache-control", "no-store");
-      return file;
-    },
-  });
-
-  /**
-   * Remove one build from the registry, with its stored bytes and source maps.
+   * Remove one build from the registry, with its stored bytes.
    *
    * ## ⚠️ Not the push's gate
    *

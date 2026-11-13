@@ -1,0 +1,25 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "aa9c3843-c860-41d2-aa91-a4baadd8b732",
+  "prevIds": ["f36a7112-76a7-437b-b94a-1acd4c5400e7"],
+  "footprints": [
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "artifacts", "maps_file_id"],
+      "writes": [
+        "s|col|public.artifacts.maps_file_id",
+        "n|col|public.artifacts.maps_file_id",
+        "e|col|public.artifacts.maps_file_id"
+      ],
+      "reads": ["n|tbl|public.artifacts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"artifacts\",\"maps_file_id\"]"
+    }
+  ]
+}

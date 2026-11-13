@@ -122,8 +122,8 @@ row's menu. It needs the `artifact:delete` permission, which the owner holds
 and a [rank](/lore/docs/project-members) can be given. Pushing does not need
 it.
 
-⚠️ This cannot be undone. The build leaves Lore with its stored bytes and
-source maps. The deploy history keeps its records. Two deletes are allowed and
+⚠️ This cannot be undone. The build leaves Lore with its stored bytes. The
+deploy history keeps its records. Two deletes are allowed and
 named in the confirmation before they happen:
 
 - **A build a deployed copy runs.** A redeploy or a rollback that needs it has

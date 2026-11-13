@@ -1,8 +1,14 @@
 import { Alepha } from "alepha";
+import { AiProvider, MemoryAiProvider } from "alepha/ai";
+import { AnthropicAiProvider } from "alepha/ai/anthropic";
 import { AiController, AiSettings } from "alepha/api/ai";
 import { describe, it } from "vitest";
 
-import { LoreAiController, LoreAssistant } from "@/assistant/index.ts";
+import {
+  LoreAiAssistant,
+  LoreAiController,
+  LoreAssistant,
+} from "@/assistant/index.ts";
 
 import { bootAssistant } from "./fixtures/bootAssistant.ts";
 import { bootLore } from "./fixtures/bootLore.ts";
@@ -135,6 +141,51 @@ describe("LoreAssistant", () => {
         body: { message: "second" },
       });
       expect(over.status).toBe(429);
+      await alepha.stop();
+    });
+  });
+
+  describe("the vendor, picked by the env", () => {
+    it("answers on Anthropic, with AI_MODEL, when AI_API_KEY is set", async ({
+      expect,
+    }) => {
+      const { alepha } = await bootAssistant({
+        enabled: "1",
+        env: { AI_API_KEY: "sk-ant-test", AI_MODEL: "claude-sonnet-5-5" },
+      });
+      expect(alepha.inject(AiProvider)).toBeInstanceOf(AnthropicAiProvider);
+      expect(alepha.inject(LoreAiAssistant).assistant.options.model).toBe(
+        "claude-sonnet-5-5",
+      );
+      await alepha.stop();
+    });
+
+    it("refuses to start on Anthropic without AI_MODEL", async ({ expect }) => {
+      await expect(
+        bootAssistant({ enabled: "1", env: { AI_API_KEY: "sk-ant-test" } }),
+      ).rejects.toThrow(/AI_MODEL/);
+    });
+
+    it("keeps the Workers AI default model without a key", async ({
+      expect,
+    }) => {
+      const { alepha } = await bootAssistant();
+      expect(alepha.inject(AiProvider)).toBeInstanceOf(MemoryAiProvider);
+      expect(alepha.inject(LoreAiAssistant).assistant.options.model).toBe(
+        "@cf/mistralai/mistral-small-3.1-24b-instruct",
+      );
+      await alepha.stop();
+    });
+
+    it("lets AI_MODEL replace the default model without a key", async ({
+      expect,
+    }) => {
+      const { alepha } = await bootAssistant({
+        env: { AI_MODEL: "@cf/meta/llama-4-scout-17b-16e-instruct" },
+      });
+      expect(alepha.inject(LoreAiAssistant).assistant.options.model).toBe(
+        "@cf/meta/llama-4-scout-17b-16e-instruct",
+      );
       await alepha.stop();
     });
   });

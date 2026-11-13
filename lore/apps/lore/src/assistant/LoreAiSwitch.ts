@@ -12,10 +12,10 @@ import { AiProvider, MemoryAiProvider } from "alepha/ai";
  * registered either way, so the `ai_*` tables and the generated migrations
  * never depend on an env var (`check:migrations` would flip with it).
  *
- * ⚠️ Off Workers no real provider is registered and `MemoryAiProvider`, a
- * scripted fake, would answer. A production copy with the switch set and that
- * fake behind it refuses to start, naming the switch, rather than serve a
- * chat that answers nothing.
+ * ⚠️ Off Workers without `AI_API_KEY` no real provider is registered and
+ * `MemoryAiProvider`, a scripted fake, would answer. A production copy with
+ * the switch set and that fake behind it refuses to start, naming the switch,
+ * rather than serve a chat that answers nothing.
  */
 export class LoreAiSwitch {
   protected readonly alepha = $inject(Alepha);
@@ -27,7 +27,7 @@ export class LoreAiSwitch {
           default: "",
           secret: false,
           description:
-            "Turns Lore's in-app assistant on. Unset, empty, 'false' or '0': off. On Workers the `ai` binding answers; elsewhere no provider exists and a production boot refuses.",
+            "Turns Lore's in-app assistant on. Unset, empty, 'false' or '0': off. With `AI_API_KEY` set, Anthropic answers on every runtime; otherwise the `ai` binding answers on Workers, and elsewhere no provider exists and a production boot refuses.",
         })
         .optional(),
     }),
@@ -51,7 +51,7 @@ export class LoreAiSwitch {
       }
       if (this.alepha.inject(AiProvider) instanceof MemoryAiProvider) {
         throw new AlephaError(
-          "AI_ASSISTANT_ENABLED is set, but no AI provider is registered: off Workers Lore has none, and the in-memory fake would answer every turn. Unset AI_ASSISTANT_ENABLED, or run on Workers with the `ai` binding.",
+          "AI_ASSISTANT_ENABLED is set, but no AI provider is registered: off Workers and without AI_API_KEY Lore has none, and the in-memory fake would answer every turn. Set AI_API_KEY (and AI_MODEL) for Anthropic, run on Workers with the `ai` binding, or unset AI_ASSISTANT_ENABLED.",
         );
       }
     },

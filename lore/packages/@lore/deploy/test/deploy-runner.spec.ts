@@ -613,35 +613,4 @@ describe("deploying an artifact from inside the Worker", () => {
 
     expect(calls).toContain("deploy:acme-my-app-east-preview");
   });
-
-  it("says it uploads no source maps when the build stored some, naming their size (#Q3061)", async ({
-    expect,
-  }) => {
-    const { runner } = await withFakeCloudflare(await packed());
-    const lines: string[] = [];
-    const registry = (runner as unknown as { registry: object }).registry;
-    Object.assign(registry, {
-      line: async (_deployment: string, text: string) => {
-        lines.push(text);
-      },
-    });
-    Object.assign((runner as unknown as { files: object }).files, {
-      getFileById: async () => ({ size: 5 * 1024 * 1024 }),
-    });
-
-    await runner.run(
-      request({
-        artifact: {
-          app: "my-app",
-          sha256: "a".repeat(64),
-          fileId: "file-1",
-          mapsFileId: "maps-1",
-        },
-      }) as never,
-    );
-
-    expect(lines).toContain(
-      "Source maps not uploaded: this deploy does not load the build's maps archive (5120 KB compressed), so Workers Logs show bundled frames",
-    );
-  });
 });

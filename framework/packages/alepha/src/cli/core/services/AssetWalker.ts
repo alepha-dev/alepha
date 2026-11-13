@@ -33,9 +33,8 @@ export class AssetWalker {
    * ⚠️ **`*.map` is here, so this changes what EVERY `alepha pack` produces**,
    * and every laptop deploy: no runtime reads a source map out of a tarball,
    * and Cloudflare treats them as a separate opt-in (`upload_source_maps`).
-   * `WorkspacePacker` writes them to a sibling maps archive instead, so they
-   * are routed, not discarded. Adding a pattern here without a route for what
-   * it removes is how a diagnostic quietly stops existing.
+   * A laptop deploy reads each Worker module's map from `dist` directly, so
+   * excluding them here costs it nothing.
    */
   public static readonly EXCLUDES: readonly string[] = [
     "node_modules",

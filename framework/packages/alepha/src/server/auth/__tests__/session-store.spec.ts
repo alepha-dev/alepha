@@ -120,8 +120,14 @@ describe("the session store, on", () => {
     const [id] = store().ids;
     const raw = await store().raw(id!);
     expect(raw).toBeTruthy();
-    expect(raw).not.toContain("eyJ");
-    expect((await store().get(id!))?.access_token).toMatch(/^eyJ/);
+    const tokens = await store().get(id!);
+    expect(tokens?.access_token).toMatch(/^eyJ/);
+    // Not "eyJ" alone: the ciphertext is random base64url, and holds any
+    // given three characters about once in a hundred runs (#Q3550). A JWT's
+    // header and payload segments, 20 characters and more, never by chance.
+    const [header, payload] = tokens!.access_token.split(".");
+    expect(raw).not.toContain(header);
+    expect(raw).not.toContain(payload);
   });
 
   it("keeps the id across a refresh, and gives a new sign-in a new one", async () => {

@@ -569,7 +569,7 @@ export default {
   "artifacts.delete.action": "Supprimer",
   "artifacts.delete.title": "Supprimer $1 ?",
   "artifacts.delete.body":
-    "Cette action est irréversible. Le build quitte le registre avec ses octets stockés et ses source maps ; l'historique des déploiements garde ses entrées.",
+    "Cette action est irréversible. Le build quitte le registre avec ses octets stockés ; l'historique des déploiements garde ses entrées.",
   "artifacts.delete.running":
     "Ce tag est en service sur $1 : un redéploiement ou un retour arrière qui a besoin de ce build n'aura rien à déployer.",
   "artifacts.delete.latest":
@@ -578,7 +578,7 @@ export default {
   "artifacts.bulk.delete.title": "Supprimer $1 artefacts ?",
   "artifacts.bulk.delete.confirm": "Supprimer $1 artefacts",
   "artifacts.bulk.delete.body":
-    "Cette action est irréversible. Les builds quittent le registre avec leurs octets stockés et leurs source maps ; l'historique des déploiements garde ses entrées.",
+    "Cette action est irréversible. Les builds quittent le registre avec leurs octets stockés ; l'historique des déploiements garde ses entrées.",
   "artifacts.bulk.delete.running":
     "La sélection contient un tag qu'une copie déployée exécute : un redéploiement ou un retour arrière qui en a besoin n'aura rien à déployer.",
   "artifacts.bulk.delete.latest":
