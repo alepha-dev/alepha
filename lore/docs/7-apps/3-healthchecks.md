@@ -5,9 +5,11 @@ TLS certificate, or a scheduled job that should have reported in. It works for
 any address, whatever the stack behind it, and needs no sigil and no app in
 Lore.
 
-Healthchecks are the **Healthchecks** option of the **Deploy and watch apps**
-capability, off by default, in **Settings ▸ General ▸ Capabilities**. Turning
-it on adds **Uptime** to the sidebar. See
+Healthchecks are the **Monitor apps** option of the **Deploy and watch apps**
+capability, off by default, in **Settings ▸ General ▸ Capabilities** and
+**Settings ▸ Apps**. Turning it on adds **Uptime** to the sidebar. It works on
+its own: a project can keep **Track apps** and **Deploy apps** off and still
+watch any address, with its history and its alerts. See
 [Capabilities](/lore/docs/project-capabilities).
 
 ## The Uptime page
@@ -144,7 +146,7 @@ Reading monitors needs the `app:read` permission, which the default Member rank
 holds. Creating, editing, pausing and deleting them needs `app:manage`, which
 the owner holds and a [rank](/lore/docs/project-members) can be given.
 
-With the **Healthchecks** option off, no check runs, every push is refused and
+With the **Monitor apps** option off, no check runs, every push is refused and
 monitors cannot be changed, but nothing is deleted.
 
 ## From an agent

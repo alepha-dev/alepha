@@ -12,7 +12,7 @@ on when you need it. See [Capabilities](/lore/docs/project-capabilities).
 
 | You want to                                         | Option           | Works with               | Page                                          |
 | --------------------------------------------------- | ---------------- | ------------------------ | --------------------------------------------- |
-| Know when a site, a port or a nightly job goes down | **Healthchecks** | Anything with an address | [Healthchecks](/lore/docs/apps-healthchecks)  |
+| Know when a site, a port or a nightly job goes down | **Monitor apps** | Anything with an address | [Healthchecks](/lore/docs/apps-healthchecks)  |
 | Run services from a Compose file on your server     | **Stacks**       | Any Compose file         | [Stacks](/lore/docs/apps-stacks)              |
 | See visitors, page speed and errors                 | **Track apps**   | Apps built with Alepha   | [Telemetry](/lore/docs/apps-telemetry)        |
 | Build, deploy and roll back from Lore               | **Deploy apps**  | Apps built with Alepha   | [Deploying an app](/lore/docs/apps-deploying) |

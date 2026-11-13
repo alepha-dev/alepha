@@ -155,6 +155,36 @@ describe("the Apps settings page", () => {
     expect(view.container.textContent).not.toMatch(/sg_/);
   });
 
+  it("lists Monitor apps beside Track apps and Deploy apps", async ({
+    expect,
+  }) => {
+    // Monitoring only (#Q3597): Track and Deploy off, Monitor on. The uptime
+    // option adds a sidebar entry, so General shows it too; this page lists
+    // it as the third thing a project does with its apps.
+    const { alepha, view } = await mount(<ProjectSettingsAppsPage />);
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["apps"],
+        options: { apps: { track: false, deploy: false, uptime: true } },
+      }),
+    );
+
+    const monitor = await view.findByRole("switch", { name: "Monitor apps" });
+    expect(monitor.getAttribute("aria-checked")).toBe("true");
+    expect(
+      view
+        .getByRole("switch", { name: "Track apps" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+    expect(
+      view
+        .getByRole("switch", { name: "Deploy apps" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+    expect(view.container.textContent).not.toContain("Healthchecks");
+  });
+
   it("explains the switch from the catalogue, not from its key", async ({
     expect,
   }) => {

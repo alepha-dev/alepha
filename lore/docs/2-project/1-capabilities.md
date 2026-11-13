@@ -54,7 +54,7 @@ will never use. An option that is off hides its menu entry and its fields.
 | ---------------- | ------------------------------------------------------------------------------------------------------------- |
 | **Track apps**   | Analytics, vitals and errors reported by your apps. See [Telemetry](/lore/docs/apps-telemetry).               |
 | **Deploy apps**  | Pushing a build to a machine you own. See [Deploying an app](/lore/docs/apps-deploying).                      |
-| **Healthchecks** | Checks on websites, ports, certificates and scheduled jobs. See [Healthchecks](/lore/docs/apps-healthchecks). |
+| **Monitor apps** | Checks on websites, ports, certificates and scheduled jobs. See [Healthchecks](/lore/docs/apps-healthchecks). |
 | **Stacks**       | Apps and services deployed together from one Compose file. See [Stacks](/lore/docs/apps-stacks).              |
 
 **Support** has no option.

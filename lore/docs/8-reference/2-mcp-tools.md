@@ -213,7 +213,7 @@ See [Apps and instances](/lore/docs/apps-instances) and
 ## Uptime
 
 See [Healthchecks](/lore/docs/apps-healthchecks). Reading needs `app:read`;
-the rest needs `app:manage` and the **Healthchecks** option.
+the rest needs `app:manage` and the **Monitor apps** option.
 
 | Tool                              | What it does                                                                       |
 | --------------------------------- | ---------------------------------------------------------------------------------- |

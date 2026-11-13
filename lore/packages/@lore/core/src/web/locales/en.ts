@@ -3761,9 +3761,9 @@ export default {
   "uptime.app.none": "No monitor checks this address yet.",
   "uptime.title": "Uptime",
   "uptime.empty": "No monitors yet.",
-  "project.capability.apps.option.uptime.label": "Healthchecks",
+  "project.capability.apps.option.uptime.label": "Monitor apps",
   "project.capability.apps.option.uptime.description":
-    "Check websites, ports, certificates and scheduled jobs without a sigil.",
+    "Check your addresses on a schedule and keep their history. No sigil needed.",
   "project.capability.apps.option.stacks.label": "Stacks",
   "project.capability.apps.option.stacks.description":
     "Deploy apps and services together from one compose.yml.",

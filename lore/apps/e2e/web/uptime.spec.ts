@@ -21,7 +21,7 @@ test.describe("Uptime healthchecks", () => {
     await expect(nav).toHaveCount(0);
     await page.goto(`/${slug}/settings/capabilities`);
     const toggle = page.getByRole("switch", {
-      name: "Healthchecks",
+      name: "Monitor apps",
       exact: true,
     });
     await expect(toggle).toHaveAttribute("aria-checked", "false");

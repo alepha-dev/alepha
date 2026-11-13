@@ -64,12 +64,16 @@ const ProjectSettingsAppsPage = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* The master and `track` (which adds the Blights entry) are in
-          General > Capabilities since #Q2565. */}
+      {/* The master is in General > Capabilities since #Q2565, with every
+          option that adds a sidebar entry. `uptime` adds one (Uptime) and is
+          listed here too, as Monitor apps beside Track and Deploy (#Q3597):
+          it is the third thing a project does with its apps, and a reader
+          looking for it looks here. Both switches write the same row.
+          `stacks` stays in General only. */}
       <ProjectSettingsCapabilitySection
         capability="apps"
         master={false}
-        options={shell.settingsOptions("apps")}
+        options={[...shell.settingsOptions("apps"), "uptime"]}
       />
 
       {enabled && <ProjectSettingsCoverageTarget />}

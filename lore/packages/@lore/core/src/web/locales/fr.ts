@@ -3766,9 +3766,9 @@ export default {
   "uptime.app.none": "Aucun moniteur ne surveille encore cette adresse.",
   "uptime.title": "Disponibilité",
   "uptime.empty": "Aucun moniteur pour le moment.",
-  "project.capability.apps.option.uptime.label": "Contrôles de santé",
+  "project.capability.apps.option.uptime.label": "Superviser les applications",
   "project.capability.apps.option.uptime.description":
-    "Surveillez les sites, ports, certificats et tâches planifiées sans sigil.",
+    "Vérifiez vos adresses à intervalles réguliers et gardez leur historique. Aucun sigil requis.",
   "project.capability.apps.option.stacks.label": "Stacks",
   "project.capability.apps.option.stacks.description":
     "Déployez ensemble des apps et des services depuis un seul compose.yml.",
