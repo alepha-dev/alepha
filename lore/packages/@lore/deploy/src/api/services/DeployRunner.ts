@@ -230,8 +230,6 @@ export class DeployRunner {
         `Unpacked ${unpacked.files} files (${Math.round(unpacked.bytes / 1024)} KB), ${unpacked.skipped} assets streamed`,
       );
 
-      await this.reportSourceMaps(deployment, request.artifact);
-
       // Before anything is provisioned: the row's manifest may be the one
       // the pusher sent rather than one read from these bytes (#Q2681).
       await this.assertManifestMatches(fs, request.artifact);
@@ -394,33 +392,6 @@ export class DeployRunner {
         // substitution recorded after it would lose to the original.
         .with({ provide: NamingService, use: StoredNamingService })
         .with(AlephaInfraLibPlugin)
-    );
-  }
-
-  /**
-   * Says, once, that this deploy uploads the Worker without its source maps.
-   *
-   * `alepha deploy` uploads them (#Q3061), but this Worker does not load the
-   * maps archive stored beside the build (#Q1515): measured 2026-11-05 on
-   * Lore's own build, the workerd slice's maps are 26.7 MB against 6.0 MB of
-   * code, and the adapter holds each one twice while normalising it, on top
-   * of the unpacked artifact, in a Worker that has already died of memory
-   * while unpacking. The line names the size so the gap is visible.
-   */
-  protected async reportSourceMaps(
-    deployment: string | undefined,
-    artifact: Artifact,
-  ): Promise<void> {
-    if (!artifact.mapsFileId) {
-      return;
-    }
-    const size = await this.files
-      .getFileById(artifact.mapsFileId)
-      .then((file) => file.size)
-      .catch(() => undefined);
-    await this.registry.line(
-      deployment,
-      `Source maps not uploaded: this deploy does not load the build's maps archive${size === undefined ? "" : ` (${Math.round(size / 1024)} KB compressed)`}, so Workers Logs show bundled frames`,
     );
   }
 

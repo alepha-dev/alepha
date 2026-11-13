@@ -27,15 +27,12 @@ import { WorkspacePacker } from "../services/WorkspacePacker.ts";
 /**
  * What `alepha pack` writes, and what it deliberately leaves out.
  *
- * ⚠️ **`*.map` is excluded from the artifact and kept in a sibling** (#1515).
- * Measured on Lore's `dist`: 266 of 267 server JS files had a map, and they
- * were roughly 5 MB of a 6.4 MB gzipped archive that no runtime reads -
- * Cloudflare treats source maps as a separate opt-in. The exclusion is only
- * safe because the sibling exists: a pattern added to `EXCLUDES` with no route
- * for what it removes is how a diagnostic quietly stops existing.
+ * ⚠️ **`*.map` is excluded from the artifact.** Measured on Lore's `dist`:
+ * 266 of 267 server JS files had a map, and they were roughly 5 MB of a
+ * 6.4 MB gzipped archive that no runtime reads.
  */
 describe("WorkspacePacker", () => {
-  const create = (options: { maps?: string[] } = {}) => {
+  const create = () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
@@ -43,13 +40,6 @@ describe("WorkspacePacker", () => {
 
     const fs = alepha.inject(MemoryFileSystemProvider);
     const shell = alepha.inject(MemoryShellProvider);
-    // `find` is what decides whether a maps archive is written at all, so the
-    // fake answers it the way a real one would: newline-separated paths, or
-    // nothing.
-    shell.outputs.set(
-      "sh -c \"find . -name '*.map' -type f -print\"",
-      (options.maps ?? []).join("\n"),
-    );
 
     const commands = () => shell.calls.map((it) => it.command);
 
@@ -95,12 +85,8 @@ describe("WorkspacePacker", () => {
     );
   };
 
-  it("packs the configured build directory and finds its source maps", async ({
-    expect,
-  }) => {
-    const { alepha, fs, commands, shell, packer } = create({
-      maps: ["server/app.js.map"],
-    });
+  it("packs the configured build directory", async ({ expect }) => {
+    const { alepha, fs, commands, packer } = create();
     await aWorkspace(fs);
     await fs.writeFile(
       "/project/release/manifest.json",
@@ -112,10 +98,6 @@ describe("WorkspacePacker", () => {
     expect(commands().find((cmd) => cmd.includes("tar -cf"))).toContain(
       "-C '/project/release' .",
     );
-    expect(
-      shell.calls.find((call) => call.command.includes("find ."))?.options
-        ?.root,
-    ).toBe("/project/release");
   });
 
   it("excludes *.map from the artifact", async ({ expect }) => {
@@ -131,63 +113,6 @@ describe("WorkspacePacker", () => {
     // ⚠️ Quoted, so the shell cannot expand it against the cwd before `tar`
     // sees it. `--exclude='*.map'` matches at any depth in GNU and BSD tar.
     expect(tarCommand).not.toContain("--exclude=*.map ");
-  });
-
-  it("writes the maps to a sibling archive when the build produced any", async ({
-    expect,
-  }) => {
-    const { fs, commands, shell, packer } = create({
-      maps: ["./index.node.js.map", "./server/node/app.js.map"],
-    });
-    await aWorkspace(fs);
-
-    const result = await packer.pack({
-      root: "/project",
-      output: "/out",
-      tag: "1.2.3",
-    });
-
-    expect(result.filename).toBe("acme-app-1.2.3.tar.zst");
-    expect(result.maps?.filename).toBe("acme-app-1.2.3.maps.tar.zst");
-    expect(result.maps?.outputPath).toBe("/out/acme-app-1.2.3.maps.tar.zst");
-
-    // ⚠️ `-T <list>` rather than the paths as arguments: a large build has
-    // thousands of maps and an argument list has a ceiling.
-    const mapsCommand = commands().find((it) =>
-      it.includes("maps.tar.zst.tar'"),
-    ) as string | undefined;
-    expect(mapsCommand).toContain("-T '/out/acme-app-1.2.3.maps.tar.zst.list'");
-    // ⚠️ Rooted at `dist`, like the main archive, so a map lands at
-    // `server/node/abc.js.map` beside the `server/node/abc.js` it describes.
-    // Rooted anywhere else every path is off by one directory, and nothing
-    // that symbolicates can line the two up.
-    const mapsCall = shell.calls.find((it) =>
-      it.command.includes("maps.tar.zst.tar'"),
-    );
-    expect(mapsCall?.options?.root).toBe("/project/dist");
-  });
-
-  it("writes no maps archive when the build produced none", async ({
-    expect,
-  }) => {
-    // An empty tarball would be a stored object that says something false: it
-    // would read as "this build has maps" to anything that checked for one.
-    const { fs, commands, packer } = create({ maps: [] });
-    await aWorkspace(fs);
-
-    const result = await packer.pack({ root: "/project", output: "/out" });
-
-    expect(result.maps).toBeUndefined();
-    expect(commands().some((it) => it.includes("maps.tar"))).toBe(false);
-  });
-
-  it("removes the list file it wrote", async ({ expect }) => {
-    const { fs, packer } = create({ maps: ["dist/index.js.map"] });
-    await aWorkspace(fs);
-
-    await packer.pack({ root: "/project", output: "/out", tag: "1.2.3" });
-
-    expect(fs.wasDeleted("/out/acme-app-1.2.3.maps.tar.zst.list")).toBe(true);
   });
 
   /**

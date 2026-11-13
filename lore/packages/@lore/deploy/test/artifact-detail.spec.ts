@@ -150,7 +150,6 @@ describe("getArtifact", () => {
     expect(read.variants[0].manifest?.secrets).toEqual([
       { name: "APP_SECRET" },
     ]);
-    expect(read.variants[0].hasMaps).toBe(false);
 
     const listed = await artifactApi.listArtifacts.fetch(
       { params: { projectId }, query: {} },

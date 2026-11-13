@@ -1,0 +1,1 @@
+ALTER TABLE "artifacts" DROP COLUMN "maps_file_id";

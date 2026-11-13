@@ -181,7 +181,7 @@ describe("WorkerCloudflareAdapter source maps", () => {
   }) => {
     const { fs, calls, deploy } = setup();
     await artifact(fs);
-    // A Lore artifact keeps its maps in a separate archive (#Q1515).
+    // A Lore artifact ships no maps: `alepha pack` excludes them.
     await fs.rm("/deploy/index.workerd.js.map");
     await fs.writeFile("/deploy/server/workerd/chunk.js.map", "not json");
 

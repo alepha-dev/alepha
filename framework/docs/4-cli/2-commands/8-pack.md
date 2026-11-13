@@ -40,7 +40,7 @@ Measured on a real two-slice build of Lore, 61 MB uncompressed:
 
 At the default window nothing fails: the archive is just twice the size it should be, at gzip-like ratios with extra machinery. The window is pinned explicitly and the ratio is asserted in a spec, because a pinned value alone drifts as apps outgrow it and an assertion alone never sets it.
 
-Source maps are excluded from the artifact and written to a sibling `<project>-<tag>.maps.tar.zst`, rooted the same way so a map sits beside the chunk it describes.
+Source maps are excluded from the artifact: no runtime reads them from it.
 
 ## Options
 

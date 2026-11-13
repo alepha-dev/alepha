@@ -80,10 +80,6 @@ export const artifactResourceSchema = z.object({
    * "declares nothing": builds pushed before the column exist.
    */
   manifest: z.record(z.text(), z.any()).optional(),
-  /**
-   * Whether source maps are stored beside this build. `getArtifact` only.
-   */
-  hasMaps: z.boolean().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

@@ -152,15 +152,6 @@ export class ArtifactUploader {
     // mode a boundary has.
     const boundary = `----alepha-artifact-${this.crypto.randomUUID()}`;
     const stream = await this.fs.readFileStream(input.archivePath);
-    // Streamed the same way and for the same reason: a maps archive is the
-    // larger half of what a build produces, which is why #1515 took it out of
-    // the artifact in the first place.
-    const maps = input.mapsPath
-      ? {
-          filename: input.mapsFilename ?? "maps.tar.zst",
-          stream: await this.fs.readFileStream(input.mapsPath),
-        }
-      : undefined;
 
     const res = await this.http.fetch(
       `${this.client.hostname()}/api/projects/${input.projectId}/artifacts`,
@@ -174,7 +165,7 @@ export class ArtifactUploader {
         // `RequestInit` has no such field - it is a fetch extension, not a
         // spec type. Without it node refuses the request outright.
         duplex: "half",
-        body: this.body(boundary, fields, input.filename, stream, maps, {
+        body: this.body(boundary, fields, input.filename, stream, {
           assets: input.assets,
           schema: input.schema,
         }),
@@ -204,10 +195,9 @@ export class ArtifactUploader {
     fields: Record<string, string>,
     filename: string,
     file: AsyncIterable<unknown>,
-    maps?: { filename: string; stream: AsyncIterable<unknown> },
     extras: ArtifactUploadExtras = {},
   ): ReadableStream<Uint8Array> {
-    const chunks = this.chunks(boundary, fields, filename, file, maps, extras);
+    const chunks = this.chunks(boundary, fields, filename, file, extras);
     return new ReadableStream<Uint8Array>({
       async pull(controller) {
         const next = await chunks.next();
@@ -230,7 +220,6 @@ export class ArtifactUploader {
     fields: Record<string, string>,
     filename: string,
     file: AsyncIterable<unknown>,
-    maps?: { filename: string; stream: AsyncIterable<unknown> },
     { assets, schema }: ArtifactUploadExtras = {},
   ): AsyncGenerator<Uint8Array> {
     const encoder = new TextEncoder();
@@ -242,13 +231,6 @@ export class ArtifactUploader {
     }
 
     yield* this.filePart(boundary, "file", filename, file);
-
-    // ⚠️ After the artifact, never before. A receiver that streams parts in
-    // order can start storing the build while the maps are still on the wire,
-    // and the maps are the larger half.
-    if (maps) {
-      yield* this.filePart(boundary, "maps", maps.filename, maps.stream);
-    }
 
     // The asset list (#Q3381), JSON, as a file part: a site's list runs to
     // hundreds of kilobytes, past what a text field should carry.
@@ -280,8 +262,7 @@ export class ArtifactUploader {
   /**
    * One file part, header and body, closed with its own CRLF.
    *
-   * Extracted when the maps part arrived (#1515): two copies of a multipart
-   * preamble is how a boundary ends up written one way in one place and
+   * One helper for every part: two copies of a multipart preamble is how a boundary ends up written one way in one place and
    * another way in the other, and a malformed message shows up as "the server
    * says the file is missing".
    */
@@ -349,15 +330,6 @@ export interface ArtifactUploadInput {
    * what a server-side log names.
    */
   filename: string;
-
-  /**
-   * The sibling `.maps.tar.zst`, when the build produced one (#1515).
-   *
-   * Absent for a build with no source maps, which is a normal state and not an
-   * error. Lore stores it beside the artifact and deletes it with the row.
-   */
-  mapsPath?: string;
-  mapsFilename?: string;
 
   /**
    * The asset list, JSON (#Q3381): sent as the `assets` part when present.

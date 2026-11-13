@@ -1338,7 +1338,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Deleting a build",
     url: "https://alepha.dev/lore/docs/apps-artifacts#deleting-a-build",
     capability: "apps",
-    text: "A build pushed by mistake is removed from the project's **Artifacts** page:\ntick rows and use **Delete** in the bar that appears, or use **Delete** in a\nrow's menu. It needs the `artifact:delete` permission, which the owner holds\nand a [rank](/lore/docs/project-members) can be given. Pushing does not need\nit.\n\n⚠️ This cannot be undone. The build leaves Lore with its stored bytes and\nsource maps. The deploy history keeps its records. Two deletes are allowed and\nnamed in the confirmation before they happen:\n\n- **A build a deployed copy runs.** A redeploy or a rollback that needs it has\n  nothing to deploy afterwards.\n- **`latest`.** Deploys that name no tag fail until CI pushes it again.",
+    text: "A build pushed by mistake is removed from the project's **Artifacts** page:\ntick rows and use **Delete** in the bar that appears, or use **Delete** in a\nrow's menu. It needs the `artifact:delete` permission, which the owner holds\nand a [rank](/lore/docs/project-members) can be given. Pushing does not need\nit.\n\n⚠️ This cannot be undone. The build leaves Lore with its stored bytes. The\ndeploy history keeps its records. Two deletes are allowed and\nnamed in the confirmation before they happen:\n\n- **A build a deployed copy runs.** A redeploy or a rollback that needs it has\n  nothing to deploy afterwards.\n- **`latest`.** Deploys that name no tag fail until CI pushes it again.",
   },
   {
     guide: "Artifacts",
