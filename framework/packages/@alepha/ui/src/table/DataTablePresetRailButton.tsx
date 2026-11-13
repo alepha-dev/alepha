@@ -17,7 +17,9 @@ export interface DataTablePresetRailButtonProps {
 /**
  * One preset of the rail: icon above label, a badge in its corner.
  */
-export const DataTablePresetRailButton = (props: DataTablePresetRailButtonProps) => {
+export const DataTablePresetRailButton = (
+  props: DataTablePresetRailButtonProps,
+) => {
   const Icon = props.icon;
   const count = props.count ?? 0;
   const button = (

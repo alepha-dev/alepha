@@ -684,9 +684,11 @@ export interface DataTableFilters<
    * (`?tab=`, a locale, a tracking param). Multi-value filters are
    * comma-joined: `?status=new,triaged`.
    *
-   * Read once, at mount, and landed in the same slot as {@link seedValues} —
-   * above the reader's stored filters, below an explicit `seedValues` the
-   * caller passes for a case of its own.
+   * Read once, at mount. A URL carrying at least one filter REPLACES the
+   * reader's stored filters rather than adding to them: the link's values are
+   * the whole filter, so a link (or a preset's values sent as one) opens
+   * exactly the rows it names. A URL carrying none leaves the stored filters
+   * as they were. An explicit `seedValues` still outranks the URL.
    *
    * ⚠️ **One-directional, and it has to stay that way.** The URL seeds the
    * filters; the filters NEVER write back. Lore's `?view=kanban` was removed
@@ -702,6 +704,11 @@ export interface DataTableFilters<
    * the page says so.
    */
   fromQuery?: boolean | readonly (keyof DataTableFilterValues<F> & string)[];
+  /**
+   * Named sets of filter values, drawn as a rail of buttons beside the table,
+   * icon above label. See {@link DataTablePresets}.
+   */
+  presets?: DataTablePresets<F>;
   /**
    * Draw the filter controls yourself, from the table's form typed from
    * `fields`, instead of the table's filter bar. The escape hatch, for a
@@ -899,4 +906,68 @@ export interface DataTableSummaryContext {
    * a page or a sort: the moments a fetched summary reloads.
    */
   refreshKey: number;
+}
+
+/**
+ * One named set of filter values: "Mine", "Urgent", "Done this week".
+ */
+export interface DataTablePreset<
+  F extends DataTableFilterFields = DataTableNoFilterFields,
+> {
+  /**
+   * Stable identity, for the React key and the button's `data-preset`.
+   */
+  key: string;
+  label: string;
+  icon?: IconType;
+  /**
+   * What the preset selects, in a sentence: the button's tooltip.
+   */
+  hint?: string;
+  /**
+   * The filter values the preset sets. Every filter it does not name is
+   * cleared, so a preset is the whole filter, never an addition to the
+   * reader's.
+   */
+  values: Partial<DataTableFilterValues<F>>;
+  /**
+   * The badge in the button's corner, supplied by the caller (the table
+   * cannot count rows it has not fetched). Absent or 0 draws no badge.
+   */
+  count?: number;
+  /**
+   * `danger` reddens a non-zero badge: something somebody should look at now.
+   */
+  tone?: "default" | "danger";
+  /**
+   * A thin rule is drawn between two consecutive presets whose groups differ.
+   */
+  group?: string;
+}
+
+/**
+ * The presets of a table's filters, drawn as a rail on its left.
+ *
+ * - **A click sets the preset's values and clears every other filter**, then
+ *   leaves only the preset's filters on the bar, so the bar shows what the
+ *   preset is made of and nothing else.
+ * - **A preset is lit while the table's values are exactly its values**,
+ *   however they got there: by its click, by hand, or by a link
+ *   (`fromQuery`). Nothing is added to the URL; a link that carries a
+ *   preset's values lights its button by itself. Lists compare as sets, and
+ *   an empty value is the same as an absent one.
+ * - **"All" closes the rail** and is lit while no filter is set. Its click is
+ *   the toolbar's Reset filters.
+ *
+ * The rail is drawn from `md` up; on a phone the filter dialog is the table's
+ * filter surface.
+ */
+export interface DataTablePresets<
+  F extends DataTableFilterFields = DataTableNoFilterFields,
+> {
+  items: DataTablePreset<F>[];
+  /**
+   * The "All" button at the bottom of the rail; `false` drops it.
+   */
+  all?: { label?: string; hint?: string; icon?: IconType } | false;
 }

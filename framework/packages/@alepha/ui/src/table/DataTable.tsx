@@ -26,6 +26,8 @@ import {
   persistedSize,
   persistedSort,
 } from "./dataTablePersistence.ts";
+import { DataTablePresetRail } from "./DataTablePresetRail.tsx";
+import { isEmptyFilterValue } from "./dataTablePresets.ts";
 import { DATA_TABLE_SQUARE_RIGHT } from "./dataTableSquareRight.ts";
 import { DataTableSummaryPanel } from "./DataTableSummaryPanel.tsx";
 import { DataTableTabs } from "./DataTableTabs.tsx";
@@ -512,16 +514,61 @@ export const DataTable = <
   const showColumnPicker = !props.hideColumnPicker && allColumnKeys.length > 0;
   const showActionsMenu = !props.hideActionsMenu;
 
-  return (
-    <ClientOnly>
-      <div className={cn("flex flex-col gap-2", props.className)}>
-        {props.header && (
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">{props.header}</div>
-          </div>
-        )}
+  // The presets rail (`filters.presets`), from `md` up: on a phone the
+  // filter dialog is the table's whole filter surface.
+  const presets = untyped.filters?.presets;
+  const rail =
+    presets &&
+    presets.items.length > 0 &&
+    form &&
+    filterDefinition &&
+    !isMobile ? (
+      <DataTablePresetRail
+        form={form}
+        keys={filterDefinition.keys}
+        presets={presets}
+        onApply={(preset) => {
+          const values = preset.values as Record<string, unknown>;
+          const inputs = form.input as unknown as Record<
+            string,
+            { set?: (value: unknown) => void } | undefined
+          >;
+          // Every key, so a preset is the whole filter: what it does not
+          // name is cleared, the way Reset filters clears it.
+          for (const key of filterDefinition.keys) {
+            inputs[key]?.set?.(values[key]);
+          }
+          // The bar then shows the preset's filters and nothing else.
+          filterVisibility.setShown(
+            Object.keys(values).filter(
+              (key) =>
+                !isEmptyFilterValue(values[key]) &&
+                filterDefinition.modes[key] !== "locked",
+            ),
+            true,
+          );
+        }}
+        onAll={resetFilters}
+        className={props.chromeClassName}
+      />
+    ) : undefined;
 
-        {/*
+  const table = (
+    <div
+      className={cn(
+        "flex flex-col gap-2",
+        // Beside the rail the table and the rail are one panel: every band
+        // squares its start corners against the rail's squared end ones.
+        rail ? "min-h-0 min-w-0 flex-1 [&>*]:rounded-s-none" : props.className,
+      )}
+    >
+      {props.header && (
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">{props.header}</div>
+        </div>
+      )}
+
+      {/*
           The summary opens the frame when it is there, so it takes the top
           corners `squareRight` squares, and whatever follows it (the filter
           bar, or the rows when there is none) joins under it the way the rows
@@ -529,79 +576,79 @@ export const DataTable = <
           the wrapper's gap. The panel's own bottom border is the line
           between them.
         */}
-        {showTabs && (
-          <DataTableTabs
-            tabs={props.tabs!}
-            className={cn(squareRight?.top, flatTop, props.chromeClassName)}
-          />
-        )}
+      {showTabs && (
+        <DataTableTabs
+          tabs={props.tabs!}
+          className={cn(squareRight?.top, flatTop, props.chromeClassName)}
+        />
+      )}
 
-        {showSummary && (
-          <DataTableSummaryPanel
-            title={
-              props.summary?.title ??
-              tr("dataTable.summary", { default: "Summary" })
-            }
-            open={summary.open}
-            onOpenChange={summary.setOpen}
-            cards={summary.cards}
-            loading={summary.loading}
-            content={hasSummaryContent ? summaryContent : undefined}
-            className={cn(
-              showTabs ? underTabs : squareRight?.top,
-              flatTop,
-              props.chromeClassName,
-            )}
-          />
-        )}
+      {showSummary && (
+        <DataTableSummaryPanel
+          title={
+            props.summary?.title ??
+            tr("dataTable.summary", { default: "Summary" })
+          }
+          open={summary.open}
+          onOpenChange={summary.setOpen}
+          cards={summary.cards}
+          loading={summary.loading}
+          content={hasSummaryContent ? summaryContent : undefined}
+          className={cn(
+            showTabs ? underTabs : squareRight?.top,
+            flatTop,
+            props.chromeClassName,
+          )}
+        />
+      )}
 
-        {showToolbar && (
-          <DataTableToolbar<T>
-            columns={props.columns}
-            filters={untyped.filters}
-            form={form}
-            filterDefinition={filterDefinition}
-            shownFilters={filterVisibility.shown}
-            onShownFiltersChange={filterVisibility.setShown}
-            canResetFilters={canResetFilters}
-            leading={props.leading}
-            toolbar={props.toolbar}
-            actions={props.actions}
-            help={hasHelp ? props.help : undefined}
-            isMobile={isMobile}
-            showColumnPicker={showColumnPicker}
-            showActionsMenu={showActionsMenu}
-            activeFilterCount={activeFilterCount}
-            canShare={canShare}
-            resetFilters={resetFilters}
-            shareFilters={shareFilters}
-            orderedKeys={orderedKeys}
-            visibleColumns={visibleColumns}
-            toggleColumn={toggleColumn}
-            reorderColumn={reorderColumn}
-            isRefreshing={isRefreshing}
-            handleRefreshClick={handleRefreshClick}
-            className={cn(
-              showSummary || showTabs
-                ? "-mt-2 rounded-t-none border-t-0"
-                : squareRight?.top,
-              flatTop,
-              props.chromeClassName,
-            )}
-          />
-        )}
+      {showToolbar && (
+        <DataTableToolbar<T>
+          columns={props.columns}
+          filters={untyped.filters}
+          form={form}
+          filterDefinition={filterDefinition}
+          shownFilters={filterVisibility.shown}
+          onShownFiltersChange={filterVisibility.setShown}
+          canResetFilters={canResetFilters}
+          leading={props.leading}
+          toolbar={props.toolbar}
+          actions={props.actions}
+          help={hasHelp ? props.help : undefined}
+          isMobile={isMobile}
+          showColumnPicker={showColumnPicker}
+          showActionsMenu={showActionsMenu}
+          activeFilterCount={activeFilterCount}
+          canShare={canShare}
+          resetFilters={resetFilters}
+          shareFilters={shareFilters}
+          orderedKeys={orderedKeys}
+          visibleColumns={visibleColumns}
+          toggleColumn={toggleColumn}
+          reorderColumn={reorderColumn}
+          isRefreshing={isRefreshing}
+          handleRefreshClick={handleRefreshClick}
+          className={cn(
+            showSummary || showTabs
+              ? "-mt-2 rounded-t-none border-t-0"
+              : squareRight?.top,
+            flatTop,
+            props.chromeClassName,
+          )}
+        />
+      )}
 
-        {hasCheckbox && selection.size > 0 && visibleBulkActions.length > 0 && (
-          <DataTableBulkBar<T>
-            selection={selection}
-            selectedItems={selectedItems}
-            visibleBulkActions={visibleBulkActions}
-            bulkCtx={bulkCtx}
-            clearSelection={clearSelection}
-          />
-        )}
+      {hasCheckbox && selection.size > 0 && visibleBulkActions.length > 0 && (
+        <DataTableBulkBar<T>
+          selection={selection}
+          selectedItems={selectedItems}
+          visibleBulkActions={visibleBulkActions}
+          bulkCtx={bulkCtx}
+          clearSelection={clearSelection}
+        />
+      )}
 
-        {/*
+      {/*
           The toolbar, the rows and the footer are one panel: each facing edge
           is flattened and its border dropped so no double line appears, and
           `-mt-2` cancels the wrapper's `gap-2`. The footer half follows
@@ -611,29 +658,29 @@ export const DataTable = <
           only fills after the fetch. Only a table that hid the picker can
           lose it, and then the rows close the panel themselves.
         */}
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
-            (showToolbar || showSummary || showTabs) &&
-              "-mt-2 rounded-t-none border-t-0",
-            showFooter ? "rounded-b-none border-b-0" : squareRight?.bottom,
-            flatRows,
-            // With no toolbar and no summary the rows open the table, so
-            // their top-right corner is the one `squareRight` squares.
-            !showToolbar && !showSummary && !showTabs && squareRight?.top,
-            // `<Table>` wraps the table in a container div whose classes it
-            // hardcodes, and only this table needs that container to grow,
-            // so the one class it needs is set from out here instead.
-            //
-            // `grow`, NOT `flex-1`: `flex-1` sets the basis to 0, and in the
-            // ordinary case this wrapper has no height of its own, so a 0
-            // basis with nothing to grow into collapses the table to nothing.
-            // `grow` keeps the content basis and only spends space that is
-            // actually free, which is the full-height case.
-            "[&>[data-slot=table-container]]:grow",
-          )}
-        >
-          {/* `h-full` ONLY while the empty state is what is in the body.
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
+          (showToolbar || showSummary || showTabs) &&
+            "-mt-2 rounded-t-none border-t-0",
+          showFooter ? "rounded-b-none border-b-0" : squareRight?.bottom,
+          flatRows,
+          // With no toolbar and no summary the rows open the table, so
+          // their top-right corner is the one `squareRight` squares.
+          !showToolbar && !showSummary && !showTabs && squareRight?.top,
+          // `<Table>` wraps the table in a container div whose classes it
+          // hardcodes, and only this table needs that container to grow,
+          // so the one class it needs is set from out here instead.
+          //
+          // `grow`, NOT `flex-1`: `flex-1` sets the basis to 0, and in the
+          // ordinary case this wrapper has no height of its own, so a 0
+          // basis with nothing to grow into collapses the table to nothing.
+          // `grow` keeps the content basis and only spends space that is
+          // actually free, which is the full-height case.
+          "[&>[data-slot=table-container]]:grow",
+        )}
+      >
+        {/* `h-full` ONLY while the empty state is what is in the body.
               It is what lets that one row take the height the scroller grew
               into, so `align-middle` can centre the state in it.
 
@@ -645,13 +692,13 @@ export const DataTable = <
               unit test sees it (jsdom computes no layout) and it is invisible
               on a table long enough to fill its own container, which is why
               it reached e2e rather than review. */}
-          <Table
-            className={cn(
-              isEmptyState && "h-full",
-              compact && "text-xs [&_th]:text-xs",
-            )}
-          >
-            {/* `bg-muted`, fully opaque, NOT the base header's `bg-muted/50`:
+        <Table
+          className={cn(
+            isEmptyState && "h-full",
+            compact && "text-xs [&_th]:text-xs",
+          )}
+        >
+          {/* `bg-muted`, fully opaque, NOT the base header's `bg-muted/50`:
                 this header is sticky, so anything translucent lets the rows
                 scroll visibly through the column labels. Same tint, no
                 transparency.
@@ -664,87 +711,93 @@ export const DataTable = <
                 sit INSIDE the header's own height: it is pinned at `top-0`
                 against a scrolling body, so anything painted outside it is
                 painted over. */}
-            <TableHeader
-              className={cn(
-                // ⚠️ `[&_tr]:border-b-0` or the bottom rule is drawn TWICE: `TableHeader`
-                // gives its rows a `border-b`, and the inset shadow above draws
-                // the same line, so the band closed with 2px where it opens with
-                // 1px. The inset one wins because it is what survives the sticky
-                // header being painted over.
-                "bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)] [&_tr]:border-b-0",
-                props.chromeClassName,
-              )}
-            >
-              <DataTableHeaderRow<T>
-                headClassName={cellPadding.head}
-                visibleCols={visibleCols}
-                hasCheckbox={hasCheckbox}
-                hasRowActions={hasRowActions}
-                allSelected={allSelected}
-                someSelected={someSelected}
-                toggleAll={toggleAll}
-                sort={sort}
-                toggleSort={toggleSort}
-                setSortTo={setSortTo}
-                moveColumn={moveColumn}
-                toggleColumn={toggleColumn}
-                headerFilter={headerFilter}
-              />
-            </TableHeader>
-            <DataTableBody<T>
-              cellClassName={cellPadding.cell}
-              data={data}
-              cellContext={cellContext}
-              rowKeys={rowKeys}
-              leaving={overlay.leaving}
-              flash={overlay.flash}
-              loading={loading}
+          <TableHeader
+            className={cn(
+              // ⚠️ `[&_tr]:border-b-0` or the bottom rule is drawn TWICE: `TableHeader`
+              // gives its rows a `border-b`, and the inset shadow above draws
+              // the same line, so the band closed with 2px where it opens with
+              // 1px. The inset one wins because it is what survives the sticky
+              // header being painted over.
+              "bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)] [&_tr]:border-b-0",
+              props.chromeClassName,
+            )}
+          >
+            <DataTableHeaderRow<T>
+              headClassName={cellPadding.head}
               visibleCols={visibleCols}
               hasCheckbox={hasCheckbox}
               hasRowActions={hasRowActions}
-              hasActiveFilters={hasActiveFilters}
-              selection={selection}
-              toggleRow={toggleRow}
-              rowCtx={rowCtx}
-              rowActions={props.rowActions}
-              rowActionsDisplay={props.rowActionsDisplay}
-              striped={props.striped}
-              onRowClick={props.onRowClick}
-              onRowHover={props.onRowHover}
-              empty={props.empty}
-              emptyMessage={props.emptyMessage}
-              emptyState={props.emptyState}
-              noMatchState={props.noMatchState}
+              allSelected={allSelected}
+              someSelected={someSelected}
+              toggleAll={toggleAll}
+              sort={sort}
+              toggleSort={toggleSort}
+              setSortTo={setSortTo}
+              moveColumn={moveColumn}
+              toggleColumn={toggleColumn}
+              headerFilter={headerFilter}
             />
-          </Table>
-        </div>
+          </TableHeader>
+          <DataTableBody<T>
+            cellClassName={cellPadding.cell}
+            data={data}
+            cellContext={cellContext}
+            rowKeys={rowKeys}
+            leaving={overlay.leaving}
+            flash={overlay.flash}
+            loading={loading}
+            visibleCols={visibleCols}
+            hasCheckbox={hasCheckbox}
+            hasRowActions={hasRowActions}
+            hasActiveFilters={hasActiveFilters}
+            selection={selection}
+            toggleRow={toggleRow}
+            rowCtx={rowCtx}
+            rowActions={props.rowActions}
+            rowActionsDisplay={props.rowActionsDisplay}
+            striped={props.striped}
+            onRowClick={props.onRowClick}
+            onRowHover={props.onRowHover}
+            empty={props.empty}
+            emptyMessage={props.emptyMessage}
+            emptyState={props.emptyState}
+            noMatchState={props.noMatchState}
+          />
+        </Table>
+      </div>
 
-        {/* A move is otherwise silent: nothing about a reordered table is
+      {/* A move is otherwise silent: nothing about a reordered table is
             spoken, and the visual change is the only feedback. Outside the
             table so it is not read as a cell. */}
-        <span aria-live="polite" className="sr-only">
-          {orderAnnouncement}
-        </span>
+      <span aria-live="polite" className="sr-only">
+        {orderAnnouncement}
+      </span>
 
-        {compactPager && (
-          <DataTableCompactPager meta={meta} setPage={setPage} />
-        )}
+      {compactPager && <DataTableCompactPager meta={meta} setPage={setPage} />}
 
-        {showFooter && (
-          <DataTableFooter
-            pageSizes={props.pageSizes}
-            sizeForm={sizeForm}
-            meta={meta}
-            isMobile={isMobile}
-            setPage={setPage}
-            className={cn(
-              squareRight?.bottom,
-              flatBottom,
-              props.chromeClassName,
-            )}
-          />
-        )}
-      </div>
+      {showFooter && (
+        <DataTableFooter
+          pageSizes={props.pageSizes}
+          sizeForm={sizeForm}
+          meta={meta}
+          isMobile={isMobile}
+          setPage={setPage}
+          className={cn(squareRight?.bottom, flatBottom, props.chromeClassName)}
+        />
+      )}
+    </div>
+  );
+
+  return (
+    <ClientOnly>
+      {rail ? (
+        <div className={cn("flex min-h-0", props.className)}>
+          {rail}
+          {table}
+        </div>
+      ) : (
+        table
+      )}
     </ClientOnly>
   );
 };
