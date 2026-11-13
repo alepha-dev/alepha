@@ -71,7 +71,7 @@ quest enters, none leaves, and none is deleted. The page no longer offers
 **Completed.** There is nothing to click: an epic completes when every quest in
 it is completed or shelved. Shelving a quest records that the work was planned
 and declined, the way skipping an objective does on a quest. A quest somebody
-accepted and will not finish is unassigned first, then shelved.
+accepted and will not finish is shelved too: shelving unassigns it.
 
 A ready epic never completes this way, even if all its quests get shelved:
 nothing in it was worked, and its plan is still open for a quest that will be.

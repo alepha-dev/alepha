@@ -117,16 +117,18 @@ describe("Lore MCP: quest_unassign", () => {
     expect(after.description).toBe("x");
   });
 
-  it("unblocks quest_shelve, which only takes a quest in 'todo'", async () => {
-    const { questTools, quest, call } = await setup();
+  it("is no longer needed before quest_shelve, which unassigns in the same step (#Q3546)", async () => {
+    const { questTools, quest, call, resource } = await setup();
 
-    await expect(
-      call(questTools.quest_shelve, { id: quest.id }),
-    ).rejects.toThrow(/expected "todo"/i);
-
-    await call(questTools.quest_unassign, { id: quest.id });
     const shelved = await call(questTools.quest_shelve, { id: quest.id });
     expect(shelved.shelvedAt).toBeTruthy();
+
+    const after = await resource();
+    expect(after.acceptedBy).toBeUndefined();
+    expect(after.history.map((h) => h.action).slice(-2)).toEqual([
+      "unassigned",
+      "shelved",
+    ]);
   });
 
   it("refuses a quest nobody has accepted", async () => {

@@ -197,7 +197,7 @@ describe("QuestController hold", () => {
       ).rejects.toThrow(/on hold/);
     });
 
-    it("refuses to shelve a held quest rather than clearing the hold", async ({
+    it("shelves a held quest, lifting the hold on the record (#Q3546)", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
@@ -208,9 +208,16 @@ describe("QuestController hold", () => {
         { user },
       );
 
-      await expect(
-        ctx.controller.shelveQuest({ params: { id: quest.id } }, { user }),
-      ).rejects.toThrow(/on hold/);
+      const shelved = await ctx.controller.shelveQuest(
+        { params: { id: quest.id } },
+        { user },
+      );
+      expect(shelved.heldAt).toBeUndefined();
+      expect(shelved.shelvedAt).toBeTruthy();
+      expect(shelved.history.map((h) => h.action).slice(-2)).toEqual([
+        "unheld",
+        "shelved",
+      ]);
     });
 
     it("ALLOWS abandoning a held accepted quest, and keeps it held", async ({

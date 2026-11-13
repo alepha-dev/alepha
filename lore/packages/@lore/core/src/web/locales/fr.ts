@@ -668,9 +668,8 @@ export default {
   "board.bulk.released": "$1 ajoutée(s) à $2.",
   "board.bulk.failed": "$1 n'ont pas pu être mises à jour.",
   "board.bulk.shelve.none":
-    "Aucune des quêtes sélectionnées ne peut être mise de côté : seule une quête encore à faire le peut.",
-  "board.bulk.shelve.skipped":
-    "$1 ignorée(s) : seule une quête encore à faire peut être mise de côté.",
+    "Aucune des quêtes sélectionnées ne peut être mise de côté : elles sont déjà terminées ou de côté.",
+  "board.bulk.shelve.skipped": "$1 ignorée(s) : déjà terminée(s) ou de côté.",
   "board.bulk.unshelve.none": "Aucune des quêtes sélectionnées n'est de côté.",
   "board.bulk.unshelve.skipped": "$1 ignorée(s) : pas de côté.",
   "quest.create.title": "Nom",

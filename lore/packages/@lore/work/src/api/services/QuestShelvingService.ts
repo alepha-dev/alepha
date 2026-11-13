@@ -69,7 +69,8 @@ export class QuestShelvingService {
   /**
    * Hand an open quest back to `todo` so it can be shelved: lift its hold,
    * then clear its assignment, each with its own history event, as
-   * `unholdQuest` and `unassignQuest` do.
+   * `unholdQuest` and `unassignQuest` do, and stop a running timer, which
+   * would otherwise keep billing a quest nobody works (#Q3546).
    *
    * `quests.shelvedAt` is only ever set on a `todo` quest, and the derived
    * status, the progress buckets and the release buckets all rely on it, so
@@ -92,6 +93,10 @@ export class QuestShelvingService {
       quest.reminderInterval = undefined;
       quest.reminderNextAt = undefined;
       quest.history.push({ at, by: user.id, action: "unassigned" });
+    }
+    const running = quest.timerSessions?.[quest.timerSessions.length - 1];
+    if (running && !running.stoppedAt) {
+      running.stoppedAt = at;
     }
   }
 

@@ -98,9 +98,10 @@ export const quests = $entity({
     boardRank: z.string().min(1).max(64).optional(),
     /**
      * Set when the quest is shelved — deliberately set aside as out of
-     * scope for now, without deleting it. Only quests still in `todo`
-     * status can be shelved, so this is never set alongside `acceptedAt`
-     * or `completedAt`. Shelved quests are hidden from the default quest
+     * scope for now, without deleting it. Shelving hands an accepted or
+     * held quest back to `todo` first (#Q3546), and a completed one is
+     * refused, so this is never set alongside `acceptedAt` or
+     * `completedAt`. Shelved quests are hidden from the default quest
      * list and excluded from progress/stats denominators; they come back
      * via `unshelveQuest` (or implicitly, by accepting them).
      */

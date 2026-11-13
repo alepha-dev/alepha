@@ -122,6 +122,7 @@ flowchart LR
   in_progress -->|complete| completed
   in_progress -->|unassign| todo
   todo -->|shelve| shelved
+  in_progress -->|shelve| shelved
   shelved -->|unshelve| todo
   todo -->|hold| on_hold
   in_progress -->|hold| on_hold
@@ -140,8 +141,10 @@ flowchart LR
   are waiting on with `@` and it lands in their inbox. **Lift hold** restores
   the previous status and assignee. While on hold, a quest can be neither
   accepted nor completed.
-- **Shelve** only works on a quest still to do: unassign an accepted one first.
-  Prefer it to deleting when the idea is worth keeping.
+- **Shelve** works on any quest not completed. An accepted quest is unassigned
+  in the same step, its timer stopped and its reminders cleared, and a hold is
+  lifted; the history shows each move. Prefer it to deleting when the idea is
+  worth keeping.
 - **Unassign** sends the quest back to the backlog and stops its reminders.
   Nothing written on it is lost.
 
