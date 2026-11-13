@@ -2760,6 +2760,11 @@ export default {
     "Feedback you turn down is kept here as a record.",
   "feedback.empty.detail.openForm": "Open the feedback form",
   "feedback.back": "Back",
+  "feedback.subscription.label": "Notify me of new feedback",
+  "feedback.subscription.description":
+    "A rule will notify you of every new feedback in this project.",
+  "feedback.subscription.offDescription":
+    "You will no longer be notified of new feedback in this project.",
   "feedback.filter.pending": "Pending",
   "feedback.filter.accepted": "Accepted",
   "feedback.filter.rejected": "Rejected",
@@ -3843,6 +3848,16 @@ export default {
   "automation.adoption.reminderCount": "$1 configured quest reminders",
   "automation.adoption.replacement": "Replacement rule",
   "automation.adoption.create": "Create my compatibility rule",
+  "automation.subscription.on": "Subscribed: click to stop notifications",
+  "automation.subscription.channel": "Notify me by",
+  "automation.subscription.channel.inbox": "In-app",
+  "automation.subscription.channel.email": "Email",
+  "automation.subscription.rule":
+    "This creates an automation of yours, listed under Automations, where you can edit it.",
+  "automation.subscription.confirm": "Subscribe",
+  "automation.subscription.cancel": "Cancel",
+  "automation.subscription.offTitle": "Unsubscribe?",
+  "automation.subscription.offConfirm": "Unsubscribe",
   "automation.adoption.adopt": "Consent and adopt",
   "automation.adoption.resume": "Resume my adoption",
   "automation.adoption.open": "Open replacement rule",

@@ -2762,6 +2762,11 @@ export default {
     "Les retours refusés sont conservés ici comme trace.",
   "feedback.empty.detail.openForm": "Ouvrir le formulaire de retour",
   "feedback.back": "Retour",
+  "feedback.subscription.label": "Me notifier des nouveaux retours",
+  "feedback.subscription.description":
+    "Une règle vous notifiera de chaque nouveau retour dans ce projet.",
+  "feedback.subscription.offDescription":
+    "Vous ne serez plus notifié des nouveaux retours dans ce projet.",
   "feedback.filter.pending": "En attente",
   "feedback.filter.accepted": "Acceptés",
   "feedback.filter.rejected": "Rejetés",
@@ -3852,6 +3857,17 @@ export default {
   "automation.adoption.reminderCount": "$1 rappels de quête configurés",
   "automation.adoption.replacement": "Règle de remplacement",
   "automation.adoption.create": "Créer ma règle de compatibilité",
+  "automation.subscription.on":
+    "Abonné : cliquez pour arrêter les notifications",
+  "automation.subscription.channel": "Me notifier par",
+  "automation.subscription.channel.inbox": "Dans l'app",
+  "automation.subscription.channel.email": "E-mail",
+  "automation.subscription.rule":
+    "Cela crée une automatisation à votre nom, listée dans Automatisations, où vous pouvez la modifier.",
+  "automation.subscription.confirm": "S'abonner",
+  "automation.subscription.cancel": "Annuler",
+  "automation.subscription.offTitle": "Se désabonner ?",
+  "automation.subscription.offConfirm": "Se désabonner",
   "automation.adoption.adopt": "Consentir et adopter",
   "automation.adoption.resume": "Reprendre mon adoption",
   "automation.adoption.open": "Ouvrir la règle de remplacement",

@@ -860,7 +860,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Getting help with triage",
     url: "https://alepha.dev/lore/docs/support-feedback#getting-help-with-triage",
     capability: "support",
-    text: "The **New feedback** preset in [Automations](/lore/docs/work-automations)\nnotifies one member when a report arrives.\n\n[Agent prompts](/lore/docs/agents-prompts) offers two prompts on an open\nreport: **Triage the inbox**, and **Work on it** unless the report is rejected.",
+    text: "The bell above the inbox's status filter notifies you of every new report.\nTurning it on asks how, **In-app** or **Email**, and creates a rule of yours\nfrom the **New feedback** preset, enabled at once. It stays an ordinary rule,\nlisted under [Automations](/lore/docs/work-automations), where you can edit it.\nTurning the bell off, after a confirmation, deletes that rule. The bell shows\nonly to a member who can create automations, in a project with automations on.\n\nThe **New feedback** preset itself notifies any one member you choose when a\nreport arrives.\n\n[Agent prompts](/lore/docs/agents-prompts) offers two prompts on an open\nreport: **Triage the inbox**, and **Work on it** unless the report is rejected.",
   },
   {
     guide: "Feedback",

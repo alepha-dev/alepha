@@ -26,6 +26,7 @@ export class AutomationPresetService {
     projectId: number,
     user: UserAccountToken,
     input: AutomationPresetCreate,
+    options: { subscription?: boolean } = {},
   ) {
     await this.access.assert(projectId, user, "automation:write");
     const body = automationPresetCreateSchema.parse(input);
@@ -76,7 +77,9 @@ export class AutomationPresetService {
       projectId,
       user,
       { title: body.title ?? preset.title, rule, enabled: body.enabled },
-      preset.key,
+      options.subscription
+        ? { key: preset.key, subscription: true }
+        : preset.key,
       Object.values(body.bindings ?? {}),
     );
   }

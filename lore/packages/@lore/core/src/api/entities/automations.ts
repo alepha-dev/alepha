@@ -44,6 +44,12 @@ export const automations = $entity({
     revision: db.default(z.integer().nonnegative(), 0),
     version: db.version(),
     presetKey: z.string().max(128).optional(),
+    /**
+     * Created by a subscription toggle, such as the feedback page's bell, for
+     * its author: the toggle finds its rule again by `presetKey`, the author
+     * and this flag. It stays an ordinary rule, listed and editable.
+     */
+    subscription: db.default(z.boolean(), false),
     nextRunAt: z.datetime().optional(),
     scheduleCron: z.string().max(128).optional(),
     baseline: automationSafeFieldsSchema.optional(),

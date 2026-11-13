@@ -629,6 +629,7 @@ export {
   type AutomationPresetBindings,
 } from "./services/AutomationPresetRegistry.ts";
 export { AutomationPresetService } from "./services/AutomationPresetService.ts";
+export { AutomationSubscriptionService } from "./services/AutomationSubscriptionService.ts";
 
 export { AutomationSetupOptions } from "./services/AutomationSetupOptions.ts";
 

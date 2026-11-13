@@ -90,7 +90,7 @@ export class AutomationService {
     projectId: number,
     user: UserAccountToken,
     input: AutomationCreateBody,
-    presetKey?: string,
+    preset?: string | { key: string; subscription?: boolean },
     expectedVariables: readonly AutomationVariableApproval[] = [],
     nativeEffects?: (rule: Automation) => AutomationConfigurationExtension,
   ) {
@@ -98,6 +98,9 @@ export class AutomationService {
       await this.access.assert(projectId, user, "automation:write");
       const body = automationCreateBodySchema.parse(input);
       const enabled = body.enabled === true;
+      const presetKey = typeof preset === "string" ? preset : preset?.key;
+      const subscription =
+        typeof preset === "object" && preset.subscription === true;
       if (enabled && body.rule.compatibility)
         // The sentence `setEnabled` refuses with, for the same reason.
         throw new ForbiddenError(
@@ -124,6 +127,7 @@ export class AutomationService {
         updatedAt: now,
         activatedAt: now,
         ...(presetKey ? { presetKey } : {}),
+        subscription,
       } satisfies Automation;
       const prepared = await this.prepare(candidate);
       if (
@@ -785,6 +789,7 @@ export class AutomationService {
         ? { redactionReason: "Current source access is unavailable" }
         : {}),
       presetKey: rule.presetKey,
+      ...(rule.subscription ? { subscription: true } : {}),
       nextRunAt: rule.nextRunAt,
       createdAt: rule.createdAt,
       updatedAt: rule.updatedAt,

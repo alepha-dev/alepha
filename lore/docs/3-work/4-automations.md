@@ -66,6 +66,12 @@ The presets:
 Every input belongs to this rule alone unless you choose **Share with other
 automations**, which uses or creates a [shared variable](#shared-variables).
 
+A page can also offer a preset as a subscription of your own: the bell above
+the [feedback inbox](/lore/docs/support-feedback) creates a **New feedback**
+rule that notifies you, and deletes it when you turn the bell off. The rule
+shows on the automations page like any other. If you disable it there, the bell
+reads as off, and turning it on again replaces it.
+
 ### Testing a rule
 
 **Run test** runs the rule against current data and shows what it would select,

@@ -23,6 +23,8 @@ export const automationResourceSchema = z
     redacted: z.boolean(),
     redactionReason: z.string().max(255).optional(),
     presetKey: z.string().max(128).optional(),
+    /** Present, and true, on a rule a subscription toggle created. */
+    subscription: z.boolean().optional(),
     nextRunAt: z.datetime().optional(),
     createdAt: z.datetime(),
     updatedAt: z.datetime(),

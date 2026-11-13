@@ -1,0 +1,1 @@
+ALTER TABLE "automations" ADD COLUMN "subscription" boolean DEFAULT false NOT NULL;
