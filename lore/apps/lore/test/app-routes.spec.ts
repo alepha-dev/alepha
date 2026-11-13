@@ -143,7 +143,7 @@ describe("the route table", () => {
     const params = { projectSlug: "demo", app, env };
 
     expect(router.path("projectApps", { params })).toBe("/demo/apps");
-    expect(router.path("app", { params })).toBe(`/demo/apps/${app}/${env}/`);
+    expect(router.path("app", { params })).toBe(`/demo/apps/${app}/${env}`);
     expect(router.path("projectAppRedirect", { params })).toBe(
       `/demo/apps/${app}`,
     );

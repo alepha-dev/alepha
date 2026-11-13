@@ -354,7 +354,10 @@ export class ReactPageProvider {
     }
 
     url = this.compile(url, options.params ?? {});
-    url = url.replace(/\/\/+/g, "/") || "/";
+    // Collapsed slashes, and no trailing one but on the root: an index child
+    // (`path: "/"` or `""` under `/quests`) is the parent's own URL,
+    // `/quests`, not `/quests/`.
+    url = url.replace(/\/\/+/g, "/").replace(/(.)\/$/, "$1") || "/";
 
     // Apply the active locale prefix (e.g. `/about` → `/fr/about`) to the path
     // portion only, before any query string is appended. A no-op unless
