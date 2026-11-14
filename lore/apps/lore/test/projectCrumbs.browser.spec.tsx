@@ -12,7 +12,7 @@ import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { ReactRouter } from "alepha/react/router";
-import { describe, it } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 /**
  * A detail page ends its breadcrumb trail with itself (#Q3408), where three
@@ -32,6 +32,14 @@ class PathRouter extends ReactRouter<any> {
 }
 
 describe("the leaf crumb of a detail page", () => {
+  // Stopped after each case: a container left running kept React's scheduler
+  // busy past the jsdom teardown, and the run failed on an uncaught
+  // `window is not defined` with every case green.
+  const containers: Alepha[] = [];
+  afterEach(async () => {
+    for (const alepha of containers.splice(0)) await alepha.stop();
+  });
+
   const setup = async () => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
@@ -42,6 +50,7 @@ describe("the leaf crumb of a detail page", () => {
     alepha.inject(DeployShell);
     alepha.inject(ProjectTrail);
     await alepha.start();
+    containers.push(alepha);
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(
       currentProjectAtom,

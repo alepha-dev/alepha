@@ -387,14 +387,21 @@ describe("SigilJobs", () => {
         ),
       ).toBe(true);
 
-      // Three days on, the same rows are stale.
+      // Three days on, the same rows are stale. The travel fires the job's
+      // own hourly cron too: `run()` beside it raced that sweep's delete and
+      // insert on Postgres (a duplicate key). `trigger()` stands down while
+      // a run is in progress, so the end state is awaited, not the call.
       await ctx.dateTime.travel(3, "day");
-      await jobs.collapseAnalytics.run();
+      await jobs.collapseAnalytics.trigger();
 
-      const rows = await ctx.probe.uniques.findMany({});
-      expect(rows).toHaveLength(1);
-      expect(rows[0].visitorHash).toBe(UNIQUES_COLLAPSED_HASH);
-      expect(rows[0].count).toBe(2);
+      await expect
+        .poll(async () =>
+          (await ctx.probe.uniques.findMany({})).map((row) => ({
+            visitorHash: row.visitorHash,
+            count: row.count,
+          })),
+        )
+        .toEqual([{ visitorHash: UNIQUES_COLLAPSED_HASH, count: 2 }]);
     });
   });
 
