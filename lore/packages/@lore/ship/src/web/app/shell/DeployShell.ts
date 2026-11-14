@@ -157,6 +157,7 @@ export class DeployShell {
           // `apps` anyway.
           route: "projectSettingsHosts",
           labelKey: "project.settings.nav.hosts",
+          fullWidth: true,
         },
       ],
     });
