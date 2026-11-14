@@ -86,7 +86,8 @@ const MyProjects = () => {
       schema: z.enum(["owner", "member"]),
       label: tr("account.projects.filter.role"),
       icon: UserRound,
-      mode: "default",
+      // Off the bar until added, from "+" or the Role column's header
+      // (#Q3599): Archived: No is the only default filter.
       column: "owner",
       optionLabel: (role: "owner" | "member") =>
         role === "owner"
