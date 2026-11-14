@@ -138,6 +138,44 @@ Add `autoSave` to commit on change instead, which hides the action bar. Text
 fields still never commit on keystroke: they commit on Enter, or on the inline
 tick that appears in the input once the field is dirty.
 
+## Surfaces
+
+A screen is built from four surfaces, and each has one spelling. Reach for the
+name, never a hand-mixed background:
+
+| Surface | Class                                      | For                                                                                                                       |
+| ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| page    | `bg-background`                            | The page a route renders, which `AppShell` draws as a rounded card inside the frame                                       |
+| card    | `bg-card`                                  | Content set apart on the page: a card, a panel, a dialog                                                                  |
+| chrome  | `chrome`, plus `chrome-closed` when sticky | What frames content: a filter bar, a toolbar, a tab strip, a table's header and footer, a menu's header                   |
+| frame   | `bg-sidebar`                               | The application shell around the page: the sidebar and the margin around the page card. `AppShell` draws it, a page never |
+
+`chrome` is `bg-muted` under a one-pixel bevel line inset along the top edge.
+With the border that closes that edge, the pair reads as a fold, so the band
+looks raised out of the page rather than painted onto it. `DataTable`'s filter
+bar, sticky header and footer, `PlateTabBar` and `PermissionMatrix` all wear
+it, and an application's own bar over a board or a report should too:
+
+```tsx
+<div className="chrome flex flex-wrap items-center gap-2 border-b px-4 py-2">
+  {filters}
+</div>
+```
+
+- `chrome` draws no border of its own: keep the call site's `border`,
+  `border-b` or rounding. Its top edge is closed by that border, or by the one
+  of the element above it.
+- `chrome-closed` adds a border line inset along the bottom edge, for a sticky
+  band whose real bottom border would scroll away with the rows under it.
+- A field inside a chrome bar takes `bg-background`, so it reads as an input
+  sitting on the bar rather than a hole in it.
+- A translucent wash over a card (`bg-card/30`, `bg-muted/50`) is not chrome.
+  It renders a few percent off the card in light mode, the same colour in dark
+  mode, and has no fold: a bar wearing one reads as the top of the content.
+- A `bg-*` class after `chrome` replaces its background and keeps the bevel,
+  which is how `DataTable`'s `chromeClassName` lets the surface beneath show
+  through.
+
 ## Markdown, and diagrams in it
 
 `MarkdownView` renders markdown as formatted prose. Raw HTML is always escaped

@@ -569,7 +569,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       {/* The table's chrome (`bg-muted` under the `--bevel` highlight), so
           the board's bar reads as the List tab's toolbar does; the fields on
           it keep a background of their own to stay legible on the tint. */}
-      <div className="border-border bg-muted [&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-1.5 shadow-[inset_0_1px_0_0_var(--bevel)]">
+      <div className="border-border [&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background chrome flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-1.5">
         {/* The same widget the quests table's toolbar renders: a `Control`
             per filter, in a `FilterSlot` that owns the width. Both bars
             filter the same fields, and the icons were already matched on

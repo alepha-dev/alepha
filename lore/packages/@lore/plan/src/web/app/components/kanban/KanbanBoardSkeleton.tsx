@@ -12,7 +12,7 @@ const KanbanBoardSkeleton = () => (
     aria-busy="true"
     className="flex flex-1 flex-col overflow-hidden"
   >
-    <div className="border-border bg-muted flex shrink-0 items-center gap-2 border-b px-3 py-1.5 shadow-[inset_0_1px_0_0_var(--bevel)]">
+    <div className="border-border chrome flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
       <Skeleton className="h-7 w-44" />
       <Skeleton className="h-7 w-36" />
       <Skeleton className="h-7 w-36" />
