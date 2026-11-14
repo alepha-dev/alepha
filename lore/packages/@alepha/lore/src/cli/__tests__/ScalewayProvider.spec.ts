@@ -7,7 +7,7 @@ import {
 } from "alepha/system";
 import { describe, it } from "vitest";
 
-import { EstateProviders } from "../services/providers/EstateProviders.ts";
+import { HostProviders } from "../services/providers/HostProviders.ts";
 import { ScalewayProvider } from "../services/providers/ScalewayProvider.ts";
 
 class FixedTempScaleway extends ScalewayProvider {
@@ -31,7 +31,7 @@ describe("ScalewayProvider", () => {
       shell: alepha.inject(MemoryShellProvider),
       fs: alepha.inject(MemoryFileSystemProvider),
       scaleway: alepha.inject(ScalewayProvider),
-      providers: alepha.inject(EstateProviders),
+      providers: alepha.inject(HostProviders),
     };
   };
 

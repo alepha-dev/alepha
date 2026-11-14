@@ -14,7 +14,7 @@ import {
 /**
  * `lore registry`: the project's container registry credentials (#Q2702),
  * what a company's private images are pulled with, by `lore artifacts
- * push-image` to verify them and by the estate at deploy.
+ * push-image` to verify them and by the host at deploy.
  *
  * The secret goes one way: from stdin (`--password-stdin`, or `--password
  * @-`) to Lore, where it is sealed. It is never an argument, so it is never in

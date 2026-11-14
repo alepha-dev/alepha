@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { StackController, StackVariableController } from "../src/api/index.ts";
 import { LoreDeployMcp, StackTools } from "../src/mcp/index.ts";
-import { createTestEstate } from "../src/testing/estates.ts";
+import { createTestHost } from "../src/testing/hosts.ts";
 import {
   bootStackSpec,
   createEnvironment,
@@ -58,7 +58,7 @@ describe("stack MCP tools", () => {
 
   const arrange = async () => {
     const w = await stackWorld(alepha);
-    const minted = await createTestEstate(
+    const minted = await createTestHost(
       alepha,
       w.user,
       { slug: `bay-${crypto.randomUUID().slice(0, 6)}` },
@@ -66,10 +66,10 @@ describe("stack MCP tools", () => {
         projectId: w.project.id,
       },
     );
-    await w.rows.estates.updateById(minted.id, { deployAllowed: true });
+    await w.rows.hosts.updateById(minted.id, { deployAllowed: true });
     const stack = await createStack(alepha, w, {
       name: "umami",
-      estateId: minted.id,
+      hostId: minted.id,
     });
     const env = await createEnvironment(alepha, w, stack.id, {
       env: "production",

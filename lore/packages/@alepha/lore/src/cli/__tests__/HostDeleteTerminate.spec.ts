@@ -13,17 +13,17 @@ import {
 } from "alepha/system";
 import { describe, it } from "vitest";
 
-import { EstateCommand } from "../commands/EstateCommand.ts";
-import { LoreEstateResolver } from "../services/LoreEstateResolver.ts";
+import { HostCommand } from "../commands/HostCommand.ts";
+import { LoreHostResolver } from "../services/LoreHostResolver.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
 /**
- * `lore estate delete` on a provisioned estate (#Q3167): the server goes
+ * `lore host delete` on a provisioned host (#Q3167): the server goes
  * with its IP and its disk, through the user's own scw, after Lore said it
  * would accept the delete and before the row goes; a terminate that fails
  * keeps the row.
  */
-describe("lore estate delete, provisioned", () => {
+describe("lore host delete, provisioned", () => {
   const terminateCall =
     "scw instance server terminate srv-1 zone=fr-par-1 with-ip=true with-block=true";
 
@@ -52,8 +52,8 @@ describe("lore estate delete, provisioned", () => {
       },
     });
     const calls: string[] = [];
-    const estates = {
-      listMyEstates: async () => ({
+    const hosts = {
+      listMyHosts: async () => ({
         items: [
           {
             id: "e1",
@@ -63,29 +63,29 @@ describe("lore estate delete, provisioned", () => {
             providerServerId: "srv-1",
             providerZone: "fr-par-1",
             project: { id: 7, title: "Hello", slug: "hello" },
-            can: ["estate:read", "estate:update", "estate:delete"],
+            can: ["host:read", "host:update", "host:delete"],
             projects: [],
           },
         ],
       }),
-      checkEstateDeletable: async () => {
+      checkHostDeletable: async () => {
         calls.push("check");
         if (options.referenced) {
           throw new HttpError(
             { status: 409 },
             {
               message:
-                "This estate is still the deploy target of hello/production. Repoint or remove it first.",
+                "This host is still the deploy target of hello/production. Repoint or remove it first.",
             },
           );
         }
         return { ok: true };
       },
-      deleteEstate: async () => {
+      deleteHost: async () => {
         calls.push("delete");
         return { ok: true };
       },
-      getEstate: async () => ({
+      getHost: async () => ({
         id: "e1",
         slug: "small-skilled-pie",
         type: "bay",
@@ -99,29 +99,29 @@ describe("lore estate delete, provisioned", () => {
         hourlyPrice: 0.009,
         provisionedAt: "2026-11-06T10:00:00Z",
       }),
-      getEstateInventory: async () => ({ inventory: null, expected: [] }),
+      getHostInventory: async () => ({ inventory: null, expected: [] }),
     };
-    const command = alepha.inject(EstateCommand);
+    const command = alepha.inject(HostCommand);
     Object.assign(
       alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
       { projects: { getProjectBySlug: async () => ({ id: 7 }) } },
     );
     Object.assign(
-      alepha.inject(LoreEstateResolver) as unknown as Record<string, unknown>,
+      alepha.inject(LoreHostResolver) as unknown as Record<string, unknown>,
       {
-        estates,
-        // The estates the project is the home of (#E126).
-        lending: { listHomeEstates: estates.listMyEstates },
+        hosts,
+        // The hosts the project is the home of (#E126).
+        lending: { listHomeHosts: hosts.listMyHosts },
       },
     );
-    Object.assign(command as unknown as Record<string, unknown>, { estates });
+    Object.assign(command as unknown as Record<string, unknown>, { hosts });
     const run = async (argv: string, sub: "delete" | "get" = "delete") => {
       await alepha.inject(CliProvider).run(command[sub] as never, { argv });
     };
     return { run, printed, calls, shell };
   };
 
-  it("checks, terminates the server with its IP and disk, then deletes the estate", async ({
+  it("checks, terminates the server with its IP and disk, then deletes the host", async ({
     expect,
   }) => {
     const { run, printed, calls, shell } = create();
@@ -144,18 +144,18 @@ describe("lore estate delete, provisioned", () => {
     expect(calls).toEqual(["check"]);
   });
 
-  it("keeps the estate and prints the command that finishes when the terminate fails", async ({
+  it("keeps the host and prints the command that finishes when the terminate fails", async ({
     expect,
   }) => {
     const { run, calls, shell } = create();
     shell.errors.set(terminateCall, "server is locked");
     await expect(run("small-skilled-pie --yes")).rejects.toThrow(
-      "lore estate delete small-skilled-pie --keep-server --yes",
+      "lore host delete small-skilled-pie --keep-server --yes",
     );
     expect(calls).toEqual(["check"]);
   });
 
-  it("--keep-server deletes the estate only, and says the server still bills", async ({
+  it("--keep-server deletes the host only, and says the server still bills", async ({
     expect,
   }) => {
     const { run, printed, calls, shell } = create();
@@ -167,7 +167,7 @@ describe("lore estate delete, provisioned", () => {
     );
   });
 
-  it("estate get shows the server and an estimate of what it has cost (#Q3168)", async ({
+  it("host get shows the server and an estimate of what it has cost (#Q3168)", async ({
     expect,
   }) => {
     const { run, printed } = create();

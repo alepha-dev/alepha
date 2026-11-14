@@ -12,7 +12,7 @@ import { LoreDeployer } from "../services/LoreDeployer.ts";
 /**
  * An app deployed into a stack (#Q2703): `lore({ stack })` makes the copy a
  * member of the stack environment of its own env name, creating the copy on
- * `up`, and a member builds the node target whatever its own (absent) estate.
+ * `up`, and a member builds the node target whatever its own (absent) host.
  */
 describe("an app deployed into a stack", () => {
   const create = (
@@ -113,7 +113,7 @@ describe("an app deployed into a stack", () => {
     ).rejects.toThrow("lore stack deploy --env staging");
   });
 
-  it("builds the node target for a member, which has no estate of its own", async ({
+  it("builds the node target for a member, which has no host of its own", async ({
     expect,
   }) => {
     const { deployer } = create();

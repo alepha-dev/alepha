@@ -18,31 +18,31 @@ import {
  * Shipping, from a conversation: what to deploy, deploy it, watch it, take it
  * back.
  *
- * ## ⚠️ There is no artifact tool here, and no estate tool that acts
+ * ## ⚠️ There is no artifact tool here, and no host tool that acts
  *
  * `artifact_list` and `artifact_get` already ship in `ArtifactTools`, so
  * "list what is deployable" is answered and adding a third would be a
- * duplicate. **Estates are not a project resource**: an estate is owned by a
+ * duplicate. **Hosts are not a project resource**: a host is owned by a
  * USER and lent to projects, `app_instance_list` already answers which one a
- * copy deploys to, and there is nothing an `estate_list` would add. The one
- * estate tool, `estate_stats` (`EstateTools`, #Q3047), reads the caller's own
+ * copy deploys to, and there is nothing an `host_list` would add. The one
+ * host tool, `host_stats` (`HostTools`, #Q3047), reads the caller's own
  * machine's CPU and memory and can do nothing to it.
  *
  * That also settles the old warning cleanly. A credential grant was never to be
  * initiated from MCP, and now no MCP tool goes near one.
  *
- * ## ⚠️ No estate argument, ever
+ * ## ⚠️ No host argument, ever
  *
- * An agent names a project, an app and an environment. The estate is resolved
+ * An agent names a project, an app and an environment. The host is resolved
  * server-side from the `app_instances` row, because an agent that could name an
- * estate could deploy into somebody else's cloud account. Folio #96 named that
+ * host could deploy into somebody else's cloud account. Folio #96 named that
  * hole and `DeployGate` is what keeps it shut.
  *
  * ## The descriptions are the interface
  *
  * Every refusal these tools surface is the server's own sentence, unedited: the
  * runtime gate names the build to produce, and the credential and kill-switch
- * clauses name whose estate it is. An agent that reports a status code instead
+ * clauses name whose host it is. An agent that reports a status code instead
  * has thrown away the only actionable half.
  */
 export class DeployTools {
@@ -63,7 +63,7 @@ export class DeployTools {
   deploy_start = $tool({
     title: "Deploy a stored build",
     description:
-      "Ship a build that has already been pushed onto one deployed copy. ⚠️ **Nothing here builds.** A tag with no stored artifact is refused rather than built, which is the point of having a registry: a build that passed staging on Tuesday must be the same bytes when it is promoted on Friday. Omitting the tag deploys `latest`, the one tag whose bytes may be replaced in place, so it promotes whatever was pushed last rather than a version somebody chose. There is deliberately no estate argument: where a copy deploys to is a property of the copy, and an agent that could name an estate could deploy into somebody else's cloud account. Needs `deploy:manage`. Answers immediately with a run id; follow it with `deploy_status`.",
+      "Ship a build that has already been pushed onto one deployed copy. ⚠️ **Nothing here builds.** A tag with no stored artifact is refused rather than built, which is the point of having a registry: a build that passed staging on Tuesday must be the same bytes when it is promoted on Friday. Omitting the tag deploys `latest`, the one tag whose bytes may be replaced in place, so it promotes whatever was pushed last rather than a version somebody chose. There is deliberately no host argument: where a copy deploys to is a property of the copy, and an agent that could name a host could deploy into somebody else's cloud account. Needs `deploy:manage`. Answers immediately with a run id; follow it with `deploy_status`.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: deployStartParamsSchema,

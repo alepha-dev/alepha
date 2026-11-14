@@ -844,7 +844,7 @@ export class ProjectCommand {
     );
     if (!done) {
       print(
-        "Nothing on an estate is stopped: a copy keeps running where it was deployed.",
+        "Nothing on a host is stopped: a copy keeps running where it was deployed.",
       );
     }
   }

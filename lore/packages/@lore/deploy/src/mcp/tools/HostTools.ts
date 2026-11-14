@@ -3,33 +3,33 @@ import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import { EstateController } from "../../api/controllers/EstateController.ts";
+import { HostController } from "../../api/controllers/HostController.ts";
 import {
-  estateStatsParamsSchema,
-  estateStatsResultSchema,
-} from "../schemas/estateSchemas.ts";
+  hostStatsParamsSchema,
+  hostStatsResultSchema,
+} from "../schemas/hostSchemas.ts";
 
 /**
- * An estate's CPU and memory over time, for agents (#Q3047), the twin of
- * `lore estate stats`.
+ * A host's CPU and memory over time, for agents (#Q3047), the twin of
+ * `lore host stats`.
  *
- * ⚠️ Read-only. It names an estate, which the deploy tools never do, because
- * nothing here can act on one: it goes through `getEstateStats`, gated on
- * `estate:read` in the estate's home project, so it reads nothing of an
- * estate whose project the caller is not in.
+ * ⚠️ Read-only. It names a host, which the deploy tools never do, because
+ * nothing here can act on one: it goes through `getHostStats`, gated on
+ * `host:read` in the host's home project, so it reads nothing of an
+ * host whose project the caller is not in.
  */
-export class EstateTools {
-  protected readonly estates = $inject(EstateController);
+export class HostTools {
+  protected readonly hosts = $inject(HostController);
   protected readonly projects = $inject(ProjectTools);
 
-  estate_stats = $tool({
-    title: "Read an estate's stats",
+  host_stats = $tool({
+    title: "Read a host's stats",
     description:
-      "An estate's CPU and memory: the current reading, then one mean per day over a window (30 days by default). Readable by the members of its home project whose rank grants estate:read; with a project, the slug resolves among that project's own estates and the ones it borrows, and `home` picks between two of one slug. The daily series is recorded only while somebody switched it on; `collecting` says which.",
+      "A host's CPU and memory: the current reading, then one mean per day over a window (30 days by default). Readable by the members of its home project whose rank grants host:read; with a project, the slug resolves among that project's own hosts and the ones it borrows, and `home` picks between two of one slug. The daily series is recorded only while somebody switched it on; `collecting` says which.",
     annotations: { readOnlyHint: true },
     schema: {
-      params: estateStatsParamsSchema,
-      result: estateStatsResultSchema,
+      params: hostStatsParamsSchema,
+      result: hostStatsResultSchema,
     },
     handler: async ({ params }) => {
       const projectId =
@@ -39,8 +39,8 @@ export class EstateTools {
               params.project_name,
             )
           : undefined;
-      const { items } = await this.estates.listMyEstates({});
-      const named = items.filter((item) => item.slug === params.estate);
+      const { items } = await this.hosts.listMyHosts({});
+      const named = items.filter((item) => item.slug === params.host);
       const inProject =
         projectId === undefined
           ? named
@@ -58,30 +58,30 @@ export class EstateTools {
       );
       if (candidates.length === 0) {
         throw new NotFoundError(
-          `No estate named ${params.estate} that you can read${params.home ? ` in ${params.home}` : ""}`,
+          `No host named ${params.host} that you can read${params.home ? ` in ${params.home}` : ""}`,
         );
       }
       if (candidates.length > 1) {
         throw new BadRequestError(
-          `Several estates are named ${params.estate}: ${candidates
+          `Several hosts are named ${params.host}: ${candidates
             .map(
               (item) =>
-                `${params.estate} of ${item.project?.slug ?? item.project?.title ?? "no project"}`,
+                `${params.host} of ${item.project?.slug ?? item.project?.title ?? "no project"}`,
             )
             .join(", ")}. Pass home.`,
         );
       }
-      const estate = candidates[0]!;
-      const stats = await this.estates.getEstateStats({
-        params: { estateId: estate.id },
+      const host = candidates[0]!;
+      const stats = await this.hosts.getHostStats({
+        params: { hostId: host.id },
         query: params.since ? { since: params.since } : {},
       });
       return {
-        estate: estate.slug,
+        host: host.slug,
         current: {
-          cpuPercent: estate.cpuPercent,
-          memoryPercent: estate.memoryPercent,
-          statsAt: estate.statsAt,
+          cpuPercent: host.cpuPercent,
+          memoryPercent: host.memoryPercent,
+          statsAt: host.statsAt,
         },
         ...stats,
       };

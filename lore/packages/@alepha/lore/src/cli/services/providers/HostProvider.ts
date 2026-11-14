@@ -1,5 +1,5 @@
 /**
- * A server `lore estate provision` creates (#Q3164).
+ * A server `lore host provision` creates (#Q3164).
  */
 export interface ProvisionedServer {
   /**
@@ -29,7 +29,7 @@ export interface ProvisionRequest {
 }
 
 /**
- * One cloud a `bay` estate can be bought from, from the `lore` CLI (#Q3164,
+ * One cloud a `bay` host can be bought from, from the `lore` CLI (#Q3164,
  * epic E116).
  *
  * ⚠️ **Lore never holds a provider key.** A provider drives the provider's
@@ -40,9 +40,9 @@ export interface ProvisionRequest {
  *
  * Every refusal names the fix, because an agent runs this from its `--help`
  * and its messages alone: {@link setup} is printed when the CLI is missing or
- * logged out, and by `lore estate provision` with no `--provider`.
+ * logged out, and by `lore host provision` with no `--provider`.
  */
-export abstract class EstateProvider {
+export abstract class HostProvider {
   /**
    * The name `--provider` takes.
    */

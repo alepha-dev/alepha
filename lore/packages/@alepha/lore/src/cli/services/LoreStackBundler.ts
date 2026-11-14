@@ -23,7 +23,7 @@ export interface LoreStackBundle {
  * naming the file: the server would refuse it too, but after an upload.
  * A compose file that mounts nothing is sent as it is, and Lore wraps it.
  * The compose file is always `compose.yml` in the bundle, whatever it is
- * called on disk, since that is a name the estate looks for.
+ * called on disk, since that is a name the host looks for.
  */
 export class LoreStackBundler {
   protected readonly fs = $inject(FileSystemProvider);

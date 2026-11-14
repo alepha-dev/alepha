@@ -83,7 +83,7 @@ export class LoreAiToolset {
    * The writes a member does most from the web (#Q3210), offered like the
    * reads and each paused on a confirmation card: none declares
    * `readOnlyHint: true`, which is what makes `$ai` wait for the user. Nothing
-   * that deletes, shelves, deploys or touches an estate.
+   * that deletes, shelves, deploys or touches a host.
    *
    * `quest_update` is offered whole, every field of its schema: the card
    * shows each one the call sets. A comment needs `quest:update`, not

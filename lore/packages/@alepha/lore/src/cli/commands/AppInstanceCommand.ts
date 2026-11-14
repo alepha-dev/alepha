@@ -1,9 +1,9 @@
-import type { AppController, ProjectEstateController } from "@lore/deploy/api";
+import type { AppController, ProjectHostController } from "@lore/deploy/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
 
-import { LoreEstateChoice } from "../../client/services/LoreEstateChoice.ts";
+import { LoreHostChoice } from "../../client/services/LoreHostChoice.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
@@ -48,21 +48,21 @@ export class AppInstanceCommand {
    * below it sees `undefined`.
    */
   protected readonly appApi = $client<AppController>(this.client.scope());
-  protected readonly estateApi = $client<ProjectEstateController>(
+  protected readonly hostApi = $client<ProjectHostController>(
     this.client.scope(),
   );
 
   /**
-   * `--estate <slug>` on create and update (#Q3140): an estate named the way
-   * every other command names one, resolved among the estates lent to the
-   * project (the list `lore estate list` prints), so an unknown slug names
+   * `--host <slug>` on create and update (#Q3140): a host named the way
+   * every other command names one, resolved among the hosts lent to the
+   * project (the list `lore host list` prints), so an unknown slug names
    * the ones that are.
    */
-  protected static readonly ESTATE_FLAG = {
-    estate: z
+  protected static readonly HOST_FLAG = {
+    host: z
       .text({
         description:
-          "Deploy to this estate, by slug, among those lent to the project (lore estate list).",
+          "Deploy to this host, by slug, among those lent to the project (lore host list).",
       })
       .optional(),
   };
@@ -111,7 +111,7 @@ export class AppInstanceCommand {
             title: instance.url ?? "",
             fields: [
               instance.sigilId ? "sigil" : undefined,
-              instance.estateId ? "estate" : undefined,
+              instance.hostId ? "host" : undefined,
             ],
           })),
           undefined,
@@ -149,7 +149,7 @@ export class AppInstanceCommand {
             ["Id", instance.id],
             ["Url", instance.url],
             ["Sigil", instance.sigilId],
-            ["Estate", instance.estateId],
+            ["Host", instance.hostId],
           ],
         });
       });
@@ -170,7 +170,7 @@ export class AppInstanceCommand {
         .boolean()
         .describe("A short-lived copy, such as a pull request's preview.")
         .optional(),
-      ...AppInstanceCommand.ESTATE_FLAG,
+      ...AppInstanceCommand.HOST_FLAG,
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ flags, print }) => {
@@ -179,12 +179,12 @@ export class AppInstanceCommand {
         const { projectId } = await this.projects.named(flags.project, context);
         // Resolved before anything is created, so an unknown slug leaves no
         // copy behind.
-        const estateId =
-          flags.estate === undefined
+        const hostId =
+          flags.host === undefined
             ? undefined
-            : await this.estateIdOf(
+            : await this.hostIdOf(
                 projectId,
-                flags.estate,
+                flags.host,
                 `${flags.app}/${flags.env}`,
               );
 
@@ -200,21 +200,21 @@ export class AppInstanceCommand {
           },
         });
 
-        // The create body takes no estate, so it is set the way the Apps
+        // The create body takes no host, so it is set the way the Apps
         // page sets it: the update that follows, in the same command.
         const created =
-          estateId === undefined
+          hostId === undefined
             ? made
             : await this.appApi.updateApp({
                 params: { projectId, app: made.app, env: made.env },
-                body: { estateId },
+                body: { hostId },
               });
 
         this.render.written(
           print,
           flags.output,
           created,
-          `Created ${created.app}/${created.env}${flags.estate ? ` on ${flags.estate}` : ""}`,
+          `Created ${created.app}/${created.env}${flags.host ? ` on ${flags.host}` : ""}`,
         );
       });
     },
@@ -223,7 +223,7 @@ export class AppInstanceCommand {
   public readonly update = $command({
     name: "update",
     description:
-      "Rename either half, pin the address, or point the copy at an estate",
+      "Rename either half, pin the address, or point the copy at a host",
     flags: z.object({
       ...AppInstanceCommand.PROJECT_FLAG,
       ...AppInstanceCommand.PAIR_FLAGS,
@@ -237,44 +237,42 @@ export class AppInstanceCommand {
       url: z
         .text({ description: "Pin the address. An empty string clears it." })
         .optional(),
-      "estate-id": z
+      "host-id": z
         .text({
           description:
-            "Deploy to this estate, by id, one lent to the project. 0 clears it. --estate names it by slug.",
+            "Deploy to this host, by id, one lent to the project. 0 clears it. --host names it by slug.",
         })
         .optional(),
-      ...AppInstanceCommand.ESTATE_FLAG,
+      ...AppInstanceCommand.HOST_FLAG,
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
-        if (flags.estate !== undefined && flags["estate-id"] !== undefined) {
+        if (flags.host !== undefined && flags["host-id"] !== undefined) {
           throw new UsageError(
-            "Pass --estate (a slug) or --estate-id (an id), not both.",
+            "Pass --host (a slug) or --host-id (an id), not both.",
           );
         }
         const { projectId } = await this.projects.named(flags.project, context);
-        const estate =
-          flags.estate === undefined
-            ? flags["estate-id"]
-            : await this.estateIdOf(
+        const host =
+          flags.host === undefined
+            ? flags["host-id"]
+            : await this.hostIdOf(
                 projectId,
-                flags.estate,
+                flags.host,
                 `${flags.app}/${flags.env}`,
               );
         const body = {
           ...(flags["new-app"] === undefined ? {} : { app: flags["new-app"] }),
           ...(flags["new-env"] === undefined ? {} : { env: flags["new-env"] }),
           ...(flags.url === undefined ? {} : { url: flags.url }),
-          ...(estate === undefined
-            ? {}
-            : { estateId: estate === "0" ? null : estate }),
+          ...(host === undefined ? {} : { hostId: host === "0" ? null : host }),
         };
         const changed = Object.keys(body);
         if (changed.length === 0) {
           throw new UsageError(
-            "Nothing to update: pass at least one of --new-app, --new-env, --url, --estate or --estate-id.",
+            "Nothing to update: pass at least one of --new-app, --new-env, --url, --host or --host-id.",
           );
         }
 
@@ -346,17 +344,17 @@ export class AppInstanceCommand {
   });
 
   /**
-   * The id of the estate `slug` names among those lent to the project,
+   * The id of the host `slug` names among those lent to the project,
    * through the one rule every creator of a copy shares.
    */
-  protected async estateIdOf(
+  protected async hostIdOf(
     projectId: number,
     slug: string,
     copy: string,
   ): Promise<string> {
-    const { items } = await this.estateApi.listProjectEstates({
+    const { items } = await this.hostApi.listProjectHosts({
       params: { projectId },
     });
-    return LoreEstateChoice.pick(items, slug, copy).id;
+    return LoreHostChoice.pick(items, slug, copy).id;
   }
 }

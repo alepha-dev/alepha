@@ -60,7 +60,7 @@ describe("lore -h and lore help", () => {
     const description = LoreConventions.describe("0.0.0");
 
     expect(description).toContain(
-      "(for every planning command, estate, registry and stack)",
+      "(for every planning command, host, registry and stack)",
     );
   });
 

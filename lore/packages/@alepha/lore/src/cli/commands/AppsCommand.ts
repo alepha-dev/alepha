@@ -42,18 +42,18 @@ import { DeployCommand } from "./DeployCommand.ts";
  *
  * ## ⚠️ `--env` is on `deploy` and NOT on `build`, deliberately
  *
- * On `build` it selects a TARGET (which runtime the estate behind that env
+ * On `build` it selects a TARGET (which runtime the host behind that env
  * accepts) and never reaches a value inside the bytes. On `deploy` it names the
  * **instance**: a deploy axis rather than a build axis. So the zero-flag
  * command builds env-independent bytes and then places them at an env, and
  * `lore apps build --env staging` is a legal thing to type that means something
  * narrower than it looks. That asymmetry is worth one sentence in `--help`.
  *
- * ## ⚠️ The client never names an estate
+ * ## ⚠️ The client never names a host
  *
- * No `--estate` flag, no estate id on the wire. It names a project, an app and
+ * No `--host` flag, no host id on the wire. It names a project, an app and
  * an environment; Lore resolves the rest from the `app_instances` row. A client
- * that can name its own estate can deploy into somebody else's cloud account -
+ * that can name its own host can deploy into somebody else's cloud account -
  * folio #96 named that hole, and `DeployGate` is the server half.
  *
  * ## ⚠️ Why the client builds at all
@@ -79,20 +79,20 @@ import { DeployCommand } from "./DeployCommand.ts";
  * ## ⚠️ `--env` selects a TARGET. It never reaches a value inside the build.
  *
  * An app's environments can want different runtimes - one on a Cloudflare
- * estate, one on a Bay machine - so `--env` says "build the thing that env can
- * run" without the operator having to remember which estate is behind it.
+ * host, one on a Bay machine - so `--env` says "build the thing that env can
+ * run" without the operator having to remember which host is behind it.
  *
  * That is safe because **`runtime` is part of the artifact's identity**:
  * `artifacts` is unique on `(projectId, app, tag, runtime)`, so `docs@0.28.0`
  * built for a Cloudflare env and for a Bay env are two rows rather than a
- * collision, and a deploy is a lookup on the runtime the estate accepts.
+ * collision, and a deploy is a lookup on the runtime the host accepts.
  *
  * ⚠️ What it must never do is thread an env-specific VALUE into the bytes. Not
  * `DATABASE_URL`, not `R2_BUCKET_NAME`, not a secret. Folio #1209: a cloudflare
  * build with no `DATABASE_URL` emits a config with no bindings, and that is
  * correct, because they are regenerated at deploy time from the manifest plus
  * freshly provisioned ids. The test that separates the two is in
- * `AppsCommand.spec.ts`: **two envs on the same estate type must produce
+ * `AppsCommand.spec.ts`: **two envs on the same host type must produce
  * byte-identical output.** If they do not, this flag has become the thing it
  * must not be and promotion across environments is broken.
  *
@@ -100,7 +100,7 @@ import { DeployCommand } from "./DeployCommand.ts";
  *
  * Since epic #30 there is no `apps` table: an app is `GROUP BY app` over
  * `app_instances`, whose columns are `projectId`, `app`, `env`, `sigilId`,
- * `estateId` and `createdBy`. Not one says anything about build targets. The
+ * `hostId` and `createdBy`. Not one says anything about build targets. The
  * build already parses `alepha.config.ts` for everything else and runs on the
  * machine that holds it, and a build must work offline - pushing is a separate
  * step. So a target the local config does not declare cannot be built, whatever
@@ -168,7 +168,7 @@ export class AppsCommand {
         .text({
           aliases: ["e"],
           description:
-            "Build what this environment can run. Resolved through its estate; never threaded into the bytes.",
+            "Build what this environment can run. Resolved through its host; never threaded into the bytes.",
         })
         .optional(),
     }),
@@ -304,7 +304,7 @@ export class AppsCommand {
     env: string,
   ): Promise<string> {
     const instance = await this.deployer.readInstance(projectId, app, env);
-    if (instance.estate?.type !== "bay") {
+    if (instance.host?.type !== "bay") {
       return `--purge is for a copy on a Bay. ${app}/${env} is not on one: an ephemeral Cloudflare copy loses its database and bucket on destroy, any other keeps them.`;
     }
     const suffix = `-${env}`;
@@ -574,7 +574,7 @@ export class AppsCommand {
       tag,
       flags.sigil,
     );
-    // The estate is said on every deploy (#Q3172): it is chosen once, when
+    // The host is said on every deploy (#Q3172): it is chosen once, when
     // the copy is created, and reused silently after.
     const destination = await this.deployer.destinationOf(projectId, instance);
     this.log.info(
@@ -609,7 +609,7 @@ export class AppsCommand {
    *
    * ⚠️ `--env` and `--target` together can CONTRADICT each other, and that is a
    * refusal rather than a precedence question: `--env xxx --target docker`
-   * where `xxx` sits on a Cloudflare estate asks for two different things, and
+   * where `xxx` sits on a Cloudflare host asks for two different things, and
    * silently picking one would produce bytes the operator did not ask for and
    * a deploy that fails much later.
    */
@@ -645,7 +645,7 @@ export class AppsCommand {
    * The target one environment implies, resolved through Lore.
    *
    * The chain needs no new column: `(project, app, env)` names an
-   * `app_instances` row, its `estateId` names an estate, the estate's TYPE
+   * `app_instances` row, its `hostId` names a host, the host's TYPE
    * decides the accepted runtimes, and the runtime decides the target.
    */
   protected async targetForEnv(

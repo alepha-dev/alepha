@@ -27,7 +27,7 @@ import {
  * Every tool goes through the HTTP actions, so the gates are the same ones
  * (`app:read` to read, `deploy:manage` behind `apps.stacks` to deploy or read
  * logs). ⚠️ No tool returns a variable or a registry credential: there is no
- * value anywhere in these results, by construction, and no estate argument.
+ * value anywhere in these results, by construction, and no host argument.
  */
 export class StackTools {
   protected readonly stacks = $inject(StackController);
@@ -50,7 +50,7 @@ export class StackTools {
       return {
         stacks: items.map((stack) => ({
           name: stack.name,
-          estateId: stack.estateId,
+          hostId: stack.hostId,
           latestRevision: stack.latestRevision,
           environments: stack.environments.map((e) => this.environment(e)),
         })),
@@ -122,7 +122,7 @@ export class StackTools {
   stack_deploy = $tool({
     title: "Deploy a stack",
     description:
-      "Apply a revision to a stack environment through its estate (the newest when none is named), or, with `app`, deploy one app service of it alone, blue/green, from a stored build. Refused before anything reaches the machine when the estate does not accept deploys, the revision cannot run there, or a variable it needs is unset. There is no estate argument: where an environment deploys is a property of the environment. Needs deploy rights.",
+      "Apply a revision to a stack environment through its host (the newest when none is named), or, with `app`, deploy one app service of it alone, blue/green, from a stored build. Refused before anything reaches the machine when the host does not accept deploys, the revision cannot run there, or a variable it needs is unset. There is no host argument: where an environment deploys is a property of the environment. Needs deploy rights.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: stackDeployParamsSchema,
@@ -225,7 +225,7 @@ export class StackTools {
   protected environment(e: StackResource["environments"][number]) {
     return {
       env: e.env,
-      estateId: e.estateId,
+      hostId: e.hostId,
       baseDomain: e.baseDomain,
       revision: e.revision,
       routes: e.routes,

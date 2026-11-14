@@ -1,9 +1,6 @@
 import type { AppController } from "@lore/deploy/api";
 import type { DeployController } from "@lore/deploy/api";
-import type {
-  ProjectEstateController,
-  StackController,
-} from "@lore/deploy/api";
+import type { ProjectHostController, StackController } from "@lore/deploy/api";
 import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
@@ -13,9 +10,9 @@ import { $client } from "alepha/server/links";
 import { ShellProvider } from "alepha/system";
 
 import {
-  type LentEstate,
-  LoreEstateChoice,
-} from "../../client/services/LoreEstateChoice.ts";
+  type LentHost,
+  LoreHostChoice,
+} from "../../client/services/LoreHostChoice.ts";
 import { LoreArtifactPusher } from "./LoreArtifactPusher.ts";
 import { LoreClientService } from "./LoreClientService.ts";
 
@@ -24,10 +21,10 @@ import { LoreClientService } from "./LoreClientService.ts";
  */
 export interface LoreInstance {
   id: string;
-  estateId?: string;
+  hostId?: string;
   /**
    * The stack environment this copy is a member of, when it is one: it then
-   * deploys through it, on that environment's estate (#Q2703).
+   * deploys through it, on that environment's host (#Q2703).
    */
   stackEnvironmentId?: string;
   stack?: { id: string; name: string; environmentId: string; env: string };
@@ -37,14 +34,14 @@ export interface LoreInstance {
    */
   url?: string;
   /**
-   * The name the estate knows the copy by.
+   * The name the host knows the copy by.
    */
   resourceName?: string;
   /**
    * The tag of the copy's newest successful deploy: what it runs.
    */
   version?: string;
-  estate?: { slug?: string; type?: string };
+  host?: { slug?: string; type?: string };
   updatedAt?: string;
 }
 
@@ -59,7 +56,7 @@ export interface LoreDestroyResult {
 
 /**
  * The deploy path of the `lore` CLI, with no command in it: load the copy,
- * resolve the runtime its estate accepts, build and push, start a run and
+ * resolve the runtime its host accepts, build and push, start a run and
  * follow it, and tear a copy down.
  *
  * ## ⚠️ Why this is a service and not the commands' bodies
@@ -70,11 +67,11 @@ export interface LoreDestroyResult {
  * deploys drift. The commands keep what is theirs: flag parsing, refusals worded
  * for a terminal, and output.
  *
- * ## ⚠️ The client never names an estate
+ * ## ⚠️ The client never names a host
  *
- * No estate id on the wire. It names a project, an app and an environment;
+ * No host id on the wire. It names a project, an app and an environment;
  * Lore resolves the rest from the `app_instances` row. A client that can name
- * its own estate can deploy into somebody else's cloud account - folio #96
+ * its own host can deploy into somebody else's cloud account - folio #96
  * named that hole, and `DeployGate` is the server half.
  *
  * ## ⚠️ Not `@alepha/lore/client`'s `LoreDeployService`
@@ -96,7 +93,7 @@ export class LoreDeployer {
    * `undefined` if that field is declared below it.
    */
   protected readonly apps = $client<AppController>(this.client.scope());
-  protected readonly estates = $client<ProjectEstateController>(
+  protected readonly hosts = $client<ProjectHostController>(
     this.client.scope(),
   );
   protected readonly deploys = $client<DeployController>(this.client.scope());
@@ -158,7 +155,7 @@ export class LoreDeployer {
    *
    * ⚠️ **`alepha build` has no `--target` any more**: the build is described
    * by what it produces, so the CLI translates its own vocabulary into a
-   * runtime on the way out. A TARGET names a deploy destination - an estate
+   * runtime on the way out. A TARGET names a deploy destination - a host
    * type - which is a different question from which slice to link, and the
    * two only happen to line up one-to-one today.
    */
@@ -234,8 +231,8 @@ export class LoreDeployer {
 
   /**
    * Whether a copy deploys to a Bay machine: a stack member always does (a
-   * stack runs on Bay alone), anything else when its estate is a `bay`.
-   * Read from the estates lent to the project, the list the build step reads
+   * stack runs on Bay alone), anything else when its host is a `bay`.
+   * Read from the hosts lent to the project, the list the build step reads
    * the runtime from.
    */
   public async deploysToBay(
@@ -245,21 +242,21 @@ export class LoreDeployer {
     if (instance.stackEnvironmentId) {
       return true;
     }
-    if (!instance.estateId) {
+    if (!instance.hostId) {
       return false;
     }
-    const lent = await this.estates.listProjectEstates({
+    const lent = await this.hosts.listProjectHosts({
       params: { projectId },
     });
     return (lent?.items ?? []).some(
       (it: { id: string; type?: string }) =>
-        it.id === instance.estateId && it.type === "bay",
+        it.id === instance.hostId && it.type === "bay",
     );
   }
 
   /**
    * Where a copy deploys, in words, for the line every deploy prints
-   * (#Q3172): the estate is chosen once, when the copy is created, and
+   * (#Q3172): the host is chosen once, when the copy is created, and
    * reused silently after, so the deploy says it.
    */
   public async destinationOf(
@@ -269,30 +266,30 @@ export class LoreDeployer {
     if (instance.stackEnvironmentId) {
       return undefined;
     }
-    if (!instance.estateId) {
+    if (!instance.hostId) {
       return undefined;
     }
-    const lent = await this.estates.listProjectEstates({
+    const lent = await this.hosts.listProjectHosts({
       params: { projectId },
     });
     const slug = (lent?.items ?? []).find(
-      (it: { id: string; slug?: string }) => it.id === instance.estateId,
+      (it: { id: string; slug?: string }) => it.id === instance.hostId,
     )?.slug;
-    return slug ? `estate '${slug}'` : undefined;
+    return slug ? `host '${slug}'` : undefined;
   }
 
   /**
-   * Create the copy, on the estate the shared rule picks.
+   * Create the copy, on the host the shared rule picks.
    *
    * ⚠️ `lore deploy` never calls this: its `--env` is free text, and a typo
    * there must not become a copy. A caller whose env names come from a
    * committed file (the infra adapter) may.
    *
-   * Created with nothing optional: no domain (the estate owns the host), not
+   * Created with nothing optional: no domain (the host owns the host), not
    * ephemeral (a copy made this way keeps its data, which `infra down`
    * relies on), and no sigil (the deploy mints one from the manifest). Two
-   * calls, because `createApp` takes no estate: pointing the row at one is a
-   * separate, validated act. The estate is the one lent to the project, and
+   * calls, because `createApp` takes no host: pointing the row at one is a
+   * separate, validated act. The host is the one lent to the project, and
    * several lent are refused before the first call (#Q3144), so nothing is
    * created when Lore has not been told which.
    */
@@ -301,11 +298,11 @@ export class LoreDeployer {
     app: string,
     env: string,
   ): Promise<LoreInstance> {
-    const lent = await this.estates.listProjectEstates({
+    const lent = await this.hosts.listProjectHosts({
       params: { projectId },
     });
-    const chosen = LoreEstateChoice.pick(
-      (lent?.items ?? []) as LentEstate[],
+    const chosen = LoreHostChoice.pick(
+      (lent?.items ?? []) as LentHost[],
       undefined,
       `${app}/${env}`,
     );
@@ -316,11 +313,11 @@ export class LoreDeployer {
     })) as LoreInstance & { app: string; env: string };
     const linked = (await this.apps.updateApp({
       params: { projectId, app: created.app, env: created.env },
-      body: { estateId: chosen.id },
+      body: { hostId: chosen.id },
     })) as LoreInstance;
 
     // On its own line: a first deploy made something that outlives it.
-    this.log.info(`Created ${app}/${env} on estate '${chosen.slug}'`);
+    this.log.info(`Created ${app}/${env} on host '${chosen.slug}'`);
     return linked;
   }
 
@@ -344,7 +341,7 @@ export class LoreDeployer {
     const stack = items.find((it) => it.name === stackName);
     if (!stack) {
       throw new AlephaError(
-        `This project has no stack named ${stackName}. Create it with \`lore stack create --file compose.yml --estate <estate>\`.`,
+        `This project has no stack named ${stackName}. Create it with \`lore stack create --file compose.yml --host <host>\`.`,
       );
     }
     const environment = stack.environments.find((e) => e.env === env);
@@ -383,39 +380,39 @@ export class LoreDeployer {
    * The build target one copy implies.
    *
    * The chain needs no new column: `(project, app, env)` names an
-   * `app_instances` row, its `estateId` names an estate, the estate's TYPE
+   * `app_instances` row, its `hostId` names a host, the host's TYPE
    * decides the accepted runtimes, and the runtime decides the target.
    */
   public async targetForInstance(
     projectId: number,
     app: string,
     env: string,
-    instance: { estateId?: string; stackEnvironmentId?: string } | undefined,
+    instance: { hostId?: string; stackEnvironmentId?: string } | undefined,
   ): Promise<string> {
     // A stack member runs where its stack does, and only a Bay runs stacks:
-    // the node build, whatever the copy's own (absent) estate would say.
+    // the node build, whatever the copy's own (absent) host would say.
     if (instance?.stackEnvironmentId) {
       return LoreDeployer.TARGET_FOR_RUNTIME.node;
     }
-    if (!instance?.estateId) {
+    if (!instance?.hostId) {
       // ⚠️ Refused, not fallen back on. Building every target for an
-      // environment that names no estate produces bytes nobody asked for and
+      // environment that names no host produces bytes nobody asked for and
       // hides the real problem, which is that the copy has nowhere to deploy.
       throw new AlephaError(
-        `${app}/${env} has no estate, so there is nothing to say what it can run. Choose one on its Settings tab, or pass --target.`,
+        `${app}/${env} has no host, so there is nothing to say what it can run. Choose one on its Settings tab, or pass --target.`,
       );
     }
 
-    const lent = await this.estates.listProjectEstates({
+    const lent = await this.hosts.listProjectHosts({
       params: { projectId },
     });
-    const estate = lent?.items?.find(
-      (it: { id: string }) => it.id === instance.estateId,
+    const host = lent?.items?.find(
+      (it: { id: string }) => it.id === instance.hostId,
     ) as { acceptedRuntimes?: string[]; type?: string } | undefined;
-    const runtime = estate?.acceptedRuntimes?.[0];
+    const runtime = host?.acceptedRuntimes?.[0];
     if (!runtime) {
       throw new AlephaError(
-        `Could not tell what ${app}/${env} can run. Its estate is not lent to this project any more, or Lore did not say what it accepts.`,
+        `Could not tell what ${app}/${env} can run. Its host is not lent to this project any more, or Lore did not say what it accepts.`,
       );
     }
 
@@ -436,7 +433,7 @@ export class LoreDeployer {
    * Vite stays out of the `lore` binary's own graph.
    *
    * ⚠️ **No env-specific value is passed, ever.** The command line carries a
-   * runtime and nothing else: that is what keeps two envs on one estate type
+   * runtime and nothing else: that is what keeps two envs on one host type
    * byte-identical, which is the property promotion depends on.
    *
    * ⚠️ **No target means a bare `alepha build`**, so the workspace's own
@@ -465,7 +462,7 @@ export class LoreDeployer {
   }
 
   /**
-   * Build the target the copy's estate accepts, then push it.
+   * Build the target the copy's host accepts, then push it.
    *
    * ⚠️ **It builds ONE target, straight into `dist/`.** `WorkspacePacker` tars
    * the whole of `dist/`, so anything else left in there rides inside the
@@ -479,7 +476,7 @@ export class LoreDeployer {
     tag: string;
     root: string;
     run: RunnerMethod;
-    instance: { estateId?: string };
+    instance: { hostId?: string };
     alepha?: string;
   }): Promise<void> {
     const target = await this.targetForInstance(
@@ -509,7 +506,7 @@ export class LoreDeployer {
    * Ask Lore to start a run.
    *
    * ⚠️ The body carries a tag and, when the operator overrode it, whether this
-   * copy should have a sigil. It never carries an estate.
+   * copy should have a sigil. It never carries a host.
    *
    * ⚠️ `sigil` is forwarded ONLY when it was actually given. Absent is a
    * meaningful third state on the server - "do what the build declares" - so
@@ -612,7 +609,7 @@ export class LoreDeployer {
    * Remove the copy's Worker, queue and cache (and, for an ephemeral copy, its
    * database and bucket), confirmed by the copy's own `app/env`.
    *
-   * On a Bay estate Lore queues a `remove` for the machine instead (#Q3153),
+   * On a Bay host Lore queues a `remove` for the machine instead (#Q3153),
    * and this follows it: `done` is reported as the instance removed, `failed`
    * as a failed resource, so both callers report a Bay copy the way they
    * report a Cloudflare one. Its data is always kept: nothing on the wire can
@@ -631,19 +628,19 @@ export class LoreDeployer {
       params: { projectId, app, env },
       body: { confirm },
     })) as LoreDestroyResult & {
-      removal?: { command: { id: string }; estate: string };
+      removal?: { command: { id: string }; host: string };
     };
     if (!result.removal) {
       return result;
     }
-    const { command, estate } = result.removal;
+    const { command, host } = result.removal;
     const outcome = await this.followRemoval(projectId, app, env, command.id);
     if (outcome.reason) {
       this.log.info(outcome.reason);
     }
     return outcome.status === "done"
       ? {
-          removed: [`the instance on ${estate}`],
+          removed: [`the instance on ${host}`],
           kept: result.kept,
           failed: [],
         }
@@ -652,7 +649,7 @@ export class LoreDeployer {
           kept: result.kept,
           failed: [
             {
-              resource: `the instance on ${estate}`,
+              resource: `the instance on ${host}`,
               message: outcome.reason ?? "the machine refused it",
             },
           ],
@@ -691,7 +688,7 @@ export class LoreDeployer {
         LoreDeployer.REMOVAL_TIMEOUT_MS
       ) {
         throw new AlephaError(
-          `The removal of ${app}/${env} is queued but its machine has not run it yet (${row?.status ?? "pending"}). It runs when the machine connects; the estate's Commands tab shows it.`,
+          `The removal of ${app}/${env} is queued but its machine has not run it yet (${row?.status ?? "pending"}). It runs when the machine connects; the host's Commands tab shows it.`,
         );
       }
       await this.dateTime.wait(LoreDeployer.POLL_INTERVAL_MS);
@@ -745,7 +742,7 @@ export class LoreDeployer {
   ): Promise<string> {
     try {
       const instance = await this.readInstance(projectId, app, env);
-      if (instance.estate?.type === "bay") {
+      if (instance.host?.type === "bay") {
         return `\n\nOn its Bay this stops serving ${app}/${env} and unregisters it; its database, uploads and .env are kept on the machine. To delete them too, run \`bay remove --purge\` on the machine instead: Lore never asks for that.`;
       }
       return instance.ephemeral

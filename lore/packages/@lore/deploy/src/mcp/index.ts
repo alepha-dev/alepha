@@ -4,7 +4,7 @@ import { $module } from "alepha";
 import { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 import { ArtifactTools } from "./tools/ArtifactTools.ts";
 import { DeployTools } from "./tools/DeployTools.ts";
-import { EstateTools } from "./tools/EstateTools.ts";
+import { HostTools } from "./tools/HostTools.ts";
 import { InsightsTools } from "./tools/InsightsTools.ts";
 import { MonitorTools } from "./tools/MonitorTools.ts";
 import { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
@@ -12,7 +12,7 @@ import { SigilTools } from "./tools/SigilTools.ts";
 import { StackTools } from "./tools/StackTools.ts";
 
 /**
- * The MCP tools and resources of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and estates.
+ * The MCP tools and resources of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and hosts.
  *
  * Registered by `apps/lore/src/main.server.ts` beside `LoreDeployApi`.
  *
@@ -30,8 +30,8 @@ export const LoreDeployMcp = $module({
     InsightsTools,
     // Stacks for agents (#Q2697).
     StackTools,
-    // An estate's stats, read-only, for the members of its home project (#Q3047).
-    EstateTools,
+    // A host's stats, read-only, for the members of its home project (#Q3047).
+    HostTools,
     // Uptime monitors for agents (#Q3591).
     MonitorTools,
   ],
@@ -43,7 +43,7 @@ export { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 export { ArtifactTools } from "./tools/ArtifactTools.ts";
 export { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
 export { DeployTools } from "./tools/DeployTools.ts";
-export { EstateTools } from "./tools/EstateTools.ts";
+export { HostTools } from "./tools/HostTools.ts";
 export { InsightsTools } from "./tools/InsightsTools.ts";
 export { MonitorTools } from "./tools/MonitorTools.ts";
 export { SigilTools } from "./tools/SigilTools.ts";

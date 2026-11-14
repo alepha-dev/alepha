@@ -31,7 +31,7 @@ import { LoreSecretsService } from "../services/LoreSecretsService.ts";
  * It fits the pipeline every adapter runs - authenticate, provision, build,
  * migrate, deploy, secrets - the way the Cloudflare and Bay adapters do, with
  * its secrets riding the deploy. What differs is where the work happens: the
- * machine builds and pushes an artifact, and Lore places it, on the estate the
+ * machine builds and pushes an artifact, and Lore places it, on the host the
  * copy is lent, with the secrets Lore keeps sealed.
  *
  * ## ⚠️ One deploy, two front doors
@@ -57,7 +57,7 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
   static readonly options = loreEnvironmentOptionsSchema;
 
   /**
-   * `false`: the estate owns the host, not `alepha.config.ts`. `up` reports
+   * `false`: the host owns the host, not `alepha.config.ts`. `up` reports
    * the URL Lore answers the run with instead.
    */
   override readonly controlsDomain = false;
@@ -143,7 +143,7 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
   }
 
   /**
-   * Build the runtime the copy's estate accepts, then push it as `latest`.
+   * Build the runtime the copy's host accepts, then push it as `latest`.
    *
    * The build is `alepha build` run by THIS binary as a subprocess, never
    * `npx alepha` (which could resolve a different version) and never a
@@ -244,7 +244,7 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
    * The copy, in the shape `alepha infra status` prints for every adapter.
    *
    * Lore owns the resources behind a copy and does not list them to a client,
-   * so the one row is the copy itself: its name on the estate, what it runs
+   * so the one row is the copy itself: its name on the host, what it runs
    * and where. The secrets are the keys of its sealed set, never a value.
    */
   async inspect(
@@ -276,9 +276,7 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
       return state;
     }
 
-    const where = instance.estate?.slug
-      ? ` on estate '${instance.estate.slug}'`
-      : "";
+    const where = instance.host?.slug ? ` on host '${instance.host.slug}'` : "";
     state.workers.push({
       name: instance.resourceName || name,
       exists: true,
@@ -422,7 +420,7 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
     instanceId: string,
     onBay = false,
   ): Promise<void> {
-    // On a Bay estate the machine writes these into every instance itself,
+    // On a Bay host the machine writes these into every instance itself,
     // and Lore refuses a stored copy of one, which failed the whole deploy of
     // a freshly scaffolded app over its APP_SECRET (#Q3158's walk). Dropped
     // here, as `BayAdapter` drops them, and named so nobody wonders why.
@@ -449,7 +447,7 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
       );
       if (owned.length > 0) {
         this.log.info(
-          `Not sealing ${owned.join(", ")} for ${ctx.project}/${ctx.env}: the Bay estate writes ${owned.length === 1 ? "it" : "them"} itself.`,
+          `Not sealing ${owned.join(", ")} for ${ctx.project}/${ctx.env}: the Bay host writes ${owned.length === 1 ? "it" : "them"} itself.`,
         );
       }
     }

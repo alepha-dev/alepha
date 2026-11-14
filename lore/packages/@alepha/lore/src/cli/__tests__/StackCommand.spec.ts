@@ -77,8 +77,8 @@ describe("lore stack", () => {
       alepha.inject(LoreStackService) as unknown as Record<string, unknown>,
       {
         stacks: { listStacks: async () => ({ items: [stack()] }) },
-        estates: {
-          listProjectEstates: async () => ({
+        hosts: {
+          listProjectHosts: async () => ({
             items: [{ id: "e1", slug: "vps-ovh" }],
           }),
         },
@@ -174,14 +174,14 @@ describe("lore stack", () => {
           if (options.removal === "refused") {
             throw Object.assign(
               new Error(
-                'Estate "vps-ovh" does not accept deploys; its owner has to allow them first',
+                'Host "vps-ovh" does not accept deploys; its owner has to allow them first',
               ),
               { name: "HttpError", status: 403 },
             );
           }
           return options.removal === "none" || options.removal === undefined
             ? {}
-            : { command: { id: "c1" }, estate: "vps-ovh" };
+            : { command: { id: "c1" }, host: "vps-ovh" };
         },
       },
     });
@@ -230,17 +230,17 @@ describe("lore stack", () => {
     });
   });
 
-  it("create names the stack after the project and sets its default estate", async ({
+  it("create names the stack after the project and sets its default host", async ({
     expect,
   }) => {
     const { run, calls } = create();
-    await run("create", "--estate vps-ovh");
+    await run("create", "--host vps-ovh");
     expect(calls).toEqual([
       {
         name: "createStack",
         request: {
           params: { projectId: 7 },
-          body: { name: "hello", estateId: "e1" },
+          body: { name: "hello", hostId: "e1" },
         },
       },
     ]);

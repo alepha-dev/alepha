@@ -12,18 +12,18 @@ import {
 } from "alepha/system";
 import { describe, it } from "vitest";
 
-import { LoreEstateChoice } from "../../client/services/LoreEstateChoice.ts";
-import { EstateCommand } from "../commands/EstateCommand.ts";
+import { LoreHostChoice } from "../../client/services/LoreHostChoice.ts";
+import { HostCommand } from "../commands/HostCommand.ts";
 import { LoreDeployer } from "../services/LoreDeployer.ts";
-import { LoreEstateResolver } from "../services/LoreEstateResolver.ts";
+import { LoreHostResolver } from "../services/LoreHostResolver.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
 /**
- * `lore estate lend` / `unlend` (#Q3172): an estate provisioned with no
+ * `lore host lend` / `unlend` (#Q3172): a host provisioned with no
  * project is lent from a shell later, and a deploy with nowhere to go says
  * which command fixes it.
  */
-describe("lore estate lend and unlend", () => {
+describe("lore host lend and unlend", () => {
   const create = () => {
     const alepha = Alepha.create({
       env: {
@@ -38,22 +38,22 @@ describe("lore estate lend and unlend", () => {
       .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider });
     const printed = alepha.inject(MemoryOutputProvider).lines;
     const calls: Array<{ name: string; request: unknown }> = [];
-    const command = alepha.inject(EstateCommand);
+    const command = alepha.inject(HostCommand);
     Object.assign(
       alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
       { projects: { getProjectBySlug: async () => ({ id: 7 }) } },
     );
     Object.assign(
-      alepha.inject(LoreEstateResolver) as unknown as Record<string, unknown>,
+      alepha.inject(LoreHostResolver) as unknown as Record<string, unknown>,
       {
-        estates: {
-          listMyEstates: async () => ({
+        hosts: {
+          listMyHosts: async () => ({
             items: [
               {
                 id: "est-1",
                 slug: "small-skilled-pie",
                 project: { id: 3, title: "Infra", slug: "infra" },
-                can: ["estate:read", "estate:lend"],
+                can: ["host:read", "host:lend"],
                 projects: [],
               },
             ],
@@ -63,15 +63,15 @@ describe("lore estate lend and unlend", () => {
     );
     Object.assign(command as unknown as Record<string, unknown>, {
       lending: {
-        attachEstate: async (request: unknown) => {
+        attachHost: async (request: unknown) => {
           calls.push({ name: "attach", request });
           return { id: "est-1", slug: "small-skilled-pie" };
         },
-        detachEstate: async (request: unknown) => {
+        detachHost: async (request: unknown) => {
           calls.push({ name: "detach", request });
           return { ok: true };
         },
-        listProjectEstates: async () => ({
+        listProjectHosts: async () => ({
           items: [
             {
               id: "est-1",
@@ -90,7 +90,7 @@ describe("lore estate lend and unlend", () => {
     return { run, printed, calls };
   };
 
-  it("lends an estate to a project and says how to deploy there", async ({
+  it("lends a host to a project and says how to deploy there", async ({
     expect,
   }) => {
     const { run, printed, calls } = create();
@@ -98,7 +98,7 @@ describe("lore estate lend and unlend", () => {
     expect(calls).toEqual([
       {
         name: "attach",
-        request: { params: { projectId: 7 }, body: { estateId: "est-1" } },
+        request: { params: { projectId: 7 }, body: { hostId: "est-1" } },
       },
     ]);
     expect(printed.join("\n")).toContain(
@@ -113,27 +113,27 @@ describe("lore estate lend and unlend", () => {
     expect(calls).toEqual([
       {
         name: "detach",
-        request: { params: { projectId: 7, estateId: "est-1" } },
+        request: { params: { projectId: 7, hostId: "est-1" } },
       },
     ]);
   });
 
-  it("refuses an estate the caller may not lend", async ({ expect }) => {
+  it("refuses a host the caller may not lend", async ({ expect }) => {
     const { run, calls } = create();
     await expect(run("lend", "other --project hello-world")).rejects.toThrow(
-      "No estate named other that you can lend",
+      "No host named other that you can lend",
     );
     expect(calls).toEqual([]);
   });
 
-  it("a deploy with no estate lent prints the commands that fix it", ({
+  it("a deploy with no host lent prints the commands that fix it", ({
     expect,
   }) => {
     expect(() =>
-      LoreEstateChoice.pick([], undefined, "hello/production"),
-    ).toThrow("lore estate provision --provider scaleway --project <project>");
+      LoreHostChoice.pick([], undefined, "hello/production"),
+    ).toThrow("lore host provision --provider scaleway --project <project>");
     expect(() =>
-      LoreEstateChoice.pick(
+      LoreHostChoice.pick(
         [
           { id: "a", slug: "a" },
           { id: "b", slug: "b" },
@@ -142,11 +142,11 @@ describe("lore estate lend and unlend", () => {
         "hello/production",
       ),
     ).toThrow(
-      "lore apps instance create --app <app> --env <env> --estate <slug>",
+      "lore apps instance create --app <app> --env <env> --host <slug>",
     );
   });
 
-  it("names the estate a copy deploys to, for the line every deploy prints", async ({
+  it("names the host a copy deploys to, for the line every deploy prints", async ({
     expect,
   }) => {
     const alepha = Alepha.create({
@@ -158,25 +158,25 @@ describe("lore estate lend and unlend", () => {
     });
     const deployer = alepha.inject(LoreDeployer);
     Object.assign(deployer as unknown as Record<string, unknown>, {
-      estates: {
-        listProjectEstates: async () => ({
+      hosts: {
+        listProjectHosts: async () => ({
           items: [{ id: "est-1", slug: "small-skilled-pie" }],
         }),
       },
     });
     expect(
-      await deployer.destinationOf(7, { id: "i", estateId: "est-1" } as never),
-    ).toBe("estate 'small-skilled-pie'");
+      await deployer.destinationOf(7, { id: "i", hostId: "est-1" } as never),
+    ).toBe("host 'small-skilled-pie'");
     expect(
       await deployer.destinationOf(7, { id: "i" } as never),
     ).toBeUndefined();
   });
 
-  it("refuses a slug two lent estates share, naming their home projects", ({
+  it("refuses a slug two lent hosts share, naming their home projects", ({
     expect,
   }) => {
     expect(() =>
-      LoreEstateChoice.pick(
+      LoreHostChoice.pick(
         [
           { id: "a", slug: "ovh-1", home: { slug: "infra", title: "Infra" } },
           { id: "b", slug: "ovh-1", home: { slug: "shop", title: "Shop" } },
@@ -187,7 +187,7 @@ describe("lore estate lend and unlend", () => {
     ).toThrow("from infra and shop");
   });
 
-  it("lends the one estate --home names when two share a slug", async ({
+  it("lends the one host --home names when two share a slug", async ({
     expect,
   }) => {
     const { run, calls } = create();
@@ -195,7 +195,7 @@ describe("lore estate lend and unlend", () => {
     expect(calls).toEqual([
       {
         name: "attach",
-        request: { params: { projectId: 7 }, body: { estateId: "est-1" } },
+        request: { params: { projectId: 7 }, body: { hostId: "est-1" } },
       },
     ]);
     await expect(

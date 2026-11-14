@@ -18,23 +18,23 @@ import {
   appInstances,
   artifacts,
   deployments,
-  estateProjects,
-  estates,
+  hostProjects,
+  hosts,
 } from "../src/schemas/index.ts";
 import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
 /**
  * Shipping from a conversation.
  *
- * ⚠️ **The load-bearing property is what these tools do NOT take.** No estate
- * argument, on any of them: an agent that could name an estate could deploy
+ * ⚠️ **The load-bearing property is what these tools do NOT take.** No host
+ * argument, on any of them: an agent that could name a host could deploy
  * into somebody else's cloud account, which is the hole folio #96 named. And
  * no tool creates an instance as a side effect of naming one.
  */
 class Probe {
   deployments = $repository(deployments);
-  estates = $repository(estates);
-  grants = $repository(estateProjects);
+  hosts = $repository(hosts);
+  grants = $repository(hostProjects);
   instances = $repository(appInstances);
   artifacts = $repository(artifacts);
 }
@@ -113,11 +113,11 @@ const setup = async () => {
 describe("Lore MCP - deploys", () => {
   describe("who may deploy", () => {
     /**
-     * A copy on a lent Bay estate, with one stored build and one run that
+     * A copy on a lent Bay host, with one stored build and one run that
      * succeeded, so `deploy_start` and `deploy_rollback` both reach their
      * write. Bay keeps no version history, so a rollback redeploys that build.
      *
-     * ⚠️ Without the estate the rollback's plan refuses first, for a caller who
+     * ⚠️ Without the host the rollback's plan refuses first, for a caller who
      * holds `app:read` alone: the spec would pass and prove nothing about
      * `deploy:manage`.
      */
@@ -125,15 +125,15 @@ describe("Lore MCP - deploys", () => {
       const world = await setup();
       const { alepha, probe, project, instance, owner, users } = world;
 
-      const estate = await probe.estates.create({
+      const host = await probe.hosts.create({
         ownerUserId: owner.id,
         type: "bay",
         slug: "bay-shipyard",
         deployAllowed: true,
         credentialStatus: "valid",
       } as never);
-      await probe.grants.create({ estateId: estate.id, projectId: project.id });
-      await probe.instances.updateById(instance.id, { estateId: estate.id });
+      await probe.grants.create({ hostId: host.id, projectId: project.id });
+      await probe.instances.updateById(instance.id, { hostId: host.id });
       await probe.artifacts.create({
         projectId: project.id,
         app: "acme",
@@ -230,8 +230,8 @@ describe("Lore MCP - deploys", () => {
   });
 
   describe("what the surface is, and is not", () => {
-    it("adds three deploy tools and no estate tool", async () => {
-      // ⚠️ An estate is owned by a USER and lent to projects, so it is not a
+    it("adds three deploy tools and no host tool", async () => {
+      // ⚠️ A host is owned by a USER and lent to projects, so it is not a
       // project resource an agent lists - and `app_instance_list` already
       // answers which one a copy deploys to. A credential grant was never to
       // be initiated from MCP, and no tool here goes near one.
@@ -245,12 +245,12 @@ describe("Lore MCP - deploys", () => {
         "deploy_start",
         "deploy_status",
       ]);
-      expect(names.some((name) => name.includes("estate"))).toBe(false);
+      expect(names.some((name) => name.includes("host"))).toBe(false);
       // And no second artifact tool: `ArtifactTools` already ships the pair.
       expect(names.some((name) => name.includes("artifact"))).toBe(false);
     });
 
-    it("takes no estate argument on any tool", async ({ expect }) => {
+    it("takes no host argument on any tool", async ({ expect }) => {
       const { deployTools } = await setup();
 
       for (const tool of [
@@ -264,8 +264,8 @@ describe("Lore MCP - deploys", () => {
         // ⚠️ Asserted non-empty first, or every check below passes for a
         // schema this test failed to reach.
         expect(keys).toContain("project");
-        expect(keys).not.toContain("estate");
-        expect(keys.some((key) => key.includes("estate"))).toBe(false);
+        expect(keys).not.toContain("host");
+        expect(keys.some((key) => key.includes("host"))).toBe(false);
       }
     });
 
@@ -306,7 +306,7 @@ describe("Lore MCP - deploys", () => {
       ).toEqual(["production"]);
     });
 
-    it("refuses a copy with no estate, naming what is missing", async () => {
+    it("refuses a copy with no host, naming what is missing", async () => {
       // The gate's own words. The instance exists; it has nowhere to go.
       const { deployTools, project, call } = await setup();
 
@@ -316,7 +316,7 @@ describe("Lore MCP - deploys", () => {
           app: "acme",
           env: "production",
         }),
-      ).rejects.toThrow(/has no estate/);
+      ).rejects.toThrow(/has no host/);
     });
   });
 

@@ -17,11 +17,11 @@ const envNameSchema = z
 
 const environmentSummarySchema = z.object({
   env: z.string(),
-  estateId: z
+  hostId: z
     .string()
     .optional()
     .describe(
-      "The environment's own estate, when it overrides the stack's default.",
+      "The environment's own host, when it overrides the stack's default.",
     ),
   baseDomain: z.string().optional(),
   revision: z
@@ -46,10 +46,10 @@ export const stackListResultSchema = z.object({
   stacks: z.array(
     z.object({
       name: z.string(),
-      estateId: z
+      hostId: z
         .string()
         .optional()
-        .describe("The default estate its environments deploy to."),
+        .describe("The default host its environments deploy to."),
       latestRevision: z.integer().optional(),
       environments: z.array(environmentSummarySchema),
     }),

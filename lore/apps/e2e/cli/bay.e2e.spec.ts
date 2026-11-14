@@ -28,7 +28,7 @@
  * the demo app listens on `SERVER_HOST`: inside a container the address Bay
  * gives it is `0.0.0.0`, and a hard-coded 127.0.0.1 would be the container's
  * own loopback, unreachable through the published port. The host gauge
- * reports nothing off Linux by design, so the gauge on the estate row is
+ * reports nothing off Linux by design, so the gauge on the host row is
  * asserted on Linux only; CI runs there.
  */
 import { type ChildProcess, spawn } from "node:child_process";
@@ -437,7 +437,7 @@ const artifactForm = (
 // the suite
 // ---------------------------------------------------------------------------
 
-interface EstateRow {
+interface HostRow {
   id: string;
   slug: string;
   online: boolean;
@@ -466,7 +466,7 @@ interface ArtifactRow {
 }
 
 /**
- * The shape of what `getEstateInventory` answers, as far as this file reads
+ * The shape of what `getHostInventory` answers, as far as this file reads
  * it.
  *
  * Declared locally rather than imported from Lore for the reason every other
@@ -503,32 +503,30 @@ describe("Bay connector against a real Lore", () => {
   };
   let lore: Lore;
   let owner: Session;
-  let estate: EstateRow;
+  let host: HostRow;
   let secret: string;
   let projectId: number;
   /**
-   * The estate's home project (#E126): an estate is created in a project.
+   * The host's home project (#E126): a host is created in a project.
    * The deploy cases below borrow it in a second one.
    */
   let homeId: number;
 
-  const readEstate = (): Promise<EstateRow> =>
-    ok<EstateRow>(
-      call(lore, owner, "getEstate", { params: { estateId: estate.id } }),
-    );
+  const readHost = (): Promise<HostRow> =>
+    ok<HostRow>(call(lore, owner, "getHost", { params: { hostId: host.id } }));
 
   const commands = async (): Promise<CommandRow[]> =>
     (
       await ok<{ items: CommandRow[] }>(
-        call(lore, owner, "listEstateCommands", {
-          params: { estateId: estate.id },
+        call(lore, owner, "listHostCommands", {
+          params: { hostId: host.id },
         }),
       )
     ).items;
 
   const enqueue = (body: unknown) =>
-    call<CommandRow>(lore, owner, "enqueueEstateCommand", {
-      params: { estateId: estate.id },
+    call<CommandRow>(lore, owner, "enqueueHostCommand", {
+      params: { hostId: host.id },
       body,
     });
 
@@ -622,17 +620,17 @@ describe("Bay connector against a real Lore", () => {
       }),
     );
     homeId = home.id;
-    const minted = await ok<EstateRow & { secret: string }>(
-      call(lore, owner, "createProjectEstate", {
+    const minted = await ok<HostRow & { secret: string }>(
+      call(lore, owner, "createProjectHost", {
         params: { projectId: homeId },
         body: { slug: "ovh-1" },
       }),
     );
-    estate = minted;
+    host = minted;
     secret = minted.secret;
     expect(secret.startsWith("est_")).toBe(true);
     // Reveal once: no read path returns it again.
-    const again = await readEstate();
+    const again = await readHost();
     expect(again.secretPrefix).toBeDefined();
     expect(JSON.stringify(again)).not.toContain(secret);
 
@@ -640,8 +638,8 @@ describe("Bay connector against a real Lore", () => {
     expect(set.code, set.out).toBe(0);
     expect(set.out).not.toContain(secret.slice(4));
 
-    const connected = await until("the estate to come online", async () => {
-      const row = await readEstate();
+    const connected = await until("the host to come online", async () => {
+      const row = await readHost();
       return row.online ? row : undefined;
     });
     expect(connected.connectedAt).toBeDefined();
@@ -651,7 +649,7 @@ describe("Bay connector against a real Lore", () => {
     // Linux reading; off Linux the connector reports nothing by design.
     if (process.platform === "linux") {
       const gauged = await until("the gauge to be stamped", async () => {
-        const row = await readEstate();
+        const row = await readHost();
         return row.statsAt ? row : undefined;
       });
       expect(gauged.cpuPercent).toBeGreaterThanOrEqual(0);
@@ -696,9 +694,9 @@ describe("Bay connector against a real Lore", () => {
    * The whole epic hangs off this frame and every other test of it drives a
    * stub on one side: the Go suite pushes into a fake Lore, the Lore specs
    * store a hand-written frame. Only here does a real `bay serve` fill
-   * `estate_inventories` through the real socket.
+   * `host_inventories` through the real socket.
    *
-   * ⚠️ `refreshEstate` answers `{ asked: true }` and nothing else. The Worker
+   * ⚠️ `refreshHost` answers `{ asked: true }` and nothing else. The Worker
    * cannot read the machine's reply, so the proof a query was ANSWERED is a
    * second row with a later `reportedAt` - which is also the one assertion
    * that would fail if `query` were quietly ignored by the connector, since
@@ -710,8 +708,8 @@ describe("Bay connector against a real Lore", () => {
       "the first inventory to land",
       async () => {
         const read = await ok<InventoryResponse>(
-          call(lore, owner, "getEstateInventory", {
-            params: { estateId: estate.id },
+          call(lore, owner, "getHostInventory", {
+            params: { hostId: host.id },
           }),
         );
         return read.inventory ?? undefined;
@@ -724,7 +722,7 @@ describe("Bay connector against a real Lore", () => {
 
     /*
      * The post-welcome push is the row above, and it is legitimately EMPTY:
-     * it goes out before anything is deployed, and an estate with no apps
+     * it goes out before anything is deployed, and a host with no apps
      * reporting an empty list is the honest frame. So the app is waited for
      * rather than expected in that first row - which is also what the 5 s
      * coalescing floor means in practice, since the restart's own kick lands
@@ -734,8 +732,8 @@ describe("Bay connector against a real Lore", () => {
       "an inventory listing the app the restart case deployed",
       async () => {
         const read = await ok<InventoryResponse>(
-          call(lore, owner, "getEstateInventory", {
-            params: { estateId: estate.id },
+          call(lore, owner, "getHostInventory", {
+            params: { hostId: host.id },
           }),
         );
         return read.inventory?.apps.some(
@@ -748,7 +746,7 @@ describe("Bay connector against a real Lore", () => {
     );
 
     const asked = await ok<{ asked: boolean }>(
-      call(lore, owner, "refreshEstate", { params: { estateId: estate.id } }),
+      call(lore, owner, "refreshHost", { params: { hostId: host.id } }),
     );
     expect(asked.asked).toBe(true);
 
@@ -756,8 +754,8 @@ describe("Bay connector against a real Lore", () => {
       "the query to be answered with a second inventory",
       async () => {
         const read = await ok<InventoryResponse>(
-          call(lore, owner, "getEstateInventory", {
-            params: { estateId: estate.id },
+          call(lore, owner, "getHostInventory", {
+            params: { hostId: host.id },
           }),
         );
         return read.inventory && read.inventory.reportedAt > listed.reportedAt
@@ -799,8 +797,8 @@ describe("Bay connector against a real Lore", () => {
         what,
         async () => {
           const read = await ok<InventoryResponse>(
-            call(lore, owner, "getEstateInventory", {
-              params: { estateId: estate.id },
+            call(lore, owner, "getHostInventory", {
+              params: { hostId: host.id },
             }),
           );
           const app = read.inventory && instanceIn(read.inventory);
@@ -865,9 +863,9 @@ describe("Bay connector against a real Lore", () => {
     expect(pushed.artifact.sha256).toBe(sha256(app.bytes));
 
     await ok(
-      call(lore, owner, "attachEstate", {
+      call(lore, owner, "attachHost", {
         params: { projectId },
-        body: { estateId: estate.id },
+        body: { hostId: host.id },
       }),
     );
     // ⚠️ The copy the deploy is FOR (#Q2475). Its stored name is what Bay
@@ -881,7 +879,7 @@ describe("Bay connector against a real Lore", () => {
     await ok(
       call(lore, owner, "updateApp", {
         params: { projectId, app: "demo", env: "production" },
-        body: { estateId: estate.id },
+        body: { hostId: host.id },
       }),
     );
 
@@ -894,8 +892,8 @@ describe("Bay connector against a real Lore", () => {
     expect(refused.status, refused.text).toBe(403);
 
     await ok(
-      call(lore, owner, "updateEstate", {
-        params: { estateId: estate.id },
+      call(lore, owner, "updateHost", {
+        params: { hostId: host.id },
         body: { deployAllowed: true },
       }),
     );
@@ -936,12 +934,12 @@ describe("Bay connector against a real Lore", () => {
   });
 
   it("deploys a stack to the real Bay: variables pulled, routes applied, outcome recorded", async () => {
-    // Runs after the deploy case above, which lent the estate to the project
+    // Runs after the deploy case above, which lent the host to the project
     // and allowed deploys on it.
     const stack = await ok<{ id: string }>(
       call(lore, owner, "createStack", {
         params: { projectId },
-        body: { name: "e2estack", estateId: estate.id },
+        body: { name: "e2estack", hostId: host.id },
       }),
     );
     const env = await ok<{ id: string }>(
@@ -1015,7 +1013,7 @@ describe("Bay connector against a real Lore", () => {
   });
 
   it("runs Bob's stack from the lore CLI: create, a generated secret, a route, a bundled deploy", async () => {
-    // The built bin, as a host runs it (#Q2700, #Q2701), against the estate
+    // The built bin, as a host runs it (#Q2700, #Q2701), against the host
     // the deploy case above lent and opened to deploys, with an API key as
     // CI would hold one.
     const bin = join(ROOT, "packages/@alepha/lore/dist/bin/index.js");
@@ -1070,7 +1068,7 @@ describe("Bay connector against a real Lore", () => {
       });
 
     try {
-      const created = await cli(["stack", "create", "--estate", "ovh-1"]);
+      const created = await cli(["stack", "create", "--host", "ovh-1"]);
       expect(created.code, created.out).toBe(0);
       // Set before the first deploy, which needs it: the environment is
       // created by the write.
@@ -1168,9 +1166,9 @@ describe("Bay connector against a real Lore", () => {
     expect(listed.out).toContain("demo");
   });
 
-  it("lets a borrowing project's member see the loan but never the secret, the console, or the home's other estates", async () => {
-    const other = await ok<EstateRow>(
-      call(lore, owner, "createProjectEstate", {
+  it("lets a borrowing project's member see the loan but never the secret, the console, or the home's other hosts", async () => {
+    const other = await ok<HostRow>(
+      call(lore, owner, "createProjectHost", {
         params: { projectId: homeId },
         body: { slug: "hetzner" },
       }),
@@ -1194,7 +1192,7 @@ describe("Bay connector against a real Lore", () => {
     );
 
     const lent = await ok<{ items: Array<Record<string, unknown>> }>(
-      call(lore, member, "listProjectEstates", { params: { projectId } }),
+      call(lore, member, "listProjectHosts", { params: { projectId } }),
     );
     expect(lent.items.map((i) => i.slug)).toEqual(["ovh-1"]);
     const text = JSON.stringify(lent);
@@ -1204,30 +1202,30 @@ describe("Bay connector against a real Lore", () => {
     // Not a member of the home project: refused the console (#E126).
     expect(
       (
-        await call(lore, member, "getEstate", {
-          params: { estateId: estate.id },
+        await call(lore, member, "getHost", {
+          params: { hostId: host.id },
         })
       ).status,
     ).toBe(403);
     expect(
       (
-        await call(lore, member, "getEstate", {
-          params: { estateId: other.id },
+        await call(lore, member, "getHost", {
+          params: { hostId: other.id },
         })
       ).status,
     ).toBe(403);
     const mine = await ok<{ items: unknown[] }>(
-      call(lore, member, "listMyEstates"),
+      call(lore, member, "listMyHosts"),
     );
     expect(mine.items).toEqual([]);
   });
 
-  it("walks an estate through the lore CLI: added in one project, lent to a second, moved there, deleted", async () => {
+  it("walks a host through the lore CLI: added in one project, lent to a second, moved there, deleted", async () => {
     // #Q3282: the slug resolves per home project, the managing verbs act on
-    // the estates the project is the home of, and a move keeps the loans.
+    // the hosts the project is the home of, and a move keeps the loans.
     const bin = join(ROOT, "packages/@alepha/lore/dist/bin/index.js");
     const key = await ok<{ token: string }>(
-      call(lore, owner, "createApiKey", { body: { name: "estate cli" } }),
+      call(lore, owner, "createApiKey", { body: { name: "host cli" } }),
     );
     const cli = (args: string[]): Promise<Ran> =>
       new Promise((resolveRun, reject) => {
@@ -1251,16 +1249,10 @@ describe("Bay connector against a real Lore", () => {
         child.on("close", (code) => resolveRun({ code: code ?? -1, out }));
       });
 
-    const added = await cli([
-      "estate",
-      "add",
-      "tmp-move",
-      "-p",
-      String(homeId),
-    ]);
+    const added = await cli(["host", "add", "tmp-move", "-p", String(homeId)]);
     expect(added.code, added.out).toBe(0);
     const lent = await cli([
-      "estate",
+      "host",
       "lend",
       "tmp-move",
       "-p",
@@ -1269,7 +1261,7 @@ describe("Bay connector against a real Lore", () => {
     expect(lent.code, lent.out).toBe(0);
     // The borrowing project cannot delete what it only borrows.
     const notHome = await cli([
-      "estate",
+      "host",
       "delete",
       "tmp-move",
       "-p",
@@ -1277,10 +1269,10 @@ describe("Bay connector against a real Lore", () => {
       "--yes",
     ]);
     expect(notHome.code).not.toBe(0);
-    expect(notHome.out).toContain("is the home of no estate named tmp-move");
+    expect(notHome.out).toContain("is the home of no host named tmp-move");
 
     const moved = await cli([
-      "estate",
+      "host",
       "move",
       "tmp-move",
       "-p",
@@ -1291,11 +1283,11 @@ describe("Bay connector against a real Lore", () => {
     ]);
     expect(moved.code, moved.out).toBe(0);
     expect(moved.out).toContain("Still lent to:");
-    const listed = await cli(["estate", "list", "-p", String(projectId)]);
+    const listed = await cli(["host", "list", "-p", String(projectId)]);
     expect(listed.out).toMatch(/tmp-move[\s\S]*home/);
 
     const deleted = await cli([
-      "estate",
+      "host",
       "delete",
       "tmp-move",
       "-p",
@@ -1305,9 +1297,9 @@ describe("Bay connector against a real Lore", () => {
     expect(deleted.code, deleted.out).toBe(0);
   });
 
-  it("deploys a copy of each project onto the estate, moves it, and both deploy again", async () => {
+  it("deploys a copy of each project onto the host, moves it, and both deploy again", async () => {
     // #Q3284: the home project and the borrowing one each deploy a copy; the
-    // estate then moves to the borrower, and the previous home keeps
+    // host then moves to the borrower, and the previous home keeps
     // deploying through its loan, with the machine none the wiser.
     // Two copies named alike on one machine are ambiguous for the secret
     // pull, which refuses them on purpose, so the home's copy is `homeapp`.
@@ -1348,44 +1340,42 @@ describe("Bay connector against a real Lore", () => {
     await ok(
       call(lore, owner, "updateApp", {
         params: { projectId: homeId, app: "homeapp", env: "production" },
-        body: { estateId: estate.id },
+        body: { hostId: host.id },
       }),
     );
     await deployIn(homeId, "home-before", "homeapp");
     await deployIn(projectId, "borrower-before", "demo");
 
     const moved = await ok<{
-      estate: { project?: { id: number }; slug: string };
+      host: { project?: { id: number }; slug: string };
       loans: Array<{ id: number }>;
     }>(
-      call(lore, owner, "moveEstate", {
-        params: { estateId: estate.id },
+      call(lore, owner, "moveHost", {
+        params: { hostId: host.id },
         body: { projectId },
       }),
     );
-    expect(moved.estate.project?.id).toBe(projectId);
-    expect(moved.estate.slug).toBe("ovh-1");
+    expect(moved.host.project?.id).toBe(projectId);
+    expect(moved.host.slug).toBe("ovh-1");
     expect(moved.loans.map((loan) => loan.id).sort((a, b) => a - b)).toEqual(
       [homeId, projectId].sort((a, b) => a - b),
     );
 
     await deployIn(homeId, "home-after", "homeapp");
     await deployIn(projectId, "borrower-after", "demo");
-    // The machine noticed nothing: still online, same estate.
-    expect((await readEstate()).online).toBe(true);
-    // The delete case below expects one copy on the estate, the borrower's.
+    // The machine noticed nothing: still online, same host.
+    expect((await readHost()).online).toBe(true);
+    // The delete case below expects one copy on the host, the borrower's.
     await ok(
       call(lore, owner, "updateApp", {
         params: { projectId: homeId, app: "homeapp", env: "production" },
-        body: { estateId: null },
+        body: { hostId: null },
       }),
     );
   });
 
-  it("rotating and then deleting the estate make the next dial a 401 that hands over nothing", async () => {
-    await ok(
-      call(lore, owner, "rotateEstate", { params: { estateId: estate.id } }),
-    );
+  it("rotating and then deleting the host make the next dial a 401 that hands over nothing", async () => {
+    await ok(call(lore, owner, "rotateHost", { params: { hostId: host.id } }));
 
     // The live socket is not cut by a rotation; the next dial is what is
     // refused, so the machine is restarted to force one.
@@ -1395,12 +1385,12 @@ describe("Bay connector against a real Lore", () => {
     expect(refused).toContain("down");
     expect(refused).not.toContain("est_");
 
-    // An estate that is still some copy's deploy target cannot be deleted,
+    // A host that is still some copy's deploy target cannot be deleted,
     // and the deploy test above pointed `demo/production` at this one.
     await ok(
       call(lore, owner, "updateApp", {
         params: { projectId, app: "demo", env: "production" },
-        body: { estateId: null },
+        body: { hostId: null },
       }),
     );
     // Nor one a stack deploys to (#Q3131): the stack cases above made two.
@@ -1426,13 +1416,13 @@ describe("Bay connector against a real Lore", () => {
         }),
       );
     }
-    const gone = await call(lore, owner, "deleteEstate", {
-      params: { estateId: estate.id },
+    const gone = await call(lore, owner, "deleteHost", {
+      params: { hostId: host.id },
     });
     expect(gone.status, gone.text).toBe(200);
     await stopBay(bay);
     await startBay(bay);
-    const stillRefused = await untilRefused("the deleted estate");
+    const stillRefused = await untilRefused("the deleted host");
     expect(stillRefused).toContain("down");
   });
 });

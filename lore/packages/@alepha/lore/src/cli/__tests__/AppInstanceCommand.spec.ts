@@ -16,12 +16,12 @@ import { AppInstanceCommand } from "../commands/AppInstanceCommand.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
 /**
- * `lore apps instance create | update --estate <slug>` (#Q3140): the estate
+ * `lore apps instance create | update --host <slug>` (#Q3140): the host
  * is named by slug among those lent to the project, in the same command that
- * creates the copy, and `--estate-id` stays beside it for a script holding an
+ * creates the copy, and `--host-id` stays beside it for a script holding an
  * id.
  */
-describe("lore apps instance --estate", () => {
+describe("lore apps instance --host", () => {
   const create = () => {
     const alepha = Alepha.create({
       env: {
@@ -43,8 +43,8 @@ describe("lore apps instance --estate", () => {
       { projects: { getProjectBySlug: async () => ({ id: 7 }) } },
     );
     Object.assign(command as unknown as Record<string, unknown>, {
-      estateApi: {
-        listProjectEstates: async () => ({
+      hostApi: {
+        listProjectHosts: async () => ({
           items: [
             { id: "e2", slug: "cheap" },
             { id: "e1", slug: "vps-ovh" },
@@ -71,11 +71,11 @@ describe("lore apps instance --estate", () => {
     return { run, printed, calls };
   };
 
-  it("creates the copy and points it at the estate the slug names", async ({
+  it("creates the copy and points it at the host the slug names", async ({
     expect,
   }) => {
     const { run, printed, calls } = create();
-    await run("create", "--app myapp --env production --estate vps-ovh");
+    await run("create", "--app myapp --env production --host vps-ovh");
     expect(calls).toEqual([
       {
         name: "create",
@@ -88,7 +88,7 @@ describe("lore apps instance --estate", () => {
         name: "update",
         request: {
           params: { projectId: 7, app: "myapp", env: "production" },
-          body: { estateId: "e1" },
+          body: { hostId: "e1" },
         },
       },
     ]);
@@ -100,34 +100,31 @@ describe("lore apps instance --estate", () => {
   }) => {
     const { run, calls } = create();
     await expect(
-      run("create", "--app myapp --env production --estate nope"),
+      run("create", "--app myapp --env production --host nope"),
     ).rejects.toThrow("Lent here: cheap, vps-ovh");
     expect(calls).toEqual([]);
   });
 
-  it("updates the estate by slug, and still by id", async ({ expect }) => {
+  it("updates the host by slug, and still by id", async ({ expect }) => {
     const { run, calls } = create();
-    await run("update", "--app myapp --env production --estate cheap");
-    await run("update", "--app myapp --env production --estate-id e9");
+    await run("update", "--app myapp --env production --host cheap");
+    await run("update", "--app myapp --env production --host-id e9");
     expect(calls.map((call) => call.request)).toEqual([
       {
         params: { projectId: 7, app: "myapp", env: "production" },
-        body: { estateId: "e2" },
+        body: { hostId: "e2" },
       },
       {
         params: { projectId: 7, app: "myapp", env: "production" },
-        body: { estateId: "e9" },
+        body: { hostId: "e9" },
       },
     ]);
   });
 
-  it("refuses --estate and --estate-id together", async ({ expect }) => {
+  it("refuses --host and --host-id together", async ({ expect }) => {
     const { run, calls } = create();
     await expect(
-      run(
-        "update",
-        "--app myapp --env production --estate cheap --estate-id e9",
-      ),
+      run("update", "--app myapp --env production --host cheap --host-id e9"),
     ).rejects.toThrow("not both");
     expect(calls).toEqual([]);
   });

@@ -70,9 +70,9 @@ describe("the Lore CLI command surface", () => {
       "directory",
       "epic",
       "error",
-      "estate",
       "feedback",
       "folio",
+      "host",
       "insights",
       "login",
       "logout",
@@ -182,7 +182,7 @@ describe("the Lore CLI command surface", () => {
         "delete",
         "capability",
       ],
-      estate: [
+      host: [
         "provision",
         "add",
         "list",

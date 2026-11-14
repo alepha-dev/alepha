@@ -80,7 +80,7 @@ export class StackCommand {
   public readonly create = $command({
     name: "create",
     description:
-      "Create a stack, with its default estate, and upload its first revision",
+      "Create a stack, with its default host, and upload its first revision",
     flags: z.object({
       project: this.projectFlag,
       name: this.nameFlag,
@@ -91,8 +91,8 @@ export class StackCommand {
             "The compose file; the files it mounts beside it are bundled",
         })
         .optional(),
-      estate: z
-        .text({ description: "The estate its environments deploy to, by slug" })
+      host: z
+        .text({ description: "The host its environments deploy to, by slug" })
         .optional(),
     }),
     handler: async ({ flags, print, root }) => {
@@ -107,18 +107,18 @@ export class StackCommand {
           projectId,
           flags.name,
         );
-        const estateId = flags.estate
-          ? await this.stacks.estateId(projectId, flags.estate)
+        const hostId = flags.host
+          ? await this.stacks.hostId(projectId, flags.host)
           : undefined;
         const bundle = flags.file
           ? await this.bundler.bundle(flags.file, root)
           : undefined;
         const stack = await this.stackApi.createStack({
           params: { projectId },
-          body: { name, ...(estateId ? { estateId } : {}) },
+          body: { name, ...(hostId ? { hostId } : {}) },
         });
         print(
-          `Created stack ${stack.name}${flags.estate ? `, deploying to ${flags.estate}` : ""}.`,
+          `Created stack ${stack.name}${flags.host ? `, deploying to ${flags.host}` : ""}.`,
         );
         if (bundle) {
           const revision = await this.stackApi.uploadStackRevision({
@@ -154,10 +154,10 @@ export class StackCommand {
             "Upload this compose file as a new revision before deploying. Without it or --revision, the compose file here is",
         })
         .optional(),
-      estate: z
+      host: z
         .text({
           description:
-            "On an environment's first deploy: its estate, by slug, instead of the stack's default",
+            "On an environment's first deploy: its host, by slug, instead of the stack's default",
         })
         .optional(),
       revision: z
@@ -179,7 +179,7 @@ export class StackCommand {
       "test-hostname": z
         .text({
           description:
-            "Also serve this service on <env>-<stack>.<ip>.sslip.io, from the estate's public IP: HTTPS with no DNS to set up",
+            "Also serve this service on <env>-<stack>.<ip>.sslip.io, from the host's public IP: HTTPS with no DNS to set up",
         })
         .optional(),
       "dry-run": z
@@ -253,12 +253,12 @@ export class StackCommand {
           print(`Uploaded revision ${revision.number}.`);
         }
         if (!existing) {
-          const estateId = flags.estate
-            ? await this.stacks.estateId(projectId, flags.estate)
+          const hostId = flags.host
+            ? await this.stacks.hostId(projectId, flags.host)
             : undefined;
           await this.stackApi.createStackEnvironment({
             params: { projectId, stackId: stack.id },
-            body: { env, ...(estateId ? { estateId } : {}) },
+            body: { env, ...(hostId ? { hostId } : {}) },
           });
           print(`Created environment ${stack.name}/${env}.`);
           stack = await this.stacks.getStack(projectId, name);
@@ -402,7 +402,7 @@ export class StackCommand {
               params,
             });
             if (queued.command) {
-              print(`Removing ${where} from ${queued.estate}...`);
+              print(`Removing ${where} from ${queued.host}...`);
               const outcome = await this.stacks.awaitRemoval(
                 params,
                 queued.command.id,
@@ -414,7 +414,7 @@ export class StackCommand {
               }
               if (outcome.status !== "done") {
                 throw new CommandError(
-                  `The removal of ${where} is queued on ${queued.estate} but has not run yet (${outcome.status}); it runs when the machine connects. Lore still records ${where}: run this again once it is done.`,
+                  `The removal of ${where} is queued on ${queued.host} but has not run yet (${outcome.status}); it runs when the machine connects. Lore still records ${where}: run this again once it is done.`,
                 );
               }
               if (outcome.reason) {
@@ -426,7 +426,7 @@ export class StackCommand {
             if (!isHttpError(error)) {
               throw error;
             }
-            // Refused before anything was queued: an estate that does not
+            // Refused before anything was queued: a host that does not
             // accept deploys, or one no longer lent. Lore can still forget
             // the environment, and the machine command is printed below.
             refusal = error.message;
@@ -529,7 +529,7 @@ export class StackCommand {
                 })),
           ),
           undefined,
-          "No stack yet. Create one with `lore stack create --file compose.yml --estate <estate>`.",
+          "No stack yet. Create one with `lore stack create --file compose.yml --host <host>`.",
         );
       });
     },
@@ -1033,7 +1033,7 @@ export class StackCommand {
     let stack = await this.stacks.getStack(projectId, name);
     if (create && !stack.environments.some((e) => e.env === env)) {
       // A secret or a route the first deploy needs is set before it, so
-      // these writes create the environment on the stack's own estate.
+      // these writes create the environment on the stack's own host.
       await this.stackApi.createStackEnvironment({
         params: { projectId, stackId: stack.id },
         body: { env },

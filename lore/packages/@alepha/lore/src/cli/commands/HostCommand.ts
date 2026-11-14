@@ -1,7 +1,7 @@
 import type {
-  AdminEstateController,
-  EstateController,
-  ProjectEstateController,
+  AdminHostController,
+  HostController,
+  ProjectHostController,
 } from "@lore/deploy/api";
 import { $inject, AlephaError, z } from "alepha";
 import {
@@ -15,63 +15,61 @@ import { isHttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
-import { LoreEstateProvisioner } from "../services/LoreEstateProvisioner.ts";
-import { LoreEstateResolver } from "../services/LoreEstateResolver.ts";
+import { LoreHostProvisioner } from "../services/LoreHostProvisioner.ts";
+import { LoreHostResolver } from "../services/LoreHostResolver.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 import {
   type LoreRefusalContext,
   LoreRefusals,
 } from "../services/LoreRefusals.ts";
-import { EstateProviders } from "../services/providers/EstateProviders.ts";
+import { HostProviders } from "../services/providers/HostProviders.ts";
 
 /**
- * `lore estate`: the machines a project deploys to, from a shell (#Q2699).
+ * `lore host`: the machines a project deploys to, from a shell (#Q2699).
  *
- * An estate belongs to a project, its home, whose members manage it by their
+ * A host belongs to a project, its home, whose members manage it by their
  * rank, and is lent to the projects that deploy onto it (epic #E126). A slug
- * is unique inside a home project, so `LoreEstateResolver` resolves it: a
- * managing verb (`update`, `rotate`, `delete`, `move`) among the estates the
+ * is unique inside a home project, so `LoreHostResolver` resolves it: a
+ * managing verb (`update`, `rotate`, `delete`, `move`) among the hosts the
  * project is the home of, a reading verb (`get`, `wait`, `stats`) and `lend`
- * among the estates the caller can read, with `--home` for two of one name.
+ * among the hosts the caller can read, with `--home` for two of one name.
  *
- * `add` creates a Bay estate in the current project, lends it there, and
+ * `add` creates a Bay host in the current project, lends it there, and
  * prints the one command to run on the machine. The secret appears in that
  * command once and never again: there is no way to read it back, only to
  * rotate it.
  *
  * `stats` reads a machine's CPU and memory over time (#Q3047), `get` and
- * `wait` (#Q3133) read one estate, the second polling until it is online.
+ * `wait` (#Q3133) read one host, the second polling until it is online.
  * `update` and `rotate` (#Q3134) change the deploy switch and the label, and
  * mint a new secret. `delete` (#Q3131) removes one: refused while an app or a
  * stack still deploys to it, and nothing on the machine stops. `move`
  * (#Q3282) gives it another home, and `assign` is the instance admin's, for
- * an estate with no home.
+ * a host with no home.
  */
-export class EstateCommand {
+export class HostCommand {
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
   protected readonly refusals = $inject(LoreRefusals);
   protected readonly render = $inject(LoreOutput);
-  protected readonly owned = $inject(LoreEstateResolver);
+  protected readonly owned = $inject(LoreHostResolver);
   protected readonly input = $inject(ConsoleInputProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly providers = $inject(EstateProviders);
-  protected readonly provisioner = $inject(LoreEstateProvisioner);
+  protected readonly providers = $inject(HostProviders);
+  protected readonly provisioner = $inject(LoreHostProvisioner);
 
   /**
-   * How often `estate wait` reads the estate again. A field so a spec can
+   * How often `host wait` reads the host again. A field so a spec can
    * shorten it; a poll every two seconds for a few minutes is cheap.
    */
   protected pollMillis = 2_000;
 
-  protected readonly lending = $client<ProjectEstateController>(
+  protected readonly lending = $client<ProjectHostController>(
     this.client.scope(),
   );
-  protected readonly estates = $client<EstateController>(this.client.scope());
-  protected readonly admin = $client<AdminEstateController>(
-    this.client.scope(),
-  );
+  protected readonly hosts = $client<HostController>(this.client.scope());
+  protected readonly admin = $client<AdminHostController>(this.client.scope());
 
   protected readonly projectFlag = z
     .text({
@@ -84,14 +82,14 @@ export class EstateCommand {
   protected readonly homeFlag = z
     .text({
       description:
-        "The estate's home project, by slug, when two estates the command could mean share one slug",
+        "The host's home project, by slug, when two hosts the command could mean share one slug",
     })
     .optional();
 
   /**
    * The project a reading verb narrows to, when there is one: `-p`, then
    * `LORE_PROJECT`, then `.alepha/lore.json`. None is not an error here: the
-   * slug then resolves among every estate the caller can read.
+   * slug then resolves among every host the caller can read.
    */
   protected async optionalProject(
     flag: string | undefined,
@@ -110,10 +108,10 @@ export class EstateCommand {
   public readonly add = $command({
     name: "add",
     description:
-      "Create a Bay estate, lend it to the project, and print the command to run on the machine",
+      "Create a Bay host, lend it to the project, and print the command to run on the machine",
     args: z.text({
       title: "slug",
-      description: "The estate's name, e.g. vps-ovh",
+      description: "The host's name, e.g. vps-ovh",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -129,7 +127,7 @@ export class EstateCommand {
       ttl: z
         .text({
           description:
-            "How long the server is meant to live (30m, 2h, 3d): past it the estate shows overdue and you are told once. Lore stops nothing",
+            "How long the server is meant to live (30m, 2h, 3d): past it the host shows overdue and you are told once. Lore stops nothing",
         })
         .optional(),
       ...LoreOutput.FLAGS,
@@ -141,7 +139,7 @@ export class EstateCommand {
           flags.project,
           context,
         );
-        const minted = await this.lending.createProjectEstate({
+        const minted = await this.lending.createProjectHost({
           params: { projectId },
           body: { slug: args, ...(flags.label ? { label: flags.label } : {}) },
         });
@@ -149,8 +147,8 @@ export class EstateCommand {
         const ttlSeconds =
           flags.ttl === undefined ? undefined : this.ttlSecondsOf(flags.ttl);
         if (flags["allow-deploys"] || typeof ttlSeconds === "number") {
-          const updated = await this.estates.updateEstate({
-            params: { estateId: minted.id },
+          const updated = await this.hosts.updateHost({
+            params: { hostId: minted.id },
             body: {
               ...(flags["allow-deploys"] ? { deployAllowed: true } : {}),
               ...(typeof ttlSeconds === "number" ? { ttlSeconds } : {}),
@@ -162,13 +160,11 @@ export class EstateCommand {
           this.render.json(print, this.minted(minted, deployAllowed));
           return;
         }
-        print(
-          `Created estate ${minted.slug} in ${project}, and lent it there.`,
-        );
+        print(`Created host ${minted.slug} in ${project}, and lent it there.`);
         print(
           flags["allow-deploys"]
             ? "Deploys are allowed."
-            : "Deploys are off until you allow them (lore estate add --allow-deploys, or the estate page).",
+            : "Deploys are off until you allow them (lore host add --allow-deploys, or the host page).",
         );
         print("");
         print(
@@ -181,16 +177,16 @@ export class EstateCommand {
   });
 
   /**
-   * `lore estate provision` (#Q3166, epic E116): buys a server from a
+   * `lore host provision` (#Q3166, epic E116): buys a server from a
    * provider through the provider's own CLI, enrols it through cloud-init
-   * with a one-time secret, and waits until it is online. The estate belongs
-   * to `--project` (created when missing), which is required: an estate
+   * with a one-time secret, and waits until it is online. The host belongs
+   * to `--project` (created when missing), which is required: a host
    * belongs to a project (#E126).
    */
   public readonly provision = $command({
     name: "provision",
     description:
-      "Buy a server from a cloud provider, install Bay on it and enrol it as an estate of a project; waits until it is online",
+      "Buy a server from a cloud provider, install Bay on it and enrol it as a host of a project; waits until it is online",
     flags: z.object({
       provider: z
         .text({
@@ -201,14 +197,14 @@ export class EstateCommand {
       name: z
         .text({
           description:
-            "The estate's slug. Default: three random words, e.g. small-skilled-pie",
+            "The host's slug. Default: three random words, e.g. small-skilled-pie",
         })
         .optional(),
       project: z
         .text({
           aliases: ["p"],
           description:
-            "The project the estate belongs to, created with Apps on when it does not exist. Required",
+            "The project the host belongs to, created with Apps on when it does not exist. Required",
         })
         .optional(),
       type: z
@@ -258,7 +254,7 @@ export class EstateCommand {
           throw new CommandError(
             { exitCode: LoreRefusals.EXIT_FAILURE },
             {
-              message: `${done.slug} is not online after ${flags.timeout ?? 300}s. The server ${done.serverId} is kept and still billing. Wait longer with: lore estate wait ${done.slug} --timeout 300. Or remove it: lore estate delete ${done.slug} --yes`,
+              message: `${done.slug} is not online after ${flags.timeout ?? 300}s. The server ${done.serverId} is kept and still billing. Wait longer with: lore host wait ${done.slug} --timeout 300. Or remove it: lore host delete ${done.slug} --yes`,
             },
           );
         }
@@ -291,27 +287,27 @@ export class EstateCommand {
         print("  alepha deploy");
         print("");
         print(
-          `When you are done: lore estate delete ${done.slug} --yes (terminates the server, its IP and its disk)`,
+          `When you are done: lore host delete ${done.slug} --yes (terminates the server, its IP and its disk)`,
         );
       });
     },
   });
 
   /**
-   * `lore estate lend` / `unlend` (#Q3172): lend an estate to another project,
+   * `lore host lend` / `unlend` (#Q3172): lend a host to another project,
    * so its apps can deploy there, or withdraw the loan. Lending takes
-   * `estate:lend` in the estate's home project and in the borrowing one.
+   * `host:lend` in the host's home project and in the borrowing one.
    * Unlending is refused while a copy of the project still deploys there,
    * and the refusal names the copies.
    */
   public readonly lend = $command({
     name: "lend",
     description:
-      "Lend an estate to a project, so its apps can deploy there; needs estate:lend on both sides",
+      "Lend a host to a project, so its apps can deploy there; needs host:lend on both sides",
     args: z.text({
-      title: "estate",
+      title: "host",
       description:
-        "The estate's slug, among the estates you may lend (--home when two share it)",
+        "The host's slug, among the hosts you may lend (--home when two share it)",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -325,19 +321,19 @@ export class EstateCommand {
           flags.project,
           context,
         );
-        const estate = await this.owned.readable(args, {
+        const host = await this.owned.readable(args, {
           ...(flags.home ? { home: flags.home } : {}),
-          need: "estate:lend",
+          need: "host:lend",
         });
-        const lent = await this.lending.attachEstate({
+        const lent = await this.lending.attachHost({
           params: { projectId },
-          body: { estateId: estate.id },
+          body: { hostId: host.id },
         });
         if (flags.output === "json") {
           this.render.json(print, lent);
           return;
         }
-        print(`Lent ${estate.slug} to ${project}.`);
+        print(`Lent ${host.slug} to ${project}.`);
         print(
           "Its apps deploy there: alepha deploy (in an app linked to the project).",
         );
@@ -348,11 +344,11 @@ export class EstateCommand {
   public readonly unlend = $command({
     name: "unlend",
     description:
-      "Withdraw an estate's loan to a project; refused while a copy there still deploys to it",
+      "Withdraw a host's loan to a project; refused while a copy there still deploys to it",
     args: z.text({
-      title: "estate",
+      title: "host",
       description:
-        "The estate's slug, among the estates lent to the project (--home when two share it)",
+        "The host's slug, among the hosts lent to the project (--home when two share it)",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -366,7 +362,7 @@ export class EstateCommand {
           flags.project,
           context,
         );
-        const { items } = await this.lending.listProjectEstates({
+        const { items } = await this.lending.listProjectHosts({
           params: { projectId },
         });
         const home = flags.home?.toLowerCase();
@@ -379,25 +375,25 @@ export class EstateCommand {
         );
         if (matching.length === 0) {
           throw new UsageError(
-            `No estate named ${args} is lent to ${project}. lore estate list shows the ones that are.`,
+            `No host named ${args} is lent to ${project}. lore host list shows the ones that are.`,
           );
         }
         if (matching.length > 1) {
           throw new UsageError(
-            `Several estates named ${args} are lent to ${project}, from ${matching
+            `Several hosts named ${args} are lent to ${project}, from ${matching
               .map((item) => item.home?.slug ?? item.home?.title ?? "?")
               .join(", ")}. Choose one with --home <project>.`,
           );
         }
-        const estate = matching[0]!;
-        await this.lending.detachEstate({
-          params: { projectId, estateId: estate.id },
+        const host = matching[0]!;
+        await this.lending.detachHost({
+          params: { projectId, hostId: host.id },
         });
         if (flags.output === "json") {
-          this.render.json(print, { ok: true, slug: estate.slug, project });
+          this.render.json(print, { ok: true, slug: host.slug, project });
           return;
         }
-        print(`${estate.slug} is no longer lent to ${project}.`);
+        print(`${host.slug} is no longer lent to ${project}.`);
       });
     },
   });
@@ -405,13 +401,13 @@ export class EstateCommand {
   public readonly list = $command({
     name: "list",
     description:
-      "The estates the project can deploy onto, with whether it is their home or borrows them, and their connection state",
+      "The hosts the project can deploy onto, with whether it is their home or borrows them, and their connection state",
     flags: z.object({ project: this.projectFlag, ...LoreOutput.FLAGS }),
     handler: async ({ flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const { projectId } = await this.projects.named(flags.project, context);
-        const { items } = await this.lending.listProjectEstates({
+        const { items } = await this.lending.listProjectHosts({
           params: { projectId },
         });
         if (flags.output === "json") {
@@ -420,41 +416,41 @@ export class EstateCommand {
         }
         this.render.list(
           print,
-          items.map((estate) => ({
-            handle: estate.slug,
+          items.map((host) => ({
+            handle: host.slug,
             // Whether the project is its home or borrows it, and from whom.
-            title: `${estate.label ?? estate.type}, ${
-              estate.isHome
+            title: `${host.label ?? host.type}, ${
+              host.isHome
                 ? "home"
-                : `borrowed from ${estate.home?.slug ?? estate.home?.title ?? "no project"}`
+                : `borrowed from ${host.home?.slug ?? host.home?.title ?? "no project"}`
             }`,
             fields: [
               // The list prints two fields, so the gauge rides on the first.
               [
-                estate.online ? "online" : "offline",
-                estate.cpuPercent === undefined
+                host.online ? "online" : "offline",
+                host.cpuPercent === undefined
                   ? undefined
-                  : `CPU ${this.percent(estate.cpuPercent)}`,
-                estate.memoryPercent === undefined
+                  : `CPU ${this.percent(host.cpuPercent)}`,
+                host.memoryPercent === undefined
                   ? undefined
-                  : `RAM ${this.percent(estate.memoryPercent)}`,
+                  : `RAM ${this.percent(host.memoryPercent)}`,
               ]
                 .filter(Boolean)
                 .join(" "),
               [
-                estate.deployAllowed ? "deploys allowed" : "deploys off",
-                estate.provider
-                  ? `${estate.provider} ${estate.providerServerType ?? ""}`.trim()
+                host.deployAllowed ? "deploys allowed" : "deploys off",
+                host.provider
+                  ? `${host.provider} ${host.providerServerType ?? ""}`.trim()
                   : undefined,
-                estate.overdue ? "OVERDUE" : undefined,
+                host.overdue ? "OVERDUE" : undefined,
               ]
                 .filter(Boolean)
                 .join(", "),
-              estate.lastSeenAt ? `seen ${estate.lastSeenAt}` : "never seen",
+              host.lastSeenAt ? `seen ${host.lastSeenAt}` : "never seen",
             ],
           })),
           undefined,
-          "No estate is lent to this project. Add one with `lore estate add <slug>`, or borrow one with `lore estate lend <slug> --project <this project>`.",
+          "No host is lent to this project. Add one with `lore host add <slug>`, or borrow one with `lore host lend <slug> --project <this project>`.",
         );
       });
     },
@@ -463,10 +459,10 @@ export class EstateCommand {
   public readonly stats = $command({
     name: "stats",
     description:
-      "An estate's CPU and memory: the current reading, then one mean per day",
+      "A host's CPU and memory: the current reading, then one mean per day",
     args: z.text({
-      title: "estate",
-      description: "The estate's slug, as lore estate list prints it",
+      title: "host",
+      description: "The host's slug, as lore host list prints it",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -482,13 +478,13 @@ export class EstateCommand {
     handler: async ({ args, flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
-        // `estate:read` in the estate's home project: the slug resolves among
-        // the estates the caller can read, narrowed to the project's.
-        const estate = await this.owned.readable(args, {
+        // `host:read` in the host's home project: the slug resolves among
+        // the hosts the caller can read, narrowed to the project's.
+        const host = await this.owned.readable(args, {
           ...(await this.readScope(flags.project, flags.home, context)),
         });
-        const stats = await this.estates.getEstateStats({
-          params: { estateId: estate.id },
+        const stats = await this.hosts.getHostStats({
+          params: { hostId: host.id },
           query: flags.since ? { since: flags.since } : {},
         });
 
@@ -496,9 +492,9 @@ export class EstateCommand {
           this.render.json(print, {
             ...stats,
             current: {
-              cpuPercent: estate.cpuPercent,
-              memoryPercent: estate.memoryPercent,
-              statsAt: estate.statsAt,
+              cpuPercent: host.cpuPercent,
+              memoryPercent: host.memoryPercent,
+              statsAt: host.statsAt,
             },
           });
           return;
@@ -506,19 +502,18 @@ export class EstateCommand {
 
         this.render.entity(print, {
           fields: [
-            ["Estate", estate.slug],
+            ["Host", host.slug],
             [
               "Now",
-              estate.cpuPercent === undefined ||
-              estate.memoryPercent === undefined
+              host.cpuPercent === undefined || host.memoryPercent === undefined
                 ? "no reading yet"
-                : `CPU ${this.percent(estate.cpuPercent)}  RAM ${this.percent(estate.memoryPercent)}  at ${estate.statsAt ?? "?"}`,
+                : `CPU ${this.percent(host.cpuPercent)}  RAM ${this.percent(host.memoryPercent)}  at ${host.statsAt ?? "?"}`,
             ],
             [
               "Series",
               stats.collecting
                 ? "collecting"
-                : "off: turn it on from the estate page to keep a history",
+                : "off: turn it on from the host page to keep a history",
             ],
             [
               "Sampled",
@@ -546,11 +541,11 @@ export class EstateCommand {
   public readonly get = $command({
     name: "get",
     description:
-      "An estate: its home project, whether it is online, when it was last seen, deploys, its loans and what the machine runs",
+      "A host: its home project, whether it is online, when it was last seen, deploys, its loans and what the machine runs",
     args: z.text({
-      title: "estate",
+      title: "host",
       description:
-        "The estate's slug, among the estates you can read (--home when two share it)",
+        "The host's slug, among the hosts you can read (--home when two share it)",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -564,45 +559,45 @@ export class EstateCommand {
           args,
           await this.readScope(flags.project, flags.home, context),
         );
-        const estate = await this.estates.getEstate({
-          params: { estateId: id },
+        const host = await this.hosts.getHost({
+          params: { hostId: id },
         });
-        const { inventory } = await this.estates.getEstateInventory({
-          params: { estateId: id },
+        const { inventory } = await this.hosts.getHostInventory({
+          params: { hostId: id },
         });
         if (flags.output === "json") {
-          this.render.json(print, { ...estate, inventory });
+          this.render.json(print, { ...host, inventory });
           return;
         }
         this.render.entity(print, {
           fields: [
-            ["Estate", estate.slug],
-            ["Home", estate.project?.slug ?? estate.project?.title ?? "none"],
-            ["Added by", estate.creator?.name],
-            ["Label", estate.label ?? undefined],
-            ["Type", estate.type],
-            ["State", estate.online ? "online" : "offline"],
-            ["Last seen", estate.lastSeenAt ?? "never"],
-            ["Public IP", estate.publicIp ?? "not known yet"],
+            ["Host", host.slug],
+            ["Home", host.project?.slug ?? host.project?.title ?? "none"],
+            ["Added by", host.creator?.name],
+            ["Label", host.label ?? undefined],
+            ["Type", host.type],
+            ["State", host.online ? "online" : "offline"],
+            ["Last seen", host.lastSeenAt ?? "never"],
+            ["Public IP", host.publicIp ?? "not known yet"],
             [
-              // A server lore estate provision bought (#Q3168).
+              // A server lore host provision bought (#Q3168).
               "Server",
-              estate.providerServerId
-                ? `${estate.providerServerId} (${[estate.providerServerType, estate.providerZone, estate.provider].filter(Boolean).join(", ")})`
+              host.providerServerId
+                ? `${host.providerServerId} (${[host.providerServerType, host.providerZone, host.provider].filter(Boolean).join(", ")})`
                 : undefined,
             ],
-            ["Cost", this.costLine(estate)],
+            ["Cost", this.costLine(host)],
             [
               "Expires",
-              estate.expiresAt
-                ? `${estate.expiresAt}${estate.overdue ? " (OVERDUE: delete the server, or extend with --ttl)" : ""}`
+              host.expiresAt
+                ? `${host.expiresAt}${host.overdue ? " (OVERDUE: delete the server, or extend with --ttl)" : ""}`
                 : undefined,
             ],
-            ["Deploys", estate.deployAllowed ? "allowed" : "off"],
+            ["Deploys", host.deployAllowed ? "allowed" : "off"],
             [
               "Lent to",
-              estate.projects.length
-                ? estate.projects
+              host.projects.length
+                ? host.projects
                     .map((project) => project.slug ?? project.title)
                     .join(", ")
                 : "no project",
@@ -634,12 +629,11 @@ export class EstateCommand {
 
   public readonly wait = $command({
     name: "wait",
-    description:
-      "Block until an estate is online: exit 0 then, exit 1 on timeout",
+    description: "Block until a host is online: exit 0 then, exit 1 on timeout",
     args: z.text({
-      title: "estate",
+      title: "host",
       description:
-        "The estate's slug, among the estates you can read (--home when two share it)",
+        "The host's slug, among the hosts you can read (--home when two share it)",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -660,26 +654,26 @@ export class EstateCommand {
         );
         const deadline =
           this.dateTime.nowMillis() + (flags.timeout ?? 120) * 1000;
-        let estate = await this.estates.getEstate({
-          params: { estateId: id },
+        let host = await this.hosts.getHost({
+          params: { hostId: id },
         });
-        while (!estate.online && this.dateTime.nowMillis() < deadline) {
+        while (!host.online && this.dateTime.nowMillis() < deadline) {
           await this.dateTime.wait(this.pollMillis);
-          estate = await this.estates.getEstate({ params: { estateId: id } });
+          host = await this.hosts.getHost({ params: { hostId: id } });
         }
         if (flags.output === "json") {
-          this.render.json(print, estate);
+          this.render.json(print, host);
         }
-        if (!estate.online) {
+        if (!host.online) {
           throw new CommandError(
             { exitCode: LoreRefusals.EXIT_FAILURE },
             {
-              message: `${slug} is still offline after ${flags.timeout ?? 120}s (last seen ${estate.lastSeenAt ?? "never"}).`,
+              message: `${slug} is still offline after ${flags.timeout ?? 120}s (last seen ${host.lastSeenAt ?? "never"}).`,
             },
           );
         }
         if (flags.output !== "json") {
-          print(`${slug} is online (last seen ${estate.lastSeenAt ?? "now"}).`);
+          print(`${slug} is online (last seen ${host.lastSeenAt ?? "now"}).`);
         }
       });
     },
@@ -688,11 +682,11 @@ export class EstateCommand {
   public readonly update = $command({
     name: "update",
     description:
-      "Change an estate of the project: whether it accepts deploys, its label and its expiry",
+      "Change a host of the project: whether it accepts deploys, its label and its expiry",
     args: z.text({
-      title: "estate",
+      title: "host",
       description:
-        "The estate's slug, among the estates the project is the home of",
+        "The host's slug, among the hosts the project is the home of",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -735,8 +729,8 @@ export class EstateCommand {
           context,
         );
         const { id } = await this.owned.managed(args, projectId, project);
-        const updated = await this.estates.updateEstate({
-          params: { estateId: id },
+        const updated = await this.hosts.updateHost({
+          params: { hostId: id },
           body,
         });
         this.render.written(
@@ -752,11 +746,11 @@ export class EstateCommand {
   public readonly rotate = $command({
     name: "rotate",
     description:
-      "Mint a new secret for a Bay estate of the project and print the connector command once; the old secret stops working at once",
+      "Mint a new secret for a Bay host of the project and print the connector command once; the old secret stops working at once",
     args: z.text({
-      title: "estate",
+      title: "host",
       description:
-        "The estate's slug, among the estates the project is the home of",
+        "The host's slug, among the hosts the project is the home of",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -770,14 +764,14 @@ export class EstateCommand {
           flags.project,
           context,
         );
-        const estate = await this.owned.managed(args, projectId, project);
+        const host = await this.owned.managed(args, projectId, project);
         await this.confirm(
           ask,
           flags.yes,
-          `Rotate the secret of ${estate.slug}? The machine's current secret stops working at once, until you run the new connector command on it.`,
+          `Rotate the secret of ${host.slug}? The machine's current secret stops working at once, until you run the new connector command on it.`,
         );
-        const rotated = await this.estates.rotateEstate({
-          params: { estateId: estate.id },
+        const rotated = await this.hosts.rotateHost({
+          params: { hostId: host.id },
         });
         if (flags.output === "json") {
           this.render.json(
@@ -798,7 +792,7 @@ export class EstateCommand {
   });
 
   /**
-   * `lore estate delete` (#Q3131), which also terminates a provisioned
+   * `lore host delete` (#Q3131), which also terminates a provisioned
    * server with its IP and its disk (#Q3167). Lore holds no provider key, so
    * the CLI terminates through the provider's own CLI, in an order that
    * never loses a billing server: Lore is asked first whether it would
@@ -808,11 +802,11 @@ export class EstateCommand {
   public readonly delete = $command({
     name: "delete",
     description:
-      "Delete an estate of the project: a server provision bought is terminated with its IP and disk; for one added by hand, Lore forgets the machine and nothing on it stops. Never an estate the project only borrows",
+      "Delete a host of the project: a server provision bought is terminated with its IP and disk; for one added by hand, Lore forgets the machine and nothing on it stops. Never a host the project only borrows",
     args: z.text({
-      title: "estate",
+      title: "host",
       description:
-        "The estate's slug, among the estates the project is the home of",
+        "The host's slug, among the hosts the project is the home of",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -820,7 +814,7 @@ export class EstateCommand {
       "keep-server": z
         .boolean()
         .describe(
-          "For a provisioned estate: delete it in Lore and leave the server running (and billing)",
+          "For a provisioned host: delete it in Lore and leave the server running (and billing)",
         )
         .optional(),
       ...LoreOutput.FLAGS,
@@ -832,13 +826,13 @@ export class EstateCommand {
           flags.project,
           context,
         );
-        const estate = await this.owned.managed(args, projectId, project);
+        const host = await this.owned.managed(args, projectId, project);
         const server =
-          estate.provider && estate.providerServerId && estate.providerZone
+          host.provider && host.providerServerId && host.providerZone
             ? {
-                provider: estate.provider,
-                id: estate.providerServerId,
-                zone: estate.providerZone,
+                provider: host.provider,
+                id: host.providerServerId,
+                zone: host.providerZone,
               }
             : undefined;
         const terminate = server !== undefined && !flags["keep-server"];
@@ -850,8 +844,8 @@ export class EstateCommand {
           // Refused here, before the server goes, when Lore would refuse the
           // delete itself: a copy or a stack still deploying there.
           await this.referencedHint(() =>
-            this.estates.checkEstateDeletable({
-              params: { estateId: estate.id },
+            this.hosts.checkHostDeletable({
+              params: { hostId: host.id },
             }),
           );
         }
@@ -860,8 +854,8 @@ export class EstateCommand {
           ask,
           flags.yes,
           terminate
-            ? `Delete ${estate.slug} and terminate its server ${server.id} on ${server.provider}, with its IP and its disk? This cannot be undone.`
-            : `Delete ${estate.slug}? Lore forgets the machine and revokes its secret; nothing running on it stops.`,
+            ? `Delete ${host.slug} and terminate its server ${server.id} on ${server.provider}, with its IP and its disk? This cannot be undone.`
+            : `Delete ${host.slug}? Lore forgets the machine and revokes its secret; nothing running on it stops.`,
         );
 
         if (provider && server) {
@@ -873,33 +867,33 @@ export class EstateCommand {
             throw new CommandError(
               { exitCode: LoreRefusals.EXIT_FAILURE },
               {
-                message: `Could not terminate ${server.id} (${reason}). ${estate.slug} is kept so the server stays visible. Terminate it with:\n  ${provider.terminateCommand(server.id, server.zone)}\nthen: lore estate delete ${estate.slug} --keep-server --yes`,
+                message: `Could not terminate ${server.id} (${reason}). ${host.slug} is kept so the server stays visible. Terminate it with:\n  ${provider.terminateCommand(server.id, server.zone)}\nthen: lore host delete ${host.slug} --keep-server --yes`,
               },
             );
           }
         }
 
         await this.referencedHint(() =>
-          this.estates.deleteEstate({ params: { estateId: estate.id } }),
+          this.hosts.deleteHost({ params: { hostId: host.id } }),
         );
         if (flags.output === "json") {
           this.render.json(print, {
             ok: true,
-            id: estate.id,
-            slug: estate.slug,
-            revoked: estate.type === "bay",
+            id: host.id,
+            slug: host.slug,
+            revoked: host.type === "bay",
             ...(server ? { server: server.id, terminated: terminate } : {}),
           });
           return;
         }
         if (terminate) {
           print(
-            `Deleted ${estate.slug} and terminated its server ${server.id}, with its IP and its disk.`,
+            `Deleted ${host.slug} and terminated its server ${server.id}, with its IP and its disk.`,
           );
           return;
         }
         print(
-          `Deleted ${estate.slug}.${estate.type === "bay" ? " Its secret is revoked: the connector holding it is refused on its next dial." : ""}`,
+          `Deleted ${host.slug}.${host.type === "bay" ? " Its secret is revoked: the connector holding it is refused on its next dial." : ""}`,
         );
         if (server) {
           print(
@@ -915,18 +909,18 @@ export class EstateCommand {
   });
 
   /**
-   * `lore estate move` (#Q3282): give an estate of the project another home.
-   * Takes `estate:delete` here and `estate:create` in the target; the slug,
+   * `lore host move` (#Q3282): give a host of the project another home.
+   * Takes `host:delete` here and `host:create` in the target; the slug,
    * the machine and every loan stay, and the loans that stay are printed.
    */
   public readonly move = $command({
     name: "move",
     description:
-      "Move an estate of the project to another project; its slug, its machine and its loans stay",
+      "Move a host of the project to another project; its slug, its machine and its loans stay",
     args: z.text({
-      title: "estate",
+      title: "host",
       description:
-        "The estate's slug, among the estates the project is the home of",
+        "The host's slug, among the hosts the project is the home of",
     }),
     flags: z.object({
       project: this.projectFlag,
@@ -941,22 +935,22 @@ export class EstateCommand {
           flags.project,
           context,
         );
-        const estate = await this.owned.managed(args, projectId, project);
+        const host = await this.owned.managed(args, projectId, project);
         const targetId = await this.projects.resolve(flags.to);
         await this.confirm(
           ask,
           flags.yes,
-          `Move ${estate.slug} from ${project} to ${flags.to}? The members of ${flags.to} will manage it, by their rank.`,
+          `Move ${host.slug} from ${project} to ${flags.to}? The members of ${flags.to} will manage it, by their rank.`,
         );
-        const result = await this.estates.moveEstate({
-          params: { estateId: estate.id },
+        const result = await this.hosts.moveHost({
+          params: { hostId: host.id },
           body: { projectId: targetId },
         });
         if (flags.output === "json") {
           this.render.json(print, result);
           return;
         }
-        print(`Moved ${estate.slug} to ${flags.to}.`);
+        print(`Moved ${host.slug} to ${flags.to}.`);
         print(
           result.loans.length
             ? `Still lent to: ${result.loans.map((loan) => loan.slug ?? loan.title).join(", ")}.`
@@ -972,17 +966,17 @@ export class EstateCommand {
   });
 
   /**
-   * `lore estate assign` (#Q3282): the instance admin's verb, for an estate
+   * `lore host assign` (#Q3282): the instance admin's verb, for a host
    * with no home, which has no project to resolve a slug in, so it is named
-   * by id (the admin's estates page shows it). Its loans do not change.
+   * by id (the admin's hosts page shows it). Its loans do not change.
    */
   public readonly assign = $command({
     name: "assign",
     description:
-      "For an instance admin: give an estate a home project, by its id; its loans do not change",
+      "For an instance admin: give a host a home project, by its id; its loans do not change",
     args: z.text({
-      title: "estate",
-      description: "The estate's id, as the admin's estates page shows it",
+      title: "host",
+      description: "The host's id, as the admin's hosts page shows it",
     }),
     flags: z.object({
       to: z.text({ description: "The project it gets as its home" }),
@@ -992,7 +986,7 @@ export class EstateCommand {
       const context: LoreRefusalContext = { project: flags.to };
       await this.refusals.guard(context, async () => {
         const projectId = await this.projects.resolve(flags.to);
-        const result = await this.admin.assignEstate({
+        const result = await this.admin.assignHost({
           params: { id: args },
           body: { projectId },
         });
@@ -1001,7 +995,7 @@ export class EstateCommand {
           return;
         }
         print(
-          `The estate now belongs to ${result.project.slug ?? result.project.title}.`,
+          `The host now belongs to ${result.project.slug ?? result.project.title}.`,
         );
         print(
           result.loans.length
@@ -1012,8 +1006,8 @@ export class EstateCommand {
     },
   });
 
-  public readonly estate = $command({
-    name: "estate",
+  public readonly host = $command({
+    name: "host",
     description:
       "The machines your projects deploy to: provision a server, add one by hand, list them, read one, wait for it, read its stats, lend or unlend it, update, rotate, move or delete it, and, for an admin, assign one",
     children: [
@@ -1053,7 +1047,7 @@ export class EstateCommand {
   }
 
   /**
-   * A TTL as `lore estate add --ttl` takes it (#Q3138): a number and a unit,
+   * A TTL as `lore host add --ttl` takes it (#Q3138): a number and a unit,
    * `m`, `h` or `d` (`30m`, `2h`, `3d`), or `none` to clear the expiry.
    */
   protected ttlSecondsOf(raw: string): number | null {
@@ -1100,28 +1094,28 @@ export class EstateCommand {
 
   /**
    * The line a machine runs to enrol, exactly as every command that mints a
-   * secret prints it (`estate add`, `estate rotate`).
+   * secret prints it (`host add`, `host rotate`).
    */
   protected connectorCommand(secret: string | undefined): string {
     return `bay connector set ${this.client.hostname()} ${secret ?? "<secret>"}`;
   }
 
   /**
-   * The JSON every command that mints a secret prints (#Q3132): the estate's
+   * The JSON every command that mints a secret prints (#Q3132): the host's
    * identity, where it connects, the secret once, and the connector line
    * verbatim, so a script reads `.secret` or runs `.command` with no scraping.
    */
   protected minted(
-    estate: { id: string; slug: string; secret?: string },
+    host: { id: string; slug: string; secret?: string },
     deployAllowed: boolean,
   ) {
     return {
-      id: estate.id,
-      slug: estate.slug,
+      id: host.id,
+      slug: host.slug,
       deployAllowed,
       lore: this.client.hostname(),
-      secret: estate.secret,
-      command: this.connectorCommand(estate.secret),
+      secret: host.secret,
+      command: this.connectorCommand(host.secret),
     };
   }
 
@@ -1130,19 +1124,18 @@ export class EstateCommand {
    * stored hourly price times the hours since it was provisioned, said as an
    * estimate since the provider bills by its own rules.
    */
-  protected costLine(estate: {
+  protected costLine(host: {
     hourlyPrice?: number;
     provisionedAt?: string;
   }): string | undefined {
-    if (estate.hourlyPrice === undefined || !estate.provisionedAt) {
+    if (host.hourlyPrice === undefined || !host.provisionedAt) {
       return undefined;
     }
     const hours = Math.max(
       0,
-      (this.dateTime.nowMillis() - Date.parse(estate.provisionedAt)) /
-        3_600_000,
+      (this.dateTime.nowMillis() - Date.parse(host.provisionedAt)) / 3_600_000,
     );
-    return `about EUR ${estate.hourlyPrice.toFixed(4)} an hour, about EUR ${(estate.hourlyPrice * hours).toFixed(2)} so far (estimate), until lore estate delete terminates it`;
+    return `about EUR ${host.hourlyPrice.toFixed(4)} an hour, about EUR ${(host.hourlyPrice * hours).toFixed(2)} so far (estimate), until lore host delete terminates it`;
   }
 
   /**

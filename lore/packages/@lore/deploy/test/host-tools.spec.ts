@@ -9,28 +9,28 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
-  EstateStatsService,
+  HostStatsService,
   LoreDeployApi,
-  ProjectEstateController,
+  ProjectHostController,
 } from "../src/api/index.ts";
-import { EstateTools, LoreDeployMcp } from "../src/mcp/index.ts";
-import { estates } from "../src/schemas/index.ts";
-import { createTestEstate } from "../src/testing/estates.ts";
+import { HostTools, LoreDeployMcp } from "../src/mcp/index.ts";
+import { hosts } from "../src/schemas/index.ts";
+import { createTestHost } from "../src/testing/hosts.ts";
 import { DeployTestEntities } from "../src/testing/index.ts";
 
-class EstateRepositories {
-  estates = $repository(estates);
+class HostRepositories {
+  hosts = $repository(hosts);
 }
 
 /**
- * `estate_stats` (#Q3047): one of the caller's own estates, its gauge and its
- * daily means, through the owner-only action, so another owner's estate is
+ * `host_stats` (#Q3047): one of the caller's own hosts, its gauge and its
+ * daily means, through the owner-only action, so another owner's host is
  * as unknown as one that does not exist.
  */
-describe("estate MCP tools", () => {
+describe("host MCP tools", () => {
   let alepha: Alepha;
   let entities: DeployTestEntities;
-  let repos: EstateRepositories;
+  let repos: HostRepositories;
 
   beforeEach(async () => {
     alepha = Alepha.create({
@@ -45,7 +45,7 @@ describe("estate MCP tools", () => {
     alepha.with(LoreDeployApi);
     alepha.with(LoreDeployMcp);
     entities = alepha.inject(DeployTestEntities);
-    repos = alepha.inject(EstateRepositories);
+    repos = alepha.inject(HostRepositories);
     await alepha.start();
   });
 
@@ -62,7 +62,7 @@ describe("estate MCP tools", () => {
     alepha.context.run(() => {
       alepha.store.set(currentUserAtom, user);
       return (
-        alepha.inject(EstateTools).estate_stats as unknown as {
+        alepha.inject(HostTools).host_stats as unknown as {
           execute: (p: unknown) => Promise<any>;
         }
       ).execute(params);
@@ -70,11 +70,11 @@ describe("estate MCP tools", () => {
 
   const arrange = async () => {
     const owner = await newUser();
-    const minted = await createTestEstate(alepha, owner, { slug: "vps-ovh" });
-    const repo = repos.estates;
+    const minted = await createTestHost(alepha, owner, { slug: "vps-ovh" });
+    const repo = repos.hosts;
     await repo.updateById(minted.id, { collectSeries: true });
     const row = await repo.getOne({ where: { id: { eq: minted.id } } });
-    const service = alepha.inject(EstateStatsService);
+    const service = alepha.inject(HostStatsService);
     for (const [cpu, memory] of [
       [20, 10],
       [40, 30],
@@ -94,9 +94,9 @@ describe("estate MCP tools", () => {
   }) => {
     const { owner } = await arrange();
 
-    const result = await stats(owner, { estate: "vps-ovh" });
+    const result = await stats(owner, { host: "vps-ovh" });
 
-    expect(result.estate).toBe("vps-ovh");
+    expect(result.host).toBe("vps-ovh");
     expect(result.current).toMatchObject({ cpuPercent: 40, memoryPercent: 30 });
     expect(result.collecting).toBe(true);
     expect(result.points).toHaveLength(1);
@@ -107,39 +107,39 @@ describe("estate MCP tools", () => {
     });
   });
 
-  it("knows no estate of a project the caller is not in, by the same answer as a missing one", async ({
+  it("knows no host of a project the caller is not in, by the same answer as a missing one", async ({
     expect,
   }) => {
     await arrange();
     const stranger = await newUser();
 
-    await expect(stats(stranger, { estate: "vps-ovh" })).rejects.toThrow(
-      "No estate named vps-ovh that you can read",
+    await expect(stats(stranger, { host: "vps-ovh" })).rejects.toThrow(
+      "No host named vps-ovh that you can read",
     );
   });
 
-  it("refuses a slug two readable estates share, and home picks one", async ({
+  it("refuses a slug two readable hosts share, and home picks one", async ({
     expect,
   }) => {
     const { owner } = await arrange();
     // A second project of the same owner, with its own vps-ovh: a slug is
     // unique per home project (#E126).
-    const second = await createTestEstate(alepha, owner, { slug: "vps-ovh" });
+    const second = await createTestHost(alepha, owner, { slug: "vps-ovh" });
     const home = await alepha
-      .inject(ProjectEstateController)
-      .listHomeEstates(
+      .inject(ProjectHostController)
+      .listHomeHosts(
         { params: { projectId: second.projectId } },
         { user: owner },
       );
     const homeSlug = home.items[0]!.project!.slug!;
 
-    await expect(stats(owner, { estate: "vps-ovh" })).rejects.toThrow(
-      /Several estates are named vps-ovh.*Pass home/,
+    await expect(stats(owner, { host: "vps-ovh" })).rejects.toThrow(
+      /Several hosts are named vps-ovh.*Pass home/,
     );
-    const picked = await stats(owner, { estate: "vps-ovh", home: homeSlug });
+    const picked = await stats(owner, { host: "vps-ovh", home: homeSlug });
     expect(picked.collecting).toBe(false);
     const narrowed = await stats(owner, {
-      estate: "vps-ovh",
+      host: "vps-ovh",
       project: second.projectId,
     });
     expect(narrowed.collecting).toBe(false);

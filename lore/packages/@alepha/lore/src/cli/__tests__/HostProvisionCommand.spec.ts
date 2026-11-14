@@ -13,8 +13,8 @@ import {
 } from "alepha/system";
 import { describe, it } from "vitest";
 
-import { EstateCommand } from "../commands/EstateCommand.ts";
-import { LoreEstateProvisioner } from "../services/LoreEstateProvisioner.ts";
+import { HostCommand } from "../commands/HostCommand.ts";
+import { LoreHostProvisioner } from "../services/LoreHostProvisioner.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 import { ScalewayProvider } from "../services/providers/ScalewayProvider.ts";
 
@@ -25,11 +25,11 @@ class FixedTempScaleway extends ScalewayProvider {
 }
 
 /**
- * `lore estate provision` (#Q3166): one command from nothing to an estate
+ * `lore host provision` (#Q3166): one command from nothing to a host
  * online and ready to deploy to, with every failure leaving no server Lore
  * has forgotten.
  */
-describe("lore estate provision", () => {
+describe("lore host provision", () => {
   const create = (
     options: {
       projectExists?: boolean;
@@ -71,8 +71,8 @@ describe("lore estate provision", () => {
     });
 
     const calls: Array<{ name: string; request?: unknown }> = [];
-    const command = alepha.inject(EstateCommand);
-    const provisioner = alepha.inject(LoreEstateProvisioner);
+    const command = alepha.inject(HostCommand);
+    const provisioner = alepha.inject(LoreHostProvisioner);
     provisioner.pollMillis = 1;
     Object.assign(
       alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
@@ -83,7 +83,7 @@ describe("lore estate provision", () => {
         },
       },
     );
-    const estate = { id: "est-1", slug: "tmp-vps", deployAllowed: false };
+    const host = { id: "est-1", slug: "tmp-vps", deployAllowed: false };
     let reads = 0;
     Object.assign(provisioner as unknown as Record<string, unknown>, {
       projectApi: {
@@ -108,35 +108,35 @@ describe("lore estate provision", () => {
         },
       },
       lending: {
-        listHomeEstates: async () => ({ items: [] }),
-        createProjectEstate: async (request: unknown) => {
-          calls.push({ name: "createProjectEstate", request });
-          return estate;
+        listHomeHosts: async () => ({ items: [] }),
+        createProjectHost: async (request: unknown) => {
+          calls.push({ name: "createProjectHost", request });
+          return host;
         },
       },
-      estates: {
-        listMyEstates: async () => ({ items: [] }),
-        updateEstate: async (request: unknown) => {
-          calls.push({ name: "updateEstate", request });
-          return { ...estate, deployAllowed: true };
+      hosts: {
+        listMyHosts: async () => ({ items: [] }),
+        updateHost: async (request: unknown) => {
+          calls.push({ name: "updateHost", request });
+          return { ...host, deployAllowed: true };
         },
-        createEstateEnrolment: async () => {
-          calls.push({ name: "createEstateEnrolment" });
+        createHostEnrolment: async () => {
+          calls.push({ name: "createHostEnrolment" });
           return { secret: "enr_abc", expiresAt: "2026-11-06T23:00:00Z" };
         },
-        recordEstateProvision: async (request: unknown) => {
-          calls.push({ name: "recordEstateProvision", request });
+        recordHostProvision: async (request: unknown) => {
+          calls.push({ name: "recordHostProvision", request });
           if (options.recordFails) {
             throw new Error("Lore is down");
           }
-          return estate;
+          return host;
         },
-        getEstate: async () => {
+        getHost: async () => {
           reads++;
-          return { ...estate, online: !options.neverOnline && reads > 1 };
+          return { ...host, online: !options.neverOnline && reads > 1 };
         },
-        deleteEstate: async (request: unknown) => {
-          calls.push({ name: "deleteEstate", request });
+        deleteHost: async (request: unknown) => {
+          calls.push({ name: "deleteHost", request });
           return { ok: true };
         },
       },
@@ -157,7 +157,7 @@ describe("lore estate provision", () => {
     expect(calls).toEqual([]);
   });
 
-  it("creates the project, lends the estate, enrols the server with a one-time secret and waits until it is online", async ({
+  it("creates the project, lends the host, enrols the server with a one-time secret and waits until it is online", async ({
     expect,
   }) => {
     const { run, printed, calls, fs } = create();
@@ -165,17 +165,17 @@ describe("lore estate provision", () => {
 
     expect(calls.map((call) => call.name)).toEqual([
       "createProject",
-      "createProjectEstate",
-      "updateEstate",
-      "createEstateEnrolment",
-      "recordEstateProvision",
+      "createProjectHost",
+      "updateHost",
+      "createHostEnrolment",
+      "recordHostProvision",
     ]);
     expect(calls[2]!.request).toEqual({
-      params: { estateId: "est-1" },
+      params: { hostId: "est-1" },
       body: { deployAllowed: true },
     });
     expect(calls[4]!.request).toEqual({
-      params: { estateId: "est-1" },
+      params: { hostId: "est-1" },
       body: {
         provider: "scaleway",
         serverId: "srv-1",
@@ -197,10 +197,10 @@ describe("lore estate provision", () => {
     expect(out).toContain("tmp-vps is online.");
     expect(out).toContain("https://<app>.203-0-113-10.sslip.io");
     expect(out).toContain("alepha deploy");
-    expect(out).toContain("lore estate delete tmp-vps --yes");
+    expect(out).toContain("lore host delete tmp-vps --yes");
   });
 
-  it("refuses without --project before buying anything: an estate belongs to a project", async ({
+  it("refuses without --project before buying anything: a host belongs to a project", async ({
     expect,
   }) => {
     const { run, calls, shell } = create();
@@ -211,7 +211,7 @@ describe("lore estate provision", () => {
     expect(shell.wasCalledMatching(/server create/)).toBe(false);
   });
 
-  it("terminates the server and deletes the estate when a step after the create fails", async ({
+  it("terminates the server and deletes the host when a step after the create fails", async ({
     expect,
   }) => {
     const { run, calls, shell } = create({ recordFails: true });
@@ -223,10 +223,10 @@ describe("lore estate provision", () => {
         "scw instance server terminate srv-1 zone=fr-par-1 with-ip=true with-block=true",
       ),
     ).toBe(true);
-    expect(calls.at(-1)!.name).toBe("deleteEstate");
+    expect(calls.at(-1)!.name).toBe("deleteHost");
   });
 
-  it("keeps the server and the estate when it never comes online, and says how to go on", async ({
+  it("keeps the server and the host when it never comes online, and says how to go on", async ({
     expect,
   }) => {
     const { run, calls } = create({ neverOnline: true });
@@ -235,7 +235,7 @@ describe("lore estate provision", () => {
         "--provider scaleway --name tmp-vps --project hello-world --timeout 1",
       ),
     ).rejects.toThrow("srv-1 is kept and still billing");
-    expect(calls.map((call) => call.name)).not.toContain("deleteEstate");
+    expect(calls.map((call) => call.name)).not.toContain("deleteHost");
   });
 
   it("refuses an existing project with Apps off before buying a server", async ({

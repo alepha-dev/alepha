@@ -1,8 +1,5 @@
 import type { ProjectController } from "@lore/core/api";
-import type {
-  EstateController,
-  ProjectEstateController,
-} from "@lore/deploy/api";
+import type { HostController, ProjectHostController } from "@lore/deploy/api";
 import { $inject, AlephaError } from "alepha";
 import { CommandError } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
@@ -12,13 +9,13 @@ import { $client } from "alepha/server/links";
 import { LoreClientService } from "./LoreClientService.ts";
 import { LoreProjectResolver } from "./LoreProjectResolver.ts";
 import { LoreRefusals } from "./LoreRefusals.ts";
-import type { EstateProvider } from "./providers/EstateProvider.ts";
+import type { HostProvider } from "./providers/HostProvider.ts";
 
 /**
- * What `lore estate provision` asks for, after its flags are read.
+ * What `lore host provision` asks for, after its flags are read.
  */
 export interface ProvisionPlan {
-  provider: EstateProvider;
+  provider: HostProvider;
   name?: string;
   project?: string;
   type: string;
@@ -47,25 +44,25 @@ export interface Provisioned {
 }
 
 /**
- * `lore estate provision` (#Q3166, epic E116): buys a server from a
+ * `lore host provision` (#Q3166, epic E116): buys a server from a
  * provider, enrols it with Lore through cloud-init, and waits until it is
- * online, so one command answers with an estate ready to deploy to.
+ * online, so one command answers with a host ready to deploy to.
  *
  * The order is what keeps a server from billing unseen:
  *
  * 1. The provider is checked (its CLI installed and logged in) before
  *    anything is written.
- * 2. The estate is created, then its one-time enrolment secret (#Q3165).
+ * 2. The host is created, then its one-time enrolment secret (#Q3165).
  * 3. The server is created with a cloud-init running `install.sh` with that
  *    secret and the server's own sslip.io base domain.
- * 4. The server is recorded on the estate.
+ * 4. The server is recorded on the host.
  *
- * A failure before 3 deletes the estate. A failure after 3 terminates the
- * server, then deletes the estate; when the terminate fails too, the estate
+ * A failure before 3 deletes the host. A failure after 3 terminates the
+ * server, then deletes the host; when the terminate fails too, the host
  * stays and the error names the server and the command that finishes it.
  * Never a billing server Lore has forgotten.
  */
-export class LoreEstateProvisioner {
+export class LoreHostProvisioner {
   /**
    * Where a provisioned server fetches Bay's installer.
    */
@@ -76,13 +73,13 @@ export class LoreEstateProvisioner {
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
-   * How often the wait reads the estate again. A field so a spec can
+   * How often the wait reads the host again. A field so a spec can
    * shorten it.
    */
   public pollMillis = 2_000;
 
-  protected readonly estates = $client<EstateController>(this.client.scope());
-  protected readonly lending = $client<ProjectEstateController>(
+  protected readonly hosts = $client<HostController>(this.client.scope());
+  protected readonly lending = $client<ProjectHostController>(
     this.client.scope(),
   );
   protected readonly projectApi = $client<ProjectController>(
@@ -192,7 +189,7 @@ export class LoreEstateProvisioner {
   ];
 
   /**
-   * A fresh name no estate of the caller already uses.
+   * A fresh name no host of the caller already uses.
    */
   async generateName(taken: Set<string>): Promise<string> {
     for (let attempt = 0; attempt < 20; attempt++) {
@@ -214,33 +211,33 @@ export class LoreEstateProvisioner {
     plan: ProvisionPlan,
     print: (line?: string) => void,
   ): Promise<Provisioned> {
-    // An estate belongs to a project since #E126: there is no estate
+    // A host belongs to a project since #E126: there is no host
     // without a home to create.
     if (!plan.project) {
       throw this.refusal(
-        "lore estate provision needs --project <slug>: an estate belongs to a project.",
+        "lore host provision needs --project <slug>: a host belongs to a project.",
       );
     }
     await plan.provider.check();
 
     // Before any server is bought: an existing project with Apps off is
-    // refused, since nobody could manage the estate there.
+    // refused, since nobody could manage the host there.
     const project = await this.ensureProject(plan.project, print);
     // A slug is unique in its home project.
     const { items: homed } = project.created
       ? { items: [] as Array<{ slug: string }> }
-      : await this.lending.listHomeEstates({
+      : await this.lending.listHomeHosts({
           params: { projectId: project.id },
         });
     const slug =
       plan.name ?? (await this.generateName(new Set(homed.map((e) => e.slug))));
-    if (homed.some((estate) => estate.slug === slug)) {
+    if (homed.some((host) => host.slug === slug)) {
       throw this.refusal(
-        `${project.slug} already has an estate named ${slug}: pick another --name, or omit it for a generated one.`,
+        `${project.slug} already has a host named ${slug}: pick another --name, or omit it for a generated one.`,
       );
     }
 
-    const estate = await this.lending.createProjectEstate({
+    const host = await this.lending.createProjectHost({
       params: { projectId: project.id },
       body: { slug },
     });
@@ -248,18 +245,18 @@ export class LoreEstateProvisioner {
     let server: { serverId: string; publicIp: string } | undefined;
     try {
       if (plan.deployAllowed) {
-        await this.estates.updateEstate({
-          params: { estateId: estate.id },
+        await this.hosts.updateHost({
+          params: { hostId: host.id },
           body: { deployAllowed: true },
         });
       }
-      const enrolment = await this.estates.createEstateEnrolment({
-        params: { estateId: estate.id },
+      const enrolment = await this.hosts.createHostEnrolment({
+        params: { hostId: host.id },
       });
       const hourlyPrice = await plan.provider.hourlyPrice(plan.type, plan.zone);
 
       print(
-        `Creating a ${plan.type} in ${plan.zone} on ${plan.provider.name} for estate ${slug}...`,
+        `Creating a ${plan.type} in ${plan.zone} on ${plan.provider.name} for host ${slug}...`,
       );
       server = await plan.provider.create({
         name: slug,
@@ -269,8 +266,8 @@ export class LoreEstateProvisioner {
         userData: (ip) => this.cloudInit(enrolment.secret, this.baseDomain(ip)),
       });
 
-      await this.estates.recordEstateProvision({
-        params: { estateId: estate.id },
+      await this.hosts.recordHostProvision({
+        params: { hostId: host.id },
         body: {
           provider: plan.provider.name,
           serverId: server.serverId,
@@ -283,9 +280,9 @@ export class LoreEstateProvisioner {
       print(
         `Server ${server.serverId} is booting at ${server.publicIp}; waiting for it to enrol (about 3 minutes)...`,
       );
-      const online = await this.waitOnline(estate.id, plan.timeoutSeconds);
+      const online = await this.waitOnline(host.id, plan.timeoutSeconds);
       return {
-        id: estate.id,
+        id: host.id,
         slug,
         provider: plan.provider.name,
         serverId: server.serverId,
@@ -300,7 +297,7 @@ export class LoreEstateProvisioner {
         online,
       };
     } catch (error) {
-      await this.undo(estate.id, slug, plan, server, error);
+      await this.undo(host.id, slug, plan, server, error);
       throw error;
     }
   }
@@ -312,6 +309,9 @@ export class LoreEstateProvisioner {
    * string needs no escaping.
    */
   cloudInit(enrolment: string, baseDomain: string): string {
+    // `LORE_ESTATE_SECRET` is Bay wire v1: what Bay's `install.sh` reads,
+    // served from alepha.dev at the latest release, so it keeps the word Lore
+    // used before #E147.
     const env = [
       `LORE_URL=${this.client.hostname()}`,
       `LORE_ESTATE_SECRET=${enrolment}`,
@@ -320,7 +320,7 @@ export class LoreEstateProvisioner {
     return [
       "#cloud-config",
       "runcmd:",
-      `  - [sh, -c, "curl -sSL ${LoreEstateProvisioner.INSTALL_URL} | ${env} sh"]`,
+      `  - [sh, -c, "curl -sSL ${LoreHostProvisioner.INSTALL_URL} | ${env} sh"]`,
       "",
     ].join("\n");
   }
@@ -334,9 +334,9 @@ export class LoreEstateProvisioner {
   }
 
   /**
-   * The project the estate belongs to, created with Apps on when it does not
+   * The project the host belongs to, created with Apps on when it does not
    * exist yet. An existing one with Apps off is refused here, before a server
-   * is bought (#Q3282): the estate could be managed through no page there.
+   * is bought (#Q3282): the host could be managed through no page there.
    */
   protected async ensureProject(
     slug: string,
@@ -358,7 +358,7 @@ export class LoreEstateProvisioner {
       const apps = existing.capabilities?.find((row) => row.key === "apps");
       if (!apps) {
         throw this.refusal(
-          `${existing.slug ?? slug} does not have Apps on, so an estate could not be managed there. Turn it on first: lore project capability enable apps --option deploy -p ${existing.slug ?? slug}`,
+          `${existing.slug ?? slug} does not have Apps on, so a host could not be managed there. Turn it on first: lore project capability enable apps --option deploy -p ${existing.slug ?? slug}`,
         );
       }
       print(
@@ -397,13 +397,13 @@ export class LoreEstateProvisioner {
   }
 
   protected async waitOnline(
-    estateId: string,
+    hostId: string,
     timeoutSeconds: number,
   ): Promise<boolean> {
     const deadline = this.dateTime.nowMillis() + timeoutSeconds * 1000;
     for (;;) {
-      const estate = await this.estates.getEstate({ params: { estateId } });
-      if (estate.online) {
+      const host = await this.hosts.getHost({ params: { hostId } });
+      if (host.online) {
         return true;
       }
       if (this.dateTime.nowMillis() >= deadline) {
@@ -415,11 +415,11 @@ export class LoreEstateProvisioner {
 
   /**
    * Puts things back after a failure: terminate the server when there is
-   * one, then delete the estate. A terminate that fails keeps the estate, so
+   * one, then delete the host. A terminate that fails keeps the host, so
    * the server stays visible, and the error says how to finish.
    */
   protected async undo(
-    estateId: string,
+    hostId: string,
     slug: string,
     plan: ProvisionPlan,
     server: { serverId: string } | undefined,
@@ -431,14 +431,14 @@ export class LoreEstateProvisioner {
       } catch {
         const reason = cause instanceof Error ? cause.message : String(cause);
         throw this.refusal(
-          `Provisioning ${slug} failed (${reason}), and terminating its server failed too. The estate is kept so the server stays visible. Finish with:\n  ${plan.provider.terminateCommand(server.serverId, plan.zone)}\n  lore estate delete ${slug} --keep-server --yes`,
+          `Provisioning ${slug} failed (${reason}), and terminating its server failed too. The host is kept so the server stays visible. Finish with:\n  ${plan.provider.terminateCommand(server.serverId, plan.zone)}\n  lore host delete ${slug} --keep-server --yes`,
         );
       }
     }
     try {
-      await this.estates.deleteEstate({ params: { estateId } });
+      await this.hosts.deleteHost({ params: { hostId } });
     } catch {
-      // The estate is harmless without a server; the original error matters.
+      // The host is harmless without a server; the original error matters.
     }
   }
 

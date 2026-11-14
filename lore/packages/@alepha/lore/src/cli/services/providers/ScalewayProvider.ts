@@ -6,10 +6,10 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { LoreRefusals } from "../LoreRefusals.ts";
 import {
-  EstateProvider,
+  HostProvider,
   type ProvisionedServer,
   type ProvisionRequest,
-} from "./EstateProvider.ts";
+} from "./HostProvider.ts";
 
 /**
  * Scaleway, over the `scw` CLI the user logged in with (#Q3164).
@@ -22,7 +22,7 @@ import {
  * Terminating passes `with-ip=true with-block=true`: a plain delete leaves
  * the IP and the volume billing, which the walk of epic E114 measured.
  */
-export class ScalewayProvider extends EstateProvider {
+export class ScalewayProvider extends HostProvider {
   readonly name = "scaleway";
   readonly title = "Scaleway Instances, through the scw CLI";
   readonly setup = [

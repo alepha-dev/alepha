@@ -21,8 +21,8 @@ import { LoreSecretsService } from "../services/LoreSecretsService.ts";
  *
  * ⚠️ The two load-bearing cases: the secrets land BEFORE the run starts (a
  * build booting without a secret it needs fails at boot, where the reason is
- * hard to read), and the build asks for the runtime the copy's estate accepts
- * (a Cloudflare estate runs `workerd`, whatever the workspace defaults to).
+ * hard to read), and the build asks for the runtime the copy's host accepts
+ * (a Cloudflare host runs `workerd`, whatever the workspace defaults to).
  */
 describe("LoreAdapter", () => {
   const create = async (
@@ -36,7 +36,7 @@ describe("LoreAdapter", () => {
        * removed.
        */
       /**
-       * The estates lent to the project, newest first as Lore lists them.
+       * The hosts lent to the project, newest first as Lore lists them.
        */
       lent?: Array<{ id: string; slug: string; acceptedRuntimes?: string[] }>;
       /**
@@ -125,7 +125,7 @@ describe("LoreAdapter", () => {
     };
     let instance =
       options.instance === undefined
-        ? { id: "inst-1", estateId: "cf-1" }
+        ? { id: "inst-1", hostId: "cf-1" }
         : options.instance;
     const lent = options.lent ?? [
       { id: "cf-1", slug: "first", acceptedRuntimes: ["workerd"] },
@@ -147,9 +147,9 @@ describe("LoreAdapter", () => {
           instance = { id: "inst-new", app: "docs", env: "production" };
           return instance;
         },
-        updateApp: async ({ body }: { body: { estateId: string } }) => {
-          events.push(`link ${body.estateId}`);
-          instance = { ...instance, estateId: body.estateId };
+        updateApp: async ({ body }: { body: { hostId: string } }) => {
+          events.push(`link ${body.hostId}`);
+          instance = { ...instance, hostId: body.hostId };
           return instance;
         },
         // Lore's own check: the confirmation must be the copy's `app/env` as
@@ -179,8 +179,8 @@ describe("LoreAdapter", () => {
           );
         },
       },
-      estates: {
-        listProjectEstates: async () => ({
+      hosts: {
+        listProjectHosts: async () => ({
           items: lent.map((it) => ({ acceptedRuntimes: ["workerd"], ...it })),
         }),
       },
@@ -287,7 +287,7 @@ describe("LoreAdapter", () => {
     expect(keys).toEqual(["secret APP_SECRET on inst-1"]);
   });
 
-  it("builds the runtime the copy's estate accepts, with the running binary", async () => {
+  it("builds the runtime the copy's host accepts, with the running binary", async () => {
     const { shell, up } = await create();
 
     await up();
@@ -299,11 +299,11 @@ describe("LoreAdapter", () => {
     expect(command).not.toContain("npx");
   });
 
-  it("does not seal the names a Bay estate writes itself, and says so (#Q3158)", async () => {
+  it("does not seal the names a Bay host writes itself, and says so (#Q3158)", async () => {
     // A freshly scaffolded app declares APP_SECRET; Lore refuses a stored
     // copy of a Bay-owned name, which failed the whole deploy.
     const { events, printed, up } = await create({
-      instance: { id: "inst-1", estateId: "bay-1" },
+      instance: { id: "inst-1", hostId: "bay-1" },
       lent: [
         { id: "bay-1", slug: "vps", type: "bay", acceptedRuntimes: ["node"] },
       ] as never,
@@ -313,7 +313,7 @@ describe("LoreAdapter", () => {
 
     expect(events).not.toContain("secret APP_SECRET on inst-1");
     expect(printed.join("\n")).toContain(
-      "Not sealing APP_SECRET for docs/production: the Bay estate writes it itself.",
+      "Not sealing APP_SECRET for docs/production: the Bay host writes it itself.",
     );
     expect(events.at(-1)).toBe("start latest");
   });
@@ -371,7 +371,7 @@ describe("LoreAdapter", () => {
   describe("down", () => {
     const aCopy = (extra: Record<string, unknown> = {}) => ({
       id: "inst-1",
-      estateId: "cf-1",
+      hostId: "cf-1",
       app: "docs",
       env: "production",
       ...extra,
@@ -441,11 +441,11 @@ describe("LoreAdapter", () => {
       const { status } = await create({
         instance: {
           id: "inst-1",
-          estateId: "cf-1",
+          hostId: "cf-1",
           url: "https://docs.alepha.dev",
           resourceName: "alepha-docs-production",
           version: "0.29.0",
-          estate: { slug: "alepha-cf" },
+          host: { slug: "alepha-cf" },
         },
       });
 
@@ -458,7 +458,7 @@ describe("LoreAdapter", () => {
           id: "inst-1",
           tag: "0.29.0",
           createdAt: undefined,
-          detail: "https://docs.alepha.dev on estate 'alepha-cf'",
+          detail: "https://docs.alepha.dev on host 'alepha-cf'",
         },
       ]);
       expect(state.secrets).toEqual([{ name: "APP_SECRET", deployed: true }]);
@@ -481,7 +481,7 @@ describe("LoreAdapter", () => {
   });
 
   describe("a first up", () => {
-    it("creates the missing copy on the one estate lent, then deploys to it", async () => {
+    it("creates the missing copy on the one host lent, then deploys to it", async () => {
       const { events, printed, up } = await create({
         instance: null,
         lent: [{ id: "cf-1", slug: "first" }],
@@ -497,10 +497,10 @@ describe("LoreAdapter", () => {
         "secret APP_SECRET on inst-new",
         "start latest",
       ]);
-      expect(printed).toContain("Created docs/production on estate 'first'");
+      expect(printed).toContain("Created docs/production on host 'first'");
     });
 
-    it("refuses when several estates are lent, naming them and how to choose, and creates nothing", async () => {
+    it("refuses when several hosts are lent, naming them and how to choose, and creates nothing", async () => {
       // #Q3144: which machine is decided on the Lore side, never guessed.
       const { events, up } = await create({
         instance: null,
@@ -511,30 +511,30 @@ describe("LoreAdapter", () => {
       });
 
       await expect(up()).rejects.toThrow(
-        /Several estates are lent to this project \(newer, first\)[\s\S]*lore apps instance create --app <app> --env <env> --estate <slug>/,
+        /Several hosts are lent to this project \(newer, first\)[\s\S]*lore apps instance create --app <app> --env <env> --host <slug>/,
       );
       expect(events).toEqual([]);
     });
 
-    it("refuses when no estate is lent, and creates nothing", async () => {
+    it("refuses when no host is lent, and creates nothing", async () => {
       const { events, shell, up } = await create({ instance: null, lent: [] });
 
-      await expect(up()).rejects.toThrow(/No estate is lent to this project/);
+      await expect(up()).rejects.toThrow(/No host is lent to this project/);
       expect(events).toEqual([]);
       expect(shell.calls).toEqual([]);
     });
 
-    it("refuses a config that still names an estate, pointing to Lore", async () => {
+    it("refuses a config that still names a host, pointing to Lore", async () => {
       const { events, up } = await create({
         instance: null,
         descriptor: lore({
           project: "alepha",
-          estate: "newer",
+          host: "newer",
         } as unknown as Parameters<typeof lore>[0]),
       });
 
       await expect(up()).rejects.toThrow(
-        /lore\(\) takes no estate: set it in Lore/,
+        /lore\(\) takes no host: set it in Lore/,
       );
       expect(events).toEqual([]);
     });

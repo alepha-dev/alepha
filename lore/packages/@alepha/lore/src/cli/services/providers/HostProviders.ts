@@ -2,17 +2,17 @@ import { $inject } from "alepha";
 import { CommandError } from "alepha/command";
 
 import { LoreRefusals } from "../LoreRefusals.ts";
-import type { EstateProvider } from "./EstateProvider.ts";
+import type { HostProvider } from "./HostProvider.ts";
 import { ScalewayProvider } from "./ScalewayProvider.ts";
 
 /**
- * The providers `lore estate provision --provider` knows (#Q3164). A new
+ * The providers `lore host provision --provider` knows (#Q3164). A new
  * one is a class beside {@link ScalewayProvider} and a line in {@link all}.
  */
-export class EstateProviders {
+export class HostProviders {
   protected readonly scaleway = $inject(ScalewayProvider);
 
-  all(): EstateProvider[] {
+  all(): HostProvider[] {
     return [this.scaleway];
   }
 
@@ -21,7 +21,7 @@ export class EstateProviders {
    * the list and what each needs, since that is the page an agent would
    * otherwise have to find.
    */
-  pick(name: string | undefined): EstateProvider {
+  pick(name: string | undefined): HostProvider {
     const found = this.all().find((provider) => provider.name === name);
     if (found) {
       return found;
@@ -46,7 +46,7 @@ export class EstateProviders {
           `  ${provider.name}  ${provider.title}`,
           "    once:",
           ...provider.setup.map((line) => `      ${line}`),
-          `    then: lore estate provision --provider ${provider.name}`,
+          `    then: lore host provision --provider ${provider.name}`,
         ].join("\n"),
       )
       .join("\n\n");

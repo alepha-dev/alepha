@@ -13,9 +13,9 @@ import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
 import { EpicCommand } from "./commands/EpicCommand.ts";
 import { ErrorCommand } from "./commands/ErrorCommand.ts";
-import { EstateCommand } from "./commands/EstateCommand.ts";
 import { FeedbackCommand } from "./commands/FeedbackCommand.ts";
 import { FolioCommand } from "./commands/FolioCommand.ts";
+import { HostCommand } from "./commands/HostCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
 import { MonitorCommand } from "./commands/MonitorCommand.ts";
 import { ProjectCommand } from "./commands/ProjectCommand.ts";
@@ -128,7 +128,7 @@ export const AlephaLoreCli = $module({
     SecretsCommand,
     SigilCommand,
     MonitorCommand,
-    EstateCommand,
+    HostCommand,
     RegistryCommand,
     StackCommand,
     LoginCommand,
@@ -154,7 +154,7 @@ export const AlephaLoreCli = $module({
  * ```
  *
  * `alepha deploy --env production` then builds the runtime the copy's
- * estate accepts, pushes it as `latest`, seals the local secrets into the copy
+ * host accepts, pushes it as `latest`, seals the local secrets into the copy
  * and deploys, following the run. The copy is `infra().name` and the
  * environment's key; `LORE_PROJECT` and `LORE_URL` override `project` and
  * `url`, so `lore()` with no arguments is legal in CI.

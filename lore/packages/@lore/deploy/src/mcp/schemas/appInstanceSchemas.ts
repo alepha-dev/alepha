@@ -30,7 +30,7 @@ const appInstanceSchema = appInstanceResourceSchema.pick({
   env: true,
   url: true,
   sigil: true,
-  estate: true,
+  host: true,
 });
 
 // -----------------------------------------------------------------------------
@@ -111,12 +111,12 @@ export const appInstanceUpdateParamsSchema = projectParamsSchema.extend({
     .describe(
       "Pin the address. The empty string CLEARS it and hands the answer back to the host the app reports from; omit the key to leave it alone.",
     ),
-  estateId: z
+  hostId: z
     .uuid()
     .nullable()
     .optional()
     .describe(
-      "Where this copy deploys to. Must be an estate LENT to this project (see the project's estates); anything else is a 404, because a project cannot learn about estates it was never given. `null` clears it, omit to leave it alone.",
+      "Where this copy deploys to. Must be a host LENT to this project (see the project's hosts); anything else is a 404, because a project cannot learn about hosts it was never given. `null` clears it, omit to leave it alone.",
     ),
 });
 

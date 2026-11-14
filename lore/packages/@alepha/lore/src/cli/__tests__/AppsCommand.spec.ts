@@ -18,7 +18,7 @@ import { LoreDeployer } from "../services/LoreDeployer.ts";
  * `lore apps`: which targets a build produces, and what a deploy is allowed to
  * do on its own.
  *
- * ⚠️ **The two load-bearing cases.** For `build`, that two envs on one estate
+ * ⚠️ **The two load-bearing cases.** For `build`, that two envs on one host
  * type give byte-identical output - a value frozen into a stored artifact
  * breaks promotion, which is the whole reason the registry exists. For
  * `deploy`, that a named `--tag` never builds and never mints an instance -
@@ -26,8 +26,8 @@ import { LoreDeployer } from "../services/LoreDeployer.ts";
  * turn a typo in `--env` into a deploy target.
  */
 const create = (
-  instances: Record<string, { id?: string; estateId?: string }> = {},
-  estates: Array<{ id: string; acceptedRuntimes: string[] }> = [],
+  instances: Record<string, { id?: string; hostId?: string }> = {},
+  hosts: Array<{ id: string; acceptedRuntimes: string[] }> = [],
   deploy: {
     /**
      * What `getDeployment` answers, one entry per poll. The last is
@@ -124,8 +124,8 @@ const create = (
         return found;
       },
     },
-    estates: {
-      listProjectEstates: async () => ({ items: estates }),
+    hosts: {
+      listProjectHosts: async () => ({ items: hosts }),
     },
     deploys: {
       startDeploy: async ({
@@ -139,10 +139,7 @@ const create = (
           throw deploy.refusal;
         }
         if (deploy.refuseFor?.includes(params.instanceId)) {
-          throw new HttpError(
-            { status: 409 },
-            { message: "Estate is frozen." },
-          );
+          throw new HttpError({ status: 409 }, { message: "Host is frozen." });
         }
         started.push({
           instanceId: params.instanceId,
@@ -263,8 +260,8 @@ describe("lore apps build", () => {
     const twoCloudflareEnvs = () =>
       create(
         {
-          staging: { estateId: "e1" },
-          production: { estateId: "e2" },
+          staging: { hostId: "e1" },
+          production: { hostId: "e2" },
         },
         [
           { id: "e1", acceptedRuntimes: ["workerd"] },
@@ -273,10 +270,9 @@ describe("lore apps build", () => {
       );
 
     it("selects a target and nothing else", async () => {
-      const { fs, shell, cli, command } = create(
-        { yyy: { estateId: "bay-1" } },
-        [{ id: "bay-1", acceptedRuntimes: ["node"] }],
-      );
+      const { fs, shell, cli, command } = create({ yyy: { hostId: "bay-1" } }, [
+        { id: "bay-1", acceptedRuntimes: ["node"] },
+      ]);
       await aWorkspace(fs);
 
       await cli.run(command.build, { root: "/project", argv: "--env yyy" });
@@ -290,7 +286,7 @@ describe("lore apps build", () => {
      * different bytes, `--env` has started threading an env-specific value
      * into the build and promotion across environments is broken.
      */
-    it("gives byte-identical output for two envs on one estate type", async () => {
+    it("gives byte-identical output for two envs on one host type", async () => {
       const staging = twoCloudflareEnvs();
       await aWorkspace(staging.fs);
       await staging.cli.run(staging.command.build, {
@@ -318,7 +314,7 @@ describe("lore apps build", () => {
     it("refuses an --env that contradicts --target", async () => {
       // A conflict, not a precedence question: silently picking one produces
       // bytes the operator did not ask for and a deploy that fails much later.
-      const { fs, cli, command } = create({ xxx: { estateId: "cf-1" } }, [
+      const { fs, cli, command } = create({ xxx: { hostId: "cf-1" } }, [
         { id: "cf-1", acceptedRuntimes: ["workerd"] },
       ]);
       await aWorkspace(fs);
@@ -333,16 +329,16 @@ describe("lore apps build", () => {
       );
     });
 
-    it("refuses an env whose copy has no estate", async () => {
+    it("refuses an env whose copy has no host", async () => {
       // Refused, not fallen back on: building every target for an environment
-      // that names no estate produces bytes nobody asked for and hides the
+      // that names no host produces bytes nobody asked for and hides the
       // real problem.
       const { fs, cli, command } = create({ zzz: {} }, []);
       await aWorkspace(fs);
 
       await expect(
         cli.run(command.build, { root: "/project", argv: "--env zzz" }),
-      ).rejects.toThrow(/has no estate/);
+      ).rejects.toThrow(/has no host/);
     });
   });
 });
@@ -361,7 +357,7 @@ describe("lore apps deploy", () => {
     refusal?: unknown,
   ) =>
     create(
-      { production: { id: "inst-1", estateId: "cf-1" } },
+      { production: { id: "inst-1", hostId: "cf-1" } },
       [{ id: "cf-1", acceptedRuntimes: ["workerd"] }],
       { runs, refusal },
     );
@@ -435,8 +431,8 @@ describe("lore apps deploy", () => {
     expect(commandsOf(shell)).toEqual([]);
   });
 
-  it("names a project, an app and an environment, and no estate", async () => {
-    // ⚠️ Structural, not a validation: a client that can name its own estate
+  it("names a project, an app and an environment, and no host", async () => {
+    // ⚠️ Structural, not a validation: a client that can name its own host
     // can deploy into somebody else's cloud account (folio #96).
     const { fs, cli, command, started } = aCloudflareCopy();
     await aWorkspace(fs);
@@ -446,9 +442,9 @@ describe("lore apps deploy", () => {
       argv: "--env production",
     });
 
-    // ⚠️ The whole surface, so `--estate` cannot be added without this
+    // ⚠️ The whole surface, so `--host` cannot be added without this
     // failing. `--sigil` is here because it names a credential Lore mints for
-    // this copy; an estate is somebody's cloud account, which is the thing a
+    // this copy; a host is somebody's cloud account, which is the thing a
     // client must never get to choose.
     expect(Object.keys(command.deploy.flags?.shape ?? {}).sort()).toEqual([
       "app",
@@ -457,7 +453,7 @@ describe("lore apps deploy", () => {
       "sigil",
       "tag",
     ]);
-    // The whole body, so an estate id cannot be added without this failing.
+    // The whole body, so a host id cannot be added without this failing.
     expect(started[0].body).toEqual({ tag: "latest" });
     expect(started[0].instanceId).toBe("inst-1");
   });
@@ -522,11 +518,11 @@ describe("lore apps deploy", () => {
 
   it("gives the gate's own words, not a status code", async () => {
     // The person deploying is often not the person who can fix this, so the
-    // message naming whose estate it is has to survive the trip.
+    // message naming whose host it is has to survive the trip.
     const { fs, cli, command } = aCloudflareCopy(undefined, {
       status: 400,
       message:
-        "The estate 'nfo-cf' does not accept deploys. Its owner can turn that on from their Estates page.",
+        "The host 'nfo-cf' does not accept deploys. Its owner can turn that on from their Hosts page.",
     });
     await aWorkspace(fs);
 
@@ -536,7 +532,7 @@ describe("lore apps deploy", () => {
         argv: "--env production --tag 0.28.0",
       }),
     ).rejects.toThrow(
-      /The estate 'nfo-cf' does not accept deploys\. Its owner can turn that on/,
+      /The host 'nfo-cf' does not accept deploys\. Its owner can turn that on/,
     );
   });
 
@@ -552,7 +548,7 @@ describe("lore apps deploy", () => {
     const { fs, cli, command, started, shell } = create(
       // Every other env exists; `production`, which the fake chain resolves to,
       // does not.
-      { staging: { id: "inst-2", estateId: "cf-1" } },
+      { staging: { id: "inst-2", hostId: "cf-1" } },
       [{ id: "cf-1", acceptedRuntimes: ["workerd"] }],
     );
     await aWorkspace(fs);
@@ -670,7 +666,7 @@ describe("lore apps redeploy", () => {
         root: "/project",
         argv: "--suffix=-staging",
       }),
-    ).rejects.toThrow(/1 of 2 copies .*a-staging: Estate is frozen\./);
+    ).rejects.toThrow(/1 of 2 copies .*a-staging: Host is frozen\./);
     // The copy after the failure was still attempted.
     expect(started.map((it) => it.instanceId)).toEqual(["inst-b"]);
   });
@@ -678,7 +674,7 @@ describe("lore apps redeploy", () => {
 
 describe("lore apps destroy", () => {
   const aCloudflareCopy = () =>
-    create({ production: { id: "inst-1", estateId: "cf-1" } }, [
+    create({ production: { id: "inst-1", hostId: "cf-1" } }, [
       { id: "cf-1", acceptedRuntimes: ["workerd"] },
     ]);
 
@@ -731,8 +727,8 @@ describe("lore apps destroy", () => {
       const world = create({
         production: {
           id: "inst-1",
-          estateId: "bay-1",
-          estate: { slug: "vps-ovh", type: "bay" },
+          hostId: "bay-1",
+          host: { slug: "vps-ovh", type: "bay" },
           resourceName: "acme-docs-production",
         } as never,
       });
@@ -747,7 +743,7 @@ describe("lore apps destroy", () => {
             removed: [],
             kept: ["database", "uploads", ".env"],
             failed: [],
-            removal: { command: { id: "c1" }, estate: "vps-ovh" },
+            removal: { command: { id: "c1" }, host: "vps-ovh" },
           };
         },
         getAppRemoval: async () => {

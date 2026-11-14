@@ -33,7 +33,7 @@ import {
  * - a **sigil** (`sigil_create`) is the key it reports with, and unlocks
  *   Analytics, Vitals, Errors and Explore. Removing one destroys that
  *   instance's analytics history.
- * - an **estate** (`app_instance_update`) is where it deploys to, and must be
+ * - an **host** (`app_instance_update`) is where it deploys to, and must be
  *   one lent to this project.
  *
  * Reads are open to any project member; creating, updating and deleting need
@@ -46,7 +46,7 @@ export class AppInstanceTools {
   app_instance_list = $tool({
     title: "List app instances",
     description:
-      "Every deployed copy this project tracks, one row per `(app, env)` pair, with what each has unlocked: a `sigil` (the key it reports with) and an `estate` (where it deploys to), each absent when it has none. Also returns `apps`, the distinct app names — offer one of those before inventing a new name, because there is no app entity and `acem` beside `acme` is silently a second app.",
+      "Every deployed copy this project tracks, one row per `(app, env)` pair, with what each has unlocked: a `sigil` (the key it reports with) and an `host` (where it deploys to), each absent when it has none. Also returns `apps`, the distinct app names — offer one of those before inventing a new name, because there is no app entity and `acem` beside `acme` is silently a second app.",
     annotations: { readOnlyHint: true },
     schema: {
       params: appInstanceListParamsSchema,
@@ -113,7 +113,7 @@ export class AppInstanceTools {
   app_instance_update = $tool({
     title: "Update an app instance",
     description:
-      'Rename either half, pin the address, or point the copy at an estate. Every field is optional and an omitted one is left alone; `url: ""` clears the pinned address and `estateId: null` clears the deploy target. ⚠️ Both names are the URL, so renaming either MOVES the page — but not the deployed key, which carries the project slug and not these names, so nothing has to be redeployed or rotated. The estate must be one lent to this project. Needs `app:manage`.',
+      'Rename either half, pin the address, or point the copy at a host. Every field is optional and an omitted one is left alone; `url: ""` clears the pinned address and `hostId: null` clears the deploy target. ⚠️ Both names are the URL, so renaming either MOVES the page — but not the deployed key, which carries the project slug and not these names, so nothing has to be redeployed or rotated. The host must be one lent to this project. Needs `app:manage`.',
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: appInstanceUpdateParamsSchema,
@@ -130,9 +130,7 @@ export class AppInstanceTools {
           ...(params.newApp === undefined ? {} : { app: params.newApp }),
           ...(params.newEnv === undefined ? {} : { env: params.newEnv }),
           ...(params.url === undefined ? {} : { url: params.url }),
-          ...(params.estateId === undefined
-            ? {}
-            : { estateId: params.estateId }),
+          ...(params.hostId === undefined ? {} : { hostId: params.hostId }),
         },
       });
     },

@@ -58,7 +58,7 @@ const POSITIONAL = new Set([
   "directory_shortId",
   "service",
   "section",
-  "estate",
+  "host",
 ]);
 
 /**

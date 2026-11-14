@@ -1,6 +1,6 @@
 import type { ProjectController } from "@lore/core/api";
 import type {
-  ProjectEstateController,
+  ProjectHostController,
   StackController,
   StackDeployController,
 } from "@lore/deploy/api";
@@ -13,7 +13,7 @@ import { LoreClientService } from "./LoreClientService.ts";
 /**
  * What the `lore stack` commands share (#Q2700): naming a stack (the project
  * slug unless `--name` says otherwise), an environment (created on its first
- * deploy), an estate by slug, and following a stack deploy to its end.
+ * deploy), a host by slug, and following a stack deploy to its end.
  */
 export class LoreStackService {
   protected readonly client = $inject(LoreClientService);
@@ -24,7 +24,7 @@ export class LoreStackService {
   protected readonly deploys = $client<StackDeployController>(
     this.client.scope(),
   );
-  protected readonly estates = $client<ProjectEstateController>(
+  protected readonly hosts = $client<ProjectHostController>(
     this.client.scope(),
   );
 
@@ -64,7 +64,7 @@ export class LoreStackService {
     const stack = await this.findStack(projectId, name);
     if (!stack) {
       throw new AlephaError(
-        `This project has no stack named ${name}. Create it with \`lore stack create --file compose.yml --estate <estate>\`.`,
+        `This project has no stack named ${name}. Create it with \`lore stack create --file compose.yml --host <host>\`.`,
       );
     }
     return stack;
@@ -84,19 +84,19 @@ export class LoreStackService {
   }
 
   /**
-   * An estate lent to the project, by slug.
+   * A host lent to the project, by slug.
    */
-  public async estateId(projectId: number, slug: string): Promise<string> {
-    const { items } = await this.estates.listProjectEstates({
+  public async hostId(projectId: number, slug: string): Promise<string> {
+    const { items } = await this.hosts.listProjectHosts({
       params: { projectId },
     });
-    const estate = items.find((e) => e.slug === slug);
-    if (!estate) {
+    const host = items.find((e) => e.slug === slug);
+    if (!host) {
       throw new AlephaError(
-        `No estate named ${slug} is lent to this project${items.length ? ` (lent: ${items.map((e) => e.slug).join(", ")})` : ""}. Add one with \`lore estate add ${slug}\`.`,
+        `No host named ${slug} is lent to this project${items.length ? ` (lent: ${items.map((e) => e.slug).join(", ")})` : ""}. Add one with \`lore host add ${slug}\`.`,
       );
     }
-    return estate.id;
+    return host.id;
   }
 
   /**

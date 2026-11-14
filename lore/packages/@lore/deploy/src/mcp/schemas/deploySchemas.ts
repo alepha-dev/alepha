@@ -15,7 +15,7 @@ import { z } from "alepha";
  */
 const instanceParamsSchema = projectParamsSchema.extend({
   app: appNameSchema.describe(
-    "Which app to deploy. One of the names `app_instance_list` returns, never a new one: there is no app entity, so a typo is silently a different app with no deployed copy and no estate.",
+    "Which app to deploy. One of the names `app_instance_list` returns, never a new one: there is no app entity, so a typo is silently a different app with no deployed copy and no host.",
   ),
   env: appNameSchema.describe(
     "Which copy of it. `app_instance_list` returns the pairs that exist; a pair with no row is refused rather than created.",
@@ -25,7 +25,7 @@ const instanceParamsSchema = projectParamsSchema.extend({
 /**
  * One deploy run, as an agent sees it.
  *
- * ⚠️ No sealed value, no credential and no estate id. What an agent may learn
+ * ⚠️ No sealed value, no credential and no host id. What an agent may learn
  * about a run is what shipped, how it went and what the run itself said.
  */
 const deploymentSchema = z.object({
