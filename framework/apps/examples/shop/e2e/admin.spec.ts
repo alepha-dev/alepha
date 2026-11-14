@@ -772,22 +772,26 @@ test.describe("the dashboard's tiles", () => {
  * check, so a second admin sees it and a concurrent save gets a notice.
  */
 test.describe("customizing the dashboard", () => {
-  const SECOND = {
-    email: "second-admin@example.test",
-    password: "second-admin-2026",
+  /**
+   * One second admin per attempt (#Q3676): a retry that created the same
+   * account again was refused, so a failed first attempt could never pass on
+   * a retry.
+   */
+  const second = () => {
+    const attempt = test.info().retry;
+    return {
+      email: `second-admin-${attempt}@example.test`,
+      username: `second-admin-${attempt}`,
+      password: "second-admin-2026",
+    };
   };
 
-  const titlesOf = async (page: Page) =>
-    (await page.locator('[data-slot="card-title"]').allInnerTexts()).map(
-      (title) => title.trim(),
-    );
+  // Locators, asserted with `toHaveText`, which retries until the grid
+  // settles: a one-shot read raced the render that follows a save (#Q3676).
+  const titlesOf = (page: Page) => page.locator('[data-slot="card-title"]');
 
-  const cellTitles = async (page: Page) =>
-    (
-      await page
-        .locator('[data-slot="dashboard-edit-cell"] > div:first-child span')
-        .allInnerTexts()
-    ).map((title) => title.trim());
+  const cellTitles = (page: Page) =>
+    page.locator('[data-slot="dashboard-edit-cell"] > div:first-child span');
 
   test("hide and reorder, save, reload; a second admin sees it; a concurrent save gets the notice", async ({
     page,
@@ -795,12 +799,25 @@ test.describe("customizing the dashboard", () => {
     baseURL,
   }) => {
     await signInAsAdmin(page);
+    const SECOND = second();
+
+    // A failed attempt can leave its layout behind: start from the defaults.
+    const read = await page.request.get("/api/dashboard/layout");
+    expect(read.ok()).toBe(true);
+    const { version } = (await read.json()) as { version: number };
+    expect(
+      (
+        await page.request.put("/api/dashboard/layout", {
+          data: { layout: { tiles: [] }, expectedVersion: version },
+        })
+      ).ok(),
+    ).toBe(true);
 
     // A second admin, made through the admin API by the first.
     const created = await page.request.post("/api/users", {
       data: {
         email: SECOND.email,
-        username: "second-admin",
+        username: SECOND.username,
         roles: ["admin"],
         emailVerified: true,
       },
@@ -815,8 +832,11 @@ test.describe("customizing the dashboard", () => {
       ).ok(),
     ).toBe(true);
 
-    const second = await browser.newContext({ baseURL, locale: "fr-FR" });
-    const other = await second.newPage();
+    const secondContext = await browser.newContext({
+      baseURL,
+      locale: "fr-FR",
+    });
+    const other = await secondContext.newPage();
     await other.goto("/auth/login");
     await other.locator('input[name="identifier"]').fill(SECOND.email);
     await other.locator('input[name="password"]').fill(SECOND.password);
@@ -836,7 +856,7 @@ test.describe("customizing the dashboard", () => {
       for (let i = 0; i < 2; i++) {
         await page.getByRole("button", { name: "Avancer Connectés" }).click();
       }
-      expect(await cellTitles(page)).toEqual([
+      await expect(cellTitles(page)).toHaveText([
         "Connectés",
         "Produits",
         "Utilisateurs",
@@ -857,11 +877,11 @@ test.describe("customizing the dashboard", () => {
         "Utilisateurs",
         "Connexions échouées",
       ];
-      expect(await titlesOf(page)).toEqual(expected);
+      await expect(titlesOf(page)).toHaveText(expected);
 
       await page.reload();
       await expect(page.locator('[data-slot="card-title"]')).toHaveCount(4);
-      expect(await titlesOf(page)).toEqual(expected);
+      await expect(titlesOf(page)).toHaveText(expected);
 
       // The second admin's save started from the old version: refused, with
       // the notice, and the first admin's layout stands.
@@ -879,7 +899,7 @@ test.describe("customizing the dashboard", () => {
         other.getByRole("button", { name: "Personnaliser" }),
       ).toBeVisible();
       await expect(other.locator('[data-slot="card-title"]')).toHaveCount(4);
-      expect(await titlesOf(other)).toEqual(expected);
+      await expect(titlesOf(other)).toHaveText(expected);
 
       // Reset, confirmed: back to the defaults for everyone.
       await other.getByRole("button", { name: "Personnaliser" }).click();
@@ -895,7 +915,7 @@ test.describe("customizing the dashboard", () => {
       ).toBeVisible();
       await page.reload();
       await expect(page.locator('[data-slot="card-title"]')).toHaveCount(5);
-      expect(await titlesOf(page)).toEqual([
+      await expect(titlesOf(page)).toHaveText([
         "Produits",
         "Commandes",
         "Utilisateurs",
@@ -903,7 +923,7 @@ test.describe("customizing the dashboard", () => {
         "Connexions échouées",
       ]);
     } finally {
-      await second.close();
+      await secondContext.close();
     }
   });
 });

@@ -91,6 +91,32 @@ describe("AdminDashboardLayoutController", () => {
     expect(read).toEqual({ layout: LAYOUT, version: 1 });
   });
 
+  /**
+   * The layout and its version come from one row (#Q3676). They used to come
+   * from two reads, "current by activation time" and "latest version
+   * number", and a version whose activation sorts differently from its
+   * number paired the previous layout with the newest version: a save from
+   * that read would overwrite a layout its author never saw.
+   */
+  it("reads the layout and the version from the same, latest, row", async () => {
+    const { controller, provider } = await boot();
+    await controller.setAdminDashboardLayout.run(
+      { body: { layout: LAYOUT, expectedVersion: 0 } },
+      { user: user("dashboard-editor", "alice") },
+    );
+    const later = { tiles: [{ id: "users", enabled: true }] };
+    await provider.save("admin.dashboard.layout", later, "", {
+      expectedVersion: 1,
+      activationDate: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    const read = await controller.getAdminDashboardLayout.run(
+      {},
+      { user: user("dashboard-viewer", "viewer") },
+    );
+    expect(read).toEqual({ layout: later, version: 2 });
+  });
+
   it("answers 409 to a save from a stale version, and keeps the other admin's layout", async () => {
     const { controller } = await boot();
     const first = await controller.setAdminDashboardLayout.run(
