@@ -9,7 +9,7 @@ import { dirname, join, normalize } from "node:path";
  * |-------------|------------------|-------------|
  * | `core`      | the glue         | nothing     |
  * | `plan`      | Lore as Jira     | `core`      |
- * | `knowledge` | Lore as Obsidian | `core`      |
+ * | `remember`  | Lore as Obsidian | `core`      |
  * | `deploy`    | Lore as Vercel   | `core`      |
  *
  * A feature module never imports another one. A feature that spans two of
@@ -40,7 +40,7 @@ export class LorePackageGraph {
   public static readonly GRAPH: Record<string, string[]> = {
     core: [],
     plan: ["core"],
-    knowledge: ["core"],
+    remember: ["core"],
     deploy: ["core"],
   };
 

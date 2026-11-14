@@ -20,12 +20,12 @@ import {
 } from "@lore/deploy/api";
 import { LoreDeployMcp } from "@lore/deploy/mcp";
 import { LoreDeployWeb } from "@lore/deploy/web";
-import { LoreKnowledgeApi } from "@lore/knowledge/api";
-import { LoreKnowledgeMcp } from "@lore/knowledge/mcp";
-import { LoreKnowledgeWeb } from "@lore/knowledge/web";
 import { LorePlanApi } from "@lore/plan/api";
 import { LorePlanMcp } from "@lore/plan/mcp";
 import { LorePlanWeb } from "@lore/plan/web";
+import { LoreRememberApi } from "@lore/remember/api";
+import { LoreRememberMcp } from "@lore/remember/mcp";
+import { LoreRememberWeb } from "@lore/remember/web";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import { JobProvider } from "alepha/api/jobs";
@@ -191,11 +191,11 @@ alepha.with({ provide: JobProvider, use: AutomationLegacyJobProvider });
 // replaces is a `TooLateSubstitutionError`.
 alepha.with(LoreCoreApi);
 alepha.with(LorePlanApi);
-alepha.with(LoreKnowledgeApi);
+alepha.with(LoreRememberApi);
 alepha.with(LoreDeployApi);
 alepha.with(LoreCoreMcp);
 alepha.with(LorePlanMcp);
-alepha.with(LoreKnowledgeMcp);
+alepha.with(LoreRememberMcp);
 alepha.with(LoreDeployMcp);
 
 // The in-app assistant (#E120), after every module: its tools are theirs.
@@ -219,7 +219,7 @@ alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 
 alepha.with(LoreCoreWeb);
 alepha.with(LorePlanWeb);
-alepha.with(LoreKnowledgeWeb);
+alepha.with(LoreRememberWeb);
 alepha.with(LoreDeployWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.
 alepha.with(LoreAssistantWeb);

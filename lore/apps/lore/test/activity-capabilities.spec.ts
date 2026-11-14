@@ -1,7 +1,7 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
 import type { CapabilityKey } from "@lore/core/schemas";
-import { FolioController } from "@lore/knowledge/api";
 import { EpicController, QuestController } from "@lore/plan/api";
+import { FolioController } from "@lore/remember/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

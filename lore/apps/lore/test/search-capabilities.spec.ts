@@ -1,7 +1,7 @@
 import { SearchController } from "@lore/core/api";
 import { type Project } from "@lore/core/schemas";
 import type { CapabilityKey } from "@lore/core/schemas";
-import { folioDirectories, folios } from "@lore/knowledge/schemas";
+import { folioDirectories, folios } from "@lore/remember/schemas";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";

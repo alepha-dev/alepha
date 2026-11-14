@@ -10,7 +10,7 @@
  * ──────────────────────────────────────────────────────────────────────── */
 @source "../../../packages/@lore/core/src/web";
 @source "../../../packages/@lore/plan/src/web";
-@source "../../../packages/@lore/knowledge/src/web";
+@source "../../../packages/@lore/remember/src/web";
 @source "../../../packages/@lore/deploy/src/web";
 
 /* ────────────────────────────────────────────────────────────────────────

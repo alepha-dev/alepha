@@ -1,8 +1,8 @@
 import { ProjectController } from "@lore/core/api";
-import { DirectoryController, FolioController } from "@lore/knowledge/api";
-import { folioNames } from "@lore/knowledge/schemas";
 import { AreaService } from "@lore/plan/api";
 import { areas } from "@lore/plan/schemas";
+import { DirectoryController, FolioController } from "@lore/remember/api";
+import { folioNames } from "@lore/remember/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

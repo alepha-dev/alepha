@@ -12,9 +12,9 @@ import {
   AutomationRunEvidence,
 } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
-import { FolioController } from "@lore/knowledge/api";
-import { folioRevisions } from "@lore/knowledge/schemas";
 import { QuestController } from "@lore/plan/api";
+import { FolioController } from "@lore/remember/api";
+import { folioRevisions } from "@lore/remember/schemas";
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { audits } from "alepha/api/audits";
 import { RankService } from "alepha/api/organizations";

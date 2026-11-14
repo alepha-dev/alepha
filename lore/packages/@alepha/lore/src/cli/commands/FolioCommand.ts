@@ -1,7 +1,7 @@
-import type { DirectoryController } from "@lore/knowledge/api";
-import type { FolioAttachmentController } from "@lore/knowledge/api";
-import type { FolioController } from "@lore/knowledge/api";
 import type { EpicController } from "@lore/plan/api";
+import type { DirectoryController } from "@lore/remember/api";
+import type { FolioAttachmentController } from "@lore/remember/api";
+import type { FolioController } from "@lore/remember/api";
 import { $inject, z } from "alepha";
 import { $command, CommandError, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";

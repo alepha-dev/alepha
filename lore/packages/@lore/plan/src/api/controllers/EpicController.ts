@@ -700,7 +700,7 @@ export class EpicController {
    *   audit). Never a hand-written `DELETE` on the rows. Deleting them needs
    *   `quest:delete` as well as the gate's `epic:write`.
    * - **Folios are unfiled, never deleted**: they are knowledge and outlive
-   *   plans, and `@lore/plan` does not reach into `@lore/knowledge`. The
+   *   plans, and `@lore/plan` does not reach into `@lore/remember`. The
    *   `filed` links go with the epic's outbound links below (#Q2626).
    * - **No transaction (D1 has none), so the epic goes LAST.** A failure
    *   halfway leaves the epic in place with the quests not yet deleted, and

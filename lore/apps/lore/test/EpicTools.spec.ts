@@ -1,8 +1,8 @@
 import { ProjectController } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
-import { FolioTools } from "@lore/knowledge/mcp";
 import { EpicController } from "@lore/plan/api";
 import { EpicTools, QuestTools } from "@lore/plan/mcp";
+import { FolioTools } from "@lore/remember/mcp";
 import { Alepha, AlephaError } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";

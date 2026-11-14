@@ -10,7 +10,7 @@ import { LoreAiToolset } from "./LoreAiToolset.ts";
  * Lore's in-app assistant: its prompt and its tools (#E120).
  *
  * It lives in `apps/lore`, not in `@lore/core`, because its tools come from
- * `@lore/plan` and `@lore/knowledge`, and the app is the one place those
+ * `@lore/plan` and `@lore/remember`, and the app is the one place those
  * modules meet.
  *
  * - `system` is a function of the user: the rules, who asks, today.

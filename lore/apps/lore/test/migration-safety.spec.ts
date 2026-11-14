@@ -10,8 +10,8 @@ import {
   sigils,
   sigilUniquesDaily,
 } from "@lore/deploy/schemas";
-import { LoreKnowledgeApi } from "@lore/knowledge/api";
 import { LorePlanApi } from "@lore/plan/api";
+import { LoreRememberApi } from "@lore/remember/api";
 import { Alepha } from "alepha";
 import { organizations } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -89,7 +89,7 @@ const entityTables = async (): Promise<string[]> => {
   alepha.with(AlephaApiUsers);
   alepha.with(LoreCoreApi);
   alepha.with(LorePlanApi);
-  alepha.with(LoreKnowledgeApi);
+  alepha.with(LoreRememberApi);
   alepha.with(LoreDeployApi);
   bootLore(alepha, ["api", "mcp"]);
 

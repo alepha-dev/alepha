@@ -1,4 +1,3 @@
-import { folioDirectories, folios } from "@lore/knowledge/schemas";
 /**
  * Repository bag backing the `createTest*` helpers below, and the thing a
  * spec needs to construct BEFORE `alepha.start()`.
@@ -18,10 +17,11 @@ import { folioDirectories, folios } from "@lore/knowledge/schemas";
  * whole FK closure gets registered up front.
  */
 import { WorkTestEntities } from "@lore/plan/testing";
+import { folioDirectories, folios } from "@lore/remember/schemas";
 import { $repository } from "alepha/orm";
 
 export { createTestEpic, createTestQuest } from "@lore/plan/testing";
-export { createTestFolio, filedEpicOf } from "@lore/knowledge/testing";
+export { createTestFolio, filedEpicOf } from "@lore/remember/testing";
 
 export {
   createTestMember,

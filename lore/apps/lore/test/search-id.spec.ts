@@ -1,11 +1,11 @@
 import { ProjectController, SearchController } from "@lore/core/api";
-import { DirectoryController, FolioController } from "@lore/knowledge/api";
 import {
   EpicController,
   FeedbackController,
   QuestController,
   ReleaseController,
 } from "@lore/plan/api";
+import { DirectoryController, FolioController } from "@lore/remember/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

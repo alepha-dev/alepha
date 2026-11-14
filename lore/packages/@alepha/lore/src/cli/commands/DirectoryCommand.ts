@@ -1,4 +1,4 @@
-import type { DirectoryController } from "@lore/knowledge/api";
+import type { DirectoryController } from "@lore/remember/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";

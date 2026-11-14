@@ -1,6 +1,6 @@
 import { ProjectController } from "@lore/core/api";
-import { FolioController } from "@lore/knowledge/api";
-import { folioRevisions } from "@lore/knowledge/schemas";
+import { FolioController } from "@lore/remember/api";
+import { folioRevisions } from "@lore/remember/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, RealmProvider } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

@@ -94,8 +94,8 @@
   "peerDependencies": {
     "@lore/core": "*",
     "@lore/deploy": "*",
-    "@lore/knowledge": "*",
     "@lore/plan": "*",
+    "@lore/remember": "*",
     "alepha": ">=0.37.0",
     "react": "*",
     "react-dom": "*"
@@ -107,10 +107,10 @@
     "@lore/deploy": {
       "optional": true
     },
-    "@lore/knowledge": {
+    "@lore/plan": {
       "optional": true
     },
-    "@lore/plan": {
+    "@lore/remember": {
       "optional": true
     },
     "alepha": {

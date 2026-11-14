@@ -4,8 +4,8 @@ import {
   WikiLinkHoverProvider,
   BROKEN_HREF_PREFIX,
 } from "@lore/core/web";
-import { KnowledgeShell } from "@lore/knowledge/web";
 import { WorkShell } from "@lore/plan/web";
+import { KnowledgeShell } from "@lore/remember/web";
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";

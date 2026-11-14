@@ -9,7 +9,7 @@ ignores:
   # against Lore's own controllers. The edge is `import type` and nothing else.
   - "@lore/core"
   - "@lore/plan"
-  - "@lore/knowledge"
+  - "@lore/remember"
   - "@lore/deploy"
   - "@vitest/coverage-v8"
   - "vite"

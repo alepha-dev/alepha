@@ -3,8 +3,8 @@ import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreCoreWeb } from "@lore/core/web";
 import { ProjectScopeGrants } from "@lore/core/web";
 import { LoreDeployWeb } from "@lore/deploy/web";
-import { LoreKnowledgeWeb } from "@lore/knowledge/web";
 import { LorePlanWeb } from "@lore/plan/web";
+import { LoreRememberWeb } from "@lore/remember/web";
 import { Alepha, run } from "alepha";
 import { ScopeGrantsProvider } from "alepha/server/links";
 
@@ -31,7 +31,7 @@ alepha.with({ provide: ScopeGrantsProvider, use: ProjectScopeGrants });
 // the same page registry, so both entries register the same pages.
 alepha.with(LoreCoreWeb);
 alepha.with(LorePlanWeb);
-alepha.with(LoreKnowledgeWeb);
+alepha.with(LoreRememberWeb);
 alepha.with(LoreDeployWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.
 alepha.with(LoreAssistantWeb);

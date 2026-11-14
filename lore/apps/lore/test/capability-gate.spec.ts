@@ -1,8 +1,8 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { QualityController } from "@lore/deploy/api";
-import { FolioController } from "@lore/knowledge/api";
 import { QuestController } from "@lore/plan/api";
 import { QuestTools } from "@lore/plan/mcp";
+import { FolioController } from "@lore/remember/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

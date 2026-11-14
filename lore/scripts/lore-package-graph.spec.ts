@@ -5,7 +5,7 @@ import { LorePackageGraph } from "./lore-package-graph.ts";
 const exports = {
   core: ["api", "mcp", "web", "schemas", "testing"],
   plan: ["api", "mcp", "web", "schemas"],
-  knowledge: ["api", "mcp", "web", "schemas"],
+  remember: ["api", "mcp", "web", "schemas"],
   deploy: ["api", "mcp", "web", "schemas"],
 };
 
@@ -28,16 +28,16 @@ describe("LorePackageGraph", () => {
     expect,
   }) => {
     const violations = graph.check(
-      "packages/@lore/knowledge/src/api/services/FolioService.ts",
+      "packages/@lore/remember/src/api/services/FolioService.ts",
       'import { QuestService } from "@lore/plan/api";',
     );
 
     expect(violations).toHaveLength(1);
     expect(violations[0]).toContain(
-      "packages/@lore/knowledge/src/api/services/FolioService.ts",
+      "packages/@lore/remember/src/api/services/FolioService.ts",
     );
     expect(violations[0]).toContain('"@lore/plan/api"');
-    expect(violations[0]).toContain("@lore/knowledge -> @lore/plan");
+    expect(violations[0]).toContain("@lore/remember -> @lore/plan");
   });
 
   it("refuses core importing a feature module", ({ expect }) => {

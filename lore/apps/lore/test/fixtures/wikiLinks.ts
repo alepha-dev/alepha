@@ -6,8 +6,8 @@ import {
   type WikiLinkResolver,
   ElementReferenceRegistry,
 } from "@lore/core/web";
-import { KnowledgeShell } from "@lore/knowledge/web";
 import { WorkShell } from "@lore/plan/web";
+import { KnowledgeShell } from "@lore/remember/web";
 import { Alepha } from "alepha";
 
 /**

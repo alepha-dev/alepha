@@ -6,9 +6,9 @@ import {
   canInProject,
   ProjectScopeGrants,
 } from "@lore/core/web";
-import { EpicFoliosList } from "@lore/knowledge/web";
 import type { AreaResource } from "@lore/plan/schemas";
 import { ProjectSettingsAreasPage } from "@lore/plan/testing";
+import { EpicFoliosList } from "@lore/remember/web";
 import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";

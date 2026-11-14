@@ -186,7 +186,7 @@ jobs:
             packages/@lore/deploy/test/uptime-retention.spec.ts
             packages/@lore/deploy/test/uptime-controller.spec.ts
             packages/@lore/deploy/test/open-error-counter.spec.ts
-            packages/@lore/knowledge/test/folio-
+            packages/@lore/remember/test/folio-
             packages/@lore/plan/test/WorkAutomationSelections.spec.ts
             packages/@lore/plan/test/release-default.spec.ts
             packages/@lore/plan/test/quest-count.spec.ts

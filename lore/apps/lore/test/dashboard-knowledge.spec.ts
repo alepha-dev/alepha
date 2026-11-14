@@ -4,7 +4,7 @@ import {
 } from "@lore/core/api";
 import type { DashboardCardValue, Project } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
-import { folioDirectories } from "@lore/knowledge/schemas";
+import { folioDirectories } from "@lore/remember/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

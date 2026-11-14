@@ -1,6 +1,6 @@
 # AGENTS.md: @lore/core
 
-**The glue of Lore** (#E75, folio #F1356): projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, Home, the dashboard, the Reports shell, agent prompts, and the web shell every module mounts into. It imports no other `@lore` package; `@lore/plan`, `@lore/knowledge` and `@lore/deploy` depend on it (`check:conventions`, `scripts/lore-package-graph.ts`). Read the repository's `AGENTS.md` first, then `apps/lore/AGENTS.md` for the app itself.
+**The glue of Lore** (#E75, folio #F1356): projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, Home, the dashboard, the Reports shell, agent prompts, and the web shell every module mounts into. It imports no other `@lore` package; `@lore/plan`, `@lore/remember` and `@lore/deploy` depend on it (`check:conventions`, `scripts/lore-package-graph.ts`). Read the repository's `AGENTS.md` first, then `apps/lore/AGENTS.md` for the app itself.
 
 ## Layout
 

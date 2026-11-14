@@ -1,5 +1,5 @@
 import type { AttachmentRef } from "@lore/core/web";
-import { folioAssetEmbed, folioAssetPath } from "@lore/knowledge/web";
+import { folioAssetEmbed, folioAssetPath } from "@lore/remember/web";
 import { describe, it } from "vitest";
 
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";

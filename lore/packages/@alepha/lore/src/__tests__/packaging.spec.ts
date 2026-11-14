@@ -126,7 +126,7 @@ describe("@alepha/lore packaging", () => {
     for (const pkg of [
       "@lore/core",
       "@lore/plan",
-      "@lore/knowledge",
+      "@lore/remember",
       "@lore/deploy",
     ]) {
       expect(manifest.peerDependencies[pkg]).toBe("*");
