@@ -29,7 +29,7 @@ const filterFields = {
 /**
  * The filter bar fills every field it holds, whatever shape that field is.
  *
- * The bar is `bg-muted` chrome and its fields are `bg-background` wells sunk
+ * The bar is `chrome` (`bg-muted`) and its fields are `bg-background` wells sunk
  * into it, painted from the bar rather than from the primitives - see the
  * comment on the toolbar in `DataTableToolbar.tsx` for why it is scoped there and
  * why the `dark:` copy is not redundant.
@@ -117,7 +117,7 @@ describe("DataTable (filter bar fill)", () => {
 
     await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
 
-    const bar = container.querySelector(".bg-muted");
+    const bar = container.querySelector(".chrome");
     expect(bar).toBeTruthy();
 
     const filled = [...bar!.querySelectorAll(fillSelector(bar!))];

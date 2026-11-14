@@ -176,8 +176,9 @@ describe("ButtonInbox", () => {
 
     const header = await waitFor(() => view.getByTestId("inbox-header"));
     const classes = header.className.split(/\s+/);
-    expect(classes).toContain("bg-muted");
-    expect(classes.some((name) => name.includes("var(--bevel)"))).toBe(true);
+    expect(classes).toEqual(
+      expect.arrayContaining(["chrome", "chrome-closed"]),
+    );
     // Edge to edge over the menu's padding.
     expect(classes).toEqual(expect.arrayContaining(["-mx-1", "-mt-1"]));
   });

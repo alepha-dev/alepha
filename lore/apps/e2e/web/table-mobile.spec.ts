@@ -122,7 +122,7 @@ test.describe("DataTable on a phone", () => {
 
     await test.step("the footer is one line: no size picker, no page numbers", async () => {
       const footer = await page.evaluate(() => {
-        const bar = Array.from(document.querySelectorAll("div.bg-muted")).find(
+        const bar = Array.from(document.querySelectorAll("div.chrome")).find(
           (d) => (d.textContent ?? "").includes("Page"),
         ) as HTMLElement | undefined;
         if (!bar) return null;
@@ -170,7 +170,7 @@ test.describe("DataTable on a phone", () => {
       await expect(page.getByText(questTitle)).toBeVisible({ timeout: 15_000 });
 
       const footer = await page.evaluate(() => {
-        const bar = Array.from(document.querySelectorAll("div.bg-muted")).find(
+        const bar = Array.from(document.querySelectorAll("div.chrome")).find(
           (d) => (d.textContent ?? "").includes("Page"),
         ) as HTMLElement | undefined;
         return bar

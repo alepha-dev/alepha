@@ -94,9 +94,11 @@ const ReportsFilterBar = (props: ReportsFilterBarProps) => {
 
   return (
     <div
-      // The tab strip's own surface (`PlateLayout`'s `bg-card/30`), so the bar
-      // reads as chrome rather than as the top of the report (#Q3606).
-      className="border-border bg-card/30 flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2"
+      // `chrome`, the kit's surface for what frames content, as a
+      // DataTable's filter bar wears it; the tab strip's border closes its
+      // top edge. So the bar reads as chrome rather than as the top of the
+      // report (#Q3606).
+      className="border-border chrome flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2"
       data-testid="reports-filter-bar"
     >
       <Control

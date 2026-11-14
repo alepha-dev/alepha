@@ -105,7 +105,7 @@ export const PlateTabBar = (props: PlateTabBarProps) => {
         // (macOS "always show", Windows). `overflow-y-hidden` stops that, and
         // the tabs carry no negative bottom margin, which is what used to
         // overflow by one pixel and hide half of the active underline.
-        "bg-muted border-border flex gap-5 overflow-x-auto overflow-y-hidden px-6 shadow-[inset_0_1px_0_0_var(--bevel)]",
+        "border-border chrome flex gap-5 overflow-x-auto overflow-y-hidden px-6",
         props.divided !== false && "border-t",
       )}
       role={navigates ? "navigation" : "tablist"}

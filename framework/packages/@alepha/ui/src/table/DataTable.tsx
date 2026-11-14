@@ -706,7 +706,7 @@ export const DataTable = <
               // the same line, so the band closed with 2px where it opens with
               // 1px. The inset one wins because it is what survives the sticky
               // header being painted over.
-              "bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)] [&_tr]:border-b-0",
+              "chrome chrome-closed sticky top-0 z-10 [&_tr]:border-b-0",
               props.chromeClassName,
             )}
           >

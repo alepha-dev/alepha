@@ -46,7 +46,7 @@ export const DataTablePresetRail = (props: DataTablePresetRailProps) => {
         // Joined to the table: its end edge is the table's start border, so
         // the two read as one panel. The table's chrome, as the toolbar and
         // the footer are: `bg-muted` under the `--bevel` highlight.
-        "bg-muted flex w-16 shrink-0 flex-col items-center gap-0.5 overflow-y-auto rounded-md rounded-e-none border border-e-0 py-2 shadow-[inset_0_1px_0_0_var(--bevel)]",
+        "chrome flex w-16 shrink-0 flex-col items-center gap-0.5 overflow-y-auto rounded-md rounded-e-none border border-e-0 py-2",
         props.className,
       )}
     >
