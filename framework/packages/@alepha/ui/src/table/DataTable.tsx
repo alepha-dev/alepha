@@ -649,7 +649,10 @@ export const DataTable = <
         */}
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
+          // `bg-card`: the rows are content between the chrome bands, and
+          // keep their own surface on a muted page (a Plate's body) instead
+          // of taking the chrome's colour through a transparent panel.
+          "bg-card flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
           (showToolbar || showSummary) && "-mt-2 rounded-t-none border-t-0",
           showFooter ? "rounded-b-none border-b-0" : squareRight?.bottom,
           flatRows,

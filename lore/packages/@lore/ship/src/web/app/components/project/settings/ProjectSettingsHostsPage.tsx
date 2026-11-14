@@ -212,7 +212,9 @@ const ProjectSettingsHostsPage = () => {
   } satisfies DataTableFilterFields;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    // Bleeds over the settings body's padding: a `flat` table runs edge to
+    // edge, as Quests' does.
+    <div className="-m-4 flex min-h-0 flex-1 flex-col gap-4 md:-m-6">
       {freshSecret && (
         <TokenReveal
           token={freshSecret}
@@ -229,6 +231,7 @@ const ProjectSettingsHostsPage = () => {
       {rows !== undefined && (
         <DataTable<ProjectHostTableRow, typeof filterFields>
           className="min-h-0 flex-1"
+          flat
           data={rows}
           rowKey={(row) => row.id}
           defaultSize={100}
