@@ -250,8 +250,7 @@ describe("gen commands", () => {
    * Both commands exist to be redirected — `alepha gen openapi > api.json`.
    * Emitting through the logger prefixed a timestamp, a level and ANSI colour
    * regardless of whether stdout was a TTY, so the redirected file was not
-   * parseable. `gen changelog` already wrote straight to stdout; these two now
-   * agree with it.
+   * parseable.
    */
   describe("stdout", () => {
     it("should print the raw document when no --output is given", async () => {

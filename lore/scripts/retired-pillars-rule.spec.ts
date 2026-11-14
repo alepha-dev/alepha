@@ -63,7 +63,6 @@ describe("RetiredPillarsRule", () => {
 
   it("lets history and the migration specs say anything", ({ expect }) => {
     for (const file of [
-      "framework/CHANGELOG.md",
       "lore/apps/lore/migrations/sqlite/20261114101109_pillar_capability_keys/migration.sql",
       "lore/apps/lore/test/pillar-capability-keys-migration.spec.ts",
       "lore/apps/lore/test/feedback-into-plan-migration.spec.ts",

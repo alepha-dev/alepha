@@ -21,8 +21,8 @@
  * `lore.deploy.limits`, `deploy:manage`, `deploy_start`, `lore deploy`): only
  * the package and its three modules moved.
  *
- * History may say the old names: the changelog, committed migrations, and
- * the specs that seed a database in its pre-#E143 shape to prove a migration.
+ * History may say the old names: committed migrations, and the specs that
+ * seed a database in its pre-#E143 shape to prove a migration.
  *
  * Read by `scripts/check-conventions.ts` over the whole repository; specified
  * by `scripts/retired-pillars-rule.spec.ts`.
@@ -46,7 +46,6 @@ export class RetiredPillarsRule {
    * rule with its spec.
    */
   public static readonly FILES: RegExp[] = [
-    /(^|\/)CHANGELOG\.md$/,
     /(^|\/)migrations\//,
     /^lore\/apps\/lore\/test\/(pillar-capability-keys|feedback-into-plan|automations-on-by-default)-migration\.spec\.ts$/,
     /^lore\/scripts\/retired-pillars-rule(\.spec)?\.ts$/,

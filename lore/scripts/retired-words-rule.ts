@@ -5,7 +5,7 @@
  * anywhere in the repository is refused. What survives does so on purpose,
  * and is listed here:
  *
- * - history: the changelog, committed migrations, and the specs that seed a
+ * - history: committed migrations, and the specs that seed a
  *   database in its pre-#E147 shape to prove a migration;
  * - Bay's wire v1, which every running Bay and every Lore speak, so a new
  *   spelling would need a binary swap on every host: the paths `/ws/estates`,
@@ -35,7 +35,6 @@ export class RetiredWordsRule {
    * fixtures, the migration specs, and this rule with its spec.
    */
   public static readonly FILES: RegExp[] = [
-    /(^|\/)CHANGELOG\.md$/,
     /(^|\/)migrations\//,
     /(^|\/)testdata\/wire-v1\//,
     /^lore\/packages\/@lore\/ship\/test\/fixtures\/bay\//,
