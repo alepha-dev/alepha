@@ -62,7 +62,7 @@ func TestBackupPolicyActionSetsAndClearsTheOperatorLayer(t *testing.T) {
 	rec := &ackRecorder{}
 	acts.Command(context.Background(), cmd, rec.send)
 	if last := rec.last(); last.Status != "failed" || !strings.Contains(last.Reason, "deployAllowed") {
-		t.Fatalf("refused while the estate forbids writes: %+v", last)
+		t.Fatalf("refused while the host forbids writes: %+v", last)
 	}
 
 	acts.Welcome(connector.Welcome{DeployAllowed: true})
@@ -139,7 +139,7 @@ func TestRestoreActionNeedsAReasonAndRecordsIt(t *testing.T) {
 	}
 }
 
-func TestRestoreActionIsRefusedWhenTheEstateForbidsWrites(t *testing.T) {
+func TestRestoreActionIsRefusedWhenTheHostForbidsWrites(t *testing.T) {
 	f := deployedApp(t)
 	cmd := backupCmd("c-r", "restore")
 	cmd.Restore = &connector.RestoreAsk{Reason: "x"}

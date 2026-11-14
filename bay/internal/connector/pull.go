@@ -17,7 +17,7 @@ import (
 )
 
 /*
-What a machine exchanges with the sink by command id, under the estate secret
+What a machine exchanges with the sink by command id, under the host secret
 (#1844): the two pulls a deploy makes, and the one push a `logs` answers with.
 
 The command frame carries no bytes and no secrets: it is redelivered from
@@ -43,6 +43,11 @@ const FetchTimeout = 10 * time.Minute
 // ArtifactDigestHeader is the digest the sink states beside the bytes.
 const ArtifactDigestHeader = "x-artifact-sha256"
 
+// commandURL builds a pull URL under `/estates/commands`.
+//
+// Bay wire v1: it keeps the word Lore used before #E147 (estate), because
+// every running Bay and every Lore speak it, and a new spelling would need a
+// binary swap on every host.
 func commandURL(cfg Config, commandID, what string) string {
 	return cfg.Sink + "/estates/commands/" + commandID + "/" + what
 }
@@ -340,7 +345,7 @@ func get(ctx context.Context, client *http.Client, cfg Config, url string) (*htt
 		detail, _ := io.ReadAll(io.LimitReader(res.Body, 2048))
 		res.Body.Close()
 		// The sink answers one 404 for a command it does not hold for this
-		// estate, a finished one, and an unknown id, so the status alone is
+		// host, a finished one, and an unknown id, so the status alone is
 		// the whole diagnosis.
 		return nil, fmt.Errorf("%s answered %d: %s", url, res.StatusCode, strings.TrimSpace(string(detail)))
 	}
@@ -376,7 +381,7 @@ PushResult uploads a command's answer to the sink.
 
 The one command whose result is a payload rather than an ack. The protocol has
 no reply channel, so the answer goes back over the same machine-facing seam the
-artifact and the secrets come down: addressed by command id, estate secret as
+artifact and the secrets come down: addressed by command id, host secret as
 bearer, and every refusal one 404.
 
 ⚠️ Called BEFORE the terminal ack, always. The sink accepts an upload only
@@ -418,7 +423,7 @@ func push(ctx context.Context, client *http.Client, cfg Config, commandID, path 
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		detail, _ := io.ReadAll(io.LimitReader(res.Body, 2048))
-		// One 404 covers a command this estate does not hold, one already
+		// One 404 covers a command this host does not hold, one already
 		// answered and one already finished, so the status is the diagnosis.
 		return fmt.Errorf("the sink answered %d: %s", res.StatusCode, strings.TrimSpace(string(detail)))
 	}

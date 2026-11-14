@@ -115,8 +115,8 @@ file through the socket, and `show` asks it for the connection state.
 
 | Command                              | Does                                                |
 | ------------------------------------ | --------------------------------------------------- |
-| `bay connector set <lore-url> <secret>` | enrol this host as an estate                     |
-| `bay connector show`                 | Lore URL, estate, connection state; never the secret |
+| `bay connector set <lore-url> <secret>` | enrol this machine as a host                    |
+| `bay connector show`                 | Lore URL, host, connection state; never the secret |
 | `bay connector clear`                | forget the Lore URL and secret                      |
 
 See [Lore connector](/bay/docs/guides-lore-connector).

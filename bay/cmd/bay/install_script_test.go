@@ -32,7 +32,7 @@ machine dial in with the secret.
 
 It is not a systemd host: the unit's contents are asserted as text, and the
 start is the stub's. What it proves is the script's order (unit, start, wait,
-enrol), that the secret never reaches its output, and that the estate
+enrol), that the secret never reaches its output, and that the host
 connects.
 */
 
@@ -191,7 +191,7 @@ func TestInstallScriptStartsBayThenEnrolsIt(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	if !dialled.Load() {
-		t.Fatalf("the estate never dialled Lore with its secret\n%s", out)
+		t.Fatalf("the host never dialled Lore with its secret\n%s", out)
 	}
 }
 
@@ -239,7 +239,7 @@ func TestInstallScriptWithoutSystemdSaysWhatToRun(t *testing.T) {
 	if err == nil {
 		t.Fatalf("want a failure without systemd:\n%s", out)
 	}
-	for _, want := range []string{"no systemd", "bay serve --root", "bay connector set https://lore.example.com <the estate secret>"} {
+	for _, want := range []string{"no systemd", "bay serve --root", "bay connector set https://lore.example.com <the host secret>"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}

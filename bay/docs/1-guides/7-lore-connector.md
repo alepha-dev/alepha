@@ -1,6 +1,6 @@
 # Lore connector
 
-Enrol a Bay host as an **estate** of a Lore instance, so Lore can show what the
+Enrol a Bay host as a **host** of a Lore instance, so Lore can show what the
 machine runs and send it a small, fixed set of commands, without opening any
 port on the host.
 
@@ -14,8 +14,8 @@ sequenceDiagram
   participant Bay as bay serve (host)
   participant Lore
   participant You as Operator (browser)
-  Bay->>Lore: dial wss://lore.example.com/ws/estates with the estate secret
-  Lore-->>Bay: accepted, with the estate's name
+  Bay->>Lore: dial wss://lore.example.com/ws/estates with the host secret
+  Lore-->>Bay: accepted, with the host's name
   Bay->>Lore: inventory: host load, apps, releases, backups
   You->>Lore: queue "restart myapp/production"
   Lore-->>Bay: command (arrives immediately over the open socket)
@@ -31,7 +31,7 @@ anything on the host.
 ## Enrolling
 
 A fresh server installs Bay, starts it under systemd and enrols it in one line,
-when `install.sh` is given the Lore URL and the estate's secret:
+when `install.sh` is given the Lore URL and the host's secret:
 
 ```bash
 curl -sSL https://alepha.dev/bay/install.sh \
@@ -42,9 +42,9 @@ The installer writes the unit from the installation guide unless one exists,
 waits for `bay serve`, runs `bay connector set`, and never prints the secret.
 On a host already running Bay:
 
-1. In Lore, create an estate in a project with Apps on: from its
-   **Settings ▸ Apps ▸ Estates**, or with `lore estate add <slug>`. The
-   estate belongs to that project. The secret is shown **once**.
+1. In Lore, create a host in a project with Apps on: from its
+   **Settings ▸ Apps ▸ Hosts**, or with `lore host add <slug>`. The
+   host belongs to that project. The secret is shown **once**.
 2. On the host, as root:
 
 ```bash
@@ -68,7 +68,7 @@ shell history keeps it: clear that entry.
 | Command                        | Effect                                                                           |
 | ------------------------------ | -------------------------------------------------------------------------------- |
 | `bay connector set URL SECRET` | enrol, or re-enrol with a rotated secret                                         |
-| `bay connector show`           | the Lore URL, the estate name and whether the connection is up; never the secret |
+| `bay connector show`           | the Lore URL, the host name and whether the connection is up; never the secret |
 | `bay connector clear`          | forget both: the machine dials nobody                                            |
 
 `http://` is accepted for a loopback Lore only, so a secret never crosses a
@@ -121,11 +121,11 @@ to a deploy whose instance has none, and the copy Lore holds of it, which the
 holder can replace: Lore says so on that deploy's log. It sends no command to
 the host.
 
-**Deploys are refused until somebody who manages the estate allows them** (a
-member of its project whose rank grants `estate:update`), and
+**Deploys are refused until somebody who manages the host allows them** (a
+member of its project whose rank grants `host:update`), and
 the machine enforces that switch on its own side too. `stack-deploy` is held to
 the same switch: it runs containers of the bundle's choosing, so allowing
-deploys on an estate is trusting Lore with the host. A bundle goes through the
+deploys on a host is trusting Lore with the host. A bundle goes through the
 checks of any [compose file](/bay/docs/guides-stacks#the-compose-file), and only
 those: no bind mount outside its own directory and no Docker socket, but
 `devices`, `cap_add` and `security_opt` pass, and `x-lore.tcp: N` opens public
@@ -137,8 +137,8 @@ and base domain, which replace those set with `bay stack route`.
 
 ## The console
 
-Once the machine has said hello, `/<project>/estates/<estate>` in Lore shows,
-to every member of the estate's project (acting on it takes `estate:update`
+Once the machine has said hello, `/<project>/hosts/<host>` in Lore shows,
+to every member of the host's project (acting on it takes `host:update`
 there):
 
 - the host's memory, disk and load;
@@ -151,8 +151,8 @@ expects that the machine did not report is a failed deploy or a removed unit.
 ## Rotating and revoking
 
 Rotating the secret in Lore refuses the machine on its next dial; run
-`bay connector set` again with the new one. Deleting the estate refuses it for
+`bay connector set` again with the new one. Deleting the host refuses it for
 good. Neither touches what runs on the host.
 
-For the Lore side (creating estates, allowing deploys, `lore deploy`), see the
+For the Lore side (creating hosts, allowing deploys, `lore deploy`), see the
 [Lore documentation](/lore/docs/start-introduction).

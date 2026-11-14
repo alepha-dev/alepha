@@ -379,7 +379,7 @@ func (a *actions) start(cmd connector.Command) (status, step, reason string) {
 remove unregisters the instance the command names and stops serving it, with
 its data kept: `bay remove` without `--purge`, through the same function.
 
-Refused, like a deploy, while the estate does not accept deploys: Lore refuses
+Refused, like a deploy, while the host does not accept deploys: Lore refuses
 at enqueue, and a Lore-side bug must still not let a stats-only machine be
 emptied from a browser.
 
@@ -391,7 +391,7 @@ would leave the stack's record naming a service that is gone.
 */
 func (a *actions) remove(cmd connector.Command) (status, step, reason string) {
 	if !a.latestWelcome().DeployAllowed {
-		return "failed", "", "this estate does not accept deploys, and so no removal either: its owner has not allowed them, and the welcome frame said so"
+		return "failed", "", "this host does not accept deploys, and so no removal either: its owner has not allowed them, and the welcome frame said so"
 	}
 	key := cmd.App + "/" + cmd.Environment
 	if app, ok := a.s.store.Get(key); ok && app.Stack != "" {
@@ -417,7 +417,7 @@ and same idempotence as remove.
 */
 func (a *actions) stackRemove(cmd connector.Command) (status, step, reason string) {
 	if !a.latestWelcome().DeployAllowed {
-		return "failed", "", "this estate does not accept deploys, and so no removal either: its owner has not allowed them, and the welcome frame said so"
+		return "failed", "", "this host does not accept deploys, and so no removal either: its owner has not allowed them, and the welcome frame said so"
 	}
 	name, env, err := stackKeyOf(cmd.Stack + "/" + cmd.Environment)
 	if err != nil {
@@ -466,13 +466,13 @@ deploy path every other deploy goes through.
 
 Bay does not build and does not choose. The command names one artifact by
 digest, there is no "latest" on this side, and the bytes and the secret set
-are pulled from the sink by this command's id under the estate secret. Three
+are pulled from the sink by this command's id under the host secret. Three
 digests must agree before anything is unpacked (the command's, the sink's
 header, the bytes as they arrive); a mismatch is a reported failure that
 leaves nothing on disk; and an artifact already held at that digest is not
 downloaded again, which is what makes a redeploy and a rollback cheap.
 
-The estate's deploy switch is honoured here too, from the welcome frame and
+The host's deploy switch is honoured here too, from the welcome frame and
 before any fetch. Lore refuses at enqueue, and a Lore-side bug must still not
 turn a stats-only machine into a deploy target.
 
@@ -504,7 +504,7 @@ func instanceName(cmd connector.Command) string {
 
 func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(connector.Ack) error) (status, step, reason string) {
 	if !a.latestWelcome().DeployAllowed {
-		return "failed", "", "this estate does not accept deploys: its owner has not allowed them, and the welcome frame said so"
+		return "failed", "", "this host does not accept deploys: its owner has not allowed them, and the welcome frame said so"
 	}
 	if cmd.Artifact == nil || len(cmd.Artifact.SHA256) != 64 {
 		return "failed", "", connector.ErrNoArtifact.Error()
@@ -805,12 +805,12 @@ func (a *actions) pruneArtifacts(dir string, keep int) {
 stackDeploy applies a stack revision for Lore: the bundle is pulled by digest
 through the same verified fetch as a deploy's artifact, the command's secret
 set becomes the environment's variables, and the stack deploy validates
-everything else. Refused, like a deploy, while the estate does not accept
+everything else. Refused, like a deploy, while the host does not accept
 deploys.
 */
 func (a *actions) stackDeploy(ctx context.Context, cmd connector.Command, send func(connector.Ack) error) (status, step, reason string) {
 	if !a.latestWelcome().DeployAllowed {
-		return "failed", "", "this estate does not accept deploys: its owner has not allowed them, and the welcome frame said so"
+		return "failed", "", "this host does not accept deploys: its owner has not allowed them, and the welcome frame said so"
 	}
 	if _, _, err := stackKeyOf(cmd.Stack + "/" + cmd.Environment); err != nil {
 		return "failed", "", err.Error()

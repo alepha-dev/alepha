@@ -6,7 +6,7 @@ import "context"
 
 // noGauge is the portable fallback: it reports nothing, never zeros. Bay is
 // developed on macOS and runs on Linux, and a laptop that pushed "CPU 0%" to
-// an estate list would be reporting a fact it does not have.
+// a host list would be reporting a fact it does not have.
 type noGauge struct{}
 
 // HostGauge has nothing to read off Linux. The root is taken and ignored, so

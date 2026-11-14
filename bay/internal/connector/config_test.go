@@ -63,10 +63,10 @@ func TestSetReplacesAndDropsTheStaleWelcome(t *testing.T) {
 	if cfg.Sink != "https://two.example" {
 		t.Fatalf("Set must replace, got %q", cfg.Sink)
 	}
-	// A different sink or secret is a different estate; the old slug must not
+	// A different sink or secret is a different host; the old slug must not
 	// be shown beside the new sink.
 	if _, ok, _ := store.LoadWelcome(); ok {
-		t.Fatal("the welcome of the previous estate survived a new set")
+		t.Fatal("the welcome of the previous host survived a new set")
 	}
 }
 
@@ -142,7 +142,7 @@ func TestValidateSinkKeepsTheOriginAndRefusesTheRest(t *testing.T) {
 		// A page or a token URL pasted by mistake.
 		"https://lore.alepha.dev/alepha/settings",
 		"https://lore.alepha.dev/?token=x",
-		"https://lore.alepha.dev/#estates",
+		"https://lore.alepha.dev/#hosts",
 		"https://user:pw@lore.alepha.dev",
 	}
 	for _, in := range refused {
@@ -168,7 +168,7 @@ func TestSocketURLDerivesFromTheSink(t *testing.T) {
 func TestWelcomeRoundTrip(t *testing.T) {
 	store := NewStore(t.TempDir())
 	at := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
-	in := Welcome{EstateID: "e1", Slug: "ovh-1", DeployAllowed: true, StatsIntervalSeconds: 300, ReceivedAt: at}
+	in := Welcome{HostID: "e1", Slug: "ovh-1", DeployAllowed: true, StatsIntervalSeconds: 300, ReceivedAt: at}
 	if err := store.SaveWelcome(in); err != nil {
 		t.Fatal(err)
 	}

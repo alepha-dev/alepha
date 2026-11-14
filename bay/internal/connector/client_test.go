@@ -113,7 +113,7 @@ func (s *loreSession) frame(t *testing.T) map[string]any {
 func (s *loreSession) send(t *testing.T, frame map[string]any) {
 	t.Helper()
 	// The room stamp every real frame carries; the client must drop it.
-	frame["__alephaRoom"] = "estate-1"
+	frame["__alephaRoom"] = "host-1"
 	if err := s.conn.WriteJSON(frame); err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func (s *loreSession) send(t *testing.T, frame map[string]any) {
 func welcomeFrame() map[string]any {
 	return map[string]any{
 		"type": "welcome", "protocol": Protocol,
-		"estate":        map[string]any{"id": "estate-1", "slug": "ovh-1"},
+		"estate":        map[string]any{"id": "host-1", "slug": "ovh-1"},
 		"deployAllowed": false, "statsIntervalSeconds": 1800,
 	}
 }
@@ -292,7 +292,7 @@ func TestClientSpeaksFirstAndCachesTheWelcome(t *testing.T) {
 	s.send(t, welcomeFrame())
 	eventually(t, "the welcome to be cached", func() bool {
 		w, ok, _ := f.store.LoadWelcome()
-		return ok && w.Slug == "ovh-1" && w.EstateID == "estate-1" && w.StatsIntervalSeconds == 1800
+		return ok && w.Slug == "ovh-1" && w.HostID == "host-1" && w.StatsIntervalSeconds == 1800
 	})
 	eventually(t, "the handler to see the welcome", func() bool {
 		f.handler.mu.Lock()
@@ -491,7 +491,7 @@ func TestClientSendFailsWhileDown(t *testing.T) {
 
 func TestFrameDecodingDropsTheRoomStampAndKeepsTheArtifact(t *testing.T) {
 	raw := []byte(`{"type":"command","id":"c1","kind":"deploy","app":"lore","environment":"production",
-		"artifact":{"id":"a1","sha256":"` + strings.Repeat("f", 64) + `","size":12},"__alephaRoom":"estate-1"}`)
+		"artifact":{"id":"a1","sha256":"` + strings.Repeat("f", 64) + `","size":12},"__alephaRoom":"host-1"}`)
 	f, err := decodeFrame(raw)
 	if err != nil {
 		t.Fatal(err)
@@ -578,7 +578,7 @@ func TestClientPushesTheGaugeAfterTheWelcomeAndOnTheInterval(t *testing.T) {
 	w["statsIntervalSeconds"] = 1
 	s.send(t, w)
 
-	// One push right after the welcome, so a fresh estate shows a figure
+	// One push right after the welcome, so a fresh host shows a figure
 	// within seconds rather than an interval later.
 	first, ok := s.statsFrame(t, 2*time.Second)
 	if !ok {
@@ -597,7 +597,7 @@ func TestClientPushesTheGaugeAfterTheWelcomeAndOnTheInterval(t *testing.T) {
 	}
 }
 
-// Commands finish all the time on a busy estate, and each one kicks an
+// Commands finish all the time on a busy host, and each one kicks an
 // inventory push. None of them may push the next gauge reading back: the
 // interval runs from the last reading, not from the last command.
 func TestInventoryKicksDoNotDelayTheNextGaugePush(t *testing.T) {
@@ -763,7 +763,7 @@ func TestClientPushesNoInventoryWhenTheExecutorHasNothing(t *testing.T) {
 /*
 The two kicks are separate channels, and this is the reason.
 
-A stats push also writes a series sample when the estate collects one, so a
+A stats push also writes a series sample when the host collects one, so a
 refresh button wired to the stats kick would add a sample to the day's average
 every time somebody clicked it. KickInventory must produce an inventory and no
 stats frame at all.

@@ -380,7 +380,7 @@ func TestDeployIsRefusedBeforeAnyFetchWhenTheWelcomeSaidNo(t *testing.T) {
 	acts.Command(context.Background(), deployCommand("d2", sink), rec.send)
 
 	if rec.last().Status != "failed" || !strings.Contains(rec.last().Reason, "does not accept deploys") {
-		t.Fatalf("a stats-only estate must refuse, got %+v", rec.last())
+		t.Fatalf("a stats-only host must refuse, got %+v", rec.last())
 	}
 	if sink.artifacts.Load() != 0 {
 		t.Fatal("the refusal must come before any fetch")
@@ -528,7 +528,7 @@ func TestInstanceNameFoldsInTheProject(t *testing.T) {
 func TestStackDeployAction(t *testing.T) {
 	bundle := tarGz(t, t.TempDir(), "bundle.tar.gz", map[string]string{"compose.yml": "services:\n  web:\n    image: nginx\n    environment:\n      SECRET: ${SECRET}\n"})
 
-	t.Run("refused before any fetch while the estate does not accept deploys", func(t *testing.T) {
+	t.Run("refused before any fetch while the host does not accept deploys", func(t *testing.T) {
 		sink := newDeploySink(t, bundle)
 		_, acts := deployReady(t, sink, false)
 		rec := &ackRecorder{}

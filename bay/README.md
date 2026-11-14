@@ -244,10 +244,10 @@ dismissed; `verify.passed|failed`; `target.down|up`), spooled in `connector-even
 (500 newest) and sent only to a Lore whose welcome lists the `events` feature.
 The console's verbs are the CLI's, through the same functions:
 `backup` (with a tag), `backups-list`, `backup-verify`, `target-probe`,
-`backup-policy` (the operator layer, sent from the estate owner's console
+`backup-policy` (the operator layer, sent from the host owner's console
 only: a project declares its policy at deploy) and `restore` (a reason, or a
 dry run).
-The two writes are refused while the estate's `deployAllowed` is off, and a
+The two writes are refused while the host's `deployAllowed` is off, and a
 restore and a deploy of one instance refuse each other with a 409.
 
 A stack service is data too, so it declares how to dump itself in
@@ -403,12 +403,12 @@ most), so widen `-n` for a longer window.
 
 A Bay connected to Lore pushes what `bay status --json` computes, on its
 report interval and after every command that changes something, and Lore
-renders it at `/:projectSlug/estates/:estateSlug`. `computeStatus` is one function with two
+renders it at `/:projectSlug/hosts/:hostSlug`. `computeStatus` is one function with two
 callers for that reason: a second copy of the backup-staleness rule would
 drift invisibly, since each copy looks right on its own.
 
 **No time series was added.** The console reads the LATEST frame, stored as
-one row per estate and replaced on every push, which is the same "no table to
+one row per host and replaced on every push, which is the same "no table to
 prune" position as above rather than an exception to it. The CPU and memory
 chart is the one series, it is off by default, and what it stores is a mean
 that discloses its own sampling.

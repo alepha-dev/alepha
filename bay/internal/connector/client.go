@@ -187,9 +187,11 @@ type Stats struct {
 type serverFrame struct {
 	Type string `json:"type"`
 
-	// welcome and config
+	// welcome and config. The host block keeps the JSON key `estate`: Bay
+	// wire v1, the word Lore used before #E147, which every running Bay and
+	// every Lore speak.
 	Protocol int `json:"protocol,omitempty"`
-	Estate   struct {
+	Host     struct {
 		ID   string `json:"id"`
 		Slug string `json:"slug"`
 	} `json:"estate,omitempty"`
@@ -331,7 +333,7 @@ type Client struct {
 	statsKick    chan struct{}
 	// inventoryKick is deliberately a SECOND channel rather than a reason
 	// carried on the first. A stats push also writes a series sample when the
-	// estate collects one, so a refresh button wired to statsKick would add a
+	// host collects one, so a refresh button wired to statsKick would add a
 	// sample to the day's average every time somebody clicked it.
 	inventoryKick chan struct{}
 	channelsOnce  sync.Once
@@ -566,8 +568,8 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 				"lore", frame.Protocol, "bay", Protocol)
 		}
 		w := Welcome{
-			EstateID:             frame.Estate.ID,
-			Slug:                 frame.Estate.Slug,
+			HostID:               frame.Host.ID,
+			Slug:                 frame.Host.Slug,
 			DeployAllowed:        frame.DeployAllowed,
 			StatsIntervalSeconds: frame.StatsIntervalSeconds,
 			Features:             frame.Features,
@@ -576,7 +578,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 		if err := c.Store.SaveWelcome(w); err != nil {
 			c.Log.Warn("could not cache the welcome frame", "err", err)
 		}
-		c.Log.Info("lore "+frame.Type, "estate", w.Slug,
+		c.Log.Info("lore "+frame.Type, "host", w.Slug,
 			"deployAllowed", w.DeployAllowed, "statsIntervalSeconds", w.StatsIntervalSeconds)
 		if frame.StatsIntervalSeconds > 0 {
 			c.statsSeconds.Store(int64(frame.StatsIntervalSeconds))

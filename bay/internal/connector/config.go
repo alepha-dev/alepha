@@ -3,7 +3,7 @@
 // One direction only, and that is the whole security argument: this machine
 // dials OUT to the sink and holds a websocket open; nothing here listens, so
 // there is no inbound port, no firewall rule and no certificate to arrange. The
-// secret authenticates a machine, not a person: it opens the estate's socket
+// secret authenticates a machine, not a person: it opens the host's socket
 // and nothing else, and it grants nothing on this host.
 //
 // This file is the configuration half: the credential on disk, the cached
@@ -33,27 +33,35 @@ import (
 const FileName = "connector.json"
 
 // WelcomeFileName caches the last `welcome` frame Lore sent, beside the
-// credential. It holds the estate's slug and switches and no secret, and it is
+// credential. It holds the host's slug and switches and no secret, and it is
 // what `bay connector show` prints when `bay serve` is not running.
 const WelcomeFileName = "connector-welcome.json"
 
 // Mode is the permission both files are written with.
 const Mode = 0o600
 
-// SecretPrefix is what every estate secret Lore mints starts with. A sigil
+// SecretPrefix is what every host secret Lore mints starts with. A sigil
 // token (`sg_`) belongs in an app's environment, and a token of any other
 // shape is a paste error, so the prefix is refused here rather than at the
 // first failed dial.
+//
+// Bay wire v1: it keeps the word Lore used before #E147 (the `est_` of estate), because
+// every running Bay and every Lore speak it, and a new spelling would need a
+// binary swap on every host.
 const SecretPrefix = "est_"
 
-// SocketPath is the endpoint on the sink, `EstateSocketController.PATH` on the
+// SocketPath is the endpoint on the sink, `HostSocketController.PATH` on the
 // Lore side. Wire format v1, folio #1198.
+//
+// Bay wire v1: it keeps the word Lore used before #E147 (estate), because
+// every running Bay and every Lore speak it, and a new spelling would need a
+// binary swap on every host.
 const SocketPath = "/ws/estates"
 
 // Config is the one Lore this machine dials.
 //
-// One, not a list: an estate belongs to one Lore instance, and a machine
-// reporting to two would be two estates with one secret each, which is two
+// One, not a list: a host belongs to one Lore instance, and a machine
+// reporting to two would be two hosts with one secret each, which is two
 // configs. `Sink` is the origin (`https://lore.alepha.dev`); the websocket URL
 // is derived from it by SocketURL.
 type Config struct {
@@ -61,10 +69,13 @@ type Config struct {
 	Secret string `json:"secret"`
 }
 
-// Welcome is what Lore says about the estate on every connect, cached for the
+// Welcome is what Lore says about the host on every connect, cached for the
 // commands that run in another process.
+//
+// HostID keeps the JSON key `estateId`: the file is the welcome frame as
+// received, and the frame's key is Bay wire v1 (see serverFrame).
 type Welcome struct {
-	EstateID             string `json:"estateId"`
+	HostID               string `json:"estateId"`
 	Slug                 string `json:"slug"`
 	DeployAllowed        bool   `json:"deployAllowed"`
 	StatsIntervalSeconds int    `json:"statsIntervalSeconds"`
@@ -110,8 +121,8 @@ func (s *Store) Load() (Config, bool, error) {
 
 // Set validates and persists the config, replacing whatever was there.
 //
-// A new sink or secret means a different estate, so the cached welcome of the
-// old one is dropped with it: `show` must not print the previous estate's slug
+// A new sink or secret means a different host, so the cached welcome of the
+// old one is dropped with it: `show` must not print the previous host's slug
 // beside the new sink.
 func (s *Store) Set(cfg Config) error {
 	sink, err := ValidateSink(cfg.Sink)
@@ -238,7 +249,7 @@ func IsLoopback(host string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// ValidateSecret checks the shape of an estate secret, and nothing about its
+// ValidateSecret checks the shape of a host secret, and nothing about its
 // validity: only the sink can say whether it resolves.
 func ValidateSecret(secret string) error {
 	if secret == "" {
@@ -249,7 +260,7 @@ func ValidateSecret(secret string) error {
 	}
 	if !strings.HasPrefix(secret, SecretPrefix) {
 		return fmt.Errorf(
-			"that is not an estate secret: expected one starting with `%s`. "+
+			"that is not a host secret: expected one starting with `%s`. "+
 				"A sigil token (`sg_`) belongs in an app's environment, not here", SecretPrefix)
 	}
 	if len(secret) <= len(SecretPrefix) {

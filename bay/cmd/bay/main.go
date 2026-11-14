@@ -401,7 +401,7 @@ func usageText() string {
   bay backup list <stack>/<env> [service]   # a stack's service dumps
   bay backup restore <stack>/<env> <service> <backup> [--from <stack>/<env>] [--yes]
   bay connector set <lore-url> <secret>
-                # enrol this machine as an ESTATE of a Lore instance: "bay
+                # enrol this machine as a HOST of a Lore instance: "bay
                 # serve" dials wss://<host>/ws/estates with the secret and holds
                 # it open, so restarts and deploys arrive the instant Lore queues
                 # them. The secret is stored 0600 beside state.json and never
@@ -409,7 +409,7 @@ func usageText() string {
                 # Takes effect without restarting "bay serve". Edits the file
                 # directly, so it takes --root (or $BAY_ROOT); the socket only
                 # tells a running Bay to re-read it.
-  bay connector show              # sink, estate, connection state; never the secret
+  bay connector show              # sink, host, connection state; never the secret
   bay connector clear             # forget the sink and the secret: dials nobody
 
 Every command except "serve", "doctor", "version", "connector" and "stack exec"

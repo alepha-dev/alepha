@@ -18,8 +18,8 @@
 #     | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
 #
 # LORE_ESTATE_SECRET may also be a one-time enrolment secret (`enr_...`, what
-# `lore estate provision` puts in cloud-init): `bay connector set` exchanges it
-# for the estate's own secret before storing anything.
+# `lore host provision` puts in cloud-init): `bay connector set` exchanges it
+# for the host's own secret before storing anything.
 #
 # With both set, after the binary it writes the systemd unit INSTALL.md
 # documents (unless one exists), starts it, waits for `bay serve` to write
@@ -37,7 +37,7 @@
 #                       (default "yes")
 #   LORE_URL, LORE_ESTATE_SECRET
 #                 both set: also start Bay under systemd and enrol it with
-#                 that Lore estate (the secret `lore estate add` prints)
+#                 that Lore host (the secret `lore host add` prints)
 #   BAY_BASE_DOMAIN, BAY_ACME_EMAIL
 #                 --base-domain and --acme-email for the unit written when
 #                 enrolling (both optional)
@@ -60,6 +60,8 @@ BAY_BIN_LINK="${BAY_BIN_LINK:-/usr/local/bin/bay}"
 BAY_UNIT="${BAY_UNIT:-/etc/systemd/system/bay.service}"
 BAY_SOCKET="${BAY_SOCKET:-/run/bay/control.sock}"
 LORE_URL="${LORE_URL:-}"
+# LORE_ESTATE_SECRET keeps the word Lore used before #E147: Bay wire v1, set
+# by `lore host provision` and by every command already pasted from Lore.
 LORE_ESTATE_SECRET="${LORE_ESTATE_SECRET:-}"
 
 die() {
@@ -220,7 +222,7 @@ if [ -n "$LORE_URL" ]; then
     die "this host has no systemd, so the installer cannot start Bay for you.
 Bay is installed. Start it yourself, then enrol it:
   $BAY_PREFIX/bin/bay serve --root $DATA --control-socket $BAY_SOCKET
-  bay connector set $LORE_URL <the estate secret>"
+  bay connector set $LORE_URL <the host secret>"
   fi
 
   if [ -e "$BAY_UNIT" ]; then
@@ -264,7 +266,7 @@ UNIT
     TRIES=$((TRIES + 1))
     [ "$TRIES" -le 30 ] || die "bay serve did not write $DATA/state.json and open $BAY_SOCKET within 30 s.
 See why with:  journalctl -u bay -n 50
-Then enrol by hand:  bay connector set $LORE_URL <the estate secret>"
+Then enrol by hand:  bay connector set $LORE_URL <the host secret>"
     sleep 1
   done
 
@@ -284,7 +286,7 @@ echo
 
 if [ "$ENROLLED" = "yes" ]; then
   echo "Bay runs under systemd and is enrolled with $LORE_URL."
-  echo "Wait for it from your shell with:  lore estate wait <slug>"
+  echo "Wait for it from your shell with:  lore host wait <slug>"
 elif [ "$RESTARTED" = "yes" ]; then
   echo "The bay service was restarted on the new binary. Nothing else to do."
 else

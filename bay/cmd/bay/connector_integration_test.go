@@ -30,7 +30,7 @@ fixtures Lore's own suite validates, so the stub's vocabulary cannot drift on
 its own.
 
 The stub does what Lore does: waits for hello, answers welcome, then pushes
-whatever it holds for that estate (the reconciliation), records every ack and
+whatever it holds for that host (the reconciliation), records every ack and
 stats frame, and serves the two pull routes for a deploy.
 */
 
@@ -61,7 +61,7 @@ type stubLore struct {
 
 	mu            sync.Mutex
 	deployAllowed bool
-	// queued is what the sink holds for the estate and pushes after the next
+	// queued is what the sink holds for the host and pushes after the next
 	// hello, the way Lore's reconciliation redelivers what is unacknowledged.
 	queued []map[string]any
 
@@ -156,7 +156,7 @@ func (l *stubLore) setDeployAllowed(v bool) {
 	l.mu.Unlock()
 }
 
-// queue holds a command for the estate until its next hello.
+// queue holds a command for the host until its next hello.
 func (l *stubLore) queue(cmd map[string]any) {
 	l.mu.Lock()
 	l.queued = append(l.queued, cmd)

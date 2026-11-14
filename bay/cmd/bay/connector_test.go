@@ -289,8 +289,8 @@ func TestConnectorSetExchangesAnEnrolmentSecretBeforeStoring(t *testing.T) {
 	if strings.Contains(printed, enrolment) || strings.Contains(printed, testSecret) {
 		t.Fatalf("a secret was printed: %s", printed)
 	}
-	if !strings.Contains(printed, "enrolled as estate small-skilled-pie") {
-		t.Fatalf("missing the estate it joined: %s", printed)
+	if !strings.Contains(printed, "enrolled as host small-skilled-pie") {
+		t.Fatalf("missing the host it joined: %s", printed)
 	}
 }
 
@@ -322,7 +322,7 @@ func TestConnectorSetNeverExchangesOverCleartext(t *testing.T) {
 
 func TestConnectorShowSaysWhyTheServerCouldNotBeAsked(t *testing.T) {
 	/*
-		Estate `ovh`, 2026-11-07: `bay connector show` said "bay serve is not
+		Host `ovh`, 2026-11-07: `bay connector show` said "bay serve is not
 		running" on a host where it was running. The line now names the
 		socket it tried and the error, and says "not running" only when the
 		error shows that.

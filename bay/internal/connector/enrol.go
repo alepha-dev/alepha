@@ -12,15 +12,19 @@ import (
 )
 
 // EnrolmentPrefix marks a one-time enrolment secret (#Q3165 in the Alepha
-// project): the one a server provisioned by `lore estate provision` finds in
+// project): the one a server provisioned by `lore host provision` finds in
 // its cloud-init user data. It is never stored and never dials the socket:
-// `bay connector set` exchanges it first, over HTTPS, for the estate's
+// `bay connector set` exchanges it first, over HTTPS, for the host's
 // long-lived secret, and stores that. User data is readable through the
 // metadata service, so what sits there must be worthless once used; Lore
 // retires it on the first dial made with the secret it was exchanged for.
 const EnrolmentPrefix = "enr_"
 
 // EnrolPath is Lore's exchange route, a root path like the pull routes.
+//
+// Bay wire v1: it keeps the word Lore used before #E147 (estate), because
+// every running Bay and every Lore speak it, and a new spelling would need a
+// binary swap on every host.
 const EnrolPath = "/estates/enrol"
 
 // IsEnrolment says whether a secret is a one-time enrolment secret.
@@ -29,13 +33,13 @@ func IsEnrolment(secret string) bool {
 }
 
 // Enrolled is what the exchange answers: the long-lived secret and the slug
-// of the estate it belongs to.
+// of the host it belongs to.
 type Enrolled struct {
 	Secret string `json:"secret"`
 	Slug   string `json:"slug"`
 }
 
-// Exchange trades an enrolment secret for the estate's long-lived one. The
+// Exchange trades an enrolment secret for the host's long-lived one. The
 // sink must already be validated (ValidateSink), so the enrolment secret
 // never crosses the network in clear. Every accepted call mints a new
 // long-lived secret on Lore's side, which is what makes a retry after a
@@ -57,7 +61,7 @@ func Exchange(ctx context.Context, client *http.Client, sink, enrolment string) 
 	body, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
 	if res.StatusCode == http.StatusUnauthorized {
 		return Enrolled{}, errors.New("Lore refused the enrolment secret: it is unknown, already used, or expired (they last 30 minutes). " +
-			"Mint a new one, or enrol with the estate's own secret: lore estate rotate <slug>")
+			"Mint a new one, or enrol with the host's own secret: lore host rotate <slug>")
 	}
 	if res.StatusCode != http.StatusOK {
 		return Enrolled{}, fmt.Errorf("the enrolment exchange answered %d", res.StatusCode)
@@ -67,7 +71,7 @@ func Exchange(ctx context.Context, client *http.Client, sink, enrolment string) 
 		return Enrolled{}, fmt.Errorf("the enrolment exchange answered something unreadable: %w", err)
 	}
 	if err := ValidateSecret(out.Secret); err != nil {
-		return Enrolled{}, errors.New("the enrolment exchange answered no estate secret")
+		return Enrolled{}, errors.New("the enrolment exchange answered no host secret")
 	}
 	return out, nil
 }

@@ -43,7 +43,7 @@ func TestWireServerFramesDecode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if welcome.Type != "welcome" || welcome.Protocol != Protocol || welcome.Estate.Slug != "ovh-1" ||
+	if welcome.Type != "welcome" || welcome.Protocol != Protocol || welcome.Host.Slug != "ovh-1" ||
 		welcome.DeployAllowed || welcome.StatsIntervalSeconds != 1800 ||
 		!hasFeature(welcome.Features, EventsFeature) {
 		t.Fatalf("welcome decoded wrong: %+v", welcome)

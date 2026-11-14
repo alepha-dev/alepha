@@ -7,7 +7,7 @@ import (
 
 const (
 	// DefaultStatsIntervalSeconds is what a welcome that names no interval
-	// gets: Lore's own default for a new estate.
+	// gets: Lore's own default for a new host.
 	DefaultStatsIntervalSeconds = 1800
 	// DefaultMinStatsInterval is the floor under whatever Lore names, the
 	// same floor Lore's schema enforces; a test lowers it to run in
@@ -26,7 +26,7 @@ the life of one session.
 
 Its own clock, deliberately independent of commands: those push the instant
 Lore queues them, and this one runs at whatever cadence reads well on the
-estate list, thirty minutes by default. One push goes out right after the
+host list, thirty minutes by default. One push goes out right after the
 welcome, so a freshly enrolled machine shows a figure within seconds instead
 of half an hour later, and every config frame re-arms the interval.
 
@@ -41,7 +41,7 @@ func (c *Client) statsLoop(ctx context.Context) {
 	// One timer for the whole session, re-armed only by a stats push. A
 	// `time.After` in the select restarted the wait on every pass, so each
 	// finished command pushed the next reading another interval away: an
-	// estate deploying every few minutes never reported again.
+	// host deploying every few minutes never reported again.
 	tick := time.NewTimer(c.statsInterval())
 	defer tick.Stop()
 	for {

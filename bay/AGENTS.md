@@ -62,7 +62,7 @@ of these changes, the other side moves with it.
   `bayOwnedKeys` in the framework's `secretKeys.ts`.
 - **The `_headers` conformance fixture** (`internal/headers/testdata/`), which
   the framework's `HeadersFileReader.spec.ts` runs from a copy.
-- **The estate wire format with Lore** (`internal/connector/testdata/wire-v1`,
+- **The host wire format with Lore** (`internal/connector/testdata/wire-v1`,
   `cmd/bay/testdata/logs-result.json`), pinned by copies in
   `../lore`. Lore's `bay.e2e.spec.ts` builds `bay/` and runs it against a real
   Lore.

@@ -17,7 +17,7 @@ import (
 )
 
 /*
-cmdConnector enrols this machine as an estate of a Lore instance, or shows and
+cmdConnector enrols this machine as a host of a Lore instance, or shows and
 forgets that enrolment.
 
 	bay connector set <lore-url> <secret>
@@ -94,7 +94,7 @@ func connectorSetWith(store *connector.Store, args []string, out io.Writer, clie
 			return err
 		}
 		secret = enrolled.Secret
-		fmt.Fprintf(out, "enrolled as estate %s: the one-time enrolment secret was exchanged, and stops working once this machine connects\n", enrolled.Slug)
+		fmt.Fprintf(out, "enrolled as host %s: the one-time enrolment secret was exchanged, and stops working once this machine connects\n", enrolled.Slug)
 	}
 	if err := store.Set(connector.Config{Sink: args[0], Secret: secret}); err != nil {
 		return err
@@ -121,7 +121,7 @@ func connectorClear(store *connector.Store, out io.Writer) error {
 }
 
 /*
-connectorShow prints the sink, the estate, and whether the connection is up.
+connectorShow prints the sink, the host, and whether the connection is up.
 
 Never the secret, not even a prefix. The secret is stored hashed on the Lore
 side and cleartext here because it has to be presented on every dial; echoing
@@ -129,7 +129,7 @@ any of it into a terminal is a copy in a scrollback buffer, a screen recording
 and a support paste.
 
 Three sources, because they live in three places: the sink is the file, the
-slug is the cached welcome (Lore names the estate; the secret does not), and
+slug is the cached welcome (Lore names the host; the secret does not), and
 "is it up" is asked of the running server over the control socket, the way
 `bay status` asks everything else. A status file would lie after a crash, so
 when no server answers the answer is that no server answers.
@@ -147,14 +147,14 @@ func connectorShow(store *connector.Store, out io.Writer) error {
 	fmt.Fprintf(out, "sink:        %s\n", cfg.Sink)
 	fmt.Fprintf(out, "endpoint:    %s\n", connector.SocketURL(cfg.Sink))
 	if welcome, ok, err := store.LoadWelcome(); err == nil && ok {
-		fmt.Fprintf(out, "estate:      %s\n", welcome.Slug)
+		fmt.Fprintf(out, "host:        %s\n", welcome.Slug)
 		mode := "stats only"
 		if welcome.DeployAllowed {
 			mode = "deploys allowed"
 		}
 		fmt.Fprintf(out, "switches:    %s, stats every %ds\n", mode, welcome.StatsIntervalSeconds)
 	} else {
-		fmt.Fprintln(out, "estate:      not yet connected")
+		fmt.Fprintln(out, "host:        not yet connected")
 	}
 
 	raw, err := call(http.MethodGet, controlHost+"/connector", nil)
@@ -256,7 +256,7 @@ func (s *server) connectorLoop(ctx context.Context) {
 // ---------------------------------------------------------------------------
 
 // connectorReport is what `GET /connector` answers: whether a sink is
-// configured and which, the estate Lore named, and the live connection state.
+// configured and which, the host Lore named, and the live connection state.
 // Never the secret: the socket never carries a sink to set or a secret at all.
 type connectorReport struct {
 	Configured bool   `json:"configured"`
@@ -310,7 +310,7 @@ that refuses the connection, or names nothing. A permission error, a missing
 socket at the guessed paths (the server may serve another --root) and an
 error answer from a running server each read as what they are, with the
 socket path that was tried, so an operator is never sent to restart a server
-that is up (estate `ovh`, 2026-11-07).
+that is up (host `ovh`, 2026-11-07).
 */
 func connectionUnknown(err error) string {
 	sock := controlSocketPath()

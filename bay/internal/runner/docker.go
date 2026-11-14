@@ -596,7 +596,7 @@ func (d *Docker) Running(key string) bool {
 
 /*
 State reports the container in systemd's words, because those are what the
-estate wire carries to Lore and what the console already knows how to say:
+host wire carries to Lore and what the console already knows how to say:
 `active`, `activating`, `deactivating`, `inactive`, `failed`.
 
 An exit by SIGTERM (143) or with 0 is a clean stop, `inactive`; any other exit,

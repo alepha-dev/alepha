@@ -21,7 +21,7 @@ func runningKey(t *testing.T, f *deployFixture) string {
 	return k
 }
 
-// A rebuilt host, or a copy moved from another estate: the instance has no
+// A rebuilt host, or a copy moved from another host: the instance has no
 // key, Lore holds one, and the instance starts on it.
 func TestAnInstanceWithoutAKeyTakesTheOneLoreHolds(t *testing.T) {
 	sink := newDeploySink(t, deployableArtifact(t))

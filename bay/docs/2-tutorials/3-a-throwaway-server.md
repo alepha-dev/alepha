@@ -13,37 +13,37 @@ commands below.
 ## The short way: Lore buys the server
 
 With the Lore CLI of 0.36.1 or later, one command replaces steps 1
-and 2 below, and `lore estate delete` replaces the provider's terminate:
+and 2 below, and `lore host delete` replaces the provider's terminate:
 
 ```bash
 brew install scw && scw login
 npm i -g alepha @alepha/lore && lore login
 
-lore estate provision --provider scaleway --project hello-world
+lore host provision --provider scaleway --project hello-world
 alepha init hello-world --infra lore
 cd hello-world
 alepha deploy
 ```
 
 `provision` drives your own `scw`, so Lore holds no key to your cloud account.
-It names the estate with three random words (or `--name`), creates the project
-when it does not exist, makes the estate belong to it and lends it there,
+It names the host with three random words (or `--name`), creates the project
+when it does not exist, makes the host belong to it and lends it there,
 creates the server with
 cloud-init that installs Bay with a one-time enrolment secret and an sslip.io
 base domain, and returns once the machine is online, about three minutes
-later. `alepha deploy` says which estate it deploys to and ends with the app's
+later. `alepha deploy` says which host it deploys to and ends with the app's
 address. When you are done:
 
 ```bash
-lore apps instance delete --app hello-world --env production --yes -p hello-world   # the copy goes, and frees the estate
-lore estate delete <its-name> -p hello-world --yes                                  # terminates the server, its IP and its disk
+lore apps instance delete --app hello-world --env production --yes -p hello-world   # the copy goes, and frees the host
+lore host delete <its-name> -p hello-world --yes                                  # terminates the server, its IP and its disk
 lore project delete hello-world --confirm hello-world                               # the project last
 ```
 
-The copy goes first: an estate is refused while a copy still deploys to it, and
+The copy goes first: a host is refused while a copy still deploys to it, and
 the refusal says how to remove one. The project goes last: a project that is
-the home of an estate cannot be deleted. If `hello-world` already exists, the
-estate belongs to it; `provision` refuses it when it does not have Apps on,
+the home of a host cannot be deleted. If `hello-world` already exists, the
+host belongs to it; `provision` refuses it when it does not have Apps on,
 before buying anything, and warns when it cannot deploy apps yet. A scratch
 project of its own is the safer choice for a throwaway server, since deleting
 it takes everything in it.
@@ -80,20 +80,20 @@ DNS to set up: `<anything>.<ip-with-dashes>.sslip.io` resolves to it.
 ## 2. Enrol it with Lore, in one line
 
 ```bash
-SECRET=$(lore estate add scratch-vps --allow-deploys --ttl 2h --output json | jq -r .secret)
+SECRET=$(lore host add scratch-vps --allow-deploys --ttl 2h --output json | jq -r .secret)
 ssh root@$IP "curl -sSL https://alepha.dev/bay/install.sh | LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=$SECRET BAY_BASE_DOMAIN=$BASE sh"
-lore estate wait scratch-vps
+lore host wait scratch-vps
 ```
 
 - `--output json` hands the one-time secret to the script; `--ttl 2h` marks the
-  estate overdue in two hours and tells you once, so a forgotten server does
+  host overdue in two hours and tells you once, so a forgotten server does
   not go unnoticed. Lore never stops or deletes it.
 - With `LORE_URL` and `LORE_ESTATE_SECRET`, the installer installs Docker and
   Bay, writes and starts the systemd unit, waits for `bay serve`, and runs
   `bay connector set`. The secret is never printed.
 - `BAY_BASE_DOMAIN` is what apps are named under (`<app>.<base>`); without one,
   Bay refuses to deploy an app.
-- `lore estate wait` returns once the machine is online. `lore estate get
+- `lore host wait` returns once the machine is online. `lore host get
   scratch-vps` then shows the public IP Lore saw it connect from.
 
 On the machine, `bay status`, `bay doctor` and `bay connector show` need no
@@ -111,7 +111,7 @@ services:
 ```
 
 ```bash
-lore stack create --file compose.yml --estate scratch-vps
+lore stack create --file compose.yml --host scratch-vps
 lore stack deploy -e staging --test-hostname web
 curl https://staging-scratch.$BASE/
 ```
@@ -144,14 +144,14 @@ build the same way.
 lore stack destroy -e staging --yes
 lore stack delete --yes
 lore apps instance delete --app hello --env production --yes
-lore estate delete scratch-vps --yes
+lore host delete scratch-vps --yes
 scw instance server terminate "$(cat server-id)" with-ip=true with-block=true
 lore project delete scratch --confirm scratch
 ```
 
-Order matters, and Lore says so: an estate a copy or a stack still deploys to
+Order matters, and Lore says so: a host a copy or a stack still deploys to
 is refused (naming them), and so is a stack with an environment left.
-`estate delete` revokes the machine's secret but stops nothing on it, which is
+`host delete` revokes the machine's secret but stops nothing on it, which is
 why the server goes with its provider, with its IP and its disk: a plain
 delete leaves both billing. `scw instance server list`, `scw instance ip list`
 and `scw block volume list` come back empty afterwards.

@@ -51,7 +51,7 @@ func TestRemoveAction(t *testing.T) {
 		}
 	})
 
-	t.Run("refused while the estate does not accept deploys, and nothing moves", func(t *testing.T) {
+	t.Run("refused while the host does not accept deploys, and nothing moves", func(t *testing.T) {
 		f := deployedApp(t)
 		acts := newActions(f.server)
 		acts.Welcome(connector.Welcome{Slug: "ovh-1", DeployAllowed: false})
@@ -133,7 +133,7 @@ func TestStackRemoveAction(t *testing.T) {
 		}
 	})
 
-	t.Run("refused while the estate does not accept deploys", func(t *testing.T) {
+	t.Run("refused while the host does not accept deploys", func(t *testing.T) {
 		f := newDeployFixture(t)
 		if err := f.server.store.MutateStackEnv("web", "production", func(*state.StackEnv) error { return nil }); err != nil {
 			t.Fatal(err)

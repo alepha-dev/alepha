@@ -130,7 +130,7 @@ instance back to what the app and the host declare.
 */
 func (a *actions) backupPolicy(cmd connector.Command, app state.App) (status, step, reason string) {
 	if !a.latestWelcome().DeployAllowed {
-		return "failed", "", "changing a backup policy from the console is turned off for this estate (deployAllowed)"
+		return "failed", "", "changing a backup policy from the console is turned off for this host (deployAllowed)"
 	}
 	var p *backuppolicy.Policy
 	if raw := bytes.TrimSpace(cmd.Policy); len(raw) > 0 && !bytes.Equal(raw, []byte("null")) {
@@ -173,7 +173,7 @@ func (a *actions) restore(ctx context.Context, cmd connector.Command) (status, s
 	}
 	if !ask.DryRun {
 		if !a.latestWelcome().DeployAllowed {
-			return "failed", "", "restoring from the console is turned off for this estate (deployAllowed)"
+			return "failed", "", "restoring from the console is turned off for this host (deployAllowed)"
 		}
 		if ask.Reason == "" {
 			return "failed", "", "a restore overwrites the live database: say why (reason), or ask for a dry run"

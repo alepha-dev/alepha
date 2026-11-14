@@ -35,15 +35,15 @@ A new project can deploy but does not collect telemetry yet: turn on **Track
 apps** under **Settings → General → Capabilities**, in the **Deploy and watch
 apps** capability.
 
-## 3. Enrol the server as an estate
+## 3. Enrol the server as a host
 
-An **estate** is a machine that belongs to a project, which lends it to the
+An **host** is a machine that belongs to a project, which lends it to the
 projects that deploy onto it. Run this in the project's directory, or pass
-`-p <project>`, and the estate is created in that project and lent there.
+`-p <project>`, and the host is created in that project and lent there.
 **Local:**
 
 ```bash
-npx lore estate add myvps --label "My VPS" --allow-deploys
+npx lore host add myvps --label "My VPS" --allow-deploys
 ```
 
 It prints the command to run on the machine, with a secret shown **once**.
@@ -56,10 +56,10 @@ bay connector show
 ```
 
 Clear that line from the shell history: it carries the secret. Back **local**,
-the estate shows as connected:
+the host shows as connected:
 
 ```bash
-npx lore estate list
+npx lore host list
 ```
 
 [Lore connector](/bay/docs/guides-lore-connector) covers what the machine
@@ -104,8 +104,8 @@ export default defineConfig({
 npx alepha deploy --env production
 ```
 
-The first deploy creates the copy `myapp/production` in Lore, on the estate lent
-to the project. It then builds what the estate runs, pushes the build to Lore,
+The first deploy creates the copy `myapp/production` in Lore, on the host lent
+to the project. It then builds what the host runs, pushes the build to Lore,
 seals the local secrets into the copy, and deploys, following the run in the
 terminal until the machine reports done. The app answers at
 `https://myapp.<base-domain>`:
@@ -131,7 +131,7 @@ npx lore blight list
 `insights read` gives page views, unique visitors, Web Vitals and the error
 budget; `blight list` gives the app's failures, one row per root cause. The
 same is on the project's **Apps** and **Blights** pages, with the server's CPU
-and memory on the estate's page. [Telemetry](/lore/docs/apps-telemetry)
+and memory on the host's page. [Telemetry](/lore/docs/apps-telemetry)
 explains each number.
 
 The app's server sends what it collected when a new event arrives at least ten
@@ -162,14 +162,14 @@ To go back to an earlier release, use **Roll back** on the copy's Deploy tab, or
    npx lore apps instance delete --app myapp -e production --yes
    ```
 
-3. In Lore, delete the estate from its page under **Account → Estates**, or
-   with `npx lore estate delete <slug> --yes`.
+3. In Lore, delete the host from its page under **Account → Hosts**, or
+   with `npx lore host delete <slug> --yes`.
 4. Delete the server with your provider, which is what stops the bill.
 
 ## Next
 
 - [Stacks](/bay/docs/guides-stacks): a database or a queue deployed beside the
   app, from Lore.
-- [Estates](/lore/docs/apps-estates): lending one machine to several projects.
+- [Hosts](/lore/docs/apps-hosts): lending one machine to several projects.
 - [A throwaway server, from a shell](/bay/docs/tutorials-a-throwaway-server): the
   same loop with no web page, for a server bought for an hour.

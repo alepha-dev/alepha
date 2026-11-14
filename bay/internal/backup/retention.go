@@ -211,7 +211,7 @@ func PlanRetention(complete, incomplete []Entry, r Rules, now time.Time) []Decis
 
 	// An incomplete bundle older than every backup kept, and than a day, is a
 	// dead upload. A newer one may be a backup still running, here or on
-	// another Bay writing the same prefix (a copy moved between estates on a
+	// another Bay writing the same prefix (a copy moved between hosts on a
 	// shared bucket): left alone.
 	var oldestKept time.Time
 	for i := len(out) - 1; i >= 0; i-- {

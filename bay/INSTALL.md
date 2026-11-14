@@ -258,10 +258,10 @@ curl -sSL https://alepha.dev/bay/install.sh \
   | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
 ```
 
-`lore estate add <slug> --allow-deploys --output json` prints the secret for a script, and
-`lore estate wait <slug>` blocks until the machine is online. Step 5 is still yours.
+`lore host add <slug> --allow-deploys --output json` prints the secret for a script, and
+`lore host wait <slug>` blocks until the machine is online. Step 5 is still yours.
 
-By hand, on a host already running Bay: create an **estate** in a project's **Settings ▸ Apps ▸ Estates** on Lore. The
+By hand, on a host already running Bay: create a **host** in a project's **Settings ▸ Apps ▸ Hosts** on Lore. The
 secret is shown once. Then, on the host, as root:
 
 ```bash
@@ -273,7 +273,7 @@ sudo bay connector show
 `bay serve` over the control socket to re-read them, so nothing restarts. Those files are under the
 `0700` data root, so a member of the control group cannot run these commands. Without the socket
 (found at `/run/bay/control.sock` for the unit above) `bay serve` is not told, and a host enrolling
-for the first time dials nothing until its next restart. `show` prints the sink, the estate Lore named and whether
+for the first time dials nothing until its next restart. `show` prints the sink, the host Lore named and whether
 the connection is up; it never prints the secret. `clear` forgets both and the machine dials nobody
 again. The secret is a command-line argument, so `ps` shows it while `set` runs and the shell
 history keeps it: clear that entry.
@@ -299,7 +299,7 @@ instance this Bay does not run:
 | `backup-policy` | sets or clears the instance's operator backup policy, which wins over the app's and the host's                                           |
 | `restore`       | brings a backup back (by key, by time, or from another instance); needs a reason unless it is a dry run                                  |
 
-Deploys stay refused until the estate's owner allows them on the estate, and the machine honours
+Deploys stay refused until the host's owner allows them on the host, and the machine honours
 that switch on its own side too.
 
 ⚠️ **This list is a security boundary, not a menu.** It is all that Lore, or whoever controls Lore,
@@ -315,7 +315,7 @@ shows Lore when it dials, so whoever holds it can pose as this machine to Lore, 
 artifacts and secret sets of the commands queued for it. It sends no command to the host.
 
 `stack-deploy` is the one verb that runs a compose file, which is to say containers of the
-bundle's choosing: allowing deploys on an estate is trusting Lore with the host. It is held to the
+bundle's choosing: allowing deploys on a host is trusting Lore with the host. It is held to the
 same switch as `deploy`, it takes a digest and a revision number and nothing else, and a bundle goes
 through the checks of any compose file, and only those: no bind mount outside its own directory and
 no Docker socket, but `devices`, `cap_add` and `security_opt` pass, and `x-lore.tcp: N` opens public
@@ -332,7 +332,7 @@ uploads what it did (revision, plan, digests) to `/estates/commands/<id>/outcome
 
 ### After enrolment: the console
 
-Once the machine has said hello, `/<project>/estates/<estate>` in Lore is what an operator reads: the host's
+Once the machine has said hello, `/<project>/hosts/<host>` in Lore is what an operator reads: the host's
 memory, disk and load, every instance with its state, release, memory, restarts and backup
 freshness, and the commands anyone has queued with what came back. Its Apps table also answers the
 one question this host cannot answer alone - an instance Lore expects here that the machine did not
@@ -342,7 +342,7 @@ The console is a second door, never the only one. Every verb above has a CLI equ
 still answers on the machine, and a host that never enrols is fully operable over SSH.
 
 Rotating the secret on Lore refuses the machine on its next dial; run `set` again with the new
-one. Deleting the estate does the same for good. `http://` is accepted for a loopback sink only,
+one. Deleting the host does the same for good. `http://` is accepted for a loopback sink only,
 so a secret never crosses a network in clear.
 
 ## 7. Upgrading Bay

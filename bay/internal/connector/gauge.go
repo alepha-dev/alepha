@@ -55,13 +55,13 @@ Gauge reads the host, not an app.
 
 `runner.Usage` reads one app's cgroup; this is the machine: CPU as the busy
 share of every core since the previous sample, memory as what is not
-available. The estate list renders it as "CPU 34%", so it is a gauge and never
+available. The host list renders it as "CPU 34%", so it is a gauge and never
 a series on this side; what Lore keeps of it is Lore's decision (#1627).
 
 Sample answers false when it has nothing to say: on a host without /proc, or
 on the first call before there is a previous sample to take a delta from.
 Nothing rather than zeros, for the reason `Usage`'s doc gives: zero reads as
-a fact, and "CPU 0%" beside an online estate is a lie, not an absence.
+a fact, and "CPU 0%" beside an online host is a lie, not an absence.
 
 Host is the same instant read in absolute units, and it is a second method
 rather than a field of a Reading because the two have different rules. The
@@ -185,7 +185,7 @@ func parseProcStatCores(raw string) (int, bool) {
 // parseMemInfoBytes reads MemTotal and MemAvailable as bytes.
 //
 // The same two lines parseMemInfo folds into a share, kept whole this time:
-// the percentage is what the estate list badge shows, the bytes are what the
+// the percentage is what the host list badge shows, the bytes are what the
 // console headline needs, and one is not derivable from the other.
 //
 // /proc/meminfo counts in kB, which is what the unit column says on every
@@ -266,7 +266,7 @@ func sanitizeSeconds(v float64) (uint64, bool) {
 
 // sanitizePercent is the last thing between a reading and the wire: NaN and
 // infinities are refused, anything else is clamped to the gauge's range and
-// rounded to a tenth, which is all the estate list shows.
+// rounded to a tenth, which is all the host list shows.
 func sanitizePercent(v float64) (float64, bool) {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return 0, false
