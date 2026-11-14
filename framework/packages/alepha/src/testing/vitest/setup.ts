@@ -100,7 +100,8 @@ trackTimers("setInterval", "clearInterval", false);
 trackTimers("setImmediate", "clearImmediate", true);
 
 afterAll(() => {
-  for (const [handle, clearHandle] of [...pendingTimers]) {
+  // Deleting the entry being visited is safe while iterating a Map.
+  for (const [handle, clearHandle] of pendingTimers) {
     clearHandle(handle);
   }
   pendingTimers.clear();
