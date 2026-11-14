@@ -11,8 +11,8 @@ import { currentHostAtom, DeployShell } from "@lore/ship/web";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
-import { ReactRouter } from "alepha/react/router";
-import { describe, it } from "vitest";
+import { ReactBrowserRendererProvider, ReactRouter } from "alepha/react/router";
+import { afterEach, describe, it } from "vitest";
 
 /**
  * A detail page ends its breadcrumb trail with itself (#Q3408), where three
@@ -31,17 +31,44 @@ class PathRouter extends ReactRouter<any> {
   }
 }
 
+/**
+ * Starting the container in jsdom mounts the app into the document, and
+ * stopping it does not unmount that root: React work it scheduled would fire
+ * after jsdom is torn down ("window is not defined") and fail the run with
+ * every test green. This one unmounts on demand.
+ */
+class UnmountingRenderer extends ReactBrowserRendererProvider {
+  public unmount(): void {
+    this.root?.unmount();
+    this.root = undefined;
+  }
+}
+
 describe("the leaf crumb of a detail page", () => {
+  const containers: Alepha[] = [];
+
+  afterEach(async () => {
+    for (const alepha of containers.splice(0)) {
+      alepha.inject(UnmountingRenderer).unmount();
+      await alepha.stop();
+    }
+  });
+
   const setup = async () => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaReactI18n)
-      .with({ provide: ReactRouter, use: PathRouter });
+      .with({ provide: ReactRouter, use: PathRouter })
+      .with({
+        provide: ReactBrowserRendererProvider,
+        use: UnmountingRenderer,
+      });
     alepha.inject(I18n);
     alepha.inject(WorkShell);
     alepha.inject(DeployShell);
     alepha.inject(ProjectTrail);
     await alepha.start();
+    containers.push(alepha);
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(
       currentProjectAtom,
