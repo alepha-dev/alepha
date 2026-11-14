@@ -6,6 +6,7 @@ import { MetaResolver } from "../services/MetaResolver.ts";
 
 const TAG = "git tag --points-at HEAD";
 const SHA = "git rev-parse --short HEAD";
+const DESCRIBE = `git describe --tags --match "[0-9]*.[0-9]*.[0-9]*" --match "v[0-9]*.[0-9]*.[0-9]*"`;
 
 const setup = (
   outputs: Record<string, string>,
@@ -41,10 +42,36 @@ describe("MetaResolver", () => {
       expect(meta.version).toBe("0.27.1");
     });
 
-    it("should report latest on an untagged commit", async () => {
+    it("should describe an untagged commit by the release it follows", async () => {
       // The normal case for a continuously deployed app: tags are created per
-      // release, so most deploys are genuinely not a tagged version.
-      const meta = await setup({ [TAG]: "" }).resolve({
+      // release, so most deploys are genuinely not a tagged version (#Q3639).
+      const meta = await setup({
+        [TAG]: "",
+        [DESCRIBE]: "v0.37.0-12-g4ad66a8\n",
+      }).resolve({
+        root: "/w/lore",
+        runtime: "workerd",
+        dev: false,
+      });
+
+      expect(meta.version).toBe("0.37.0-12-g4ad66a8");
+    });
+
+    it("should prefer the exact tag over a describe", async () => {
+      const meta = await setup({
+        [TAG]: "0.38.0\n",
+        [DESCRIBE]: "0.38.0\n",
+      }).resolve({ root: "/w/lore", runtime: "node", dev: false });
+
+      expect(meta.version).toBe("0.38.0");
+    });
+
+    it("should report latest when no release tag is reachable", async () => {
+      // A shallow checkout, or a repository with no release yet.
+      const meta = await setup(
+        { [TAG]: "" },
+        { [DESCRIBE]: "fatal: No names found, cannot describe anything." },
+      ).resolve({
         root: "/w/lore",
         runtime: "workerd",
         dev: false,

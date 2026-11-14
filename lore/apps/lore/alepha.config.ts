@@ -5,7 +5,6 @@ import { cloudflare, infra } from "alepha/cli/infra";
 // Lore's own version, since it left the Alepha monorepo (#E72): the release
 // workflow bumps `apps/lore` and `@alepha/lore` together. /version still
 // reports the framework it runs on, as `framework`.
-import pkg from "./package.json" with { type: "json" };
 import { RehearseMigrationCommand } from "./scripts/rehearsal/RehearseMigrationCommand.ts";
 
 export default defineConfig({
@@ -67,12 +66,6 @@ export default defineConfig({
   // and a running `yarn dev` was then adopted by the e2e suite. Every app
   // without a `dev.port` binds 5173.
   dev: { port: 3303 },
-  // Commit and build date are resolved by the build itself now, and served on
-  // `GET /version` by `AlephaServer`. Only `version` is declared here, and it
-  // still has to be: Lore deploys on every push to main, while tags exist only
-  // on releases, so the built-in git-tag chain would report "latest" on almost
-  // every deploy.
-  meta: { version: pkg.version },
   // The self-hosted image. `docker run -p 3000:3000 -v lore:/data <image>`
   // and nothing else: everything an operator would otherwise have to pass is
   // baked in `image:` above, and everything optional stays off until its env
