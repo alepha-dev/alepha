@@ -143,9 +143,16 @@ describe("$auth({ oidc }) without an issuer", () => {
 
     // The session is the provider's own tokens, encrypted: nothing of them
     // reads in the clear.
+    //
+    // ⚠️ A JWT's SHAPE, header then payload, not the three letters `eyJ`
+    // alone (#Q3680). The encrypted cookie is about a thousand random
+    // base64url characters, and `eyJ` turns up in that by chance close to
+    // one run in a hundred, which is how this went red on a green change. A
+    // token in the clear always reads `eyJ<header>.eyJ<payload>`; ciphertext
+    // in base64url never holds a dot.
     const cookie = browser.jar.get("app.tokens")!;
     expect(cookie).toBeTruthy();
-    expect(cookie).not.toContain("eyJ");
+    expect(cookie).not.toMatch(/eyJ[\w-]+\.eyJ/);
     expect(browser.jar.has("app.authorizationCode")).toBe(false);
     expect(
       idp.calls
