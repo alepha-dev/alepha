@@ -80,6 +80,16 @@ The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/
 
 **Bucket literals kept un-renamed** — `FOLIO_ATTACHMENT_BUCKET = "archive-blobs"` (`FolioAttachmentService.ts`, `LoreFileAccessProvider.ts`, `FolioAttachmentController.ts`, `useFolioImageUpload.ts`). Same reasoning as the `petition-attachments` bucket in the Feedback section: it's a value already persisted on every existing `files` row, and renaming it would orphan every folio image/blob ever uploaded.
 
+### Table folios (#E144)
+
+`folios.type` is `text` (Markdown in `content`) or `table`: typed columns in `folio_columns` and rows in `folio_rows`, with `content` kept `""` so every reader expecting Markdown sees an empty folio. `FolioTableService` owns both tables; `FolioCellCodec` decides what a cell means. Rules that are not obvious from the code:
+
+- **Writes strict, reads lenient, one function.** `FolioCellCodec.coerce` is what a write stores (and refuses with a 400 naming the row, the column and the type); `read` is the same coercion answering `null` instead. A retype therefore converts nothing: every stored value that still fits reads, the rest reads as empty, and the row never fails to decode.
+- **A removed column leaves its key in `cells`.** Reads ignore it, and the row's next write drops it. There is no sweep job; `searchText` alone is rebuilt in one batch after a retype, an option change or a removal (`version` and `updatedAt` untouched).
+- **Rows are numbered by the `folioRowNumber` sequence scoped to the folio** and never reuse a number. `position` is a real: an insert or a move takes the midpoint, and no other row is written.
+- **Filter and sort run in the service**, over the folio's rows (2,000 at most), never in SQL: `cells` is JSON on three dialects.
+- Caps: 50 columns, 2,000 rows, 2,000 characters per text cell, 50 options per select, 100 rows per write.
+
 ### ⚠️ Protected folios: the protection-domain invariant
 
 A folio with `protected: true` stores a client-side `BrowserCryptoProvider` envelope in `content`. The server never sees the passphrase or the plaintext.
@@ -103,9 +113,9 @@ What this package holds, with the notes that are not obvious from the code. Move
 
 **Controllers (3)** - `Directory`, `Folio`, `FolioAttachment`.
 
-**Entities (5)** - `folioAttachments`, `folioDirectories`, `folioNames`, `folioRevisions`, `folios`.
+**Entities (7)** - `folioAttachments`, `folioColumns`, `folioDirectories`, `folioNames`, `folioRevisions`, `folioRows`, `folios`.
 
-**Services (5)** - `FolioAttachmentService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioNameService`, `PinnedFolioFolder`.
+**Services (7)** - `FolioAttachmentService`, `FolioCellCodec`, `FolioDirectoryService`, `FolioHistoryService`, `FolioNameService`, `FolioTableService`, `PinnedFolioFolder`.
 
 **MCP tools (1)** - `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `folio_attachment_*` live here now).
 

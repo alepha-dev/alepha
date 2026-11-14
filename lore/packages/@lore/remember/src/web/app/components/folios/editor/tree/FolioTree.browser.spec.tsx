@@ -140,6 +140,7 @@ describe("FolioTree", () => {
     searchText: "",
     directoryId,
     pinned: false,
+    type: "text" as const,
     protected: false,
     createdBy: "00000000-0000-4000-8000-000000000001",
     createdAt: "2026-09-04T10:00:00.000Z",

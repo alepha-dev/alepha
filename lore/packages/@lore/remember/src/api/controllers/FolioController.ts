@@ -374,6 +374,7 @@ export class FolioController {
           "updatedAt",
           "projectId",
           "title",
+          "type",
           "protected",
           "pinned",
           "directoryId",
@@ -1066,6 +1067,17 @@ export class FolioController {
       // The row the protection-domain invariant is decided against, read by
       // the gate rather than a second time here.
       const existing = this.owned.get<Folio>();
+      // A table's data is its rows (#E144): its `content` stays empty, so
+      // every reader expecting Markdown sees an empty folio.
+      if (
+        existing.type === "table" &&
+        body.content !== undefined &&
+        body.content !== ""
+      ) {
+        throw new BadRequestError(
+          "This folio is a table: it has no Markdown content. Change its rows and columns instead.",
+        );
+      }
       if (
         body.expectedVersion !== undefined &&
         body.expectedVersion !== existing.version

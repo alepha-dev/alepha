@@ -41,6 +41,7 @@ const baseFolio = (overrides: Partial<Folio> = {}): Folio => ({
   version: 0,
   projectId: 1,
   title: "Original title",
+  type: "text",
   protected: false,
   content: "original content",
   pinned: false,
