@@ -650,10 +650,11 @@ export class FeedbackController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      // Triage is Support's. Gated by hand: this controller still checks
+      // Triage is Feedback's, an option of Plan. Gated by hand: this controller still checks
       // membership in its handlers, and porting fifty of those is its own
       // quest.
-      await this.security.assertCapability(params.projectId, "support", {
+      await this.security.assertCapability(params.projectId, "plan", {
+        option: "feedback",
         action: "accept feedback",
       });
       const feedback = await this.loadFeedback(
@@ -715,10 +716,11 @@ export class FeedbackController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      // Triage is Support's. Gated by hand: this controller still checks
+      // Triage is Feedback's, an option of Plan. Gated by hand: this controller still checks
       // membership in its handlers, and porting fifty of those is its own
       // quest.
-      await this.security.assertCapability(params.projectId, "support", {
+      await this.security.assertCapability(params.projectId, "plan", {
+        option: "feedback",
         action: "reject feedback",
       });
       const feedback = await this.loadFeedback(
@@ -778,10 +780,11 @@ export class FeedbackController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      // Triage is Support's. Gated by hand: this controller still checks
+      // Triage is Feedback's, an option of Plan. Gated by hand: this controller still checks
       // membership in its handlers, and porting fifty of those is its own
       // quest.
-      await this.security.assertCapability(params.projectId, "support", {
+      await this.security.assertCapability(params.projectId, "plan", {
+        option: "feedback",
         action: "delete feedback",
       });
       const feedback = await this.loadFeedback(
@@ -992,7 +995,7 @@ export class FeedbackController {
       throw new NotFoundError("Project not found");
     }
     const capabilities = await this.security.capabilitiesOf(projectId);
-    if (!this.security.hasCapability(capabilities, "support")) {
+    if (!this.security.capabilityOption(capabilities, "plan", "feedback")) {
       throw new ForbiddenError("This project is not accepting feedback");
     }
     return project;

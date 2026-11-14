@@ -130,9 +130,8 @@ describe("Automation schedules and named selections", () => {
       capabilities: [
         {
           key: "plan",
-          options: { reminder: true, epics: true },
+          options: { reminder: true, epics: true, feedback: true },
         },
-        { key: "support" },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });

@@ -23,7 +23,7 @@ interface SetCapabilityCall {
 // already had it would assert nothing. A row exists only for an enabled
 // capability, so "off" is the absence of one.
 const aProject = projectFixture({
-  capabilities: ["plan", "remember", "support"],
+  capabilities: ["plan", "remember"],
 });
 
 /**

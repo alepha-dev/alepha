@@ -304,7 +304,7 @@ test.describe("Project capabilities", () => {
     const { id, slug } = await createProjectViaWizard(
       page,
       `Off${ts}`.slice(0, 20),
-      { capabilities: ["ship", "support"] },
+      { capabilities: ["ship"], options: { plan: ["feedback"] } },
     );
 
     // Something in each capability, so "hides, never deletes" has something
@@ -332,12 +332,11 @@ test.describe("Project capabilities", () => {
     // the page a person uses, and `setCapability` would skip the optimistic
     // control the epic's e2e traps are about. Each click is armed first: the
     // switch flips instantly and proves nothing. Every master is on General >
-    // Capabilities since #Q2565, one page for all four.
+    // Capabilities since #Q2565, one page for all three.
     const masters = {
       plan: "Plan and track work",
       remember: "Write and keep knowledge",
       ship: "Deploy and watch apps",
-      support: "Collect feedback",
     };
     await page.goto(`/${slug}/settings/capabilities`);
     await page.waitForLoadState("networkidle");
@@ -427,6 +426,66 @@ test.describe("Project capabilities", () => {
     await page.goto(`/${slug}/quests`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText("Survives being hidden")).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test("Feedback is an option of Plan: on from Settings, off hides the inbox and keeps what it holds", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const t = Date.now();
+    await registerAndVerify(page, `fb${t}@example.com`, "GoodPassw0rd");
+    const { slug } = await createProjectViaWizard(page, `Fb${t}`.slice(0, 20));
+    const title = `Fold${t}`;
+
+    // Support was a capability of its own until #E143; Feedback is a switch
+    // under Plan's master now, beside Epics and Releases.
+    const toggle = async (on: boolean) => {
+      await page.goto(`/${slug}/settings/capabilities`);
+      await page.waitForLoadState("networkidle");
+      const option = page.getByRole("switch", {
+        name: "Feedback",
+        exact: true,
+      });
+      await expect(option).toHaveAttribute("aria-checked", String(!on), {
+        timeout: 10_000,
+      });
+      const saved = page.waitForResponse((res) =>
+        res.url().includes("/capabilities/plan"),
+      );
+      await option.click();
+      expect((await saved).ok()).toBe(true);
+    };
+
+    // Off by default: the wizard offers it, never preselects it.
+    expect(await navHrefs(page, slug)).not.toContain("/feedback");
+    await toggle(true);
+
+    await page.goto(`/${slug}/request?type=bug`);
+    await page.waitForLoadState("networkidle");
+    await page.locator("textarea").first().fill(`${title}\nIt broke.`);
+    await page.getByRole("button", { name: /^submit feedback$/i }).click();
+    await page.waitForURL(new RegExp(`/${slug}/feedback$`), {
+      timeout: 15_000,
+    });
+    await expect(page.getByText(title).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    expect(await navHrefs(page, slug)).toContain("/feedback");
+
+    // Off: the inbox leaves the sidebar and its page is gone.
+    await toggle(false);
+    await page.goto(`/${slug}/`);
+    await page.waitForLoadState("networkidle");
+    expect(await navHrefs(page, slug)).not.toContain("/feedback");
+    await expect404(page, `/${slug}/feedback`);
+
+    // And back: an option that is off hides, it never deletes.
+    await toggle(true);
+    await page.goto(`/${slug}/feedback`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(title).first()).toBeVisible({
       timeout: 15_000,
     });
   });

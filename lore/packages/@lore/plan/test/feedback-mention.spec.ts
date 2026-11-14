@@ -77,7 +77,10 @@ const setup = async () => {
 
   const project = await asUser(owner.id, () =>
     projectApi.createProject({
-      body: { title: "Feedback probe", capabilities: [{ key: "support" }] },
+      body: {
+        title: "Feedback probe",
+        capabilities: [{ key: "plan", options: { feedback: true } }],
+      },
     }),
   );
   await createTestMemberByProjectId(alepha, project.id, member.id);

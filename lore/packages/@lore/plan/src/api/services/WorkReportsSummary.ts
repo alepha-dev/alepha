@@ -9,8 +9,8 @@ import { releases } from "../entities/releases.ts";
 import { ProjectReportsService } from "./ProjectReportsService.ts";
 
 /**
- * Work's and Support's lines of the Reports Summary tab (#Q2999): feedback
- * belongs to this package, under its own capability.
+ * Plan's lines of the Reports Summary tab (#Q2999), Feedback's under the
+ * `plan.feedback` option.
  */
 export class WorkReportsSummary {
   protected readonly summary = $inject(ReportsSummaryRegistry);
@@ -25,7 +25,8 @@ export class WorkReportsSummary {
       read: (projectId, query) => this.work(projectId, query),
     });
     this.summary.register({
-      capability: "support",
+      capability: "plan",
+      option: "feedback",
       read: (projectId, query) => this.support(projectId, query),
     });
   }

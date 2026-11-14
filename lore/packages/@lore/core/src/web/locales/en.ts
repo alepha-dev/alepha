@@ -961,6 +961,9 @@ export default {
   "project.capability.plan.option.agentPrompts.label": "Agent prompts",
   "project.capability.plan.option.agentPrompts.description":
     "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for your coding agent; nothing is sent anywhere.",
+  "project.capability.plan.option.feedback.label": "Feedback",
+  "project.capability.plan.option.feedback.description":
+    "A request form for any signed-in Lore account, and a triage inbox.",
   "project.capability.remember.label": "Write and keep knowledge",
   "project.capability.remember.description":
     "Wiki linked folios, files, revisions.",
@@ -977,9 +980,6 @@ export default {
   "project.capability.ship.option.deploy.label": "Deploy apps",
   "project.capability.ship.option.deploy.description":
     "Push a build to a machine you own.",
-  "project.capability.support.label": "Collect feedback",
-  "project.capability.support.description":
-    "A request form for any signed-in Lore account, and a triage inbox.",
   "project.settings.areas.title": "Areas",
   "project.settings.areas.description":
     "The parts of your system. Every quest belongs to exactly one. Rename an area onto an existing one to merge them.",

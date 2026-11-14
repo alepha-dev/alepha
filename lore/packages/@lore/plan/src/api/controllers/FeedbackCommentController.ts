@@ -228,7 +228,8 @@ export class FeedbackCommentController {
       // feedback row rather than from a param, so it checks membership in its
       // handler. Reading the thread stays open, because disabling Support
       // hides feedback and deletes none of it.
-      await this.security.assertCapability(row.projectId, "support", {
+      await this.security.assertCapability(row.projectId, "plan", {
+        option: "feedback",
         action: "comment on feedback",
       });
 

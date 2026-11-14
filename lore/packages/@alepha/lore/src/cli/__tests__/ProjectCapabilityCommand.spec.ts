@@ -46,7 +46,7 @@ describe("lore project capability", () => {
         listCapabilities: async () => ({
           items: [
             {
-              key: "apps",
+              key: "ship",
               name: "Deploy and watch apps",
               enabled: true,
               options: [
@@ -54,7 +54,7 @@ describe("lore project capability", () => {
                 { key: "deploy", enabled: true },
               ],
             },
-            { key: "support", name: "Support", enabled: false, options: [] },
+            { key: "plan", name: "Plan", enabled: false, options: [] },
           ],
         }),
         setCapability: async (request: unknown) => {
@@ -76,22 +76,22 @@ describe("lore project capability", () => {
     const { run, printed } = create();
     await run("capabilityList", "");
     const out = printed.join("\n");
-    expect(out).toMatch(/\[x\] apps\s+Deploy and watch apps/);
+    expect(out).toMatch(/\[x\] ship\s+Deploy and watch apps/);
     expect(out).toContain("off track");
     expect(out).toContain("on  deploy");
-    expect(out).toMatch(/\[ \] support/);
+    expect(out).toMatch(/\[ \] plan/);
   });
 
   it("enables an option merged into the current ones, so nothing else flips", async ({
     expect,
   }) => {
     const { run, calls } = create();
-    await run("capabilityEnable", "apps --option track");
+    await run("capabilityEnable", "ship --option track");
     expect(calls).toEqual([
       {
         name: "set",
         request: {
-          params: { projectId: 7, key: "apps" },
+          params: { projectId: 7, key: "ship" },
           body: { enabled: true, options: { track: true, deploy: true } },
         },
       },
@@ -102,26 +102,26 @@ describe("lore project capability", () => {
     expect,
   }) => {
     const { run, calls } = create();
-    await run("capabilityEnable", "apps --option deploy=false --option track");
+    await run("capabilityEnable", "ship --option deploy=false --option track");
     expect(
       (calls[0].request as { body: { options: object } }).body.options,
     ).toEqual({ track: true, deploy: false });
-    await expect(run("capabilityEnable", "apps --option nope")).rejects.toThrow(
-      "apps has no option nope. Its options: track, deploy.",
+    await expect(run("capabilityEnable", "ship --option nope")).rejects.toThrow(
+      "ship has no option nope. Its options: track, deploy.",
     );
     await expect(run("capabilityEnable", "nope")).rejects.toThrow(
-      "No capability called nope. There are: apps, support.",
+      "No capability called nope. There are: ship, plan.",
     );
   });
 
   it("disables a capability", async ({ expect }) => {
     const { run, calls } = create();
-    await run("capabilityDisable", "support");
+    await run("capabilityDisable", "plan");
     expect(calls).toEqual([
       {
         name: "set",
         request: {
-          params: { projectId: 7, key: "support" },
+          params: { projectId: 7, key: "plan" },
           body: { enabled: false },
         },
       },

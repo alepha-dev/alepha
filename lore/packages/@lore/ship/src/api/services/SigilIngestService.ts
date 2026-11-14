@@ -262,12 +262,12 @@ export class SigilIngestService {
       errors: master && this.carries(sigil, "errors"),
       vitals: master && this.carries(sigil, "vitals"),
       // The one place a capability reads another's state, and it NARROWS:
-      // Support must never silently enable tracking. Feedback arrives through
+      // Feedback must never silently enable tracking. Feedback arrives through
       // the first-party form as well as through a sigil, so it cannot live on
       // the app's own `kinds` alone.
       feedback:
         master &&
-        this.security.hasCapability(capabilities, "support") &&
+        this.security.capabilityOption(capabilities, "plan", "feedback") &&
         this.carries(sigil, "feedback"),
     };
   }

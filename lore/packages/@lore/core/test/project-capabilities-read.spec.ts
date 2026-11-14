@@ -103,12 +103,11 @@ describe("CapabilityRegistry", () => {
     await ctx.alepha.stop();
   });
 
-  it("declares all four capabilities, in wizard order", ({ expect }) => {
+  it("declares the three capabilities, in wizard order", ({ expect }) => {
     expect(ctx.registry.all().map((c) => c.key)).toEqual([
       "plan",
       "remember",
       "ship",
-      "support",
     ]);
     // The enum is the list, so a key without a descriptor cannot hide.
     expect(ctx.registry.keys()).toEqual(ctx.registry.all().map((c) => c.key));
@@ -125,6 +124,7 @@ describe("CapabilityRegistry", () => {
       chrono: false,
       reminder: false,
       agentPrompts: false,
+      feedback: false,
     });
     expect(ctx.registry.optionsOf("ship", { track: true })).toEqual({
       track: true,
@@ -132,7 +132,6 @@ describe("CapabilityRegistry", () => {
       uptime: false,
       stacks: false,
     });
-    expect(ctx.registry.optionsOf("support", {})).toEqual({});
   });
 
   it("strips an unknown option on the way out, refuses it on the way in", ({
@@ -152,7 +151,7 @@ describe("CapabilityRegistry", () => {
     ).toThrow();
   });
 
-  it("preselects only apps.track and work.automations", ({ expect }) => {
+  it("preselects only ship.track", ({ expect }) => {
     // Releases was on by default before this epic, with a board that is
     // now always there: a way to look at quests is not a reason to have
     // them. Apps keeps its one, because the capability's own label says
@@ -165,6 +164,7 @@ describe("CapabilityRegistry", () => {
       chrono: false,
       reminder: false,
       agentPrompts: false,
+      feedback: false,
     });
     expect(ctx.registry.preselectedOptionsOf("ship")).toEqual({
       track: true,
@@ -180,7 +180,7 @@ describe("CapabilityRegistry", () => {
     expect(ctx.registry.ownerOfTool("quest_create")).toBe("plan");
     expect(ctx.registry.ownerOfTool("folio_get")).toBe("remember");
     expect(ctx.registry.ownerOfTool("error_forward")).toBe("ship");
-    expect(ctx.registry.ownerOfTool("feedback_accept")).toBe("support");
+    expect(ctx.registry.ownerOfTool("feedback_accept")).toBe("plan");
     // Core. A project with no capabilities at all is a legal state and still
     // has to be readable.
     expect(ctx.registry.ownerOfTool("project_context")).toBeUndefined();
@@ -267,12 +267,15 @@ describe("CapabilityRegistry", () => {
     expect(ctx.registry.isSearchKindEnabled("release", on)).toBe(true);
     expect(ctx.registry.isSearchKindEnabled("epic", off)).toBe(false);
     expect(ctx.registry.isSearchKindEnabled("release", off)).toBe(false);
-    // Quests need only Work; feedback needs Support and no option.
+    // Quests need only Plan; feedback needs Plan with `feedback` on.
     expect(ctx.registry.isSearchKindEnabled("quest", off)).toBe(true);
-    expect(ctx.registry.isSearchKindEnabled("feedback", { support: {} })).toBe(
-      true,
-    );
+    expect(
+      ctx.registry.isSearchKindEnabled("feedback", {
+        plan: { feedback: true },
+      }),
+    ).toBe(true);
     expect(ctx.registry.isSearchKindEnabled("feedback", off)).toBe(false);
+    expect(ctx.registry.isSearchKindEnabled("feedback", {})).toBe(false);
   });
 });
 

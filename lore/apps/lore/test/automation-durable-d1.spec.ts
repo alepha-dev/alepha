@@ -153,8 +153,7 @@ describe("Durable automation primitives on local D1", () => {
       await alepha.start();
       const project = await createTestProject(alepha, {
         capabilities: [
-          { key: "plan", options: {} },
-          { key: "support" },
+          { key: "plan", options: { feedback: true } },
           { key: "remember" },
         ],
       });

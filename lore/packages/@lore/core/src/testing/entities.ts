@@ -143,11 +143,11 @@ export const createTestProject = async (
         estimate: true,
         chrono: true,
         reminder: true,
+        feedback: true,
       },
     },
     { key: "remember", options: { agentSummary: true } },
     { key: "ship", options: { track: true, deploy: false } },
-    { key: "support", options: {} },
   ];
 
   for (const capability of capabilities ?? ALL_ON) {

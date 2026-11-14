@@ -882,7 +882,9 @@ test.describe("Automations", () => {
     await setCapability(page, project.id, "plan", {
       options: {},
     });
-    await setCapability(page, project.id, "support");
+    await setCapability(page, project.id, "plan", {
+      options: { feedback: true },
+    });
     const me = await (await page.request.get("/api/users/me")).json();
     const optionsPath = (
       await apiPath(page, "getAutomationSetupOptions")
@@ -1050,7 +1052,9 @@ test.describe("Automations", () => {
       await page.screenshot({
         path: testInfo.outputPath("automation-live-receipt.png"),
       });
-      await setCapability(page, project.id, "support", { enabled: false });
+      await setCapability(page, project.id, "plan", {
+        options: { feedback: false },
+      });
       await page.goto(`/${project.slug}/automations`);
       const row = page.getByRole("row").filter({ hasText: rule.title });
       await expect(row.getByText("Broken", { exact: true })).toBeVisible();

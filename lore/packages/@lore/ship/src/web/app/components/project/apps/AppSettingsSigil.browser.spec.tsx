@@ -75,7 +75,7 @@ describe("the sigil row's dropped-feedback notice", () => {
 
   const mount = async (options: {
     kinds: string[];
-    capabilities: Array<"plan" | "remember" | "ship" | "support">;
+    capabilities: Array<"plan" | "remember" | "ship">;
   }) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
@@ -133,7 +133,8 @@ describe("the sigil row's dropped-feedback notice", () => {
   it("says nothing when the project does collect it", async ({ expect }) => {
     const view = await mount({
       kinds: ["feedback"],
-      capabilities: ["ship", "support"],
+      // Plan, whose `feedback` option the fixture turns on with the rest.
+      capabilities: ["ship", "plan"],
     });
 
     // The whole value of the row is that it appears only when something is

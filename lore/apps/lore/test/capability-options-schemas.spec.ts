@@ -1,8 +1,5 @@
 import { CapabilityRegistry } from "@lore/core/schemas";
-import {
-  supportCapabilityOptionsSchema,
-  planCapabilityOptionsSchema,
-} from "@lore/plan/schemas";
+import { planCapabilityOptionsSchema } from "@lore/plan/schemas";
 import { rememberCapabilityOptionsSchema } from "@lore/remember/schemas";
 import { shipCapabilityOptionsSchema } from "@lore/ship/schemas";
 import { describe, it } from "vitest";
@@ -20,7 +17,6 @@ describe("capability options schemas", () => {
     plan: planCapabilityOptionsSchema,
     remember: rememberCapabilityOptionsSchema,
     ship: shipCapabilityOptionsSchema,
-    support: supportCapabilityOptionsSchema,
   };
 
   it("reads the same keys, all false when absent, as each module's schema", ({

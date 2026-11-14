@@ -940,6 +940,9 @@ export default {
   "project.capability.plan.option.agentPrompts.label": "Invites pour agents",
   "project.capability.plan.option.agentPrompts.description":
     "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour votre agent de code ; rien n’est envoyé nulle part.",
+  "project.capability.plan.option.feedback.label": "Retours",
+  "project.capability.plan.option.feedback.description":
+    "Un formulaire de demande pour tout compte Lore connecté, et une boîte de tri.",
   "project.capability.remember.label": "Écrire et conserver le savoir",
   "project.capability.remember.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
@@ -956,9 +959,6 @@ export default {
   "project.capability.ship.option.deploy.label": "Déployer les applications",
   "project.capability.ship.option.deploy.description":
     "Envoyer un build sur une machine qui vous appartient.",
-  "project.capability.support.label": "Recueillir les retours",
-  "project.capability.support.description":
-    "Un formulaire de demande pour tout compte Lore connecté, et une boîte de tri.",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
     "Les parties de votre système. Chaque quête appartient à exactement une. Renommez un domaine vers un domaine existant pour les fusionner.",

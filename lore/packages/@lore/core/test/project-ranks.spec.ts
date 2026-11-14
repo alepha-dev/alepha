@@ -142,17 +142,12 @@ describe("Lore's rank resource", () => {
   it("computes a preset from the capabilities the project actually has", ({
     expect,
   }) => {
-    const everything = ctx.presets.presetsFor([
-      "plan",
-      "remember",
-      "ship",
-      "support",
-    ]);
+    const everything = ctx.presets.presetsFor(["plan", "remember", "ship"]);
     const contributor = everything.find((it) => it.key === "contributor")!;
     expect(contributor.permissions).toContain("quest:create");
     expect(contributor.permissions).toContain("folio:write");
 
-    // Knowledge only: the Work permissions are gone, and so is Support's
+    // Remember only: the Plan permissions are gone, and so is Feedback's
     // inbox. A checkbox for a capability the project does not have grants
     // nothing and explains nothing.
     const knowledgeOnly = ctx.presets.presetsFor(["remember"]);

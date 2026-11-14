@@ -3,7 +3,10 @@ import type { LucideIcon } from "lucide-react";
 
 import type { CapabilityKey } from "../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../api/schemas/projectResourceSchema.ts";
-import { hasCapability } from "../services/projectCapabilities.ts";
+import {
+  capabilityOption,
+  hasCapability,
+} from "../services/projectCapabilities.ts";
 import type { ReportsFilterKey } from "../services/ReportsUrlQuery.ts";
 
 /**
@@ -59,7 +62,11 @@ export class ReportsTabRegistry {
     project: Pick<ProjectResource, "capabilities"> | undefined,
   ): ReportsTab[] {
     return this.entries.filter(
-      (tab) => !tab.needs || hasCapability(project, tab.needs),
+      (tab) =>
+        !tab.needs ||
+        (tab.option
+          ? capabilityOption(project, tab.needs, tab.option)
+          : hasCapability(project, tab.needs)),
     );
   }
 }
@@ -80,6 +87,11 @@ export interface ReportsTab {
    * The capability this tab's data source belongs to.
    */
   needs?: CapabilityKey;
+  /**
+   * The option of {@link needs} the tab hangs off, when it hangs off one
+   * (Feedback is `plan.feedback`).
+   */
+  option?: string;
   /**
    * The filters this tab honours: its loader reads only these, and the bar
    * shows the others disabled (#Q2996).

@@ -4,6 +4,7 @@ import {
   $pageProjectSettings,
   currentProjectAtom,
   CoreRouter,
+  capabilityOption,
   hasCapability,
   canInProject,
   ProjectPageSkeleton,
@@ -410,7 +411,7 @@ export class WorkRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      if (!hasCapability(project, "support")) {
+      if (!capabilityOption(project, "plan", "feedback")) {
         throw new NotFoundError("Support is not enabled for this project");
       }
       // ⚠️ A permission NAME, and a module-level function rather than

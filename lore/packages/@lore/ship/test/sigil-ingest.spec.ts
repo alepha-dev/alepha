@@ -127,16 +127,16 @@ const readVitals = async (analytics: DeployAnalytics, sigilId: string) => {
  * A capability row exists only for an enabled capability, so a project
  * created without one accepts nothing - and a test that forgot this would
  * pass while asserting on empty tables. Only the two the ingest gate reads
- * are listed: `apps` with `track` on (what `features.sigils` used to be) and
- * `support`, which the `feedback` kind additionally needs.
+ * are listed: `ship` with `track` on (what `features.sigils` used to be) and
+ * `plan` with `feedback` on, which the `feedback` kind additionally needs.
  */
 const allOn: CapabilityFixture[] = [
   { key: "ship", options: { track: true } },
-  { key: "support", options: {} },
+  { key: "plan", options: { feedback: true } },
 ];
 
 interface CapabilityFixture {
-  key: "plan" | "remember" | "ship" | "support";
+  key: "plan" | "remember" | "ship";
   options: Record<string, boolean>;
 }
 
@@ -589,7 +589,7 @@ describe("sigil ingest", () => {
 
   it("writes nothing at all when the sigils master switch is off", async () => {
     const { analytics, probe, project, sigil, post } = await setup({
-      capabilities: [{ key: "support", options: {} }],
+      capabilities: [{ key: "plan", options: { feedback: true } }],
     });
 
     const res = await post({

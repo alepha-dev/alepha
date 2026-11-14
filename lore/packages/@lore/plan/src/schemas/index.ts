@@ -27,7 +27,6 @@ export {
 export { QUEST_EPIC_NONE } from "../api/schemas/questEpicFilter.ts";
 export { QUEST_RELEASE_NONE } from "../api/schemas/questReleaseFilter.ts";
 export type { QuestResource } from "../api/schemas/questResourceSchema.ts";
-export { supportCapabilityOptionsSchema } from "../api/schemas/supportCapabilityOptionsSchema.ts";
 export { planCapabilityOptionsSchema } from "../api/schemas/planCapabilityOptionsSchema.ts";
 
 // Browser-loadable although it sits in `api/services`: the dashboard's

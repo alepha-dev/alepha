@@ -32,7 +32,8 @@ export class LoreDocsCorpusBuilder {
   protected readonly capabilityOf: Record<string, CapabilityKey> = {
     work: "plan",
     knowledge: "remember",
-    support: "support",
+    // Feedback was a capability of its own until #E143.
+    support: "plan",
     apps: "ship",
   };
 

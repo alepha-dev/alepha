@@ -92,7 +92,9 @@ describe("feedbackContext by slug", () => {
       {
         body: {
           title,
-          capabilities: feedbackOn ? [{ key: "support" as const }] : [],
+          capabilities: feedbackOn
+            ? [{ key: "plan" as const, options: { feedback: true } }]
+            : [],
         },
       },
       { user },

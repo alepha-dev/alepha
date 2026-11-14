@@ -40,7 +40,7 @@ export class WorkAttentionSources {
     });
     this.attention.register({
       key: "feedback",
-      needs: { capability: "support" },
+      needs: { capability: "plan", option: "feedback" },
       read: (project) => this.feedbackOf(project),
     });
   }

@@ -69,9 +69,11 @@ const setup = async () => {
       body: {
         title: "Test",
         capabilities: [
-          { key: "plan", options: { epics: true, releases: true } },
+          {
+            key: "plan",
+            options: { epics: true, releases: true, feedback: true },
+          },
           { key: "remember" },
-          { key: "support" },
         ],
       },
     }),
@@ -222,9 +224,8 @@ describe("Lore MCP: project_activity", () => {
         body: {
           title: "Other",
           capabilities: [
-            { key: "plan" },
+            { key: "plan", options: { feedback: true } },
             { key: "remember" },
-            { key: "support" },
           ],
         },
       }),

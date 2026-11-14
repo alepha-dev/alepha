@@ -31,7 +31,8 @@ export class AutomationVocabulary {
         description: "text",
       },
       "feedback:read",
-      "support",
+      "plan",
+      "feedback",
     );
     this.event(
       "release.published",

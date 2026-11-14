@@ -1,4 +1,8 @@
-import { ProjectController, ProjectSecurityService } from "@lore/core/api";
+import {
+  ProjectCapabilityController,
+  ProjectController,
+  ProjectSecurityService,
+} from "@lore/core/api";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -58,7 +62,7 @@ const setup = async () => {
     projectApi.createProject({
       body: {
         title: "Test",
-        capabilities: [{ key: "plan" }, { key: "support" }],
+        capabilities: [{ key: "plan", options: { feedback: true } }],
       },
     }),
   );
@@ -91,6 +95,15 @@ const setup = async () => {
       }),
     );
 
+  // Feedback is an option of Plan since #E143, not a capability of its own.
+  const feedbackOption = (on: boolean) =>
+    asUser(owner.id, () =>
+      alepha.inject(ProjectCapabilityController).setCapability({
+        params: { projectId: project.id, key: "plan" },
+        body: { enabled: true, options: { feedback: on } },
+      }),
+    );
+
   return {
     feedbackTools,
     questTools,
@@ -99,6 +112,7 @@ const setup = async () => {
     report,
     triager,
     member,
+    feedbackOption,
   };
 };
 
@@ -154,6 +168,30 @@ describe("Lore MCP: who may triage feedback", () => {
         call(tool, { project: project.id, id: item.id }, member.id),
       ).rejects.toThrow(/feedback:triage/);
     }
+  });
+
+  it("is refused with a 400 naming plan.feedback while the option is off", async () => {
+    const { feedbackTools, project, call, report, triager, feedbackOption } =
+      await setup();
+    const item = await report("It crashes");
+    await feedbackOption(false);
+
+    await expect(
+      call(
+        feedbackTools.feedback_accept,
+        { project: project.id, id: item.id },
+        triager.id,
+      ),
+    ).rejects.toThrow(/plan\.feedback/);
+
+    // Off hides, it never deletes: back on, the item is there to triage.
+    await feedbackOption(true);
+    const yes = await call(
+      feedbackTools.feedback_accept,
+      { project: project.id, id: item.id },
+      triager.id,
+    );
+    expect(yes.ok).toBe(true);
   });
 
   it("is what the tools tell an agent", async () => {

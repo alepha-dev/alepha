@@ -197,13 +197,13 @@ describe("Pure automation evaluation and durable worker", () => {
         {
           key: "plan",
           options: {
+            feedback: true,
             releases: true,
             epics: true,
             reminder: true,
           },
         },
         { key: "remember" },
-        { key: "support" },
         {
           key: "ship",
           options: { track: true, quality: true, deploy: true },

@@ -109,7 +109,9 @@ describe("feedback list pagination", () => {
         {
           body: {
             title: "Paging",
-            capabilities: [{ key: "support" as const }],
+            capabilities: [
+              { key: "plan" as const, options: { feedback: true } },
+            ],
           },
         },
         { user: owner },

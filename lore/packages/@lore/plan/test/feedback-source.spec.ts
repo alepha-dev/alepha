@@ -73,7 +73,7 @@ const createProject = async (
     {
       body: {
         title: "Feedback Source Test",
-        capabilities: [{ key: "support" as const }],
+        capabilities: [{ key: "plan" as const, options: { feedback: true } }],
       },
     },
     { user },

@@ -110,8 +110,8 @@ test.describe("Computed project board", () => {
         page,
         `PSA${t}`.slice(0, 20),
         {
-          capabilities: ["ship", "support"],
-          options: { plan: ["epics", "releases"], ship: ["track"] },
+          capabilities: ["ship"],
+          options: { plan: ["epics", "releases", "feedback"], ship: ["track"] },
         },
       );
       const release = await send<{ id: number }>(

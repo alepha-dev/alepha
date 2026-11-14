@@ -92,6 +92,13 @@ export interface CapabilityDescriptor {
    */
   mcpTools: string[];
   /**
+   * The option each MCP tool hangs off, for the tools that hang off one: a
+   * call is refused while that option is off, and the assistant is not
+   * offered the tool, exactly as {@link searchKindOptions} does for the
+   * palette. Read through {@link CapabilityRegistry.isToolEnabled}.
+   */
+  mcpToolOptions?: Record<string, string>;
+  /**
    * The `searchHitSchema` kinds the command palette may offer.
    */
   searchKinds: string[];
@@ -138,7 +145,7 @@ export interface CapabilityDescriptor {
 }
 
 /**
- * The four capabilities a project composes, declared once.
+ * The three capabilities a project composes, Lore's pillars, declared once.
  *
  * A **capability** is a product surface a project turns on: it owns nav
  * entries, routes, entities, MCP tools, a settings page, dashboard cards,
@@ -215,6 +222,16 @@ export class CapabilityRegistry {
           wizard: false,
           preselected: false,
         },
+        {
+          // Support until #E143: the public request form, the triage inbox
+          // and feedback comments, folded into Plan as one switch. Offered in
+          // the wizard, never preselected, as the capability was not.
+          key: "feedback",
+          labelKey: "project.capability.plan.option.feedback.label",
+          descriptionKey: "project.capability.plan.option.feedback.description",
+          wizard: true,
+          preselected: false,
+        },
         // Automations were an option here until #Q3594: they are a
         // baseline of Work now, there whenever Work is. A stored
         // `automations` key is stripped on read by the lax options schema and
@@ -271,17 +288,38 @@ export class CapabilityRegistry {
         "release_detach",
         "release_changelog",
         "release_delete",
+        "feedback_list",
+        "feedback_get",
+        "feedback_accept",
+        "feedback_reject",
+        "feedback_comment_add",
+        "feedback_attachment_get",
       ],
+      mcpToolOptions: {
+        feedback_list: "feedback",
+        feedback_get: "feedback",
+        feedback_accept: "feedback",
+        feedback_reject: "feedback",
+        feedback_comment_add: "feedback",
+        feedback_attachment_get: "feedback",
+      },
       // Epics and releases are found by their number only (#Q2228), and
       // like their sidebar entries they hang off their Work options.
-      searchKinds: ["quest", "epic", "release"],
-      searchKindOptions: { epic: "epics", release: "releases" },
-      activityKinds: ["quest", "epic", "release", "automation"],
+      // Feedback by number only too, and only for a caller holding
+      // `feedback:read` (#Q2228): see `SearchController`.
+      searchKinds: ["quest", "epic", "release", "feedback"],
+      searchKindOptions: {
+        epic: "epics",
+        release: "releases",
+        feedback: "feedback",
+      },
+      activityKinds: ["quest", "epic", "release", "automation", "feedback"],
       // Epics and Releases are options of Work, and so are their sidebar
       // entries (`capabilityNav.ts`). Quests are Work's baseline.
       activityKindOptions: {
         epic: "epics",
         release: "releases",
+        feedback: "feedback",
       },
       dashboardCards: [
         "activeQuests",
@@ -306,10 +344,18 @@ export class CapabilityRegistry {
         "remindersDue",
         "dueSoon",
         "recentlyShipped",
+        "untriagedFeedback",
       ],
       // Areas belong here: quests carry one, errors forward into one, and
       // `project_context` files them beside the epic index.
-      permissionGroups: ["quest", "epic", "release", "area", "automation"],
+      permissionGroups: [
+        "quest",
+        "epic",
+        "release",
+        "area",
+        "automation",
+        "feedback",
+      ],
     },
     {
       key: "remember",
@@ -451,28 +497,6 @@ export class CapabilityRegistry {
         "host",
       ],
     },
-    {
-      key: "support",
-      name: "Collect feedback",
-      labelKey: "project.capability.support.label",
-      descriptionKey: "project.capability.support.description",
-      preselectedCapability: false,
-      options: [],
-      mcpTools: [
-        "feedback_list",
-        "feedback_get",
-        "feedback_accept",
-        "feedback_reject",
-        "feedback_comment_add",
-        "feedback_attachment_get",
-      ],
-      // By number only, and only for a caller holding `feedback:read`
-      // (#Q2228): see `SearchController`.
-      searchKinds: ["feedback"],
-      activityKinds: ["feedback"],
-      dashboardCards: ["untriagedFeedback"],
-      permissionGroups: ["feedback"],
-    },
   ];
 
   /**
@@ -554,6 +578,23 @@ export class CapabilityRegistry {
     return this.capabilities.find((capability) =>
       capability.mcpTools.includes(tool),
     )?.key;
+  }
+
+  /**
+   * Whether an MCP tool may be called, given a project's enabled
+   * capabilities and their options: the same rule as
+   * {@link isActivityKindEnabled}. Core tools, owned by nobody, always pass.
+   */
+  isToolEnabled(
+    tool: string,
+    enabled: Partial<Record<CapabilityKey, Record<string, boolean>>>,
+  ): boolean {
+    const owner = this.ownerOfTool(tool);
+    if (!owner) return true;
+    const options = enabled[owner];
+    if (!options) return false;
+    const option = this.get(owner).mcpToolOptions?.[tool];
+    return option === undefined || options[option] === true;
   }
 
   /**

@@ -121,7 +121,9 @@ describe("feedback attachments past the D1 parameter ceiling", () => {
         {
           body: {
             title: "Ceiling",
-            capabilities: [{ key: "support" as const }],
+            capabilities: [
+              { key: "plan" as const, options: { feedback: true } },
+            ],
           },
         },
         { user: owner },
@@ -197,7 +199,9 @@ describe("feedback attachments past the D1 parameter ceiling", () => {
         {
           body: {
             title: "Resolve",
-            capabilities: [{ key: "support" as const }],
+            capabilities: [
+              { key: "plan" as const, options: { feedback: true } },
+            ],
           },
         },
         { user: owner },

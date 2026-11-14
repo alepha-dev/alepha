@@ -163,8 +163,8 @@ describe("the activity feed and capabilities", () => {
       }),
     );
 
-    await setCapability(ctx, project.id, "support", true);
-    await setCapability(ctx, project.id, "support", false);
+    await setCapability(ctx, project.id, "ship", true);
+    await setCapability(ctx, project.id, "ship", false);
 
     const feed = await activity(ctx, project.id);
     const events = feed.content.filter((row) => row.action === "capability");
@@ -174,11 +174,11 @@ describe("the activity feed and capabilities", () => {
     // is deleted by the very event it would have to describe.
     expect(events).toHaveLength(2);
     expect(events[0]!.metadata).toMatchObject({
-      capability: "support",
+      capability: "ship",
       enabled: false,
     });
     expect(events[1]!.metadata).toMatchObject({
-      capability: "support",
+      capability: "ship",
       enabled: true,
     });
 

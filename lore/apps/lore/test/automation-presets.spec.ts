@@ -96,10 +96,7 @@ describe("Stock automation presets", () => {
     await alepha.start();
     time.pause();
     project = await createTestProject(alepha, {
-      capabilities: [
-        { key: "plan", options: { epics: true } },
-        { key: "support" },
-      ],
+      capabilities: [{ key: "plan", options: { epics: true, feedback: true } }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };
@@ -187,10 +184,10 @@ describe("Stock automation presets", () => {
     await expect(
       create("feedback-created", { recipient: outsider.id }),
     ).rejects.toThrow("actions[0].recipient");
-    await entities.capabilities.deleteMany({
-      projectId: project.id,
-      key: "support",
-    });
+    await entities.capabilities.updateMany(
+      { projectId: { eq: project.id }, key: { eq: "plan" } },
+      { options: {} },
+    );
     const catalog = (
       await api.getAutomationCatalog.fetch(
         { params: { projectId: project.id } },
@@ -201,10 +198,10 @@ describe("Stock automation presets", () => {
       catalog.presets.find((preset) => preset.key === "feedback-created"),
     ).toMatchObject({
       available: false,
-      reason: "Missing feedback:read",
+      reason: "Missing plan.feedback option",
     });
     await expect(create("feedback-created")).rejects.toThrow(
-      "support capability",
+      "plan.feedback option",
     );
     expect(await persistence.rules.count({ projectId: project.id })).toBe(0);
   });
@@ -214,7 +211,7 @@ describe("Stock automation presets", () => {
     await entities.users.updateById(user.id, { email: "private@example.test" });
     const rule = await arm("feedback-created");
     const other = await createTestProject(alepha, {
-      capabilities: [{ key: "support" }],
+      capabilities: [{ key: "plan", options: { feedback: true } }],
     });
     await entities.users.updateById(other.createdBy, { roles: ["user"] });
     await alepha.inject(FeedbackController).submitFeedback.fetch(

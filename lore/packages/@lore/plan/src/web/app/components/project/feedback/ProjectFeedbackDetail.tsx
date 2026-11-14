@@ -11,7 +11,7 @@ import {
 import {
   currentProjectAtom,
   type I18n,
-  hasCapability,
+  capabilityOption,
   AttachmentLightbox,
   attachmentPreview,
   formatReference,
@@ -48,7 +48,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   // Stated here rather than left to the route guard. The panel is a
   // component and a spec can mount it directly, so a gate that only exists
   // upstream is a gate this component does not have.
-  const supportEnabled = hasCapability(project, "support");
+  const supportEnabled = capabilityOption(project, "plan", "feedback");
 
   /**
    * What the robot menu offers, in all three footers.

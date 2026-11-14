@@ -93,9 +93,9 @@ const setup = async (
     createdBy: owner.id,
   });
 
-  // `apps.track` is the switch above the telemetry surfaces, and `support`
-  // the second one the `feedback` kind needs: `gatesFor` reads a capability
-  // to NARROW another, never to widen it.
+  // `ship.track` is the switch above the telemetry surfaces, and
+  // `plan.feedback` the second one the `feedback` kind needs: `gatesFor`
+  // reads a capability to NARROW another, never to widen it.
   await probe.capabilities.create({
     projectId: project.id,
     key: "ship",
@@ -103,8 +103,8 @@ const setup = async (
   });
   await probe.capabilities.create({
     projectId: project.id,
-    key: "support",
-    options: {},
+    key: "plan",
+    options: { feedback: true },
   });
 
   const minted = await tokens.mint(project.id);

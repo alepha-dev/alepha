@@ -72,9 +72,8 @@ const createProject = async (
       body: {
         title: "Link Test",
         capabilities: [
-          { key: "plan" as const },
+          { key: "plan" as const, options: { feedback: true } },
           { key: "remember" as const },
-          { key: "support" as const },
         ],
       },
     },

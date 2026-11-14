@@ -20,7 +20,6 @@ import {
   BookOpen,
   Check,
   Hammer,
-  Inbox,
   LoaderCircle,
   SquareCheckBig,
   Tag,
@@ -58,7 +57,6 @@ const CAPABILITY_ICONS: Record<
   plan: SquareCheckBig,
   remember: BookOpen,
   ship: AppWindow,
-  support: Inbox,
 };
 
 /**

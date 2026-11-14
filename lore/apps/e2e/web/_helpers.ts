@@ -140,7 +140,7 @@ export const apiPost = async <T>(
  * per-quest modules (`questReminder`, `questChrono`) are
  * plain owner-controlled switches now, so the e2e just flips the flag.
  */
-export type CapabilityKey = "plan" | "remember" | "ship" | "support";
+export type CapabilityKey = "plan" | "remember" | "ship";
 
 /**
  * Turn one of a project's capabilities on or off, and set its options.

@@ -79,11 +79,11 @@ const KEY = "sg_lore_fixed_secret_for_the_test";
  * consults them - it consults these two and the sigil's own `kinds`.
  */
 const allOn: Array<{
-  key: "ship" | "support";
+  key: "ship" | "plan";
   options: Record<string, boolean>;
 }> = [
   { key: "ship", options: { track: true } },
-  { key: "support", options: {} },
+  { key: "plan", options: { feedback: true } },
 ];
 
 const setup = async (
@@ -206,7 +206,7 @@ describe("Lore reports to Lore", () => {
     // Apps off entirely: an option of a capability that is not there reads
     // false, so `track` is off without anyone having to store a `false`.
     const { analytics, sigil, sink } = await setup({
-      capabilities: [{ key: "support", options: {} }],
+      capabilities: [{ key: "plan", options: { feedback: true } }],
     });
 
     await sink.ingest({ views: [{ path: "/dogfood" }] }, {});

@@ -155,9 +155,6 @@ export class WorkShell {
         activeOn: (name) =>
           name === "projectReleases" || name === "projectRelease",
       },
-    ]);
-
-    this.shell.registerNav("support", [
       {
         // Arrived rather than chosen. Feedback leads because a human wrote
         // it; an error is filed by a machine.
@@ -167,6 +164,7 @@ export class WorkShell {
         icon: Inbox,
         group: "work",
         order: 40,
+        option: "feedback",
         reads: [currentFeedbackCountAtom],
         badge: (ctx) => ctx.get(currentFeedbackCountAtom)?.count || undefined,
       },
@@ -295,7 +293,7 @@ export class WorkShell {
       order: 60,
       labelKey: "project.menu.create-feedback",
       icon: MessageSquarePlus,
-      enabled: (project) => hasCapability(project, "support"),
+      enabled: (project) => capabilityOption(project, "plan", "feedback"),
       route: "projectFeedbackRequest",
     });
 
@@ -554,7 +552,8 @@ export class WorkShell {
       route: "reportsSupport",
       labelKey: "project.reports.nav.support",
       order: 9.6,
-      needs: "support",
+      needs: "plan",
+      option: "feedback",
       filters: ["period", "grain"],
     });
     // No `needs`: the contribution is core's `project_activity`, so a project

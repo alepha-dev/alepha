@@ -66,7 +66,7 @@ describe("searchDocs", () => {
     expect(narrowed.length).toBeGreaterThan(0);
     for (const section of narrowed) {
       const source = docsCorpus.find((it) => it.url === section.url)!;
-      expect(["ship", "support"]).not.toContain(source.capability);
+      expect(source.capability).not.toBe("ship");
     }
     await alepha.stop();
   });

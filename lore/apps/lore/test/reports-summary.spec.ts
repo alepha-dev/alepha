@@ -54,8 +54,7 @@ describe("ReportsSummaryRegistry", () => {
   }) => {
     const project = await createTestProject(alepha, {
       capabilities: [
-        { key: "plan" },
-        { key: "support" },
+        { key: "plan", options: { feedback: true } },
         { key: "remember" },
         { key: "ship" },
       ],
@@ -66,7 +65,7 @@ describe("ReportsSummaryRegistry", () => {
       .lines(project.id, {});
 
     expect(new Set(lines.map((line) => line.capability))).toEqual(
-      new Set(["plan", "support", "remember", "ship"]),
+      new Set(["plan", "remember", "ship"]),
     );
   });
 

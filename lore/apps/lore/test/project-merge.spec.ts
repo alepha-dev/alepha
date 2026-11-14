@@ -194,7 +194,6 @@ describe("ProjectMergeService across every module", () => {
       "plan",
       "remember",
       "ship",
-      "support",
     ]);
     expect(capabilities.find((row) => row.key === "plan")!.options).toEqual({
       releases: false,

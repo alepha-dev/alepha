@@ -9,7 +9,7 @@ import {
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import {
   useRank,
-  hasCapability,
+  capabilityOption,
   currentProjectAtom,
   type I18n,
   TokenReveal,
@@ -193,7 +193,7 @@ const AppSettingsSigil = () => {
     return null;
   }
 
-  const collectsFeedback = hasCapability(project, "support");
+  const collectsFeedback = capabilityOption(project, "plan", "feedback");
 
   const canManage = can("sigil:manage");
   const sigil = instance.sigil;

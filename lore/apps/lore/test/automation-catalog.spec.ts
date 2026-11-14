@@ -84,13 +84,13 @@ describe("Automation catalogue", () => {
         {
           key: "plan",
           options: {
+            feedback: true,
             epics: true,
             releases: true,
             reminder: true,
           },
         },
         { key: "remember" },
-        { key: "support" },
         { key: "ship", options: { track: true, deploy: true } },
       ],
     });

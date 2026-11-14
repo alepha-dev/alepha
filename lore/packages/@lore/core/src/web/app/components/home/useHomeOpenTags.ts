@@ -60,7 +60,7 @@ export const useHomeOpenTags = (
         label: tr("home.table.open.errors", { args: [String(count)] }),
       });
     }
-    if (hasCapability(project, "support")) {
+    if (capabilityOption(project, "plan", "feedback")) {
       const count = counts?.feedback ?? 0;
       tags.push({
         kind: "feedback",

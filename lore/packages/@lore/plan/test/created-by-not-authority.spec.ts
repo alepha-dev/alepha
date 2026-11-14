@@ -54,7 +54,7 @@ describe("projects.createdBy decides nothing after an ownership transfer", () =>
       {
         body: {
           title: "Handed over",
-          capabilities: [{ key: "plan" }, { key: "support" }],
+          capabilities: [{ key: "plan", options: { feedback: true } }],
         },
       },
       { user: founder },

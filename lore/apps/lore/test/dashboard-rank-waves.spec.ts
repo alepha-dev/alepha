@@ -105,10 +105,9 @@ describe("dashboard rank waves", () => {
     const on = (keys: string[]) =>
       Object.fromEntries(keys.map((key) => [key, true]));
     for (const [key, options] of [
-      ["plan", on(["epics", "releases", "reminder"])],
+      ["plan", on(["epics", "releases", "reminder", "feedback"])],
       ["remember", {}],
       ["ship", on(["track"])],
-      ["support", {}],
     ] as const) {
       await repos.capabilities.create({
         projectId: project.id,

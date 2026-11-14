@@ -63,7 +63,7 @@ describe("Automation subscriptions (#Q3576)", () => {
     persistence = alepha.inject(AutomationPersistence);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [{ key: "plan", options: {} }, { key: "support" }],
+      capabilities: [{ key: "plan", options: { feedback: true } }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };

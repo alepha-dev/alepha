@@ -444,7 +444,9 @@ test.describe("Releases", () => {
       await setCapability(page, projectId, "plan", {
         options: { epics: false },
       });
-      await setCapability(page, projectId, "support", { enabled: false });
+      await setCapability(page, projectId, "plan", {
+        options: { feedback: false },
+      });
       await page.goto(`/${slug}/quests`);
       await expect
         .poll(navOrder, { timeout: 15_000 })

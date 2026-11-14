@@ -62,7 +62,10 @@ const setup = async () => {
 
   const project = await asUser(OWNER, () =>
     projectApi.createProject({
-      body: { title: "Test", capabilities: [{ key: "support" }] },
+      body: {
+        title: "Test",
+        capabilities: [{ key: "plan", options: { feedback: true } }],
+      },
     }),
   );
 

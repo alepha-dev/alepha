@@ -117,10 +117,9 @@ describe("Lore domain audits", () => {
             // surfaces, so a fixture missing one turns an audit case into a
             // capability case.
             capabilities: [
-              { key: "plan" as const },
+              { key: "plan" as const, options: { feedback: true } },
               { key: "remember" as const },
               { key: "ship" as const, options: { track: true } },
-              { key: "support" as const },
             ],
           },
         },

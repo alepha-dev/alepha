@@ -371,7 +371,7 @@ describe("dashboard cards and capabilities", () => {
         epicProgress: { capability: "plan", option: "epics" },
         releaseProgress: { capability: "plan", option: "releases" },
         tagCompletion: { capability: "plan" },
-        untriagedFeedback: { capability: "support" },
+        untriagedFeedback: { capability: "plan", option: "feedback" },
         openErrors: { capability: "ship", option: "track" },
         uniqueVisitors: { capability: "ship", option: "track" },
       });

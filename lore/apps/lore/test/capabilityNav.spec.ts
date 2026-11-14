@@ -141,7 +141,7 @@ describe("the sidebar, derived from capabilities", () => {
     // (quest mentions, releases) and `support` (feedback mentions), so it
     // could never have hung off either - which is why this holds whatever is
     // enabled rather than only for a bare project.
-    for (const capabilities of [[], ["plan"], ["remember"], ["support"]]) {
+    for (const capabilities of [[], ["plan"], ["remember"], ["ship"]]) {
       expect(
         offered(projectFixture({ capabilities: capabilities as never })),
       ).not.toContain("projectInbox");

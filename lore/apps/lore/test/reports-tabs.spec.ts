@@ -44,18 +44,32 @@ describe("reportsTabs", () => {
     expect(registry.honours("nowhere")).toEqual([]);
   });
 
-  const names = (
-    capabilities: Array<"plan" | "remember" | "ship" | "support">,
-  ) => registry.tabs(projectFixture({ capabilities })).map((tab) => tab.route);
+  const names = (capabilities: Array<"plan" | "remember" | "ship">) =>
+    registry.tabs(projectFixture({ capabilities })).map((tab) => tab.route);
 
-  it("gives a Work project its tabs, plus Team", () => {
+  it("gives a Plan project its tabs, plus Team", () => {
+    // The fixture turns every option on, `feedback` included.
     expect(names(["plan"])).toEqual([
       "reportsSummary",
       "reportsFlow",
       "reportsBacklog",
       "reportsPlanning",
+      "reportsSupport",
       "reportsTeam",
     ]);
+  });
+
+  it("hides the Support tab while Plan's feedback option is off", () => {
+    const tabs = registry
+      .tabs(
+        projectFixture({
+          capabilities: ["plan"],
+          options: { plan: { feedback: false } },
+        }),
+      )
+      .map((tab) => tab.route);
+    expect(tabs).toContain("reportsPlanning");
+    expect(tabs).not.toContain("reportsSupport");
   });
 
   it("leaves Team standing on a project with no capability at all", () => {

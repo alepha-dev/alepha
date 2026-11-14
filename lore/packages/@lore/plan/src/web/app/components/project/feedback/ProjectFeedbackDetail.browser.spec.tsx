@@ -437,10 +437,13 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
    * itself exists only under Support. A capability reads another's state to
    * narrow what it offers, never to widen it.
    */
-  it("is absent when Support is off", async ({ expect }) => {
+  it("is absent when Plan's feedback option is off", async ({ expect }) => {
     await mount(
       pendingFeedback,
-      projectFixture({ capabilities: ["plan", "remember", "ship"] }),
+      projectFixture({
+        capabilities: ["plan", "remember", "ship"],
+        options: { plan: { feedback: false } },
+      }),
     );
     await waitFor(() => expect(screen.queryByText("Delete")).not.toBeNull());
     expect(trigger()).toBeNull();

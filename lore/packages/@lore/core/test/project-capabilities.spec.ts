@@ -108,6 +108,7 @@ describe("Project capabilities", () => {
       chrono: false,
       reminder: false,
       agentPrompts: false,
+      feedback: false,
     });
   });
 
@@ -182,7 +183,7 @@ describe("Project capabilities", () => {
 
     const updated = await ctx.capabilityController.setCapability.fetch(
       {
-        params: { projectId: created.data.id, key: "support" },
+        params: { projectId: created.data.id, key: "ship" },
         body: { enabled: true },
       },
       { user },
@@ -192,7 +193,7 @@ describe("Project capabilities", () => {
     expect(updated.data.title).toBe("Toggle Project");
     expect(updated.data.capabilities.map((it) => it.key).sort()).toEqual([
       "plan",
-      "support",
+      "ship",
     ]);
   });
 
@@ -321,7 +322,7 @@ describe("Project capabilities", () => {
     await expect(
       ctx.capabilityController.setCapability.fetch(
         {
-          params: { projectId: created.data.id, key: "support" },
+          params: { projectId: created.data.id, key: "ship" },
           body: { enabled: true },
         },
         { user: stranger },
@@ -354,7 +355,7 @@ describe("Project capabilities", () => {
       ).data;
 
       expect(items.map((it) => it.key)).toEqual(
-        expect.arrayContaining(["plan", "remember", "ship", "support"]),
+        expect.arrayContaining(["plan", "remember", "ship"]),
       );
       const apps = items.find((it) => it.key === "ship")!;
       expect(apps.enabled).toBe(true);
@@ -364,7 +365,12 @@ describe("Project capabilities", () => {
           { key: "track", enabled: false },
         ]),
       );
-      expect(items.find((it) => it.key === "support")!.enabled).toBe(false);
+      expect(items.map((it) => it.key)).not.toContain("support");
+      expect(items.find((it) => it.key === "remember")!.enabled).toBe(false);
+      expect(items.find((it) => it.key === "plan")!.options).toContainEqual({
+        key: "feedback",
+        enabled: false,
+      });
     });
 
     it("lets a member read the list, and refuses their write naming capability:manage", async ({
@@ -386,7 +392,7 @@ describe("Project capabilities", () => {
       await expect(
         ctx.capabilityController.setCapability.fetch(
           {
-            params: { projectId: created.data.id, key: "support" },
+            params: { projectId: created.data.id, key: "ship" },
             body: { enabled: true },
           },
           { user: member },

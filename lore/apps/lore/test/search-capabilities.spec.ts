@@ -218,8 +218,7 @@ describe("the command palette and capabilities", () => {
     expect(await kindsFor(without.project, without.user, "#P1")).toEqual([]);
 
     const withSupport = await seeded(ctx, [
-      { key: "plan" },
-      { key: "support" },
+      { key: "plan", options: { feedback: true } },
     ]);
     await numbered(withSupport.project);
     expect(
@@ -233,9 +232,8 @@ describe("the command palette and capabilities", () => {
     // ⚠️ Filtered per kind, never added to the action's `requires`: that
     // would cost this member the whole palette, quests and folios included.
     const { user: owner, project } = await seeded(ctx, [
-      { key: "plan", options: { epics: true, releases: true } },
+      { key: "plan", options: { epics: true, releases: true, feedback: true } },
       { key: "remember" },
-      { key: "support" },
     ]);
     await numbered(project);
 

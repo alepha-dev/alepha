@@ -118,9 +118,11 @@ describe("SearchController, an id query", () => {
         body: {
           title: "Search ids",
           capabilities: [
-            { key: "plan", options: { epics: true, releases: true } },
+            {
+              key: "plan",
+              options: { epics: true, releases: true, feedback: true },
+            },
             { key: "remember" },
-            { key: "support" },
           ],
         },
       },

@@ -24,18 +24,30 @@ export const ActivityDetails = (props: ActivityDetailsProps) => {
   // A capability row names the switch and its new state. It has no `fields`,
   // because nothing on the project row changed - the event is a
   // `project_capabilities` row appearing or going.
+  //
+  // A row may also name an `option`: the Support capability's rows were
+  // rewritten to `plan` with `option: "feedback"` when #E143 folded it into
+  // Plan, so an old event still reads as Feedback being turned on or off.
   const capability = props.metadata?.capability;
   if (typeof capability === "string") {
     const descriptor = capabilityRegistry.find(capability);
+    const optionKey = props.metadata?.option;
+    const option =
+      typeof optionKey === "string"
+        ? descriptor?.options.find((it) => it.key === optionKey)
+        : undefined;
+    const label = option
+      ? tr(option.labelKey)
+      : descriptor
+        ? tr(descriptor.labelKey)
+        : capability;
     return (
       <span className="text-muted-foreground text-xs">
         {tr(
           props.metadata?.enabled
             ? "activity.capability.enabled"
             : "activity.capability.disabled",
-          {
-            args: [descriptor ? tr(descriptor.labelKey) : capability],
-          },
+          { args: [label] },
         )}
       </span>
     );

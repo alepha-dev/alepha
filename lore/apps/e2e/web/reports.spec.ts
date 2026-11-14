@@ -240,7 +240,9 @@ test.describe("Reports", () => {
       page,
       `RU${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "support");
+    await setCapability(page, projectId, "plan", {
+      options: { feedback: true },
+    });
 
     await page.goto(`/${slug}/reports/support`);
 

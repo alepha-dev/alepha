@@ -247,7 +247,7 @@ export class WorkDashboardMetrics {
        */
       scopeKinds: ["projects", "all"],
       filters: untriagedFeedbackFiltersSchema,
-      needs: { capability: "support" },
+      needs: { capability: "plan", option: "feedback" },
       link: (_scope, target) =>
         target.projectSlug
           ? {

@@ -324,7 +324,9 @@ test.describe("agent prompts", () => {
       // The wizard leaves Support off, and the panel exists only under it:
       // the menu reads Work's option to narrow what it offers, and Support
       // to exist at all.
-      await setCapability(page, projectId, "support");
+      await setCapability(page, projectId, "plan", {
+        options: { feedback: true },
+      });
 
       const feedback = await page.evaluate(
         async ({ projectId, title }) => {
