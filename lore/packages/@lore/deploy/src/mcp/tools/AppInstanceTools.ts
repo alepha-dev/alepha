@@ -33,7 +33,7 @@ import {
  * - a **sigil** (`sigil_create`) is the key it reports with, and unlocks
  *   Analytics, Vitals, Errors and Explore. Removing one destroys that
  *   instance's analytics history.
- * - an **host** (`app_instance_update`) is where it deploys to, and must be
+ * - a **host** (`app_instance_update`) is where it deploys to, and must be
  *   one lent to this project.
  *
  * Reads are open to any project member; creating, updating and deleting need
