@@ -31,6 +31,13 @@ export interface SettingsTab {
    * reachable by a link somebody already holds, and every write re-checks.
    */
   requires?: string;
+  /**
+   * The page runs the settings body's full width and height instead of the
+   * centred, readable `max-w-6xl` column every page of setting blocks gets.
+   * For a page that is one table or matrix wanting the room (Hosts, Ranks).
+   * Decided per tab, so the next full-page table cannot widen the others.
+   */
+  fullWidth?: boolean;
 }
 
 export interface SettingsSectionDef {
@@ -106,6 +113,7 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
         route: "projectSettingsRanks",
         labelKey: "project.settings.nav.ranks",
         requires: "rank:manage",
+        fullWidth: true,
       },
     ],
   },

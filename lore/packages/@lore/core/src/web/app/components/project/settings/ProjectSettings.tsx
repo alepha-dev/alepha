@@ -6,6 +6,7 @@ import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { ProjectShellRegistry } from "../../../registries/ProjectShellRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import ProjectSettingsBody from "./ProjectSettingsBody.tsx";
 import { visibleSettingsTabs } from "./projectSettingsSections.ts";
 
 /**
@@ -23,8 +24,8 @@ import { visibleSettingsTabs } from "./projectSettingsSections.ts";
  * pattern.
  *
  * Full width (`ROUTES_FULL_WIDTH`), with the body capped at a readable
- * measure: the ranks matrix and the areas table want the room, a column of
- * switches does not.
+ * measure unless the open tab declares `fullWidth` (#Q3658): the ranks
+ * matrix and the hosts table want the room, a column of switches does not.
  */
 const ProjectSettings = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -55,11 +56,9 @@ const ProjectSettings = () => {
       tabs={tabs}
       active={found?.tab.route ?? activeRoute}
     >
-      {/* `min-h-full`: at least the body's height, so a tab whose table
-          takes `flex-1` (Hosts) fills the page down to its bottom edge. */}
-      <div className="flex min-h-full w-full flex-col gap-8 p-4 md:p-6">
+      <ProjectSettingsBody fullWidth={found?.tab.fullWidth}>
         <NestedView />
-      </div>
+      </ProjectSettingsBody>
     </PlateLayout>
   );
 };
