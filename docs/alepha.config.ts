@@ -2,7 +2,6 @@ import { lore } from "@alepha/lore/cli";
 import { defineConfig } from "alepha/cli/config";
 import { infra } from "alepha/cli/infra";
 
-import pkg from "../framework/packages/alepha/package.json" with { type: "json" };
 import { CheckDocsCommand } from "./scripts/check-docs.ts";
 import { DocsCommand } from "./scripts/gen-docs.ts";
 import { LlmsCommand } from "./scripts/gen-llms.ts";
@@ -15,12 +14,6 @@ export default defineConfig({
   // and a running `yarn dev` was then adopted by the e2e suite. Every app
   // without a `dev.port` binds 5173.
   dev: { port: 3302 },
-  // The build resolves commit and build date itself, and serves the lot on
-  // `GET /version`. `version` is declared from `packages/alepha` rather than
-  // read from git: the site deploys from `release.yml` only (#Q2480), where it
-  // is the version being published, and a local or CI build of an untagged
-  // commit still says which framework version its pages describe.
-  meta: { version: pkg.version },
   env: {
     // Here rather than in `.env.production` because the canonical URL is baked
     // into every page at prerender time, so it has to be set for a plain

@@ -2,21 +2,12 @@ import { lore } from "@alepha/lore/cli";
 import { defineConfig } from "alepha/cli/config";
 import { infra } from "alepha/cli/infra";
 
-import pkg from "../../packages/alepha/package.json" with { type: "json" };
-
 export default defineConfig({
   // Dev ports live in the 33xx band, which `playwright.port.ts` keeps strictly
   // DISJOINT from the 4300-4999 e2e band. The two used to be the same number,
   // and a running `yarn dev` was then adopted by the e2e suite. Every app
   // without a `dev.port` binds 5173.
   dev: { port: 3308 },
-  // The framework's version, not this app's: the showcase is private and
-  // carries no version of its own, and what a continuously deployed showcase
-  // is running IS the framework version. Declared rather than left to the
-  // built-in git-tag chain because this deploys on every push to main while
-  // tags exist only on releases, so the chain would report "latest" almost
-  // always. Same reasoning as `apps/docs`.
-  meta: { version: pkg.version },
   env: {
     // Here rather than in `.env.production` because it is the site's public
     // address and not a secret, and because it is baked into every page at

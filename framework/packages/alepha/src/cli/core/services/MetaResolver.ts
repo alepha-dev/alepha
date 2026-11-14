@@ -30,7 +30,11 @@ export class MetaResolver {
       // an empty string rather than throwing, and publishing a blank is worse
       // than falling through to what git says.
       name: override.name || this.slug(options.root),
-      version: override.version || (await this.gitTag()) || "latest",
+      version:
+        override.version ||
+        (await this.gitTag()) ||
+        (await this.gitDescribe()) ||
+        "latest",
       commit: override.commit || (await this.gitCommit()),
       build: {
         date: this.dateTime.nowISOString(),
@@ -120,6 +124,32 @@ export class MetaResolver {
   }
 
   /**
+   * The nearest release tag and how far HEAD is past it, or `undefined`:
+   * `0.37.0-12-g4ad66a8` is twelve commits after `0.37.0`, at `4ad66a8`.
+   *
+   * What an untagged build reports (#Q3639). A continuously deployed app is
+   * untagged on almost every deploy, and `"latest"` said nothing about which
+   * release it had moved past. Apps used to cover that by publishing
+   * `package.json`'s version instead, which stops working once a release sets
+   * that version on its runner and never commits it: on `main` it is a
+   * placeholder.
+   *
+   * `--match` keeps it to release-shaped tags, so a stray `latest` or
+   * `deploy-x` tag is never taken for a version. A leading `v` is dropped,
+   * as {@link gitTag} does.
+   *
+   * ⚠️ Needs the history back to a tag. A shallow checkout (the
+   * `actions/checkout` default) finds none and falls through to `"latest"`:
+   * a job whose build is deployed needs `fetch-depth: 0`.
+   */
+  protected async gitDescribe(): Promise<string | undefined> {
+    const out = await this.git(
+      `git describe --tags --match "[0-9]*.[0-9]*.[0-9]*" --match "v[0-9]*.[0-9]*.[0-9]*"`,
+    );
+    return out ? out.replace(/^v(?=\d)/, "") : undefined;
+  }
+
+  /**
    * Short commit SHA, or `undefined` when there is no git.
    *
    * Deliberately not `"unknown"`: absence is a fact consumers can read, where
@@ -168,9 +198,9 @@ export interface MetaResolveOptions {
    * Values from the app's `alepha.config.ts` `meta` block, which win over
    * anything resolved here.
    *
-   * This is what an app uses when the git tag is not the answer it wants to
-   * publish - most often a continuously deployed app, where the tag chain
-   * resolves to `"latest"` on every deploy that is not a release.
+   * This is what an app uses when git is not the answer it wants to publish.
+   * A continuously deployed app no longer needs it (#Q3639): an untagged
+   * deploy reports `git describe`, the release it follows and the distance.
    */
   override?: Partial<Pick<AlephaMeta, "name" | "version" | "commit">>;
 }

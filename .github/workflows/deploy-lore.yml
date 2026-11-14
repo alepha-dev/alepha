@@ -81,6 +81,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # The history back to the last release tag: an untagged build
+          # reports `git describe` as its version (#Q3639), which a shallow
+          # checkout cannot answer.
+          fetch-depth: 0
           fetch-tags: true
 
       - name: Setup
