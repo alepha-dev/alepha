@@ -900,11 +900,11 @@ test.describe("Apps", () => {
     await test.step("the header names where the app answers, from what it reported", async () => {
       // Nobody typed this. It is the `host` of the batch three steps up,
       // stamped onto the sigil beside `lastSeenAt` — which is the whole point
-      // of detecting it rather than asking for it. `first()`: the Overview's
-      // identity card links the same address, below the header.
+      // of detecting it rather than asking for it. The header reads it whole,
+      // scheme included; `first()` in case another link reads the same.
       const link = page
         .getByRole("link", {
-          name: "docs.alepha.dev",
+          name: "https://docs.alepha.dev",
           exact: true,
         })
         .first();
@@ -934,7 +934,7 @@ test.describe("Apps", () => {
       await page.getByRole("button", { name: "Save", exact: true }).click();
 
       const pinned = page.getByRole("link", {
-        name: "alepha.dev/docs",
+        name: "https://alepha.dev/docs",
         exact: true,
       });
       await expect(pinned).toBeVisible({ timeout: 15_000 });
@@ -946,7 +946,10 @@ test.describe("Apps", () => {
       await page.getByRole("button", { name: "Save", exact: true }).click();
 
       await expect(
-        page.getByRole("link", { name: "docs.alepha.dev", exact: true }),
+        page.getByRole("link", {
+          name: "https://docs.alepha.dev",
+          exact: true,
+        }),
       ).toBeVisible({ timeout: 15_000 });
 
       // ⚠️ The render above does NOT prove this. `appUrl` falls back on any
