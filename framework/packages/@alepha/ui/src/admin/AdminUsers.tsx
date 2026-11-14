@@ -18,6 +18,7 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   Check,
   CircleDot,
+  Clock,
   Trash2,
   UserCheck,
   UserPlus,
@@ -59,6 +60,24 @@ export interface AdminUsersProps {
     | "lastLoginAt"
   >;
 }
+
+/**
+ * Windows offered for "last active", in hours: the same three the sessions
+ * list offers for "last used". `24` is what the dashboard's Connected tile
+ * links to (`?active=24`).
+ *
+ * A literal `labelKey` each, for the reason `AdminSessions` gives: the
+ * French catalogue's spec reads keys out of the source.
+ */
+const ACTIVE_WINDOWS = [
+  { hours: "1", labelKey: "admin.users.activeWithin1", fallback: "Last hour" },
+  { hours: "24", labelKey: "admin.users.activeWithin24", fallback: "Last day" },
+  {
+    hours: "168",
+    labelKey: "admin.users.activeWithin168",
+    fallback: "Last week",
+  },
+] as const;
 
 type StatusPreset = {
   enabled?: boolean;
@@ -170,6 +189,20 @@ export const AdminUsers = (props: AdminUsersProps) => {
         clearLabel: tr("admin.users.statusAll", { default: "All status" }),
       },
     },
+    // Signed in or refreshed a session within the window: the predicate the
+    // dashboard's Connected tile counts, so its link totals the same.
+    active: {
+      schema: z.string(),
+      label: tr("admin.users.filterActive", { default: "Last active" }),
+      icon: Clock,
+      items: ACTIVE_WINDOWS.map((window) => ({
+        value: window.hours,
+        label: tr(window.labelKey, { default: window.fallback }),
+      })),
+      control: {
+        clearLabel: tr("admin.users.activeAny", { default: "Any time" }),
+      },
+    },
   } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
@@ -190,6 +223,11 @@ export const AdminUsers = (props: AdminUsersProps) => {
           search: params.filters?.search || undefined,
           enabled: preset?.enabled,
           emailVerified: preset?.emailVerified,
+          // A stale stored value that is not a number means no filter.
+          activeWithinHours:
+            Number(params.filters?.active) >= 1
+              ? Number(params.filters?.active)
+              : undefined,
           userRealmName: props.userRealmName,
         },
       });
@@ -402,7 +440,9 @@ export const AdminUsers = (props: AdminUsersProps) => {
               ]
             : undefined
         }
-        filters={{ fields: filterFields }}
+        // The dashboard's tiles link here: `?active=24`, and `?filters=none`
+        // for the whole list.
+        filters={{ fields: filterFields, fromQuery: ["active", "status"] }}
         bulkActions={[
           {
             label: tr("admin.users.bulkDisable", {

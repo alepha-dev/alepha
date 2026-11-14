@@ -471,15 +471,36 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.audits.colStatus": "Statut",
   "admin.audits.colWhen": "Date",
   "admin.audits.failed": "Échec",
+  "admin.audits.filterType": "Type",
   "admin.audits.layerAll": "Toutes les portées",
   "admin.audits.layerApp": "Application",
   "admin.audits.layerScoped": "Par ressource",
   "admin.audits.ok": "OK",
   "admin.audits.statusAll": "Tous les statuts",
+  "admin.audits.typeAll": "Tous les types",
   "admin.audits.actorAll": "Tous les auteurs",
   "admin.audits.dateAll": "Toute date",
+  "admin.dashboard.connected": "Connectés",
+  "admin.dashboard.connectedNote":
+    "Connexion ou session rafraîchie dans les dernières 24 heures.",
+  "admin.dashboard.connectedTooltip":
+    "Utilisateurs distincts qui se sont connectés ou ont rafraîchi une session dans les dernières 24 heures, clés d'API non comprises.",
   "admin.dashboard.deltaNew": "nouveau",
+  "admin.dashboard.failedSignIns": "Connexions échouées",
+  "admin.dashboard.failedSignInsDelta":
+    "7 derniers jours par rapport aux 7 précédents",
+  "admin.dashboard.failedSignInsNote": "7 derniers jours, UTC.",
+  "admin.dashboard.failedSignInsTooltip":
+    "Audits de connexion et de sécurité en échec (mot de passe ou code erroné, tentative bloquée ou limitée), sur les 7 derniers jours en UTC. Un verrouillage en écrit deux.",
   "admin.dashboard.unavailable": "n.d.",
+  "admin.dashboard.usersDelta":
+    "Inscriptions, 7 derniers jours par rapport aux 7 précédents",
+  "admin.dashboard.usersSignups": {
+    one: "{count} inscription en 7 jours",
+    other: "{count} inscriptions en 7 jours",
+  },
+  "admin.dashboard.usersTooltip":
+    "Tous les comptes, comptes désactivés compris.",
   "admin.dashboard.vsPrevious": "par rapport à la période précédente",
   "admin.detail.copyValue": "Copier $1",
   "admin.files.allBuckets": "Tous les buckets",
@@ -1131,6 +1152,10 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.userDetail.usernameRequired": "L'identifiant est requis",
   "admin.userDetail.verified": "Vérifié",
   "admin.users.active": "Actif",
+  "admin.users.activeAny": "N'importe quand",
+  "admin.users.activeWithin1": "Dernière heure",
+  "admin.users.activeWithin168": "Dernière semaine",
+  "admin.users.activeWithin24": "Dernier jour",
   "admin.users.bulkDelete": "Supprimer la sélection",
   "admin.users.bulkDeleteConfirm": {
     one: "Supprimer {count} utilisateur ? L'opération est irréversible.",
@@ -1176,6 +1201,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.users.createTitle": "Créer un utilisateur",
   "admin.users.createUsernameRequired": "L'identifiant est requis",
   "admin.users.created": "Utilisateur créé",
+  "admin.users.filterActive": "Dernière activité",
   "admin.users.deleteConfirm":
     "Supprimer définitivement $1 ? L'opération est irréversible.",
   "admin.users.deleteTitle": "Supprimer l'utilisateur",

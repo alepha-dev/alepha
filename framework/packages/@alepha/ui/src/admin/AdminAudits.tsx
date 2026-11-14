@@ -17,6 +17,7 @@ import { useRouter } from "alepha/react/router";
 import {
   CircleDot,
   Layers,
+  ListFilter,
   SlidersHorizontal,
   Trash2,
   User,
@@ -31,6 +32,7 @@ import type {
   DataTableFilterFields,
   DataTableFilterValues,
 } from "../table/dataTableTypes.ts";
+import { adminAuditDayRange } from "./adminDashboardWindows.ts";
 import { AdminPage } from "./AdminPage.tsx";
 import { AdminUserCell } from "./AdminUserCell.tsx";
 import { useConfirmedAction } from "./useConfirmedAction.tsx";
@@ -114,6 +116,24 @@ export const AdminAudits = () => {
         clearLabel: tr("admin.audits.statusAll", { default: "All status" }),
       },
     },
+    /**
+     * Several types at once (`?type=auth,security`), mapped to the
+     * comma-separated `type` the query already takes. The dashboard's Failed
+     * sign-ins tile links here with the two types it counts; the `action`
+     * filter below is one `type:action` pair and could not say that.
+     */
+    type: {
+      schema: z.array(z.string()),
+      label: tr("admin.audits.filterType", { default: "Type" }),
+      icon: ListFilter,
+      items: [...new Set(actions.map((pair) => pair.type))].map((type) => ({
+        value: type,
+        label: type,
+      })),
+      control: {
+        clearLabel: tr("admin.audits.typeAll", { default: "All types" }),
+      },
+    },
     action: {
       schema: z.string(),
       label: tr("admin.audits.colAction", { default: "Action" }),
@@ -193,7 +213,8 @@ export const AdminAudits = () => {
           page: params.page,
           size: params.size,
           sort: params.sort,
-          type: pair?.type,
+          // A picked `type:action` pair names its type; otherwise the types.
+          type: pair?.type ?? (f?.type?.length ? f.type.join(",") : undefined),
           action: pair?.action,
           layer: f?.layer,
           userId: f?.userId || undefined,
@@ -204,10 +225,7 @@ export const AdminAudits = () => {
           // end runs to the last millisecond so a one-day range selects that
           // day rather than nothing.
           ...(f?.createdAt?.length === 2
-            ? {
-                from: `${f.createdAt[0]}T00:00:00.000Z`,
-                to: `${f.createdAt[1]}T23:59:59.999Z`,
-              }
+            ? adminAuditDayRange(f.createdAt[0]!, f.createdAt[1]!)
             : {}),
         },
       });
@@ -283,7 +301,11 @@ export const AdminAudits = () => {
             onClick: (items, ctx) => bulkDelete.run(items, ctx),
           },
         ]}
-        filters={{ fields: filterFields }}
+        // The dashboard's Failed sign-ins tile links here with these three.
+        filters={{
+          fields: filterFields,
+          fromQuery: ["type", "status", "createdAt"],
+        }}
         columns={{
           createdAt: {
             label: tr("admin.audits.colWhen", { default: "When" }),

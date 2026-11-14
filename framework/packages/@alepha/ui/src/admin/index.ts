@@ -22,6 +22,19 @@ export {
   type AdminDashboardProps,
 } from "./AdminDashboard.tsx";
 export type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+export {
+  AdminConnectedTile,
+  type AdminConnectedTileProps,
+} from "./AdminConnectedTile.tsx";
+export {
+  type AdminDashboardDayWindow,
+  adminAuditDayRange,
+  adminDashboardDayWindow,
+} from "./adminDashboardWindows.ts";
+export {
+  AdminFailedSignInsTile,
+  type AdminFailedSignInsTileProps,
+} from "./AdminFailedSignInsTile.tsx";
 export { AdminFiles } from "./AdminFiles.tsx";
 export {
   AdminStatTile,
@@ -63,5 +76,6 @@ export {
 } from "./AdminUserDetail.tsx";
 export { AdminWebhookDetail } from "./AdminWebhookDetail.tsx";
 export { AdminWebhooks } from "./AdminWebhooks.tsx";
+export { AdminUsersTile, type AdminUsersTileProps } from "./AdminUsersTile.tsx";
 export { AdminUsers, type AdminUsersProps } from "./AdminUsers.tsx";
 export { useConfirmedAction } from "./useConfirmedAction.tsx";

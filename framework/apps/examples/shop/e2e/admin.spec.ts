@@ -620,11 +620,9 @@ test.describe("the admin sidebar", () => {
      * The whole tile set, in order.
      *
      * The shop's two cards carry no `order`, so they sort at 0 and lead the
-     * single built-in parked at 1000. Asserted as an exact list rather than
-     * per-tile visibility because both halves of the decision are
-     * load-bearing and invisible to a looser check: that an application's
-     * cards come first, and that the framework ships exactly ONE baseline
-     * tile rather than a dashboard of its own plumbing.
+     * three built-ins parked at 1000 and up. Asserted as an exact list rather
+     * than per-tile visibility, because that an application's cards come
+     * first is the load-bearing half and a looser check would not see it.
      */
     const tiles = await page
       .locator('[data-slot="card-title"]')
@@ -636,6 +634,80 @@ test.describe("the admin sidebar", () => {
       // The built-in tile reads its label from the same key as the sidebar
       // entry it links to, so it is French here too.
       "Utilisateurs",
+      "Connectés",
+      "Connexions échouées",
     ]);
+  });
+});
+
+/**
+ * Each built-in tile opens its list filtered to the same number (#Q3536),
+ * and a filter the admin stored on that list last time does not narrow it:
+ * the Users tile carries no filter of its own, so it relies on `?filters=none`.
+ */
+test.describe("the dashboard's tiles", () => {
+  // The card title, not any link: the sidebar entry says "Utilisateurs" too.
+  const tileOf = (page: Page, label: string) =>
+    page.getByRole("link").filter({
+      has: page
+        .locator('[data-slot="card-title"]')
+        .getByText(label, { exact: true }),
+    });
+
+  const tileValue = async (page: Page, label: string) => {
+    const value = tileOf(page, label).locator('[data-slot="stat-value"]');
+    await expect(value).toHaveText(/^[\d\s\u202f.,]+$/);
+    return Number((await value.innerText()).replace(/\D/g, ""));
+  };
+
+  const expectListTotal = async (page: Page, total: number) => {
+    // The footer reads "Page 1 sur 1 · 3 sur 3"; an empty list says so.
+    if (total === 0) {
+      await expect(page.getByText(/Aucun résultat|No results/)).toBeVisible();
+      return;
+    }
+    await expect(
+      page.getByText(new RegExp(`·\\s*\\d+ sur ${total}$`)),
+    ).toBeVisible();
+  };
+
+  test("each tile's click lands on a list whose total equals the tile, even with a stored filter", async ({
+    page,
+  }) => {
+    // One failed sign-in, so the failures tile has something to count.
+    await page.goto("/auth/login");
+    await page.locator('input[name="identifier"]').fill("nobody@example.test");
+    await page.locator('input[name="password"]').fill("not-the-password");
+    await page.getByRole("button", { name: /Sign in|Se connecter/ }).click();
+    await expect(page.locator('input[name="password"]')).toBeVisible();
+
+    await signInAsAdmin(page);
+    await page.goto("/admin");
+    // Stored filters that would each narrow the list under its tile.
+    await page.evaluate(() => {
+      window.localStorage.setItem(
+        "admin.users.filters",
+        JSON.stringify({ status: "disabled" }),
+      );
+      window.localStorage.setItem(
+        "admin.audits.filters",
+        JSON.stringify({ status: "ok" }),
+      );
+    });
+
+    for (const [label, url] of [
+      ["Utilisateurs", /\/admin\/users\?filters=none$/],
+      ["Connectés", /\/admin\/users\?active=24$/],
+      [
+        "Connexions échouées",
+        /\/admin\/audits\?status=failed&type=auth,security&createdAt=/,
+      ],
+    ] as const) {
+      await page.goto("/admin");
+      const value = await tileValue(page, label);
+      await tileOf(page, label).click();
+      await expect(page).toHaveURL(url);
+      await expectListTotal(page, value);
+    }
   });
 });

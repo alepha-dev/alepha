@@ -15,7 +15,7 @@ import type {
   AdminUserController,
 } from "alepha/api/users";
 import type { AdminWebhookController } from "alepha/api/webhooks";
-import { I18nProvider, Translate } from "alepha/react/i18n";
+import { I18nProvider } from "alepha/react/i18n";
 import { $client } from "alepha/server/links";
 import {
   Bell,
@@ -34,9 +34,11 @@ import {
 import { createElement } from "react";
 
 import { $pageNav } from "../shell/$pageNav.tsx";
+import { AdminConnectedTile } from "./AdminConnectedTile.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+import { AdminFailedSignInsTile } from "./AdminFailedSignInsTile.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
-import { AdminStatTile } from "./AdminStatTile.tsx";
+import { AdminUsersTile } from "./AdminUsersTile.tsx";
 
 /**
  * The whole `/admin` surface, fifteen pages and their shell, mounted and wired.
@@ -280,42 +282,44 @@ export class AdminRouter {
   });
 
   /**
-   * Exactly one built-in card, then the application's.
+   * The built-in tiles, then the application's.
    *
-   * One is deliberate. The framework's job here is the contract, not the
-   * content: `users` exists to show what a card looks like — gated on an
-   * action so it disappears with its module, parked in the reserved 1000
-   * band so an application's own cards lead — and nothing more. A dashboard
-   * of framework tiles would decide what every admin's landing page says,
-   * which is the application's call, and it would be the wrong call for most
-   * of them: Sessions and Jobs are plumbing, not headlines.
+   * Three, each a number an operator acts on and each opening its list
+   * filtered to that same number: **Users** (every account, with sign-ups
+   * against the week before), **Connected** (distinct users signed in or
+   * refreshed in 24 hours) and **Failed sign-ins** (7 days, warning above a
+   * threshold). This reverses the earlier "exactly one built-in card" rule:
+   * with a layout an admin edits, a framework tile nobody wants is hidden in
+   * a click rather than a deploy, so shipping useful defaults no longer
+   * decides an application's landing page for it.
    *
-   * An application says what matters by contributing
-   * `AdminRouterOptions.dashboardCards`; see `apps/examples/shop`, which adds
-   * its catalogue and orders and so leads with them.
+   * The rest of the contract stands. Each tile is gated on the action it
+   * reads, never a permission, so it disappears with its module; and they
+   * sit in the reserved 1000 band, so an application's own cards, which
+   * declare no `order`, still lead.
    */
   protected dashboardCards(): AdminDashboardCard[] {
     return [
       {
         id: "users",
         order: 1000,
-        can: () => this.userApi.findUsers.can(),
+        can: () => this.userApi.getUserStats.can(),
+        render: () => createElement(AdminUsersTile, { id: "users" }),
+      },
+      {
+        id: "connected",
+        order: 1010,
+        can: () => this.userApi.getUserStats.can(),
+        render: () => createElement(AdminConnectedTile, { id: "connected" }),
+      },
+      {
+        id: "failed-sign-ins",
+        order: 1020,
+        can: () => this.auditApi.findAudits.can(),
         render: () =>
-          createElement(AdminStatTile, {
-            id: "users",
-            // `render` runs inside `AdminDashboard`'s render but not inside a
-            // hook-safe position, so the label is an element that looks the
-            // key up itself rather than a `tr` call here. Same key as the nav
-            // entry: it is the same word on the same subject.
-            label: createElement(Translate, {
-              k: "admin.nav.users",
-              fallback: "Users",
-            }),
-            href: "/admin/users",
-            icon: createElement(UsersIcon, { className: "size-4" }),
-            load: async () =>
-              (await this.userApi.findUsers({ query: { size: 1 } })).page
-                .totalElements ?? 0,
+          createElement(AdminFailedSignInsTile, {
+            id: "failed-sign-ins",
+            alertThreshold: this.options.failedSignInsAlertThreshold,
           }),
       },
       ...(this.options.dashboardCards ?? []),
