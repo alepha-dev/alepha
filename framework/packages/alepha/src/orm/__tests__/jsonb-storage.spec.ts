@@ -2,8 +2,7 @@ import { Alepha, z } from "alepha";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
-import { $entity, $repository, DatabaseProvider, sql } from "../core/index.ts";
-import { db } from "../core/index.ts";
+import { $entity, $repository, DatabaseProvider, db, sql } from "../core/index.ts";
 
 const documents = $entity({
   name: "test_jsonb_documents",

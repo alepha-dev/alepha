@@ -442,15 +442,16 @@ export class PostgresModelBuilder extends ModelBuilder {
     }
 
     if (format === "date-time") {
-      if (hasAttr(value, PG_CREATED_AT)) {
+      if (hasAttr(value, PG_CREATED_AT) || hasAttr(value, PG_UPDATED_AT)) {
+        // `now()` stamps microseconds, which a JS date cannot hold: a row
+        // read back and matched on its own `updatedAt` (an optimistic guard)
+        // never matched, where SQLite's default is in milliseconds. An ORM
+        // insert takes the time here, in milliseconds; the DDL keeps
+        // `DEFAULT now()` for raw SQL, so no migration changes.
         return pg
           .timestamp(key, { mode: "string", withTimezone: true })
-          .defaultNow();
-      }
-      if (hasAttr(value, PG_UPDATED_AT)) {
-        return pg
-          .timestamp(key, { mode: "string", withTimezone: true })
-          .defaultNow();
+          .defaultNow()
+          .$defaultFn(() => new Date().toISOString());
       }
       return pg.timestamp(key, { mode: "string", withTimezone: true });
     }

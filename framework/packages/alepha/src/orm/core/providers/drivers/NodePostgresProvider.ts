@@ -61,8 +61,12 @@ export class NodePostgresProvider extends PostgresProvider {
   protected static jsonPassThrough<T extends postgres.Sql<any>>(client: T): T {
     const serialize = (value: unknown) =>
       typeof value === "string" ? value : JSON.stringify(value);
+    const serializers = client.options.serializers as Record<
+      string,
+      (value: unknown) => unknown
+    >;
     for (const oid of ["114", "3802"]) {
-      client.options.serializers[oid] = serialize;
+      serializers[oid] = serialize;
     }
     return client;
   }

@@ -1313,13 +1313,28 @@ export abstract class Repository<T extends ZObject> {
    */
   public decodeRow(row: Record<string, unknown>): Infer<T> {
     const mapped: Record<string, unknown> = {};
+    // drizzle normalizes a driver value by the dialect's codec before the
+    // column maps it (a Postgres bigint arrives as a string, its codec makes
+    // it a number); a raw row skipped that step and failed the schema.
+    const codecs = (
+      this.provider.db as unknown as {
+        dialect?: {
+          codecs?: { apply(column: unknown, type: string, value: unknown): unknown };
+        };
+      }
+    ).dialect?.codecs;
     for (const [key, column] of Object.entries(
       getTableColumns(this.pgTable as PgTable),
     )) {
       const value = Object.hasOwn(row, column.name)
         ? row[column.name]
         : row[key];
-      mapped[key] = value == null ? value : column.mapFromDriverValue(value);
+      mapped[key] =
+        value == null
+          ? value
+          : column.mapFromDriverValue(
+              codecs ? codecs.apply(column, "normalize", value) : value,
+            );
     }
     return this.clean(mapped, this.entity.schema);
   }

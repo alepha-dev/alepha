@@ -378,6 +378,26 @@ export class QueryManager {
     // it against the column would refuse every such search. Passed as is.
     const patternValue = (value: any): any => value;
 
+    // A pattern over a structured Postgres column (jsonb, json, an array)
+    // matches its JSON text, which is what the column holds on SQLite: one
+    // `like: '%"bug"%'` then means the same on both dialects, where Postgres
+    // refused it outright (`operator does not exist: text[] ~~ unknown`).
+    // `jsonb::text` puts a space after each `:` and `,`, so a pattern can
+    // name a key or a value, not a `"key":"value"` pair.
+    const patternTarget = (): SQL | PgColumn => {
+      if (dialect !== "postgresql") return column;
+      const meta = column as { getSQLType?: () => string; dimensions?: number };
+      // drizzle marks an array by its `dimensions`; the SQL type is the
+      // element's (`text` for a `text[]`).
+      if ((meta.dimensions ?? 0) > 0) {
+        return sql`array_to_json(${column})::text`;
+      }
+      const type =
+        typeof meta.getSQLType === "function" ? meta.getSQLType() : "";
+      if (type === "jsonb" || type === "json") return sql`${column}::text`;
+      return column;
+    };
+
     // Helper function to encode array values
     const encodeArray = (values: any[]): any[] => {
       return values.map((v) => encodeValue(v));
@@ -478,11 +498,13 @@ export class QueryManager {
     }
 
     if (operator?.like != null) {
-      conditions.push(like(column, patternValue(operator.like)));
+      conditions.push(like(patternTarget(), patternValue(operator.like)));
     }
 
     if (operator?.notLike != null) {
-      conditions.push(notLike(column, patternValue(operator.notLike)));
+      conditions.push(
+        notLike(patternTarget(), patternValue(operator.notLike)),
+      );
     }
 
     if (operator?.eqInsensitive != null) {
@@ -516,7 +538,7 @@ export class QueryManager {
           sql`LOWER(${column}) LIKE LOWER(${patternValue(operator.ilike)})`,
         );
       } else {
-        conditions.push(ilike(column, patternValue(operator.ilike)));
+        conditions.push(ilike(patternTarget(), patternValue(operator.ilike)));
       }
     }
 
@@ -527,7 +549,9 @@ export class QueryManager {
           sql`LOWER(${column}) NOT LIKE LOWER(${patternValue(operator.notIlike)})`,
         );
       } else {
-        conditions.push(notIlike(column, patternValue(operator.notIlike)));
+        conditions.push(
+          notIlike(patternTarget(), patternValue(operator.notIlike)),
+        );
       }
     }
 
