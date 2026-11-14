@@ -135,9 +135,7 @@ export const AutomationSubscriptionBell = (
   };
   const pick = (value: Channel, checked: boolean) =>
     setChannels((current) =>
-      CHANNELS.filter((it) =>
-        it === value ? checked : current.includes(it),
-      ),
+      CHANNELS.filter((it) => (it === value ? checked : current.includes(it))),
     );
 
   return (
@@ -153,7 +151,7 @@ export const AutomationSubscriptionBell = (
               disabled={!state.data || set.loading}
               data-testid={props.testId}
               data-subscribed={subscribed || undefined}
-              onClick={() => void toggle()}
+              onClick={() => toggle()}
             />
           }
         >
@@ -189,7 +187,9 @@ export const AutomationSubscriptionBell = (
                     checked={channels.includes(value)}
                     onCheckedChange={(checked) => pick(value, checked)}
                   />
-                  {tr(`automation.subscription.channel.${value}`)}
+                  {value === "inbox"
+                    ? tr("automation.subscription.channel.inbox")
+                    : tr("automation.subscription.channel.email")}
                 </Label>
               ))}
             </div>

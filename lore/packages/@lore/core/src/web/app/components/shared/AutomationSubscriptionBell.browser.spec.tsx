@@ -173,14 +173,14 @@ describe("AutomationSubscriptionBell", () => {
     fireEvent.click(bell());
     await screen.findByText("A rule will notify you of every new feedback.");
     expect(
-      screen.getByRole("checkbox", { name: "In-app" }).getAttribute(
-        "aria-checked",
-      ),
+      screen
+        .getByRole("checkbox", { name: "In-app" })
+        .getAttribute("aria-checked"),
     ).toBe("true");
     expect(
-      screen.getByRole("checkbox", { name: "Email" }).getAttribute(
-        "aria-checked",
-      ),
+      screen
+        .getByRole("checkbox", { name: "Email" })
+        .getAttribute("aria-checked"),
     ).toBe("true");
 
     fireEvent.click(screen.getByRole("button", { name: "Unsubscribe" }));

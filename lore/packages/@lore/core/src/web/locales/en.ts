@@ -3850,7 +3850,8 @@ export default {
   "automation.adoption.reminderCount": "$1 configured quest reminders",
   "automation.adoption.replacement": "Replacement rule",
   "automation.adoption.create": "Create my compatibility rule",
-  "automation.subscription.on": "Subscribed: click to change or stop notifications",
+  "automation.subscription.on":
+    "Subscribed: click to change or stop notifications",
   "automation.subscription.channel": "Notify me by",
   "automation.subscription.channel.inbox": "In-app",
   "automation.subscription.channel.email": "Email",
