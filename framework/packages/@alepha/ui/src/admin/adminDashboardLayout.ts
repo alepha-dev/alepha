@@ -20,6 +20,35 @@ export interface AdminDashboardLayoutEntry {
 }
 
 /**
+ * The ids `AdminRouter`'s built-in cards take. An application's card may not
+ * reuse one.
+ */
+export const ADMIN_BUILTIN_DASHBOARD_CARD_IDS = [
+  "users",
+  "connected",
+  "failed-sign-ins",
+] as const;
+
+/**
+ * Why a set of cards cannot be a catalog, or `undefined` when it can: two
+ * cards sharing an id, the layout addressing tiles by id. `builtins` are the
+ * ids already taken, for an application's cards checked on their own.
+ */
+export const adminDashboardCardIdProblem = (
+  cards: readonly { id: string }[],
+  builtins: readonly string[] = ADMIN_BUILTIN_DASHBOARD_CARD_IDS,
+): string | undefined => {
+  const seen = new Set<string>(builtins);
+  for (const card of cards) {
+    if (seen.has(card.id)) {
+      return `Two admin dashboard cards share the id '${card.id}'. Ids are unique across the built-in cards (${builtins.join(", ")}) and AdminRouterOptions.dashboardCards.`;
+    }
+    seen.add(card.id);
+  }
+  return undefined;
+};
+
+/**
  * The catalog in its code order: ascending `order`, ties kept in the order
  * they were declared. Throws on a duplicate id, since the layout addresses
  * tiles by id and two tiles sharing one would show or hide together.
@@ -27,14 +56,9 @@ export interface AdminDashboardLayoutEntry {
 export const adminDashboardCatalog = (
   cards: readonly AdminDashboardCard[],
 ): AdminDashboardCard[] => {
-  const seen = new Set<string>();
-  for (const card of cards) {
-    if (seen.has(card.id)) {
-      throw new AlephaError(
-        `Two admin dashboard cards share the id '${card.id}'. Ids are unique across the built-in cards and AdminRouterOptions.dashboardCards.`,
-      );
-    }
-    seen.add(card.id);
+  const problem = adminDashboardCardIdProblem(cards, []);
+  if (problem) {
+    throw new AlephaError(problem);
   }
   return [...cards].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 };

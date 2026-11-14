@@ -223,13 +223,22 @@ describe("AdminRouter", () => {
     expect(visible()).toEqual(["users", "connected", "failed-sign-ins"]);
   });
 
-  it("refuses to start with two dashboard cards sharing an id", async () => {
+  it("refuses options whose dashboard card reuses an id, when they are set", async () => {
+    // Set before `start` by every app, so this is a startup failure.
     const alepha = Alepha.create().with(AlephaReactRouter);
-    alepha.set(adminRouterOptionsAtom, {
-      dashboardCards: [{ id: "users", title: "Mine", render: () => null }],
-    });
-    alepha.inject(AdminRouter);
-    await expect(alepha.start()).rejects.toThrow("share the id 'users'");
+    expect(() =>
+      alepha.set(adminRouterOptionsAtom, {
+        dashboardCards: [{ id: "users", title: "Mine", render: () => null }],
+      }),
+    ).toThrow("share the id 'users'");
+    expect(() =>
+      alepha.set(adminRouterOptionsAtom, {
+        dashboardCards: [
+          { id: "mine", title: "Mine", render: () => null },
+          { id: "mine", title: "Again", render: () => null },
+        ],
+      }),
+    ).toThrow("share the id 'mine'");
   });
 
   it("loads no layout, and no error, when the layout action is not offered", async () => {

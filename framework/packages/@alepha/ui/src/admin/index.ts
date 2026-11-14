@@ -23,6 +23,8 @@ export {
 } from "./AdminDashboard.tsx";
 export type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
 export {
+  ADMIN_BUILTIN_DASHBOARD_CARD_IDS,
+  adminDashboardCardIdProblem,
   type AdminDashboardLayoutEntry,
   type AdminDashboardLayoutTile,
   adminDashboardCatalog,

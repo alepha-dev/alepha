@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { NavGroup } from "../shell/appShellNav.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+import { adminDashboardCardIdProblem } from "./adminDashboardLayout.ts";
 import type { AdminParametersProps } from "./AdminParameters.tsx";
 import type { AdminUserDetailProps } from "./AdminUserDetail.tsx";
 import type { AdminUsersProps } from "./AdminUsers.tsx";
@@ -167,6 +168,14 @@ export interface AdminRouterOptions {
 export const adminRouterOptionsAtom = $atom({
   name: "alepha.ui.admin.router.options",
   description: "Chrome slots and per-page props for the admin router.",
-  schema: z.custom<AdminRouterOptions>(),
+  // Card ids are checked here, where the application sets its options
+  // (before `start`), so a duplicate fails the app at startup rather than on
+  // the first visit to `/admin`.
+  schema: z.custom<AdminRouterOptions>().superRefine((options, ctx) => {
+    const message = adminDashboardCardIdProblem(options?.dashboardCards ?? []);
+    if (message) {
+      ctx.addIssue({ code: "custom", message });
+    }
+  }),
   default: {} satisfies AdminRouterOptions,
 });

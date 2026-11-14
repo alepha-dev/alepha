@@ -4,13 +4,13 @@ import { $secure } from "alepha/security";
 import { $action, ConflictError } from "alepha/server";
 
 import { ParameterAudits } from "../audits/ParameterAudits.ts";
-import { $parameter } from "../primitives/$parameter.ts";
 import { adminDashboardLayoutResponseSchema } from "../schemas/adminDashboardLayoutResponseSchema.ts";
 import {
   type AdminDashboardLayout,
   adminDashboardLayoutSchema,
 } from "../schemas/adminDashboardLayoutSchema.ts";
 import { setAdminDashboardLayoutBodySchema } from "../schemas/setAdminDashboardLayoutBodySchema.ts";
+import { AdminDashboardLayoutParameter } from "../services/AdminDashboardLayoutParameter.ts";
 import { ParameterProvider } from "../services/ParameterProvider.ts";
 
 /**
@@ -42,15 +42,14 @@ export class AdminDashboardLayoutController {
   protected readonly alepha = $inject(Alepha);
 
   /**
-   * The stored layout. Empty `tiles` means "the code defaults", which is
-   * also what a deployment that never saved one gets.
+   * The parameter, declared on a class of its own so this one stays a pure
+   * controller.
    */
-  public readonly layout = $parameter({
-    name: "admin.dashboard.layout",
-    description: "Which admin dashboard tiles show, and in what order.",
-    schema: adminDashboardLayoutSchema,
-    default: { tiles: [] },
-  });
+  protected readonly parameter = $inject(AdminDashboardLayoutParameter);
+
+  protected get layout() {
+    return this.parameter.layout;
+  }
 
   /**
    * The layout and its version, for any admin.

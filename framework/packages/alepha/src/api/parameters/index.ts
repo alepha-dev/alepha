@@ -4,6 +4,7 @@ import { ParameterAudits } from "./audits/ParameterAudits.ts";
 import { AdminDashboardLayoutController } from "./controllers/AdminDashboardLayoutController.ts";
 import { AdminParameterController } from "./controllers/AdminParameterController.ts";
 import { $parameter } from "./primitives/$parameter.ts";
+import { AdminDashboardLayoutParameter } from "./services/AdminDashboardLayoutParameter.ts";
 import { ParameterProvider } from "./services/ParameterProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -33,6 +34,7 @@ export * from "./schemas/parameterVersionResponseSchema.ts";
 export * from "./schemas/rollbackParameterBodySchema.ts";
 export * from "./schemas/setAdminDashboardLayoutBodySchema.ts";
 // Service exports
+export * from "./services/AdminDashboardLayoutParameter.ts";
 export * from "./services/ParameterProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -54,6 +56,7 @@ export const AlephaApiParameters = $module({
   primitives: [$parameter],
   services: [
     ParameterProvider,
+    AdminDashboardLayoutParameter,
     AdminParameterController,
     AdminDashboardLayoutController,
   ],

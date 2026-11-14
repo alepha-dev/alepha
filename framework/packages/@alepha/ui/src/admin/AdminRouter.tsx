@@ -1,4 +1,4 @@
-import { $hook, $inject, $store, z } from "alepha";
+import { $inject, $store, z } from "alepha";
 import type { AdminAnalyticsController } from "alepha/api/analytics";
 import type { AdminAuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
@@ -289,19 +289,9 @@ export class AdminRouter {
   });
 
   /**
-   * A duplicate card id fails the app at startup, not on the first visit to
-   * `/admin`: the options are set before `start`, so this is the earliest
-   * moment the whole catalog exists.
-   */
-  protected readonly checkDashboardCatalog = $hook({
-    on: "start",
-    handler: () => {
-      this.dashboardCatalog();
-    },
-  });
-
-  /**
-   * The catalog, in code order, ids checked unique.
+   * The catalog, in code order, ids checked unique. An application's card
+   * reusing an id is refused earlier, when the options are set
+   * (`adminRouterOptionsAtom`'s schema); this check is the net behind it.
    */
   protected dashboardCatalog(): AdminDashboardCard[] {
     return adminDashboardCatalog(this.dashboardCards());
