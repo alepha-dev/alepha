@@ -7,8 +7,8 @@ import {
   ProjectScopeGrants,
 } from "@lore/core/web";
 import { EpicFoliosList } from "@lore/knowledge/web";
-import type { AreaResource } from "@lore/work/schemas";
-import { ProjectSettingsAreasPage } from "@lore/work/testing";
+import type { AreaResource } from "@lore/plan/schemas";
+import { ProjectSettingsAreasPage } from "@lore/plan/testing";
 import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";

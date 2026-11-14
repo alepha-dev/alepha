@@ -5,7 +5,7 @@ import {
   FeedbackController,
   QuestController,
   ReleaseController,
-} from "@lore/work/api";
+} from "@lore/plan/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

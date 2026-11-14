@@ -4,7 +4,7 @@ import {
   FeedbackController,
   QuestController,
   ReleaseController,
-} from "@lore/work/api";
+} from "@lore/plan/api";
 import { Alepha, z } from "alepha";
 import { AuditService } from "alepha/api/audits";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";

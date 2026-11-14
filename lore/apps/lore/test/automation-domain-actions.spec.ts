@@ -14,7 +14,7 @@ import {
 import type { AutomationRule } from "@lore/core/schemas";
 import { FolioController } from "@lore/knowledge/api";
 import { folioRevisions } from "@lore/knowledge/schemas";
-import { QuestController } from "@lore/work/api";
+import { QuestController } from "@lore/plan/api";
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { audits } from "alepha/api/audits";
 import { RankService } from "alepha/api/organizations";

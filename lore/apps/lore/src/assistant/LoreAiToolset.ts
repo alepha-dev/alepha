@@ -8,13 +8,13 @@ import {
   QuestCommentController,
   QuestController,
   ReleaseController,
-} from "@lore/work/api";
+} from "@lore/plan/api";
 import {
   EpicTools,
   FeedbackTools,
   QuestTools,
   ReleaseTools,
-} from "@lore/work/mcp";
+} from "@lore/plan/mcp";
 import { $inject, Alepha } from "alepha";
 import type { ToolPrimitive } from "alepha/mcp";
 import type { ActionPrimitive } from "alepha/server";

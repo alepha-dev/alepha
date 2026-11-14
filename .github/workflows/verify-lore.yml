@@ -187,9 +187,9 @@ jobs:
             packages/@lore/deploy/test/uptime-controller.spec.ts
             packages/@lore/deploy/test/open-error-counter.spec.ts
             packages/@lore/knowledge/test/folio-
-            packages/@lore/work/test/WorkAutomationSelections.spec.ts
-            packages/@lore/work/test/release-default.spec.ts
-            packages/@lore/work/test/quest-count.spec.ts
+            packages/@lore/plan/test/WorkAutomationSelections.spec.ts
+            packages/@lore/plan/test/release-default.spec.ts
+            packages/@lore/plan/test/quest-count.spec.ts
 
   e2e-lore:
     runs-on: ubuntu-26.04

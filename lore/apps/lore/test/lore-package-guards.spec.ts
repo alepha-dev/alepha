@@ -29,7 +29,7 @@ const exportsOf = (pkg: string): string[] =>
 
 describe("@lore package guards", () => {
   it("finds the four packages", ({ expect }) => {
-    expect(PACKAGES.sort()).toEqual(["core", "deploy", "knowledge", "work"]);
+    expect(PACKAGES.sort()).toEqual(["core", "deploy", "knowledge", "plan"]);
   });
 
   /**

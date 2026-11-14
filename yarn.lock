@@ -175,7 +175,7 @@ __metadata:
     "@lore/core": "*"
     "@lore/deploy": "*"
     "@lore/knowledge": "*"
-    "@lore/work": "*"
+    "@lore/plan": "*"
     alepha: ">=0.37.0"
     react: "*"
     react-dom: "*"
@@ -186,7 +186,7 @@ __metadata:
       optional: true
     "@lore/knowledge":
       optional: true
-    "@lore/work":
+    "@lore/plan":
       optional: true
     alepha:
       optional: true
@@ -2237,9 +2237,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lore/work@workspace:*, @lore/work@workspace:lore/packages/@lore/work":
+"@lore/plan@workspace:*, @lore/plan@workspace:lore/packages/@lore/plan":
   version: 0.0.0-use.local
-  resolution: "@lore/work@workspace:lore/packages/@lore/work"
+  resolution: "@lore/plan@workspace:lore/packages/@lore/plan"
   dependencies:
     "@alepha/lore": "workspace:*"
     "@alepha/ui": "workspace:*"
@@ -5568,7 +5568,7 @@ __metadata:
   dependencies:
     "@alepha/lore": "workspace:*"
     "@lore/deploy": "workspace:*"
-    "@lore/work": "workspace:*"
+    "@lore/plan": "workspace:*"
     "@playwright/test": "npm:^1.65.0"
     "@types/bun": "npm:^1.4.4"
     "@types/ws": "npm:^8.18.2"
@@ -7189,7 +7189,7 @@ __metadata:
     "@lore/core": "workspace:*"
     "@lore/deploy": "workspace:*"
     "@lore/knowledge": "workspace:*"
-    "@lore/work": "workspace:*"
+    "@lore/plan": "workspace:*"
     "@tailwindcss/vite": "npm:^4.3.5"
     "@testing-library/dom": "npm:^10.4.2"
     "@testing-library/react": "npm:^16.3.3"

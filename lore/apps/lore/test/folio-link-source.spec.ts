@@ -1,6 +1,6 @@
 import { ProjectController, ResourceLinkService } from "@lore/core/api";
 import { FolioController } from "@lore/knowledge/api";
-import { EpicController, QuestController } from "@lore/work/api";
+import { EpicController, QuestController } from "@lore/plan/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

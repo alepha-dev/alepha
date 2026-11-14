@@ -1,4 +1,4 @@
-import { MAX_QUEST_OBJECTIVES } from "@lore/work/schemas";
+import { MAX_QUEST_OBJECTIVES } from "@lore/plan/schemas";
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./_fixtures.ts";

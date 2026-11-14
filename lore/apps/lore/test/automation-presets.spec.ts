@@ -14,7 +14,7 @@ import {
   FeedbackController,
   QuestController,
   EpicWorkflowService,
-} from "@lore/work/api";
+} from "@lore/plan/api";
 import { Alepha, AlephaError } from "alepha";
 import { JobQueueProvider, jobExecutionEntity } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";

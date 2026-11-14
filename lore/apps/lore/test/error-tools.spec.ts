@@ -1,7 +1,7 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { ProjectErrorTools } from "@lore/deploy/mcp";
 import { projectErrors } from "@lore/deploy/schemas";
-import { QuestTools } from "@lore/work/mcp";
+import { QuestTools } from "@lore/plan/mcp";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";

@@ -6,12 +6,12 @@ It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and 
 
 ## Layout: packages are modules, apps are executables
 
-`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in four private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/work`](packages/@lore/work/AGENTS.md), [`@lore/knowledge`](packages/@lore/knowledge/AGENTS.md), [`@lore/deploy`](packages/@lore/deploy/AGENTS.md).
+`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in four private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/plan`](packages/@lore/plan/AGENTS.md), [`@lore/knowledge`](packages/@lore/knowledge/AGENTS.md), [`@lore/deploy`](packages/@lore/deploy/AGENTS.md).
 
 | package           | is               | owns                                                                                                                                                                                     |
 | ----------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@lore/core`      | the glue         | projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, dashboard, reports, agent prompts, the web shell, every registry |
-| `@lore/work`      | Lore as Jira     | quests, epics, releases, areas, kanban, roadmap, feedback                                                                                                                                |
+| `@lore/plan`      | Lore as Jira     | quests, epics, releases, areas, kanban, roadmap, feedback                                                                                                                                |
 | `@lore/knowledge` | Lore as Obsidian | folios, directories, attachments, revisions, names                                                                                                                                       |
 | `@lore/deploy`    | Lore as Vercel   | apps, telemetry, deployments, hosts                                                                                                                                                      |
 
@@ -20,7 +20,7 @@ Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./tes
 ⚠️ **The rule** (`check:conventions`, graph table in `scripts/lore-package-graph.ts`):
 
 ```
-core <- work
+core <- plan
 core <- knowledge
 core <- deploy
 ```

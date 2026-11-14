@@ -1,5 +1,5 @@
 import { createTestProject } from "@lore/core/testing";
-import { createTestQuest } from "@lore/work/testing";
+import { createTestQuest } from "@lore/plan/testing";
 import { audits } from "alepha/api/audits";
 import type { ToolPrimitive } from "alepha/mcp";
 import { $repository } from "alepha/orm";

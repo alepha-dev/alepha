@@ -1,6 +1,6 @@
 import { HomeController, ProjectController } from "@lore/core/api";
 import { projectErrors } from "@lore/deploy/schemas";
-import { epics, feedback } from "@lore/work/schemas";
+import { epics, feedback } from "@lore/plan/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

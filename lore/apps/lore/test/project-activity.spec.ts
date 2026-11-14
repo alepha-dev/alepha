@@ -1,8 +1,8 @@
 import { ProjectController } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
 import { FolioTools } from "@lore/knowledge/mcp";
-import { FeedbackController } from "@lore/work/api";
-import { EpicTools, QuestTools, ReleaseTools } from "@lore/work/mcp";
+import { FeedbackController } from "@lore/plan/api";
+import { EpicTools, QuestTools, ReleaseTools } from "@lore/plan/mcp";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

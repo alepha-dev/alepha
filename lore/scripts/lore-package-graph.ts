@@ -8,7 +8,7 @@ import { dirname, join, normalize } from "node:path";
  * | package     | is               | may import  |
  * |-------------|------------------|-------------|
  * | `core`      | the glue         | nothing     |
- * | `work`      | Lore as Jira     | `core`      |
+ * | `plan`      | Lore as Jira     | `core`      |
  * | `knowledge` | Lore as Obsidian | `core`      |
  * | `deploy`    | Lore as Vercel   | `core`      |
  *
@@ -39,7 +39,7 @@ export class LorePackageGraph {
    */
   public static readonly GRAPH: Record<string, string[]> = {
     core: [],
-    work: ["core"],
+    plan: ["core"],
     knowledge: ["core"],
     deploy: ["core"],
   };

@@ -4,7 +4,7 @@ import { currentProjectAtom, I18n } from "@lore/core/web";
 import type { AppInstanceResource } from "@lore/deploy/schemas";
 import { ProjectArtifacts } from "@lore/deploy/testing";
 import { currentInstancesAtom } from "@lore/deploy/web";
-import { currentReleasesAtom, WorkShell } from "@lore/work/web";
+import { currentReleasesAtom, WorkShell } from "@lore/plan/web";
 import {
   cleanup,
   fireEvent,

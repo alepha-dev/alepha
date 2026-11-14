@@ -8,7 +8,7 @@ import {
   feedbackWorkPromptDefault,
   questLoopPromptDefault,
   WorkShell,
-} from "@lore/work/web";
+} from "@lore/plan/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";

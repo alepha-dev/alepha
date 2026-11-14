@@ -1,6 +1,6 @@
 import { AssistantSuggestionRegistry } from "@lore/core/web";
 import { DeployShell } from "@lore/deploy/web";
-import { WorkShell } from "@lore/work/web";
+import { WorkShell } from "@lore/plan/web";
 import { Alepha } from "alepha";
 import { AlephaReactRouter } from "alepha/react/router";
 import { describe, it } from "vitest";

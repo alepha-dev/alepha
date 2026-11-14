@@ -1,7 +1,7 @@
 import { DashboardMetricCatalog } from "@lore/core/schemas";
 import { dashboardFilterFields } from "@lore/core/web";
 import { DeployDashboardMetrics } from "@lore/deploy/schemas";
-import { WorkDashboardMetrics } from "@lore/work/schemas";
+import { WorkDashboardMetrics } from "@lore/plan/schemas";
 import { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, it } from "vitest";
 

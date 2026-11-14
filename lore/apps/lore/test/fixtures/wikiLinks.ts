@@ -7,7 +7,7 @@ import {
   ElementReferenceRegistry,
 } from "@lore/core/web";
 import { KnowledgeShell } from "@lore/knowledge/web";
-import { WorkShell } from "@lore/work/web";
+import { WorkShell } from "@lore/plan/web";
 import { Alepha } from "alepha";
 
 /**

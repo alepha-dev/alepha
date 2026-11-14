@@ -4,7 +4,7 @@ import { knowledgeCapabilityOptionsSchema } from "@lore/knowledge/schemas";
 import {
   supportCapabilityOptionsSchema,
   workCapabilityOptionsSchema,
-} from "@lore/work/schemas";
+} from "@lore/plan/schemas";
 import { describe, it } from "vitest";
 
 /**

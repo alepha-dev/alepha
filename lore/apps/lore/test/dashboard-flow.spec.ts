@@ -2,7 +2,7 @@ import { ProjectController, ProjectDashboardController } from "@lore/core/api";
 import type { DashboardCardValue, DashboardScope } from "@lore/core/schemas";
 import { projectCapabilities } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { ProjectReportsService } from "@lore/work/api";
+import { ProjectReportsService } from "@lore/plan/api";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";

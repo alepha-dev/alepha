@@ -17,10 +17,10 @@ import { folioDirectories, folios } from "@lore/knowledge/schemas";
  * pre-`start()` class every field this class has (or `extends` it), so the
  * whole FK closure gets registered up front.
  */
-import { WorkTestEntities } from "@lore/work/testing";
+import { WorkTestEntities } from "@lore/plan/testing";
 import { $repository } from "alepha/orm";
 
-export { createTestEpic, createTestQuest } from "@lore/work/testing";
+export { createTestEpic, createTestQuest } from "@lore/plan/testing";
 export { createTestFolio, filedEpicOf } from "@lore/knowledge/testing";
 
 export {

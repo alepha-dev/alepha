@@ -1,7 +1,7 @@
 import { ProjectController, ProjectDashboardController } from "@lore/core/api";
 import type { DashboardScope, ReportsQuery } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { ProjectReportsService } from "@lore/work/api";
+import { ProjectReportsService } from "@lore/plan/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

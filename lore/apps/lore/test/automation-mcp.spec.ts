@@ -12,7 +12,7 @@ import {
 } from "@lore/core/api";
 import type { AutomationResource, AutomationRule } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { ReleaseController } from "@lore/work/api";
+import { ReleaseController } from "@lore/plan/api";
 import { Alepha, AlephaError } from "alepha";
 import { audits } from "alepha/api/audits";
 import {

@@ -247,7 +247,7 @@ export default defineConfig({
       scan: [
         "src",
         "../../packages/@lore/core/src",
-        "../../packages/@lore/work/src",
+        "../../packages/@lore/plan/src",
         "../../packages/@lore/knowledge/src",
         "../../packages/@lore/deploy/src",
         "../../../framework/packages/@alepha/ui/src",

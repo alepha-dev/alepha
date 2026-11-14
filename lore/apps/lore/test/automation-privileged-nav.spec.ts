@@ -1,7 +1,7 @@
 import { AutomationAccess, ProjectController } from "@lore/core/api";
 import { createPresetRanks } from "@lore/core/testing";
 import { ProjectShellRegistry, visibleSettingsTabs } from "@lore/core/web";
-import { WorkShell } from "@lore/work/web";
+import { WorkShell } from "@lore/plan/web";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import type { UserAccountToken } from "alepha/security";

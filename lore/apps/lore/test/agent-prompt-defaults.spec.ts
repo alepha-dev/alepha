@@ -4,7 +4,7 @@ import {
 } from "@lore/core/schemas";
 import { AgentPromptRegistry, capabilityRegistry } from "@lore/core/web";
 import { DeployShell } from "@lore/deploy/web";
-import { WorkShell } from "@lore/work/web";
+import { WorkShell } from "@lore/plan/web";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 

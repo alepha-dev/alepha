@@ -6,7 +6,7 @@ import type {
 } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
 import { sigils } from "@lore/deploy/schemas";
-import { releases } from "@lore/work/schemas";
+import { releases } from "@lore/plan/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

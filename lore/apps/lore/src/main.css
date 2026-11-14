@@ -9,7 +9,7 @@
  * exporting `./web` is listed here.
  * ──────────────────────────────────────────────────────────────────────── */
 @source "../../../packages/@lore/core/src/web";
-@source "../../../packages/@lore/work/src/web";
+@source "../../../packages/@lore/plan/src/web";
 @source "../../../packages/@lore/knowledge/src/web";
 @source "../../../packages/@lore/deploy/src/web";
 

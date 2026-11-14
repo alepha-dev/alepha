@@ -1,8 +1,8 @@
-import type { EpicController } from "@lore/work/api";
-import type { FeedbackController } from "@lore/work/api";
-import type { QuestCommentController } from "@lore/work/api";
-import type { QuestController } from "@lore/work/api";
-import type { ReleaseController } from "@lore/work/api";
+import type { EpicController } from "@lore/plan/api";
+import type { FeedbackController } from "@lore/plan/api";
+import type { QuestCommentController } from "@lore/plan/api";
+import type { QuestController } from "@lore/plan/api";
+import type { ReleaseController } from "@lore/plan/api";
 import { $inject, z } from "alepha";
 import { $command, CommandError, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";

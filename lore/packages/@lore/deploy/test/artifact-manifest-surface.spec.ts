@@ -12,14 +12,14 @@ describe("the artifact manifest with a build list", () => {
   it("accepts and keeps the surface field", ({ expect }) => {
     const surface = {
       version: 1,
-      classes: [{ key: "lore.work.api:QuestController", pure: true }],
+      classes: [{ key: "lore.plan.api:QuestController", pure: true }],
       actions: [
         {
           name: "getQuests",
           group: "QuestController",
           method: "GET",
           path: "/quests",
-          class: "lore.work.api:QuestController",
+          class: "lore.plan.api:QuestController",
         },
       ],
     };

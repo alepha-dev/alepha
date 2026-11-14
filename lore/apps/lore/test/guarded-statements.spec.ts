@@ -8,8 +8,8 @@ import {
   FolioAttachmentService,
 } from "@lore/knowledge/api";
 import { folios } from "@lore/knowledge/schemas";
-import { ReleaseController } from "@lore/work/api";
-import { quests, releases } from "@lore/work/schemas";
+import { ReleaseController } from "@lore/plan/api";
+import { quests, releases } from "@lore/plan/schemas";
 import { $hook, Alepha, AlephaError, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

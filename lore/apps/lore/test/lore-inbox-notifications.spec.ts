@@ -5,7 +5,7 @@ import {
 } from "@lore/core/api";
 import { projects, users } from "@lore/core/schemas";
 import { HostNotifications } from "@lore/deploy/api";
-import { QuestNotifications } from "@lore/work/api";
+import { QuestNotifications } from "@lore/plan/api";
 import { Alepha } from "alepha";
 import {
   notificationInboxEntity,

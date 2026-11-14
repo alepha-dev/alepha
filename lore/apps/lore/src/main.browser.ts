@@ -4,7 +4,7 @@ import { LoreCoreWeb } from "@lore/core/web";
 import { ProjectScopeGrants } from "@lore/core/web";
 import { LoreDeployWeb } from "@lore/deploy/web";
 import { LoreKnowledgeWeb } from "@lore/knowledge/web";
-import { LoreWorkWeb } from "@lore/work/web";
+import { LorePlanWeb } from "@lore/plan/web";
 import { Alepha, run } from "alepha";
 import { ScopeGrantsProvider } from "alepha/server/links";
 
@@ -30,7 +30,7 @@ alepha.with({ provide: ScopeGrantsProvider, use: ProjectScopeGrants });
 // Every `@lore/*` web module, as in `main.server.ts`: SSR and hydration read
 // the same page registry, so both entries register the same pages.
 alepha.with(LoreCoreWeb);
-alepha.with(LoreWorkWeb);
+alepha.with(LorePlanWeb);
 alepha.with(LoreKnowledgeWeb);
 alepha.with(LoreDeployWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.

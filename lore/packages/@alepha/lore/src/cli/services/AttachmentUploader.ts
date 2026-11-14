@@ -1,6 +1,6 @@
 import type { FolioAttachmentController } from "@lore/knowledge/api";
 import type { FolioController } from "@lore/knowledge/api";
-import type { QuestController } from "@lore/work/api";
+import type { QuestController } from "@lore/plan/api";
 import { $inject, AlephaError, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { BadRequestError, HttpClient } from "alepha/server";

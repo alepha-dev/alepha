@@ -12,7 +12,7 @@ import {
   QuestController,
   ReleaseController,
   EpicWorkflowService,
-} from "@lore/work/api";
+} from "@lore/plan/api";
 import { Alepha, AlephaError, $inject, $hook, z } from "alepha";
 import {
   $job,

@@ -29,7 +29,7 @@
     "@lore/core": "workspace:*",
     "@lore/deploy": "workspace:*",
     "@lore/knowledge": "workspace:*",
-    "@lore/work": "workspace:*",
+    "@lore/plan": "workspace:*",
     "alepha": "workspace:*",
     "lucide-react": "^1.70.0",
     "react": "^19.3.1",

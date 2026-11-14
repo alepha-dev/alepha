@@ -1,4 +1,4 @@
-import type { EpicController, EpicReviewController } from "@lore/work/api";
+import type { EpicController, EpicReviewController } from "@lore/plan/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";

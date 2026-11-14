@@ -12,7 +12,7 @@
   "devDependencies": {
     "@alepha/lore": "workspace:*",
     "@lore/deploy": "workspace:*",
-    "@lore/work": "workspace:*",
+    "@lore/plan": "workspace:*",
     "@playwright/test": "^1.65.0",
     "@types/bun": "^1.4.4",
     "@types/ws": "^8.18.2",

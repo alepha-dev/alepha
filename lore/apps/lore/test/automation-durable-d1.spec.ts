@@ -26,7 +26,7 @@ import {
 } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
 import { FolioController } from "@lore/knowledge/api";
-import { FeedbackController } from "@lore/work/api";
+import { FeedbackController } from "@lore/plan/api";
 import { Alepha, AlephaError } from "alepha";
 import { JobProvider } from "alepha/api/jobs";
 import { NotificationInboxRecipientProvider } from "alepha/api/notifications";

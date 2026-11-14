@@ -2,7 +2,7 @@ import { DashboardMetricRegistry } from "@lore/core/api";
 import type { DashboardCardValue, Project } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
 import { projectErrors } from "@lore/deploy/schemas";
-import { feedback } from "@lore/work/schemas";
+import { feedback } from "@lore/plan/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

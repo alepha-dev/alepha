@@ -95,7 +95,7 @@
     "@lore/core": "*",
     "@lore/deploy": "*",
     "@lore/knowledge": "*",
-    "@lore/work": "*",
+    "@lore/plan": "*",
     "alepha": ">=0.37.0",
     "react": "*",
     "react-dom": "*"
@@ -110,7 +110,7 @@
     "@lore/knowledge": {
       "optional": true
     },
-    "@lore/work": {
+    "@lore/plan": {
       "optional": true
     },
     "alepha": {

@@ -20,8 +20,8 @@ import {
   sigils,
   sigilUniquesDaily,
 } from "@lore/deploy/schemas";
-import { EpicProgressService, QuestTagTallyService } from "@lore/work/api";
-import { feedback, releases } from "@lore/work/schemas";
+import { EpicProgressService, QuestTagTallyService } from "@lore/plan/api";
+import { feedback, releases } from "@lore/plan/schemas";
 import { Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

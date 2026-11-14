@@ -5,7 +5,7 @@ import {
   EpicController,
   FeedbackCommentController,
   FeedbackController,
-} from "@lore/work/api";
+} from "@lore/plan/api";
 import { Alepha, AlephaError, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";

@@ -12,7 +12,7 @@ import {
   DeployShell,
 } from "@lore/deploy/web";
 import { KnowledgeShell } from "@lore/knowledge/web";
-import { WorkShell } from "@lore/work/web";
+import { WorkShell } from "@lore/plan/web";
 import { Alepha, type Atom } from "alepha";
 import { describe, it } from "vitest";
 

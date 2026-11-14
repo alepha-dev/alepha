@@ -2,7 +2,7 @@ import type {
   EpicController,
   QuestController,
   ReleaseController,
-} from "@lore/work/api";
+} from "@lore/plan/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";

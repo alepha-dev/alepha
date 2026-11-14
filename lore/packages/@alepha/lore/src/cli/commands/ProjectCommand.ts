@@ -6,9 +6,9 @@ import type {
 } from "@lore/core/api";
 import type { AppController } from "@lore/deploy/api";
 import type { FolioController } from "@lore/knowledge/api";
-import type { AreaController } from "@lore/work/api";
-import type { EpicController } from "@lore/work/api";
-import type { ReleaseController } from "@lore/work/api";
+import type { AreaController } from "@lore/plan/api";
+import type { EpicController } from "@lore/plan/api";
+import type { ReleaseController } from "@lore/plan/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";

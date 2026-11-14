@@ -30,7 +30,7 @@ describe("JobNameRule", () => {
   }) => {
     expect(
       rule.check(
-        "packages/@lore/work/src/api/jobs/QuestJobs.ts",
+        "packages/@lore/plan/src/api/jobs/QuestJobs.ts",
         job("quest.reminders"),
       ),
     ).toEqual({ names: [], timeouts: [] });

@@ -12,9 +12,9 @@ import { DeployRouter, LoreDeployWeb } from "@lore/deploy/web";
 import { LoreKnowledgeApi } from "@lore/knowledge/api";
 import { LoreKnowledgeMcp } from "@lore/knowledge/mcp";
 import { KnowledgeRouter, LoreKnowledgeWeb } from "@lore/knowledge/web";
-import { LoreWorkApi } from "@lore/work/api";
-import { LoreWorkMcp } from "@lore/work/mcp";
-import { LoreWorkWeb, WorkAccountSections, WorkRouter } from "@lore/work/web";
+import { LorePlanApi } from "@lore/plan/api";
+import { LorePlanMcp } from "@lore/plan/mcp";
+import { LorePlanWeb, WorkAccountSections, WorkRouter } from "@lore/plan/web";
 import type { Alepha } from "alepha";
 
 /**
@@ -54,21 +54,21 @@ export const bootLore = (
   if (layers.includes("api")) {
     alepha
       .with(LoreCoreApi)
-      .with(LoreWorkApi)
+      .with(LorePlanApi)
       .with(LoreKnowledgeApi)
       .with(LoreDeployApi);
   }
   if (layers.includes("mcp")) {
     alepha
       .with(LoreCoreMcp)
-      .with(LoreWorkMcp)
+      .with(LorePlanMcp)
       .with(LoreKnowledgeMcp)
       .with(LoreDeployMcp);
   }
   if (layers.includes("web")) {
     alepha
       .with(LoreCoreWeb)
-      .with(LoreWorkWeb)
+      .with(LorePlanWeb)
       .with(LoreKnowledgeWeb)
       .with(LoreDeployWeb);
   }

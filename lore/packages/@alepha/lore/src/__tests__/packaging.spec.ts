@@ -125,7 +125,7 @@ describe("@alepha/lore packaging", () => {
 
     for (const pkg of [
       "@lore/core",
-      "@lore/work",
+      "@lore/plan",
       "@lore/knowledge",
       "@lore/deploy",
     ]) {

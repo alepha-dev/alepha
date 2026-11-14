@@ -7,7 +7,7 @@ import {
   ProjectTrail,
 } from "@lore/core/web";
 import { currentHostAtom, DeployShell } from "@lore/deploy/web";
-import { currentAreaAtom, WorkShell } from "@lore/work/web";
+import { currentAreaAtom, WorkShell } from "@lore/plan/web";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";

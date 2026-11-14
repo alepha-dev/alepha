@@ -17,7 +17,7 @@ import { createPresetRanks } from "@lore/core/testing";
 import { DeployJobs, DeployRegistry } from "@lore/deploy/api";
 import { appInstances, artifacts, deployments } from "@lore/deploy/schemas";
 import { FolioController } from "@lore/knowledge/api";
-import { ReleaseController } from "@lore/work/api";
+import { ReleaseController } from "@lore/plan/api";
 import { Alepha, AlephaError, $hook, $inject } from "alepha";
 import { JobQueueProvider, jobExecutionEntity } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
