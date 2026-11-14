@@ -22,6 +22,11 @@ import { bootLore } from "./fixtures/bootLore.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
 /**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
+/**
  * How many SEQUENTIAL database round trips each MCP write tool makes (#E76,
  * #Q2637): the main save, then the tail that follows it (link sync,
  * revision, audit, epic workflow), which runs concurrently since none of its
@@ -148,7 +153,9 @@ const setup = async () => {
   return { alepha, measure, p, quest, before, epic, folio, owner };
 };
 
-describe("MCP write tools: sequential D1 trips", () => {
+// D1 only on purpose: it counts sequential D1 round trips, which a
+// Postgres transaction groups differently from one run to the next.
+describe.skipIf(onPostgres)("MCP write tools: sequential D1 trips", () => {
   it("quest_update runs its link sync and its audit together, and syncs only changed text", async ({
     expect,
   }) => {

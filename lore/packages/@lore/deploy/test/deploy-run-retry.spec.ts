@@ -256,7 +256,11 @@ describe("a deploy whose first read times out", () => {
     expect(row?.error).toBeUndefined();
     expect(jobs().reads).toBe(3);
     expect(runner().calls).toEqual([id]);
-    expect((await executionOf(id))?.status).toBe("ok");
+    // The job marks its own row once the handler returns, after the
+    // deployment row says succeeded: waited for, not read once.
+    await expect
+      .poll(async () => (await executionOf(id))?.status)
+      .toBe("ok");
   });
 
   it("writes the reason to the row at once when the database never answers", async ({
@@ -289,9 +293,11 @@ describe("a deploy whose first read times out", () => {
     expect(
       new Date(row!.finishedAt!).getTime() - new Date(row!.createdAt).getTime(),
     ).toBeLessThan(budgetMs);
-    const execution = await executionOf(id);
-    expect(execution?.status).toBe("error");
-    expect(execution?.attempt).toBe(DeployJobs.RUN_RETRIES + 1);
+    // Marked by the job after the deployment row, as above.
+    await expect
+      .poll(async () => (await executionOf(id))?.status)
+      .toBe("error");
+    expect((await executionOf(id))?.attempt).toBe(DeployJobs.RUN_RETRIES + 1);
   });
 
   it("fails a non-transient error for good on the first try", async ({
