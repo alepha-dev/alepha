@@ -52,7 +52,10 @@ const ChangelogRelease = (props: ChangelogReleaseProps) => {
 
         {/* The Lore release's own grouping (#Q3638): its epics, then the
             quests of each area that belong to no epic. */}
-        {entry.groups.map((group, index) => (
+        {/* Keyed by kind and name, which `LoreChangelog` makes unique within
+            a release: a duplicate key leaves a stale section on screen once
+            the scope filter removes one of the pair. */}
+        {entry.groups.map((group) => (
           <ChangelogReleaseSection
             key={`${group.kind}-${group.name}`}
             title={group.name}
@@ -67,7 +70,7 @@ const ChangelogRelease = (props: ChangelogReleaseProps) => {
               )
             }
             changes={group.changes}
-            keyPrefix={`${entry.version}-${index}`}
+            keyPrefix={`${entry.version}-${group.kind}-${group.name}`}
             expandedItems={props.expandedItems}
             onToggleItem={props.onToggleItem}
           />

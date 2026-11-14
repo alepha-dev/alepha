@@ -120,24 +120,36 @@ export class LoreChangelog {
       areas.set(quest.shortId, quest.area ?? undefined);
     }
 
-    const groups: ChangelogGroup[] = changelog.groups
-      .map((group) => ({
-        kind: group.kind,
-        name: group.kind === "area" ? this.scopeOf(group.name) : group.name,
-        changes: group.quests.map((quest): ChangelogChange => ({
-          scope: this.scopeOf(
-            areas.get(quest.shortId) ??
-              (group.kind === "area" ? group.name : undefined),
-          ),
-          message: quest.title,
-        })),
-      }))
-      .filter((group) => group.changes.length > 0);
+    // ⚠️ Keyed on what the page shows, so two Lore groups that read the same
+    // become one. Lore has both a `cli` and an `alepha/cli` area, which are
+    // both `cli` here: two sections of one name in one release, and the page
+    // keys a section by its name. React then kept a stale row on screen when
+    // the scope filter removed one of them.
+    const groups = new Map<string, ChangelogGroup>();
+    for (const group of changelog.groups) {
+      const name =
+        group.kind === "area" ? this.scopeOf(group.name) : group.name;
+      const changes = group.quests.map((quest): ChangelogChange => ({
+        scope: this.scopeOf(
+          areas.get(quest.shortId) ??
+            (group.kind === "area" ? group.name : undefined),
+        ),
+        message: quest.title,
+      }));
+      if (changes.length === 0) continue;
+      const key = `${group.kind}:${name}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.changes.push(...changes);
+      } else {
+        groups.set(key, { kind: group.kind, name, changes });
+      }
+    }
 
     return {
       version: release.tag!,
       date: release.releasedAt!.slice(0, 10),
-      groups,
+      groups: [...groups.values()],
     };
   }
 

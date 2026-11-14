@@ -100,6 +100,45 @@ describe("LoreChangelog", () => {
   });
 
   /**
+   * Lore has both a `cli` and an `alepha/cli` area, and both read `cli`. Two
+   * sections of one name gave the page a duplicate React key, which left a
+   * stale row on screen once the scope filter removed one of them.
+   */
+  it("merges two areas that read the same into one group", () => {
+    const entry = boot().toEntry(
+      { id: 1, tag: "0.37.0", releasedAt: "2026-11-10T17:24:54.657Z" },
+      {
+        groups: [
+          { kind: "area", name: "cli", quests: [{ shortId: 1, title: "One" }] },
+          {
+            kind: "area",
+            name: "alepha/cli",
+            quests: [{ shortId: 2, title: "Two" }],
+          },
+        ],
+      },
+      {
+        epics: [],
+        looseQuests: [
+          { shortId: 1, area: "cli" },
+          { shortId: 2, area: "alepha/cli" },
+        ],
+      },
+    );
+
+    expect(entry.groups).toEqual([
+      {
+        kind: "area",
+        name: "cli",
+        changes: [
+          { scope: "cli", message: "One" },
+          { scope: "cli", message: "Two" },
+        ],
+      },
+    ]);
+  });
+
+  /**
    * The page is user documentation: no quest number reaches it.
    */
   it("carries no Lore reference", async () => {
