@@ -3553,6 +3553,7 @@ export default {
   "activity.resource.sigil": "Sigil",
   // "Domaine", the word the rest of the French estate UI already uses.
   "activity.resource.estate": "Domaine",
+  "activity.resource.monitor": "Moniteur",
   "activity.resource.project": "Projet",
   "activity.fields": "a modifié $1",
   "activity.capability.enabled": "a activé $1",

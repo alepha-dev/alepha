@@ -336,6 +336,18 @@ export class LoreAudits {
   });
 
   /**
+   * An uptime monitor going down or recovering (#Q3596), written by the minute
+   * tick on a confirmed transition only: a failed probe under the monitor's
+   * confirmation threshold is not a change and writes nothing. No actor, since
+   * nobody did it. `down` carries the failure, `up` the outage's length.
+   */
+  readonly monitor = $audit({
+    type: "monitor",
+    description: "Uptime monitors going down and recovering",
+    actions: ["down", "up"],
+  });
+
+  /**
    * Every `(type, action)` pair the project layer can write, for the Activity
    * page's two dropdowns.
    *
@@ -361,6 +373,7 @@ export class LoreAudits {
       this.app,
       this.sigil,
       this.estate,
+      this.monitor,
       this.project,
     ].flatMap((audit) =>
       audit.actions.map((action) => ({ type: audit.type, action })),

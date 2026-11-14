@@ -3552,6 +3552,7 @@ export default {
   // reading "App" in one dropdown told the reader nothing.
   "activity.resource.sigil": "Sigil",
   "activity.resource.estate": "Estate",
+  "activity.resource.monitor": "Monitor",
   "activity.resource.project": "Project",
   "activity.fields": "changed $1",
   "activity.capability.enabled": "turned on $1",

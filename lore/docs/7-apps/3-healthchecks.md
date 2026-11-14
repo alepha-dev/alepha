@@ -104,6 +104,9 @@ When an outage opens:
   even with no sigil in the project. It follows the retention of any open blight,
   so an outage that outlasts that window loses it.
 - **An email** goes out, and a second one on recovery.
+- **The project's Activity page** records it: **Down** with the failure, then
+  **Up** with how long the outage lasted. Pick **Monitor** in its resource
+  filter to see only these.
 
 One outage means one pair of emails, however long it lasts. There is no reminder
 while a monitor stays down, and no webhook.
