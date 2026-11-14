@@ -5,17 +5,19 @@ on:
   # GitHub skips the `paths` filter for tags.
   push:
     branches:
-      - "**"
+      - main
     paths:
       - "bay/**"
       - ".github/workflows/verify-bay.yml"
+  # Every pull request into main, with no `paths` filter (#Q3633): `gate`
+  # below is a required check, and a workflow a `paths` filter skips never
+  # reports one, which leaves the pull request waiting forever. The `changes`
+  # job applies the same list instead, and skips the real jobs when the pull
+  # request touches none of it. A pull request is how every change reaches
+  # main, so a branch push alone runs nothing: `push` is for main only.
   pull_request:
     branches:
       - main
-    # The same list as `push`.
-    paths:
-      - "bay/**"
-      - ".github/workflows/verify-bay.yml"
   # `verify-all.yml`, by hand.
   workflow_call:
 
@@ -34,7 +36,39 @@ defaults:
     working-directory: bay
 
 jobs:
+  # Whether this pull request touches this workflow's part of the tree (#Q3633).
+  # Any other event runs everything. The list is the `push` trigger's `paths`.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    defaults:
+      run:
+        working-directory: .
+    outputs:
+      run: ${{ steps.diff.outputs.run }}
+    steps:
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')
+          if printf '%s\n' "$files" | grep -qE '^(bay/|\.github/workflows/verify-bay\.yml$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No file of this workflow's part of the tree changed: its jobs skip."
+          fi
+
   check:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -87,3 +121,23 @@ jobs:
             echo "→ linux/$target"
             GOOS=linux GOARCH=$target CGO_ENABLED=0 go build -o /dev/null ./cmd/bay
           done
+
+  # The one check the `main` ruleset requires of this workflow (#Q3633). It
+  # always runs, so a pull request that skipped every job still reports, and
+  # it fails when any job failed or was cancelled. A skipped job is a pass.
+  gate:
+    name: gate (bay)
+    needs: [changes, check]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Every job passed or skipped
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "A job failed or was cancelled." >&2
+          exit 1
+      - run: echo "Green."

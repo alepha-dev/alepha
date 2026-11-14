@@ -4,23 +4,22 @@ permissions:
   contents: read
 
 on:
-  # Every branch, because that is how the work is actually done here: an agent
-  # works in a worktree on a `claude/**` branch, pushes it, and watches CI.
-  # Until 2026-09-09 this was `main` alone, so a branch push ran NOTHING and
-  # the only way to prove a branch green was to open a PR - which the working
-  # agreement in AGENTS.md forbids an agent from doing unprompted. A branch
-  # could therefore only be proven by merging it.
+  # `main` only since #Q3633: a change reaches main through a pull request,
+  # and the pull request's run is the gate. Between 2026-09-09 and then this
+  # ran on every branch, because an agent proved a branch by pushing it and
+  # merged it into main itself. The push to main still runs, since its green
+  # run is what `deploy-framework.yml` follows.
   #
   # ⚠️ **Nothing here deploys.** This workflow verifies and stops; the deploys
   # live in `deploy-framework.yml`, which triggers on this one succeeding and
   # refuses anything whose head branch is not `main`. That is what makes a
-  # branch push safe to run. Before this split the guards were in-file and
+  # pull request run safe. Before this split the guards were in-file and
   # said `github.event_name != 'pull_request'`, which is TRUE for a push to
   # any branch - on a widened trigger that would have shipped docs, ui and
   # shop to production from every agent worktree.
   push:
     branches:
-      - "**"
+      - main
     # The framework's part of the tree, plus what every product shares. A
     # change under `lore/` or `bay/` alone runs only their workflows.
     paths:
@@ -37,27 +36,15 @@ on:
       - "yarn.lock"
       - ".yarnrc.yml"
       - ".nvmrc"
-  # Kept, though same-repo branches no longer need it: a pull_request run is
-  # the only way a FORK's code is ever tested, and this repository is public.
-  # The cost is that a PR opened by hand from a local branch runs CI twice.
+  # Every pull request into main, with no `paths` filter (#Q3633): `gate`
+  # below is a required check, and a workflow a `paths` filter skips never
+  # reports one, which leaves the pull request waiting forever. The `changes`
+  # job applies the same list instead, and skips the real jobs when the pull
+  # request touches none of it. A pull request is how every change reaches
+  # main, so a branch push alone runs nothing: `push` is for main only.
   pull_request:
     branches:
       - main
-    # The same list as `push`.
-    paths:
-      - "framework/**"
-      # The docs generators and `check:docs`, which the framework's `yarn copy`
-      # and checks run (#Q2766).
-      - "docs/scripts/**"
-      # Bay's owned env keys, which `BayAdapter.spec.ts` pins the framework's
-      # mirror against (#Q2763).
-      - "bay/internal/deploy/deploy.go"
-      - ".github/workflows/verify-framework.yml"
-      - ".github/actions/**"
-      - "package.json"
-      - "yarn.lock"
-      - ".yarnrc.yml"
-      - ".nvmrc"
   # By hand, and by Release after it pushes the release commit (#Q2948): a
   # push made with `GITHUB_TOKEN` triggers no workflow, and a dispatch is the
   # one event it may. A green dispatch on `main` deploys, like a push, when a
@@ -115,6 +102,36 @@ defaults:
     working-directory: framework
 
 jobs:
+  # Whether this pull request touches this workflow's part of the tree (#Q3633).
+  # Any other event runs everything. The list is the `push` trigger's `paths`.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    defaults:
+      run:
+        working-directory: .
+    outputs:
+      run: ${{ steps.diff.outputs.run }}
+    steps:
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')
+          if printf '%s\n' "$files" | grep -qE '^(framework/|docs/scripts/|bay/internal/deploy/deploy\.go$|\.github/workflows/verify-framework\.yml$|\.github/actions/|package\.json$|yarn\.lock$|\.yarnrc\.yml$|\.nvmrc$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No file of this workflow's part of the tree changed: its jobs skip."
+          fi
+
   # ──────────────────────────────────────────────────────────────────────
   # The static half of `yarn v`: lint, typecheck and every `check:*`.
   #
@@ -136,6 +153,8 @@ jobs:
   # experiment, not a tidy-up to smuggle into a split.
   # ──────────────────────────────────────────────────────────────────────
   checks:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     # A hang detector, not a budget. Public-repo minutes are free and the
     # GitHub cap is 6 hours, so a generous number costs nothing while a tight
@@ -239,6 +258,8 @@ jobs:
   # to the deploys to produce them. Read `nightly.yml` before moving it back.
   # ──────────────────────────────────────────────────────────────────────
   test:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -327,6 +348,8 @@ jobs:
   # existing checks do not change. No bun step: that suite does not depend on
   # the Node version.
   test-node24:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -398,6 +421,8 @@ jobs:
   # all the same: nothing runs until the broker answers a publish.
   # ──────────────────────────────────────────────────────────────────────
   mqtt-broker:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -470,6 +495,8 @@ jobs:
   # rather than merely unused.
   # ──────────────────────────────────────────────────────────────────────
   e2e-apps:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -535,6 +562,8 @@ jobs:
   # it fails, and so does an entry no finding matches any more.
   # ──────────────────────────────────────────────────────────────────────
   e2e-a11y:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -568,6 +597,8 @@ jobs:
   # project, so a failure here means a packaging bug rather than a UI one.
   # No Playwright - it drives the CLI, not a browser.
   e2e-cli:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -607,3 +638,23 @@ jobs:
       - name: Run CLI E2E Tests
         timeout-minutes: 10
         run: yarn e2e-cli
+
+  # The one check the `main` ruleset requires of this workflow (#Q3633). It
+  # always runs, so a pull request that skipped every job still reports, and
+  # it fails when any job failed or was cancelled. A skipped job is a pass.
+  gate:
+    name: gate (framework)
+    needs: [changes, checks, test, test-node24, mqtt-broker, e2e-apps, e2e-a11y, e2e-cli]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Every job passed or skipped
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "A job failed or was cancelled." >&2
+          exit 1
+      - run: echo "Green."

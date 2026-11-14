@@ -8,7 +8,7 @@ on:
   # to either runs this too: that is why the three share one repository.
   push:
     branches:
-      - "**"
+      - main
     paths:
       - "lore/**"
       - "framework/**"
@@ -19,20 +19,15 @@ on:
       - "yarn.lock"
       - ".yarnrc.yml"
       - ".nvmrc"
+  # Every pull request into main, with no `paths` filter (#Q3633): `gate`
+  # below is a required check, and a workflow a `paths` filter skips never
+  # reports one, which leaves the pull request waiting forever. The `changes`
+  # job applies the same list instead, and skips the real jobs when the pull
+  # request touches none of it. A pull request is how every change reaches
+  # main, so a branch push alone runs nothing: `push` is for main only.
   pull_request:
     branches:
       - main
-    # The same list as `push`.
-    paths:
-      - "lore/**"
-      - "framework/**"
-      - "bay/**"
-      - ".github/workflows/verify-lore.yml"
-      - ".github/actions/**"
-      - "package.json"
-      - "yarn.lock"
-      - ".yarnrc.yml"
-      - ".nvmrc"
   # By hand, and by Release after it pushes the release commit (#Q2948): a
   # push made with `GITHUB_TOKEN` triggers no workflow, and a dispatch is the
   # one event it may. A green dispatch on `main` deploys, like a push, when a
@@ -54,7 +49,7 @@ concurrency:
 env:
   LORE_PROJECT: alepha
 
-# CI is the gate: a green `yarn v` is not. Every branch push runs this graph.
+# CI is the gate: a green `yarn v` is not. Every pull request runs this graph.
 # Every `run` step works inside `lore/` (#Q2765). A step's own
 # `working-directory` is relative to the repository root, so it names `lore/`.
 defaults:
@@ -62,7 +57,39 @@ defaults:
     working-directory: lore
 
 jobs:
+  # Whether this pull request touches this workflow's part of the tree (#Q3633).
+  # Any other event runs everything. The list is the `push` trigger's `paths`.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    defaults:
+      run:
+        working-directory: .
+    outputs:
+      run: ${{ steps.diff.outputs.run }}
+    steps:
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')
+          if printf '%s\n' "$files" | grep -qE '^(lore/|framework/|bay/|\.github/workflows/verify-lore\.yml$|\.github/actions/|package\.json$|yarn\.lock$|\.yarnrc\.yml$|\.nvmrc$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No file of this workflow's part of the tree changed: its jobs skip."
+          fi
+
   checks:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     steps:
@@ -96,6 +123,8 @@ jobs:
         run: yarn check:conventions
 
   test:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     strategy:
@@ -127,6 +156,8 @@ jobs:
   # still SQLite-only in places (#E141); make the job blocking (drop
   # `continue-on-error`) when E141 lands and this job is green.
   test-postgres:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     continue-on-error: true
@@ -192,6 +223,8 @@ jobs:
             packages/@lore/plan/test/quest-count.spec.ts
 
   e2e-lore:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     strategy:
@@ -218,6 +251,8 @@ jobs:
         run: yarn w e2e web --shard=${{ matrix.shard }}/6
 
   e2e-cli:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     steps:
@@ -242,6 +277,8 @@ jobs:
         run: yarn e2e-cli
 
   docker:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
@@ -275,3 +312,23 @@ jobs:
 
       - name: Check the image size budget
         run: node scripts/docker-size.ts --image 127.0.0.1:5000/alepha-dev/lore:ci
+
+  # The one check the `main` ruleset requires of this workflow (#Q3633). It
+  # always runs, so a pull request that skipped every job still reports, and
+  # it fails when any job failed or was cancelled. A skipped job is a pass.
+  gate:
+    name: gate (lore)
+    needs: [changes, checks, test, test-postgres, e2e-lore, e2e-cli, docker]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Every job passed or skipped
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "A job failed or was cancelled." >&2
+          exit 1
+      - run: echo "Green."

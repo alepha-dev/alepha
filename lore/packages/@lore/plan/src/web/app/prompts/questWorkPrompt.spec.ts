@@ -47,28 +47,46 @@ describe("questWorkPromptDefault", () => {
     expect(prompt).toContain("Never on main");
   });
 
-  it("walks the quest: accept, tick, check, one commit, push, merge, complete", () => {
+  it("walks the quest: accept, tick, check, commit, pull request, complete", () => {
     expect(prompt).toContain("quest_accept");
     expect(prompt).toContain("quest_objective_set");
     expect(prompt).toContain("A skipped check is a failure, not a pass");
     expect(prompt).toContain("quest_commit_add");
-    expect(prompt).toContain("merge the branch into main and push");
+    expect(prompt).toContain("open a pull request into main");
     expect(prompt).toContain("quest_complete");
   });
 
   /**
-   * The order is the point, not the steps. A local check is the inner loop
-   * and the CI run is the source of truth, so the branch is finished only
-   * once CI is green - not once the terminal is.
+   * The standard flow (#Q3633): the agent opens a pull request, CI runs on
+   * it, and the agent never merges to main itself. Auto-merge is the
+   * project's rule to grant, and the merge is a squash, one commit per quest.
    */
-  it("makes the CI run the gate, and finishing the branch conditional on it", () => {
-    expect(prompt).toContain("Push the branch");
-    expect(prompt).toContain("that run is the source of truth");
-    expect(prompt).toContain("a green local check is not");
-    expect(prompt).toContain("Only when it is green");
-    expect(prompt.indexOf("Push the branch")).toBeLessThan(
-      prompt.indexOf("merge the branch into main and push"),
+  it("lands through a pull request the agent never merges itself", () => {
+    expect(prompt).toContain("branch cut from the latest main");
+    expect(prompt).toContain("Never merge it yourself, and never push to main");
+    expect(prompt).toContain("lets an agent turn on auto-merge");
+    expect(prompt).toContain("squash");
+    expect(prompt).not.toContain("merge the branch into main");
+  });
+
+  /**
+   * The order is the point, not the steps. A local check is the inner loop,
+   * the CI run on the pull request is the source of truth, and the quest is
+   * done once the pull request merges - not once it is opened.
+   */
+  it("makes the CI run the gate, and completing the quest wait for the merge", () => {
+    expect(prompt).toContain(
+      "the run on the pull request is the source of truth",
     );
+    expect(prompt).toContain("the run on the pull request");
+    expect(prompt).toContain("a green local check is not");
+    expect(prompt.indexOf("open a pull request into main")).toBeLessThan(
+      prompt.indexOf("Only once it has merged"),
+    );
+    expect(prompt.indexOf("Only once it has merged")).toBeLessThan(
+      prompt.indexOf("`quest_complete`"),
+    );
+    expect(prompt).toContain("leave the quest accepted");
   });
 
   /**
@@ -76,7 +94,7 @@ describe("questWorkPromptDefault", () => {
    * fourteen stale worktrees look like.
    */
   it("requires the branch and the worktree to be cleaned up", () => {
-    expect(prompt).toContain("delete the branch locally and on the remote");
+    expect(prompt).toContain("Delete the branch locally");
     expect(prompt).toContain("remove the worktree");
   });
 

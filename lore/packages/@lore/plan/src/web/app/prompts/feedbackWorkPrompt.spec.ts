@@ -89,20 +89,31 @@ describe("feedbackWorkPromptDefault", () => {
     expect(prompt).toContain("Never on main");
   });
 
-  it("works, checks, commits, pushes, merges and closes the loop with the reporter", () => {
+  it("works, checks, commits, opens a pull request and closes the loop with the reporter", () => {
     expect(prompt).toContain("quest_objective_set");
     expect(prompt).toContain("A skipped check is a failure, not a pass");
     expect(prompt).toContain("quest_commit_add");
     expect(prompt).toContain("Push the branch");
-    expect(prompt).toContain("merge the branch into main and push");
+    expect(prompt).toContain("open a pull request into main");
     expect(prompt).toContain("quest_complete");
     expect(prompt).toContain("tell the reporter");
   });
 
-  it("makes CI the gate and cleans up the branch and worktree", () => {
-    expect(prompt).toContain("that run is the source of truth");
-    expect(prompt).toContain("Only when it is green");
-    expect(prompt).toContain("delete the branch locally and on the remote");
+  /**
+   * The agent never merges itself (#Q3633), and the reporter hears that it
+   * shipped only once the pull request has merged.
+   */
+  it("makes CI the gate, never merges, and tells the reporter only after the merge", () => {
+    expect(prompt).toContain(
+      "the run on the pull request is the source of truth",
+    );
+    expect(prompt).toContain("Never merge it yourself, and never push to main");
+    expect(prompt).toContain("lets an agent turn on auto-merge");
+    expect(prompt).not.toContain("merge the branch into main");
+    expect(prompt.indexOf("Only once it has merged")).toBeLessThan(
+      prompt.indexOf("tell the reporter"),
+    );
+    expect(prompt).toContain("Delete the branch locally");
     expect(prompt).toContain("remove the worktree");
   });
 

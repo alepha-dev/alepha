@@ -74,10 +74,10 @@ describe("epicActivatePromptDefault", () => {
     );
   });
 
-  it("closes with a green full check, a merge and an outcome folio", () => {
-    expect(prompt).toContain("Verify the code");
-    expect(prompt).not.toContain("CI");
-    expect(prompt).toContain("merge the branch into main and push");
+  it("closes once every pull request has merged, with an outcome folio", () => {
+    expect(prompt).toContain(
+      "Wait until every quest's pull request has merged",
+    );
     expect(prompt).toContain("folio_create");
     expect(prompt).toContain("`epic_number` 41");
   });
@@ -91,17 +91,29 @@ describe("epicActivatePromptDefault", () => {
   });
 
   /**
-   * The gate is the project's full local check, not a CI run: pushing per
-   * quest to get one billed Verify runs on every push of every epic (#Q2640).
+   * One branch and one pull request per quest, never a merge by the agent
+   * (#Q3633). It replaced the single epic branch merged once at the end, and
+   * with it #Q2640's local-check gate: CI on each pull request is the gate.
    */
-  it("gates the merge on the full local check, not on CI", () => {
-    expect(prompt).not.toContain("Push the branch as you go");
-    expect(prompt).toContain("run the project's full check");
-    expect(prompt).toContain("Only when it is green");
+  it("lands each quest through its own pull request", () => {
+    expect(prompt).toContain("one branch and one pull request per quest");
+    expect(prompt).toContain("Cut a branch for it from the latest main");
+    expect(prompt).toContain("open a pull request into main");
+    expect(prompt).toContain("the run on the pull request");
+    expect(prompt).toContain("Never merge it yourself, and never push to main");
+    expect(prompt).toContain("lets an agent turn on auto-merge");
+    expect(prompt).toContain(
+      "squash-merged, so main gets one commit per quest",
+    );
+    expect(prompt).not.toContain("merge the branch into main");
+    // A quest completes on its merge, so `quest_complete` comes after it.
+    expect(prompt.indexOf("Only once it has merged")).toBeLessThan(
+      prompt.indexOf("then `quest_complete`"),
+    );
   });
 
-  it("requires the branch and the worktree to be cleaned up", () => {
-    expect(prompt).toContain("delete the branch locally and on the remote");
+  it("requires the branches and the worktree to be cleaned up", () => {
+    expect(prompt).toContain("Delete the merged branches locally");
     expect(prompt).toContain("remove the worktree");
   });
 

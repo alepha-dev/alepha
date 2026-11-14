@@ -21,7 +21,7 @@ All three products are planned in ONE Lore project, **Alepha** (`https://lore.al
 
 ## CI
 
-Workflows live in the root `.github/workflows/`, one set per product, each scoped by `paths` and running its steps in its folder (`defaults.run.working-directory`):
+Workflows live in the root `.github/workflows/`, one set per product, each running its steps in its folder (`defaults.run.working-directory`). Each runs on every pull request into `main` and on a push to `main` that touches its `paths`. On a pull request, its `changes` job skips the real jobs when none of its paths changed, and its `gate` job always reports: the `main` ruleset requires `gate (framework)`, `gate (lore)`, `gate (bay)` and `gate (docs)`, and nothing else (#Q3633). A new Verify job joins its workflow's `gate` `needs`, or the ruleset never waits for it.
 
 - **Verify Framework** (`verify-framework.yml`): `framework/**` and the shared root files. Green on `main`, it triggers **Deploy Framework** (`deploy-framework.yml`: ui.alepha.dev, shop.alepha.dev).
 - **Verify Lore** (`verify-lore.yml`): `lore/**`, `framework/**` and `bay/**`, since Lore builds on the framework's source and its e2e builds Bay. Green on `main`, it triggers **Deploy Lore** (`deploy-lore.yml`: lore.alepha.dev).
@@ -39,7 +39,7 @@ A step's own `working-directory` is relative to the repository root, so it names
 
 ## The workflow
 
-The framework's rules apply to the whole repository: a worktree per epic, small commits staged by explicit path, each naming its quest as `#Q<n>`, push the branch to verify, merge to main when green. See "The workflow" in `framework/AGENTS.md`.
+The framework's rules apply to the whole repository: one branch and one worktree per quest, cut from the latest main; small commits staged by explicit path, each naming its quest as `#Q<n>`; a pull request into `main` with auto-merge on (`gh pr merge --auto --squash`), so CI runs before the merge and `main` receives one commit per quest. Nothing is pushed to `main` directly. See "The workflow" in `framework/AGENTS.md`.
 
 ## What the repository may name
 

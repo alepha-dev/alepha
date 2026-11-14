@@ -16,7 +16,9 @@
  *
  * Unlike the other three, this one starts before there is a quest: it
  * creates one, linked to the feedback item, and ends by telling the
- * reporter what shipped.
+ * reporter what shipped. It lands the change the way
+ * {@link questWorkPromptDefault} does (#Q3633): a pull request the agent never
+ * merges itself, and the reporter is told only once it has merged.
  *
  * ⚠️ **Step 1's "and stop" carries the reply clause**, for the reason
  * {@link questWorkPromptDefault} does: one blocking point, so a clause
@@ -40,8 +42,12 @@ The report: {{url}}
 
 1. Reproduce, or find the code that would produce, what the reporter describes, and decide what the change is. If the report is unclear or you disagree with it, ask in its discussion (\`feedback_comment_add\`) and stop. Put the question in your reply as well: what the report asks, what you found in the code, and what you would do about it. The comment reaches the reporter; your reply reaches the person who sent you here.
 2. Accept it if it is still pending (\`feedback_accept\`), then \`quest_create\` with \`feedback_shortId\` {{number}} and \`accept: true\`: a title, a description of what will change, an area from \`project_context\`, and the objectives.
-3. Work in a git worktree of your own, on a branch named after the quest. Never on main.
+3. Work in a git worktree of your own, on a branch cut from the latest main and named after the quest. Never on main.
 4. Do the work. Tick objectives with \`quest_objective_set\`. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
-5. Commit, one commit, its message naming the quest and {{reference}}. Record the sha with \`quest_commit_add\`.
-6. Push the branch. If the project verifies on CI, that run is the source of truth and a green local check is not: fix and push again until it is green. Only when it is green, merge the branch into main and push, then delete the branch locally and on the remote, and remove the worktree.
-7. \`quest_complete\` with a short note, then tell the reporter in the feedback's discussion what shipped, in one or two sentences.`;
+5. Commit, every message naming the quest and {{reference}}. Several commits are fine: the pull request is squash-merged, so main gets one commit for the quest.
+6. Push the branch and open a pull request into main. Its title names the quest and {{reference}}, since a squash merge makes it the commit message on main, and its description links the quest. Post the pull request's link on the quest with \`quest_comment_add\`.
+7. If the project verifies on CI, the run on the pull request is the source of truth and a green local check is not: fix and push again until it is green.
+8. Never merge it yourself, and never push to main: the pull request is how the change lands. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a squash merge. Otherwise it waits for review.
+9. Only once it has merged: record the commit main received with \`quest_commit_add\` (a squash merge makes a new one), \`quest_complete\` with a short note, then tell the reporter in the feedback's discussion what shipped, in one or two sentences. Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
+
+If the pull request has not merged when you stop, leave the quest accepted, tell nobody it shipped yet, and say so in your reply with the pull request's link.`;
