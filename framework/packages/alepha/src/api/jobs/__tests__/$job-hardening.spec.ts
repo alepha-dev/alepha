@@ -396,14 +396,16 @@ describe("$job — lease renewal for long-running jobs", () => {
     class SlowApp {
       executions = $repository(jobExecutionEntity);
       // timeout 1s → crash threshold 2s → heartbeat ~666ms. The handler
-      // outlives the first heartbeat tick (it ignores the abort signal).
+      // outlives several heartbeat ticks (it ignores the abort signal): with
+      // 1.5 s and a 1.4 s wait, a runner loaded by coverage saw no renewal
+      // before the handler finished (Nightly 41801800967).
       work = $job({
         name: "slow-app.work",
         description: "A job under test.",
         schema: z.object({ v: z.integer() }),
         timeout: [1, "second"],
         handler: async () => {
-          await sleep(1500);
+          await sleep(4000);
         },
       });
     }
@@ -424,7 +426,7 @@ describe("$job — lease renewal for long-running jobs", () => {
         r.length === 1 &&
         r[0].status === "running" &&
         r[0].updatedAt > leaseAtClaim,
-      { label: "lease renewed while running", timeout: 1400 },
+      { label: "lease renewed while running", timeout: 3500 },
     );
     expect(renewed[0].updatedAt > leaseAtClaim).toBe(true);
   });
