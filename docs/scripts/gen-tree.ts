@@ -1,6 +1,7 @@
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path, { join } from "node:path";
 
+import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import hljs from "highlight.js";
@@ -8,13 +9,8 @@ import { Marked, type Tokens } from "marked";
 import { runnerImport } from "vite";
 
 import { DocsMarkdown } from "./DocsMarkdown.ts";
-import type {
-  ChangelogChange,
-  ChangelogEntry,
-  DocItem,
-  DocNode,
-  DocProduct,
-} from "./interfaces.ts";
+import type { DocItem, DocNode, DocProduct } from "./interfaces.ts";
+import { LoreChangelog } from "./LoreChangelog.ts";
 import { DocsRoots } from "./roots.ts";
 import { snippets } from "./snippets.ts";
 
@@ -75,6 +71,7 @@ export const DOC_PRODUCTS = ["", "lore", "bay"] as const;
  */
 export class TreeCommand {
   protected log = $logger();
+  protected loreChangelog = $inject(LoreChangelog);
 
   /**
    * Languages that should show line numbers
@@ -894,181 +891,6 @@ export class TreeCommand {
     return this.marked.parse(content);
   }
 
-  /**
-   * Parse CHANGELOG.md and extract structured changelog entries
-   */
-  parseChangelog(content: string, apiModules: Set<string>): ChangelogEntry[] {
-    this.log.debug("Parsing CHANGELOG.md");
-    const entries: ChangelogEntry[] = [];
-
-    // Split by version headers: ## [0.14.3] - 2026-01-08
-    const versionRegex = /^## \[([^\]]+)\] - (\d{4}-\d{2}-\d{2})/gm;
-    const sections = content.split(versionRegex);
-
-    // sections[0] is content before first version (if any)
-    // Then triplets: [version, date, content]
-    for (let i = 1; i < sections.length; i += 3) {
-      const version = sections[i];
-      const date = sections[i + 1];
-      const sectionContent = sections[i + 2] || "";
-
-      const features: ChangelogChange[] = [];
-      const fixes: ChangelogChange[] = [];
-
-      // Parse Features section
-      const featuresMatch = sectionContent.match(
-        /### Features\s*\n([\s\S]*?)(?=### |$)/,
-      );
-      if (featuresMatch) {
-        const featureLines = featuresMatch[1].trim().split("\n");
-        for (const line of featureLines) {
-          const change = this.parseChangelogLine(line, apiModules);
-          if (change) features.push(change);
-        }
-      }
-
-      // Parse Bug Fixes section
-      const fixesMatch = sectionContent.match(
-        /### Bug Fixes\s*\n([\s\S]*?)(?=### |$)/,
-      );
-      if (fixesMatch) {
-        const fixLines = fixesMatch[1].trim().split("\n");
-        for (const line of fixLines) {
-          const change = this.parseChangelogLine(line, apiModules);
-          if (change) fixes.push(change);
-        }
-      }
-
-      if (features.length > 0 || fixes.length > 0) {
-        entries.push({ version, date, features, fixes });
-        this.log.trace(
-          `Parsed version ${version}: ${features.length} features, ${fixes.length} fixes`,
-        );
-      }
-    }
-
-    this.log.debug(`Parsed ${entries.length} changelog entries`);
-    return entries;
-  }
-
-  /**
-   * Parse a single changelog line like:
-   * - **cli**: add openapi extractor (`5e87f93e`)
-   */
-  parseChangelogLine(
-    line: string,
-    apiModules: Set<string>,
-  ): ChangelogChange | null {
-    // Match: - **scope**: message (`commit`)
-    const match = line.match(
-      /^- \*\*([^*]+)\*\*:\s*(.+?)(?:\s*\(`([^`]+)`\))?$/,
-    );
-    if (!match) return null;
-
-    return {
-      scope: this.normalizeScope(match[1].trim(), apiModules),
-      message: this.unescapeMarkdown(match[2].trim()),
-      commit: match[3]?.trim(),
-    };
-  }
-
-  /**
-   * A changelog subject as the plain text the page shows: every CommonMark
-   * backslash escape (`\` before ASCII punctuation) undone, outside backtick
-   * code spans.
-   *
-   * `alepha gen changelog` escapes `\`, `*` and a word-boundary `_` so the
-   * file renders as written and oxfmt stops rewriting a subject that holds two
-   * globs (#Q2292). The page renders the subject as text, not markdown, so it
-   * would otherwise show `app_instance\_\*` where the commit said
-   * `app_instance_*`. Every punctuation escape is undone rather than those
-   * three, because a hand-written line already used one (`\$container`).
-   */
-  unescapeMarkdown(text: string): string {
-    // A capturing split keeps the code spans, at the odd indices.
-    return text
-      .split(/(`[^`]*`)/)
-      .map((part, index) =>
-        index % 2 === 1 ? part : part.replace(/\\([!-/:-@[-`{-~])/g, "$1"),
-      )
-      .join("");
-  }
-
-  /**
-   * Namespaces whose sub-modules were written with a dash before `/` settled
-   * as the separator. `server-cookies` is `server/cookies`, and only the
-   * FIRST dash separates - the rest belong to the module's own name.
-   *
-   * `payments` is deliberately absent: `payments-stripe` is the published
-   * package `@alepha/payments-stripe`, not a sub-module of `payments`.
-   */
-  protected readonly scopeNamespaces = [
-    "api",
-    "bucket",
-    "cli",
-    "email",
-    "orm",
-    "react",
-    "server",
-    "ui",
-  ];
-
-  /**
-   * Rewrite a changelog scope into the module path it actually names.
-   *
-   * A commit is scoped by hand, so the same module reaches the file under
-   * several spellings: `users` and `api/users` are both `alepha/api/users`,
-   * `react-form` is `react/form`, `@alepha/rocket` is `rocket`. Left alone
-   * they read as different subjects and, worse, the page's scope filter treats
-   * them as different subjects: `?scope=api` would miss half of `api/users`.
-   *
-   * Done here rather than in `CHANGELOG.md`, because that file is the record
-   * of what each release said and is appended to, never rewritten. This is the
-   * reading of it.
-   *
-   * A multi-scope commit (`fix(orm,cli)`) is normalised segment by segment.
-   */
-  normalizeScope(scope: string, apiModules: Set<string>): string {
-    return scope
-      .split(",")
-      .map((segment) => this.normalizeScopeSegment(segment.trim(), apiModules))
-      .join(",");
-  }
-
-  protected normalizeScopeSegment(
-    segment: string,
-    apiModules: Set<string>,
-  ): string {
-    let scope = segment.replace(/^@alepha\//, "");
-
-    const dash = scope.indexOf("-");
-    if (dash > 0) {
-      const namespace = scope.slice(0, dash);
-      if (this.scopeNamespaces.includes(namespace)) {
-        scope = `${namespace}/${scope.slice(dash + 1)}`;
-      }
-    }
-
-    return apiModules.has(scope) ? `api/${scope}` : scope;
-  }
-
-  /**
-   * The `alepha/api/*` sub-modules, read from the source tree rather than
-   * listed here, so the normalisation above cannot drift from the modules it
-   * claims to match.
-   */
-  async readApiModules(rootDir: string): Promise<Set<string>> {
-    const dir = join(rootDir, "packages/alepha/src/api");
-    const entries = await readdir(dir, { withFileTypes: true });
-    const modules = new Set(
-      entries
-        .filter((entry) => entry.isDirectory() && !entry.name.startsWith("__"))
-        .map((entry) => entry.name),
-    );
-    this.log.debug(`Found ${modules.size} api sub-modules`);
-    return modules;
-  }
-
   tree = $command({
     name: "gen:tree",
     description: "Generate documentation for the website",
@@ -1175,16 +997,9 @@ export class TreeCommand {
         }
         this.log.debug(`Built ${DOC_PRODUCTS.length} navigation trees`);
 
-        // Parse changelog
-        // The framework's changelog, as published with its pages.
-        const frameworkRoot = DocsRoots.frameworkPublished();
-        const changelogPath = join(frameworkRoot, "CHANGELOG.md");
-        const changelogContent = await readFile(changelogPath, "utf-8");
-        const changelog = this.parseChangelog(
-          changelogContent,
-          await this.readApiModules(frameworkRoot),
-        );
-        this.log.debug(`Parsed ${changelog.length} changelog entries`);
+        // The changelog is the published Lore releases (#Q3638).
+        const changelog = await this.loreChangelog.read();
+        this.log.debug(`Read ${changelog.length} changelog entries`);
 
         // Custom JSON replacer to handle POSITIVE_INFINITY
         const jsonReplacer = (_key: string, value: any) => {

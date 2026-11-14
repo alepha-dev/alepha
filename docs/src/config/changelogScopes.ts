@@ -1,9 +1,9 @@
 /**
  * The scope filter behind `/changelog?scope=…`.
  *
- * A change's scope is the commit's own scope, normalised in `gen-tree.ts` to
- * the module path it names (`users` is read as `api/users`). This module turns
- * that into something a reader can filter by, in two layers:
+ * A change's scope is its quest's Lore area, as the module path it names
+ * (`alepha/api/users` is read as `api/users`, see `LoreChangelog.scopeOf`).
+ * This module turns that into something a reader can filter by, in two layers:
  *
  * - `?scope=orm,react` is the raw form: a comma-separated list of tokens,
  *   matched against a scope name by name, so `api` selects `api/users` and

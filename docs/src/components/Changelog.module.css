@@ -277,11 +277,11 @@
   color: var(--color-text);
 }
 
-.sectionFeatures {
+.sectionEpic {
   color: var(--color-text-muted);
 }
 
-.sectionFixes {
+.sectionArea {
   color: var(--color-text-muted);
 }
 
@@ -399,24 +399,6 @@
   visibility: visible;
 }
 
-.commit {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  text-decoration: none;
-  opacity: 0.7;
-  transition: all var(--duration-normal) ease;
-  flex-shrink: 0;
-}
-
-.commit:hover {
-  color: var(--color-accent);
-  opacity: 1;
-}
-
 /* -----------------------------------------------------------------------------
    END MARKER
    ----------------------------------------------------------------------------- */
@@ -513,10 +495,5 @@
 
   .item {
     flex-wrap: wrap;
-  }
-
-  .commit {
-    width: 100%;
-    margin-top: 4px;
   }
 }

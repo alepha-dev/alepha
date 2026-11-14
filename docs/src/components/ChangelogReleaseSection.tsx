@@ -14,7 +14,8 @@ export interface ChangelogReleaseSectionProps {
 }
 
 /**
- * One titled group of changes inside an open release (Features, Bug Fixes).
+ * One titled group of changes inside an open release: an epic, or the quests
+ * of one area that belong to no epic.
  */
 const ChangelogReleaseSection = (props: ChangelogReleaseSectionProps) => (
   <div className={styles.section}>

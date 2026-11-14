@@ -55,15 +55,26 @@ export interface EnvVarInfo {
   optional: boolean;
 }
 
+/**
+ * One quest of a release, as the changelog page shows it (#Q3638).
+ */
 export interface ChangelogChange {
-  scope: string; // e.g., "cli", "server", "vite"
-  message: string; // The change description
-  commit?: string; // Optional commit hash
+  scope: string; // the quest's area, as a module path: "orm", "api/users", "lore/quests"
+  message: string; // the quest's title
+}
+
+/**
+ * One section of a release: an epic, or the quests of one area that belong to
+ * no epic. The same grouping as the Lore release it is read from.
+ */
+export interface ChangelogGroup {
+  kind: "epic" | "area";
+  name: string;
+  changes: ChangelogChange[];
 }
 
 export interface ChangelogEntry {
-  version: string; // e.g., "0.14.3"
-  date: string; // e.g., "2026-01-08"
-  features: ChangelogChange[];
-  fixes: ChangelogChange[];
+  version: string; // e.g., "0.37.0"
+  date: string; // the day the Lore release was published, e.g. "2026-11-10"
+  groups: ChangelogGroup[];
 }

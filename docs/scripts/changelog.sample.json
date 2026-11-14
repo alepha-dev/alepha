@@ -1,0 +1,101 @@
+[
+  {
+    "version": "0.3.0",
+    "date": "2026-03-02",
+    "groups": [
+      {
+        "kind": "epic",
+        "name": "Sample epic: forms validate on the server too",
+        "changes": [
+          {
+            "scope": "react/form",
+            "message": "A form validates against its action's schema before it submits"
+          },
+          {
+            "scope": "api/users",
+            "message": "Sign-up returns field errors the form shows inline"
+          }
+        ]
+      },
+      {
+        "kind": "area",
+        "name": "orm",
+        "changes": [
+          {
+            "scope": "orm",
+            "message": "A partial index names its constant columns"
+          }
+        ]
+      },
+      {
+        "kind": "area",
+        "name": "bay",
+        "changes": [
+          {
+            "scope": "bay",
+            "message": "A stack restarts its app container after a crash"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "date": "2026-02-16",
+    "groups": [
+      {
+        "kind": "area",
+        "name": "cli",
+        "changes": [
+          {
+            "scope": "cli",
+            "message": "alepha build writes one manifest for every runtime"
+          }
+        ]
+      },
+      {
+        "kind": "area",
+        "name": "ui",
+        "changes": [
+          { "scope": "ui", "message": "A data table keeps its sort in the URL" }
+        ]
+      },
+      {
+        "kind": "area",
+        "name": "lore/quests",
+        "changes": [
+          {
+            "scope": "lore/quests",
+            "message": "A quest's objectives can be reordered by drag and drop"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "0.1.0",
+    "date": "2026-02-02",
+    "groups": [
+      {
+        "kind": "area",
+        "name": "react",
+        "changes": [
+          {
+            "scope": "react",
+            "message": "SSR streams the shell before the data resolves"
+          }
+        ]
+      },
+      {
+        "kind": "area",
+        "name": "server",
+        "changes": [
+          {
+            "scope": "server",
+            "message": "A static file is served ahead of the app's routes"
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,4 +1,4 @@
-import { IconAlertTriangle, IconGitCommit } from "@tabler/icons-react";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ChangelogChange } from "../../scripts/interfaces.ts";
@@ -13,14 +13,12 @@ export interface ChangelogChangeItemProps {
 }
 
 /**
- * One line of a release: scope, subject, and a link to the commit.
+ * One line of a release: the quest's area, and its title.
  *
- * ⚠️ The subject is all there is. `CHANGELOG.md` stores one line per change
- * (`- **scope**: subject (\`sha\`)`) and `gen-tree.ts` parses exactly that, so
- * the commit *body* never reaches this component. Clicking therefore unclamps a
- * long subject and nothing more; the commit link is the only route to the full
- * message. Do not add an "expand to read the commit" affordance without first
- * carrying the body into the generated data.
+ * ⚠️ The title is all there is. The page is built from the Lore release
+ * (#Q3638), which lists each quest by title, and a quest's number or link is
+ * a planning record that stays off user documentation. Clicking therefore
+ * unclamps a long title and nothing more.
  */
 const ChangelogChangeItem = (props: ChangelogChangeItemProps) => {
   const { text, isBreaking } = parseMessage(props.change.message);
@@ -35,15 +33,10 @@ const ChangelogChangeItem = (props: ChangelogChangeItemProps) => {
     }
   }, [text]);
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isOverflowing) return;
-      // Don't toggle if clicking the commit link
-      if ((e.target as HTMLElement).closest("a")) return;
-      onToggle(itemKey);
-    },
-    [itemKey, onToggle, isOverflowing],
-  );
+  const handleClick = useCallback(() => {
+    if (!isOverflowing) return;
+    onToggle(itemKey);
+  }, [itemKey, onToggle, isOverflowing]);
 
   return (
     // The row expands truncated text on click; it is a disclosure for content
@@ -62,19 +55,6 @@ const ChangelogChangeItem = (props: ChangelogChangeItemProps) => {
         <span className={styles.breaking}>
           <IconAlertTriangle size={14} />
         </span>
-      )}
-      {props.change.commit && (
-        <a
-          href={`https://github.com/alepha-dev/alepha/commit/${props.change.commit}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.commit}
-          title={`View commit ${props.change.commit}`}
-          aria-label={`View commit ${props.change.commit.slice(0, 7)} on GitHub (opens in new window)`}
-        >
-          <IconGitCommit size={12} aria-hidden="true" />
-          <span>{props.change.commit.slice(0, 7)}</span>
-        </a>
       )}
     </li>
   );

@@ -32,8 +32,12 @@ export interface ChangelogProps {
  */
 const RELEASE_LIMIT = 10;
 
-const CHANGELOG_URL =
-  "https://github.com/alepha-dev/alepha/blob/main/framework/CHANGELOG.md";
+/**
+ * Every release, older ones included. Each GitHub Release carries the same
+ * notes as its Lore release (#Q3640), so it is where the history continues
+ * past the page's window.
+ */
+const CHANGELOG_URL = "https://github.com/alepha-dev/alepha/releases";
 
 /**
  * The recent release history on one route, every release open.
@@ -93,17 +97,21 @@ const Changelog = (props: ChangelogProps) => {
     const tokens = parseChangelogScope(scope);
     if (tokens.length === 0) return recent;
 
+    // A group with nothing left drops off its release, and a release with no
+    // group left drops off the timeline.
     return recent
       .map((entry) => ({
         ...entry,
-        features: entry.features.filter((change) =>
-          matchesChangelogScope(change.scope, tokens),
-        ),
-        fixes: entry.fixes.filter((change) =>
-          matchesChangelogScope(change.scope, tokens),
-        ),
+        groups: entry.groups
+          .map((group) => ({
+            ...group,
+            changes: group.changes.filter((change) =>
+              matchesChangelogScope(change.scope, tokens),
+            ),
+          }))
+          .filter((group) => group.changes.length > 0),
       }))
-      .filter((entry) => entry.features.length + entry.fixes.length > 0);
+      .filter((entry) => entry.groups.length > 0);
   }, [props.entries, scope]);
 
   const latest = props.entries[0]?.version;
