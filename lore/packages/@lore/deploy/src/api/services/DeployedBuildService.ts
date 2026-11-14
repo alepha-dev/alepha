@@ -1,3 +1,5 @@
+import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { deployments } from "../entities/deployments.ts";
@@ -22,6 +24,7 @@ export interface DeployedBuild {
  */
 export class DeployedBuildService {
   protected readonly deployments = $repository(deployments);
+  protected readonly dt = $inject(DateTimeProvider);
 
   /**
    * Each instance's newest succeeded run.
@@ -66,7 +69,14 @@ export class DeployedBuildService {
     });
     const builds = new Map<string, DeployedBuild>();
     for (const run of runs) {
-      if (latest.get(run.instanceId) === run.createdAt) {
+      // Compared as instants: an aggregate's `max` comes back in the
+      // driver's own format (`2026-11-14 11:02:35.132+00` on Postgres), a
+      // row's `createdAt` as ISO.
+      const newestAt = latest.get(run.instanceId);
+      if (
+        newestAt !== undefined &&
+        this.dt.of(newestAt).valueOf() === this.dt.of(run.createdAt).valueOf()
+      ) {
         builds.set(run.instanceId, {
           tag: run.tag,
           sha256: run.sha256,

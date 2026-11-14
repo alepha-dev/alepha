@@ -36,7 +36,7 @@ export const automations = $entity({
       "active",
     ),
     reason: z.string().max(1024).optional(),
-    healthCheckedAt: db.default(z.integer().nonnegative(), 0),
+    healthCheckedAt: db.default(z.int64().nonnegative(), 0),
     requiresApproval: db.default(z.boolean(), false),
     rule: automationRuleSchema,
     // Configuration revision is independent of scheduler/baseline writes.

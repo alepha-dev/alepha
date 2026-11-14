@@ -83,7 +83,9 @@ export class ProjectPlanningReportService {
         where: {
           projectId: { eq: projectId },
           or: [
-            { history: { like: '%"field":"epic"%' } },
+            // A prefilter, read again below: Postgres's JSON text has a
+            // space after the colon, SQLite's none.
+            { history: { like: '%"field":%"epic"%' } },
             { history: { like: '%"held"%' } },
           ],
         } as PgQueryWhere<typeof quests.schema>,

@@ -35,7 +35,7 @@ export const sigilErrorGroups = $entity({
     ),
     firstSeenAt: z.string(),
     lastSeenAt: z.string(),
-    count: db.default(z.integer().min(1), 1),
+    count: db.default(z.int64().min(1), 1),
   }),
   indexes: [
     { columns: ["sigilId", "fingerprint"], unique: true },

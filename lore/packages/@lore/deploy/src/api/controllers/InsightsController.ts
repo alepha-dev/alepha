@@ -1107,10 +1107,11 @@ export class InsightsController {
    * comparison is lexicographic with no date math.
    *
    * `until` bounds the top end the same way. It is a DAY, and the column is a
-   * full timestamp, so the bound has to be the day plus a `~` sentinel: every
-   * character a timestamp can carry after the date sorts below it, so
+   * full timestamp, so the bound is the NEXT day, exclusive:
    * `2026-08-20T23:59` is in and `2026-08-21T00:00` is out. `<= "2026-08-20"`
-   * would exclude the whole day it names.
+   * would exclude the whole day it names. It was the day plus a `~` sentinel,
+   * which holds in byte order (SQLite) and not under Postgres's linguistic
+   * collation, where `~` does not sort after the letters and digits.
    */
   protected async readErrorGroups(
     sigilIds: string[],
@@ -1138,7 +1139,10 @@ export class InsightsController {
         this.errorGroups.findMany({
           where: {
             sigilId: { inArray: ids },
-            lastSeenAt: { gte: since, lte: `${until}~` },
+            lastSeenAt: {
+              gte: since,
+              lt: this.dateTime.utc(until).add(1, "day").format("YYYY-MM-DD"),
+            },
           },
           orderBy: [{ column: "count", direction: "desc" }],
           limit: this.TOP_ERROR_GROUPS,

@@ -62,7 +62,7 @@ export const projectErrors = $entity({
     /**
      * Total occurrences, summed across every batch received.
      */
-    count: db.default(z.integer().min(1), 1),
+    count: db.default(z.int64().min(1), 1),
     /**
      * `open`, `resolved`, or `quest:<id>` once promoted.
      */

@@ -6,7 +6,7 @@ import {
 } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
+import { $repository, sql } from "alepha/orm";
 
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folioRevisions } from "../entities/folioRevisions.ts";
@@ -64,10 +64,9 @@ export class ProjectKnowledgeReportService {
       }),
       this.links.findMany({
         where: {
-          exists: this.folios.subquery({
-            id: { eq: this.links.table.toId },
-            projectId: { eq: projectId },
-          }),
+          // `toId` is text, holding ids from four tables; `folios.id` is a
+          // uuid on Postgres, which has no `uuid = text`. Compared as text.
+          exists: sql`(SELECT 1 FROM ${this.folios.table} WHERE ${this.folios.table.projectId} = ${projectId} AND CAST(${this.folios.table.id} AS TEXT) = ${this.links.table.toId})`,
         },
         columns: ["toId"],
       }),
