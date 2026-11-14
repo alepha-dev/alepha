@@ -187,8 +187,8 @@ type Stats struct {
 type serverFrame struct {
 	Type string `json:"type"`
 
-	// welcome and config. The host block keeps the JSON key `estate`: Bay
-	// wire v1, the word Lore used before #E147, which every running Bay and
+	// welcome and config. The host block keeps its JSON key (Bay wire v1),
+	// the word Lore used before #E147, which every running Bay and
 	// every Lore speak.
 	Protocol int `json:"protocol,omitempty"`
 	Host     struct {

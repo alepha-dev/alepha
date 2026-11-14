@@ -18,6 +18,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 import { JobNameRule } from "./job-name-rule.ts";
 import { LorePackageGraph } from "./lore-package-graph.ts";
+import { RetiredWordsRule } from "./retired-words-rule.ts";
 
 /**
  * One row of `yarn workspaces list --json`.
@@ -854,6 +855,44 @@ if (lorePackageViolations.length > 0) {
       "other @lore package. A feature spanning two modules goes through a core\n" +
       "registry or a core link. The graph is LorePackageGraph.GRAPH in\n" +
       "scripts/lore-package-graph.ts.\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * blight and estate stay retired (#E147): a new use anywhere in the
+ * repository, framework and Bay included, fails here. The survivors (history,
+ * Bay's wire v1, stored names) are `RetiredWordsRule`'s allowlist.
+ */
+const retiredWordsRule = new RetiredWordsRule();
+const retiredWordViolations = execFileSync(
+  "git",
+  ["ls-files", "-co", "--exclude-standard"],
+  {
+    cwd: "..",
+    encoding: "utf8",
+  },
+)
+  .trim()
+  .split("\n")
+  .filter(
+    (file) =>
+      /\.(ts|tsx|mts|js|mjs|go|md|ya?ml|json|sh|sql|css|html|txt)$/.test(
+        file,
+      ) && existsSync(`../${file}`),
+  )
+  .flatMap((file) =>
+    retiredWordsRule.check(file, readFileSync(`../${file}`, "utf8")),
+  );
+
+if (retiredWordViolations.length > 0) {
+  console.error(
+    `\n${retiredWordViolations.length} line(s) use a word #E147 retired:\n\n` +
+      `${retiredWordViolations.join("\n")}\n\n` +
+      "Lore says error and host (#E147), in code, UI, docs and data alike.\n" +
+      "A survivor that has to stay (Bay wire v1, a stored name) goes in\n" +
+      "RetiredWordsRule's allowlist, in\n" +
+      "scripts/retired-words-rule.ts, with its reason.\n",
   );
   process.exit(1);
 }

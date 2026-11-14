@@ -28,7 +28,7 @@ export const hostWelcomeFrameSchema = z.object({
   protocol: z.literal(HOST_PROTOCOL_VERSION),
   /**
    * Bay wire v1: the key stays `estate`, the word Lore used before #E147.
-   * Every running Bay reads it (`serverFrame.Estate` in `client.go`), and a
+   * Every running Bay reads it (`serverFrame` in `client.go`), and a
    * new name would need a binary swap on every host.
    */
   estate: z.object({ id: z.uuid(), slug: z.string() }),

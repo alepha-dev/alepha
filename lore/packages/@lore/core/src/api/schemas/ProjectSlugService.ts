@@ -38,10 +38,10 @@ export class ProjectSlugService {
     // The machine-facing roots: the hosts websocket lives under /ws and the
     // artifact and secret pulls under /estates (epic #20; Bay wire v1 keeps
     // the word Lore used before #E147). Both are server routes, never pages,
-    // so a project slugged "ws" or "estates" would have those paths answered
+    // so a project slugged "ws" or "estates" (wire v1) would have those paths answered
     // by the server before its own pages.
     "ws",
-    "estates",
+    "estates", // Bay wire v1
     "assets",
     "static",
     "public",

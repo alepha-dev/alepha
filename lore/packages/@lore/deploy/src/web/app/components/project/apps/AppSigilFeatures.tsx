@@ -159,7 +159,7 @@ const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
             ),
             fields: [
               "analytics",
-              "blights",
+              "blights", // the SIGIL_CONFIG key
               "vitals",
               "feedback",
               "feedbackButton",
