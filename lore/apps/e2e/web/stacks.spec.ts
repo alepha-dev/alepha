@@ -64,10 +64,10 @@ test.describe("the stack console", () => {
       page,
       `Stack${ts}`.slice(0, 20),
       {
-        capabilities: ["apps"],
+        capabilities: ["ship"],
       },
     );
-    await setCapability(page, projectId, "apps", {
+    await setCapability(page, projectId, "ship", {
       options: { deploy: true, stacks: true },
     });
 

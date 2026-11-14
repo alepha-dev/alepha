@@ -217,7 +217,7 @@ export const ButtonInbox = (props: ButtonInboxProps) => {
           */}
           <DropdownMenuLabel
             data-testid="inbox-header"
-            className="bg-muted text-foreground -mx-1 -mt-1 mb-1 flex items-center justify-between gap-2 px-2.5 py-2 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]"
+            className="text-foreground chrome chrome-closed -mx-1 -mt-1 mb-1 flex items-center justify-between gap-2 px-2.5 py-2"
           >
             <span>{props.labels?.heading ?? "Notifications"}</span>
             {count > 0 && (

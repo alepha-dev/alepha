@@ -54,7 +54,7 @@ export const DataTableFooter = (props: DataTableFooterProps) => {
         they read as the same material at three different heights. */
     <div
       className={cn(
-        "bg-muted -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]",
+        "chrome -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2",
         props.className,
       )}
     >

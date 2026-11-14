@@ -1,6 +1,6 @@
 # AGENTS.md: @lore/core
 
-**The glue of Lore** (#E75, folio #F1356): projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, Home, the dashboard, the Reports shell, agent prompts, and the web shell every module mounts into. It imports no other `@lore` package; `@lore/work`, `@lore/knowledge` and `@lore/deploy` depend on it (`check:conventions`, `scripts/lore-package-graph.ts`). Read the repository's `AGENTS.md` first, then `apps/lore/AGENTS.md` for the app itself.
+**The glue of Lore** (#E75, folio #F1356): projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, Home, the dashboard, the Reports shell, agent prompts, and the web shell every module mounts into. It imports no other `@lore` package; `@lore/plan`, `@lore/remember` and `@lore/ship` depend on it (`check:conventions`, `scripts/lore-package-graph.ts`). Read the repository's `AGENTS.md` first, then `apps/lore/AGENTS.md` for the app itself.
 
 ## Layout
 
@@ -43,7 +43,7 @@ Notable:
 
 ## Registries: core shows what a module owns (#E75, #Q2623)
 
-Core reads no Work, Knowledge or Deploy table. Where core shows or polices something a module owns, the module registers it, and core asks:
+Core reads no Plan, Remember or Ship table. Where core shows or polices something a module owns, the module registers it, and core asks:
 
 | core registry                                                                                           | what modules register                                                                                                                                                                                                               |
 | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -77,15 +77,18 @@ The browser side follows the same rule: core's web code (`ProjectView`, the edit
 ## Capabilities: what a project DOES
 
 Since epic #36 (2026-09-06) a project is not a quest tracker with extras. It is
-a container that composes four **capabilities**, picked in the creation wizard
-and switched in Settings ▸ General ▸ Capabilities:
+a container that composes three **capabilities**, Lore's pillars since #E143,
+picked in the creation wizard and switched in Settings ▸ General ▸ Capabilities:
 
-| capability  | what it brings                                                                                                                           |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `work`      | quests, areas, epics, releases, the board - options `board` / `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` |
-| `knowledge` | folios, their directories and attachments - option `agentSummary`                                                                        |
-| `apps`      | deployed copies, sigils, errors, artifacts, quality - options `track` / `deploy`                                                         |
-| `support`   | the feedback inbox and the first-party request form. No options                                                                          |
+| capability | what it brings                                                                                                                                        |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plan`     | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` / `feedback` |
+| `remember` | folios, their directories and attachments - option `agentSummary`                                                                                     |
+| `ship`     | deployed copies, sigils, errors, artifacts, quality, deploys - options `track` / `deploy` / `uptime` / `stacks`                                       |
+
+A pillar is not a thing: an app is still an app and a deploy is still a deploy.
+The keys were `work`, `knowledge`, `apps` and `support` until #E143, which
+renamed the first three and folded `support` into `plan.feedback`.
 
 A **capability** is a product surface: it owns nav entries, routes, entities,
 MCP tools, a settings page, dashboard cards, search kinds, activity kinds and
@@ -95,7 +98,7 @@ column conflated the two, which is what this epic fixed; it was dropped with #E7
 Everything not claimed above is **Core** and always on: project identity,
 members, settings, and the three surfaces that _compose_ capabilities - the
 dashboard, the activity feed and the command palette. Reports is Core too, and
-each of its tabs declares its own capability, because Delivery is Apps baseline
+each of its tabs declares its own capability, because Delivery is Ship baseline
 and Team reads core's activity dataset.
 
 **Where it lives.**
@@ -110,7 +113,7 @@ and Team reads core's activity dataset.
 **Three rules that are decisions, not accidents.**
 
 - **Disabling HIDES, it never deletes.** Every quest, folio and feedback item survives its capability being turned off, and comes back untouched when it returns. Reads of existing data stay allowed; only writes refuse.
-- **A CAPABILITY guards its routes; an OPTION does not.** `/quests`, `/folios`, `/apps` and `/feedback` 404 without theirs. `/kanban`, `/epics` and `/releases` have no guard at all - a saved link keeps resolving and the sidebar is what stops offering them. `test/route-capability-guards.spec.ts` pins both halves. The Automations routes require Work and `automation:read`; there is no `automations` option since #Q3594. The owner-only diagnostics panel that kept rules readable with the option off is gone with it (#Q3595): the automations page lists every rule, its health and its author.
+- **A CAPABILITY guards its routes; an OPTION does not.** `/quests`, `/folios` and `/apps` 404 without theirs, and `/feedback` without Plan's `feedback` option: the one option that guards its route, because it was a capability (Support) until #E143. `/kanban`, `/epics` and `/releases` have no guard at all - a saved link keeps resolving and the sidebar is what stops offering them. `test/route-capability-guards.spec.ts` pins both halves. The Automations routes require Plan and `automation:read`; there is no `automations` option since #Q3594. The owner-only diagnostics panel that kept rules readable with the option off is gone with it (#Q3595): the automations page lists every rule, its health and its author.
 - **Routes answer 404, the API answers 400.** A page under a disabled capability does not exist; a write into one is a request the project understands and declines, and the refusal names the capability and where to turn it on.
 
 **Settings has no floor.** Every capability may be turned off, the last one
@@ -123,7 +126,7 @@ wizard is asking a question and "none" is not an answer to it.
 Every surface that names a piece of work offers the prompt that hands it to a
 coding agent. The owner writes those prompts once, in Settings.
 
-**The switch is the Work option `agentPrompts`, and it is OFF by default with
+**The switch is the Plan option `agentPrompts`, and it is OFF by default with
 no backfill.** So a project shows no Agent Prompts menu until someone opens
 Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.dev` included.
 
@@ -135,7 +138,7 @@ Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.dev` included.
 | the defaults   | `src/web/app/prompts/` - one file per kind, registered by its module on `AgentPromptRegistry`                                                                                                                   |
 | the renderer   | `src/web/app/prompts/renderPromptTemplate.ts` - seven placeholders, one pass                                                                                                                                    |
 | the atom       | `projectPromptsAtom`, filled by the `project` route loader, cleared in `onLeave`                                                                                                                                |
-| the hook       | `components/project/prompts/useAgentPrompt.ts`, plus `useAgentPromptSubject` (Work's typed helpers: `useWorkPromptSubject`) and `questAgentGate` beside it                                                      |
+| the hook       | `components/project/prompts/useAgentPrompt.ts`, plus `useAgentPromptSubject` (Plan's typed helpers: `useWorkPromptSubject`) and `questAgentGate` beside it                                                      |
 | the menus      | a `RowActionGroup` on the three tables, `AgentPromptsMenu` on the three detail pages                                                                                                                            |
 
 **Four rules, and none of them is obvious from the code.**
@@ -147,7 +150,7 @@ Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.dev` included.
   epic-review DIALOG existed before this epic. `useAgentPrompt.copy` must
   never grow a fetch.
 - ⚠️ **The prompts are read by the `project` route loader, not by a
-  component**, gated on `capabilityOption(project, "work", "agentPrompts")`,
+  component**, gated on `capabilityOption(project, "plan", "agentPrompts")`,
   beside `currentEpicsAtom` and `currentAreasAtom`. It catches to `{}` and not
   to `undefined`, unlike its neighbours: they distinguish "could not read"
   from "none" because a badge must not say zero when it means unknown, and
@@ -269,7 +272,7 @@ effect has the same trap.
 
 ⚠️ **Partly, since #Q3187.** A literal name passed to a bare `useRouter()` or a `<Link>` is checked against the registered routers, so renaming a page breaks those call sites at compile time. What follows still holds for every name that reaches the router as a plain `string`: nav arrays, registry entries, and the `useRouter<any>()` sites.
 
-`router.path("someRouteName", ...)` / `router.push("someRouteName", ...)` are typed against the live route table — but only while the name exists. The moment a route is renamed or removed, any call site still passing the old name silently widens to the plain `string` overload instead of erroring. The build stays green; the call throws at render time, in production, the first time a user hits that code path. This bit the 2026-08 rename directly (`campaignQuest` → `projectQuest` etc., and the whole `Kanban` board route disappearing in favour of `?view=kanban`). **Deleting or renaming a route name requires grepping the whole `src/` tree for the old string**, including nav arrays like `ProjectSettings.tsx`'s sidebar list and `projectViewRoutes.ts`'s `ROUTES_APP` set, which reference route names as plain strings with nothing in the type system tying them to the routes they name (see the comment on `projectSettingsSigils` in `@lore/deploy`'s `ProjectSettingsAppsPage.tsx`). The app half of that set is guarded: `projectViewRoutes.spec.ts` walks the tabs declared under `projectApp` in `DeployRouter` and fails when one is missing from `ROUTES_APP`, `SECTION_HREF_ROUTES` or `SECTION_LABEL_KEYS`, which is how the Explore tab shipped half-registered (quest #1689).
+`router.path("someRouteName", ...)` / `router.push("someRouteName", ...)` are typed against the live route table — but only while the name exists. The moment a route is renamed or removed, any call site still passing the old name silently widens to the plain `string` overload instead of erroring. The build stays green; the call throws at render time, in production, the first time a user hits that code path. This bit the 2026-08 rename directly (`campaignQuest` → `projectQuest` etc., and the whole `Kanban` board route disappearing in favour of `?view=kanban`). **Deleting or renaming a route name requires grepping the whole `src/` tree for the old string**, including nav arrays like `ProjectSettings.tsx`'s sidebar list and `projectViewRoutes.ts`'s `ROUTES_APP` set, which reference route names as plain strings with nothing in the type system tying them to the routes they name (see the comment on `projectSettingsSigils` in `@lore/ship`'s `ProjectSettingsAppsPage.tsx`). The app half of that set is guarded: `projectViewRoutes.spec.ts` walks the tabs declared under `projectApp` in `DeployRouter` and fails when one is missing from `ROUTES_APP`, `SECTION_HREF_ROUTES` or `SECTION_LABEL_KEYS`, which is how the Explore tab shipped half-registered (quest #1689).
 
 `test/app-routes.spec.ts` is the automated half of that guard, added with the Apps page: it boots the real router and resolves every name the app hands the router **as a plain string** — each `router.path(…)` / `router.push(…)` call site and each `route: "…"` nav array in `src/` — asserting both that the name resolves and that no `:param` is left unsubstituted. A deleted route is a red test rather than a production throw. It is not a census of the route table (a `$page` nobody navigates to by name is not in it, and does not need to be), and it is only as complete as its list: the spec carries the two greps that regenerate it, and a name added to a nav must be added there too.
 
@@ -390,7 +393,7 @@ that are not gates (branching on membership, or asking about somebody other
 than the caller - `assignQuest` checks the assignee).
 
 The single exception is the feedback module: `submitFeedback` and
-`uploadFeedbackAttachment` are gated on the **Support** capability
+`uploadFeedbackAttachment` are gated on Plan's **Feedback** option
 being on instead of membership, so any logged-in Lore user can submit
 feedback to a project that opts in. The feedback module toggle is the
 owner's opt-in/out lever.
@@ -827,8 +830,8 @@ records expose labels and IDs, never document bodies or raw deployment logs.
 ## Automation retention, faults and deletion (#Q2685)
 
 - **Events are kept only where rules can exist.** The `automation_events` insert
-  carries `WHERE` the project has Work (automations are a baseline of Work
-  since #Q3594), read inside the same native batch, so a project without Work
+  carries `WHERE` the project has Plan (automations are a baseline of Plan
+  since #Q3594), read inside the same native batch, so a project without Plan
   writes its domain row alone and never pays for an event nobody can consume.
 - **Every prune loops** page by page until a short page, capped per run (20
   pages; `expireReady` 2). A run page is 50 ids: D1 refuses more than 100 bound
@@ -860,7 +863,7 @@ records expose labels and IDs, never document bodies or raw deployment logs.
 `automation_adoptions` is an independent project/policy marker. Named callers
 preview and explicitly adopt through `AutomationAdoptionService`, the HTTP
 adoption actions or MCP `automation_adoption_preview` / `automation_adopt`.
-Work registers the compatibility definitions and state previews. Nothing creates
+Plan registers the compatibility definitions and state previews. Nothing creates
 a system author, changes a rank or enables a project capability. Preparing a
 disabled replacement and its pending marker is atomic; enable, configuration
 audit and permanent cutover share another native guarded batch. Retrying pending

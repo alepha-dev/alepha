@@ -1,4 +1,4 @@
-import type { AppSecretController } from "@lore/deploy/api";
+import type { AppSecretController } from "@lore/ship/api";
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpError } from "alepha/server";

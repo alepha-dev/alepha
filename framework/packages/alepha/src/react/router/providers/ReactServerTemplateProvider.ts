@@ -393,7 +393,8 @@ export class ReactServerTemplateProvider {
 
   /**
    * Pipe React stream to controller with backpressure handling.
-   * Returns true if stream completed successfully, false if error occurred.
+   * Returns true if stream completed successfully, false if error occurred
+   * or the client left.
    */
   protected async pipeReactStream(
     controller: ReadableStreamDefaultController<Uint8Array>,
@@ -401,7 +402,17 @@ export class ReactServerTemplateProvider {
     state: ReactRouterState,
     onShell?: () => void,
   ): Promise<boolean> {
+    const consumer = (controller as TeeController).consumer;
+    if (consumer?.cancelled) {
+      // The client left before the body: React has nothing to render for.
+      await reactStream.cancel(consumer.reason).catch(() => undefined);
+      return false;
+    }
+
     const reader = reactStream.getReader();
+    if (consumer) {
+      consumer.reader = reader;
+    }
     const scanner = onShell
       ? this.shellScanner(onShell, (chunk) => controller.enqueue(chunk))
       : undefined;
@@ -414,7 +425,8 @@ export class ReactServerTemplateProvider {
         // backpressure needs the consumer's `pull` callback, which this
         // ReadableStream does not expose to us.
         const { done, value } = await reader.read();
-        if (done) break;
+        // A cancel cancels this reader too, which ends the read with `done`.
+        if (done || consumer?.cancelled) break;
         if (scanner) {
           for (const chunk of scanner.scan(value)) {
             controller.enqueue(chunk);
@@ -423,11 +435,22 @@ export class ReactServerTemplateProvider {
           controller.enqueue(value);
         }
       }
+      if (consumer?.cancelled) {
+        return false;
+      }
       for (const chunk of scanner?.flush() ?? []) {
         controller.enqueue(chunk);
       }
       return true;
     } catch (error) {
+      if (consumer?.cancelled) {
+        // A visitor leaving a page is not an error: no log above debug, and
+        // no error page written into a stream nobody reads.
+        this.log.debug("Client left mid-render, React stream stopped", {
+          reason: consumer.reason,
+        });
+        return false;
+      }
       this.log.error("React stream error", error);
       controller.enqueue(
         this.encoder.encode(
@@ -439,6 +462,9 @@ export class ReactServerTemplateProvider {
       );
       return false;
     } finally {
+      if (consumer) {
+        consumer.reader = undefined;
+      }
       reader.releaseLock();
     }
   }
@@ -573,31 +599,71 @@ export class ReactServerTemplateProvider {
   }
 
   /**
-   * A controller that also writes every chunk into the page cache's sink.
-   * Without a sink it is the controller itself.
+   * A controller that also writes every chunk into the page cache's sink,
+   * and goes quiet once the client has left: a cancelled stream throws
+   * `TypeError: Unable to enqueue` on every write, and none of them is news.
    */
   protected tee(
     controller: ReadableStreamDefaultController<Uint8Array>,
     sink: PageCacheSink | undefined,
+    consumer: StreamConsumer,
   ): ReadableStreamDefaultController<Uint8Array> {
-    if (!sink) {
-      return controller;
-    }
     const tee: TeeController = {
       sink,
+      consumer,
       get desiredSize() {
         return controller.desiredSize;
       },
       enqueue: (chunk?: Uint8Array) => {
+        if (consumer.cancelled) {
+          return;
+        }
         if (chunk) {
-          sink.write(chunk);
+          sink?.write(chunk);
         }
         controller.enqueue(chunk);
       },
-      close: () => controller.close(),
-      error: (reason?: unknown) => controller.error(reason),
+      close: () => {
+        if (!consumer.cancelled) {
+          controller.close();
+        }
+      },
+      error: (reason?: unknown) => {
+        if (!consumer.cancelled) {
+          controller.error(reason);
+        }
+      },
     };
     return tee;
+  }
+
+  /**
+   * What an HTML stream's `cancel` does: the client closed the tab or
+   * navigated away before the document ended. The request is marked
+   * cancelled, the page cache is told the render did not finish (a half page
+   * is never stored), and the React stream is cancelled so React stops
+   * rendering into nothing.
+   */
+  protected cancelStream(
+    consumer: StreamConsumer,
+    sink: PageCacheSink | undefined,
+    reason: unknown,
+  ): void {
+    if (consumer.cancelled) {
+      return;
+    }
+    consumer.cancelled = true;
+    consumer.reason = reason;
+    sink?.done(false);
+    this.log.debug("Client left mid-render, HTML stream cancelled", {
+      reason,
+    });
+    // The reader when the body is streaming (the stream is locked to it),
+    // the stream itself when it is not read yet.
+    const target = consumer.reader ?? consumer.reactStream;
+    if (target && !(target === consumer.reactStream && target.locked)) {
+      target.cancel(reason).catch(() => undefined);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -646,10 +712,12 @@ export class ReactServerTemplateProvider {
     let headClosed = false;
     let bodyStarted = false;
     let routerState: ReactRouterState | undefined = options.state;
+    const consumer: StreamConsumer = { cancelled: false };
 
     return new ReadableStream<Uint8Array>({
+      cancel: (reason) => this.cancelStream(consumer, sink, reason),
       start: async (output) => {
-        const controller = this.tee(output, sink);
+        const controller = this.tee(output, sink, consumer);
         try {
           // === EARLY PHASE (before async work) ===
           controller.enqueue(slots.DOCTYPE);
@@ -672,6 +740,19 @@ export class ReactServerTemplateProvider {
 
           // === ASYNC WORK ===
           const result = await asyncWork();
+
+          if (consumer.cancelled) {
+            // The client left while the loaders ran.
+            if (result && "reactStream" in result) {
+              await result.reactStream
+                .cancel(consumer.reason)
+                .catch(() => undefined);
+            }
+            return;
+          }
+          if (result && "reactStream" in result) {
+            consumer.reactStream = result.reactStream;
+          }
 
           // Handle redirect
           if (!result || "redirect" in result) {
@@ -713,6 +794,12 @@ export class ReactServerTemplateProvider {
           controller.close();
         } catch (error) {
           sink?.done(false);
+          if (consumer.cancelled) {
+            this.log.debug("Client left mid-render, HTML stream stopped", {
+              reason: consumer.reason,
+            });
+            return;
+          }
           onError?.(error);
           try {
             this.injectErrorHtml(controller, error, routerState, {
@@ -742,10 +829,12 @@ export class ReactServerTemplateProvider {
   ): ReadableStream<Uint8Array> {
     const { hydration = true, onError, sink } = options;
     const { encoder, SLOTS: slots } = this;
+    const consumer: StreamConsumer = { cancelled: false, reactStream };
 
     return new ReadableStream<Uint8Array>({
+      cancel: (reason) => this.cancelStream(consumer, sink, reason),
       start: async (output) => {
-        const controller = this.tee(output, sink);
+        const controller = this.tee(output, sink, consumer);
         try {
           // Head
           controller.enqueue(slots.DOCTYPE);
@@ -778,6 +867,12 @@ export class ReactServerTemplateProvider {
           controller.close();
         } catch (error) {
           sink?.done(false);
+          if (consumer.cancelled) {
+            this.log.debug("Client left mid-render, HTML stream stopped", {
+              reason: consumer.reason,
+            });
+            return;
+          }
           onError?.(error);
           controller.error(error);
         }
@@ -949,6 +1044,21 @@ export class ReactServerTemplateProvider {
  */
 interface TeeController extends ReadableStreamDefaultController<Uint8Array> {
   sink?: PageCacheSink;
+  consumer?: StreamConsumer;
+}
+
+/**
+ * One HTML stream's view of whoever reads it. Set by the stream's `cancel`,
+ * when the client leaves before the document ends.
+ */
+interface StreamConsumer {
+  cancelled: boolean;
+  /** Why the stream was cancelled, as the runtime said. */
+  reason?: unknown;
+  /** The React stream, once there is one, to cancel with the HTML stream. */
+  reactStream?: ReadableStream<Uint8Array>;
+  /** The reader the body is piped through, while it is. */
+  reader?: ReadableStreamDefaultReader<Uint8Array>;
 }
 
 /**

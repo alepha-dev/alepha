@@ -51,9 +51,8 @@ describe("Shared automation variables", () => {
     await alepha.start();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: { releases: true } },
-        { key: "support" },
-        { key: "knowledge" },
+        { key: "plan", options: { releases: true, feedback: true } },
+        { key: "remember" },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });

@@ -21,8 +21,8 @@ export interface ProjectDashboardEmptyProps {
    * Whether any metric is offerable on this project at all.
    *
    * ⚠️ False on a project whose capabilities answer none of them - a
-   * Knowledge-only one, most obviously, since all four project-board metrics
-   * need Work. Telling that reader to add the first card would be false, and
+   * Remember-only one, most obviously, since every project-board metric
+   * needs Plan or Ship. Telling that reader to add the first card would be false, and
    * an Add button would open a catalogue with nothing in it.
    */
   hasOfferableMetric: boolean;

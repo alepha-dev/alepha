@@ -1,5 +1,5 @@
 import type { ProjectController } from "@lore/core/api";
-import type { AppController } from "@lore/deploy/api";
+import type { AppController } from "@lore/ship/api";
 import { $inject, AlephaError } from "alepha";
 import { WorkspacePacker } from "alepha/cli";
 import { UsageError } from "alepha/command";

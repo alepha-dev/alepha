@@ -3,6 +3,7 @@ import { AlephaError } from "alepha";
 import type { AutomationDescriptor } from "./automationDescriptorSchema.ts";
 import type { AutomationSlotKind } from "./automationSlotKindSchema.ts";
 import type { AutomationSlot } from "./automationSlotSchema.ts";
+import type { CapabilityKey } from "./capabilityKeySchema.ts";
 
 /**
  * Browser-safe vocabulary. Resolvers and current authorization live on the server.
@@ -30,7 +31,8 @@ export class AutomationVocabulary {
         description: "text",
       },
       "feedback:read",
-      "support",
+      "plan",
+      "feedback",
     );
     this.event(
       "release.published",
@@ -42,21 +44,21 @@ export class AutomationVocabulary {
         quest_count: "number",
       },
       "release:read",
-      "work",
+      "plan",
       "releases",
     );
     this.event(
       "epic.completed",
       { epic_id: "number", shortId: "number", quest_count: "number" },
       "epic:read",
-      "work",
+      "plan",
       "epics",
     );
     this.event(
       "quest.completed",
       { quest_id: "number", shortId: "number" },
       "quest:read",
-      "work",
+      "plan",
     );
     for (const key of ["deploy.failed", "deploy.succeeded"]) {
       this.event(
@@ -70,7 +72,7 @@ export class AutomationVocabulary {
           reason: "text",
         },
         "app:read",
-        "apps",
+        "ship",
         "deploy",
         { app: { kind: "text", required: false, resource: "app" } },
       );
@@ -92,7 +94,7 @@ export class AutomationVocabulary {
         area: { kind: "text", required: false, max: 48 },
       },
       permissions: ["quest:read"],
-      needs: [{ capability: "work" }],
+      needs: [{ capability: "plan" }],
       operators: [],
     });
     this.register({
@@ -111,7 +113,7 @@ export class AutomationVocabulary {
       itemFields: questFields,
       slots: { tag: { kind: "text", required: true } },
       permissions: ["quest:read"],
-      needs: [{ capability: "work" }],
+      needs: [{ capability: "plan" }],
       operators: [],
     });
     this.register({
@@ -145,7 +147,7 @@ export class AutomationVocabulary {
       },
       slots: {},
       permissions: ["quest:read"],
-      needs: [{ capability: "work", option: "reminder" }],
+      needs: [{ capability: "plan", option: "reminder" }],
       operators: [],
     });
     this.action(
@@ -178,7 +180,7 @@ export class AutomationVocabulary {
         text: { kind: "text", required: true, template: true, max: 16_384 },
       },
       ["folio:read", "folio:write"],
-      [{ capability: "knowledge" }],
+      [{ capability: "remember" }],
     );
     this.action(
       "createQuest",
@@ -193,7 +195,7 @@ export class AutomationVocabulary {
         area: { kind: "text", required: true, max: 48 },
       },
       ["quest:create"],
-      [{ capability: "work" }],
+      [{ capability: "plan" }],
     );
     this.action(
       "assignRelease",
@@ -202,7 +204,7 @@ export class AutomationVocabulary {
         release: { kind: "release", required: true },
       },
       ["quest:update", "release:read"],
-      [{ capability: "work", option: "releases" }],
+      [{ capability: "plan", option: "releases" }],
     );
     this.action(
       "addTag",
@@ -211,7 +213,7 @@ export class AutomationVocabulary {
         tag: { kind: "text", required: true, template: true, min: 1, max: 255 },
       },
       ["quest:update"],
-      [{ capability: "work" }],
+      [{ capability: "plan" }],
     );
   }
 
@@ -242,7 +244,7 @@ export class AutomationVocabulary {
     key: string,
     fields: Record<string, AutomationSlotKind>,
     permission: string,
-    capability: "work" | "knowledge" | "apps" | "support",
+    capability: CapabilityKey,
     option?: string,
     slots: Record<string, AutomationSlot> = {},
   ): void {

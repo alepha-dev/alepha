@@ -1,7 +1,7 @@
 import { projectFixture } from "@lore/core/testing";
 import { ReportsTabRegistry } from "@lore/core/web";
-import { DeployShell } from "@lore/deploy/web";
-import { WorkShell } from "@lore/work/web";
+import { WorkShell } from "@lore/plan/web";
+import { DeployShell } from "@lore/ship/web";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
@@ -27,12 +27,12 @@ const registry = (() => {
  *
  * Reports itself is Core: its ENTRY is unconditional, and each tab declares
  * what it needs. That split is the point, and it is what the first reading of
- * this epic got wrong - giving Reports to Work would have taken an Apps-only
+ * this epic got wrong - giving Reports to Work would have taken a Ship-only
  * project's Quality tab away with it.
  *
  * ⚠️ Quality has no switch. It was gated on `features.quality`, an optional
  * key absent from every project that predated the module, and the case that
- * mattered was which way ABSENT read. It is Apps baseline now, and shows the
+ * mattered was which way ABSENT read. It is Ship baseline now, and shows the
  * push command until CI sends a run (#Q3070).
  */
 describe("reportsTabs", () => {
@@ -44,18 +44,32 @@ describe("reportsTabs", () => {
     expect(registry.honours("nowhere")).toEqual([]);
   });
 
-  const names = (
-    capabilities: Array<"work" | "knowledge" | "apps" | "support">,
-  ) => registry.tabs(projectFixture({ capabilities })).map((tab) => tab.route);
+  const names = (capabilities: Array<"plan" | "remember" | "ship">) =>
+    registry.tabs(projectFixture({ capabilities })).map((tab) => tab.route);
 
-  it("gives a Work project its tabs, plus Team", () => {
-    expect(names(["work"])).toEqual([
+  it("gives a Plan project its tabs, plus Team", () => {
+    // The fixture turns every option on, `feedback` included.
+    expect(names(["plan"])).toEqual([
       "reportsSummary",
       "reportsFlow",
       "reportsBacklog",
       "reportsPlanning",
+      "reportsSupport",
       "reportsTeam",
     ]);
+  });
+
+  it("hides the Support tab while Plan's feedback option is off", () => {
+    const tabs = registry
+      .tabs(
+        projectFixture({
+          capabilities: ["plan"],
+          options: { plan: { feedback: false } },
+        }),
+      )
+      .map((tab) => tab.route);
+    expect(tabs).toContain("reportsPlanning");
+    expect(tabs).not.toContain("reportsSupport");
   });
 
   it("leaves Team standing on a project with no capability at all", () => {
@@ -65,10 +79,10 @@ describe("reportsTabs", () => {
     expect(names([])).toEqual(["reportsSummary", "reportsTeam"]);
   });
 
-  it("keeps Delivery and Quality for an Apps-only project", () => {
+  it("keeps Delivery and Quality for a Ship-only project", () => {
     // The case that decided Reports is Core rather than Work: this project
     // has no quests at all and still needs to reach what CI pushed.
-    expect(names(["apps"])).toEqual([
+    expect(names(["ship"])).toEqual([
       "reportsSummary",
       "reportsDelivery",
       "reportsQuality",
@@ -77,7 +91,7 @@ describe("reportsTabs", () => {
   });
 
   it("hides Delivery and Quality when Apps is off", () => {
-    expect(names(["work"])).not.toContain("reportsDelivery");
-    expect(names(["work"])).not.toContain("reportsQuality");
+    expect(names(["plan"])).not.toContain("reportsDelivery");
+    expect(names(["plan"])).not.toContain("reportsQuality");
   });
 });

@@ -108,7 +108,7 @@ describe("Automation enable intent and health", () => {
     return enabled ? enable(row.id, true) : row;
   };
   const capability = (
-    key: "support" | "work",
+    key: "plan",
     enabled: boolean,
     options?: Record<string, boolean>,
   ) =>
@@ -139,7 +139,7 @@ describe("Automation enable intent and health", () => {
     alepha.inject(RestartedHealth);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: {} }, { key: "support" }],
+      capabilities: [{ key: "plan", options: { feedback: true } }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };
@@ -155,7 +155,7 @@ describe("Automation enable intent and health", () => {
     const live = await create();
     const disabled = await create(false);
     expect(health.display(disabled)).toBe("disabled");
-    await capability("support", false);
+    await capability("plan", true, { feedback: false });
     expect(await persistence.rules.getById(live.id)).toMatchObject({
       enabled: true,
       health: "broken",
@@ -164,7 +164,7 @@ describe("Automation enable intent and health", () => {
     expect(health.display(await persistence.rules.getById(disabled.id))).toBe(
       "disabled",
     );
-    await capability("support", true);
+    await capability("plan", true, { feedback: true });
     expect(await persistence.rules.getById(live.id)).toMatchObject({
       enabled: true,
       health: "active",
@@ -178,18 +178,18 @@ describe("Automation enable intent and health", () => {
     expect,
   }) => {
     const rule = await create();
-    await capability("work", false);
+    await capability("plan", false);
     expect(await persistence.rules.getById(rule.id)).toMatchObject({
       enabled: true,
       health: "broken",
-      reason: "Missing work capability",
+      reason: "Missing plan capability",
     });
     await expect(
       alepha
         .inject(AutomationAuthority)
         .check({ automationId: rule.id, revision: rule.revision }),
-    ).rejects.toThrow("work");
-    await capability("work", true, {});
+    ).rejects.toThrow("plan");
+    await capability("plan", true, { feedback: true });
     expect((await persistence.rules.getById(rule.id)).health).toBe("active");
   });
   it("repairs missed propagation in bounded pages without repeated transition evidence", async ({
@@ -197,10 +197,10 @@ describe("Automation enable intent and health", () => {
   }) => {
     const rows = [];
     for (let index = 0; index < 53; index++) rows.push(await create(false));
-    await entities.capabilities.deleteMany({
-      projectId: project.id,
-      key: "support",
-    });
+    await entities.capabilities.updateMany(
+      { projectId: { eq: project.id }, key: { eq: "plan" } },
+      { options: {} },
+    );
     expect(await health.sweep()).toBe(50);
     expect(await persistence.rules.count({ health: "broken" })).toBe(50);
     expect(await alepha.inject(RestartedHealth).sweep()).toBe(50);
@@ -324,7 +324,7 @@ describe("Automation enable intent and health", () => {
 
     // A second rule, healthy until what it depends on goes away.
     const other = await create();
-    await capability("support", false);
+    await capability("plan", true, { feedback: false });
     expect((await persistence.rules.getById(other.id)).health).toBe("broken");
     expect(await messages()).toEqual([
       "Rule is paused until you review it",
@@ -356,8 +356,8 @@ describe("Automation enable intent and health", () => {
       health: "paused",
       requiresApproval: true,
     });
-    await capability("support", false);
-    await capability("support", true);
+    await capability("plan", true, { feedback: false });
+    await capability("plan", true, { feedback: true });
     await expect(
       enable(rule.id, true, {
         ...user,
@@ -461,10 +461,10 @@ describe("Automation enable intent and health", () => {
     expect,
   }) => {
     const rule = await create();
-    await entities.capabilities.deleteMany({
-      projectId: project.id,
-      key: "support",
-    });
+    await entities.capabilities.updateMany(
+      { projectId: { eq: project.id }, key: { eq: "plan" } },
+      { options: {} },
+    );
     const before = await persistence.rules.getById(rule.id);
     const count = await persistence.runs.count({ projectId: project.id });
     expect((await health.inspect(before)).health).toBe("broken");
@@ -474,7 +474,7 @@ describe("Automation enable intent and health", () => {
         revision: rule.revision,
         readOnly: true,
       }),
-    ).rejects.toThrow("support");
+    ).rejects.toThrow("plan.feedback");
     expect(await persistence.rules.getById(rule.id)).toEqual(before);
     expect(await persistence.runs.count({ projectId: project.id })).toBe(count);
   });

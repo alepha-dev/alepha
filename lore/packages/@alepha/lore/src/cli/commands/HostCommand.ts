@@ -2,7 +2,7 @@ import type {
   AdminHostController,
   HostController,
   ProjectHostController,
-} from "@lore/deploy/api";
+} from "@lore/ship/api";
 import { $inject, AlephaError, z } from "alepha";
 import {
   $command,

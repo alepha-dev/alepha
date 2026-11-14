@@ -157,7 +157,7 @@ export const PermissionMatrix = (props: PermissionMatrixProps) => {
             reasons: a translucent header lets rows scroll through the labels,
             and a border on a sticky `<thead>` is dropped by the collapsed
             border model. */}
-        <TableHeader className="bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]">
+        <TableHeader className="chrome chrome-closed sticky top-0 z-10">
           <TableRow className="hover:bg-transparent">
             <TableHead className="min-w-56 align-bottom">
               {props.header}

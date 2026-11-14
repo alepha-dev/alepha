@@ -346,9 +346,10 @@ export interface DataTableBaseProps<
    * the filter bar above, the sticky column header and the pagination footer
    * below.
    *
-   * Merged after their own classes, so a background here replaces their
-   * default `bg-muted`: `chromeClassName="bg-transparent"` lets the
-   * surface the table sits on show through.
+   * Merged after their own classes, so a background here replaces the
+   * background of their default `chrome` surface (the bevel line stays):
+   * `chromeClassName="bg-transparent"` lets the surface the table sits on
+   * show through.
    *
    * ⚠️ The column header is sticky, and a translucent one lets the rows
    * scroll visibly through its labels. Prefer an opaque background on a

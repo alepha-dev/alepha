@@ -649,7 +649,10 @@ export const DataTable = <
         */}
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
+          // `bg-card`: the rows are content between the chrome bands, and
+          // keep their own surface on a muted page (a Plate's body) instead
+          // of taking the chrome's colour through a transparent panel.
+          "bg-card flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
           (showToolbar || showSummary) && "-mt-2 rounded-t-none border-t-0",
           showFooter ? "rounded-b-none border-b-0" : squareRight?.bottom,
           flatRows,
@@ -706,7 +709,7 @@ export const DataTable = <
               // the same line, so the band closed with 2px where it opens with
               // 1px. The inset one wins because it is what survives the sticky
               // header being painted over.
-              "bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)] [&_tr]:border-b-0",
+              "chrome chrome-closed sticky top-0 z-10 [&_tr]:border-b-0",
               props.chromeClassName,
             )}
           >

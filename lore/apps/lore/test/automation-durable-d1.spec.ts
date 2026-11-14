@@ -25,8 +25,8 @@ import {
   AutomationRunEvidence,
 } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
-import { FolioController } from "@lore/knowledge/api";
-import { FeedbackController } from "@lore/work/api";
+import { FeedbackController } from "@lore/plan/api";
+import { FolioController } from "@lore/remember/api";
 import { Alepha, AlephaError } from "alepha";
 import { JobProvider } from "alepha/api/jobs";
 import { NotificationInboxRecipientProvider } from "alepha/api/notifications";
@@ -159,9 +159,8 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       await alepha.start();
       const project = await createTestProject(alepha, {
         capabilities: [
-          { key: "work", options: {} },
-          { key: "support" },
-          { key: "knowledge" },
+          { key: "plan", options: { feedback: true } },
+          { key: "remember" },
         ],
       });
       await entities.users.updateById(project.createdBy, { roles: ["user"] });
@@ -701,7 +700,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       const adoptionProject = await createTestProject(alepha, {
         capabilities: [
           {
-            key: "work",
+            key: "plan",
             options: { reminder: true, releases: true },
           },
         ],

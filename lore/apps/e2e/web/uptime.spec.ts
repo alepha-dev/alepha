@@ -15,7 +15,7 @@ test.describe("Uptime healthchecks", () => {
       "GoodPassw0rd",
     );
     const { slug } = await createProjectViaWizard(page, "Healthchecks", {
-      capabilities: ["apps"],
+      capabilities: ["ship"],
     });
     const nav = page.locator(`a[href="/${slug}/uptime"]`);
     await expect(nav).toHaveCount(0);
@@ -26,7 +26,7 @@ test.describe("Uptime healthchecks", () => {
     });
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     const saved = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/apps"),
+      res.url().includes("/capabilities/ship"),
     );
     await toggle.click();
     expect((await saved).ok()).toBe(true);
@@ -34,13 +34,13 @@ test.describe("Uptime healthchecks", () => {
     await page.reload();
     await expect(toggle).toHaveAttribute("aria-checked", "true");
     const disabled = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/apps"),
+      res.url().includes("/capabilities/ship"),
     );
     await toggle.click();
     expect((await disabled).ok()).toBe(true);
     await expect(nav).toHaveCount(0);
   });
-  test("an Apps-only project creates, edits, pauses and deletes a monitor without a sigil", async ({
+  test("a Ship-only project creates, edits, pauses and deletes a monitor without a sigil", async ({
     page,
     baseURL,
   }) => {
@@ -52,10 +52,10 @@ test.describe("Uptime healthchecks", () => {
     const { id, slug } = await createProjectViaWizard(
       page,
       "Healthcheck board",
-      { capabilities: ["apps"], options: { apps: ["uptime"] } },
+      { capabilities: ["ship"], options: { ship: ["uptime"] } },
     );
-    await setCapability(page, id, "work", { enabled: false });
-    await setCapability(page, id, "knowledge", { enabled: false });
+    await setCapability(page, id, "plan", { enabled: false });
+    await setCapability(page, id, "remember", { enabled: false });
     await page.goto(`/${slug}/uptime`);
     await page
       .getByRole("button", { name: "Add monitor", exact: true })
@@ -133,8 +133,8 @@ test.describe("Uptime healthchecks", () => {
       "GoodPassw0rd",
     );
     const { slug } = await createProjectViaWizard(page, "Backup checks", {
-      capabilities: ["apps"],
-      options: { apps: ["uptime"] },
+      capabilities: ["ship"],
+      options: { ship: ["uptime"] },
     });
     await page.goto(`/${slug}/uptime`);
     await page

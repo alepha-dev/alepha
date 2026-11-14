@@ -1,5 +1,5 @@
 import { ProjectController } from "@lore/core/api";
-import { FolioController } from "@lore/knowledge/api";
+import { FolioController } from "@lore/remember/api";
 import { Alepha, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";

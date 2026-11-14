@@ -173,20 +173,20 @@ __metadata:
     vitest: "npm:^5.1.0"
   peerDependencies:
     "@lore/core": "*"
-    "@lore/deploy": "*"
-    "@lore/knowledge": "*"
-    "@lore/work": "*"
+    "@lore/plan": "*"
+    "@lore/remember": "*"
+    "@lore/ship": "*"
     alepha: ">=0.37.0"
     react: "*"
     react-dom: "*"
   peerDependenciesMeta:
     "@lore/core":
       optional: true
-    "@lore/deploy":
+    "@lore/plan":
       optional: true
-    "@lore/knowledge":
+    "@lore/remember":
       optional: true
-    "@lore/work":
+    "@lore/ship":
       optional: true
     alepha:
       optional: true
@@ -2189,9 +2189,55 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lore/deploy@workspace:*, @lore/deploy@workspace:lore/packages/@lore/deploy":
+"@lore/plan@workspace:*, @lore/plan@workspace:lore/packages/@lore/plan":
   version: 0.0.0-use.local
-  resolution: "@lore/deploy@workspace:lore/packages/@lore/deploy"
+  resolution: "@lore/plan@workspace:lore/packages/@lore/plan"
+  dependencies:
+    "@alepha/lore": "workspace:*"
+    "@alepha/ui": "workspace:*"
+    "@dnd-kit/core": "npm:^6.3.1"
+    "@dnd-kit/utilities": "npm:^3.2.2"
+    "@lore/core": "workspace:*"
+    "@testing-library/dom": "npm:^10.4.2"
+    "@testing-library/react": "npm:^16.3.3"
+    "@types/bun": "npm:^1.4.4"
+    "@types/react": "npm:^19.3.0"
+    "@types/react-dom": "npm:^19.3.0"
+    alepha: "workspace:*"
+    lucide-react: "npm:^1.70.0"
+    react: "npm:^19.3.1"
+    react-dom: "npm:^19.3.1"
+    react-is: "npm:^19.3.1"
+    recharts: "npm:^3.10.1"
+    vite: "npm:^8.3.7"
+    vitest: "npm:^5.1.0"
+  languageName: unknown
+  linkType: soft
+
+"@lore/remember@workspace:*, @lore/remember@workspace:lore/packages/@lore/remember":
+  version: 0.0.0-use.local
+  resolution: "@lore/remember@workspace:lore/packages/@lore/remember"
+  dependencies:
+    "@alepha/ui": "workspace:*"
+    "@codemirror/view": "npm:^6.43.15"
+    "@lore/core": "workspace:*"
+    "@testing-library/dom": "npm:^10.4.2"
+    "@testing-library/react": "npm:^16.3.3"
+    "@types/bun": "npm:^1.4.4"
+    "@types/react": "npm:^19.3.0"
+    "@types/react-dom": "npm:^19.3.0"
+    alepha: "workspace:*"
+    lucide-react: "npm:^1.70.0"
+    react: "npm:^19.3.1"
+    react-dom: "npm:^19.3.1"
+    vite: "npm:^8.3.7"
+    vitest: "npm:^5.1.0"
+  languageName: unknown
+  linkType: soft
+
+"@lore/ship@workspace:*, @lore/ship@workspace:lore/packages/@lore/ship":
+  version: 0.0.0-use.local
+  resolution: "@lore/ship@workspace:lore/packages/@lore/ship"
   dependencies:
     "@alepha/lore": "workspace:*"
     "@alepha/ui": "workspace:*"
@@ -2213,52 +2259,6 @@ __metadata:
     vite: "npm:^8.3.7"
     vitest: "npm:^5.1.0"
     ws: "npm:^8.22.2"
-  languageName: unknown
-  linkType: soft
-
-"@lore/knowledge@workspace:*, @lore/knowledge@workspace:lore/packages/@lore/knowledge":
-  version: 0.0.0-use.local
-  resolution: "@lore/knowledge@workspace:lore/packages/@lore/knowledge"
-  dependencies:
-    "@alepha/ui": "workspace:*"
-    "@codemirror/view": "npm:^6.43.15"
-    "@lore/core": "workspace:*"
-    "@testing-library/dom": "npm:^10.4.2"
-    "@testing-library/react": "npm:^16.3.3"
-    "@types/bun": "npm:^1.4.4"
-    "@types/react": "npm:^19.3.0"
-    "@types/react-dom": "npm:^19.3.0"
-    alepha: "workspace:*"
-    lucide-react: "npm:^1.70.0"
-    react: "npm:^19.3.1"
-    react-dom: "npm:^19.3.1"
-    vite: "npm:^8.3.7"
-    vitest: "npm:^5.1.0"
-  languageName: unknown
-  linkType: soft
-
-"@lore/work@workspace:*, @lore/work@workspace:lore/packages/@lore/work":
-  version: 0.0.0-use.local
-  resolution: "@lore/work@workspace:lore/packages/@lore/work"
-  dependencies:
-    "@alepha/lore": "workspace:*"
-    "@alepha/ui": "workspace:*"
-    "@dnd-kit/core": "npm:^6.3.1"
-    "@dnd-kit/utilities": "npm:^3.2.2"
-    "@lore/core": "workspace:*"
-    "@testing-library/dom": "npm:^10.4.2"
-    "@testing-library/react": "npm:^16.3.3"
-    "@types/bun": "npm:^1.4.4"
-    "@types/react": "npm:^19.3.0"
-    "@types/react-dom": "npm:^19.3.0"
-    alepha: "workspace:*"
-    lucide-react: "npm:^1.70.0"
-    react: "npm:^19.3.1"
-    react-dom: "npm:^19.3.1"
-    react-is: "npm:^19.3.1"
-    recharts: "npm:^3.10.1"
-    vite: "npm:^8.3.7"
-    vitest: "npm:^5.1.0"
   languageName: unknown
   linkType: soft
 
@@ -5567,8 +5567,8 @@ __metadata:
   resolution: "e2e@workspace:lore/apps/e2e"
   dependencies:
     "@alepha/lore": "workspace:*"
-    "@lore/deploy": "workspace:*"
-    "@lore/work": "workspace:*"
+    "@lore/plan": "workspace:*"
+    "@lore/ship": "workspace:*"
     "@playwright/test": "npm:^1.65.0"
     "@types/bun": "npm:^1.4.4"
     "@types/ws": "npm:^8.18.2"
@@ -7187,9 +7187,9 @@ __metadata:
     "@alepha/lore": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@lore/core": "workspace:*"
-    "@lore/deploy": "workspace:*"
-    "@lore/knowledge": "workspace:*"
-    "@lore/work": "workspace:*"
+    "@lore/plan": "workspace:*"
+    "@lore/remember": "workspace:*"
+    "@lore/ship": "workspace:*"
     "@tailwindcss/vite": "npm:^4.3.5"
     "@testing-library/dom": "npm:^10.4.2"
     "@testing-library/react": "npm:^16.3.3"

@@ -18,6 +18,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 import { JobNameRule } from "./job-name-rule.ts";
 import { LorePackageGraph } from "./lore-package-graph.ts";
+import { RetiredPillarsRule } from "./retired-pillars-rule.ts";
 import { RetiredWordsRule } from "./retired-words-rule.ts";
 
 /**
@@ -750,7 +751,7 @@ if (transactionalViolations.length > 0) {
  * rule cannot read it. Specs are exempt: they declare jobs for pretend
  * applications, and the registration check still binds them. Files are read
  * whole rather than through `grep`, which skips a file holding a NUL byte as
- * binary (`packages/@lore/deploy/src/api/jobs/SigilJobs.ts` has one on purpose).
+ * binary (`packages/@lore/ship/src/api/jobs/SigilJobs.ts` has one on purpose).
  */
 const jobNameViolations: string[] = [];
 const jobTimeoutViolations: string[] = [];
@@ -818,7 +819,7 @@ if (jobTimeoutViolations.length > 0) {
 /*
  * The `@lore` packages depend on core only (#E75, folio #F1356).
  *
- * `work`, `knowledge` and `deploy` import `@lore/core` and nothing else of
+ * `plan`, `remember` and `ship` import `@lore/core` and nothing else of
  * Lore's; `core` imports none of them. The graph, and the four rules that go
  * with it (no deep import, type-only server imports from `./web`, no app, no
  * `@/`), are `scripts/lore-package-graph.ts`, which reads the allowed edges
@@ -851,7 +852,7 @@ if (lorePackageViolations.length > 0) {
   console.error(
     `\n${lorePackageViolations.length} @lore package import(s) off the graph:\n\n` +
       `${lorePackageViolations.join("\n")}\n\n` +
-      "work, knowledge and deploy import @lore/core only, and core imports no\n" +
+      "plan, remember and ship import @lore/core only, and core imports no\n" +
       "other @lore package. A feature spanning two modules goes through a core\n" +
       "registry or a core link. The graph is LorePackageGraph.GRAPH in\n" +
       "scripts/lore-package-graph.ts.\n",
@@ -893,6 +894,40 @@ if (retiredWordViolations.length > 0) {
       "A survivor that has to stay (Bay wire v1, a stored name) goes in\n" +
       "RetiredWordsRule's allowlist, in\n" +
       "scripts/retired-words-rule.ts, with its reason.\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * Lore's pillars are Plan, Remember and Ship (#E143): the old package names,
+ * their modules and the old capability keys stay gone, in code, specs,
+ * fixtures and guides alike. History is `RetiredPillarsRule`'s allowlist.
+ */
+const retiredPillarsRule = new RetiredPillarsRule();
+const retiredPillarViolations = execFileSync(
+  "git",
+  ["ls-files", "-co", "--exclude-standard"],
+  { cwd: "..", encoding: "utf8" },
+)
+  .trim()
+  .split("\n")
+  .filter(
+    (file) =>
+      /\.(ts|tsx|mts|js|mjs|md|ya?ml|json|sql)$/.test(file) &&
+      existsSync(`../${file}`),
+  )
+  .flatMap((file) =>
+    retiredPillarsRule.check(file, readFileSync(`../${file}`, "utf8")),
+  );
+
+if (retiredPillarViolations.length > 0) {
+  console.error(
+    `\n${retiredPillarViolations.length} line(s) use a name #E143 retired:\n\n` +
+      `${retiredPillarViolations.join("\n")}\n\n` +
+      "Lore's packages are @lore/plan, @lore/remember and @lore/ship, and its\n" +
+      "capabilities plan, remember and ship; feedback is the option\n" +
+      "plan.feedback (#E143). History is RetiredPillarsRule's allowlist, in\n" +
+      "scripts/retired-pillars-rule.ts.\n",
   );
   process.exit(1);
 }

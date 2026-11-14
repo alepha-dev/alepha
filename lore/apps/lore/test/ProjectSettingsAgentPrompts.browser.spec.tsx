@@ -2,13 +2,13 @@ import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { ProjectSettingsAgentPrompts } from "@lore/core/testing";
 import { currentProjectAtom, projectPromptsAtom, I18n } from "@lore/core/web";
-import { DeployShell } from "@lore/deploy/web";
 import {
   epicReviewPromptDefault,
   feedbackWorkPromptDefault,
   questLoopPromptDefault,
   WorkShell,
-} from "@lore/work/web";
+} from "@lore/plan/web";
+import { DeployShell } from "@lore/ship/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
@@ -118,7 +118,7 @@ describe("ProjectSettingsAgentPrompts", () => {
    */
   it("renders nothing when the project has agent prompts off", async () => {
     const { links } = await mount({
-      project: projectFixture({ options: { work: { agentPrompts: false } } }),
+      project: projectFixture({ options: { plan: { agentPrompts: false } } }),
     });
 
     expect(screen.queryByText("Agent prompts")).toBe(null);

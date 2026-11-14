@@ -19,7 +19,7 @@ export class AutomationDependencies {
 
   public async assert(rule: Automation): Promise<void> {
     const capabilities = await this.security.capabilitiesOf(rule.projectId);
-    const needs = [{ capability: "work", option: "" }];
+    const needs = [{ capability: "plan", option: "" }];
     const keys = [
       rule.rule.trigger.kind === "event"
         ? rule.rule.trigger.event
@@ -49,9 +49,9 @@ export class AutomationDependencies {
       : [];
     for (const variable of variables) {
       if (variable.value.kind === "folio")
-        needs.push({ capability: "knowledge", option: "" });
+        needs.push({ capability: "remember", option: "" });
       if (variable.value.kind === "release")
-        needs.push({ capability: "work", option: "releases" });
+        needs.push({ capability: "plan", option: "releases" });
     }
     for (const need of needs) {
       if (!capabilities[need.capability as keyof typeof capabilities])

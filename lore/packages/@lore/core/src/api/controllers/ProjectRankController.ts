@@ -10,7 +10,7 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  *
  * The module ships the catalogue, the rank list and the four writes; none of
  * that is Lore-shaped. A **preset** is: it is computed from the project's
- * enabled capabilities, so a Contributor of a Knowledge-only project comes out
+ * enabled capabilities, so a Contributor of a Remember-only project comes out
  * carrying folio writes and nothing else, and neither the module nor the
  * browser is in a position to work that out.
  *

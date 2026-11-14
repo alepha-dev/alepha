@@ -3,7 +3,7 @@ import type {
   ProjectHostController,
   StackController,
   StackDeployController,
-} from "@lore/deploy/api";
+} from "@lore/ship/api";
 import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $client } from "alepha/server/links";

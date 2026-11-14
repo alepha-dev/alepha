@@ -1,10 +1,10 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { currentProjectAtom, I18n } from "@lore/core/web";
-import type { AppInstanceResource } from "@lore/deploy/schemas";
-import { ProjectArtifacts } from "@lore/deploy/testing";
-import { currentInstancesAtom } from "@lore/deploy/web";
-import { currentReleasesAtom, WorkShell } from "@lore/work/web";
+import { currentReleasesAtom, WorkShell } from "@lore/plan/web";
+import type { AppInstanceResource } from "@lore/ship/schemas";
+import { ProjectArtifacts } from "@lore/ship/testing";
+import { currentInstancesAtom } from "@lore/ship/web";
 import {
   cleanup,
   fireEvent,
@@ -239,7 +239,7 @@ describe("ProjectArtifacts", () => {
      */
     const docs = getByTestId("artifacts-empty-docs") as HTMLAnchorElement;
     expect(docs.getAttribute("href")).toBe(
-      "https://alepha.dev/lore/docs/apps-artifacts",
+      "https://alepha.dev/lore/docs/ship-artifacts",
     );
     expect(docs.getAttribute("target")).toBe("_blank");
     // The tutorial is gone from the page, not merely hidden.

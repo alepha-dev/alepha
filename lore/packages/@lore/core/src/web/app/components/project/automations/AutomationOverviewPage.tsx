@@ -256,7 +256,7 @@ const AutomationOverviewPage = () => {
                 </Button>
               )}
               <OutboundLink
-                href={loreDocsUrl("work-automations")}
+                href={loreDocsUrl("plan-automations")}
                 className="text-muted-foreground text-sm underline underline-offset-4"
               >
                 {tr("automation.guide")}

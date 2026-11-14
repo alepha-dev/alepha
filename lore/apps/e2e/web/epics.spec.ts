@@ -53,7 +53,7 @@ test.describe("Epics — the backlog gate", () => {
       `Ep${t}`.slice(0, 20),
     );
 
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -354,7 +354,7 @@ test.describe("Epics — the list", () => {
       page,
       `El${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -598,7 +598,7 @@ test.describe("Epics — the questline", () => {
       page,
       `Fl${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -794,7 +794,7 @@ test.describe("Epics — a member, not just the owner", () => {
       page,
       projectTitle,
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -927,7 +927,7 @@ test.describe("Epics — the lifecycle from the list", () => {
       page,
       `Es${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -1074,7 +1074,7 @@ test.describe("Epics — shelving a plan", () => {
       page,
       `Sh${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -1233,7 +1233,7 @@ test.describe("Epics — sorting by release", () => {
       page,
       `Es${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -1349,7 +1349,7 @@ test.describe("Epics — the release control", () => {
       page,
       `Er${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -1528,7 +1528,7 @@ test.describe("Epics — the lifecycle on the epic page", () => {
       page,
       `Lc${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -1730,7 +1730,7 @@ test.describe("Epics - the predecessor link", () => {
       page,
       `Pr${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -1837,7 +1837,7 @@ test.describe("Epics - the aside", () => {
       page,
       `As${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -1913,7 +1913,7 @@ test.describe("Epics - the Attach quest picker", () => {
       page,
       `Pk${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 

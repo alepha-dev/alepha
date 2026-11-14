@@ -89,7 +89,7 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
               icon={Workflow}
               title={tr("home.feature.automations.title")}
               description={tr("home.feature.automations.description")}
-              href={`${HomeWelcome.docs}/docs/work-automations`}
+              href={`${HomeWelcome.docs}/docs/plan-automations`}
             />
             <HomeWelcomeFeature
               icon={Server}

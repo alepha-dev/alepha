@@ -1,4 +1,4 @@
-import type { MonitorController } from "@lore/deploy/api";
+import type { MonitorController } from "@lore/ship/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";

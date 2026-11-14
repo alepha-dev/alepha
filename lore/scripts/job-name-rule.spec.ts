@@ -30,14 +30,14 @@ describe("JobNameRule", () => {
   }) => {
     expect(
       rule.check(
-        "packages/@lore/work/src/api/jobs/QuestJobs.ts",
+        "packages/@lore/plan/src/api/jobs/QuestJobs.ts",
         job("quest.reminders"),
       ),
     ).toEqual({ names: [], timeouts: [] });
 
     expect(
       rule.check(
-        "packages/@lore/deploy/src/api/jobs/ProjectErrorJobs.ts",
+        "packages/@lore/ship/src/api/jobs/ProjectErrorJobs.ts",
         job("system.error.purge"),
       ).names,
     ).toHaveLength(1);

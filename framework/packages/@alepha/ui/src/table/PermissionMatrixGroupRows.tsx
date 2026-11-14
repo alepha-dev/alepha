@@ -45,7 +45,7 @@ export const PermissionMatrixGroupRows = (
       <TableRow className="hover:bg-transparent">
         <TableCell
           colSpan={props.columns.length + 1}
-          className="bg-muted text-muted-foreground py-1.5 text-xs font-medium tracking-wide uppercase shadow-[inset_0_1px_0_0_var(--bevel)]"
+          className="text-muted-foreground chrome py-1.5 text-xs font-medium tracking-wide uppercase"
         >
           <div className="flex items-center gap-2">
             {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden /> : null}

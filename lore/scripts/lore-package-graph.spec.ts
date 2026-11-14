@@ -4,9 +4,9 @@ import { LorePackageGraph } from "./lore-package-graph.ts";
 
 const exports = {
   core: ["api", "mcp", "web", "schemas", "testing"],
-  work: ["api", "mcp", "web", "schemas"],
-  knowledge: ["api", "mcp", "web", "schemas"],
-  deploy: ["api", "mcp", "web", "schemas"],
+  plan: ["api", "mcp", "web", "schemas"],
+  remember: ["api", "mcp", "web", "schemas"],
+  ship: ["api", "mcp", "web", "schemas"],
 };
 
 const graph = new LorePackageGraph(exports);
@@ -19,7 +19,7 @@ describe("LorePackageGraph", () => {
       'import { Thing } from "./services/Thing.ts";',
     ].join("\n");
 
-    expect(graph.check("packages/@lore/work/src/api/index.ts", source)).toEqual(
+    expect(graph.check("packages/@lore/plan/src/api/index.ts", source)).toEqual(
       [],
     );
   });
@@ -28,23 +28,23 @@ describe("LorePackageGraph", () => {
     expect,
   }) => {
     const violations = graph.check(
-      "packages/@lore/knowledge/src/api/services/FolioService.ts",
-      'import { QuestService } from "@lore/work/api";',
+      "packages/@lore/remember/src/api/services/FolioService.ts",
+      'import { QuestService } from "@lore/plan/api";',
     );
 
     expect(violations).toHaveLength(1);
     expect(violations[0]).toContain(
-      "packages/@lore/knowledge/src/api/services/FolioService.ts",
+      "packages/@lore/remember/src/api/services/FolioService.ts",
     );
-    expect(violations[0]).toContain('"@lore/work/api"');
-    expect(violations[0]).toContain("@lore/knowledge -> @lore/work");
+    expect(violations[0]).toContain('"@lore/plan/api"');
+    expect(violations[0]).toContain("@lore/remember -> @lore/plan");
   });
 
   it("refuses core importing a feature module", ({ expect }) => {
     expect(
       graph.check(
         "packages/@lore/core/src/api/index.ts",
-        'export { LoreWorkApi } from "@lore/work/api";',
+        'export { LorePlanApi } from "@lore/plan/api";',
       ),
     ).toHaveLength(1);
   });
@@ -53,7 +53,7 @@ describe("LorePackageGraph", () => {
     expect,
   }) => {
     const violations = graph.check(
-      "packages/@lore/work/src/web/QuestPage.tsx",
+      "packages/@lore/plan/src/web/QuestPage.tsx",
       'import { ProjectController } from "@lore/core/api";',
     );
 
@@ -72,14 +72,14 @@ describe("LorePackageGraph", () => {
     ].join("\n");
 
     expect(
-      graph.check("packages/@lore/work/src/web/QuestPage.tsx", source),
+      graph.check("packages/@lore/plan/src/web/QuestPage.tsx", source),
     ).toEqual([]);
   });
 
   it("refuses a deep import past a package's exports", ({ expect }) => {
     expect(
       graph.check(
-        "packages/@lore/deploy/src/api/AppService.ts",
+        "packages/@lore/ship/src/api/AppService.ts",
         'import { ProjectService } from "@lore/core/src/api/services/ProjectService.ts";',
       ),
     ).toHaveLength(1);
@@ -92,7 +92,7 @@ describe("LorePackageGraph", () => {
       'import type { QuestController } from "lore/api/controllers/QuestController";',
       'import { LoreApi } from "../../../../../apps/lore/src/api/index.ts";',
       'import { I18n } from "@/web/app/services/I18n.ts";',
-      'const lazy = () => import("../../../work/src/web/index.ts");',
+      'const lazy = () => import("../../../plan/src/web/index.ts");',
     ].join("\n");
 
     expect(
@@ -104,7 +104,7 @@ describe("LorePackageGraph", () => {
     expect(
       graph.check(
         "apps/lore/src/main.server.ts",
-        'import { LoreWorkApi } from "@lore/work/api";',
+        'import { LorePlanApi } from "@lore/plan/api";',
       ),
     ).toEqual([]);
   });

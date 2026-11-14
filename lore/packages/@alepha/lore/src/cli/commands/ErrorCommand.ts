@@ -1,7 +1,7 @@
 import type {
   ProjectErrorController,
   InsightsController,
-} from "@lore/deploy/api";
+} from "@lore/ship/api";
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $client } from "alepha/server/links";

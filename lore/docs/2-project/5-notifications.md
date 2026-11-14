@@ -35,13 +35,13 @@ to grant.
 | ----------------------------------------- | ---------------------------------------------------------------------------------------- | ----- | ----- |
 | A mention                                 | A member named with `@name` in a quest or feedback comment                               | Yes   | Yes   |
 | A release published                       | Every member of the project                                                              | Yes   | Yes   |
-| A report accepted or rejected             | The person who [filed it](/lore/docs/support-feedback)                                   | Yes   | Yes   |
+| A report accepted or rejected             | The person who [filed it](/lore/docs/plan-feedback)                                      | Yes   | Yes   |
 | A report answered                         | The person who filed it                                                                  | Yes   | Yes   |
 | An automation's message                   | The rule's recipient, on the channel the rule names                                      | Yes   | Yes   |
 | An automation paused for review or broken | The rule's author                                                                        | Yes   | No    |
 | A quest reminder                          | Whoever accepted the quest                                                               | No    | Yes   |
 | A project invitation                      | The person invited                                                                       | Yes   | Yes   |
-| A healthcheck alert                       | The [monitor's recipients](/lore/docs/apps-healthchecks)                                 | No    | Yes   |
+| A healthcheck alert                       | The [monitor's recipients](/lore/docs/ship-healthchecks)                                 | No    | Yes   |
 | A Cloudflare token failing                | Every member of the host's project whose rank grants `host:update`, the owner among them | No    | Yes   |
 | A throwaway host overdue                  | The same people                                                                          | Yes   | Yes   |
 
@@ -56,7 +56,7 @@ A few rules explain what you will and will not receive:
   account.** The bell links to your **Invitations** page. The email alone
   carries the one-time link. Accepting the invitation marks its message read.
 - **A host with no project yet tells the person who created it**, until an
-  instance admin assigns it a home. See [Hosts](/lore/docs/apps-hosts).
+  instance admin assigns it a home. See [Hosts](/lore/docs/ship-hosts).
 - **An agent's comment is a comment too.** `@name` in a comment an agent
   writes reaches that member, the owner of the API key the agent works as
   included. That is how an agent asks you for a decision.
@@ -97,8 +97,8 @@ See [MCP tools](/lore/docs/reference-mcp-tools).
 ## Next
 
 - [Members](/lore/docs/project-members): invitations and who is in a project.
-- [Automations](/lore/docs/work-automations): rules that send messages of
+- [Automations](/lore/docs/plan-automations): rules that send messages of
   their own.
-- [Feedback](/lore/docs/support-feedback): the reports and answers behind
+- [Feedback](/lore/docs/plan-feedback): the reports and answers behind
   several of these messages.
-- [Healthchecks](/lore/docs/apps-healthchecks): who an outage alert goes to.
+- [Healthchecks](/lore/docs/ship-healthchecks): who an outage alert goes to.

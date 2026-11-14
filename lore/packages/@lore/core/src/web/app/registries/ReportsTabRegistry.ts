@@ -3,7 +3,10 @@ import type { LucideIcon } from "lucide-react";
 
 import type { CapabilityKey } from "../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../api/schemas/projectResourceSchema.ts";
-import { hasCapability } from "../services/projectCapabilities.ts";
+import {
+  capabilityOption,
+  hasCapability,
+} from "../services/projectCapabilities.ts";
 import type { ReportsFilterKey } from "../services/ReportsUrlQuery.ts";
 
 /**
@@ -11,8 +14,8 @@ import type { ReportsFilterKey } from "../services/ReportsUrlQuery.ts";
  * #Q2611): Work's Overview, Quests and Members, Deploy's Quality.
  *
  * Reports itself is CORE and its entry is unconditional, which is the whole
- * reason each tab declares its own gate: Quality is Apps baseline, so an
- * Apps-only project would lose its Quality tab along with the Reports entry
+ * reason each tab declares its own gate: Quality is Ship baseline, so an
+ * Ship-only project would lose its Quality tab along with the Reports entry
  * if the section belonged to Work. The pages are each module's, mounted
  * under core's `projectReports` with `parent:`.
  */
@@ -59,7 +62,11 @@ export class ReportsTabRegistry {
     project: Pick<ProjectResource, "capabilities"> | undefined,
   ): ReportsTab[] {
     return this.entries.filter(
-      (tab) => !tab.needs || hasCapability(project, tab.needs),
+      (tab) =>
+        !tab.needs ||
+        (tab.option
+          ? capabilityOption(project, tab.needs, tab.option)
+          : hasCapability(project, tab.needs)),
     );
   }
 }
@@ -80,6 +87,11 @@ export interface ReportsTab {
    * The capability this tab's data source belongs to.
    */
   needs?: CapabilityKey;
+  /**
+   * The option of {@link needs} the tab hangs off, when it hangs off one
+   * (Feedback is `plan.feedback`).
+   */
+  option?: string;
   /**
    * The filters this tab honours: its loader reads only these, and the bar
    * shows the others disabled (#Q2996).

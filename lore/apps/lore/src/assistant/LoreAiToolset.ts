@@ -1,20 +1,20 @@
 import { ProjectController, SearchController } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
-import { FolioController } from "@lore/knowledge/api";
-import { FolioTools } from "@lore/knowledge/mcp";
 import {
   EpicController,
   FeedbackController,
   QuestCommentController,
   QuestController,
   ReleaseController,
-} from "@lore/work/api";
+} from "@lore/plan/api";
 import {
   EpicTools,
   FeedbackTools,
   QuestTools,
   ReleaseTools,
-} from "@lore/work/mcp";
+} from "@lore/plan/mcp";
+import { FolioController } from "@lore/remember/api";
+import { FolioTools } from "@lore/remember/mcp";
 import { $inject, Alepha } from "alepha";
 import type { ToolPrimitive } from "alepha/mcp";
 import type { ActionPrimitive } from "alepha/server";

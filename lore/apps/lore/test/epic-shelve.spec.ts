@@ -1,5 +1,5 @@
 import { ReadCounter } from "@lore/core/testing";
-import { EpicController } from "@lore/work/api";
+import { EpicController } from "@lore/plan/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

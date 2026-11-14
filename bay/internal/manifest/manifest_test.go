@@ -92,8 +92,8 @@ func TestIgnoresTheBuildList(t *testing.T) {
 		"runtimes": [{"runtime": "node", "entry": "index.node.js"}],
 		"surface": {
 			"version": 1,
-			"classes": [{"key": "lore.work.api:QuestController", "pure": true}],
-			"actions": [{"name": "getQuests", "group": "QuestController", "method": "GET", "path": "/quests", "class": "lore.work.api:QuestController"}]
+			"classes": [{"key": "lore.plan.api:QuestController", "pure": true}],
+			"actions": [{"name": "getQuests", "group": "QuestController", "method": "GET", "path": "/quests", "class": "lore.plan.api:QuestController"}]
 		}
 	}`)
 	if err != nil {

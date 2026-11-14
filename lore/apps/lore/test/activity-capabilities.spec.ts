@@ -1,7 +1,7 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
 import type { CapabilityKey } from "@lore/core/schemas";
-import { FolioController } from "@lore/knowledge/api";
-import { EpicController, QuestController } from "@lore/work/api";
+import { EpicController, QuestController } from "@lore/plan/api";
+import { FolioController } from "@lore/remember/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -110,7 +110,7 @@ describe("the activity feed and capabilities", () => {
       ctx.projectApi.createProject({
         body: {
           title: "Mixed",
-          capabilities: [{ key: "work" }, { key: "knowledge" }],
+          capabilities: [{ key: "plan" }, { key: "remember" }],
         },
       }),
     );
@@ -136,7 +136,7 @@ describe("the activity feed and capabilities", () => {
     expect(both.content.some((row) => row.type === "quest")).toBe(true);
     expect(both.content.some((row) => row.type === "folio")).toBe(true);
 
-    await setCapability(ctx, project.id, "work", false);
+    await setCapability(ctx, project.id, "plan", false);
 
     const after = await activity(ctx, project.id);
     expect(after.content.some((row) => row.type === "quest")).toBe(false);
@@ -146,7 +146,7 @@ describe("the activity feed and capabilities", () => {
     expect(after.content.some((row) => row.type === "project")).toBe(true);
 
     // And back: nothing was purged, so the quest row returns.
-    await setCapability(ctx, project.id, "work", true);
+    await setCapability(ctx, project.id, "plan", true);
     const restored = await activity(ctx, project.id);
     expect(restored.content.some((row) => row.type === "quest")).toBe(true);
 
@@ -159,12 +159,12 @@ describe("the activity feed and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Switches", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Switches", capabilities: [{ key: "remember" }] },
       }),
     );
 
-    await setCapability(ctx, project.id, "support", true);
-    await setCapability(ctx, project.id, "support", false);
+    await setCapability(ctx, project.id, "ship", true);
+    await setCapability(ctx, project.id, "ship", false);
 
     const feed = await activity(ctx, project.id);
     const events = feed.content.filter((row) => row.action === "capability");
@@ -174,11 +174,11 @@ describe("the activity feed and capabilities", () => {
     // is deleted by the very event it would have to describe.
     expect(events).toHaveLength(2);
     expect(events[0]!.metadata).toMatchObject({
-      capability: "support",
+      capability: "ship",
       enabled: false,
     });
     expect(events[1]!.metadata).toMatchObject({
-      capability: "support",
+      capability: "ship",
       enabled: true,
     });
 
@@ -191,7 +191,7 @@ describe("the activity feed and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Notes", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Notes", capabilities: [{ key: "remember" }] },
       }),
     );
     await ctx.asUser(() =>
@@ -215,7 +215,7 @@ describe("the activity feed and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Notes", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Notes", capabilities: [{ key: "remember" }] },
       }),
     );
 
@@ -235,7 +235,7 @@ describe("the activity feed and capabilities", () => {
   });
 
   /**
-   * Feedback #P2177: a Work project with the `epics` and `releases` options
+   * Feedback #P2177: a Plan project with the `epics` and `releases` options
    * off still offered Epic and Release, two kinds the sidebar hides. A kind
    * whose surface hangs off an option is offered only while that option is
    * on - and, like a capability, turning it off hides and never deletes.
@@ -249,7 +249,7 @@ describe("the activity feed and capabilities", () => {
         body: {
           title: "Tasks",
           capabilities: [
-            { key: "work", options: { epics: false, releases: false } },
+            { key: "plan", options: { epics: false, releases: false } },
           ],
         },
       }),
@@ -260,7 +260,7 @@ describe("the activity feed and capabilities", () => {
     expect(off).not.toContain("epic");
     expect(off).not.toContain("release");
 
-    await setCapability(ctx, project.id, "work", true, {
+    await setCapability(ctx, project.id, "plan", true, {
       epics: true,
       releases: true,
     });
@@ -280,7 +280,7 @@ describe("the activity feed and capabilities", () => {
       ctx.projectApi.createProject({
         body: {
           title: "Draft",
-          capabilities: [{ key: "work", options: { epics: true } }],
+          capabilities: [{ key: "plan", options: { epics: true } }],
         },
       }),
     );
@@ -294,7 +294,7 @@ describe("the activity feed and capabilities", () => {
     const before = await activity(ctx, project.id);
     expect(before.content.some((row) => row.type === "epic")).toBe(true);
 
-    await setCapability(ctx, project.id, "work", true, { epics: false });
+    await setCapability(ctx, project.id, "plan", true, { epics: false });
 
     const hidden = await activity(ctx, project.id);
     expect(hidden.content.some((row) => row.type === "epic")).toBe(false);
@@ -302,7 +302,7 @@ describe("the activity feed and capabilities", () => {
     expect((await activity(ctx, project.id, "epic")).content).toEqual([]);
 
     // Hidden, never deleted: the row comes back with the option.
-    await setCapability(ctx, project.id, "work", true, { epics: true });
+    await setCapability(ctx, project.id, "plan", true, { epics: true });
     const back = await activity(ctx, project.id);
     expect(back.content.some((row) => row.type === "epic")).toBe(true);
 

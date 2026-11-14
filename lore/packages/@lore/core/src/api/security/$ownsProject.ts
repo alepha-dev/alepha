@@ -247,8 +247,8 @@ export interface OwnsProjectOptions extends Pick<
    * Refuse unless the project has this capability, checked AFTER membership.
    *
    * ```typescript
-   * $ownsProject({ param: "projectId", capability: "work" })
-   * $ownsProject({ param: "projectId", capability: { key: "work", option: "epics" } })
+   * $ownsProject({ param: "projectId", capability: "plan" })
+   * $ownsProject({ param: "projectId", capability: { key: "plan", option: "epics" } })
    * ```
    *
    * On the same option bag as everything else here, deliberately: Ranks adds

@@ -183,7 +183,7 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
     // whether the block sits ON the page or IN it.
     <div
       className={cn(
-        "bg-muted [&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background dark:[&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]",
+        "[&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background dark:[&_:is(input,[role=combobox],[data-slot=date-trigger])]:bg-background chrome flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2",
         props.className,
       )}
     >

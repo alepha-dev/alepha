@@ -103,12 +103,11 @@ describe("CapabilityRegistry", () => {
     await ctx.alepha.stop();
   });
 
-  it("declares all four capabilities, in wizard order", ({ expect }) => {
+  it("declares the three capabilities, in wizard order", ({ expect }) => {
     expect(ctx.registry.all().map((c) => c.key)).toEqual([
-      "work",
-      "knowledge",
-      "apps",
-      "support",
+      "plan",
+      "remember",
+      "ship",
     ]);
     // The enum is the list, so a key without a descriptor cannot hide.
     expect(ctx.registry.keys()).toEqual(ctx.registry.all().map((c) => c.key));
@@ -118,21 +117,21 @@ describe("CapabilityRegistry", () => {
     // The read rule of the whole epic. A row written before an option existed
     // never said anything about it, and every optional key in
     // `projects.features` is absent on every project that predates it.
-    expect(ctx.registry.optionsOf("work", {})).toEqual({
+    expect(ctx.registry.optionsOf("plan", {})).toEqual({
       epics: false,
       releases: false,
       estimate: false,
       chrono: false,
       reminder: false,
       agentPrompts: false,
+      feedback: false,
     });
-    expect(ctx.registry.optionsOf("apps", { track: true })).toEqual({
+    expect(ctx.registry.optionsOf("ship", { track: true })).toEqual({
       track: true,
       deploy: false,
       uptime: false,
       stacks: false,
     });
-    expect(ctx.registry.optionsOf("support", {})).toEqual({});
   });
 
   it("strips an unknown option on the way out, refuses it on the way in", ({
@@ -141,32 +140,33 @@ describe("CapabilityRegistry", () => {
     // Out: a row written by a build with one option more than this one still
     // has to load. Throwing here is the 2026-08-05 failure mode.
     expect(
-      ctx.registry.optionsOf("apps", { track: true, futureThing: true }),
+      ctx.registry.optionsOf("ship", { track: true, futureThing: true }),
     ).toEqual({ track: true, deploy: false, uptime: false, stacks: false });
 
     // In: `createProject`'s body is `.partial()`, so a mistyped feature key
     // has been accepted silently for as long as the bag has existed. This is
     // the one place a typo can be caught.
     expect(() =>
-      ctx.registry.strictOptionsOf("apps", { trakc: true }),
+      ctx.registry.strictOptionsOf("ship", { trakc: true }),
     ).toThrow();
   });
 
-  it("preselects only apps.track and work.automations", ({ expect }) => {
+  it("preselects only ship.track", ({ expect }) => {
     // Releases was on by default before this epic, with a board that is
     // now always there: a way to look at quests is not a reason to have
     // them. Apps keeps its one, because the capability's own label says
     // "watch". Automations is on since #Q3563: a project had none until an
     // owner found the switch.
-    expect(ctx.registry.preselectedOptionsOf("work")).toEqual({
+    expect(ctx.registry.preselectedOptionsOf("plan")).toEqual({
       epics: false,
       releases: false,
       estimate: false,
       chrono: false,
       reminder: false,
       agentPrompts: false,
+      feedback: false,
     });
-    expect(ctx.registry.preselectedOptionsOf("apps")).toEqual({
+    expect(ctx.registry.preselectedOptionsOf("ship")).toEqual({
       track: true,
       deploy: false,
       uptime: false,
@@ -177,10 +177,10 @@ describe("CapabilityRegistry", () => {
   it("names the capability that owns a tool, and nothing for a core tool", ({
     expect,
   }) => {
-    expect(ctx.registry.ownerOfTool("quest_create")).toBe("work");
-    expect(ctx.registry.ownerOfTool("folio_get")).toBe("knowledge");
-    expect(ctx.registry.ownerOfTool("error_forward")).toBe("apps");
-    expect(ctx.registry.ownerOfTool("feedback_accept")).toBe("support");
+    expect(ctx.registry.ownerOfTool("quest_create")).toBe("plan");
+    expect(ctx.registry.ownerOfTool("folio_get")).toBe("remember");
+    expect(ctx.registry.ownerOfTool("error_forward")).toBe("ship");
+    expect(ctx.registry.ownerOfTool("feedback_accept")).toBe("plan");
     // Core. A project with no capabilities at all is a legal state and still
     // has to be readable.
     expect(ctx.registry.ownerOfTool("project_context")).toBeUndefined();
@@ -225,14 +225,14 @@ describe("CapabilityRegistry", () => {
   it("offers Epic and Release only while their Work options are on", ({
     expect,
   }) => {
-    const on = { work: { epics: true, releases: true } };
-    const off = { work: { epics: false, releases: false } };
+    const on = { plan: { epics: true, releases: true } };
+    const off = { plan: { epics: false, releases: false } };
 
     expect(ctx.registry.isActivityKindEnabled("epic", on)).toBe(true);
     expect(ctx.registry.isActivityKindEnabled("release", on)).toBe(true);
     expect(ctx.registry.isActivityKindEnabled("epic", off)).toBe(false);
     expect(ctx.registry.isActivityKindEnabled("release", off)).toBe(false);
-    // Quests are Work's baseline, and Core kinds need nothing at all.
+    // Quests are Plan's baseline, and Core kinds need nothing at all.
     expect(ctx.registry.isActivityKindEnabled("quest", off)).toBe(true);
     expect(ctx.registry.isActivityKindEnabled("project", {})).toBe(true);
     // No option can bring back a kind whose capability is off.
@@ -260,19 +260,22 @@ describe("CapabilityRegistry", () => {
   it("searches Epic and Release only while their Work options are on", ({
     expect,
   }) => {
-    const on = { work: { epics: true, releases: true } };
-    const off = { work: { epics: false, releases: false } };
+    const on = { plan: { epics: true, releases: true } };
+    const off = { plan: { epics: false, releases: false } };
 
     expect(ctx.registry.isSearchKindEnabled("epic", on)).toBe(true);
     expect(ctx.registry.isSearchKindEnabled("release", on)).toBe(true);
     expect(ctx.registry.isSearchKindEnabled("epic", off)).toBe(false);
     expect(ctx.registry.isSearchKindEnabled("release", off)).toBe(false);
-    // Quests need only Work; feedback needs Support and no option.
+    // Quests need only Plan; feedback needs Plan with `feedback` on.
     expect(ctx.registry.isSearchKindEnabled("quest", off)).toBe(true);
-    expect(ctx.registry.isSearchKindEnabled("feedback", { support: {} })).toBe(
-      true,
-    );
+    expect(
+      ctx.registry.isSearchKindEnabled("feedback", {
+        plan: { feedback: true },
+      }),
+    ).toBe(true);
     expect(ctx.registry.isSearchKindEnabled("feedback", off)).toBe(false);
+    expect(ctx.registry.isSearchKindEnabled("feedback", {})).toBe(false);
   });
 });
 
@@ -300,24 +303,24 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
 
   it("reads a row as on, with its options defaulted", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha, {
-      capabilities: [{ key: "work", options: { releases: true } }],
+      capabilities: [{ key: "plan", options: { releases: true } }],
     });
 
     const set = await ctx.security.capabilitiesOf(project.id);
-    expect(ctx.security.hasCapability(set, "work")).toBe(true);
-    expect(ctx.security.hasCapability(set, "apps")).toBe(false);
-    expect(ctx.security.capabilityOption(set, "work", "releases")).toBe(true);
-    expect(ctx.security.capabilityOption(set, "work", "epics")).toBe(false);
+    expect(ctx.security.hasCapability(set, "plan")).toBe(true);
+    expect(ctx.security.hasCapability(set, "ship")).toBe(false);
+    expect(ctx.security.capabilityOption(set, "plan", "releases")).toBe(true);
+    expect(ctx.security.capabilityOption(set, "plan", "epics")).toBe(false);
     // An option of a capability that is OFF is off, whatever it says. That is
     // the one rule about capabilities reading each other: narrow, never widen.
-    expect(ctx.security.capabilityOption(set, "apps", "track")).toBe(false);
+    expect(ctx.security.capabilityOption(set, "ship", "track")).toBe(false);
   });
 
   it("makes seven concurrent gates in one request pay one query", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha, {
-      capabilities: [{ key: "knowledge", options: {} }],
+      capabilities: [{ key: "remember", options: {} }],
     });
 
     ctx.counter.reset();
@@ -329,7 +332,7 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
     // All seven must have ANSWERED. Seven failures also read the table once,
     // which is the reading of this number nobody wants.
     expect(res.status).toBe(200);
-    expect(body.keys).toEqual(Array.from({ length: 7 }, () => ["knowledge"]));
+    expect(body.keys).toEqual(Array.from({ length: 7 }, () => ["remember"]));
 
     // Exact, never `toBeLessThan`: an upper bound stays green when a later
     // change drops the read altogether.
@@ -363,7 +366,7 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
 
     await ctx.security.capabilities.create({
       projectId: project.id,
-      key: "apps",
+      key: "ship",
       options: { track: true },
     });
 
@@ -373,6 +376,6 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
     // only ever applies to a write made by ANOTHER isolate. Without this the
     // settings page would show a switch that does not appear to take, for up
     // to half a minute, on the machine that flipped it.
-    expect(after.keys[0]).toEqual(["apps"]);
+    expect(after.keys[0]).toEqual(["ship"]);
   });
 });

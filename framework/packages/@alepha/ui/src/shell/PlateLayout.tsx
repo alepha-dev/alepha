@@ -111,7 +111,9 @@ export const PlateLayout = (props: PlateLayoutProps) => (
       <div
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scroll region must take focus for the keyboard to scroll it (WCAG 2.1.1); the lint rule does not know scroll containers
         tabIndex={0}
-        className="focus-visible:ring-ring/50 min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-[3px] focus-visible:ring-inset"
+        // `bg-muted`, the folder tab's own fill: the active tile opens into
+        // the body, so the two must be one surface.
+        className="bg-muted focus-visible:ring-ring/50 min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-[3px] focus-visible:ring-inset"
       >
         {props.children}
       </div>

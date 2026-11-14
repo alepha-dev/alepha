@@ -1,15 +1,15 @@
 import { ProjectController, ResourceLinkService } from "@lore/core/api";
 import { folioLinks } from "@lore/core/schemas";
-import { ProjectErrorController } from "@lore/deploy/api";
-import { projectErrors } from "@lore/deploy/schemas";
+import { ReleaseController } from "@lore/plan/api";
+import { quests, releases } from "@lore/plan/schemas";
 import {
   DirectoryController,
   FolioController,
   FolioAttachmentService,
-} from "@lore/knowledge/api";
-import { folios } from "@lore/knowledge/schemas";
-import { ReleaseController } from "@lore/work/api";
-import { quests, releases } from "@lore/work/schemas";
+} from "@lore/remember/api";
+import { folios } from "@lore/remember/schemas";
+import { ProjectErrorController } from "@lore/ship/api";
+import { projectErrors } from "@lore/ship/schemas";
 import { $hook, Alepha, AlephaError, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -129,9 +129,9 @@ const setup = async () => {
       body: {
         title: "Guarded",
         capabilities: [
-          { key: "work", options: { releases: true } },
-          { key: "knowledge" },
-          { key: "apps" },
+          { key: "plan", options: { releases: true } },
+          { key: "remember" },
+          { key: "ship" },
         ],
       },
     },

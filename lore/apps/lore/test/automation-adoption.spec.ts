@@ -20,7 +20,7 @@ import {
 } from "@lore/core/api";
 import { notificationPreferences } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { QuestNotifications, ReleaseController } from "@lore/work/api";
+import { QuestNotifications, ReleaseController } from "@lore/plan/api";
 import { Alepha, AlephaError } from "alepha";
 import {
   JobProvider,
@@ -196,7 +196,7 @@ describe("Explicit policy adoption and legacy parity", () => {
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
+          key: "plan",
           options: { reminder: true, releases: true },
         },
       ],

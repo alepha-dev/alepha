@@ -3,7 +3,7 @@ import type {
   StackController,
   StackDeployController,
   StackVariableController,
-} from "@lore/deploy/api";
+} from "@lore/ship/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command, CommandError, EnvUtils, UsageError } from "alepha/command";
 import { isHttpError } from "alepha/server";

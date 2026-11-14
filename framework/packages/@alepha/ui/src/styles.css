@@ -126,6 +126,35 @@
   padding-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
 }
 
+/*
+ * Chrome: the surface of everything that frames content rather than being
+ * it - a table's filter bar, sticky header, summary and footer, a tab strip,
+ * a menu's header, an application's own toolbar over a board or a report.
+ *
+ * `bg-muted` under the `--bevel` line inset along the top edge (see
+ * `--bevel` below for why the pair reads as a raised fold). The border that
+ * closes the top edge is the element's own, or the one above it; `chrome`
+ * draws none, so the call site keeps its `border`, `border-b` or rounding.
+ *
+ * `chrome-closed` adds a `--border` line inset along the bottom edge, for a
+ * sticky band whose real bottom border would scroll away with the rows
+ * under it (the table header, the permission matrix's).
+ *
+ * Not a translucent wash (`bg-card/30`, `bg-muted/50`) over a card: that is
+ * a tint, it renders a few percent off the card, and it has no fold. Fields
+ * inside a chrome bar take `bg-background`, so they read as inputs on it.
+ */
+@utility chrome {
+  background-color: var(--color-muted);
+  box-shadow:
+    inset 0 1px 0 0 var(--bevel),
+    var(--chrome-closed, 0 0 #0000);
+}
+
+@utility chrome-closed {
+  --chrome-closed: inset 0 -1px 0 0 var(--border);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

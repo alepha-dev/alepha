@@ -10,7 +10,7 @@ import {
   qualityRuns,
   sigils,
   sigilUniquesDaily,
-} from "@lore/deploy/schemas";
+} from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

@@ -6,23 +6,23 @@ It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and 
 
 ## Layout: packages are modules, apps are executables
 
-`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in four private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/work`](packages/@lore/work/AGENTS.md), [`@lore/knowledge`](packages/@lore/knowledge/AGENTS.md), [`@lore/deploy`](packages/@lore/deploy/AGENTS.md).
+`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in four private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/plan`](packages/@lore/plan/AGENTS.md), [`@lore/remember`](packages/@lore/remember/AGENTS.md), [`@lore/ship`](packages/@lore/ship/AGENTS.md).
 
-| package           | is               | owns                                                                                                                                                                                     |
-| ----------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@lore/core`      | the glue         | projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, dashboard, reports, agent prompts, the web shell, every registry |
-| `@lore/work`      | Lore as Jira     | quests, epics, releases, areas, kanban, roadmap, feedback                                                                                                                                |
-| `@lore/knowledge` | Lore as Obsidian | folios, directories, attachments, revisions, names                                                                                                                                       |
-| `@lore/deploy`    | Lore as Vercel   | apps, telemetry, deployments, hosts                                                                                                                                                      |
+| package          | is               | owns                                                                                                                                                                                     |
+| ---------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@lore/core`     | the glue         | projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, dashboard, reports, agent prompts, the web shell, every registry |
+| `@lore/plan`     | Lore as Jira     | quests, epics, releases, areas, kanban, roadmap, feedback                                                                                                                                |
+| `@lore/remember` | Lore as Obsidian | folios, directories, attachments, revisions, names                                                                                                                                       |
+| `@lore/ship`     | Lore as Vercel   | apps, telemetry, deployments, hosts                                                                                                                                                      |
 
 Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first; the entries are the only place they meet. Scenario specs boot them the same way, through `bootLore()` in `apps/lore/test/fixtures/bootLore.ts`. `./web` is registered by BOTH entries.
 
 ⚠️ **The rule** (`check:conventions`, graph table in `scripts/lore-package-graph.ts`):
 
 ```
-core <- work
-core <- knowledge
-core <- deploy
+core <- plan
+core <- remember
+core <- ship
 ```
 
 - A feature module never imports another. A feature spanning two goes through a core registry or a core link (an epic files folios, an error is forwarded to a quest, a release lists its artifacts).
@@ -83,11 +83,11 @@ Decisions, plans and bug reports live in the Lore project **Alepha** (`https://l
 
 Lore's user documentation is `docs/`, published at `alepha.dev/lore/docs/<slug>` by the docs site at the repository root. It is written for a person using Lore in a browser (#Q3492).
 
-- **One folder per thing the reader is doing**: `1-start`, `2-project`, `3-work`, `4-knowledge`, `5-support`, `6-agents`, `7-apps`, `8-reference`. A page's slug is its folder and file name without their order prefixes, joined by a dash: `3-work/1-quests.md` is `work-quests`. Pre-v1, a slug may change without a redirect; every link to it changes in the same commit.
-- **A page leads with the browser**: what the thing is for, then the screens in the order a person meets them, with labels as the UI spells them. The command line and agents come last, under `## From the command line` and `## From an agent`, and the full lists live in `8-reference`.
+- **One folder per thing the reader is doing**: `1-start`, `2-project`, `3-plan`, `4-remember`, `5-agents`, `6-ship`, `7-reference` (Lore's three pillars, since #E143). A page's slug is its folder and file name without their order prefixes, joined by a dash: `3-plan/1-quests.md` is `plan-quests`. Pre-v1, a slug may change without a redirect; every link to it changes in the same commit.
+- **A page leads with the browser**: what the thing is for, then the screens in the order a person meets them, with labels as the UI spells them. The command line and agents come last, under `## From the command line` and `## From an agent`, and the full lists live in `7-reference`.
 - **Lore stands on its own.** Never write that Lore needs Alepha. Telemetry and app deploys need an app built with Alepha, and their pages say so once, as a fact about the feature.
 - **Lore's UI links a guide through `loreDocsUrl`** (`packages/@lore/core/src/web/app/services/docsUrl.ts`), whose slug list is the type: a moved page is a type error there.
-- **After editing a guide, run `yarn w lore docs:corpus`**: the assistant answers from a corpus generated from the guides, and `assistant-docs.spec.ts` refuses a stale one. A guide's capability, which decides which projects the assistant may quote it to, is its folder (`3-work` is Work).
+- **After editing a guide, run `yarn w lore docs:corpus`**: the assistant answers from a corpus generated from the guides, and `assistant-docs.spec.ts` refuses a stale one. A guide's capability, which decides which projects the assistant may quote it to, is its folder (`3-plan` is Plan).
 - ⚠️ **Screenshots never come from a real instance.** They are taken on a local Lore (`node dist` on its own port and data directory) seeded with a fictional project, `Acme`, at 1440x900, once per theme: `docs/public/screenshots/lore/<name>-light.png` and `<name>-dark.png`. A guide references the light one, `![alt](/screenshots/lore/<name>-light.png)`, and the site emits both and shows the one matching the theme.
 
 ## Testing
@@ -179,7 +179,7 @@ A class holding an `$action`, a `$page` or a `$tool` is created on its first req
 ### Router and i18n
 
 - **`router.push("pageName", { params })`** on a bare `useRouter()`. There is no `router.navigate()`.
-- **Each package registers its routers in `Routers`** (`declare module "alepha/react/router"`, at the end of its `web/index.ts`, #Q3187), so a bare `useRouter()` and `<Link>` check page names and params. A package sees its own pages and core's: a core component naming a Work page, or one navigating to a name a registry supplies, writes `useRouter<any>()` with the reason in a comment.
+- **Each package registers its routers in `Routers`** (`declare module "alepha/react/router"`, at the end of its `web/index.ts`, #Q3187), so a bare `useRouter()` and `<Link>` check page names and params. A package sees its own pages and core's: a core component naming a Plan page, or one navigating to a name a registry supplies, writes `useRouter<any>()` with the reason in a comment.
 - **`tr()` and `l()` both return `string`: never wrap either in `String()`.** A helper taking `tr` types it `(key: …) => string` or `I18nProvider<any, any>["tr"]`.
 - **`I18nLocalizeOptions` has `date` and `number` only, no `time`**: for date+time pass a dayjs format such as `"lll"` to `date`.
 - **A `$route` under `/api` answers** like any other: the `$action` dispatcher does not shadow it (`framework/packages/alepha/src/server/core/__tests__/$route-under-api.spec.ts`). Still, an API endpoint is an `$action`, and a raw `$route` takes a root path, so `/api/*` stays the actions' namespace.

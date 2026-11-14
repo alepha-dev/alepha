@@ -1,8 +1,8 @@
 import { DashboardMetricRegistry } from "@lore/core/api";
 import type { DashboardCardValue, Project } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
-import { projectErrors } from "@lore/deploy/schemas";
-import { feedback } from "@lore/work/schemas";
+import { feedback } from "@lore/plan/schemas";
+import { projectErrors } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -169,7 +169,7 @@ describe("dashboard needs you", () => {
     expect,
   }) => {
     const { project, user } = await projectOf({
-      capabilities: [{ key: "work" }],
+      capabilities: [{ key: "plan" }],
     });
     await projectError(project, "TypeError");
     await pending(project, "ignored");

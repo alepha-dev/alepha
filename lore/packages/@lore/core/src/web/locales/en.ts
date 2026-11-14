@@ -934,52 +934,52 @@ export default {
     "Download all quests in this project as a CSV file.",
   "project.settings.data.export.button": "Export Quests",
   // ── Capabilities ────────────────────────────────────────────────────────
-  // The four product surfaces a project composes, and the switches inside
-  // each. Labels move; the persisted keys never do.
-  // `.label` is a sentence on purpose: the creation wizard, the switches in
-  // General › Capabilities and the refusal messages all read better as
-  // "Plan and track work". The settings group in the sidebar names each
-  // section with the sidebar's own noun instead (Quests, Folios, Apps), so
-  // the one-word `.short` keys went with the second nav rail (#Q2565).
-  "project.capability.work.label": "Plan and track work",
-  "project.capability.work.description": "Quests, epics, releases, a board.",
-  "project.capability.work.option.epics.label": "Epics",
-  "project.capability.work.option.epics.description":
+  // Lore's three pillars, the capabilities a project composes, and the
+  // switches inside each. `.label` is the pillar's word, the same string as
+  // `home.pillar.*.title` (#E143); `.description` lists what the pillar
+  // holds, so a reader who does not know the word still finds quests. The
+  // settings group in the sidebar names each section with the sidebar's own
+  // noun instead (Quests, Folios, Apps).
+  "project.capability.plan.label": "Plan",
+  "project.capability.plan.description":
+    "Quests, epics, releases, a board, feedback.",
+  "project.capability.plan.option.epics.label": "Epics",
+  "project.capability.plan.option.epics.description":
     "Phases, with a workflow.",
-  "project.capability.work.option.releases.label": "Releases",
-  "project.capability.work.option.releases.description":
+  "project.capability.plan.option.releases.label": "Releases",
+  "project.capability.plan.option.releases.description":
     "Named versions that ship.",
-  "project.capability.work.option.estimate.label": "Estimates",
-  "project.capability.work.option.estimate.description":
+  "project.capability.plan.option.estimate.label": "Estimates",
+  "project.capability.plan.option.estimate.description":
     "Plan how long a quest should take.",
-  "project.capability.work.option.chrono.label": "Timer",
-  "project.capability.work.option.chrono.description":
+  "project.capability.plan.option.chrono.label": "Timer",
+  "project.capability.plan.option.chrono.description":
     "Track the time a quest actually took.",
-  "project.capability.work.option.reminder.label": "Reminders",
-  "project.capability.work.option.reminder.description":
+  "project.capability.plan.option.reminder.label": "Reminders",
+  "project.capability.plan.option.reminder.description":
     "Nudge whoever holds a quest that has gone quiet.",
-  "project.capability.work.option.agentPrompts.label": "Agent prompts",
-  "project.capability.work.option.agentPrompts.description":
+  "project.capability.plan.option.agentPrompts.label": "Agent prompts",
+  "project.capability.plan.option.agentPrompts.description":
     "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for your coding agent; nothing is sent anywhere.",
-  "project.capability.knowledge.label": "Write and keep knowledge",
-  "project.capability.knowledge.description":
-    "Wiki linked folios, files, revisions.",
-  "project.capability.knowledge.option.agentSummary.label":
-    "Summaries for agents",
-  "project.capability.knowledge.option.agentSummary.description":
-    "Show the summary field on a folio. It is written and read over MCP either way.",
-  "project.capability.apps.label": "Deploy and watch apps",
-  "project.capability.apps.description":
-    "Instances, analytics, errors, vitals.",
-  "project.capability.apps.option.track.label": "Track apps",
-  "project.capability.apps.option.track.description":
-    "Analytics, vitals and errors. Each app gets a sigil.",
-  "project.capability.apps.option.deploy.label": "Deploy apps",
-  "project.capability.apps.option.deploy.description":
-    "Push a build to a machine you own.",
-  "project.capability.support.label": "Collect feedback",
-  "project.capability.support.description":
+  "project.capability.plan.option.feedback.label": "Feedback",
+  "project.capability.plan.option.feedback.description":
     "A request form for any signed-in Lore account, and a triage inbox.",
+  "project.capability.remember.label": "Remember",
+  "project.capability.remember.description":
+    "Wiki linked folios, files, revisions.",
+  "project.capability.remember.option.agentSummary.label":
+    "Summaries for agents",
+  "project.capability.remember.option.agentSummary.description":
+    "Show the summary field on a folio. It is written and read over MCP either way.",
+  "project.capability.ship.label": "Ship",
+  "project.capability.ship.description":
+    "Apps and their deploys, analytics, errors, vitals.",
+  "project.capability.ship.option.track.label": "Track apps",
+  "project.capability.ship.option.track.description":
+    "Analytics, vitals and errors. Each app gets a sigil.",
+  "project.capability.ship.option.deploy.label": "Deploy apps",
+  "project.capability.ship.option.deploy.description":
+    "Push a build to a machine you own.",
   "project.settings.areas.title": "Areas",
   "project.settings.areas.description":
     "The parts of your system. Every quest belongs to exactly one. Rename an area onto an existing one to merge them.",
@@ -1142,10 +1142,9 @@ export default {
   "reports.summary.empty": "No capability to report on.",
   "reports.summary.definition":
     "Each figure over the period, against the period of the same length before it.",
-  "reports.summary.section.work": "Work",
-  "reports.summary.section.support": "Support",
-  "reports.summary.section.knowledge": "Knowledge",
-  "reports.summary.section.apps": "Delivery",
+  "reports.summary.section.plan": "Plan",
+  "reports.summary.section.remember": "Remember",
+  "reports.summary.section.ship": "Ship",
   "reports.summary.line.throughput": "Quests completed",
   "reports.summary.line.throughput.definition":
     "Quests completed in the period.",
@@ -1366,7 +1365,7 @@ export default {
   "reports.planning.published.size": "Size",
   "reports.planning.published.cadence": "Cadence (days)",
   "reports.planning.published.carried": "Carried over",
-  "project.reports.nav.support": "Support",
+  "project.reports.nav.support": "Feedback",
   "reports.summary.line.feedbackTriaged": "Triaged",
   "reports.summary.line.feedbackTriaged.definition":
     "Reports accepted or rejected in the period.",
@@ -1402,7 +1401,7 @@ export default {
   "reports.support.sources.definition":
     "The busiest host and path tags of the reports received in the period. A report counts once per tag.",
   "reports.support.sources.empty": "No report carries a host or path.",
-  "project.reports.nav.knowledge": "Knowledge",
+  "project.reports.nav.knowledge": "Folios",
   "reports.knowledge.empty": "Nothing here.",
   "reports.knowledge.pinned": "pinned",
   "reports.knowledge.kpi.total": "Folios",
@@ -2253,7 +2252,7 @@ export default {
   "app.settings.delete.deleted": "App deleted",
   "app.settings.sigil.feedback.dropped.title": "Feedback is not collected",
   "app.settings.sigil.feedback.dropped.description":
-    "This app sends feedback and the project drops it. Turn on Collect feedback to keep it.",
+    "This app sends feedback and the project drops it. Turn on Feedback, under Plan, to keep it.",
   "app.settings.sigil.feedback.dropped.action": "Open Capabilities",
   "app.settings.credential": "Credential",
   "app.settings.rotate.title": "Rotate the token",
@@ -3222,7 +3221,7 @@ export default {
   "dashboard.card.size": "Size",
   "dashboard.card.size.option": "$1 wide, $2 tall",
   "dashboard.group.flow": "Flow",
-  "dashboard.group.knowledge": "Knowledge",
+  "dashboard.group.knowledge": "Folios",
   "dashboard.group.core": "Project",
   "dashboard.empty.noAccess": "You cannot read this project's reports.",
   "dashboard.badge.todo": "To do",
@@ -3758,11 +3757,11 @@ export default {
   "uptime.app.none": "No monitor checks this address yet.",
   "uptime.title": "Uptime",
   "uptime.empty": "No monitors yet.",
-  "project.capability.apps.option.uptime.label": "Monitor apps",
-  "project.capability.apps.option.uptime.description":
+  "project.capability.ship.option.uptime.label": "Monitor apps",
+  "project.capability.ship.option.uptime.description":
     "Check your addresses on a schedule and keep their history. No sigil needed.",
-  "project.capability.apps.option.stacks.label": "Stacks",
-  "project.capability.apps.option.stacks.description":
+  "project.capability.ship.option.stacks.label": "Stacks",
+  "project.capability.ship.option.stacks.description":
     "Deploy apps and services together from one compose.yml.",
   "uptime.description": "Website, port, certificate and scheduled job checks.",
   "uptime.recentChecks": "Recent checks",

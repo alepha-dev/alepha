@@ -4,11 +4,11 @@ import type {
   ProjectMergeController,
   ProjectReportController,
 } from "@lore/core/api";
-import type { AppController } from "@lore/deploy/api";
-import type { FolioController } from "@lore/knowledge/api";
-import type { AreaController } from "@lore/work/api";
-import type { EpicController } from "@lore/work/api";
-import type { ReleaseController } from "@lore/work/api";
+import type { AreaController } from "@lore/plan/api";
+import type { EpicController } from "@lore/plan/api";
+import type { ReleaseController } from "@lore/plan/api";
+import type { FolioController } from "@lore/remember/api";
+import type { AppController } from "@lore/ship/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
@@ -400,7 +400,7 @@ export class ProjectCommand {
         const created = await this.projectApi.createProject({
           body: {
             title: args,
-            capabilities: [{ key: "apps", options: { deploy: true } }],
+            capabilities: [{ key: "ship", options: { deploy: true } }],
           },
         });
         const path = flags["no-link"]
@@ -495,7 +495,7 @@ export class ProjectCommand {
         );
         const params = { projectId };
 
-        const work = enabled.has("work")
+        const work = enabled.has("plan")
           ? {
               areas: await this.areaApi.getAreas({ params }),
               epics: await this.epicApi.getEpics({ params }),
@@ -504,7 +504,7 @@ export class ProjectCommand {
               }),
             }
           : {};
-        const folios = enabled.has("knowledge")
+        const folios = enabled.has("remember")
           ? await this.folioApi.index({
               params,
               query: { limit: flags.limit, pinnedContent: true },

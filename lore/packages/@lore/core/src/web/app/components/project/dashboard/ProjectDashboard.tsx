@@ -63,7 +63,7 @@ export interface ProjectDashboardProps {
  * ## The board is usually EMPTY, and that shapes this page
  *
  * Nothing seeds a project board, so zero cards is the normal first render on
- * most projects and possibly forever on a Knowledge-only one. The empty state
+ * most projects and possibly forever on a Remember-only one. The empty state
  * is written as the ordinary case rather than as a fallback at the bottom.
  *
  * ## Several dashboards, one page (#E127, #Q3300)
@@ -136,7 +136,7 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
    *
    * Read off the metric's own `needs` rather than by naming a capability, so
    * a metric added tomorrow is covered. All four are Work today, which is why
-   * a Knowledge-only project has an empty board and no way to fill it - a
+   * a Remember-only project has an empty board and no way to fill it - a
    * true state the empty state has to be able to say.
    */
   const hasOfferableMetric = useMemo(
@@ -669,9 +669,9 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
         <ProjectDashboardArchived
           projectSlug={project.slug ?? ""}
           destination={
-            has("knowledge")
+            has("remember")
               ? "projectFolios"
-              : has("work")
+              : has("plan")
                 ? "projectQuests"
                 : undefined
           }

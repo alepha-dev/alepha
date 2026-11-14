@@ -1,7 +1,7 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
-import { FolioController } from "@lore/knowledge/api";
-import { QuestTools } from "@lore/work/mcp";
+import { QuestTools } from "@lore/plan/mcp";
+import { FolioController } from "@lore/remember/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -18,7 +18,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
  * `project_context` tells the truth about what a project is.
  *
  * ⚠️ **Omitted, never emptied.** An agent reading `epics: []` on a
- * Knowledge-only project concludes the project tracks epics and has none yet,
+ * Remember-only project concludes the project tracks epics and has none yet,
  * which is a different answer from "this project does not do that" and leads
  * it to file one. Absence is the only encoding that cannot be misread, and it
  * is why every capability-owned section on the result schema is `.optional()`
@@ -27,7 +27,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
  * The second half is the bill. This call is paid on every session start, and
  * its own description has always claimed "~2K tokens" - a claim made when
  * every project had every section. The last case measures what a
- * Knowledge-only project actually costs, so the claim is a number somebody
+ * Remember-only project actually costs, so the claim is a number somebody
  * checked rather than a round one somebody liked.
  */
 const setup = async () => {
@@ -65,13 +65,13 @@ const setup = async () => {
 };
 
 describe("project_context and capabilities", () => {
-  it("omits every section a Knowledge-only project does not own", async ({
+  it("omits every section a Remember-only project does not own", async ({
     expect,
   }) => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Notes", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Notes", capabilities: [{ key: "remember" }] },
       }),
     );
 
@@ -79,7 +79,7 @@ describe("project_context and capabilities", () => {
       ctx.projectTools.project_context.execute({ project: project.id }),
     );
 
-    expect(context.capabilities.map((it) => it.key)).toEqual(["knowledge"]);
+    expect(context.capabilities.map((it) => it.key)).toEqual(["remember"]);
     // Work's four.
     expect(context.areas).toBeUndefined();
     expect(context.activeQuests).toBeUndefined();
@@ -97,7 +97,7 @@ describe("project_context and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Tracker", capabilities: [{ key: "work" }] },
+        body: { title: "Tracker", capabilities: [{ key: "plan" }] },
       }),
     );
 
@@ -121,7 +121,7 @@ describe("project_context and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "NoWork", capabilities: [{ key: "knowledge" }] },
+        body: { title: "NoWork", capabilities: [{ key: "remember" }] },
       }),
     );
 
@@ -137,7 +137,7 @@ describe("project_context and capabilities", () => {
           priority: "medium",
         }),
       ),
-    ).rejects.toThrow(/Plan and track work.*Turn it on in Settings/s);
+    ).rejects.toThrow(/Plan.*Turn it on in Settings/s);
 
     await ctx.alepha.stop();
   });
@@ -148,7 +148,7 @@ describe("project_context and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Hidden", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Hidden", capabilities: [{ key: "remember" }] },
       }),
     );
     const folio = await ctx.asUser(() =>
@@ -160,7 +160,7 @@ describe("project_context and capabilities", () => {
     // Turn Knowledge off the way Settings does.
     const security = ctx.alepha.inject(ProjectSecurityService);
     const row = await security.capabilities.findOne({
-      where: { projectId: { eq: project.id }, key: { eq: "knowledge" } },
+      where: { projectId: { eq: project.id }, key: { eq: "remember" } },
     });
     await security.capabilities.deleteById(row!.id);
 
@@ -181,13 +181,13 @@ describe("project_context and capabilities", () => {
     await ctx.alepha.stop();
   });
 
-  it("costs what its description says, for a Knowledge-only project", async ({
+  it("costs what its description says, for a Remember-only project", async ({
     expect,
   }) => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Notes", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Notes", capabilities: [{ key: "remember" }] },
       }),
     );
     for (let i = 0; i < 5; i++) {
@@ -211,7 +211,7 @@ describe("project_context and capabilities", () => {
     // magnitude and that it cannot grow silently: five folios of orientation
     // fit in a few hundred tokens, where the tool's own description has always
     // claimed "~2K". Measured on this exact fixture: 1216 chars (~304 tokens)
-    // with all four capabilities on, 947 chars (~237 tokens) with Knowledge
+    // with all three capabilities on, 947 chars (~237 tokens) with Knowledge
     // alone. The 269 characters are the four empty Work sections - an empty
     // area list, an empty epic index, an empty quest list and an empty release
     // list, each with its own key. Small in bytes, and that is the honest

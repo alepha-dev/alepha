@@ -232,8 +232,8 @@ describe("ProjectController.createProject", () => {
           body: {
             title: "Typo Project",
             capabilities: [
-              { key: "work" },
-              { key: "apps", options: { trakc: true } },
+              { key: "plan" },
+              { key: "ship", options: { trakc: true } },
             ],
           },
         },
@@ -249,7 +249,7 @@ describe("ProjectController.createProject", () => {
       {
         body: {
           title: "Typo Project",
-          capabilities: [{ key: "work" }, { key: "apps" }],
+          capabilities: [{ key: "plan" }, { key: "ship" }],
         },
       },
       { user },
@@ -269,7 +269,7 @@ describe("ProjectController.createProject", () => {
         {
           body: {
             title: "Twice Project",
-            capabilities: [{ key: "work" }, { key: "work" }],
+            capabilities: [{ key: "plan" }, { key: "plan" }],
           },
         },
         { user },
@@ -281,7 +281,7 @@ describe("ProjectController.createProject", () => {
     expect(await ctx.repos.organizations.findMany({})).toHaveLength(0);
 
     const retried = await ctx.controller.createProject(
-      { body: { title: "Twice Project", capabilities: [{ key: "work" }] } },
+      { body: { title: "Twice Project", capabilities: [{ key: "plan" }] } },
       { user },
     );
     expect(retried.slug).toBe("twice-project");

@@ -4,7 +4,7 @@ import {
 } from "@lore/core/api";
 import type { DashboardCardValue, Project } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
-import { folioDirectories } from "@lore/knowledge/schemas";
+import { folioDirectories } from "@lore/remember/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -27,7 +27,7 @@ class KnowledgeRepositories extends TestEntityRepositories {
 }
 
 /**
- * The Knowledge tiles of #E77 (#Q2658): before them a Knowledge-only project
+ * The Knowledge tiles of #E77 (#Q2658): before them a Remember-only project
  * had no tile at all.
  */
 describe("dashboard knowledge tiles", () => {
@@ -50,7 +50,7 @@ describe("dashboard knowledge tiles", () => {
     repos = alepha.inject(KnowledgeRepositories);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [{ key: "knowledge" }],
+      capabilities: [{ key: "remember" }],
     });
     await createTestMember(alepha, project, project.createdBy!);
     user = { id: project.createdBy!, roles: ["user"] };

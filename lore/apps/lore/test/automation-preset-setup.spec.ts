@@ -10,7 +10,7 @@ import type {
   AutomationVariableApproval,
 } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { appInstances } from "@lore/deploy/schemas";
+import { appInstances } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { JobQueueProvider } from "alepha/api/jobs";
 import { ApiKeyService } from "alepha/api/keys";
@@ -90,12 +90,11 @@ describe("Preset setup, explicit bindings and project pickers", () => {
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
-          options: { releases: true, epics: true },
+          key: "plan",
+          options: { releases: true, epics: true, feedback: true },
         },
-        { key: "knowledge" },
-        { key: "support" },
-        { key: "apps", options: { track: true, deploy: true } },
+        { key: "remember" },
+        { key: "ship", options: { track: true, deploy: true } },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });

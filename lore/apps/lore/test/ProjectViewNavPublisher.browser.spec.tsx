@@ -6,8 +6,8 @@ import {
   ProjectViewNavPublisher,
   I18n,
 } from "@lore/core/web";
-import type { AppInstanceResource } from "@lore/deploy/schemas";
-import { currentInstancesAtom, DeployShell } from "@lore/deploy/web";
+import type { AppInstanceResource } from "@lore/ship/schemas";
+import { currentInstancesAtom, DeployShell } from "@lore/ship/web";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";

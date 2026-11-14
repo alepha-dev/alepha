@@ -12,8 +12,8 @@ import {
   dashboardCardValueSchema,
   type AutomationRule,
 } from "@lore/core/schemas";
-import { QualityController } from "@lore/deploy/api";
-import { qualityRuns } from "@lore/deploy/schemas";
+import { QualityController } from "@lore/ship/api";
+import { qualityRuns } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -117,8 +117,8 @@ describe("Automation numeric guards and shared quality metrics", () => {
     time.pause();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: {} },
-        { key: "apps", options: { track: true } },
+        { key: "plan", options: {} },
+        { key: "ship", options: { track: true } },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });

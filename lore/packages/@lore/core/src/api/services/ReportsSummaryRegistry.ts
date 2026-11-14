@@ -20,9 +20,11 @@ export class ReportsSummaryRegistry {
   protected readonly sources: ReportsSummarySource[] = [];
 
   public register(source: ReportsSummarySource): void {
-    if (this.sources.some((it) => it.capability === source.capability)) {
+    const name = (it: ReportsSummarySource) =>
+      it.option ? `${it.capability}.${it.option}` : it.capability;
+    if (this.sources.some((it) => name(it) === name(source))) {
       throw new AlephaError(
-        `Reports summary of '${source.capability}' is registered twice`,
+        `Reports summary of '${name(source)}' is registered twice`,
       );
     }
     this.sources.push(source);
@@ -33,7 +35,10 @@ export class ReportsSummaryRegistry {
     query: ReportsQuery,
   ): Promise<ReportsSummaryLine[]> {
     const capabilities = await this.security.capabilitiesOf(projectId);
-    const enabled = this.sources.filter((it) => !!capabilities[it.capability]);
+    const enabled = this.sources.filter((it) => {
+      const options = capabilities[it.capability];
+      return !!options && (!it.option || options[it.option] === true);
+    });
     const previous = this.previous(query);
 
     const lines = await Promise.all(
@@ -70,6 +75,11 @@ export class ReportsSummaryRegistry {
 
 export interface ReportsSummarySource {
   capability: CapabilityKey;
+  /**
+   * The option of {@link capability} the lines hang off, when they hang off
+   * one: Feedback's lines need `plan.feedback`.
+   */
+  option?: string;
   read: (
     projectId: number,
     query: ReportsQuery,

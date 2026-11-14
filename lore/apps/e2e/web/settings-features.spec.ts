@@ -2,7 +2,7 @@ import { expect, test } from "./_fixtures.ts";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
- * The four capability pages, from the only side that matters: a switch here
+ * The three capability pages, from the only side that matters: a switch here
  * has to change what the sidebar offers, and survive a reload.
  *
  * ⚠️ **Every switch on these pages is optimistic.** `aria-checked` flips the
@@ -12,7 +12,7 @@ import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
  * `waitForResponse` BEFORE the click, or reload and look again.
  *
  * The Quality case that used to live here is gone with the switch it drove:
- * Quality joined the Apps baseline, and its Reports tab self-hides until a run
+ * Quality joined the Ship baseline, and its Reports tab self-hides until a run
  * exists rather than waiting on a flag.
  */
 test.describe("Project settings — capabilities", () => {
@@ -26,7 +26,7 @@ test.describe("Project settings — capabilities", () => {
     const { slug } = await createProjectViaWizard(
       page,
       `Camp${ts}`.slice(0, 20),
-      { options: { work: ["releases"] } },
+      { options: { plan: ["releases"] } },
     );
 
     const sidebarReleases = page.locator(`a[href="/${slug}/releases"]`);
@@ -41,7 +41,7 @@ test.describe("Project settings — capabilities", () => {
     await expect(releases).toHaveAttribute("aria-checked", "true");
 
     const off = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/work"),
+      res.url().includes("/capabilities/plan"),
     );
     await releases.click();
     expect((await off).ok()).toBe(true);
@@ -55,7 +55,7 @@ test.describe("Project settings — capabilities", () => {
     await expect(sidebarReleases).toHaveCount(0);
 
     const on = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/work"),
+      res.url().includes("/capabilities/plan"),
     );
     await page.getByRole("switch", { name: /^releases$/i }).click();
     expect((await on).ok()).toBe(true);
@@ -81,12 +81,12 @@ test.describe("Project settings — capabilities", () => {
     await page.waitForLoadState("networkidle");
 
     const master = page.getByRole("switch", {
-      name: "Write and keep knowledge",
+      name: "Remember",
     });
     await expect(master).toHaveAttribute("aria-checked", "true");
 
     const saved = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/knowledge"),
+      res.url().includes("/capabilities/remember"),
     );
     await master.click();
     expect((await saved).ok()).toBe(true);
@@ -101,16 +101,14 @@ test.describe("Project settings — capabilities", () => {
     await page.reload();
     await page.waitForLoadState("networkidle");
     await expect(
-      page.getByRole("switch", { name: "Write and keep knowledge" }),
+      page.getByRole("switch", { name: "Remember" }),
     ).toHaveAttribute("aria-checked", "false", { timeout: 10_000 });
 
     // And back. Nothing was deleted, so the folios are where they were.
     const back = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/knowledge"),
+      res.url().includes("/capabilities/remember"),
     );
-    await page
-      .getByRole("switch", { name: "Write and keep knowledge" })
-      .click();
+    await page.getByRole("switch", { name: "Remember" }).click();
     expect((await back).ok()).toBe(true);
     await expect(sidebarFolios).toBeVisible();
   });

@@ -1,4 +1,4 @@
-import type { ArtifactController } from "@lore/deploy/api";
+import type { ArtifactController } from "@lore/ship/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $logger } from "alepha/logger";

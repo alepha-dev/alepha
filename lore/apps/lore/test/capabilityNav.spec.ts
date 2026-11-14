@@ -6,13 +6,13 @@ import {
   CORE_NAV,
   type ProjectShellContext,
 } from "@lore/core/web";
+import { WorkShell } from "@lore/plan/web";
+import { KnowledgeShell } from "@lore/remember/web";
 import {
   currentErrorCountAtom,
   currentInstancesAtom,
   DeployShell,
-} from "@lore/deploy/web";
-import { KnowledgeShell } from "@lore/knowledge/web";
-import { WorkShell } from "@lore/work/web";
+} from "@lore/ship/web";
 import { Alepha, type Atom } from "alepha";
 import { describe, it } from "vitest";
 
@@ -23,7 +23,7 @@ import { describe, it } from "vitest";
  * and the only way to assert it was to mount the whole shell. The entries are
  * data each module registers (#E75, #Q2624), so the question is a pure
  * function of the capability set - which makes the cases below the ones
- * nobody could write before: a Knowledge-only project, and a project with
+ * nobody could write before: a Remember-only project, and a project with
  * everything off.
  *
  * ⚠️ The last case is the one to keep. A project with no capability at all is
@@ -86,10 +86,10 @@ describe("the sidebar, derived from capabilities", () => {
     expect(routes).toContain("projectFeedback");
   });
 
-  it("gives a Knowledge-only project one entry beside the core three", ({
+  it("gives a Remember-only project one entry beside the core three", ({
     expect,
   }) => {
-    const routes = offered(projectFixture({ capabilities: ["knowledge"] }));
+    const routes = offered(projectFixture({ capabilities: ["remember"] }));
 
     // The shape that was impossible before this epic: quests had no flag at
     // all, so every project had them whether or not it wanted them.
@@ -112,7 +112,7 @@ describe("the sidebar, derived from capabilities", () => {
     // it renders its empty state, which is a true thing to read.
     //
     // Activity says something whatever else is turned off, and Reports is
-    // Core because its TABS declare capabilities - an Apps-only project
+    // Core because its TABS declare capabilities - a Ship-only project
     // reaches Quality through it.
     expect(routes).toEqual([
       "projectDashboard",
@@ -137,11 +137,12 @@ describe("the sidebar, derived from capabilities", () => {
     // bell is the only door, and two badged controls for one page, one of
     // them three centimetres from the other, is what the report was about.
     //
-    // The page itself is still Core - the events that fill it span `work`
-    // (quest mentions, releases) and `support` (feedback mentions), so it
-    // could never have hung off either - which is why this holds whatever is
+    // The page itself is still Core - the events that fill it came from
+    // `work` (quest mentions, releases) and `support` (feedback mentions)
+    // before #E143 folded both into `plan`, so it could never have hung off
+    // either - which is why this holds whatever is
     // enabled rather than only for a bare project.
-    for (const capabilities of [[], ["work"], ["knowledge"], ["support"]]) {
+    for (const capabilities of [[], ["plan"], ["remember"], ["ship"]]) {
       expect(
         offered(projectFixture({ capabilities: capabilities as never })),
       ).not.toContain("projectInbox");
@@ -153,8 +154,8 @@ describe("the sidebar, derived from capabilities", () => {
   }) => {
     const routes = offered(
       projectFixture({
-        capabilities: ["work"],
-        options: { work: { releases: false } },
+        capabilities: ["plan"],
+        options: { plan: { releases: false } },
       }),
     );
 
@@ -164,7 +165,7 @@ describe("the sidebar, derived from capabilities", () => {
   });
 
   it("hides Errors until something collects or filed one", ({ expect }) => {
-    const apps = projectFixture({ capabilities: ["apps"] });
+    const apps = projectFixture({ capabilities: ["ship"] });
 
     // Tracking on and nothing to show: the entry would be a door onto an
     // empty room for every project that never enrolled an app.
@@ -186,15 +187,15 @@ describe("the sidebar, derived from capabilities", () => {
     ).toContain("projectErrors");
   });
 
-  it("keeps the Apps baseline when tracking is off", ({ expect }) => {
+  it("keeps the Ship baseline when tracking is off", ({ expect }) => {
     // The "I deploy on Vercel and only want error tracking" reader, in
     // reverse: Apps on, telemetry off. Instances and artifacts are the
     // baseline, so both doors stay - `track` adds the sigil surfaces to them
     // rather than being what makes them exist.
     const routes = offered(
       projectFixture({
-        capabilities: ["apps"],
-        options: { apps: { track: false } },
+        capabilities: ["ship"],
+        options: { ship: { track: false } },
       }),
     );
 

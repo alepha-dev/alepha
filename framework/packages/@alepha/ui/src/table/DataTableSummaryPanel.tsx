@@ -51,10 +51,7 @@ export const DataTableSummaryPanel = (props: DataTableSummaryPanelProps) => {
     <section
       data-slot="data-table-summary"
       aria-label={props.title}
-      className={cn(
-        "bg-muted rounded-md rounded-b-none border shadow-[inset_0_1px_0_0_var(--bevel)]",
-        props.className,
-      )}
+      className={cn("chrome rounded-md rounded-b-none border", props.className)}
     >
       <button
         type="button"

@@ -615,7 +615,7 @@ describe("Bay connector against a real Lore", () => {
       call(lore, owner, "createProject", {
         body: {
           title: "Bay E2E Home",
-          capabilities: [{ key: "apps", options: { deploy: true } }],
+          capabilities: [{ key: "ship", options: { deploy: true } }],
         },
       }),
     );
@@ -844,7 +844,7 @@ describe("Bay connector against a real Lore", () => {
           // Apps with deploys on: a Bay deploy names the copy it is for.
           capabilities: [
             {
-              key: "apps",
+              key: "ship",
               options: { track: true, deploy: true, stacks: true },
             },
           ],
@@ -1327,7 +1327,7 @@ describe("Bay connector against a real Lore", () => {
     // The home project's own copy: Apps with deploys, the copy pointed here.
     await ok(
       call(lore, owner, "setCapability", {
-        params: { projectId: homeId, key: "apps" },
+        params: { projectId: homeId, key: "ship" },
         body: { enabled: true, options: { track: true, deploy: true } },
       }),
     );

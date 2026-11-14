@@ -8,9 +8,9 @@ ignores:
   # `@alepha/lore` peers on each `@lore/*` package to type `@alepha/lore/cli`
   # against Lore's own controllers. The edge is `import type` and nothing else.
   - "@lore/core"
-  - "@lore/work"
-  - "@lore/knowledge"
-  - "@lore/deploy"
+  - "@lore/plan"
+  - "@lore/remember"
+  - "@lore/ship"
   - "@vitest/coverage-v8"
   - "vite"
   - "@types/react"

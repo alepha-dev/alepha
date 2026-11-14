@@ -3,7 +3,7 @@ import {
   ProjectMergeController,
   ProjectMergeService,
 } from "@lore/core/api";
-import { appInstances, qualityRuns, sigils } from "@lore/deploy/schemas";
+import { appInstances, qualityRuns, sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -162,7 +162,7 @@ describe("ProjectMergeService across every module", () => {
     expect,
   }) => {
     const target = await createTestProject(ctx.alepha, {
-      capabilities: [{ key: "work", options: { releases: false } }],
+      capabilities: [{ key: "plan", options: { releases: false } }],
     });
     const source = await createTestProject(ctx.alepha);
     const sigil = await ctx.probe.sigils.create({
@@ -201,12 +201,11 @@ describe("ProjectMergeService across every module", () => {
       where: { projectId: { eq: target.id } },
     });
     expect(capabilities.map((row) => row.key).sort()).toEqual([
-      "apps",
-      "knowledge",
-      "support",
-      "work",
+      "plan",
+      "remember",
+      "ship",
     ]);
-    expect(capabilities.find((row) => row.key === "work")!.options).toEqual({
+    expect(capabilities.find((row) => row.key === "plan")!.options).toEqual({
       releases: false,
     });
     const changed = plan.steps.flatMap((step) => step.changed);
@@ -214,7 +213,7 @@ describe("ProjectMergeService across every module", () => {
       expect.objectContaining({ kind: "quality run", field: "dropped" }),
     );
     expect(changed).toContainEqual(
-      expect.objectContaining({ kind: "capability", from: "work" }),
+      expect.objectContaining({ kind: "capability", from: "plan" }),
     );
   });
 

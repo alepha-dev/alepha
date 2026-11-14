@@ -8,9 +8,9 @@ import { dirname, join, normalize } from "node:path";
  * | package     | is               | may import  |
  * |-------------|------------------|-------------|
  * | `core`      | the glue         | nothing     |
- * | `work`      | Lore as Jira     | `core`      |
- * | `knowledge` | Lore as Obsidian | `core`      |
- * | `deploy`    | Lore as Vercel   | `core`      |
+ * | `plan`      | Lore as Jira     | `core`      |
+ * | `remember`  | Lore as Obsidian | `core`      |
+ * | `ship`      | Lore as Vercel   | `core`      |
  *
  * A feature module never imports another one. A feature that spans two of
  * them (an epic files folios, an error is forwarded to a quest, a release
@@ -39,9 +39,9 @@ export class LorePackageGraph {
    */
   public static readonly GRAPH: Record<string, string[]> = {
     core: [],
-    work: ["core"],
-    knowledge: ["core"],
-    deploy: ["core"],
+    plan: ["core"],
+    remember: ["core"],
+    ship: ["core"],
   };
 
   /**

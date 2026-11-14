@@ -1,11 +1,11 @@
 import { ProjectController, ResourceLinkService } from "@lore/core/api";
-import { FolioController } from "@lore/knowledge/api";
 import {
   EpicController,
   FeedbackController,
   QuestController,
   ReleaseController,
-} from "@lore/work/api";
+} from "@lore/plan/api";
+import { FolioController } from "@lore/remember/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -90,9 +90,8 @@ describe("the reference grammar is one grammar on both sides", () => {
         body: {
           title: `Grammar ${Date.now()}`,
           capabilities: [
-            { key: "work" as const },
-            { key: "knowledge" as const },
-            { key: "support" as const },
+            { key: "plan" as const, options: { feedback: true } },
+            { key: "remember" as const },
           ],
         },
       },

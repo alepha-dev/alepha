@@ -1,7 +1,7 @@
 import { DashboardMetricRegistry, DashboardSlotRegistry } from "@lore/core/api";
 import type { DashboardCardValue, Project } from "@lore/core/schemas";
 import { projectCapabilities } from "@lore/core/schemas";
-import { releases } from "@lore/work/schemas";
+import { releases } from "@lore/plan/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -105,10 +105,9 @@ describe("dashboard rank waves", () => {
     const on = (keys: string[]) =>
       Object.fromEntries(keys.map((key) => [key, true]));
     for (const [key, options] of [
-      ["work", on(["epics", "releases", "reminder"])],
-      ["knowledge", {}],
-      ["apps", on(["track"])],
-      ["support", {}],
+      ["plan", on(["epics", "releases", "reminder", "feedback"])],
+      ["remember", {}],
+      ["ship", on(["track"])],
     ] as const) {
       await repos.capabilities.create({
         projectId: project.id,

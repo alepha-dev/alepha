@@ -21,7 +21,7 @@ export interface CapabilityOptionDescriptor {
    * before an option existed never said anything about it. This applies once,
    * at creation, to a person who is being asked.
    *
-   * Only `apps.track` is preselected: the capability's own label says "watch",
+   * Only `ship.track` is preselected: the capability's own label says "watch",
    * so Apps with tracking off would not do what the box the reader ticked says
    * it does. Board and Releases were on by default before this epic and are
    * deliberately not any more - a board is a way to look at quests, not a
@@ -43,7 +43,7 @@ export interface CapabilityOptionDescriptor {
   /**
    * Rendered disabled, with a Soon badge, rather than hidden.
    *
-   * ⚠️ **No option declares it today.** `apps.deploy` was the one, from epic
+   * ⚠️ **No option declares it today.** `ship.deploy` was the one, from epic
    * #36 until epic #1 shipped the surface behind it. The mechanism stays
    * because announcing a switch before it works is the right thing to do
    * again - the wizard is where somebody decides what Lore is for, and hiding
@@ -92,6 +92,13 @@ export interface CapabilityDescriptor {
    */
   mcpTools: string[];
   /**
+   * The option each MCP tool hangs off, for the tools that hang off one: a
+   * call is refused while that option is off, and the assistant is not
+   * offered the tool, exactly as {@link searchKindOptions} does for the
+   * palette. Read through {@link CapabilityRegistry.isToolEnabled}.
+   */
+  mcpToolOptions?: Record<string, string>;
+  /**
    * The `searchHitSchema` kinds the command palette may offer.
    */
   searchKinds: string[];
@@ -138,7 +145,7 @@ export interface CapabilityDescriptor {
 }
 
 /**
- * The four capabilities a project composes, declared once.
+ * The three capabilities a project composes, Lore's pillars, declared once.
  *
  * A **capability** is a product surface a project turns on: it owns nav
  * entries, routes, entities, MCP tools, a settings page, dashboard cards,
@@ -153,8 +160,8 @@ export interface CapabilityDescriptor {
  * members, areas' storage, settings, and the three surfaces that *compose*
  * capabilities - the dashboard, the activity feed and the command palette.
  * Reports is Core too, and its tabs declare a capability the way dashboard
- * cards do, because Quality is Apps baseline and Members is derived from a
- * core table: an Apps-only project needs Reports to reach its own Quality tab.
+ * cards do, because Quality is Ship baseline and Members is derived from a
+ * core table: a Ship-only project needs Reports to reach its own Quality tab.
  *
  * Shaped after `DashboardMetricCatalog`, and for the same reason: a registry a
  * surface reads is one place to add a capability, where a hand-written `if`
@@ -163,60 +170,70 @@ export interface CapabilityDescriptor {
 export class CapabilityRegistry {
   protected readonly capabilities: CapabilityDescriptor[] = [
     {
-      key: "work",
-      name: "Plan and track work",
-      labelKey: "project.capability.work.label",
-      descriptionKey: "project.capability.work.description",
+      key: "plan",
+      name: "Plan",
+      labelKey: "project.capability.plan.label",
+      descriptionKey: "project.capability.plan.description",
       preselectedCapability: true,
       options: [
         {
           key: "epics",
-          labelKey: "project.capability.work.option.epics.label",
-          descriptionKey: "project.capability.work.option.epics.description",
+          labelKey: "project.capability.plan.option.epics.label",
+          descriptionKey: "project.capability.plan.option.epics.description",
           wizard: true,
           preselected: false,
         },
         {
           key: "releases",
-          labelKey: "project.capability.work.option.releases.label",
-          descriptionKey: "project.capability.work.option.releases.description",
+          labelKey: "project.capability.plan.option.releases.label",
+          descriptionKey: "project.capability.plan.option.releases.description",
           wizard: true,
           preselected: false,
         },
         {
           key: "estimate",
-          labelKey: "project.capability.work.option.estimate.label",
-          descriptionKey: "project.capability.work.option.estimate.description",
+          labelKey: "project.capability.plan.option.estimate.label",
+          descriptionKey: "project.capability.plan.option.estimate.description",
           wizard: false,
           preselected: false,
         },
         {
           key: "chrono",
-          labelKey: "project.capability.work.option.chrono.label",
-          descriptionKey: "project.capability.work.option.chrono.description",
+          labelKey: "project.capability.plan.option.chrono.label",
+          descriptionKey: "project.capability.plan.option.chrono.description",
           wizard: false,
           preselected: false,
         },
         {
           key: "reminder",
-          labelKey: "project.capability.work.option.reminder.label",
-          descriptionKey: "project.capability.work.option.reminder.description",
+          labelKey: "project.capability.plan.option.reminder.label",
+          descriptionKey: "project.capability.plan.option.reminder.description",
           wizard: false,
           preselected: false,
         },
         {
           key: "agentPrompts",
-          labelKey: "project.capability.work.option.agentPrompts.label",
+          labelKey: "project.capability.plan.option.agentPrompts.label",
           descriptionKey:
-            "project.capability.work.option.agentPrompts.description",
+            "project.capability.plan.option.agentPrompts.description",
           // The wizard asks what surfaces exist; this asks how you work with
           // them. `wizard: true` here would put Agent prompts beside Board
           // and Epics at project creation, which is not what it is.
           wizard: false,
           preselected: false,
         },
+        {
+          // Support until #E143: the public request form, the triage inbox
+          // and feedback comments, folded into Plan as one switch. Offered in
+          // the wizard, never preselected, as the capability was not.
+          key: "feedback",
+          labelKey: "project.capability.plan.option.feedback.label",
+          descriptionKey: "project.capability.plan.option.feedback.description",
+          wizard: true,
+          preselected: false,
+        },
         // Automations were an option here until #Q3594: they are a
-        // baseline of Work now, there whenever Work is. A stored
+        // baseline of Plan now, there whenever Work is. A stored
         // `automations` key is stripped on read by the lax options schema and
         // dropped on the row's next write.
       ],
@@ -271,17 +288,38 @@ export class CapabilityRegistry {
         "release_detach",
         "release_changelog",
         "release_delete",
+        "feedback_list",
+        "feedback_get",
+        "feedback_accept",
+        "feedback_reject",
+        "feedback_comment_add",
+        "feedback_attachment_get",
       ],
+      mcpToolOptions: {
+        feedback_list: "feedback",
+        feedback_get: "feedback",
+        feedback_accept: "feedback",
+        feedback_reject: "feedback",
+        feedback_comment_add: "feedback",
+        feedback_attachment_get: "feedback",
+      },
       // Epics and releases are found by their number only (#Q2228), and
       // like their sidebar entries they hang off their Work options.
-      searchKinds: ["quest", "epic", "release"],
-      searchKindOptions: { epic: "epics", release: "releases" },
-      activityKinds: ["quest", "epic", "release", "automation"],
+      // Feedback by number only too, and only for a caller holding
+      // `feedback:read` (#Q2228): see `SearchController`.
+      searchKinds: ["quest", "epic", "release", "feedback"],
+      searchKindOptions: {
+        epic: "epics",
+        release: "releases",
+        feedback: "feedback",
+      },
+      activityKinds: ["quest", "epic", "release", "automation", "feedback"],
       // Epics and Releases are options of Work, and so are their sidebar
-      // entries (`capabilityNav.ts`). Quests are Work's baseline.
+      // entries (`capabilityNav.ts`). Quests are Plan's baseline.
       activityKindOptions: {
         epic: "epics",
         release: "releases",
+        feedback: "feedback",
       },
       dashboardCards: [
         "activeQuests",
@@ -306,23 +344,31 @@ export class CapabilityRegistry {
         "remindersDue",
         "dueSoon",
         "recentlyShipped",
+        "untriagedFeedback",
       ],
       // Areas belong here: quests carry one, errors forward into one, and
       // `project_context` files them beside the epic index.
-      permissionGroups: ["quest", "epic", "release", "area", "automation"],
+      permissionGroups: [
+        "quest",
+        "epic",
+        "release",
+        "area",
+        "automation",
+        "feedback",
+      ],
     },
     {
-      key: "knowledge",
-      name: "Write and keep knowledge",
-      labelKey: "project.capability.knowledge.label",
-      descriptionKey: "project.capability.knowledge.description",
+      key: "remember",
+      name: "Remember",
+      labelKey: "project.capability.remember.label",
+      descriptionKey: "project.capability.remember.description",
       preselectedCapability: true,
       options: [
         {
           key: "agentSummary",
-          labelKey: "project.capability.knowledge.option.agentSummary.label",
+          labelKey: "project.capability.remember.option.agentSummary.label",
           descriptionKey:
-            "project.capability.knowledge.option.agentSummary.description",
+            "project.capability.remember.option.agentSummary.description",
           wizard: false,
           preselected: false,
         },
@@ -358,23 +404,23 @@ export class CapabilityRegistry {
       permissionGroups: ["folio"],
     },
     {
-      key: "apps",
-      name: "Deploy and watch apps",
-      labelKey: "project.capability.apps.label",
-      descriptionKey: "project.capability.apps.description",
+      key: "ship",
+      name: "Ship",
+      labelKey: "project.capability.ship.label",
+      descriptionKey: "project.capability.ship.description",
       preselectedCapability: false,
       options: [
         {
           key: "track",
-          labelKey: "project.capability.apps.option.track.label",
-          descriptionKey: "project.capability.apps.option.track.description",
+          labelKey: "project.capability.ship.option.track.label",
+          descriptionKey: "project.capability.ship.option.track.description",
           wizard: true,
           preselected: true,
         },
         {
           key: "deploy",
-          labelKey: "project.capability.apps.option.deploy.label",
-          descriptionKey: "project.capability.apps.option.deploy.description",
+          labelKey: "project.capability.ship.option.deploy.label",
+          descriptionKey: "project.capability.ship.option.deploy.description",
           wizard: true,
           // ⚠️ NOT preselected, although the surface is real now. A project
           // that deploys through Lore is deploying into somebody's cloud
@@ -385,8 +431,8 @@ export class CapabilityRegistry {
         },
         {
           key: "uptime",
-          labelKey: "project.capability.apps.option.uptime.label",
-          descriptionKey: "project.capability.apps.option.uptime.description",
+          labelKey: "project.capability.ship.option.uptime.label",
+          descriptionKey: "project.capability.ship.option.uptime.description",
           wizard: true,
           preselected: false,
         },
@@ -394,8 +440,8 @@ export class CapabilityRegistry {
           // Stacks (#E79): off by default, like every other surface of Apps
           // but `track`, and switched beside its sidebar entry.
           key: "stacks",
-          labelKey: "project.capability.apps.option.stacks.label",
-          descriptionKey: "project.capability.apps.option.stacks.description",
+          labelKey: "project.capability.ship.option.stacks.label",
+          descriptionKey: "project.capability.ship.option.stacks.description",
           wizard: true,
           preselected: false,
         },
@@ -451,28 +497,6 @@ export class CapabilityRegistry {
         "host",
       ],
     },
-    {
-      key: "support",
-      name: "Collect feedback",
-      labelKey: "project.capability.support.label",
-      descriptionKey: "project.capability.support.description",
-      preselectedCapability: false,
-      options: [],
-      mcpTools: [
-        "feedback_list",
-        "feedback_get",
-        "feedback_accept",
-        "feedback_reject",
-        "feedback_comment_add",
-        "feedback_attachment_get",
-      ],
-      // By number only, and only for a caller holding `feedback:read`
-      // (#Q2228): see `SearchController`.
-      searchKinds: ["feedback"],
-      activityKinds: ["feedback"],
-      dashboardCards: ["untriagedFeedback"],
-      permissionGroups: ["feedback"],
-    },
   ];
 
   /**
@@ -485,7 +509,7 @@ export class CapabilityRegistry {
    * Derived from each capability's declared `options`, every one a boolean
    * that reads `false` when absent, rather than imported from the module that
    * owns the capability: core reads no module's code (#E75, #Q2623). Each
-   * module's own options schema (`workCapabilityOptionsSchema`...) types its
+   * module's own options schema (`planCapabilityOptionsSchema`...) types its
    * reads, and `test/capability-options-schemas.spec.ts` holds the two equal.
    */
   protected readonly optionSchemas: Record<CapabilityKey, ZType> =
@@ -554,6 +578,23 @@ export class CapabilityRegistry {
     return this.capabilities.find((capability) =>
       capability.mcpTools.includes(tool),
     )?.key;
+  }
+
+  /**
+   * Whether an MCP tool may be called, given a project's enabled
+   * capabilities and their options: the same rule as
+   * {@link isActivityKindEnabled}. Core tools, owned by nobody, always pass.
+   */
+  isToolEnabled(
+    tool: string,
+    enabled: Partial<Record<CapabilityKey, Record<string, boolean>>>,
+  ): boolean {
+    const owner = this.ownerOfTool(tool);
+    if (!owner) return true;
+    const options = enabled[owner];
+    if (!options) return false;
+    const option = this.get(owner).mcpToolOptions?.[tool];
+    return option === undefined || options[option] === true;
   }
 
   /**
@@ -631,7 +672,7 @@ export class CapabilityRegistry {
    *
    * ⚠️ The catalogue carries the same fact on each metric's `needs`, because
    * a card can additionally require an OPTION (`openErrors` needs
-   * `apps.track`, not merely `apps`) and this list has no room to say so.
+   * `ship.track`, not merely `apps`) and this list has no room to say so.
    * `dashboard-capabilities.spec.ts` pins the two together: every metric's
    * `needs.capability` must be the capability that claims it here, and every
    * key claimed here must exist in the catalogue.
@@ -718,7 +759,7 @@ export class CapabilityRegistry {
    * The options this capability offers in the creation wizard's setup step.
    *
    * A capability with none contributes no section, which is what lets a
-   * Knowledge-only project skip the step entirely.
+   * Remember-only project skip the step entirely.
    */
   wizardOptionsOf(key: CapabilityKey): CapabilityOptionDescriptor[] {
     return this.get(key).options.filter((option) => option.wizard);

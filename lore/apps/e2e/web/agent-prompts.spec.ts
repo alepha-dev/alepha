@@ -46,7 +46,7 @@ test.describe("agent prompts", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics"] } },
+      { options: { plan: ["epics"] } },
     );
 
     // ⚠️ A direct URL rather than `apiPost`: `createEpic` and the feedback
@@ -132,7 +132,7 @@ test.describe("agent prompts", () => {
       // state says nothing about what was stored. Wait for the write.
       const saved = page.waitForResponse(
         (r) =>
-          r.url().includes(`/capabilities/work`) &&
+          r.url().includes(`/capabilities/plan`) &&
           r.request().method() === "PUT",
       );
       await toggle.click();
@@ -321,10 +321,12 @@ test.describe("agent prompts", () => {
     });
 
     await test.step("a feedback item copies a prompt referencing #P", async () => {
-      // The wizard leaves Support off, and the panel exists only under it:
+      // The wizard leaves Plan's Feedback option off, and the panel exists only under it:
       // the menu reads Work's option to narrow what it offers, and Support
       // to exist at all.
-      await setCapability(page, projectId, "support");
+      await setCapability(page, projectId, "plan", {
+        options: { feedback: true },
+      });
 
       const feedback = await page.evaluate(
         async ({ projectId, title }) => {

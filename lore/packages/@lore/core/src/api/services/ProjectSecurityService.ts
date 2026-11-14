@@ -422,10 +422,12 @@ export class ProjectSecurityService {
       return;
     }
 
+    // The name for a person, the key for whoever turns it on from the CLI or
+    // MCP (`lore project capability enable plan --option epics`).
     const capability = this.registry.get(key);
     const what = options.option
-      ? `${capability.name} with ${options.option} on`
-      : capability.name;
+      ? `${capability.name} with ${options.option} on (${key}.${options.option})`
+      : `${capability.name} (${key})`;
     const prefix = options.action ? `Cannot ${options.action}: ` : "";
 
     throw new BadRequestError(
@@ -448,8 +450,8 @@ export class ProjectSecurityService {
    * False whenever the capability itself is off, which encodes the one rule
    * this epic has about capabilities reading each other: **a capability may
    * read another's state to narrow what it does, never to widen it.** Sigil
-   * feedback is the only instance today, and it needs `apps.track` AND
-   * `support` - Support must never silently enable tracking.
+   * feedback is the only instance today, and it needs `ship.track` AND
+   * `plan.feedback` - Feedback must never silently enable tracking.
    */
   capabilityOption(
     set: ProjectCapabilitySet,

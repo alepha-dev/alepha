@@ -1,0 +1,502 @@
+import { $ownsProject, ProjectSecurityService } from "@lore/core/api";
+import { appNameSchema, releaseTagSchema } from "@lore/core/schemas";
+import { $inject, z } from "alepha";
+import { FileService } from "alepha/api/files";
+import { RankService } from "alepha/api/organizations";
+import type { UserAccountToken } from "alepha/security";
+import { $action, NotFoundError, okSchema } from "alepha/server";
+
+import type { Artifact } from "../entities/artifacts.ts";
+import { artifactDetailSchema } from "../schemas/artifactDetailSchema.ts";
+import { artifactListSchema } from "../schemas/artifactListSchema.ts";
+import { artifactManifestSchema } from "../schemas/artifactManifestSchema.ts";
+import { artifactPushResultSchema } from "../schemas/artifactPushResultSchema.ts";
+import { ArtifactDetailService } from "../services/ArtifactDetailService.ts";
+import { ArtifactService } from "../services/ArtifactService.ts";
+import { DeployBuckets } from "../services/DeployBuckets.ts";
+
+/**
+ * The endpoint CI pushes a build into.
+ *
+ * ## ⚠️ Action names are the wire contract here
+ *
+ * `@alepha/lore/cli` reaches this endpoint by path rather than through
+ * `$client`, but the path is the same kind of promise: a deployed Lore answers
+ * whatever it was deployed with, and a renamed route answers an older CLI with
+ * a 404. Rename it only on purpose.
+ *
+ * ## The gate is membership, not ownership
+ *
+ * `$ownsProject({ param: "projectId" })` with no `owner: true`, matching
+ * `QualityController`: pushing a build is the work, not the project's
+ * configuration.
+ *
+ * There is no `features` check either, and for the same reason the quality
+ * push has none. A flag gates a TAB. A push refused because someone flipped a
+ * switch in the UI turns a build red for a reason that has nothing to do with
+ * the build, and the person who flipped it would never connect the two.
+ */
+export class ArtifactController {
+  protected readonly artifacts = $inject(ArtifactService);
+  protected readonly details = $inject(ArtifactDetailService);
+  protected readonly files = $inject(FileService);
+  protected readonly ranks = $inject(RankService);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
+
+  /**
+   * Declared above the actions on purpose: a `use: [...]` entry reading
+   * another field is a field initializer, so a gate declared below its first
+   * use is `undefined` at construction time.
+   */
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
+
+  /**
+   * A forced push moves a pinned tag onto new bytes and drops the archive it
+   * superseded, which is a delete: it takes `artifact:delete` on top of
+   * `artifact:push`. Checked in the handler because the gate cannot read the
+   * body.
+   */
+  protected async assertCanForce(
+    projectId: number,
+    force: boolean | undefined,
+    user: UserAccountToken,
+  ): Promise<void> {
+    if (!force) {
+      return;
+    }
+    await this.ranks.assert(
+      await this.projectSecurity.organizationIdOf(projectId),
+      "artifact:delete",
+      user,
+    );
+  }
+
+  /**
+   * The bucket, declared on `DeployBuckets` so that this controller holds no boot
+   * primitive and stays pure (#Q3404): a `$storage` is looked up by name on
+   * every upload, so it must exist at boot.
+   */
+  protected readonly buckets = $inject(DeployBuckets);
+
+  public get artifactBucket() {
+    return this.buckets.artifacts;
+  }
+
+  /**
+   * Store a build under `(app, tag, runtime)`.
+   *
+   * ⚠️ **There is no `runtime` field, and there must never be one.** The
+   * runtime is read from the artifact's own `manifest.json`, because a
+   * flag and a manifest eventually disagree and the manifest is the artifact's
+   * own claim about itself. Two builds of `1.2.3` for different runtimes are
+   * one release with two variants, not two releases.
+   *
+   * `latest` is the one tag that moves on its own; every other one is
+   * write-once and needs `force`. See {@link ArtifactService.push}.
+   */
+  pushArtifact = $action({
+    use: [this.ownsProject("artifact:push")],
+    method: "POST",
+    path: "/projects/:projectId/artifacts",
+    description: "Push a packed build into the project's artifact registry.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({
+        app: appNameSchema,
+        tag: releaseTagSchema,
+        /**
+         * What CI built from, when it knows. Optional: a push from a laptop
+         * has no commit to name, and an artifact is not a git object.
+         */
+        commitSha: z.string().max(40).optional(),
+        /**
+         * Move a pinned tag onto new bytes. For "tagged the wrong commit",
+         * which happens; not for a pipeline that pushes the same version
+         * twice, which is what `latest` is for.
+         */
+        force: z.boolean().optional(),
+        /**
+         * The build's `manifest.json`, so the push need not inflate the
+         * archive to find it (#Q2681). Optional both ways: an older CLI sends
+         * none and the archive is read, as before. A deploy re-checks it
+         * against the archive's own copy.
+         *
+         * ⚠️ Declared with the manifest's own schema, not `z.string()`: the
+         * multipart decode parses any part that opens with `{`, whatever the
+         * field's schema, so a string field would receive an object. Sent as
+         * JSON text before `file` on the wire.
+         */
+        manifest: artifactManifestSchema.optional(),
+        file: z.file({ maxBytes: 20 * 1024 * 1024 }),
+        /**
+         * The source maps archive an older CLI still sends (#Q1515), read
+         * and dropped (#Q3549): nothing symbolicated with it. Maybe one day
+         * symbolicated production stacks will want maps stored again, but
+         * not today. Declared only so an unupgraded pipeline is not refused.
+         */
+        maps: z.file({ maxBytes: 20 * 1024 * 1024 }).optional(),
+        /**
+         * The asset list the pusher's CLI computed (#Q3381): every file
+         * under the build's `public/` with its SHA-256, size and type, as
+         * JSON. A file part, not a field, because a site of thousands of
+         * assets is far past what a text field should carry. Optional both
+         * ways: an older CLI sends none and the first deploy computes it.
+         */
+        assets: z.file({ maxBytes: 4 * 1024 * 1024 }).optional(),
+        /**
+         * The newest Drizzle `snapshot.json` of each dialect the build ships
+         * migrations for (#Q3542), as `schema.json`. A rollback compares it
+         * with the live run's to say whether the older build still fits the
+         * schema. Optional both ways, and a part this Lore cannot read is
+         * dropped rather than refused: nothing deploys from it.
+         */
+        schema: z.file({ maxBytes: 4 * 1024 * 1024 }).optional(),
+      }),
+      response: artifactPushResultSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      await this.assertCanForce(params.projectId, body.force, user);
+      const { artifact, stored } = await this.artifacts.push({
+        projectId: params.projectId,
+        app: body.app,
+        tag: body.tag,
+        commitSha: body.commitSha,
+        force: body.force,
+        manifest: body.manifest,
+        file: body.file,
+        assets: body.assets,
+        schema: body.schema,
+      });
+
+      return { artifact: this.resource(artifact), stored };
+    },
+  });
+
+  /**
+   * Record a container image under `(app, tag, runtime, image)`.
+   *
+   * ## ⚠️ The path is named deliberately and is the wire contract
+   *
+   * `POST /projects/:projectId/artifacts/image`. `@alepha/lore/cli` reaches
+   * this by PATH rather than through `$client`, so a renamed route answers an
+   * older CLI with a 404 rather than failing typecheck. The literal `image`
+   * cannot be mistaken for the sibling route's `:artifactId`, which is a
+   * `z.uuid()`.
+   *
+   * The gate is `artifact:push`, matching {@link pushArtifact}: an image is
+   * an artifact. `force` also needs `artifact:delete`, the same way.
+   *
+   * ⚠️ **No `runtime` field and no `platform` field, and there must never be
+   * one.** The runtime is read from the image's own `dev.alepha.runtime`
+   * label and the platforms are inside its index. Same rule as
+   * {@link pushArtifact}, applied to a second axis.
+   *
+   * Nothing is uploaded here, so there is no `maxBytes` and no bucket: the
+   * body is a few hundred bytes of JSON, and the expensive part is four
+   * bounded calls to a registry.
+   */
+  pushImage = $action({
+    use: [this.ownsProject("artifact:push")],
+    method: "POST",
+    path: "/projects/:projectId/artifacts/image",
+    description:
+      "Record a container image in the project's artifact registry, by reference.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({
+        app: appNameSchema,
+        tag: releaseTagSchema,
+        /**
+         * The pullable string, `ghcr.io/alepha-dev/lore:0.30.0`.
+         *
+         * ⚠️ Untrusted input that decides which host the Worker then calls -
+         * the only field in Lore with that property. `ImageRegistryClient`
+         * parses and refuses it before any fetch; the bound here is only the
+         * column's ceiling.
+         */
+        reference: z.string().min(1).max(512),
+        commitSha: z.string().max(40).optional(),
+        /**
+         * Move a pinned tag onto a different image. For "tagged the wrong
+         * commit", which happens.
+         */
+        force: z.boolean().optional(),
+        /**
+         * What the pusher believes it pushed. Optional, and checked against
+         * what the registry reports when it is sent.
+         */
+        digest: z.string().min(64).max(71).optional(),
+      }),
+      response: artifactPushResultSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      await this.assertCanForce(params.projectId, body.force, user);
+      const { artifact, stored } = await this.artifacts.pushImage({
+        projectId: params.projectId,
+        app: body.app,
+        tag: body.tag,
+        reference: body.reference,
+        commitSha: body.commitSha,
+        force: body.force,
+        digest: body.digest,
+      });
+
+      return { artifact: this.resource(artifact), stored };
+    },
+  });
+
+  /**
+   * What this project has built, newest first, with every runtime of a tag in
+   * one entry.
+   *
+   * ⚠️ **Grouped, never flat.** `(app, tag, runtime)` is the unique key
+   * precisely so `1.2.3` names one release that may carry two builds; a flat
+   * list of rows contradicts that on the first screen anyone sees. Three
+   * surfaces read this - the app page, the release page and MCP - and the
+   * grouping is done once, here, rather than three times.
+   *
+   * Member-gated like every other project read, with no capability check of
+   * its own. Apps hides the app page and `plan.releases` the release page; the
+   * endpoint under both is the same one, and gating it a third time would only
+   * mean a 404 in a place the router already handles.
+   */
+  listArtifacts = $action({
+    use: [this.ownsProject("artifact:read")],
+    method: "GET",
+    path: "/projects/:projectId/artifacts",
+    description: "What this project has built, grouped by tag.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: z.object({
+        /**
+         * Narrow to one app. The app page passes this; the release page does
+         * not, because a release spans every app that tagged a build with it.
+         */
+        app: appNameSchema.optional(),
+        /**
+         * Narrow to one tag. This is the release page's whole query: the join
+         * to a release is tag equality, with no join table and no foreign key.
+         */
+        tag: releaseTagSchema.optional(),
+        /**
+         * How many ROWS to read before grouping, not how many groups to
+         * return: a tag with two runtimes is two rows and one group. The
+         * response says `truncated` when this bit, which is the honest thing
+         * a caller can act on - narrowing by `app` or `tag` is the answer,
+         * never a second page.
+         */
+        limit: z.integer().min(1).max(500).optional(),
+      }),
+      response: artifactListSchema,
+    },
+    handler: async ({ params, query }) => {
+      const listing = await this.artifacts.listGrouped({
+        projectId: params.projectId,
+        app: query.app,
+        tag: query.tag,
+        limit: query.limit,
+      });
+
+      return {
+        groups: listing.groups.map((group) => ({
+          app: group.app,
+          tag: group.tag,
+          pushedAt: group.pushedAt,
+          commitSha: group.commitSha,
+          variants: group.variants.map((variant) => this.resource(variant)),
+        })),
+        truncated: listing.truncated,
+      };
+    },
+  });
+
+  /**
+   * One tag on its own page: its variants with their manifests, every copy of
+   * the app, and the runs that shipped the tag.
+   *
+   * ⚠️ `by-tag` is load-bearing in the path. `/artifacts/:app/:tag` would also
+   * match `/artifacts/:artifactId/download` and `/maps`, and `download` is a
+   * legal tag.
+   *
+   * ⚠️ Every variant of the tag, then the manifest of each. The listing stays
+   * manifest-free: the column is 3 KB a row and nothing that lists wants it.
+   */
+  getArtifact = $action({
+    use: [this.ownsProject("artifact:read")],
+    method: "GET",
+    path: "/projects/:projectId/artifacts/by-tag/:app/:tag",
+    description:
+      "One tag's builds with their manifests, the copies of its app and the runs that shipped it.",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        app: appNameSchema,
+        tag: releaseTagSchema,
+      }),
+      response: artifactDetailSchema,
+    },
+    handler: async ({ params }) => {
+      const { groups } = await this.artifacts.listGrouped({
+        projectId: params.projectId,
+        app: params.app,
+        tag: params.tag,
+      });
+      const [group] = groups;
+      if (!group) {
+        throw new NotFoundError(
+          `No artifact tagged "${params.tag}" for app "${params.app}" in this project.`,
+        );
+      }
+
+      const surroundings = await this.details.surroundings(
+        params.projectId,
+        group.app,
+        group.tag,
+      );
+
+      return {
+        app: group.app,
+        tag: group.tag,
+        pushedAt: group.pushedAt,
+        commitSha: group.commitSha,
+        variants: group.variants.map((variant) => ({
+          ...this.resource(variant),
+          manifest: this.manifestOf(variant),
+        })),
+        ...surroundings,
+      };
+    },
+  });
+
+  /**
+   * Download a stored tarball through the project's read permission.
+   * Image artifacts hold registry references, so they have no local bytes.
+   */
+  downloadArtifact = $action({
+    use: [this.ownsProject("artifact:read")],
+    method: "GET",
+    path: "/projects/:projectId/artifacts/:artifactId/download",
+    description:
+      "Download a packed build from the project's artifact registry.",
+    schema: {
+      params: z.object({ projectId: z.integer(), artifactId: z.uuid() }),
+      response: z.file(),
+    },
+    handler: async ({ params, reply }) => {
+      const artifact = await this.artifacts.findById(
+        params.projectId,
+        params.artifactId,
+      );
+      if (!artifact) {
+        throw new NotFoundError("No such artifact in this project.");
+      }
+      if (artifact.format === "image") {
+        throw new NotFoundError(
+          "This artifact is an image reference. Lore stores its reference, never its bytes.",
+        );
+      }
+      if (!artifact.fileId) {
+        throw new NotFoundError("This artifact has no stored tarball.");
+      }
+      const file = await this.files.streamFile(artifact.fileId, {
+        bucket: ArtifactService.BUCKET,
+      });
+      reply.setHeader("cache-control", "no-store");
+      return file;
+    },
+  });
+
+  /**
+   * Remove one build from the registry, with its stored bytes.
+   *
+   * ## ⚠️ Not the push's gate
+   *
+   * `artifact:delete`, which no member holds by default and the Admin preset
+   * carries. And, unlike the two pushes, the Ship capability is required: the
+   * reason they skip it (a switch must never turn a CI run red) does not
+   * apply to a delete, which a person makes from the Artifacts page, so this
+   * is a write under a capability like every other one.
+   *
+   * The lookup goes through {@link ArtifactService.findById} with the path's
+   * project, so an id from another project is a 404 here, never a delete: the
+   * gate has already passed on the project in the path.
+   *
+   * ## What it leaves alone, on purpose
+   *
+   * `deployments.artifactId` is a soft reference with no foreign key, so the
+   * deploy history keeps every row and cascades nothing. Deleting the build a
+   * copy is running, or `latest`, is allowed: the Artifacts page's confirm
+   * says what that costs rather than this endpoint refusing it.
+   */
+  deleteArtifact = $action({
+    use: [
+      $ownsProject({
+        requires: "artifact:delete",
+        param: "projectId",
+        capability: { key: "ship", action: "delete an artifact" },
+      }),
+    ],
+    method: "DELETE",
+    path: "/projects/:projectId/artifacts/:artifactId",
+    description:
+      "Delete one build from the project's artifact registry, with its stored bytes.",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        artifactId: z.uuid(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params }) => {
+      const artifact = await this.artifacts.findById(
+        params.projectId,
+        params.artifactId,
+      );
+      if (!artifact) {
+        throw new NotFoundError("No such artifact in this project.");
+      }
+
+      await this.artifacts.delete(artifact);
+      return { ok: true };
+    },
+  });
+
+  /**
+   * The stored document, parsed. A row that does not parse reads as absent,
+   * which every reader already renders as "unknown", rather than failing the
+   * page over a column the push wrote itself.
+   */
+  protected manifestOf(artifact: Artifact): Record<string, any> | undefined {
+    if (!artifact.manifest) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(artifact.manifest);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * The row, flattened to what the API returns. `fileId` deliberately stays
+   * behind: it is how Lore stores the bytes, not how a caller addresses them.
+   */
+  protected resource(artifact: Artifact) {
+    return {
+      id: artifact.id,
+      projectId: artifact.projectId,
+      app: artifact.app,
+      tag: artifact.tag,
+      runtime: artifact.runtime,
+      runtimes: ArtifactService.runtimesOf(artifact),
+      format: artifact.format,
+      reference: artifact.reference,
+      sha256: artifact.sha256,
+      size: artifact.size,
+      commitSha: artifact.commitSha,
+      createdAt: artifact.createdAt,
+      updatedAt: artifact.updatedAt,
+    };
+  }
+}

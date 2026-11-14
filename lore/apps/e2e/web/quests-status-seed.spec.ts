@@ -175,7 +175,7 @@ test.describe("Quests — the URL seeds the filters", () => {
     await test.step("?epic= takes several epics and the no-epic sentinel", async () => {
       // The Epic filter (#Q3270). Seeded last: a draft epic's quest is out of
       // the backlog, so the steps above never see it.
-      await setCapability(page, projectId, "work", {
+      await setCapability(page, projectId, "plan", {
         options: { epics: true },
       });
       const filedTitle = `Filed${t}`;

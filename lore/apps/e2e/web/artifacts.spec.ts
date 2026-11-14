@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 // Its own subpath, not `./testing`: that barrel renders React pages, and
 // Playwright's loader cannot import their stylesheets.
-import { packedArtifact } from "@lore/deploy/testing/tarball";
+import { packedArtifact } from "@lore/ship/testing/tarball";
 
 import { expect, test } from "./_fixtures.ts";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
@@ -17,7 +17,7 @@ test("downloads the stored artifact from its row menu with matching bytes", asyn
     "GoodPassw0rd",
   );
   const project = await createProjectViaWizard(page, "Download artifacts", {
-    capabilities: ["apps"],
+    capabilities: ["ship"],
   });
   const file = await packedArtifact({ name: "my-app-1.2.3-node.tar.gz" });
   const bytes = [...new Uint8Array(await file.arrayBuffer())];
@@ -67,7 +67,7 @@ test("opens a build from the table and reads what it declares", async ({
     "GoodPassw0rd",
   );
   const project = await createProjectViaWizard(page, "Artifact detail", {
-    capabilities: ["apps"],
+    capabilities: ["ship"],
   });
   const file = await packedArtifact({
     name: "my-app-1.2.3-node.tar.gz",
@@ -148,7 +148,7 @@ test("places the empty state's docs link where its sentence is", async ({
     "GoodPassw0rd",
   );
   const project = await createProjectViaWizard(page, "Empty artifacts", {
-    capabilities: ["apps"],
+    capabilities: ["ship"],
   });
 
   /**

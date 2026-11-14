@@ -5,14 +5,14 @@ import {
   AutomationOrigin,
   AutomationPersistence,
 } from "@lore/core/api";
-import { DeployJobs, DeployRegistry } from "@lore/deploy/api";
-import { appInstances, deployments } from "@lore/deploy/schemas";
 import {
   FeedbackController,
   QuestController,
   ReleaseController,
   EpicWorkflowService,
-} from "@lore/work/api";
+} from "@lore/plan/api";
+import { DeployJobs, DeployRegistry } from "@lore/ship/api";
+import { appInstances, deployments } from "@lore/ship/schemas";
 import { Alepha, AlephaError, $inject, $hook, z } from "alepha";
 import {
   $job,
@@ -167,12 +167,11 @@ describe.skipIf(onPostgres)("Automation domain source integration", () => {
     await alepha.start();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "support" },
         {
-          key: "work",
-          options: { epics: true, releases: true },
+          key: "plan",
+          options: { epics: true, releases: true, feedback: true },
         },
-        { key: "apps", options: { deploy: true } },
+        { key: "ship", options: { deploy: true } },
       ],
     });
     await rows.users.updateById(project.createdBy, { roles: ["user"] });
@@ -196,27 +195,6 @@ describe.skipIf(onPostgres)("Automation domain source integration", () => {
     });
     expect(event.payload.fields).not.toHaveProperty("reporterUserId");
     expect(probe.writes).toBe(1);
-  });
-  it("commits the domain write without an event row while Work is off", async ({
-    expect,
-  }) => {
-    // Automations are a baseline of Work (#Q3594): a project without Work has
-    // no rules, so no event row is kept.
-    const quiet = await createTestProject(alepha, {
-      capabilities: [{ key: "support" }],
-    });
-    await rows.users.updateById(quiet.createdBy, { roles: ["user"] });
-    await alepha.inject(FeedbackController).submitFeedback.fetch(
-      {
-        params: { projectId: quiet.id },
-        body: { title: "Quiet", description: "Safe description" },
-      },
-      { user: { id: quiet.createdBy, roles: ["user"] } as UserAccountToken },
-    );
-    expect(await rows.feedback.count({ projectId: quiet.id })).toBe(1);
-    expect(await persistence.events.count({ projectId: quiet.id })).toBe(0);
-    await submit();
-    expect(await persistence.events.count({ projectId: project.id })).toBe(1);
   });
   it("rolls back the source and intent together when the native batch fails", async ({
     expect,

@@ -1,4 +1,4 @@
-import type { AppController, DeployController } from "@lore/deploy/api";
+import type { AppController, DeployController } from "@lore/ship/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";

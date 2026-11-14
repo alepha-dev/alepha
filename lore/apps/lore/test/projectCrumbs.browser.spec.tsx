@@ -6,13 +6,14 @@ import {
   ProjectShellRegistry,
   ProjectTrail,
 } from "@lore/core/web";
-import { currentHostAtom, DeployShell } from "@lore/deploy/web";
-import { currentAreaAtom, WorkShell } from "@lore/work/web";
+import { currentAreaAtom, WorkShell } from "@lore/plan/web";
+import { currentHostAtom, DeployShell } from "@lore/ship/web";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
+import * as reactRouter from "alepha/react/router";
 import { ReactRouter } from "alepha/react/router";
-import { afterAll, afterEach, describe, it } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 /**
  * A detail page ends its breadcrumb trail with itself (#Q3408), where three
@@ -31,26 +32,41 @@ class PathRouter extends ReactRouter<any> {
   }
 }
 
+/**
+ * Starting the container in jsdom mounts the app into the document, and
+ * stopping it does not unmount that root: React work it scheduled would fire
+ * after jsdom is torn down ("window is not defined") and fail the run with
+ * every test green. This substitute unmounts on demand.
+ *
+ * ⚠️ Untyped on purpose: the renderer is exported by the browser entry of
+ * `alepha/react/router`, which is the one jsdom loads, while the types are
+ * the server entry's, which does not export it.
+ */
+const Renderer = (reactRouter as any).ReactBrowserRendererProvider;
+
+class UnmountingRenderer extends Renderer {
+  public unmount(): void {
+    (this as any).root?.unmount();
+    (this as any).root = undefined;
+  }
+}
+
 describe("the leaf crumb of a detail page", () => {
-  // Each container boots the browser router, which renders the app into
-  // jsdom and keeps rendering (lazy route chunks) after its case ends. Left
-  // to run past the file, that work met the jsdom teardown and failed the
-  // run on an uncaught `window is not defined` with every case green. Stop
-  // each container, then let React's queued work finish while `window` is
-  // still there.
   const containers: Alepha[] = [];
+
   afterEach(async () => {
-    for (const alepha of containers.splice(0)) await alepha.stop();
-  });
-  afterAll(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    for (const alepha of containers.splice(0)) {
+      (alepha.inject(UnmountingRenderer) as UnmountingRenderer).unmount();
+      await alepha.stop();
+    }
   });
 
   const setup = async () => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaReactI18n)
-      .with({ provide: ReactRouter, use: PathRouter });
+      .with({ provide: ReactRouter, use: PathRouter })
+      .with({ provide: Renderer, use: UnmountingRenderer });
     alepha.inject(I18n);
     alepha.inject(WorkShell);
     alepha.inject(DeployShell);

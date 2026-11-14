@@ -204,9 +204,17 @@ const waitForProjectCapability = async (
             });
             if (!r.ok) return undefined;
             const body = (await r.json()) as {
-              capabilities?: Array<{ key: string }>;
+              capabilities?: Array<{
+                key: string;
+                options?: Record<string, boolean>;
+              }>;
             };
-            return (body.capabilities ?? []).some((it) => it.key === key);
+            // `plan` is a capability, `plan.feedback` one of its options.
+            const [capability, option] = key.split(".");
+            const row = (body.capabilities ?? []).find(
+              (it) => it.key === capability,
+            );
+            return option ? row?.options?.[option] === true : !!row;
           },
           { projectId, key },
         ),
@@ -376,7 +384,7 @@ test.describe("Apps", () => {
       await page.waitForLoadState("networkidle");
 
       const master = page.getByRole("switch", {
-        name: "Deploy and watch apps",
+        name: "Ship",
         exact: true,
       });
       await expect(master).toBeVisible({ timeout: 15_000 });
@@ -387,7 +395,7 @@ test.describe("Apps", () => {
       // everything from here on (creating, the ingest gate, the app and
       // errors route loaders, the sidebar's Apps entry) depends on the Apps
       // capability actually being on, not just the switch looking on.
-      await waitForProjectCapability(page, projectId, "apps", true);
+      await waitForProjectCapability(page, projectId, "ship", true);
 
       // The Apps section's own page rendering at all is worth asserting:
       // removing a route without editing the nav table crashed every
@@ -552,7 +560,7 @@ test.describe("Apps", () => {
       const deploy = page.getByRole("switch", { name: /^deploy apps$/i });
       for (const _ of [0, 1]) {
         const saved = page.waitForResponse((res) =>
-          res.url().includes("/capabilities/apps"),
+          res.url().includes("/capabilities/ship"),
         );
         await deploy.click();
         expect((await saved).ok()).toBe(true);
@@ -660,16 +668,16 @@ test.describe("Apps", () => {
       expect(res.status()).toBe(204);
     });
 
-    await test.step("the owner turns Support on from General > Capabilities", async () => {
+    await test.step("the owner turns Feedback on from General > Capabilities", async () => {
       // Off by default for a wizard-created project: the wizard deliberately
-      // starts a project with no feedback inbox. Support has no option, so
-      // it has no settings page of its own since #Q2565; its master is on
-      // General > Capabilities with the others.
+      // starts a project with no feedback inbox. Feedback is an option of
+      // Plan since #E143, nested under Plan's master on General >
+      // Capabilities because the sidebar's Feedback entry hangs off it.
       await page.goto(`/${projectSlug}/settings/capabilities`);
       await page.waitForLoadState("networkidle");
 
       const toggle = page.getByRole("switch", {
-        name: "Collect feedback",
+        name: "Feedback",
         exact: true,
       });
       await expect(toggle).toBeVisible({ timeout: 15_000 });
@@ -678,7 +686,7 @@ test.describe("Apps", () => {
       // `pending` value the instant the click fires, which proves nothing
       // about whether the write has actually landed. This is exactly the
       // write the very next step's assertion depends on.
-      await waitForProjectCapability(page, projectId, "support", true);
+      await waitForProjectCapability(page, projectId, "plan.feedback", true);
 
       // Back to the Sigils settings page — "the sink tells the app what it
       // wants" step below only makes API calls (no navigation of its own),
@@ -1380,7 +1388,7 @@ test.describe("Apps", () => {
     });
 
     await test.step("an app without Beacon has no analytics tabs, and gets them back", async () => {
-      // Flipped through the API: the four capability switches left the
+      // Flipped through the API: the three capability switches left the
       // Settings page with the rebuild (they were a second, unaware copy of a
       // decision `SIGIL_CONFIG` already makes). The GATE did not move, so what
       // it does to the page is still worth guarding.

@@ -138,7 +138,7 @@ the member table is the share of that member's writes that came over MCP.
 
 ## A weekly report in your inbox
 
-The **Weekly report** preset in [Automations](/lore/docs/work-automations)
+The **Weekly report** preset in [Automations](/lore/docs/plan-automations)
 sends Summary's last seven days against the seven before, every Monday at
 08:00 UTC, to the member you pick, as an inbox notification or an email.
 
@@ -174,7 +174,7 @@ status** prompt on the Summary tab builds on it: see
 
 - [Dashboard](/lore/docs/project-dashboard): pin the figures you check every
   day.
-- [Automations](/lore/docs/work-automations): set up the weekly report.
-- [Quests](/lore/docs/work-quests): the work every figure counts.
-- [Telemetry](/lore/docs/apps-telemetry): the errors and errors the Delivery
+- [Automations](/lore/docs/plan-automations): set up the weekly report.
+- [Quests](/lore/docs/plan-quests): the work every figure counts.
+- [Telemetry](/lore/docs/ship-telemetry): the errors and errors the Delivery
   tab counts.

@@ -1,8 +1,8 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
-import { QualityController } from "@lore/deploy/api";
-import { FolioController } from "@lore/knowledge/api";
-import { QuestController } from "@lore/work/api";
-import { QuestTools } from "@lore/work/mcp";
+import { QuestController } from "@lore/plan/api";
+import { QuestTools } from "@lore/plan/mcp";
+import { FolioController } from "@lore/remember/api";
+import { QualityController } from "@lore/ship/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -84,7 +84,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "NoWork", capabilities: [{ key: "knowledge" }] },
+        body: { title: "NoWork", capabilities: [{ key: "remember" }] },
       }),
     );
 
@@ -100,7 +100,7 @@ describe("the capability gate", () => {
           },
         }),
       ),
-    ).rejects.toThrow(/Plan and track work.*Turn it on in Settings/s);
+    ).rejects.toThrow(/Plan.*Turn it on in Settings/s);
 
     await ctx.alepha.stop();
   });
@@ -111,7 +111,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "HasWork", capabilities: [{ key: "work" }] },
+        body: { title: "HasWork", capabilities: [{ key: "plan" }] },
       }),
     );
 
@@ -137,7 +137,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "Hidden", capabilities: [{ key: "work" }] },
+        body: { title: "Hidden", capabilities: [{ key: "plan" }] },
       }),
     );
     await ctx.asUser(ctx.owner.id, () =>
@@ -155,7 +155,7 @@ describe("the capability gate", () => {
     // Turn Work off the way Settings does: the row goes, and nothing else.
     const security = ctx.alepha.inject(ProjectSecurityService);
     const row = await security.capabilities.findOne({
-      where: { projectId: { eq: project.id }, key: { eq: "work" } },
+      where: { projectId: { eq: project.id }, key: { eq: "plan" } },
     });
     await security.capabilities.deleteById(row!.id);
 
@@ -180,7 +180,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "NoKnowledge", capabilities: [{ key: "work" }] },
+        body: { title: "NoKnowledge", capabilities: [{ key: "plan" }] },
       }),
     );
 
@@ -190,7 +190,7 @@ describe("the capability gate", () => {
           body: { projectId: project.id, title: "Nope", content: "" },
         }),
       ),
-    ).rejects.toThrow(/Write and keep knowledge/);
+    ).rejects.toThrow(/Remember/);
 
     await ctx.alepha.stop();
   });
@@ -199,7 +199,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "McpNoWork", capabilities: [{ key: "knowledge" }] },
+        body: { title: "McpNoWork", capabilities: [{ key: "remember" }] },
       }),
     );
 
@@ -217,7 +217,7 @@ describe("the capability gate", () => {
           priority: "medium",
         }),
       ),
-    ).rejects.toThrow(/Plan and track work/);
+    ).rejects.toThrow(/Plan/);
 
     await ctx.alepha.stop();
   });

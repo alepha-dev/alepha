@@ -1,4 +1,4 @@
-import type { RegistryCredentialController } from "@lore/deploy/api";
+import type { RegistryCredentialController } from "@lore/ship/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $client } from "alepha/server/links";

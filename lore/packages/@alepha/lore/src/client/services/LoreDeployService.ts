@@ -182,7 +182,7 @@ export interface LoreDeployInput {
  *    the machine holding the source, for the runtime the host accepts. There
  *    is no build here: Lore's Worker cannot run Vite, and this client is not
  *    where that changes.
- * 2. **A host lent to the project**, and the `apps.deploy` capability on.
+ * 2. **A host lent to the project**, and the `ship.deploy` capability on.
  *    The API key's user needs `app:manage` (to create a copy) and
  *    `deploy:manage` (to ship to one).
  */

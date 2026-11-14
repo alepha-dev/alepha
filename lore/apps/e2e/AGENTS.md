@@ -1,6 +1,6 @@
 # AGENTS.md: apps/e2e
 
-The end-to-end suites (#Q2628). They drive built artefacts and import no `apps/lore/src`: a pure helper they need comes from a package's barrel or its own subpath (`@lore/work/schemas`, `@lore/deploy/testing/tarball`), never from a barrel that renders React, which Playwright's loader cannot import.
+The end-to-end suites (#Q2628). They drive built artefacts and import no `apps/lore/src`: a pure helper they need comes from a package's barrel or its own subpath (`@lore/plan/schemas`, `@lore/ship/testing/tarball`), never from a barrel that renders React, which Playwright's loader cannot import.
 
 | folder | suite                                                                  | run                                                                                                          |
 | ------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -85,7 +85,7 @@ Reaching the same end state from a session reused per worker took 2665ms against
 - `feedback.spec.ts` — feedback submit → accept → link quests → status progression (renamed from `petition.spec.ts`)
 - `register.spec.ts` — registration form + email verification
 - `settings-features.spec.ts` - the capability switches in General ▸ Capabilities and on the section pages
-- `capabilities.spec.ts` - a Knowledge-only project, an Apps-only one, and a project with everything turned off and Work turned back on
+- `capabilities.spec.ts` - a Remember-only project, a Ship-only one, a project with everything turned off and Plan turned back on, and Feedback as an option of Plan
 - `theme-flicker.spec.ts` — theme no-flash boot
 - `link-prefetch.spec.ts` - `prefetch` on the sidebar, a quest row and Home's rows, asserted on the network; a failed chunk under a hover reloads nothing, and `saveData` fetches nothing
 - `robots-manifest.spec.ts` - `/robots.txt` and the manifest from the built server, where a file in `public/` would answer ahead of the route

@@ -50,7 +50,7 @@ test.describe("Epic reviews", () => {
       page,
       `Rv${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", { options: { epics: true } });
+    await setCapability(page, projectId, "plan", { options: { epics: true } });
 
     const epic = await call<{ id: number; number: number }>(
       page,

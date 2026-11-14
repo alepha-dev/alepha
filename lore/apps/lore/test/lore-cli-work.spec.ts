@@ -1,6 +1,6 @@
 import { AlephaLoreCli } from "@alepha/lore/cli";
 import { ProjectController } from "@lore/core/api";
-import { EpicController, QuestController } from "@lore/work/api";
+import { EpicController, QuestController } from "@lore/plan/api";
 import { Alepha, AlephaError, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";

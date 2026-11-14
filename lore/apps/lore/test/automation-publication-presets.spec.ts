@@ -14,10 +14,10 @@ import {
 import { AutomationWorker } from "@lore/core/api";
 import type { AutomationResource } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { DeployJobs, DeployRegistry } from "@lore/deploy/api";
-import { appInstances, artifacts, deployments } from "@lore/deploy/schemas";
-import { FolioController } from "@lore/knowledge/api";
-import { ReleaseController } from "@lore/work/api";
+import { ReleaseController } from "@lore/plan/api";
+import { FolioController } from "@lore/remember/api";
+import { DeployJobs, DeployRegistry } from "@lore/ship/api";
+import { appInstances, artifacts, deployments } from "@lore/ship/schemas";
 import { Alepha, AlephaError, $hook, $inject } from "alepha";
 import { JobQueueProvider, jobExecutionEntity } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
@@ -208,9 +208,9 @@ describe("Deployment and release publication presets", () => {
     time.pause();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: { releases: true } },
-        { key: "knowledge" },
-        { key: "apps", options: { deploy: true } },
+        { key: "plan", options: { releases: true } },
+        { key: "remember" },
+        { key: "ship", options: { deploy: true } },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });

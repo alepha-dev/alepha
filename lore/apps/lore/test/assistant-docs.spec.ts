@@ -45,7 +45,7 @@ describe("searchDocs", () => {
     const { alepha, signIn } = await bootAssistant({ enabled: "1" });
     const docs = alepha.inject(LoreAiDocsController);
     const workOnly = await createTestProject(alepha, {
-      capabilities: [{ key: "work" }, { key: "knowledge" }],
+      capabilities: [{ key: "plan" }, { key: "remember" }],
     });
     const everything = await createTestProject(alepha);
     const ask = async (projectId: number, q: string, userId: string) => {
@@ -60,13 +60,13 @@ describe("searchDocs", () => {
 
     const telemetry = "telemetry errors sigil feedback inbox";
     const allOn = await ask(everything.id, telemetry, everything.createdBy);
-    expect(allOn.some((s) => s.url.includes("apps-telemetry"))).toBe(true);
+    expect(allOn.some((s) => s.url.includes("ship-telemetry"))).toBe(true);
 
     const narrowed = await ask(workOnly.id, telemetry, workOnly.createdBy);
     expect(narrowed.length).toBeGreaterThan(0);
     for (const section of narrowed) {
       const source = docsCorpus.find((it) => it.url === section.url)!;
-      expect(["apps", "support"]).not.toContain(source.capability);
+      expect(source.capability).not.toBe("ship");
     }
     await alepha.stop();
   });
@@ -81,7 +81,7 @@ describe("searchDocs", () => {
         { params: { projectId: project.id }, query: { q: "shelve an epic" } },
         { user },
       );
-    expect(sections[0].url).toContain("work-epics");
+    expect(sections[0].url).toContain("plan-epics");
     await alepha.stop();
   });
 });

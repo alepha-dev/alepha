@@ -3,15 +3,15 @@ import { join } from "node:path";
 
 import { LoreCoreApi } from "@lore/core/api";
 import { projects, users } from "@lore/core/schemas";
-import { LoreDeployApi } from "@lore/deploy/api";
+import { LorePlanApi } from "@lore/plan/api";
+import { LoreRememberApi } from "@lore/remember/api";
+import { LoreShipApi } from "@lore/ship/api";
 import {
   projectErrors,
   sigilErrorGroups,
   sigils,
   sigilUniquesDaily,
-} from "@lore/deploy/schemas";
-import { LoreKnowledgeApi } from "@lore/knowledge/api";
-import { LoreWorkApi } from "@lore/work/api";
+} from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { organizations } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -88,9 +88,9 @@ const entityTables = async (): Promise<string[]> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(LoreCoreApi);
-  alepha.with(LoreWorkApi);
-  alepha.with(LoreKnowledgeApi);
-  alepha.with(LoreDeployApi);
+  alepha.with(LorePlanApi);
+  alepha.with(LoreRememberApi);
+  alepha.with(LoreShipApi);
   bootLore(alepha, ["api", "mcp"]);
 
   const tables = new Set<string>();

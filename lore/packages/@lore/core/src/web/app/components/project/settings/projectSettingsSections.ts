@@ -72,9 +72,8 @@ export interface SettingsSectionDef {
  * These are Core's two; each capability's section is its module's, through
  * `ProjectShellRegistry.registerSettings` (#E75, #Q2624).
  *
- * ⚠️ Support has no section. Its master switch is in General and it has no
- * option of its own, so a section would be an empty page. Give it one the
- * day it grows an option.
+ * Feedback has no section: it is an option of Plan (Support, a capability of
+ * its own, until #E143), switched in General under Plan's master.
  */
 export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
   {

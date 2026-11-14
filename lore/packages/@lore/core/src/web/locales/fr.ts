@@ -918,47 +918,48 @@ export default {
     "Téléchargez toutes les quêtes de ce projet en CSV.",
   "project.settings.data.export.button": "Exporter les quêtes",
   // ── Capabilities ────────────────────────────────────────────────────────
-  // See the note in en.ts: `.label` stays a sentence on purpose.
-  "project.capability.work.label": "Planifier et suivre le travail",
-  "project.capability.work.description":
-    "Quêtes, épopées, versions, un tableau.",
-  "project.capability.work.option.epics.label": "Épopées",
-  "project.capability.work.option.epics.description":
+  // See the note in en.ts: `.label` is the pillar's word, as on the welcome
+  // page (`home.pillar.*.title`).
+  "project.capability.plan.label": "Planifier",
+  "project.capability.plan.description":
+    "Quêtes, épopées, versions, un tableau, des retours.",
+  "project.capability.plan.option.epics.label": "Épopées",
+  "project.capability.plan.option.epics.description":
     "Des phases, avec un cycle de vie.",
-  "project.capability.work.option.releases.label": "Versions",
-  "project.capability.work.option.releases.description":
+  "project.capability.plan.option.releases.label": "Versions",
+  "project.capability.plan.option.releases.description":
     "Des versions nommées, qui sortent.",
-  "project.capability.work.option.estimate.label": "Estimations",
-  "project.capability.work.option.estimate.description":
+  "project.capability.plan.option.estimate.label": "Estimations",
+  "project.capability.plan.option.estimate.description":
     "Prévoir le temps que devrait prendre une quête.",
-  "project.capability.work.option.chrono.label": "Chronomètre",
-  "project.capability.work.option.chrono.description":
+  "project.capability.plan.option.chrono.label": "Chronomètre",
+  "project.capability.plan.option.chrono.description":
     "Mesurer le temps réellement passé sur une quête.",
-  "project.capability.work.option.reminder.label": "Rappels",
-  "project.capability.work.option.reminder.description":
+  "project.capability.plan.option.reminder.label": "Rappels",
+  "project.capability.plan.option.reminder.description":
     "Relancer qui détient une quête restée silencieuse.",
-  "project.capability.work.option.agentPrompts.label": "Invites pour agents",
-  "project.capability.work.option.agentPrompts.description":
+  "project.capability.plan.option.agentPrompts.label": "Invites pour agents",
+  "project.capability.plan.option.agentPrompts.description":
     "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour votre agent de code ; rien n’est envoyé nulle part.",
-  "project.capability.knowledge.label": "Écrire et conserver le savoir",
-  "project.capability.knowledge.description":
-    "Des folios liés entre eux, des fichiers, des révisions.",
-  "project.capability.knowledge.option.agentSummary.label":
-    "Résumés pour les agents",
-  "project.capability.knowledge.option.agentSummary.description":
-    "Afficher le champ résumé sur un folio. Il est écrit et lu via MCP dans tous les cas.",
-  "project.capability.apps.label": "Déployer et surveiller des applications",
-  "project.capability.apps.description":
-    "Instances, analytique, erreurs, Web Vitals.",
-  "project.capability.apps.option.track.label": "Surveiller les applications",
-  "project.capability.apps.option.track.description":
-    "Analytique, Web Vitals et erreurs. Chaque application reçoit un sigil.",
-  "project.capability.apps.option.deploy.label": "Déployer les applications",
-  "project.capability.apps.option.deploy.description":
-    "Envoyer un build sur une machine qui vous appartient.",
-  "project.capability.support.label": "Recueillir les retours",
-  "project.capability.support.description":
+  "project.capability.plan.option.feedback.label": "Retours",
+  "project.capability.plan.option.feedback.description":
     "Un formulaire de demande pour tout compte Lore connecté, et une boîte de tri.",
+  "project.capability.remember.label": "Se souvenir",
+  "project.capability.remember.description":
+    "Des folios liés entre eux, des fichiers, des révisions.",
+  "project.capability.remember.option.agentSummary.label":
+    "Résumés pour les agents",
+  "project.capability.remember.option.agentSummary.description":
+    "Afficher le champ résumé sur un folio. Il est écrit et lu via MCP dans tous les cas.",
+  "project.capability.ship.label": "Livrer",
+  "project.capability.ship.description":
+    "Des applications et leurs déploiements, analytique, erreurs, Web Vitals.",
+  "project.capability.ship.option.track.label": "Surveiller les applications",
+  "project.capability.ship.option.track.description":
+    "Analytique, Web Vitals et erreurs. Chaque application reçoit un sigil.",
+  "project.capability.ship.option.deploy.label": "Déployer les applications",
+  "project.capability.ship.option.deploy.description":
+    "Envoyer un build sur une machine qui vous appartient.",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
     "Les parties de votre système. Chaque quête appartient à exactement une. Renommez un domaine vers un domaine existant pour les fusionner.",
@@ -1125,10 +1126,9 @@ export default {
   "reports.summary.empty": "Aucune capacité à présenter.",
   "reports.summary.definition":
     "Chaque chiffre sur la période, face à la période de même durée qui la précède.",
-  "reports.summary.section.work": "Travail",
-  "reports.summary.section.support": "Support",
-  "reports.summary.section.knowledge": "Connaissance",
-  "reports.summary.section.apps": "Livraison",
+  "reports.summary.section.plan": "Planifier",
+  "reports.summary.section.remember": "Se souvenir",
+  "reports.summary.section.ship": "Livrer",
   "reports.summary.line.throughput": "Quêtes terminées",
   "reports.summary.line.throughput.definition":
     "Quêtes terminées sur la période.",
@@ -1349,7 +1349,7 @@ export default {
   "reports.planning.published.size": "Taille",
   "reports.planning.published.cadence": "Cadence (jours)",
   "reports.planning.published.carried": "Reportées",
-  "project.reports.nav.support": "Support",
+  "project.reports.nav.support": "Retours",
   "reports.summary.line.feedbackTriaged": "Triés",
   "reports.summary.line.feedbackTriaged.definition":
     "Retours acceptés ou rejetés sur la période.",
@@ -1385,7 +1385,7 @@ export default {
   "reports.support.sources.definition":
     "Les tags d’hôte et de chemin les plus fréquents sur la période. Un retour compte une fois par tag.",
   "reports.support.sources.empty": "Aucun retour ne porte d’hôte ni de chemin.",
-  "project.reports.nav.knowledge": "Connaissance",
+  "project.reports.nav.knowledge": "Folios",
   "reports.knowledge.empty": "Rien ici.",
   "reports.knowledge.pinned": "épinglé",
   "reports.knowledge.kpi.total": "Folios",
@@ -2246,7 +2246,7 @@ export default {
   "app.settings.sigil.feedback.dropped.title":
     "Les retours ne sont pas collectés",
   "app.settings.sigil.feedback.dropped.description":
-    "Cette application envoie des retours et le projet les jette. Activez Recueillir les retours pour les conserver.",
+    "Cette application envoie des retours et le projet les jette. Activez Retours, sous Planifier, pour les conserver.",
   "app.settings.sigil.feedback.dropped.action": "Ouvrir les capacités",
   "app.settings.credential": "Accès",
   "app.settings.rotate.title": "Renouveler le jeton",
@@ -3224,7 +3224,7 @@ export default {
   "dashboard.card.size": "Taille",
   "dashboard.card.size.option": "$1 de large, $2 de haut",
   "dashboard.group.flow": "Flux",
-  "dashboard.group.knowledge": "Connaissances",
+  "dashboard.group.knowledge": "Folios",
   "dashboard.group.core": "Projet",
   "dashboard.empty.noAccess":
     "Vous ne pouvez pas lire les rapports de ce projet.",
@@ -3761,11 +3761,11 @@ export default {
   "uptime.app.none": "Aucun moniteur ne surveille encore cette adresse.",
   "uptime.title": "Disponibilité",
   "uptime.empty": "Aucun moniteur pour le moment.",
-  "project.capability.apps.option.uptime.label": "Superviser les applications",
-  "project.capability.apps.option.uptime.description":
+  "project.capability.ship.option.uptime.label": "Superviser les applications",
+  "project.capability.ship.option.uptime.description":
     "Vérifiez vos adresses à intervalles réguliers et gardez leur historique. Aucun sigil requis.",
-  "project.capability.apps.option.stacks.label": "Stacks",
-  "project.capability.apps.option.stacks.description":
+  "project.capability.ship.option.stacks.label": "Stacks",
+  "project.capability.ship.option.stacks.description":
     "Déployez ensemble des apps et des services depuis un seul compose.yml.",
   "uptime.description":
     "Surveillance des sites, ports, certificats et tâches planifiées.",

@@ -77,7 +77,9 @@ test.describe("Feedback", () => {
 
     // Wizard defaults feedback OFF — flip it on so the request form is
     // reachable.
-    await setCapability(page, projectId, "support");
+    await setCapability(page, projectId, "plan", {
+      options: { feedback: true },
+    });
 
     // ── Submit feedback through the UI request form ──────────────────────────
     await test.step("submit feedback via the request form", async () => {
@@ -209,7 +211,9 @@ test.describe("Feedback", () => {
     );
     // The wizard defaults feedback OFF, and the upload endpoint refuses a
     // project whose module is closed.
-    await setCapability(page, projectId, "support");
+    await setCapability(page, projectId, "plan", {
+      options: { feedback: true },
+    });
 
     await page.evaluate(
       async ({ id, withFile, withoutFile }) => {
@@ -372,7 +376,9 @@ test.describe("Feedback", () => {
     );
 
     // Open the feedback module so the request form is reachable.
-    await setCapability(page, projectId, "support");
+    await setCapability(page, projectId, "plan", {
+      options: { feedback: true },
+    });
 
     // A different logged-in user who is NOT a member of the project — the
     // exact case that used to break: Cancel pushed to the members-only project

@@ -57,7 +57,7 @@ export const useAgentPrompt = (): AgentPromptHandle => {
   const kinds = useInject(AgentPromptRegistry);
 
   return {
-    enabled: capabilityOption(project, "work", "agentPrompts"),
+    enabled: capabilityOption(project, "plan", "agentPrompts"),
     copy: async (kind, subject) => {
       const template = prompts?.[kind] ?? kinds.get(kind).template;
       const text = renderPromptTemplate(template, subject);

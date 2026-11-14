@@ -136,18 +136,18 @@ export const createTestProject = async (
     options: Record<string, boolean>;
   }> = [
     {
-      key: "work",
+      key: "plan",
       options: {
         epics: true,
         releases: true,
         estimate: true,
         chrono: true,
         reminder: true,
+        feedback: true,
       },
     },
-    { key: "knowledge", options: { agentSummary: true } },
-    { key: "apps", options: { track: true, deploy: false } },
-    { key: "support", options: {} },
+    { key: "remember", options: { agentSummary: true } },
+    { key: "ship", options: { track: true, deploy: false } },
   ];
 
   for (const capability of capabilities ?? ALL_ON) {

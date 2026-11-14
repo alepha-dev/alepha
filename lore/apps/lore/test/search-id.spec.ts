@@ -1,11 +1,11 @@
 import { ProjectController, SearchController } from "@lore/core/api";
-import { DirectoryController, FolioController } from "@lore/knowledge/api";
 import {
   EpicController,
   FeedbackController,
   QuestController,
   ReleaseController,
-} from "@lore/work/api";
+} from "@lore/plan/api";
+import { DirectoryController, FolioController } from "@lore/remember/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -118,9 +118,11 @@ describe("SearchController, an id query", () => {
         body: {
           title: "Search ids",
           capabilities: [
-            { key: "work", options: { epics: true, releases: true } },
-            { key: "knowledge" },
-            { key: "support" },
+            {
+              key: "plan",
+              options: { epics: true, releases: true, feedback: true },
+            },
+            { key: "remember" },
           ],
         },
       },

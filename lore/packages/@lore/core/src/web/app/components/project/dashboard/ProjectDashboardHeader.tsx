@@ -80,7 +80,7 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
     // own gutter, so the bar's ends line up with the tiles'.
     <div
       data-testid="dashboard-header"
-      className="bg-muted [&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 shadow-[inset_0_1px_0_0_var(--bevel)]"
+      className="[&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background chrome flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2"
     >
       {props.lead && <div className="min-w-0 px-1">{props.lead}</div>}
       <span className="flex-1" />

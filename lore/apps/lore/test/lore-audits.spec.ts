@@ -1,10 +1,10 @@
 import { ProjectController } from "@lore/core/api";
-import { AppController, SigilController } from "@lore/deploy/api";
 import {
   FeedbackController,
   QuestController,
   ReleaseController,
-} from "@lore/work/api";
+} from "@lore/plan/api";
+import { AppController, SigilController } from "@lore/ship/api";
 import { Alepha, z } from "alepha";
 import { AuditService } from "alepha/api/audits";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -117,10 +117,9 @@ describe("Lore domain audits", () => {
             // surfaces, so a fixture missing one turns an audit case into a
             // capability case.
             capabilities: [
-              { key: "work" as const },
-              { key: "knowledge" as const },
-              { key: "apps" as const, options: { track: true } },
-              { key: "support" as const },
+              { key: "plan" as const, options: { feedback: true } },
+              { key: "remember" as const },
+              { key: "ship" as const, options: { track: true } },
             ],
           },
         },

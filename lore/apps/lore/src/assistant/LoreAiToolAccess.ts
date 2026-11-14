@@ -1,5 +1,4 @@
 import { ProjectPermissions, ProjectSecurityService } from "@lore/core/api";
-import type { CapabilityKey } from "@lore/core/schemas";
 import { CapabilityRegistry } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import type { AiPageContext } from "alepha/ai";
@@ -56,16 +55,11 @@ export class LoreAiToolAccess {
     if (!granted) {
       return [];
     }
-    const enabled = Object.keys(
-      await this.security.capabilitiesOf(projectId),
-    ) as CapabilityKey[];
+    const enabled = await this.security.capabilitiesOf(projectId);
     return this.toolset.projectScoped.filter(
       (entry) =>
         entry.permissions.every((permission) => granted.has(permission)) &&
-        this.capabilities.isOwnerEnabled(
-          this.capabilities.ownerOfTool(this.toolset.nameOf(entry)),
-          enabled,
-        ),
+        this.capabilities.isToolEnabled(this.toolset.nameOf(entry), enabled),
     );
   }
 

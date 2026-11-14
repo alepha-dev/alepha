@@ -74,7 +74,7 @@ const openCreateMenu = async (page: Page) => {
 };
 
 test.describe("Project capabilities", () => {
-  test("a Knowledge-only project has folios and nothing else", async ({
+  test("a Remember-only project has folios and nothing else", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -92,7 +92,7 @@ test.describe("Project capabilities", () => {
       .first()
       .fill(`Kno${ts}`.slice(0, 20));
     await page.getByRole("button", { name: /^next$/i }).click();
-    await page.getByRole("button", { name: /plan and track work/i }).click();
+    await page.getByRole("button", { name: /^plan\b/i }).click();
     await page.getByRole("button", { name: /create project/i }).click();
     await page.waitForURL(
       (url) =>
@@ -137,7 +137,7 @@ test.describe("Project capabilities", () => {
     ).toHaveCount(0);
   });
 
-  test("an Apps-only project watches apps and drops the feedback they send", async ({
+  test("a Ship-only project watches apps and drops the feedback they send", async ({
     page,
     request,
   }) => {
@@ -148,12 +148,12 @@ test.describe("Project capabilities", () => {
     const { id, slug } = await createProjectViaWizard(
       page,
       `App${ts}`.slice(0, 20),
-      { capabilities: ["apps"], options: { apps: ["track"] } },
+      { capabilities: ["ship"], options: { ship: ["track"] } },
     );
     // The wizard's own defaults are Work and Knowledge; this project is Apps
     // alone, so both come back off.
-    await setCapability(page, id, "work", { enabled: false });
-    await setCapability(page, id, "knowledge", { enabled: false });
+    await setCapability(page, id, "plan", { enabled: false });
+    await setCapability(page, id, "remember", { enabled: false });
     await page.reload();
     await page.waitForLoadState("networkidle");
 
@@ -164,7 +164,7 @@ test.describe("Project capabilities", () => {
       "/artifacts",
       "/reports",
     ]);
-    // Support is off, so the feedback inbox is not a page this project has.
+    // Feedback is off, so the feedback inbox is not a page this project has.
     await expect404(page, `/${slug}/feedback`);
 
     // Enrol one deployed copy, then mint its sigil from the Settings tab the
@@ -214,8 +214,8 @@ test.describe("Project capabilities", () => {
     });
     // ⚠️ **Accepted, and discarded.** The reporting client fails open on any
     // config error, so refusing the batch would make an enrolled app retry
-    // forever. `gatesFor` needs `apps.track` AND `support` for this kind, and
-    // Support is off - so the batch is 2xx and nothing is written.
+    // forever. `gatesFor` needs `ship.track` AND `plan.feedback` for this kind,
+    // and Feedback is off - so the batch is 2xx and nothing is written.
     expect(ingest.ok()).toBe(true);
 
     const feedbackCount = await page.evaluate(
@@ -252,15 +252,15 @@ test.describe("Project capabilities", () => {
     await expect(
       page.locator(`a[href="/${slug}/reports/backlog"]`),
     ).toHaveCount(0);
-    // Quality is Apps baseline, and its tab shows the push command until a
+    // Quality is Ship baseline, and its tab shows the push command until a
     // run exists (#Q3070).
     await expect(
       page.locator(`a[href="/${slug}/reports/quality"]`),
     ).toBeVisible();
 
-    // ⚠️ Quality has no switch, and this is why an Apps-only project needs
+    // ⚠️ Quality has no switch, and this is why a Ship-only project needs
     // Reports to stay Core: pushed by CI under a CI credential, its tab is the
-    // one thing an Apps-only project reads there besides Members. If Reports
+    // one thing a Ship-only project reads there besides Members. If Reports
     // had stayed under Work, the entry would have taken this with it.
     const pushed = await page.evaluate(
       async ({ projectId }) => {
@@ -304,7 +304,7 @@ test.describe("Project capabilities", () => {
     const { id, slug } = await createProjectViaWizard(
       page,
       `Off${ts}`.slice(0, 20),
-      { capabilities: ["apps", "support"] },
+      { capabilities: ["ship"], options: { plan: ["feedback"] } },
     );
 
     // Something in each capability, so "hides, never deletes" has something
@@ -332,12 +332,11 @@ test.describe("Project capabilities", () => {
     // the page a person uses, and `setCapability` would skip the optimistic
     // control the epic's e2e traps are about. Each click is armed first: the
     // switch flips instantly and proves nothing. Every master is on General >
-    // Capabilities since #Q2565, one page for all four.
+    // Capabilities since #Q2565, one page for all three.
     const masters = {
-      work: "Plan and track work",
-      knowledge: "Write and keep knowledge",
-      apps: "Deploy and watch apps",
-      support: "Collect feedback",
+      plan: "Plan",
+      remember: "Remember",
+      ship: "Ship",
     };
     await page.goto(`/${slug}/settings/capabilities`);
     await page.waitForLoadState("networkidle");
@@ -417,16 +416,74 @@ test.describe("Project capabilities", () => {
     await page.goto(`/${slug}/settings/capabilities`);
     await page.waitForLoadState("networkidle");
     const back = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/work"),
+      res.url().includes("/capabilities/plan"),
     );
-    await page
-      .getByRole("switch", { name: "Plan and track work", exact: true })
-      .click();
+    await page.getByRole("switch", { name: "Plan", exact: true }).click();
     expect((await back).ok()).toBe(true);
 
     await page.goto(`/${slug}/quests`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText("Survives being hidden")).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test("Feedback is an option of Plan: on from Settings, off hides the inbox and keeps what it holds", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const t = Date.now();
+    await registerAndVerify(page, `fb${t}@example.com`, "GoodPassw0rd");
+    const { slug } = await createProjectViaWizard(page, `Fb${t}`.slice(0, 20));
+    const title = `Fold${t}`;
+
+    // Support was a capability of its own until #E143; Feedback is a switch
+    // under Plan's master now, beside Epics and Releases.
+    const toggle = async (on: boolean) => {
+      await page.goto(`/${slug}/settings/capabilities`);
+      await page.waitForLoadState("networkidle");
+      const option = page.getByRole("switch", {
+        name: "Feedback",
+        exact: true,
+      });
+      await expect(option).toHaveAttribute("aria-checked", String(!on), {
+        timeout: 10_000,
+      });
+      const saved = page.waitForResponse((res) =>
+        res.url().includes("/capabilities/plan"),
+      );
+      await option.click();
+      expect((await saved).ok()).toBe(true);
+    };
+
+    // Off by default: the wizard offers it, never preselects it.
+    expect(await navHrefs(page, slug)).not.toContain("/feedback");
+    await toggle(true);
+
+    await page.goto(`/${slug}/request?type=bug`);
+    await page.waitForLoadState("networkidle");
+    await page.locator("textarea").first().fill(`${title}\nIt broke.`);
+    await page.getByRole("button", { name: /^submit feedback$/i }).click();
+    await page.waitForURL(new RegExp(`/${slug}/feedback$`), {
+      timeout: 15_000,
+    });
+    await expect(page.getByText(title).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    expect(await navHrefs(page, slug)).toContain("/feedback");
+
+    // Off: the inbox leaves the sidebar and its page is gone.
+    await toggle(false);
+    await page.goto(`/${slug}/`);
+    await page.waitForLoadState("networkidle");
+    expect(await navHrefs(page, slug)).not.toContain("/feedback");
+    await expect404(page, `/${slug}/feedback`);
+
+    // And back: an option that is off hides, it never deletes.
+    await toggle(true);
+    await page.goto(`/${slug}/feedback`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(title).first()).toBeVisible({
       timeout: 15_000,
     });
   });

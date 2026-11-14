@@ -558,9 +558,9 @@ export class AutomationCatalog {
             : undefined;
     const needs: AutomationDescriptor["needs"] =
       kind === "release"
-        ? [{ capability: "work", option: "releases" }]
+        ? [{ capability: "plan", option: "releases" }]
         : kind === "folio"
-          ? [{ capability: "knowledge" }]
+          ? [{ capability: "remember" }]
           : [];
     let reason = this.reservedNames().has(row.key)
       ? `Variable '${row.key}' uses a reserved context name`

@@ -1,0 +1,79 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f16a6af4-815e-4068-8734-92e838a479b1",
+  "prevIds": ["c7ccae59-0bff-462d-9ef9-1cb739225ddd"],
+  "footprints": [
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "automations",
+        "health_checked_at"
+      ],
+      "writes": [
+        "s|colprop|public.automations.health_checked_at.type",
+        "s|colprop|public.automations.health_checked_at.default"
+      ],
+      "reads": [
+        "n|tbl|public.automations",
+        "n|sch|public",
+        "n|col|public.automations.health_checked_at"
+      ],
+      "sqlHash": "7f3592d7279af74e"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "project_errors", "count"],
+      "writes": [
+        "s|colprop|public.project_errors.count.type",
+        "s|colprop|public.project_errors.count.default"
+      ],
+      "reads": [
+        "n|tbl|public.project_errors",
+        "n|sch|public",
+        "n|col|public.project_errors.count"
+      ],
+      "sqlHash": "8faa1867bd65e14f"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "sigil_error_groups", "count"],
+      "writes": [
+        "s|colprop|public.sigil_error_groups.count.type",
+        "s|colprop|public.sigil_error_groups.count.default"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_error_groups",
+        "n|sch|public",
+        "n|col|public.sigil_error_groups.count"
+      ],
+      "sqlHash": "3ba7ae40e0c4583c"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"automations\",\"health_checked_at\"]",
+      "set": {
+        "type": "bigint"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"project_errors\",\"count\"]",
+      "set": {
+        "type": "bigint"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"sigil_error_groups\",\"count\"]",
+      "set": {
+        "type": "bigint"
+      }
+    }
+  ]
+}

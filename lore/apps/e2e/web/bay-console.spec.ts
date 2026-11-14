@@ -52,7 +52,7 @@ import {
  */
 const FIXTURE = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../../../packages/@lore/deploy/test/fixtures/bay/wire-v1",
+  "../../../packages/@lore/ship/test/fixtures/bay/wire-v1",
 );
 
 const inventoryFrame = (): Record<string, unknown> =>
@@ -162,7 +162,7 @@ test.describe("The Bay console", () => {
     // created first, so the host is created in it, and lent to it in the
     // same step. Creating an app instance is refused without Apps too.
     const project = await createProjectViaWizard(page, "Bay Console", {
-      capabilities: ["apps"],
+      capabilities: ["ship"],
     });
     const { id: hostId, secret } = await createHostInProject(
       page,

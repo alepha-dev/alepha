@@ -78,7 +78,7 @@ export const AutomationSubscriptionBell = (
   const [channels, setChannels] = useState<Channel[]>(["inbox"]);
   const available =
     !!project &&
-    hasCapability(project, "work") &&
+    hasCapability(project, "plan") &&
     canInProject(project, "automation:read") &&
     canInProject(project, "automation:write");
   const projectId = project?.id ?? 0;

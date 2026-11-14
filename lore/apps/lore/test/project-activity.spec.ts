@@ -1,8 +1,8 @@
 import { ProjectController } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
-import { FolioTools } from "@lore/knowledge/mcp";
-import { FeedbackController } from "@lore/work/api";
-import { EpicTools, QuestTools, ReleaseTools } from "@lore/work/mcp";
+import { FeedbackController } from "@lore/plan/api";
+import { EpicTools, QuestTools, ReleaseTools } from "@lore/plan/mcp";
+import { FolioTools } from "@lore/remember/mcp";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -69,9 +69,11 @@ const setup = async () => {
       body: {
         title: "Test",
         capabilities: [
-          { key: "work", options: { epics: true, releases: true } },
-          { key: "knowledge" },
-          { key: "support" },
+          {
+            key: "plan",
+            options: { epics: true, releases: true, feedback: true },
+          },
+          { key: "remember" },
         ],
       },
     }),
@@ -222,9 +224,8 @@ describe("Lore MCP: project_activity", () => {
         body: {
           title: "Other",
           capabilities: [
-            { key: "work" },
-            { key: "knowledge" },
-            { key: "support" },
+            { key: "plan", options: { feedback: true } },
+            { key: "remember" },
           ],
         },
       }),

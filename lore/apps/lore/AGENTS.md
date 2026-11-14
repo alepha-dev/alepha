@@ -22,7 +22,7 @@ Lore's vocabulary has been renamed twice. Originally the codebase used the plain
 
 A fourth pass (2026-08-30, epic #14) took **Milestone → `release`**: table, entity, controller, jobs, routes, `$page` names, components, both locales and the specs. It is a rename plus a **wipe** — every milestone row was deleted and Releases start empty in every project — because the two are not the same model. A milestone was a time window that collected whatever happened to complete inside it; a release is a named goal (`0.28.0`, `demo-1`) that **holds** the epics and quests due to ship in it. Membership is an assignment, not a window. Two identifiers deliberately did **not** move with it at the time, `projects.features.milestones` (a REQUIRED key inside a JSON column, see the incident below) and `projects.milestoneDuration`; both columns were dropped with #E74. Migration: `20260830112947_milestones_to_releases`, `DELETE` + two `RENAME`s, zero `DROP TABLE`.
 
-A project may name **one** of its open releases the **default** (epic #E48, `releases.defaultSince`): where a completed quest that names no release, and inherits none from its epic, lands, and what an epic begun without a release takes and carries down to its own release-less quests. ⚠️ **Not a third state.** A default release is still `open`, `ReleaseState` still has exactly two values, and the UI draws a second orthogonal chip beside the state one - folding it in would make the state filter lie. A fallback rather than a plan: zero defaults is normal, creating a release never picks one, publishing the default clears it on that row (otherwise the next completion could not close) and hands it to the release next in line - the lowest open release above it whose patch is 0, never a patch, a prerelease, a named tag or anything older (`DefaultReleaseService.successor`) - and reopening does not restore it. That hand-off is a second, best-effort write after the publish patch (D1 has no transaction): if it fails the project is left with no default, never with a failed publish. The swap is a single `UPDATE ... CASE ... RETURNING` in `DefaultReleaseService` with **no** partial unique index behind it - SQLite checks uniqueness per row as the update walks, so the guard would throw mid-swap. Written up in `docs/3-work/3-releases.md`.
+A project may name **one** of its open releases the **default** (epic #E48, `releases.defaultSince`): where a completed quest that names no release, and inherits none from its epic, lands, and what an epic begun without a release takes and carries down to its own release-less quests. ⚠️ **Not a third state.** A default release is still `open`, `ReleaseState` still has exactly two values, and the UI draws a second orthogonal chip beside the state one - folding it in would make the state filter lie. A fallback rather than a plan: zero defaults is normal, creating a release never picks one, publishing the default clears it on that row (otherwise the next completion could not close) and hands it to the release next in line - the lowest open release above it whose patch is 0, never a patch, a prerelease, a named tag or anything older (`DefaultReleaseService.successor`) - and reopening does not restore it. That hand-off is a second, best-effort write after the publish patch (D1 has no transaction): if it fails the project is left with no default, never with a failed publish. The swap is a single `UPDATE ... CASE ... RETURNING` in `DefaultReleaseService` with **no** partial unique index behind it - SQLite checks uniqueness per row as the update walks, so the guard would throw mid-swap. Written up in `docs/3-plan/3-releases.md`.
 
 All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
@@ -30,12 +30,12 @@ All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
 Since #E75 (2026-10-06) the product lives in four packages, and `apps/lore` is what composes and ships them. Each package documents itself; read the one you are changing:
 
-| package           | is               | its `AGENTS.md`                                                                                                                                         |
-| ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@lore/core`      | the glue         | [`packages/@lore/core/AGENTS.md`](../../packages/@lore/core/AGENTS.md): barrels, registries, capabilities, access, routing traps, I18n, no transactions |
-| `@lore/work`      | Lore as Jira     | [`packages/@lore/work/AGENTS.md`](../../packages/@lore/work/AGENTS.md): quests, epics, releases, kanban, roadmap, feedback                              |
-| `@lore/knowledge` | Lore as Obsidian | [`packages/@lore/knowledge/AGENTS.md`](../../packages/@lore/knowledge/AGENTS.md): folios, directories, attachments, protected folios                    |
-| `@lore/deploy`    | Lore as Vercel   | [`packages/@lore/deploy/AGENTS.md`](../../packages/@lore/deploy/AGENTS.md): apps and instances, sigils and telemetry, deployments, hosts                |
+| package          | is               | its `AGENTS.md`                                                                                                                                         |
+| ---------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@lore/core`     | the glue         | [`packages/@lore/core/AGENTS.md`](../../packages/@lore/core/AGENTS.md): barrels, registries, capabilities, access, routing traps, I18n, no transactions |
+| `@lore/plan`     | Lore as Jira     | [`packages/@lore/plan/AGENTS.md`](../../packages/@lore/plan/AGENTS.md): quests, epics, releases, kanban, roadmap, feedback                              |
+| `@lore/remember` | Lore as Obsidian | [`packages/@lore/remember/AGENTS.md`](../../packages/@lore/remember/AGENTS.md): folios, directories, attachments, protected folios                      |
+| `@lore/ship`     | Lore as Vercel   | [`packages/@lore/ship/AGENTS.md`](../../packages/@lore/ship/AGENTS.md): apps and instances, sigils and telemetry, deployments, hosts                    |
 
 The framework is **vendored**: `.vendor/alepha` and `.vendor/@alepha/ui` are the framework's `main`, synced by `yarn vendor:sync` and committed, and they are workspaces, so `alepha` / `@alepha/ui` resolve to them as source. Alepha has near-zero training data: read `../../.vendor/alepha/src/...` and `../../.vendor/@alepha/ui/src/...` as the authority, and **never edit them here**.
 
@@ -53,7 +53,7 @@ apps/lore/
 └── public/               # Static assets served at /
 ```
 
-**The entries are the only place the packages meet.** `main.server.ts` registers, in this order: every substitution that must precede a module (the job sweep cron, email, captcha, file access, OAuth, the host command transport, scope grants, inbox and preference providers); `LoreCoreApi`, `LoreWorkApi`, `LoreKnowledgeApi`, `LoreDeployApi`; the four MCP modules; the `SigilSinkProvider` substitution; then the four web modules, `AlephaSigil` and `LoreWebAdmin`. A substitution recorded after a module resolved what it replaces is a `TooLateSubstitutionError`, so a new one goes above the modules. `main.browser.ts` registers the same four web modules: SSR and hydration read one page registry. There is no `LoreApi`, `LoreMcp` or `LoreWebApp` any more.
+**The entries are the only place the packages meet.** `main.server.ts` registers, in this order: every substitution that must precede a module (the job sweep cron, email, captcha, file access, OAuth, the host command transport, scope grants, inbox and preference providers); `LoreCoreApi`, `LorePlanApi`, `LoreRememberApi`, `LoreShipApi`; the four MCP modules; the `SigilSinkProvider` substitution; then the four web modules, `AlephaSigil` and `LoreWebAdmin`. A substitution recorded after a module resolved what it replaces is a `TooLateSubstitutionError`, so a new one goes above the modules. `main.browser.ts` registers the same four web modules: SSR and hydration read one page registry. There is no `LoreApi`, `LoreMcp` or `LoreWebApp` any more.
 
 **Specs.** A spec whose subject is one package lives in that package's `test/` and boots its module alone. `apps/lore/test` holds the scenario specs, the ones that need several packages registered, and boots them with `bootLore(alepha, layers)` (`test/fixtures/bootLore.ts`): `api`, `mcp`, `web`, or `routes` (every router and account page, without the UI behind them). The migration specs live here too, because the migrations are the app's.
 
@@ -303,7 +303,7 @@ npx wrangler d1 execute lore-production --remote --json --command "SELECT name F
 ```
 
 The companion defect — why no error was ever raised for any of it — is under
-"Sigils, Errors, Beacon, Vitals" in [`packages/@lore/deploy/AGENTS.md`](../../packages/@lore/deploy/AGENTS.md); both are written up in folio #82.
+"Sigils, Errors, Beacon, Vitals" in [`packages/@lore/ship/AGENTS.md`](../../packages/@lore/ship/AGENTS.md); both are written up in folio #82.
 
 ### ⚠️ Dropping a conjunct from a gate is a data migration with no SQL (accepted, 2026-08-06)
 
@@ -318,8 +318,8 @@ views: master && carries(sigil, "beacon");
 ```
 
 Same for `errors` (`features.errors`) and `vitals` (`features.vitals`). Only
-`feedback` still carries a project-level switch - today the **Support**
-capability - because it also governs the first-party form at
+`feedback` still carries a project-level switch - the **Feedback** option
+of Plan (the Support capability until #E143) - because it also governs the first-party form at
 `/:projectSlug/request`, which exists with no app enrolled.
 
 **Removing a conjunct is monotone in the "on" direction.** No sigil loses a

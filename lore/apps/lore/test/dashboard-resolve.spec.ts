@@ -12,6 +12,8 @@ import {
 } from "@lore/core/schemas";
 import type { DashboardScope } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
+import { EpicProgressService, QuestTagTallyService } from "@lore/plan/api";
+import { feedback, releases } from "@lore/plan/schemas";
 import {
   appInstances,
   projectErrors,
@@ -19,9 +21,7 @@ import {
   type Sigil,
   sigils,
   sigilUniquesDaily,
-} from "@lore/deploy/schemas";
-import { EpicProgressService, QuestTagTallyService } from "@lore/work/api";
-import { feedback, releases } from "@lore/work/schemas";
+} from "@lore/ship/schemas";
 import { Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -422,7 +422,7 @@ describe("dashboard resolve", () => {
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha, {
-        capabilities: [{ key: "knowledge" }],
+        capabilities: [{ key: "remember" }],
       });
       await createTestMember(ctx.alepha, project, project.createdBy!);
       await createTestQuest(ctx.alepha, project, {
@@ -605,7 +605,7 @@ describe("dashboard resolve", () => {
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha, {
-        capabilities: [{ key: "work", options: { epics: false } }],
+        capabilities: [{ key: "plan", options: { epics: false } }],
       });
       await createTestMember(ctx.alepha, project, project.createdBy!);
       const epic = await createTestEpic(ctx.alepha, project);
@@ -806,7 +806,7 @@ describe("dashboard resolve", () => {
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha, {
-        capabilities: [{ key: "work", options: { releases: false } }],
+        capabilities: [{ key: "plan", options: { releases: false } }],
       });
       await createTestMember(ctx.alepha, project, project.createdBy!);
       const release = await ctx.repos.releases.create({
@@ -1481,7 +1481,7 @@ describe("dashboard resolve", () => {
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha, {
-        capabilities: [{ key: "knowledge" }],
+        capabilities: [{ key: "remember" }],
       });
       await createTestMember(ctx.alepha, project, project.createdBy!);
       const epic = await createTestEpic(ctx.alepha, project);
@@ -1503,7 +1503,7 @@ describe("dashboard resolve", () => {
           presentation: "progress",
           scopeKinds: ["epic"],
           filters: z.object({}),
-          needs: { capability: "work", option: "epics" },
+          needs: { capability: "plan", option: "epics" },
           link: () => undefined,
         },
         {

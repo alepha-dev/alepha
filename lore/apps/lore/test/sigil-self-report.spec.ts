@@ -1,7 +1,7 @@
 import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { projectCapabilities, projects } from "@lore/core/schemas";
-import { DeployAnalytics, LoreDeployApi } from "@lore/deploy/api";
-import { sigils } from "@lore/deploy/schemas";
+import { DeployAnalytics, LoreShipApi } from "@lore/ship/api";
+import { sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
@@ -74,16 +74,16 @@ const KEY = "sg_lore_fixed_secret_for_the_test";
  * Every project flag that still means something.
  *
  * Only the two capabilities the ingest gate reads: `apps` with `track` on
- * (what `features.sigils` used to be) and `support` (which the `feedback`
+ * (what `features.sigils` used to be) and `plan.feedback` (which the `feedback`
  * kind additionally needs). Work and Knowledge would suggest the gate
  * consults them - it consults these two and the sigil's own `kinds`.
  */
 const allOn: Array<{
-  key: "apps" | "support";
+  key: "ship" | "plan";
   options: Record<string, boolean>;
 }> = [
-  { key: "apps", options: { track: true } },
-  { key: "support", options: {} },
+  { key: "ship", options: { track: true } },
+  { key: "plan", options: { feedback: true } },
 ];
 
 const setup = async (
@@ -121,7 +121,7 @@ const setup = async (
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreDeployApi);
+  alepha.with(LoreShipApi);
   alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 
   const probe = alepha.inject(Probe);
@@ -206,7 +206,7 @@ describe("Lore reports to Lore", () => {
     // Apps off entirely: an option of a capability that is not there reads
     // false, so `track` is off without anyone having to store a `false`.
     const { analytics, sigil, sink } = await setup({
-      capabilities: [{ key: "support", options: {} }],
+      capabilities: [{ key: "plan", options: { feedback: true } }],
     });
 
     await sink.ingest({ views: [{ path: "/dogfood" }] }, {});

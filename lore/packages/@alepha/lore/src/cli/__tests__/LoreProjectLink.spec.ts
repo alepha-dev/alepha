@@ -105,7 +105,7 @@ describe(".alepha/lore.json", () => {
     expect(created).toEqual([
       {
         title: "hello",
-        capabilities: [{ key: "apps", options: { deploy: true } }],
+        capabilities: [{ key: "ship", options: { deploy: true } }],
       },
     ]);
     expect(await fs.readJsonFile(`${process.cwd()}/.alepha/lore.json`)).toEqual(

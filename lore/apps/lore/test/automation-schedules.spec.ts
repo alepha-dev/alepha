@@ -134,10 +134,9 @@ describe("Automation schedules and named selections", () => {
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
-          options: { reminder: true, epics: true },
+          key: "plan",
+          options: { reminder: true, epics: true, feedback: true },
         },
-        { key: "support" },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });

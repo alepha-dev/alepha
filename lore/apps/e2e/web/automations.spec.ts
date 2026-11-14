@@ -68,7 +68,7 @@ test.describe("Automations", () => {
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Automation list");
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: {},
     });
     const me = await (await page.request.get("/api/users/me")).json();
@@ -181,13 +181,13 @@ test.describe("Automations", () => {
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Automation empty");
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: {},
     });
     await page.goto(`/${project.slug}/automations`);
     await expect(
       page.getByRole("link", { name: "How automations work" }),
-    ).toHaveAttribute("href", "https://alepha.dev/lore/docs/work-automations");
+    ).toHaveAttribute("href", "https://alepha.dev/lore/docs/plan-automations");
     await expect(
       page.getByText("No automations yet", { exact: true }),
     ).toBeVisible();
@@ -215,7 +215,7 @@ test.describe("Automations", () => {
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Preset setup");
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: {},
     });
     const me = await (await page.request.get("/api/users/me")).json();
@@ -334,7 +334,7 @@ test.describe("Automations", () => {
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Shared preset");
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: {},
     });
     const me = await (await page.request.get("/api/users/me")).json();
@@ -436,7 +436,7 @@ test.describe("Automations", () => {
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Release preset");
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: { releases: true },
     });
     const folioResponse = await page.request.post(
@@ -540,7 +540,7 @@ test.describe("Automations", () => {
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Rule editor");
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: {},
     });
     const me = await (await page.request.get("/api/users/me")).json();
@@ -726,7 +726,7 @@ test.describe("Automations", () => {
       page,
       "Shared variable management",
     );
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: {},
     });
     await page.goto(`/${project.slug}/automations/variables`);
@@ -879,10 +879,12 @@ test.describe("Automations", () => {
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Automation journey");
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: {},
     });
-    await setCapability(page, project.id, "support");
+    await setCapability(page, project.id, "plan", {
+      options: { feedback: true },
+    });
     const me = await (await page.request.get("/api/users/me")).json();
     const optionsPath = (
       await apiPath(page, "getAutomationSetupOptions")
@@ -1050,7 +1052,9 @@ test.describe("Automations", () => {
       await page.screenshot({
         path: testInfo.outputPath("automation-live-receipt.png"),
       });
-      await setCapability(page, project.id, "support", { enabled: false });
+      await setCapability(page, project.id, "plan", {
+        options: { feedback: false },
+      });
       await page.goto(`/${project.slug}/automations`);
       const row = page.getByRole("row").filter({ hasText: rule.title });
       await expect(row.getByText("Broken", { exact: true })).toBeVisible();
@@ -1079,7 +1083,7 @@ test.describe("Automations", () => {
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Automation access");
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: {},
     });
     await createRankFromPreset(page, project.slug, "Contributor");
@@ -1259,7 +1263,7 @@ test.describe("Automations", () => {
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Policy adoption");
-    await setCapability(page, project.id, "work", {
+    await setCapability(page, project.id, "plan", {
       options: { reminder: true, releases: true },
     });
     await page.goto(`/${project.slug}/automations`);

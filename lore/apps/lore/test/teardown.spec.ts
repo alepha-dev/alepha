@@ -7,8 +7,8 @@ import {
   AppController,
   CredentialSealService,
   TeardownService,
-} from "@lore/deploy/api";
-import { appInstances, hostProjects, hosts } from "@lore/deploy/schemas";
+} from "@lore/ship/api";
+import { appInstances, hostProjects, hosts } from "@lore/ship/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -113,7 +113,7 @@ describe("tearing a copy's resources down", () => {
     ).data;
     await alepha.inject(ProjectCapabilityController).setCapability.fetch(
       {
-        params: { projectId: project.id, key: "apps" },
+        params: { projectId: project.id, key: "ship" },
         body: { enabled: true, options: { deploy: true } },
       },
       { user },

@@ -5,7 +5,7 @@ import {
   projectDashboardCards,
 } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
-import { sigils } from "@lore/deploy/schemas";
+import { sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -104,7 +104,7 @@ describe("the computed project board", () => {
   };
 
   describe("the survey's project shapes", () => {
-    it("fills needs you and flow for a Work project with held and open quests", async ({
+    it("fills needs you and flow for a Plan project with held and open quests", async ({
       expect,
     }) => {
       const { project, user } = await projectOf();
@@ -138,11 +138,9 @@ describe("the computed project board", () => {
       expect(board.cards).toEqual([]);
     });
 
-    it("offers no Work tile to a Knowledge-only project", async ({
-      expect,
-    }) => {
+    it("offers no Work tile to a Remember-only project", async ({ expect }) => {
       const { project, user } = await projectOf({
-        capabilities: [{ key: "knowledge" }],
+        capabilities: [{ key: "remember" }],
       });
       await createTestQuest(alepha, project);
 
@@ -185,7 +183,7 @@ describe("the computed project board", () => {
       expect(await slots(project, user)).toContainEqual(["apps", "openErrors"]);
 
       await repos.capabilities.updateMany(
-        { projectId: { eq: project.id }, key: { eq: "apps" } },
+        { projectId: { eq: project.id }, key: { eq: "ship" } },
         { options: { track: false } },
       );
 

@@ -55,7 +55,9 @@ const ProjectSettings = () => {
       tabs={tabs}
       active={found?.tab.route ?? activeRoute}
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 p-4 md:p-6">
+      {/* `min-h-full`: at least the body's height, so a tab whose table
+          takes `flex-1` (Hosts) fills the page down to its bottom edge. */}
+      <div className="flex min-h-full w-full flex-col gap-8 p-4 md:p-6">
         <NestedView />
       </div>
     </PlateLayout>

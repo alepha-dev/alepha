@@ -1,6 +1,6 @@
 import type { Project } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
-import { EpicController } from "@lore/work/api";
+import { EpicController } from "@lore/plan/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

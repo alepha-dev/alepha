@@ -3,7 +3,7 @@ import type {
   AdminMcpController,
   AdminProjectController,
 } from "@lore/core/api";
-import type { AdminHostController } from "@lore/deploy/api";
+import type { AdminHostController } from "@lore/ship/api";
 import { $client } from "alepha/server/links";
 import { FolderKanban, Plug, Server } from "lucide-react";
 

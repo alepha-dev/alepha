@@ -78,7 +78,7 @@ const ProjectSettingsAgentPrompts = () => {
   // ⚠️ Read off `currentProjectAtom` and NOT through `useCapabilityOption`.
   // That hook is a write handle: it returns `{ enabled, toggle }` and holds
   // optimistic pending state for a switch this section does not own.
-  const enabled = capabilityOption(project, "work", "agentPrompts");
+  const enabled = capabilityOption(project, "plan", "agentPrompts");
   const projectId = project?.id;
 
   // Keyless on purpose: it runs on every mount, which is the unconditional

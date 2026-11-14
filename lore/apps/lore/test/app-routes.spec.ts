@@ -1,6 +1,6 @@
 import { ProjectSlugService } from "@lore/core/schemas";
-import { insightsDimensionResourceSchema } from "@lore/deploy/schemas";
-import { ANALYTICS_DIMENSIONS } from "@lore/deploy/web";
+import { insightsDimensionResourceSchema } from "@lore/ship/schemas";
+import { ANALYTICS_DIMENSIONS } from "@lore/ship/web";
 import { Alepha } from "alepha";
 import { $page } from "alepha/react/router";
 import {

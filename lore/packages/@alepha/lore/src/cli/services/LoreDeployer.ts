@@ -1,6 +1,6 @@
-import type { AppController } from "@lore/deploy/api";
-import type { DeployController } from "@lore/deploy/api";
-import type { ProjectHostController, StackController } from "@lore/deploy/api";
+import type { AppController } from "@lore/ship/api";
+import type { DeployController } from "@lore/ship/api";
+import type { ProjectHostController, StackController } from "@lore/ship/api";
 import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";

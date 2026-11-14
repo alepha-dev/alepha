@@ -209,12 +209,12 @@ describe("the assistant's read tools", () => {
     await alepha.stop();
   });
 
-  it("never offers feedback_list or feedback_get on a project with Support off", async ({
+  it("never offers feedback_list or feedback_get on a project with Feedback off", async ({
     expect,
   }) => {
     const { alepha, signIn } = await boot();
     const workOnly = await createTestProject(alepha, {
-      capabilities: [{ key: "work" }, { key: "knowledge" }],
+      capabilities: [{ key: "plan" }, { key: "remember" }],
     });
     const owner = await signIn(workOnly.createdBy);
     const offered = await alepha.inject(LoreAiToolAccess).offered({

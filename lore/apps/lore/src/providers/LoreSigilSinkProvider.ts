@@ -1,7 +1,7 @@
 import type { SigilForwarded, SigilStamp } from "@alepha/lore/sigil";
 import { SigilSinkProvider } from "@alepha/lore/sigil";
-import { SigilIngestService, SigilTokenService } from "@lore/deploy/api";
-import type { Sigil } from "@lore/deploy/schemas";
+import { SigilIngestService, SigilTokenService } from "@lore/ship/api";
+import type { Sigil } from "@lore/ship/schemas";
 import { $inject, AlephaError } from "alepha";
 
 /**

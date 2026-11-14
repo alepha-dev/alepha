@@ -116,7 +116,7 @@ curl https://myapp.apps.example.com/version
 
 Later deploys reuse the copy. `npx lore deploy -e production` does the same from
 the Lore CLI, and `--tag` deploys a stored build without building:
-[Deploying an app](/lore/docs/apps-deploying).
+[Deploying an app](/lore/docs/ship-deploying).
 
 ## 6. Watch it
 
@@ -131,7 +131,7 @@ npx lore error list
 `insights read` gives page views, unique visitors, Web Vitals and the error
 budget; `error list` gives the app's failures, one row per root cause. The
 same is on the project's **Apps** and **Errors** pages, with the server's CPU
-and memory on the host's page. [Telemetry](/lore/docs/apps-telemetry)
+and memory on the host's page. [Telemetry](/lore/docs/ship-telemetry)
 explains each number.
 
 The app's server sends what it collected when a new event arrives at least ten
@@ -170,6 +170,6 @@ To go back to an earlier release, use **Roll back** on the copy's Deploy tab, or
 
 - [Stacks](/bay/docs/guides-stacks): a database or a queue deployed beside the
   app, from Lore.
-- [Hosts](/lore/docs/apps-hosts): lending one machine to several projects.
+- [Hosts](/lore/docs/ship-hosts): lending one machine to several projects.
 - [A throwaway server, from a shell](/bay/docs/tutorials-a-throwaway-server): the
   same loop with no web page, for a server bought for an hour.

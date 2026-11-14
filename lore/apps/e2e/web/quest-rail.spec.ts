@@ -19,7 +19,7 @@ test.describe("Quest rail", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `RA${t}`.slice(0, 20),
-      { options: { work: ["releases", "reminder"] } },
+      { options: { plan: ["releases", "reminder"] } },
     );
 
     const release = await page.evaluate(async (projectId) => {
