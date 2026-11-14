@@ -78,7 +78,9 @@ describe("AutomationSubscriptionBell", () => {
     alepha = undefined;
   });
 
-  const show = async (over: { subscribed?: boolean; work?: boolean } = {}) => {
+  const show = async (
+    over: { subscribed?: boolean; work?: boolean; write?: boolean } = {},
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -95,6 +97,9 @@ describe("AutomationSubscriptionBell", () => {
       currentProjectAtom,
       projectFixture({
         capabilities: (over.work ?? true) ? ["plan"] : [],
+        ...(over.write === false
+          ? { permissions: ["project:read", "automation:read"] }
+          : {}),
       }),
     );
     render(
@@ -206,9 +211,18 @@ describe("AutomationSubscriptionBell", () => {
     );
   });
 
-  it("is not drawn when the project has Work off", async ({ expect }) => {
-    const server = await show({ work: false });
+  it("is not drawn when the viewer cannot write automations", async ({
+    expect,
+  }) => {
+    const server = await show({ write: false });
     expect(screen.queryByTestId("bell")).toBeNull();
     expect(server.gets).toBe(0);
+  });
+
+  it("is drawn without Plan, since automations are Core (#Q3629)", async ({
+    expect,
+  }) => {
+    await show({ work: false });
+    expect(await screen.findByTestId("bell")).toBeTruthy();
   });
 });

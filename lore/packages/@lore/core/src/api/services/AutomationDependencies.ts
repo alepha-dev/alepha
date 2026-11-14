@@ -19,7 +19,9 @@ export class AutomationDependencies {
 
   public async assert(rule: Automation): Promise<void> {
     const capabilities = await this.security.capabilitiesOf(rule.projectId);
-    const needs = [{ capability: "plan", option: "" }];
+    // Automations are Core (#Q3629): a rule needs only what its own
+    // vocabulary declares.
+    const needs: { capability: string; option: string }[] = [];
     const keys = [
       rule.rule.trigger.kind === "event"
         ? rule.rule.trigger.event

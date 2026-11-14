@@ -3,9 +3,12 @@ import { NotFoundError } from "alepha/server";
 
 import { $pageProject } from "./$pageProject.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
-import { hasCapability } from "./services/projectCapabilities.ts";
 import { canInProject } from "./services/projectRank.ts";
 
+/**
+ * Automations are Core (#Q3629): every project has these pages, and the
+ * automation permissions alone decide who reaches them.
+ */
 export class AutomationRouter {
   protected readonly alepha = $inject(Alepha);
   projectAutomations = $pageProject({
@@ -15,10 +18,7 @@ export class AutomationRouter {
       import("./components/project/automations/AutomationOverviewPage.tsx"),
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
-      if (
-        !hasCapability(project, "plan") ||
-        !canInProject(project, "automation:read")
-      )
+      if (!canInProject(project, "automation:read"))
         throw new NotFoundError(
           "Automations are not available for this project and rank",
         );
@@ -32,7 +32,6 @@ export class AutomationRouter {
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (
-        !hasCapability(project, "plan") ||
         !canInProject(project, "automation:read") ||
         !canInProject(project, "automation:write")
       )
@@ -88,10 +87,7 @@ export class AutomationRouter {
   });
   protected checkRead(): void {
     const project = this.alepha.store.get(currentProjectAtom);
-    if (
-      !hasCapability(project, "plan") ||
-      !canInProject(project, "automation:read")
-    )
+    if (!canInProject(project, "automation:read"))
       throw new NotFoundError(
         "Automations are not available for this project and rank",
       );

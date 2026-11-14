@@ -5,10 +5,11 @@ schedule, Lore checks a condition and carries out a short list of actions, such
 as notifying a member, appending to a folio or creating a quest. A rule does
 exactly what it says, every time. No AI runs inside it.
 
-Automations are part of the **Plan** capability: every project
-that has it has automations, with no switch of their own (see
-[Capabilities](/lore/docs/project-capabilities)). That grants nothing by
-itself. A rank also needs the **Automations** permissions, which only the owner
+Every project has automations, whatever its capabilities, with no switch of
+their own. What a rule can react to follows the project's capabilities (see
+[Capabilities](/lore/docs/project-capabilities)): quest, epic, release and
+feedback events need **Plan**, deploy and uptime events need **Ship**. That
+grants nothing by itself. A rank also needs the **Automations** permissions, which only the owner
 holds by default (see [Members](/lore/docs/project-members)):
 
 | Permission                                                   | What it allows                                                     |

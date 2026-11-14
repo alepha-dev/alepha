@@ -19,9 +19,11 @@ import { LoreCoreApi } from "../src/api/index.ts";
  * nobody claims and nobody listed here would gate real endpoints and appear in
  * no matrix, so no rank could ever be given it and nothing would say why.
  *
- * All six describe the CONTAINER rather than a surface inside it. A project
- * with every capability switched off still has members, still gets renamed,
- * still has ranks to edit and still shows its Reports page.
+ * The first six describe the CONTAINER rather than a surface inside it. A
+ * project with every capability switched off still has members, still gets
+ * renamed, still has ranks to edit and still shows its Reports page.
+ * `automation` is Core since #Q3629, like the dashboard: every project has
+ * automations, and each event and preset declares the capability it needs.
  */
 const ALWAYS_SHOWN = [
   "project",
@@ -30,6 +32,7 @@ const ALWAYS_SHOWN = [
   "capability",
   "invitation",
   "stats",
+  "automation",
 ];
 
 interface Ctx {

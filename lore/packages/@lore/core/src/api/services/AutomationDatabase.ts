@@ -22,15 +22,6 @@ export class AutomationDatabase {
     });
   }
 
-  /**
-   * Whether a project has automations, as a predicate a native batch can
-   * carry: whether it has Work, since automations are a baseline of Plan
-   * (#Q3594). A project without the Work row has none.
-   */
-  public automationsOn(projectId: number): SQLLike {
-    return sql`EXISTS (SELECT 1 FROM project_capabilities WHERE project_id = ${projectId} AND key = 'plan')`;
-  }
-
   public timestamp(value: string): string | number {
     const millis = new Date(value).getTime();
     if (!Number.isFinite(millis))

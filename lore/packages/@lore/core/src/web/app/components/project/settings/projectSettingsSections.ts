@@ -1,4 +1,4 @@
-import { type LucideIcon, Settings2, Users } from "lucide-react";
+import { type LucideIcon, Settings2, Users, Workflow } from "lucide-react";
 
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../../../api/schemas/projectResourceSchema.ts";
@@ -69,7 +69,7 @@ export interface SettingsSectionDef {
  * sections go in the sidebar, their pages go in tabs, so the group stays
  * short whatever a section grows.
  *
- * These are Core's two; each capability's section is its module's, through
+ * These are Core's three; each capability's section is its module's, through
  * `ProjectShellRegistry.registerSettings` (#E75, #Q2624).
  *
  * Feedback has no section: it is an option of Plan (Support, a capability of
@@ -106,6 +106,31 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
         route: "projectSettingsRanks",
         labelKey: "project.settings.nav.ranks",
         requires: "rank:manage",
+      },
+    ],
+  },
+  {
+    // Core since #Q3629: every project has Automations, whatever its
+    // capabilities. It is project configuration, so a Settings section after
+    // Members rather than an entry of its own in the sidebar. Its pages keep
+    // their own layout; the section only lists them and lights while one is
+    // open.
+    key: "automations",
+    order: 25,
+    labelKey: "project.settings.nav.automations",
+    icon: Workflow,
+    tabs: [
+      {
+        route: "projectAutomations",
+        labelKey: "project.settings.tab.automations",
+        requires: "automation:read",
+        alsoOn: [
+          "projectAutomationGallery",
+          "projectAutomationDetail",
+          "projectAutomationVariables",
+          "projectAutomationRun",
+          "projectAutomationAdoption",
+        ],
       },
     ],
   },

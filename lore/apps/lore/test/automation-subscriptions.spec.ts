@@ -202,13 +202,17 @@ describe("Automation subscriptions (#Q3576)", () => {
     expect(await live()).toHaveLength(0);
   });
 
-  it("is refused when the project has Work off", async ({ expect }) => {
+  it("reads off and refuses to turn on when the preset's capability is off", async ({
+    expect,
+  }) => {
+    // Automations are Core since #Q3629: the state reads without Plan, and
+    // the preset's own need (Plan's feedback option) refuses the rule.
     await entities.capabilities.deleteMany({
       projectId: project.id,
       key: "plan",
     });
-    await expect(get()).rejects.toThrow();
-    await expect(set(true)).rejects.toThrow();
+    expect(await get()).toEqual({ subscribed: false });
+    await expect(set(true)).rejects.toThrow("plan");
     expect(await live()).toHaveLength(0);
   });
 });

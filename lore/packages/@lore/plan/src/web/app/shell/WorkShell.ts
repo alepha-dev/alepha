@@ -27,7 +27,6 @@ import {
   ScrollText,
   SquareCheckBig,
   Wrench,
-  Workflow,
 } from "lucide-react";
 
 import { currentAreaAtom } from "../atoms/currentAreaAtom.ts";
@@ -169,32 +168,6 @@ export class WorkShell {
         badge: (ctx) => ctx.get(currentFeedbackCountAtom)?.count || undefined,
       },
     ]);
-
-    // Automations is project configuration, so it is a Settings section, after
-    // Members, rather than an entry of its own in the sidebar. Its pages keep
-    // their own layout; the section only lists them and lights while one is
-    // open.
-    this.shell.registerSettings({
-      key: "automations",
-      order: 25,
-      labelKey: "project.settings.nav.automations",
-      icon: Workflow,
-      capability: "plan",
-      tabs: [
-        {
-          route: "projectAutomations",
-          labelKey: "project.settings.tab.automations",
-          requires: "automation:read",
-          alsoOn: [
-            "projectAutomationGallery",
-            "projectAutomationDetail",
-            "projectAutomationVariables",
-            "projectAutomationRun",
-            "projectAutomationAdoption",
-          ],
-        },
-      ],
-    });
 
     this.shell.registerSettings({
       key: "plan",

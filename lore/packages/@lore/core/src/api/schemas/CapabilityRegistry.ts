@@ -159,6 +159,9 @@ export interface CapabilityDescriptor {
  * Everything not claimed below is **Core** and always on: project identity,
  * members, areas' storage, settings, and the three surfaces that *compose*
  * capabilities - the dashboard, the activity feed and the command palette.
+ * Automations are Core as well (#Q3629): their pages, permissions, MCP tools
+ * and activity kind belong to no capability, and each event, selector and
+ * preset declares the capability it needs.
  * Reports is Core too, and its tabs declare a capability the way dashboard
  * cards do, because Quality is Ship baseline and Members is derived from a
  * core table: a Ship-only project needs Reports to reach its own Quality tab.
@@ -232,26 +235,15 @@ export class CapabilityRegistry {
           wizard: true,
           preselected: false,
         },
-        // Automations were an option here until #Q3594: they are a
-        // baseline of Plan now, there whenever Work is. A stored
-        // `automations` key is stripped on read by the lax options schema and
-        // dropped on the row's next write.
+        // Automations were an option here until #Q3594, and a baseline of
+        // Plan until #Q3629: they are Core now. A stored `automations` key is
+        // stripped on read by the lax options schema and dropped on the row's
+        // next write.
       ],
+      // The `automation_*` tools are Core since #Q3629: automations are
+      // owned by no capability, like the dashboard, and each event, selector
+      // and preset is gated by its own `needs` instead.
       mcpTools: [
-        "automation_create",
-        "automation_list",
-        "automation_get",
-        "automation_update",
-        "automation_delete",
-        "automation_variable_set",
-        "automation_variable_list",
-        "automation_variable_dependents",
-        "automation_variable_delete",
-        "automation_test",
-        "automation_runs",
-        "automation_catalog",
-        "automation_adoption_preview",
-        "automation_adopt",
         "quest_list",
         "quest_get",
         "quest_create",
@@ -313,7 +305,7 @@ export class CapabilityRegistry {
         release: "releases",
         feedback: "feedback",
       },
-      activityKinds: ["quest", "epic", "release", "automation", "feedback"],
+      activityKinds: ["quest", "epic", "release", "feedback"],
       // Epics and Releases are options of Work, and so are their sidebar
       // entries (`capabilityNav.ts`). Quests are Plan's baseline.
       activityKindOptions: {
@@ -348,14 +340,7 @@ export class CapabilityRegistry {
       ],
       // Areas belong here: quests carry one, errors forward into one, and
       // `project_context` files them beside the epic index.
-      permissionGroups: [
-        "quest",
-        "epic",
-        "release",
-        "area",
-        "automation",
-        "feedback",
-      ],
+      permissionGroups: ["quest", "epic", "release", "area", "feedback"],
     },
     {
       key: "remember",
