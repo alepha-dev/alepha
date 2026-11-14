@@ -851,6 +851,7 @@ export default {
   "attachments.position": "$1 sur $2",
   "attachments.previewTooLarge":
     "Trop volumineux pour un aperçu. Ouvrez le fichier.",
+  "attachments.zoom": "Ouvrir $1 en taille réelle",
   "attachments.tab.preview": "Aperçu",
   "attachments.tab.code": "Code",
 

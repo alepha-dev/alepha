@@ -9,6 +9,7 @@ import {
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import {
+  AttachmentLightbox,
   displayName,
   type I18n,
   PageHeader,
@@ -226,6 +227,9 @@ const ProjectFeedbackRequest = () => {
   // are gone, so no draft written under an id key is reachable any more.
   const { draft, clear: clearDraft } = useDraftAutofill(projectSlug);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  // The image opened full size from its thumbnail (#Q3604), to check it is
+  // the right screenshot before sending.
+  const [zoomed, setZoomed] = useState<string | null>(null);
   // Tags are an internal triage taxonomy — never typed by the reporter.
   // They are seeded from query params (a "Feedback" button opening
   // `/request?tags=bug`) and kept in state only to ride along on submit.
@@ -711,11 +715,20 @@ const ProjectFeedbackRequest = () => {
                             className="border-border bg-muted/20 flex items-center gap-2 rounded border px-2 py-1 text-sm"
                           >
                             {isImage ? (
-                              <FileImage
-                                id={a.id}
-                                alt=""
-                                className="border-border size-10 shrink-0 rounded border object-cover"
-                              />
+                              <button
+                                type="button"
+                                onClick={() => setZoomed(a.id)}
+                                aria-label={tr("attachments.zoom", {
+                                  args: [a.name],
+                                })}
+                                className="shrink-0 cursor-zoom-in"
+                              >
+                                <FileImage
+                                  id={a.id}
+                                  alt=""
+                                  className="border-border size-10 rounded border object-cover"
+                                />
+                              </button>
                             ) : (
                               <Paperclip className="size-3.5 shrink-0" />
                             )}
@@ -777,6 +790,15 @@ const ProjectFeedbackRequest = () => {
           </Card>
         </div>
       </div>
+      <AttachmentLightbox
+        items={attachments
+          .filter((a) => a.mimeType?.startsWith("image/"))
+          .map((a) => ({ fileId: a.id, name: a.name, mimeType: a.mimeType }))}
+        openId={zoomed}
+        onOpenChange={(open) => {
+          if (!open) setZoomed(null);
+        }}
+      />
     </>
   );
 };
