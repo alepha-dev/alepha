@@ -39,14 +39,11 @@ core <- ship
 
 ## The workflow
 
-⚠️ **CI is the gate. A green terminal is not.**
+⚠️ **CI on the pull request is the gate. A green terminal is not. Nothing reaches `main` except through a pull request (#Q3633).**
 
-1. **Work in a worktree** for anything beyond a small edit. One epic, one worktree, one branch.
-2. **Commit as you go, and name the quest.** Small commits, staged by explicit path (never `git add -A`), each naming its Lore quest as `#Q<n>`, the sha recorded with `quest_commit_add`.
-3. **Push the branch to verify.** Every branch touching `lore/`, `framework/` or `bay/` runs **Verify Lore** (`.github/workflows/verify-lore.yml` at the root: `checks`, `test` x2, `e2e-lore` x6, `e2e-cli`, `docker`).
-4. **When it is green, finish the branch**: merge to main, push, delete it locally and on the remote, remove the worktree.
+The repository's workflow is "The workflow" in `../framework/AGENTS.md`: one branch and one worktree per quest, cut from the latest main; a pull request titled in commit form with the quest's `#Q<n>`; `gh pr merge --auto --squash`, so `main` receives one commit per quest; the squash commit recorded with `quest_commit_add` once it has merged. An epic is one pull request per quest. A small edit (a few lines, no decision anyone would look for later) needs no quest, but still lands through a pull request.
 
-A small edit (a few lines, no decision anyone would look for later) goes straight to `main` with no quest.
+A pull request touching `lore/`, `framework/` or `bay/` runs **Verify Lore** (`.github/workflows/verify-lore.yml` at the root: `checks`, `test` x2, `e2e-lore` x6, `e2e-cli`, `docker`).
 
 ⚠️ **`main` deploys to production with no human gate.** **Deploy Lore** (`deploy-lore.yml`) runs `alepha deploy` on `lore-production` once **Verify Lore** succeeds on `main` (a push, or the Release commit), unless the repository variable `LORE_DEPLOY`, the kill switch, is set to anything but `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/AGENTS.md` before pushing one.
 

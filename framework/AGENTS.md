@@ -6,20 +6,21 @@ For verbose CLI output: `LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtoo
 
 ## The workflow
 
-⚠️ **CI is the gate. A green terminal is not.**
+⚠️ **CI on the pull request is the gate. A green terminal is not. Nothing reaches `main` except through a pull request (#Q3633).**
 
-1. **Work in a worktree.** One epic, one worktree, one branch. Never edit the primary checkout: parallel sessions share it.
-2. **Commit as you go, and name the quest.** Small commits, staged by explicit path (never `git add -A`), each naming its Lore quest as `#Q<n>` (see "Every commit belongs to a quest").
-3. **Push the branch to verify.** Every branch triggers the full CI graph, about five minutes.
-4. **When it is green, finish the branch.** Merge to main, push, delete the branch locally and on the remote, remove the worktree.
+1. **One quest, one branch, one worktree.** Cut the branch from the latest main and name it after the quest: `git fetch && git worktree add -b q<n>-<slug> ../alepha-q<n> origin/main`. Never edit the primary checkout: parallel sessions share it.
+2. **Commit as you go, and name the quest.** Small commits, staged by explicit path (never `git add -A`), each naming its Lore quest as `#Q<n>` (see "Every commit belongs to a quest"). Several commits are fine: the pull request is squash-merged.
+3. **Push and open a pull request.** `gh pr create --base main`, its title in commit form (`feat(lore): ... #Q<n>`), since the squash merge makes it the one commit `main` receives, and its body linking the quest. Post the pull request's link on the quest with `quest_comment_add`.
+4. **Turn on auto-merge: `gh pr merge --auto --squash`.** GitHub merges once the required checks are green, about five minutes for the framework. A red run: fix, push again, and the pull request waits. Never merge by hand past a red check, and never push to `main`.
+5. **When it has merged, finish.** Record the squash commit on the quest with `quest_commit_add`, complete the quest, delete the local branch, remove the worktree. GitHub deletes the remote branch.
 
-### Small edits skip the ceremony
+**An epic is one pull request per quest**, so it lands on `main` as one commit per quest. Cut each quest's branch from the latest main. A quest that builds on one whose pull request has not merged yet waits for that merge: work another quest meanwhile rather than stacking branches.
 
-A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small means a few lines in one or two files, carrying no decision a later session would look for in Lore: a `.gitignore` entry, a typo, a comment, a sentence of this file. A reported bug fix, or anything you would want to explain, gets its quest however short. If you cannot tell, ask.
+### Small edits skip the quest, not the pull request
 
-1. Read `git status` on the primary checkout first. If the file carries somebody else's uncommitted edit, use a worktree after all.
-2. Run only the check that can see the change (see "Verifying"). A red CI run here lands on `main` itself.
-3. Stage the path by name, commit, `git fetch`, check that `git log origin/main..main` lists only your commit, and push.
+A small edit needs no quest and no `#Q<n>`. Small means a few lines in one or two files, carrying no decision a later session would look for in Lore: a `.gitignore` entry, a typo, a comment, a sentence of this file. A reported bug fix, or anything you would want to explain, gets its quest however short. If you cannot tell, ask.
+
+It still lands through a pull request, on a branch of its own: run only the check that can see the change (see "Verifying"), push, `gh pr create --fill`, `gh pr merge --auto --squash`.
 
 ### Verifying
 

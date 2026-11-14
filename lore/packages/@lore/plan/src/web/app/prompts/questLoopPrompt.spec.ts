@@ -44,19 +44,27 @@ describe("questLoopPromptDefault", () => {
       expect(index, text).toBeGreaterThan(-1);
       return index;
     };
-    expect(prompt).toMatch(/worktree of your own, on one branch/i);
-    // Accepted before the first commit, recorded, completed when it lands.
+    expect(prompt).toMatch(
+      /worktree of your own, with one branch and one pull request per quest/i,
+    );
+    // Accepted before the first commit, a pull request per quest, completed
+    // when that pull request merges (#Q3633).
     expect(at("`quest_accept`")).toBeLessThan(at("Commit, naming the quest"));
     expect(at("Commit, naming the quest")).toBeLessThan(
-      at("`quest_commit_add`"),
+      at("open a pull request into main"),
     );
-    expect(at("`quest_commit_add`")).toBeLessThan(at("`quest_complete`"));
-    // One merge, at the end, after CI.
-    expect(prompt).toMatch(/Merge the branch into main/);
+    expect(at("open a pull request into main")).toBeLessThan(
+      at("Only once it has merged"),
+    );
+    expect(at("Only once it has merged")).toBeLessThan(
+      at("then `quest_complete`"),
+    );
+    // The agent never merges to main itself.
+    expect(prompt).toContain("Never merge it yourself, and never push to main");
+    expect(prompt).not.toMatch(/merge the branch into main/i);
     expect(at("When none is left")).toBeLessThan(
-      at("Merge the branch into main"),
+      at("Delete the merged branches locally"),
     );
-    expect(prompt).toMatch(/delete the branch locally and on the remote/i);
   });
 
   it("names the tools rather than gesturing at them", () => {
