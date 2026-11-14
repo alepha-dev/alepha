@@ -14,7 +14,7 @@ The wire format, pinned from both sides.
 
 testdata/wire-v1 holds one frame of each kind, as Lore's `$channel` schemas
 accept and emit them. This file proves the Go structs read and write exactly
-those bytes; `apps/lore/test/estate-wire-format.spec.ts` proves the same
+those bytes; `apps/lore/test/host-wire-format.spec.ts` proves the same
 files validate against Lore's zod schemas. The two suites read the same
 fixtures, so the vocabulary cannot drift on one side without the other
 noticing.

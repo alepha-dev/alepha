@@ -63,7 +63,7 @@ export interface DeployRequest {
   env: string;
 
   /**
-   * The estate's Cloudflare credential, opened at the moment of use.
+   * The host's Cloudflare credential, opened at the moment of use.
    */
   credential: {
     apiToken: string;
@@ -84,7 +84,7 @@ export interface DeployRequest {
   /**
    * The D1, KV and Hyperdrive ids this copy's last deploy recorded
    * (#Q3386), so `provision` checks each by id instead of listing the
-   * estate's account. A hint: each is verified, and a missing one is
+   * host's account. A hint: each is verified, and a missing one is
    * recreated. For Hyperdrive it is also the only config a deploy may take
    * over and PATCH (#Q3510): a same-named one it never recorded is refused.
    */

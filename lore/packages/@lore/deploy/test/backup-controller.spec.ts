@@ -5,14 +5,14 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   AppService,
   BackupController,
-  EstateEventService,
-  EstateInventoryService,
+  HostEventService,
+  HostInventoryService,
 } from "../src/api/index.ts";
 import { ResourceNameService } from "../src/api/services/ResourceNameService.ts";
 import {
   bootStackSpec,
   createInstance,
-  lentBayEstate,
+  lentBayHost,
   type StackWorld,
   stackWorld,
 } from "./support/stackWorld.ts";
@@ -22,7 +22,7 @@ import {
  * machine knows the copy by `<project>-<app>` (its resource name minus the
  * environment), so every route resolves that name from the copy itself and
  * never takes one from the caller: a member of one project must not reach
- * another app's restore points through a shared estate.
+ * another app's restore points through a shared host.
  */
 describe("BackupController", () => {
   let alepha: Alepha;
@@ -43,18 +43,18 @@ describe("BackupController", () => {
     env: "production",
   });
 
-  /** A copy pointed at a lent Bay estate and deployed there once. */
+  /** A copy pointed at a lent Bay host and deployed there once. */
   const deployed = async (app = "minpricing", w?: StackWorld) => {
     const world = w ?? (await stackWorld(alepha));
-    const estate = await lentBayEstate(world);
+    const host = await lentBayHost(world);
     const instance = await createInstance(alepha, world, app, "production");
     const machineApp = `p${world.project.id}-${app}`;
     await world.rows.instances.updateById(instance.id, {
-      estateId: estate.id,
+      hostId: host.id,
       resourceName: `${machineApp}-production`,
-      resourceEstateId: estate.id,
+      resourceHostId: host.id,
     });
-    return { w: world, estate, instance, machineApp };
+    return { w: world, host, instance, machineApp };
   };
 
   it("says why there is nothing to show, step by step", async ({ expect }) => {
@@ -68,29 +68,29 @@ describe("BackupController", () => {
     const view = () =>
       api.getAppBackup({ params: params(w), query: {} }, { user: w.user });
 
-    expect((await view()).status).toBe("no-estate");
+    expect((await view()).status).toBe("no-host");
 
-    const estate = await lentBayEstate(w);
-    await w.rows.instances.updateById(instance.id, { estateId: estate.id });
+    const host = await lentBayHost(w);
+    await w.rows.instances.updateById(instance.id, { hostId: host.id });
     expect((await view()).status).toBe("not-deployed");
 
     await w.rows.instances.updateById(instance.id, {
       resourceName: "acme-minpricing-production",
-      resourceEstateId: estate.id,
+      resourceHostId: host.id,
     });
     const unreported = await view();
     expect(unreported.status).toBe("not-reported");
     expect(unreported.machineApp).toBe("acme-minpricing");
 
-    await w.rows.grants.deleteMany({ estateId: { eq: estate.id } });
+    await w.rows.grants.deleteMany({ hostId: { eq: host.id } });
     expect((await view()).status).toBe("not-lent");
   });
 
-  it("shows the reported block and only this copy's events, with the estate-wide ones", async ({
+  it("shows the reported block and only this copy's events, with the host-wide ones", async ({
     expect,
   }) => {
-    const { w, estate, machineApp } = await deployed();
-    await alepha.inject(EstateInventoryService).record(estate, {
+    const { w, host, machineApp } = await deployed();
+    await alepha.inject(HostInventoryService).record(host, {
       type: "inventory",
       at: new Date().toISOString(),
       host: { bayVersion: "0.40.0" },
@@ -106,14 +106,14 @@ describe("BackupController", () => {
         },
       ],
     } as never);
-    const events = alepha.inject(EstateEventService);
+    const events = alepha.inject(HostEventService);
     const at = new Date().toISOString();
     for (const [id, app] of [
       ["mine", machineApp],
       ["theirs", "other-app"],
-      ["estate", undefined],
+      ["host", undefined],
     ] as const) {
-      await events.record(estate, {
+      await events.record(host, {
         type: "event",
         id,
         kind: "backup.completed",
@@ -128,10 +128,7 @@ describe("BackupController", () => {
     );
     expect(view.status).toBe("reported");
     expect(view.instance?.backup?.state).toBe("ok");
-    expect(view.events.map((e) => e.eventId).sort()).toEqual([
-      "estate",
-      "mine",
-    ]);
+    expect(view.events.map((e) => e.eventId).sort()).toEqual(["host", "mine"]);
   });
 
   it("queues a command under the machine's name, never one the caller gives", async ({
@@ -175,7 +172,7 @@ describe("BackupController", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
-  it("refuses a restore from another instance: only the estate's owner may ask", async ({
+  it("refuses a restore from another instance: only the host's owner may ask", async ({
     expect,
   }) => {
     const { w } = await deployed();
@@ -194,12 +191,12 @@ describe("BackupController", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
-  it("refuses a policy change: Bay's operator layer is the estate owner's", async ({
+  it("refuses a policy change: Bay's operator layer is the host owner's", async ({
     expect,
   }) => {
-    const { w, estate } = await deployed();
+    const { w, host } = await deployed();
     const now = new Date().toISOString();
-    await w.rows.estates.updateById(estate.id, {
+    await w.rows.hosts.updateById(host.id, {
       connectedAt: now,
       lastSeenAt: now,
     });
@@ -214,13 +211,13 @@ describe("BackupController", () => {
         },
         { user: w.user },
       ),
-    ).rejects.toThrow(/reserved to the estate's home project/);
+    ).rejects.toThrow(/reserved to the host's home project/);
   });
 
   it("refuses a restore while the Bay is offline, and queues it once connected", async ({
     expect,
   }) => {
-    const { w, estate } = await deployed();
+    const { w, host } = await deployed();
     const send = (body: object) =>
       api.sendAppBackupCommand(
         { params: params(w), body: body as never },
@@ -233,14 +230,14 @@ describe("BackupController", () => {
     expect((await send({ kind: "backup" })).kind).toBe("backup");
 
     const now = new Date().toISOString();
-    await w.rows.estates.updateById(estate.id, {
+    await w.rows.hosts.updateById(host.id, {
       connectedAt: now,
       lastSeenAt: now,
     });
     expect((await send(restore)).kind).toBe("restore");
   });
 
-  it("answers 404 for another app's command on the same estate, and for a non-backup command", async ({
+  it("answers 404 for another app's command on the same host, and for a non-backup command", async ({
     expect,
   }) => {
     const a = await deployed("minpricing");
@@ -251,9 +248,9 @@ describe("BackupController", () => {
       "production",
     );
     await a.w.rows.instances.updateById(otherInstance.id, {
-      estateId: a.estate.id,
+      hostId: a.host.id,
       resourceName: `p${a.w.project.id}-shop-production`,
-      resourceEstateId: a.estate.id,
+      resourceHostId: a.host.id,
     });
 
     const theirs = await api.sendAppBackupCommand(
@@ -268,7 +265,7 @@ describe("BackupController", () => {
     ).rejects.toThrow(NotFoundError);
 
     const restart = await a.w.rows.commands.create({
-      estateId: a.estate.id,
+      hostId: a.host.id,
       kind: "restart",
       payload: { app: a.machineApp, environment: "production" },
       timeoutSeconds: 120,
@@ -281,11 +278,11 @@ describe("BackupController", () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("refuses a command once the estate is no longer lent", async ({
+  it("refuses a command once the host is no longer lent", async ({
     expect,
   }) => {
-    const { w, estate } = await deployed();
-    await w.rows.grants.deleteMany({ estateId: { eq: estate.id } });
+    const { w, host } = await deployed();
+    await w.rows.grants.deleteMany({ hostId: { eq: host.id } });
     await expect(
       api.sendAppBackupCommand(
         { params: params(w), body: { kind: "backup" } as never },
@@ -294,16 +291,16 @@ describe("BackupController", () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("never drives an instance the copy did not deploy as on its current estate", async ({
+  it("never drives an instance the copy did not deploy as on its current host", async ({
     expect,
   }) => {
-    // Deployed on one estate, then moved to another the project was lent,
+    // Deployed on one host, then moved to another the project was lent,
     // where the same name is ANOTHER project's live instance (that project
     // took the slug this one was renamed away from).
     const { w, instance } = await deployed();
-    const elsewhere = await lentBayEstate(w);
+    const elsewhere = await lentBayHost(w);
     await w.rows.instances.updateById(instance.id, {
-      estateId: elsewhere.id,
+      hostId: elsewhere.id,
     });
 
     const view = await api.getAppBackup(
@@ -320,21 +317,21 @@ describe("BackupController", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
-  it("keeps a moved copy's name on the estate it last ran on, so nobody else deploys there under it", async ({
+  it("keeps a moved copy's name on the host it last ran on, so nobody else deploys there under it", async ({
     expect,
   }) => {
     // Moved off E without a deploy: its instance still runs on E under its
     // name. Another project deriving the same name (it took the slug this one
     // was renamed away from) must not deploy there, or its Backups tab would
     // drive this copy's instance.
-    const { w, estate, instance } = await deployed();
-    const elsewhere = await lentBayEstate(w);
+    const { w, host, instance } = await deployed();
+    const elsewhere = await lentBayHost(w);
     const apps = alepha.inject(AppService);
-    const moved = await apps.setEstate(instance as never, elsewhere.id);
+    const moved = await apps.setHost(instance as never, elsewhere.id);
 
     const other = await stackWorld(alepha);
     await other.rows.grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: other.project.id,
     });
     const theirs = await createInstance(
@@ -344,7 +341,7 @@ describe("BackupController", () => {
       "production",
     );
     await other.rows.instances.updateById(theirs.id, {
-      estateId: estate.id,
+      hostId: host.id,
       resourceName:
         instance.resourceName ?? `p${w.project.id}-minpricing-production`,
     });
@@ -353,12 +350,12 @@ describe("BackupController", () => {
         .inject(ResourceNameService)
         .resolve(
           (await other.rows.instances.findById(theirs.id)) as never,
-          estate,
+          host,
         ),
     ).rejects.toThrow(/already named/);
 
     // Moved back, nothing else could have taken the name: the tab drives it again.
-    await apps.setEstate(moved, estate.id);
+    await apps.setHost(moved, host.id);
     const view = await api.getAppBackup(
       { params: params(w), query: {} },
       { user: w.user },

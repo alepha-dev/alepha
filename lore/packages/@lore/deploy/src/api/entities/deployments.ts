@@ -10,9 +10,9 @@ import { appInstances } from "./appInstances.ts";
  * ## ⚠️ It points at the INSTANCE, and cascades from it
  *
  * A deployment says "these bytes are running **here**". With no here it is an
- * orphan nobody can act on: no rollback target, no version list, no estate to
+ * orphan nobody can act on: no rollback target, no version list, no host to
  * reach. Epic #30 already drew this line - `app_instances` cascades from
- * `projects`, and the one reference it makes `SET NULL` is `estateId`, because
+ * `projects`, and the one reference it makes `SET NULL` is `hostId`, because
  * a *lending* can be revoked while the instance survives. An instance being
  * deleted is not that case. An audit trail that outlives its subject belongs
  * in the audit log, not in the table the Deploy tab reads.
@@ -34,7 +34,7 @@ import { appInstances } from "./appInstances.ts";
  *
  * Cloudflare keeps every uploaded Worker version server-side, so pointing at an
  * older `version_id` is a rollback in seconds with no artifact and no upload -
- * working even under `latest`-only retention. ⚠️ Cloudflare-only: a Bay estate
+ * working even under `latest`-only retention. ⚠️ Cloudflare-only: a Bay host
  * has no version history, which the epic accepts for v1.
  */
 export const deployments = $entity({
@@ -123,7 +123,7 @@ export const deployments = $entity({
      */
     createdBy: z.uuid().optional(),
     /**
-     * The estate command a Bay deploy rode on, for a copy that is a member of
+     * The host command a Bay deploy rode on, for a copy that is a member of
      * a stack (#Q2695): its status follows that command instead of a run in
      * this Worker. Soft, like `artifactId`: the command history is pruned.
      */

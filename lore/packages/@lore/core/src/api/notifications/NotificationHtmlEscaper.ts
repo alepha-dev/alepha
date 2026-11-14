@@ -2,7 +2,7 @@
  * Escape user-controlled strings before they land inside an HTML email body.
  *
  * Mail clients block JavaScript, but an unescaped quest title, project name
- * or estate slug can still inject anchors, images and styling - turning a
+ * or host slug can still inject anchors, images and styling - turning a
  * DKIM-signed message into a high-trust phishing surface. Every notification
  * body in Lore that interpolates a value somebody typed goes through here.
  *

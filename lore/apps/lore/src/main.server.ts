@@ -15,8 +15,8 @@ import { ProjectScopeGrants } from "@lore/core/web";
 import { LoreDeployApi } from "@lore/deploy/api";
 import {
   DeployJobs,
-  EstateCommandTransport,
-  WebSocketEstateCommandTransport,
+  HostCommandTransport,
+  WebSocketHostCommandTransport,
 } from "@lore/deploy/api";
 import { LoreDeployMcp } from "@lore/deploy/mcp";
 import { LoreDeployWeb } from "@lore/deploy/web";
@@ -135,12 +135,12 @@ alepha.set(oauthOptions, {
 // the browser rendering default chrome after hydration.
 alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 
-// The estate command queue pushes over the estates websocket (epic #20).
+// The host command queue pushes over the hosts websocket (epic #20).
 // Declared BEFORE `LoreDeployApi`, which registers the default transport that
 // reaches nothing: a substitution after the service is in use is refused.
 alepha.with({
-  provide: EstateCommandTransport,
-  use: WebSocketEstateCommandTransport,
+  provide: HostCommandTransport,
+  use: WebSocketHostCommandTransport,
 });
 
 // What `action.can()` means inside a project.

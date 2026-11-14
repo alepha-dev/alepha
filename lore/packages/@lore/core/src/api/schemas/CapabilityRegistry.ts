@@ -418,7 +418,7 @@ export class CapabilityRegistry {
         "insights_read",
       ],
       searchKinds: [],
-      activityKinds: ["app", "sigil", "estate"],
+      activityKinds: ["app", "sigil", "host"],
       dashboardCards: [
         "openErrors",
         "uniqueVisitors",
@@ -439,13 +439,13 @@ export class CapabilityRegistry {
         "app",
         // Epic #1's. Beside `app` rather than folded into it, because letting
         // somebody rename a copy is not the same act as letting them push code
-        // into the estate's cloud account.
+        // into the host's cloud account.
         "deploy",
         "artifact",
         "error",
         "quality",
         "sigil",
-        "estate",
+        "host",
       ],
     },
     {

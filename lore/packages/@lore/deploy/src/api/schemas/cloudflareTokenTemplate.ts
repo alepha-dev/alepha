@@ -5,14 +5,14 @@
  * ## Why this is a module and not a method
  *
  * The list has to reach the browser: it is the "mint this token" link on the
- * estate dialog and on the drawer's replace-token block. Importing
- * `EstateCloudflareService` there would pull a `$repository` into the web
- * bundle and drag the ORM with it, so this follows `estateSlugSchema.ts` -
+ * host dialog and on the drawer's replace-token block. Importing
+ * `HostCloudflareService` there would pull a `$repository` into the web
+ * bundle and drag the ORM with it, so this follows `hostSlugSchema.ts` -
  * a plain module both halves import.
  *
  * ## ⚠️ It is the THIRD copy of one list, and the only guarded one
  *
- * `EstateCloudflareService.PERMISSION_PROBES` is what Lore actually checks,
+ * `HostCloudflareService.PERMISSION_PROBES` is what Lore actually checks,
  * the guide (`docs/7-apps/7-cloudflare-token.md`) is what a person reads,
  * and this is what the link pre-fills. The day someone adds a seventh probe
  * and forgets this file, the link mints a token Lore then refuses - a worse

@@ -13,7 +13,7 @@ import type { StackModelService } from "../schemas/stackModelServiceSchema.ts";
  * keeps what every target needs to decide: services, app references, route
  * labels, ports, mounts, dependencies, healthchecks, backup hooks and the
  * variables the file interpolates. It interpolates nothing and never sees a
- * value: the estate does that at deploy, with the sealed variables.
+ * value: the host does that at deploy, with the sealed variables.
  *
  * It refuses only what makes the file unreadable or the `x-lore` field
  * malformed, with the service and the key, mirroring Bay's own `x-lore`

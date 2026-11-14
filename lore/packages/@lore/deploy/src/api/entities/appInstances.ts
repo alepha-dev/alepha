@@ -2,7 +2,7 @@ import { projects, users } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-import { estates } from "./estates.ts";
+import { hosts } from "./hosts.ts";
 import { sigils } from "./sigils.ts";
 import { stackEnvironments } from "./stackEnvironments.ts";
 
@@ -45,29 +45,29 @@ import { stackEnvironments } from "./stackEnvironments.ts";
  * |---|---|
  * | nothing | Overview, Artifacts, Settings |
  * | {@link sigilId} | Analytics, Vitals, Errors, Explore |
- * | {@link estateId} | an estate on Settings, and Deploy when epic #1 lands |
+ * | {@link hostId} | a host on Settings, and Deploy when epic #1 lands |
  *
- * ⚠️ **The estate is per instance, never per app.** That is why one app can
- * have two instances on two estate types, which is the case the level exists
- * for. #1810 designed `environments (projectId, name, estateId)` at project
+ * ⚠️ **The host is per instance, never per app.** That is why one app can
+ * have two instances on two host types, which is the case the level exists
+ * for. #1810 designed `environments (projectId, name, hostId)` at project
  * grain and was retired for exactly this: `docs` deploys to Cloudflare and
  * `bay` runs on the OVH VPS, and both are `production`, so one row with one
- * estate cannot serve both.
+ * host cannot serve both.
  *
  * ## ⚠️ There is no runtime or provider column, and there must not be
  *
  * `artifacts.runtime` (`node | bun | workerd | static`, with `docker` coming)
- * is what a build targets. `estates.type` (`bay | cloudflare`, more coming) is
- * what a machine is. The provider is already on the estate and this row
- * reaches it through {@link estateId}; a column here would duplicate it and
+ * is what a build targets. `hosts.type` (`bay | cloudflare`, more coming) is
+ * what a machine is. The provider is already on the host and this row
+ * reaches it through {@link hostId}; a column here would duplicate it and
  * give two places to disagree, and one named `runtime` holding `cloudflare`
- * would make the word mean two things in two tables. What an estate accepts is
+ * would make the word mean two things in two tables. What a host accepts is
  * a deploy-time mapping owned by epic #1, expressed as data rather than a
  * switch, because both axes are open-ended.
  *
  * ## ⚠️ The column is `env`; the wire says `environment`
  *
- * `estateCommandPayloadSchema` carries `{ app, environment, artifact? }` and
+ * `hostCommandPayloadSchema` carries `{ app, environment, artifact? }` and
  * Bay reads it as `json:"environment"`. That is wire format v1 (folio #1198,
  * epic #20). The mapping from this column to that key is one line in epic #1's
  * deploy service; renaming the payload is a Bay release.
@@ -112,7 +112,7 @@ export const appInstances = $entity({
      * Where this copy lives, as the operator typed it.
      *
      * The override half of the address; the detected half is
-     * `sigils.lastSeenHost`, reached through {@link sigilId}. A full URL rather
+     * `sigils.lastSeenHostname`, reached through {@link sigilId}. A full URL rather
      * than a host, because this one is typed and someone pinning an address may
      * want a path on it. Deliberately without a `db.default`, like the columns
      * it was copied from.
@@ -141,31 +141,31 @@ export const appInstances = $entity({
       onDelete: "set null",
     }),
     /**
-     * Where this copy deploys to, when an estate has been chosen.
+     * Where this copy deploys to, when a host has been chosen.
      *
-     * `set null` for the reason `estates`' own doc gives: deleting a user
-     * account cascades to their estates, and that cascade must not be blockable
+     * `set null` for the reason `hosts`' own doc gives: deleting a user
+     * account cascades to their hosts, and that cascade must not be blockable
      * by other people's projects. `restrict` would fail the account deletion at
      * the database and `cascade` would delete deploy targets.
      *
-     * ⚠️ Validated against the LENDING (`estate_projects`), never against
-     * `estates` directly - `AppService.setEstate` is the one write path and
-     * carries the check. Referencing `estates` straight lets a project point at
-     * an estate it was never given, which is folio #96's `targetId` hole
-     * wearing a foreign key. And the estate is never named by the client at
+     * ⚠️ Validated against the LENDING (`host_projects`), never against
+     * `hosts` directly - `AppService.setHost` is the one write path and
+     * carries the check. Referencing `hosts` straight lets a project point at
+     * a host it was never given, which is folio #96's `targetId` hole
+     * wearing a foreign key. And the host is never named by the client at
      * deploy time: it resolves server-side from this row.
      */
-    estateId: db.ref(z.uuid().optional(), () => estates.cols.id, {
+    hostId: db.ref(z.uuid().optional(), () => hosts.cols.id, {
       onDelete: "set null",
     }),
     /**
-     * What Lore's last deploy provisioned in the estate, as JSON.
+     * What Lore's last deploy provisioned in the host, as JSON.
      *
      * ## ⚠️ Recorded so a teardown deletes what Lore MADE, never what it can name
      *
      * Every name here is derived from `(project, env)` and is therefore
      * reproducible, which makes "recompute the name and delete it" the obvious
-     * implementation and the wrong one. An estate is LENT: the account holds
+     * implementation and the wrong one. A host is LENT: the account holds
      * resources Lore never created, and one of them may legitimately bear the
      * name a copy would compute. `alepha infra down` may delete by name -
      * it runs on your own machine, against your own account, at your own
@@ -173,7 +173,7 @@ export const appInstances = $entity({
      *
      * ⚠️ **Absent means UNKNOWN, never "nothing was provisioned".** Every copy
      * deployed before this column existed has none, and reading absence as an
-     * empty estate would let a teardown report success having deleted nothing.
+     * empty host would let a teardown report success having deleted nothing.
      *
      * Written after each successful deploy, so it follows what the build
      * declares: an app that stops using `$storage` stops recording a bucket,
@@ -181,7 +181,7 @@ export const appInstances = $entity({
      */
     resources: z.string().max(4_096).optional(),
     /**
-     * The name this copy's resources carry in its estate, e.g.
+     * The name this copy's resources carry in its host, e.g.
      * `acme-shop-production`: the Worker, the D1 database, the bucket, the
      * cache namespace and the queue all share it.
      *
@@ -204,19 +204,19 @@ export const appInstances = $entity({
      */
     resourceName: z.string().max(100).optional(),
     /**
-     * The estate this copy last deployed to under {@link resourceName}.
+     * The host this copy last deployed to under {@link resourceName}.
      *
-     * ⚠️ `estateId` alone says where the copy will deploy NEXT, not what it
-     * runs as there: a copy moved to another estate keeps its stored name,
-     * and on that estate the name may already be another project's instance
+     * ⚠️ `hostId` alone says where the copy will deploy NEXT, not what it
+     * runs as there: a copy moved to another host keeps its stored name,
+     * and on that host the name may already be another project's instance
      * (a project renamed away from a slug that a new project took). Anything
      * that acts on the running instance by name - the Backups tab's commands
-     * and restores - requires this to equal `estateId`.
+     * and restores - requires this to equal `hostId`.
      *
      * A logical reference, not a `db.ref`: a foreign key here would be a
      * rebuild of `app_instances`, a cascade parent (see `apps/lore/AGENTS.md`).
      */
-    resourceEstateId: z.uuid().optional(),
+    resourceHostId: z.uuid().optional(),
     /**
      * Whether this copy's data may be deleted with it.
      *
@@ -252,8 +252,8 @@ export const appInstances = $entity({
      * `crm-api/staging` in `crm/staging`. A copy belongs to at most one, of
      * its own project and its own env name (`StackService.attachInstance`).
      *
-     * A member deploys through its stack: the estate comes from the stack
-     * environment, not from {@link estateId}.
+     * A member deploys through its stack: the host comes from the stack
+     * environment, not from {@link hostId}.
      *
      * `set null`: deleting a stack environment leaves its apps as ordinary
      * copies, with their deploys, sigils and analytics. Added as one nullable
@@ -272,8 +272,8 @@ export const appInstances = $entity({
     { columns: ["projectId"] },
     // The sigil's instance, read by ingest-adjacent surfaces and by delete.
     { columns: ["sigilId"] },
-    // `EstateService.assertUnreferenced` counts through this one.
-    { columns: ["estateId"] },
+    // `HostService.assertUnreferenced` counts through this one.
+    { columns: ["hostId"] },
     { columns: ["stackEnvironmentId"] },
   ],
 });

@@ -11,11 +11,11 @@ import {
   ArtifactController,
   DeployController,
   DeployService,
-  EstateCommandService,
+  HostCommandService,
   StackController,
   StackDeployController,
 } from "../src/api/index.ts";
-import { createTestEstate } from "../src/testing/estates.ts";
+import { createTestHost } from "../src/testing/hosts.ts";
 import { packedArtifact } from "../src/testing/index.ts";
 import {
   bootStackSpec,
@@ -27,7 +27,7 @@ import {
 
 /**
  * An app instance that is a member of a stack environment deploys through
- * it (#Q2695): the estate is the environment's, only its own service is
+ * it (#Q2695): the host is the environment's, only its own service is
  * redeployed (Bay's `deploy` naming the stack and the service), and the
  * Deploy tab's row follows the machine's acks.
  */
@@ -64,7 +64,7 @@ describe("an app deploy inside a stack", () => {
 
   const arrange = async (options: { applied?: boolean } = {}) => {
     const w = await stackWorld(alepha);
-    const minted = await createTestEstate(
+    const minted = await createTestHost(
       alepha,
       w.user,
       { slug: `bay-${crypto.randomUUID().slice(0, 6)}` },
@@ -72,10 +72,10 @@ describe("an app deploy inside a stack", () => {
         projectId: w.project.id,
       },
     );
-    await w.rows.estates.updateById(minted.id, { deployAllowed: true });
+    await w.rows.hosts.updateById(minted.id, { deployAllowed: true });
     const stack = await createStack(alepha, w, {
       name: "crm",
-      estateId: minted.id,
+      hostId: minted.id,
     });
     const env = await createEnvironment(alepha, w, stack.id, {
       env: "staging",
@@ -122,7 +122,7 @@ describe("an app deploy inside a stack", () => {
     );
     return {
       w,
-      estateId: minted.id,
+      hostId: minted.id,
       secret: minted.secret as string,
       stack,
       env,
@@ -137,18 +137,18 @@ describe("an app deploy inside a stack", () => {
       tag: "1.0.0",
     });
 
-  it("queues a Bay deploy naming the stack and the app service, with no estate on the copy", async ({
+  it("queues a Bay deploy naming the stack and the app service, with no host on the copy", async ({
     expect,
   }) => {
     const a = await arrange();
     expect(
-      (await a.w.rows.instances.findById(a.instance.id))?.estateId,
+      (await a.w.rows.instances.findById(a.instance.id))?.hostId,
     ).toBeUndefined();
     const row = await deploy(a);
     const command = await a.w.rows.commands.getOne({
       where: { id: { eq: row.commandId ?? "" } },
     });
-    const frame = alepha.inject(EstateCommandService).frameOf(command);
+    const frame = alepha.inject(HostCommandService).frameOf(command);
     expect(frame).toMatchObject({
       kind: "deploy",
       app: "crm-api",
@@ -160,7 +160,7 @@ describe("an app deploy inside a stack", () => {
       Object.keys(wire("command-member-deploy.json")).sort(),
     );
     expect(frame).not.toHaveProperty("instanceId");
-    expect(command.estateId).toBe(a.estateId);
+    expect(command.hostId).toBe(a.hostId);
   });
 
   it("refuses before the stack has ever been deployed, naming why", async ({
@@ -176,8 +176,8 @@ describe("an app deploy inside a stack", () => {
     const a = await arrange();
     const row = await deploy(a);
     expect(await alepha.inject(DeployService).run(row)).toBe("done");
-    const queue = alepha.inject(EstateCommandService);
-    await queue.ack(a.estateId, {
+    const queue = alepha.inject(HostCommandService);
+    await queue.ack(a.hostId, {
       type: "ack",
       id: row.commandId,
       status: "running",
@@ -188,7 +188,7 @@ describe("an app deploy inside a stack", () => {
         await alepha.inject(DeployService).list(a.w.project.id, a.instance.id)
       )[0].status,
     ).toBe("running");
-    await queue.ack(a.estateId, {
+    await queue.ack(a.hostId, {
       type: "ack",
       id: row.commandId,
       status: "done",

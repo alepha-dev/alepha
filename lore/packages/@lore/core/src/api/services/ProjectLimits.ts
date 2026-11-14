@@ -44,11 +44,11 @@ export class ProjectLimits {
        */
       maxQualityRunsPerProject: z.integer().min(1).max(100_000).optional(),
       /**
-       * Commands kept per estate, terminal ones, swept by
-       * `EstateCommandJobs`. Optional for the same reason as the key above:
+       * Commands kept per host, terminal ones, swept by
+       * `HostCommandJobs`. Optional for the same reason as the key above:
        * an override saved before this key existed comes back without it.
        */
-      maxCommandsPerEstate: z.integer().min(1).max(100_000).optional(),
+      maxCommandsPerHost: z.integer().min(1).max(100_000).optional(),
     }),
     default: {
       // Raised from 10 on 2026-09-07 (feedback #P2133). The schema has
@@ -60,16 +60,16 @@ export class ProjectLimits {
       maxQuestsPerProject: 5_000,
       maxReleasesPerProject: 200,
       maxQualityRunsPerProject: 500,
-      maxCommandsPerEstate: 200,
+      maxCommandsPerHost: 200,
     },
   });
 
   /**
-   * Terminal commands kept per estate when nothing says otherwise. Two
+   * Terminal commands kept per host when nothing says otherwise. Two
    * hundred is months of restarts on a quiet machine and a few weeks of
    * deploys on a busy one, which is as far back as anyone reads a queue.
    */
-  public static readonly DEFAULT_MAX_COMMANDS_PER_ESTATE = 200;
+  public static readonly DEFAULT_MAX_COMMANDS_PER_HOST = 200;
 
   /**
    * Runs kept per project when nothing says otherwise.
@@ -124,13 +124,13 @@ export class ProjectLimits {
   }
 
   /**
-   * Terminal commands kept per estate. Read by the `$job` sweep in
-   * `EstateCommandJobs`, with the same fallback shape as the quality cap.
+   * Terminal commands kept per host. Read by the `$job` sweep in
+   * `HostCommandJobs`, with the same fallback shape as the quality cap.
    */
-  public async maxCommandsPerEstate(): Promise<number> {
+  public async maxCommandsPerHost(): Promise<number> {
     return (
-      (await this.limits.get()).maxCommandsPerEstate ??
-      ProjectLimits.DEFAULT_MAX_COMMANDS_PER_ESTATE
+      (await this.limits.get()).maxCommandsPerHost ??
+      ProjectLimits.DEFAULT_MAX_COMMANDS_PER_HOST
     );
   }
 }

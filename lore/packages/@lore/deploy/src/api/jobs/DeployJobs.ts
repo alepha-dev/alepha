@@ -119,7 +119,7 @@ export class DeployJobs {
    * sweep re-dispatches it: on 2026-09-22 a deploy waited 827 s for it
    * (#Q2478). The sweep runs on the every-five-minutes expression
    * {@link sweepAbandoned} already uses, because cron triggers are counted
-   * per account (see `EstateCommandJobs`), and a row counts as lost after
+   * per account (see `HostCommandJobs`), and a row counts as lost after
    * one minute instead of five: a lost delivery costs about 6 minutes, not
    * about 20. Re-dispatching a message that was only slow is safe, since
    * `claim()` is the guard.
@@ -402,7 +402,7 @@ export class DeployJobs {
 
       for (const row of rows) {
         if (row.commandId) {
-          // Follows its estate command, whose own sweep fails it with the
+          // Follows its host command, whose own sweep fails it with the
           // machine's reason (a Bay deploy may run 15 minutes): the messages
           // below are about a Worker run it never had (#Q2706).
           continue;

@@ -119,7 +119,7 @@ export class LoreApiClient {
    * ⚠️ **Lore's own message is what surfaces.** Every refusal on the deploy
    * path is written to be read by somebody who often cannot fix it from where
    * they are - the runtime gate names the build to produce, and the credential
-   * and kill-switch clauses name whose estate it is. Reporting a status code
+   * and kill-switch clauses name whose host it is. Reporting a status code
    * instead throws away the only actionable half.
    */
   public async request<T>(

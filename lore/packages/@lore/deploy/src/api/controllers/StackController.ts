@@ -8,7 +8,7 @@ import {
   okSchema,
 } from "alepha/server";
 
-import { estates } from "../entities/estates.ts";
+import { hosts } from "../entities/hosts.ts";
 import type { Stack } from "../entities/stacks.ts";
 import { stackEnvironmentResourceSchema } from "../schemas/stackEnvironmentResourceSchema.ts";
 import { stackResourceSchema } from "../schemas/stackResourceSchema.ts";
@@ -28,7 +28,7 @@ import { TestHostnameResolver } from "../services/TestHostnameResolver.ts";
 export class StackController {
   protected readonly stacks = $inject(StackService);
   protected readonly testHostnames = $inject(TestHostnameResolver);
-  protected readonly estateRows = $repository(estates);
+  protected readonly hostRows = $repository(hosts);
 
   protected writeGate = () =>
     $ownsProject({
@@ -81,9 +81,9 @@ export class StackController {
       body: z.object({
         name: z.string().min(1).max(64).optional(),
         /**
-         * The default estate, which must be lent to this project.
+         * The default host, which must be lent to this project.
          */
-        estateId: z.uuid().optional(),
+        hostId: z.uuid().optional(),
       }),
       response: stackResourceSchema,
     },
@@ -91,7 +91,7 @@ export class StackController {
       const stack = await this.stacks.create({
         projectId: params.projectId,
         name: body.name,
-        estateId: body.estateId,
+        hostId: body.hostId,
         createdBy: user?.id,
       });
       return (await this.resources([stack]))[0];
@@ -102,15 +102,15 @@ export class StackController {
     use: [this.writeGate()],
     method: "PATCH",
     path: "/projects/:projectId/stacks/:stackId",
-    description: "Set or clear the stack's default estate.",
+    description: "Set or clear the stack's default host.",
     schema: {
       params: z.object({ projectId: z.integer(), stackId: z.uuid() }),
-      body: z.object({ estateId: z.uuid().nullable() }),
+      body: z.object({ hostId: z.uuid().nullable() }),
       response: stackResourceSchema,
     },
     handler: async ({ params, body }) => {
       const stack = await this.stacks.get(params.projectId, params.stackId);
-      const updated = await this.stacks.setEstate(stack, body.estateId);
+      const updated = await this.stacks.setHost(stack, body.hostId);
       return (await this.resources([updated]))[0];
     },
   });
@@ -120,7 +120,7 @@ export class StackController {
     method: "DELETE",
     path: "/projects/:projectId/stacks/:stackId",
     description:
-      "Delete a stack with no environment left, its routes and revisions. Refused (409) while an environment remains, naming them. Nothing on an estate is touched.",
+      "Delete a stack with no environment left, its routes and revisions. Refused (409) while an environment remains, naming them. Nothing on a host is touched.",
     schema: {
       params: z.object({ projectId: z.integer(), stackId: z.uuid() }),
       response: okSchema,
@@ -136,12 +136,12 @@ export class StackController {
     use: [this.writeGate()],
     method: "POST",
     path: "/projects/:projectId/stacks/:stackId/environments",
-    description: "Add an environment to a stack, optionally on its own estate.",
+    description: "Add an environment to a stack, optionally on its own host.",
     schema: {
       params: z.object({ projectId: z.integer(), stackId: z.uuid() }),
       body: z.object({
         env: z.string().min(1).max(64),
-        estateId: z.uuid().optional(),
+        hostId: z.uuid().optional(),
         baseDomain: z.string().max(253).optional(),
       }),
       response: stackEnvironmentResourceSchema,
@@ -158,7 +158,7 @@ export class StackController {
     method: "PATCH",
     path: "/projects/:projectId/stacks/:stackId/environments/:environmentId",
     description:
-      "Set or clear an environment's estate override and base domain. Only the keys sent change.",
+      "Set or clear an environment's host override and base domain. Only the keys sent change.",
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -166,7 +166,7 @@ export class StackController {
         environmentId: z.uuid(),
       }),
       body: z.object({
-        estateId: z.uuid().nullable().optional(),
+        hostId: z.uuid().nullable().optional(),
         baseDomain: z.string().max(253).nullable().optional(),
       }),
       response: stackEnvironmentResourceSchema,
@@ -187,7 +187,7 @@ export class StackController {
     method: "DELETE",
     path: "/projects/:projectId/stacks/:stackId/environments/:environmentId",
     description:
-      "Forget a stack environment and its routes. Member apps stay, as ordinary copies. Nothing on an estate is touched.",
+      "Forget a stack environment and its routes. Member apps stay, as ordinary copies. Nothing on a host is touched.",
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -237,9 +237,9 @@ export class StackController {
 
   /**
    * Route a test hostname to one service (#Q3137): `<env>-<stack>.<ip>.sslip.io`,
-   * derived from the address the environment's estate connected from, by
+   * derived from the address the environment's host connected from, by
    * {@link TestHostnameResolver}. Idempotent: a hostname already routed here
-   * answers the environment as it is. Refused while the estate's address is
+   * answers the environment as it is. Refused while the host's address is
    * unknown (it never connected) or is not IPv4.
    */
   addStackTestRoute = $action({
@@ -247,7 +247,7 @@ export class StackController {
     method: "PUT",
     path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/routes/test",
     description:
-      "Serve one service of a stack environment on a test hostname derived from its estate's public IP, with no DNS to set up.",
+      "Serve one service of a stack environment on a test hostname derived from its host's public IP, with no DNS to set up.",
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -263,18 +263,16 @@ export class StackController {
         stack,
         params.environmentId,
       );
-      const estateId = this.stacks.estateOf(stack, environment);
-      const estate = estateId
-        ? await this.estateRows.findById(estateId)
-        : undefined;
-      const domain = estate
-        ? this.testHostnames.hostnameFor(estate, stack.name, environment.env)
+      const hostId = this.stacks.hostOf(stack, environment);
+      const host = hostId ? await this.hostRows.findById(hostId) : undefined;
+      const domain = host
+        ? this.testHostnames.hostnameFor(host, stack.name, environment.env)
         : undefined;
       if (!domain) {
         throw new BadRequestError(
-          estate
-            ? `Estate '${estate.slug}' has no known IPv4 address yet: it is learned when the machine connects. Run lore estate wait ${estate.slug}, then try again.`
-            : `${stack.name}/${environment.env} has no estate to derive a test hostname from.`,
+          host
+            ? `Host '${host.slug}' has no known IPv4 address yet: it is learned when the machine connects. Run lore host wait ${host.slug}, then try again.`
+            : `${stack.name}/${environment.env} has no host to derive a test hostname from.`,
         );
       }
       const routed = await this.stacks.routesOf([environment.id]);

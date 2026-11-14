@@ -120,7 +120,7 @@ export class RegistryCredentialService {
 
   /**
    * Every credential of one project, opened, for the deploy of that
-   * project's stack: the estate pulls the stack's images with them. Scoped by
+   * project's stack: the host pulls the stack's images with them. Scoped by
    * project in the query itself, so another project's credential cannot be
    * reached from here.
    */

@@ -21,7 +21,7 @@ import type { OAuthScope } from "alepha/api/oauth";
  * - **The two lists are the same.** `cli` was to add what `lore deploy`, the
  *   artifact commands and the attachment upload need, and every one of those
  *   routes is already inside a member group (`deploy`, `app`, `artifact`,
- *   `estate`, `release`, `quality`, and the framework's `file` for uploads).
+ *   `host`, `release`, `quality`, and the framework's `file` for uploads).
  *   They stay two entries because the device approval page must name the
  *   terminal rather than Claude.
  * - **`openid` reaches nothing.** It says who you are.
@@ -68,7 +68,7 @@ export class LoreOAuthScopes {
     "sigil",
     "artifact",
     "deploy",
-    "estate",
+    "host",
     // The framework's file upload, which quest and folio attachments go
     // through before they are registered on their project.
     "file",

@@ -14,9 +14,9 @@ import {
 } from "../../src/api/index.ts";
 import {
   appInstances,
-  estateCommands,
-  estateProjects,
-  estates,
+  hostCommands,
+  hostProjects,
+  hosts,
   stackEnvironments,
   stackRevisions,
   stacks,
@@ -27,13 +27,13 @@ import {
  * `deploy` and `stacks` on, and repositories to arrange rows the API has no verb for.
  */
 export class StackRows {
-  public readonly estates = $repository(estates);
-  public readonly grants = $repository(estateProjects);
+  public readonly hosts = $repository(hosts);
+  public readonly grants = $repository(hostProjects);
   public readonly instances = $repository(appInstances);
   public readonly stacks = $repository(stacks);
   public readonly environments = $repository(stackEnvironments);
   public readonly revisions = $repository(stackRevisions);
-  public readonly commands = $repository(estateCommands);
+  public readonly commands = $repository(hostCommands);
 }
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -107,13 +107,13 @@ export const stackWorld = async (
 };
 
 /**
- * A `bay` estate owned by the world's user and lent to its project.
+ * A `bay` host owned by the world's user and lent to its project.
  */
-export const lentBayEstate = async (
+export const lentBayHost = async (
   w: StackWorld,
   options: { deployAllowed?: boolean; lend?: boolean } = {},
 ) => {
-  const estate = await w.rows.estates.create({
+  const host = await w.rows.hosts.create({
     ownerUserId: w.user.id,
     // Homed in the world's project, which its user owns (#E126).
     projectId: w.project.id,
@@ -124,11 +124,11 @@ export const lentBayEstate = async (
   });
   if (options.lend ?? true) {
     await w.rows.grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: w.project.id,
     });
   }
-  return estate;
+  return host;
 };
 
 export const createInstance = async (
@@ -149,7 +149,7 @@ export const createInstance = async (
 export const createStack = async (
   alepha: Alepha,
   w: StackWorld,
-  body: { name?: string; estateId?: string } = {},
+  body: { name?: string; hostId?: string } = {},
 ) =>
   (
     await alepha
@@ -164,7 +164,7 @@ export const createEnvironment = async (
   alepha: Alepha,
   w: StackWorld,
   stackId: string,
-  body: { env: string; estateId?: string; baseDomain?: string },
+  body: { env: string; hostId?: string; baseDomain?: string },
 ) =>
   (
     await alepha

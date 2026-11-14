@@ -17,9 +17,9 @@ import { type Infer, z } from "alepha";
  * takes `apps` from `features.sigils` OR `features.quality`.
  *
  * ⚠️ **What `deploy` gates, and what it deliberately does not.** It gates epic
- * #1's surface only. The Estates settings page, an instance's estate select and
- * `enqueueEstateCommand` shipped flag-free with epics #20 and #30, and a switch
- * backfilled `false` must never hide a lent estate from the project that most
+ * #1's surface only. The Hosts settings page, an instance's host select and
+ * `enqueueHostCommand` shipped flag-free with epics #20 and #30, and a switch
+ * backfilled `false` must never hide a lent host from the project that most
  * needs to see it.
  *
  * ⚠️ It is a WRITE gate. Reads of existing data stay open, because disabling a
@@ -30,7 +30,7 @@ import { type Infer, z } from "alepha";
  * Soon badge, because the wizard is where somebody decides what Lore is for and
  * hiding a planned surface means the "I deploy elsewhere" reader never learns
  * Lore will do it. Epic #1 shipped the surface, deleted the badge, and carried
- * the backfill for every project already lent an estate
+ * the backfill for every project already lent a host
  * (`20260907130028_backfill_apps_deploy`). It is still not preselected in the
  * wizard: deploying through Lore means deploying into somebody's cloud account,
  * which is a thing to opt into on purpose.

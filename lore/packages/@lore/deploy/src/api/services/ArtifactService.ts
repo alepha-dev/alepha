@@ -179,7 +179,7 @@ export class ArtifactService {
     const sha256 = await this.digest(bytes);
     // ⚠️ **The archive's own manifest, always, checked against the one sent
     // beside it** (#Q3388). Until then a sent manifest was taken instead of
-    // reading the archive (#Q2681), and it decided runtime and estate
+    // reading the archive (#Q2681), and it decided runtime and host
     // matching, the `runtimes` column, sigil provisioning and the secrets
     // listed for the copy before any deploy compared it with the bytes; a Bay
     // deploy never compared it at all. Reading it is cheap now: native zstd,
@@ -452,7 +452,7 @@ export class ArtifactService {
         // every surface renders N/A for a variant that has none.
         size: image.size,
         // ⚠️ No `fileId`. Lore stores no bytes for an image, which is what
-        // makes this whole path cheap and what `EstatePullController` and
+        // makes this whole path cheap and what `HostPullController` and
         // `DeployRunner` both check before reaching for one.
         commitSha: input.commitSha,
         manifest: this.serialiseDocument(image.document),

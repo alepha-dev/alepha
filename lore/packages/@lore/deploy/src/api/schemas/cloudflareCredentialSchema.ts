@@ -4,13 +4,13 @@ import { z } from "alepha";
  * What a Cloudflare account id looks like: 32 lowercase hex characters.
  *
  * Strict on the way in and loose on the column (`max(64)`, #1631), for the
- * reason `estateSlugSchema` gives: a constraint tightened on a column makes
+ * reason `hostSlugSchema` gives: a constraint tightened on a column makes
  * a pre-existing row fail to decode, and a row that fails its schema throws
  * every query that touches the table.
  *
  * ⚠️ This is the account the token is checked against, and the only one Lore
  * ever names. Nothing reads `CLOUDFLARE_ACCOUNT_ID`, which on Lore's own
- * Worker is Lore's account rather than the estate owner's (#1629).
+ * Worker is Lore's account rather than the host owner's (#1629).
  */
 export const CLOUDFLARE_ACCOUNT_ID_PATTERN = /^[0-9a-f]{32}$/;
 

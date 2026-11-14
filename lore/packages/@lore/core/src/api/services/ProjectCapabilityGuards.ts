@@ -3,7 +3,7 @@ import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 /**
  * Refusals to turn a capability off, registered by the module that needs one
  * (#Q3280): Deploy refuses Apps off in a project that is the home of an
- * estate, which could otherwise be managed through no page.
+ * host, which could otherwise be managed through no page.
  *
  * Core cannot import a feature module, so `ProjectCapabilityController`
  * reads this registry before it deletes a capability row, and the feature

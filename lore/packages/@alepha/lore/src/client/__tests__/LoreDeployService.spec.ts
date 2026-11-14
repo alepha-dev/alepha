@@ -10,9 +10,9 @@ import { LoreDeployService } from "../services/LoreDeployService.ts";
  *
  * ⚠️ **Two properties carry this file.** A copy that does not exist is created,
  * but ONLY on a 404 - so an outage cannot turn into a burst of copies nobody
- * asked for. And a newly created copy takes an estate SLUG resolved against the
+ * asked for. And a newly created copy takes a host SLUG resolved against the
  * lending, never an id from the caller, because a client that can name an
- * arbitrary estate can deploy into somebody else's cloud account.
+ * arbitrary host can deploy into somebody else's cloud account.
  */
 
 /**
@@ -88,7 +88,7 @@ const anInstance = (over: Record<string, unknown> = {}) => ({
   id: "inst-1",
   app: "acme",
   env: "riverside",
-  estateId: "est-1",
+  hostId: "est-1",
   ...over,
 });
 
@@ -129,12 +129,12 @@ describe("deploying from another server", () => {
   });
 
   describe("creating one when it is missing", () => {
-    it("refuses to guess among several lent estates, and creates nothing (#Q3144)", async () => {
+    it("refuses to guess among several lent hosts, and creates nothing (#Q3144)", async () => {
       // It used to take the oldest lending: a silent choice of machine. Which
-      // estate a copy deploys to is decided on the Lore side, so an unnamed
-      // estate among several is refused, naming them.
+      // host a copy deploys to is decided on the Lore side, so an unnamed
+      // host among several is refused, naming them.
       const { api, service } = setup({
-        "GET /api/projects/1/estates": () => ({
+        "GET /api/projects/1/hosts": () => ({
           items: [
             { id: "est-new", slug: "newer" },
             { id: "est-old", slug: "the-first-one" },
@@ -145,20 +145,20 @@ describe("deploying from another server", () => {
       await expect(
         service.deploy({ app: "acme", env: "riverside" }),
       ).rejects.toThrow(
-        "Several estates are lent to this project (newer, the-first-one)",
+        "Several hosts are lent to this project (newer, the-first-one)",
       );
       expect(api.calls.some((it) => it.method === "POST")).toBe(false);
     });
 
-    it("takes the named estate when one is named", async () => {
+    it("takes the named host when one is named", async () => {
       const { api, service } = setup({
-        "GET /api/projects/1/estates": () => ({
+        "GET /api/projects/1/hosts": () => ({
           items: [
             { id: "est-new", slug: "newer" },
             { id: "est-old", slug: "the-first-one" },
           ],
         }),
-        "POST /api/projects/1/apps": () => anInstance({ estateId: undefined }),
+        "POST /api/projects/1/apps": () => anInstance({ hostId: undefined }),
         "PATCH /api/projects/1/apps/acme/riverside": () => anInstance(),
         "POST /api/projects/1/apps/inst-1/deployments": () => ({
           id: "dep-1",
@@ -173,21 +173,21 @@ describe("deploying from another server", () => {
         }),
       });
 
-      await service.deploy({ app: "acme", env: "riverside", estate: "newer" });
+      await service.deploy({ app: "acme", env: "riverside", host: "newer" });
 
       const patch = api.calls.find((it) => it.method === "PATCH");
-      expect(patch?.body).toEqual({ estateId: "est-new" });
+      expect(patch?.body).toEqual({ hostId: "est-new" });
     });
 
-    it("reads an empty estate as unnamed, not as a name", async () => {
-      // `estate: ""` is what an unset config value looks like, and it must
+    it("reads an empty host as unnamed, not as a name", async () => {
+      // `host: ""` is what an unset config value looks like, and it must
       // mean "none named" (the only one lent, here) rather than send the
       // client looking for a slug of "".
       const { api, service } = setup({
-        "GET /api/projects/1/estates": () => ({
+        "GET /api/projects/1/hosts": () => ({
           items: [{ id: "est-old", slug: "only" }],
         }),
-        "POST /api/projects/1/apps": () => anInstance({ estateId: undefined }),
+        "POST /api/projects/1/apps": () => anInstance({ hostId: undefined }),
         "PATCH /api/projects/1/apps/acme/riverside": () => anInstance(),
         "POST /api/projects/1/apps/inst-1/deployments": () => ({
           id: "dep-1",
@@ -202,10 +202,10 @@ describe("deploying from another server", () => {
         }),
       });
 
-      await service.deploy({ app: "acme", env: "riverside", estate: "  " });
+      await service.deploy({ app: "acme", env: "riverside", host: "  " });
 
       const patch = api.calls.find((it) => it.method === "PATCH");
-      expect(patch?.body).toEqual({ estateId: "est-old" });
+      expect(patch?.body).toEqual({ hostId: "est-old" });
     });
 
     it("stores the domain as an origin, which is what returns a URL", async () => {
@@ -215,7 +215,7 @@ describe("deploying from another server", () => {
       // A copy created with no domain deploys fine and answers nothing to link
       // to.
       const { api, service } = setup({
-        "GET /api/projects/1/estates": () => ({
+        "GET /api/projects/1/hosts": () => ({
           items: [{ id: "est-1", slug: "only" }],
         }),
         "POST /api/projects/1/apps": () => anInstance(),
@@ -261,7 +261,7 @@ describe("deploying from another server", () => {
       // create a copy whose deploy then fails on Cloudflare's own error,
       // leaving the copy behind for somebody to find.
       const { api, service } = setup({
-        "GET /api/projects/1/estates": () => ({
+        "GET /api/projects/1/hosts": () => ({
           items: [{ id: "est-1", slug: "only" }],
         }),
       });
@@ -276,7 +276,7 @@ describe("deploying from another server", () => {
 
     it("lowercases the host rather than storing what was typed", async () => {
       const { api, service } = setup({
-        "GET /api/projects/1/estates": () => ({
+        "GET /api/projects/1/hosts": () => ({
           items: [{ id: "est-1", slug: "only" }],
         }),
         "POST /api/projects/1/apps": () => anInstance(),
@@ -310,10 +310,10 @@ describe("deploying from another server", () => {
       });
     });
 
-    it("refuses an estate slug this project was not lent", async () => {
+    it("refuses a host slug this project was not lent", async () => {
       // ⚠️ A slug resolved against the LENDING, never an id taken on trust.
       const { service } = setup({
-        "GET /api/projects/1/estates": () => ({
+        "GET /api/projects/1/hosts": () => ({
           items: [{ id: "est-1", slug: "mine" }],
         }),
       });
@@ -322,21 +322,21 @@ describe("deploying from another server", () => {
         service.deploy({
           app: "acme",
           env: "riverside",
-          estate: "somebody-elses",
+          host: "somebody-elses",
         }),
-      ).rejects.toThrow(/No estate called 'somebody-elses' is lent/);
+      ).rejects.toThrow(/No host called 'somebody-elses' is lent/);
     });
 
-    it("errors when the project has been lent no estate at all", async () => {
+    it("errors when the project has been lent no host at all", async () => {
       // ⚠️ Refused BEFORE the copy is created. Creating it first would leave a
       // copy behind that deploys nowhere, for somebody to find later.
       const { api, service } = setup({
-        "GET /api/projects/1/estates": () => ({ items: [] }),
+        "GET /api/projects/1/hosts": () => ({ items: [] }),
       });
 
       await expect(
         service.deploy({ app: "acme", env: "riverside" }),
-      ).rejects.toThrow(/No estate is lent to this project/);
+      ).rejects.toThrow(/No host is lent to this project/);
       expect(
         api.calls.filter((it) => it.path === "/api/projects/1/apps"),
       ).toEqual([]);
@@ -367,7 +367,7 @@ describe("deploying from another server", () => {
 
   describe("what goes on the wire", () => {
     it("sends a tag and nothing else to the deploy endpoint", async () => {
-      // ⚠️ No estate on this call, ever: the destination is read by Lore from
+      // ⚠️ No host on this call, ever: the destination is read by Lore from
       // the `app_instances` row. Folio #96 is the hole that closes.
       const { api, service } = setup(shipped());
 

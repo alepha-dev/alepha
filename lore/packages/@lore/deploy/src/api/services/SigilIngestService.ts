@@ -168,7 +168,7 @@ export class SigilIngestService {
       sections.push(this.absorbVitals(sigil, envelope.vitals, now));
     }
 
-    // `lastSeenHost` rides along on the update `lastSeenAt` was already
+    // `lastSeenHostname` rides along on the update `lastSeenAt` was already
     // making, so knowing where an app answers costs no extra statement — which
     // against D1 is a network round-trip, not a function call.
     //
@@ -217,7 +217,7 @@ export class SigilIngestService {
     // reported, and there was simply nothing this sink would keep.
     await this.sigils.updateById(sigil.id, {
       lastSeenAt: now,
-      ...(host ? { lastSeenHost: host } : {}),
+      ...(host ? { lastSeenHostname: host } : {}),
       ...(reportedConfig ? { reportedConfig, reportedConfigAt: now } : {}),
     });
   }

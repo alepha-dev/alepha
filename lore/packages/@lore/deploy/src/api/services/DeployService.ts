@@ -7,7 +7,7 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
-import { type Estate, estates } from "../entities/estates.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
 import { AppSecretService } from "./AppSecretService.ts";
 import { AppService } from "./AppService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
@@ -16,8 +16,8 @@ import { DeployGate } from "./DeployGate.ts";
 import { DeployLimits } from "./DeployLimits.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
 import { type DeployRequest, DeployRunner } from "./DeployRunner.ts";
-import { EstateCommandService } from "./EstateCommandService.ts";
-import { EstateService } from "./EstateService.ts";
+import { HostCommandService } from "./HostCommandService.ts";
+import { HostService } from "./HostService.ts";
 import { ResourceNameService } from "./ResourceNameService.ts";
 import { StackDeployService } from "./StackDeployService.ts";
 
@@ -33,18 +33,18 @@ export class DeployService {
   protected readonly rows = $repository(deployments);
   protected readonly instances = $repository(appInstances);
   protected readonly artifacts = $repository(artifacts);
-  protected readonly estates = $repository(estates);
+  protected readonly hosts = $repository(hosts);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly secrets = $inject(AppSecretService);
   protected readonly apps = $inject(AppService);
   protected readonly gate = $inject(DeployGate);
   protected readonly limits = $inject(DeployLimits);
-  protected readonly estateService = $inject(EstateService);
+  protected readonly hostService = $inject(HostService);
   protected readonly runner = $inject(DeployRunner);
   protected readonly registry = $inject(DeployRegistry);
   protected readonly names = $inject(ResourceNameService);
   protected readonly stackDeploys = $inject(StackDeployService);
-  protected readonly commands = $inject(EstateCommandService);
+  protected readonly commands = $inject(HostCommandService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -78,7 +78,7 @@ export class DeployService {
     if (!instance) {
       throw new NotFoundError("No such deployed copy in this project.");
     }
-    // A member of a stack deploys through it: its estate is the stack
+    // A member of a stack deploys through it: its host is the stack
     // environment's, and only its own service is redeployed (#Q2695).
     if (instance.stackEnvironmentId) {
       return await this.stackDeploys.deployMember({
@@ -90,7 +90,7 @@ export class DeployService {
     // ⚠️ The same gate the run applies, here too. A queued row for a deploy
     // that can never run is a row somebody has to explain, and the caller is
     // holding a request that can carry the reason.
-    const estate = await this.gate.assert(instance);
+    const host = await this.gate.assert(instance);
 
     // Every variant of this tag, because the refusal has to tell "wrong
     // variant" from "no variant at all" - `artifacts` is unique on
@@ -115,14 +115,14 @@ export class DeployService {
       // Named rather than swallowed into "no artifact tagged": the tag exists,
       // and what it is is the whole answer.
       this.gate.assertDeployable({
-        estate,
+        host,
         app: instance.app,
         tag: input.tag,
         images: images.map((it) => it.reference),
       });
     }
 
-    // ⚠️ Pick the one this estate can RUN rather than the first row. A project
+    // ⚠️ Pick the one this host can RUN rather than the first row. A project
     // with a `node` and a `workerd` build of one tag is the multi-variant model
     // working, and taking whichever came back first would deploy the wrong one
     // half the time.
@@ -134,8 +134,8 @@ export class DeployService {
     //
     // ⚠️ Against every slice the archive carries, not its primary (#Q2462): a
     // `node,workerd` archive is ONE row whose `runtime` is `node`, and a
-    // Cloudflare estate deploys its workerd slice.
-    const accepted = this.estateService.acceptedRuntimes(estate.type);
+    // Cloudflare host deploys its workerd slice.
+    const accepted = this.hostService.acceptedRuntimes(host.type);
     const runs = (it: Artifact) =>
       ArtifactService.runtimesOf(it).some((runtime) =>
         accepted.includes(runtime),
@@ -145,7 +145,7 @@ export class DeployService {
     if (artifact) {
       // Last clause of the gate, and the only one that needed the artifact row.
       this.gate.assertRuntime({
-        estate,
+        host,
         app: instance.app,
         tag: input.tag,
         runtimes: ArtifactService.runtimesOf(artifact),
@@ -175,10 +175,10 @@ export class DeployService {
     await this.maybeProvisionSigil(instance, artifact, input);
 
     // A Bay machine pulls its work from the command queue: `run` below only
-    // deploys to Cloudflare, and on a Bay estate it failed every app deploy
+    // deploys to Cloudflare, and on a Bay host it failed every app deploy
     // with "names no Cloudflare account" (#Q2706).
-    if (estate.type === "bay") {
-      return await this.queueOnMachine(instance, estate, artifact, input);
+    if (host.type === "bay") {
+      return await this.queueOnMachine(instance, host, artifact, input);
     }
 
     return await this.rows.create({
@@ -197,31 +197,31 @@ export class DeployService {
    * Queue a copy's deploy as a `deploy` command for its Bay machine, and
    * write the row the Deploy tab follows.
    *
-   * The payload is the one `EstateCommandController` sends from the owner's
+   * The payload is the one `HostCommandController` sends from the owner's
    * console, so Bay sees the same command whichever side asked. The row
    * carries `commandId`: {@link run} leaves it alone, and
    * `StackDeployService.onCommandProgressed` moves it on every ack.
    *
    * ⚠️ `assertAccepts` before the name is stored, for the controller's
-   * reason: a deploy this estate refuses must not leave a name behind.
+   * reason: a deploy this host refuses must not leave a name behind.
    */
   protected async queueOnMachine(
     instance: AppInstance,
-    estate: Estate,
+    host: Host,
     artifact: Artifact,
     input: { projectId: number; createdBy?: string },
   ): Promise<Deployment> {
     const { fileId, size } = artifact;
     if (!fileId || size === undefined) {
       throw new BadRequestError(
-        `${artifact.app} ${artifact.tag} stores no packed build to send to '${estate.slug}'. Push one with \`lore artifacts push\`.`,
+        `${artifact.app} ${artifact.tag} stores no packed build to send to '${host.slug}'. Push one with \`lore artifacts push\`.`,
       );
     }
-    this.commands.assertAccepts(estate, "deploy");
-    const name = await this.names.resolve(instance, estate);
+    this.commands.assertAccepts(host, "deploy");
+    const name = await this.names.resolve(instance, host);
     const segment = this.names.projectSegmentOf(instance, name);
     const command = await this.commands.enqueue(
-      estate,
+      host,
       {
         kind: "deploy",
         payload: {
@@ -246,7 +246,7 @@ export class DeployService {
       log: [
         {
           at: new Date(this.dateTime.nowMillis()).toISOString(),
-          text: `Queued on ${estate.slug}`,
+          text: `Queued on ${host.slug}`,
         },
       ],
     });
@@ -279,7 +279,7 @@ export class DeployService {
    * terminal.
    */
   public async run(row: Deployment): Promise<"done" | "busy"> {
-    // A row riding on an estate command runs on the machine, and follows
+    // A row riding on a host command runs on the machine, and follows
     // that command's acks; there is nothing for this Worker to do.
     if (row.commandId) {
       return "done";
@@ -315,19 +315,19 @@ export class DeployService {
       }
 
       // ⚠️ **The gate, and every refusal in it, before any side effect.** One
-      // owner: #1205's `DeployGate`. The estate comes back FROM it rather than
+      // owner: #1205's `DeployGate`. The host comes back FROM it rather than
       // being resolved a second way, so nothing here can pass the gate and then
       // deploy somewhere else.
-      const estate = await this.gate.assert(instance);
+      const host = await this.gate.assert(instance);
 
-      if (!estate.accountId) {
+      if (!host.accountId) {
         throw new BadRequestError(
-          `The estate '${estate.slug}' names no Cloudflare account.`,
+          `The host '${host.slug}' names no Cloudflare account.`,
         );
       }
-      if (!estate.credential) {
+      if (!host.credential) {
         throw new BadRequestError(
-          `The estate '${estate.slug}' holds no credential to deploy with.`,
+          `The host '${host.slug}' holds no credential to deploy with.`,
         );
       }
 
@@ -347,11 +347,11 @@ export class DeployService {
       });
       if (artifact) {
         // ⚠️ Again here, not only at queue time. A row can sit queued while its
-        // instance is pointed at a different estate, and a `node` build reaching
+        // instance is pointed at a different host, and a `node` build reaching
         // a Cloudflare Worker is a broken deploy after an upload rather than a
         // refusal before one.
         this.gate.assertRuntime({
-          estate,
+          host,
           app: row.app,
           tag: row.tag,
           runtimes: ArtifactService.runtimesOf(artifact),
@@ -369,7 +369,7 @@ export class DeployService {
 
       // Stored before the run, and read back on every deploy after: see
       // `ResourceNameService` for why a rename must not move it.
-      const name = await this.names.resolve(instance, estate);
+      const name = await this.names.resolve(instance, host);
 
       // ⚠️ A wedged deploy that holds a `$job` execution open forever is worse
       // than a failed one: the row stays `running`, the UI follows it, and the
@@ -393,15 +393,15 @@ export class DeployService {
           secrets: await this.openSecrets(instance, name),
           credential: {
             apiToken: await this.seal.open(
-              estate.credential,
-              CredentialSealService.ESTATE_PURPOSE,
+              host.credential,
+              CredentialSealService.HOST_PURPOSE,
             ),
-            accountId: estate.accountId,
+            accountId: host.accountId,
           },
         }),
       );
 
-      // ⚠️ After the run and never before it: this records what the estate now
+      // ⚠️ After the run and never before it: this records what the host now
       // HOLDS, and a deploy that failed halfway may have created some of it.
       // The write is best-effort for the same reason - a copy that is live must
       // not be reported as failed because a bookkeeping update did not land.
@@ -440,10 +440,10 @@ export class DeployService {
   }
 
   /**
-   * Remember what the estate now holds for this copy.
+   * Remember what the host now holds for this copy.
    *
    * ⚠️ **This is the only record there will ever be.** The names are derived
-   * from `(project, env)` and so are reproducible, but an estate is LENT: the
+   * from `(project, env)` and so are reproducible, but a host is LENT: the
    * account holds resources Lore never created, and a teardown that recomputed
    * a name would be willing to delete one of them. What Lore may remove is
    * exactly what it can show it made.
@@ -640,7 +640,7 @@ export class DeployService {
    */
   /**
    * The D1 and KV ids the copy's last deploy recorded, for `provision` to
-   * check by id instead of listing the estate's account (#Q3386).
+   * check by id instead of listing the host's account (#Q3386).
    *
    * Only a hint: anything unreadable answers nothing, and the provision
    * client verifies every id it is given against Cloudflare.

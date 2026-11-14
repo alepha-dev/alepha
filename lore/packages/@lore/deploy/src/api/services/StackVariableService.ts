@@ -121,7 +121,7 @@ export class StackVariableService {
   /**
    * Refuses a revision whose compose file interpolates a required variable
    * this environment has not set, naming every one, before anything is
-   * dispatched to an estate. Reads names only: no value is opened.
+   * dispatched to a host. Reads names only: no value is opened.
    */
   async assertComplete(
     model: StackModel,

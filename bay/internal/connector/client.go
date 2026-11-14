@@ -18,8 +18,8 @@ import (
 /*
 Wire format v1, folio #1198.
 
-Lore's `$channel` schemas are the source of truth: `estateServerFrameSchema.ts`
-for what arrives here and `estateClientFrameSchema.ts` for what leaves.
+Lore's `$channel` schemas are the source of truth: `hostServerFrameSchema.ts`
+for what arrives here and `hostClientFrameSchema.ts` for what leaves.
 These structs mirror them by hand, and the end-to-end test (#1628) is what
 catches the two drifting apart. Every frame Lore sends also carries a
 `__alephaRoom` key stamped by the framework; `encoding/json` drops it as an

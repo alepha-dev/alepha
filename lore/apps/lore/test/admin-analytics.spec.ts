@@ -27,9 +27,9 @@ describe("Lore admin analytics surface", () => {
     // is a red test rather than a silent third row. `sigil_errors` joined on
     // 2026-09-04 (feedback #2085): the error series `sigil_error_groups`
     // structurally cannot hold, since that table keeps a running all-time
-    // total per fingerprint and never the occurrences. `estate_stats` joined on
-    // 2026-09-05 (epic #20, quest #1627): the series behind the estate gauge,
-    // keyed by estate rather than by sigil, and the first dataset here that
+    // total per fingerprint and never the occurrences. `host_stats` joined on
+    // 2026-09-05 (epic #20, quest #1627): the series behind the host gauge,
+    // keyed by host rather than by sigil, and the first dataset here that
     // no sigil page reads. `project_activity` joined on 2026-09-20 (epic
     // #E65): the rate half of the audit log, keyed by project and read by
     // Home's momentum bars, and the second dataset here that no sigil page
@@ -38,7 +38,7 @@ describe("Lore admin analytics surface", () => {
     // events exist nowhere else in the app at all - a tool READ leaves no
     // row in any entity table.
     expect(names).toEqual([
-      "estate_stats",
+      "host_stats",
       "mcp_calls",
       "project_activity",
       "sigil_errors",

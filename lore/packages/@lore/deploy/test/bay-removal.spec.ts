@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
   AppController,
-  EstateCommandService,
-  EstateInventoryService,
+  HostCommandService,
+  HostInventoryService,
   StackDeployController,
 } from "../src/api/index.ts";
 import {
@@ -16,7 +16,7 @@ import {
   createEnvironment,
   createInstance,
   createStack,
-  lentBayEstate,
+  lentBayHost,
   type StackWorld,
   stackWorld,
 } from "./support/stackWorld.ts";
@@ -25,7 +25,7 @@ import {
  * Undeploying from a Bay (#Q3153, folio #F1455 of the Alepha project).
  *
  * `remove` and `stack-remove` are aimed at the name the copy was deployed
- * under, held to the estate's deploy switch, and carry no purge: the frames
+ * under, held to the host's deploy switch, and carry no purge: the frames
  * Lore queues have exactly the shape of Bay's own fixtures, which have no
  * field for one. A copy still running on its Bay cannot be forgotten without
  * `forget`, or it would keep serving with nothing in Lore able to remove it.
@@ -49,18 +49,18 @@ describe("Undeploying from a Bay", () => {
       ),
     ) as Record<string, unknown>;
 
-  /** A copy pointed at a lent Bay estate and deployed there once. */
+  /** A copy pointed at a lent Bay host and deployed there once. */
   const deployed = async (options: { deployAllowed?: boolean } = {}) => {
     const w = await stackWorld(alepha);
-    const estate = await lentBayEstate(w, options);
+    const host = await lentBayHost(w, options);
     const instance = await createInstance(alepha, w, "shop", "staging");
     const machineApp = `p${w.project.id}-shop`;
     await w.rows.instances.updateById(instance.id, {
-      estateId: estate.id,
+      hostId: host.id,
       resourceName: `${machineApp}-staging`,
-      resourceEstateId: estate.id,
+      resourceHostId: host.id,
     });
-    return { w, estate, instance, machineApp };
+    return { w, host, instance, machineApp };
   };
 
   const params = (w: StackWorld) => ({
@@ -76,9 +76,9 @@ describe("Undeploying from a Bay", () => {
         user: w.user,
       } as never);
 
-  const report = async (estate: { id: string }, apps: string[]) => {
-    await alepha.inject(EstateInventoryService).record(
-      estate as never,
+  const report = async (host: { id: string }, apps: string[]) => {
+    await alepha.inject(HostInventoryService).record(
+      host as never,
       {
         type: "inventory",
         at: new Date().toISOString(),
@@ -110,9 +110,7 @@ describe("Undeploying from a Bay", () => {
         app: machineApp,
         environment: "staging",
       });
-      const frame = alepha
-        .inject(EstateCommandService)
-        .frameOf(command as never);
+      const frame = alepha.inject(HostCommandService).frameOf(command as never);
       const pinned = fixture("wire-v1", "command-remove.json");
       expect(Object.keys(frame).sort()).toEqual(Object.keys(pinned).sort());
 
@@ -134,7 +132,7 @@ describe("Undeploying from a Bay", () => {
       );
     });
 
-    it("is held to the estate's deploy switch", async ({ expect }) => {
+    it("is held to the host's deploy switch", async ({ expect }) => {
       const { w } = await deployed({ deployAllowed: false });
       await expect(destroy(w)).rejects.toThrow(ForbiddenError);
     });
@@ -150,8 +148,8 @@ describe("Undeploying from a Bay", () => {
     it("refuses a stack member: it goes with its stack environment", async ({
       expect,
     }) => {
-      const { w, estate, instance } = await deployed();
-      const stack = await createStack(alepha, w, { estateId: estate.id });
+      const { w, host, instance } = await deployed();
+      const stack = await createStack(alepha, w, { hostId: host.id });
       const environment = await createEnvironment(alepha, w, stack.id, {
         env: "staging",
       });
@@ -190,8 +188,8 @@ describe("Undeploying from a Bay", () => {
     it("is refused while the machine still reports it, and pointed at destroy", async ({
       expect,
     }) => {
-      const { w, estate, machineApp } = await deployed();
-      await report(estate, [machineApp]);
+      const { w, host, machineApp } = await deployed();
+      await report(host, [machineApp]);
       await expect(remove(w)).rejects.toThrow(/lore apps destroy/);
     });
 
@@ -205,16 +203,16 @@ describe("Undeploying from a Bay", () => {
     it("goes through once the machine no longer reports it", async ({
       expect,
     }) => {
-      const { w, estate } = await deployed();
-      await report(estate, ["someone-else"]);
+      const { w, host } = await deployed();
+      await report(host, ["someone-else"]);
       expect((await remove(w)).ok).toBe(true);
     });
 
     it("goes through with forget, for a machine that is gone", async ({
       expect,
     }) => {
-      const { w, estate, machineApp } = await deployed();
-      await report(estate, [machineApp]);
+      const { w, host, machineApp } = await deployed();
+      await report(host, [machineApp]);
       expect((await remove(w, true)).ok).toBe(true);
     });
   });
@@ -222,10 +220,10 @@ describe("Undeploying from a Bay", () => {
   describe("a stack environment", () => {
     const arrange = async (options: { deployAllowed?: boolean } = {}) => {
       const w = await stackWorld(alepha);
-      const estate = await lentBayEstate(w, options);
+      const host = await lentBayHost(w, options);
       const stack = await createStack(alepha, w, {
         name: "umami",
-        estateId: estate.id,
+        hostId: host.id,
       });
       const environment = await createEnvironment(alepha, w, stack.id, {
         env: "production",
@@ -235,7 +233,7 @@ describe("Undeploying from a Bay", () => {
         stackId: stack.id,
         environmentId: environment.id,
       };
-      return { w, estate, stack, environment, target };
+      return { w, host, stack, environment, target };
     };
 
     const removeEnv = (w: StackWorld, target: Record<string, unknown>) =>
@@ -253,12 +251,12 @@ describe("Undeploying from a Bay", () => {
     it("deployed, queues a stack-remove shaped like Bay's fixture", async ({
       expect,
     }) => {
-      const { w, environment, target, estate } = await arrange();
+      const { w, environment, target, host } = await arrange();
       await w.rows.environments.updateById(environment.id, { revision: 1 });
 
       const queued = await removeEnv(w, target);
 
-      expect(queued.estate).toBe(estate.slug);
+      expect(queued.host).toBe(host.slug);
       expect(queued.command?.kind).toBe("stack-remove");
       expect(queued.command?.payload).toEqual({
         app: "",
@@ -266,7 +264,7 @@ describe("Undeploying from a Bay", () => {
         stack: "umami",
       });
       const frame = alepha
-        .inject(EstateCommandService)
+        .inject(HostCommandService)
         .frameOf(queued.command as never);
       const pinned = fixture("wire-v2", "command-stack-remove.json");
       expect(Object.keys(frame).sort()).toEqual(Object.keys(pinned).sort());
@@ -280,7 +278,7 @@ describe("Undeploying from a Bay", () => {
       expect(read.id).toBe(queued.command?.id);
     });
 
-    it("is held to the estate's deploy switch", async ({ expect }) => {
+    it("is held to the host's deploy switch", async ({ expect }) => {
       const { w, environment, target } = await arrange({
         deployAllowed: false,
       });

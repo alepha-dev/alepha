@@ -119,7 +119,7 @@ export const artifacts = $entity({
      * "workerd"]` for Lore's own build. `runtimes[0]` is {@link runtime}.
      *
      * ⚠️ **One archive is one row** (#Q2462). A multi-slice archive used to be
-     * filed under its primary alone, so a Cloudflare estate refused a
+     * filed under its primary alone, so a Cloudflare host refused a
      * `node,workerd` build that carried the workerd slice it needed. The row
      * keeps its single `runtime` as the key and gains the list as what a
      * deploy matches against. Rejected: one row per slice sharing the bytes,
@@ -191,7 +191,7 @@ export const artifacts = $entity({
      *
      * ⚠️ **Absent for an image**: Lore stores a reference, never bytes. A
      * reader that fetches by this must check the format first - the compiler
-     * points at both of them (`EstatePullController.pullArtifact` and
+     * points at both of them (`HostPullController.pullArtifact` and
      * `DeployRunner.artifactStream`), and neither should be silenced with a
      * cast.
      */

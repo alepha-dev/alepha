@@ -234,7 +234,7 @@ describe("deploying an artifact from inside the Worker", () => {
     // other's database. `DeployService.resourceNameOf` decides it once; here it
     // is given.
     name: "acme-my-app-east-preview",
-    credential: { apiToken: "estate-token", accountId: "estate-account" },
+    credential: { apiToken: "host-token", accountId: "host-account" },
     ...over,
   });
 

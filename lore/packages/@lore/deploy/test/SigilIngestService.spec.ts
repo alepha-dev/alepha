@@ -160,7 +160,7 @@ describe("SigilIngestService.absorb", () => {
     });
 
     expect(stored?.lastSeenAt).toBeTruthy();
-    expect(stored?.lastSeenHost).toBe("example.test");
+    expect(stored?.lastSeenHostname).toBe("example.test");
   });
 });
 
@@ -245,7 +245,7 @@ describe("SigilIngestService — the host an app reports from", () => {
     });
 
     const stored = await ctx.repos.sigils.getById(sigil.id);
-    expect(stored.lastSeenHost).toBe("alepha.dev");
+    expect(stored.lastSeenHostname).toBe("alepha.dev");
     expect(stored.lastSeenAt).toBeTruthy();
   });
 
@@ -262,7 +262,7 @@ describe("SigilIngestService — the host an app reports from", () => {
     });
 
     const stored = await ctx.repos.sigils.getById(sigil.id);
-    expect(stored.lastSeenHost).toBe("alepha.dev");
+    expect(stored.lastSeenHostname).toBe("alepha.dev");
   });
 
   it("normalizes what it is given rather than trusting it", async ({
@@ -276,7 +276,7 @@ describe("SigilIngestService — the host an app reports from", () => {
     await ctx.ingest.absorb(sigil, { host: "ALEPHA.dev." });
 
     const stored = await ctx.repos.sigils.getById(sigil.id);
-    expect(stored.lastSeenHost).toBe("alepha.dev");
+    expect(stored.lastSeenHostname).toBe("alepha.dev");
   });
 
   it("ignores a host that is not an authority", async ({ expect }) => {
@@ -286,7 +286,7 @@ describe("SigilIngestService — the host an app reports from", () => {
     await ctx.ingest.absorb(sigil, { host: "https://evil.example.com/x" });
 
     const stored = await ctx.repos.sigils.getById(sigil.id);
-    expect(stored.lastSeenHost ?? null).toBeNull();
+    expect(stored.lastSeenHostname ?? null).toBeNull();
   });
 
   it("keeps the last known host when a batch names none", async ({
@@ -298,24 +298,24 @@ describe("SigilIngestService — the host an app reports from", () => {
     // page view.
     const project = await createTestProject(ctx.alepha);
     const sigil = await createTestSigil(ctx, project.id, {
-      lastSeenHost: "alepha.dev",
+      lastSeenHostname: "alepha.dev",
     });
 
     await ctx.ingest.absorb(sigil, { views: [{ path: "/" }] });
 
     const stored = await ctx.repos.sigils.getById(sigil.id);
-    expect(stored.lastSeenHost).toBe("alepha.dev");
+    expect(stored.lastSeenHostname).toBe("alepha.dev");
   });
 
   it("follows an app that moves domain", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const sigil = await createTestSigil(ctx, project.id, {
-      lastSeenHost: "old.example.com",
+      lastSeenHostname: "old.example.com",
     });
 
     await ctx.ingest.absorb(sigil, { host: "alepha.dev" });
 
     const stored = await ctx.repos.sigils.getById(sigil.id);
-    expect(stored.lastSeenHost).toBe("alepha.dev");
+    expect(stored.lastSeenHostname).toBe("alepha.dev");
   });
 });

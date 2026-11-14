@@ -232,7 +232,7 @@ func TestEncodeLogsResultLeavesASmallTailAlone(t *testing.T) {
 /*
 The result payload, pinned from both sides.
 
-`apps/lore/test/estate-command-result.spec.ts` validates this same file
+`apps/lore/test/host-command-result.spec.ts` validates this same file
 against Lore's `estateCommandResultSchema`, so the two cannot drift. They
 already did once: Lore's first schema accepted `lines: string[]`, which would
 have refused every real upload with a 400 and stripped the three flags in

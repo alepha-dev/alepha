@@ -34,8 +34,8 @@ export interface StackTarget {
  * target from the start, and a field the model lacks for them shows up as a
  * missing refusal rather than as a redesign.
  *
- * The key is `estates.type`, which is how a stack environment's target is
- * known: the type of the estate it deploys to.
+ * The key is `hosts.type`, which is how a stack environment's target is
+ * known: the type of the host it deploys to.
  */
 export class StackTargets {
   /**
@@ -212,7 +212,7 @@ export class StackTargets {
     for (const name of [...new Set(targets)].sort()) {
       const target = this.targets[name];
       if (!target) {
-        problems.push(`${name} estates cannot run stacks`);
+        problems.push(`${name} hosts cannot run stacks`);
         continue;
       }
       for (const reason of target.refuse(model)) {

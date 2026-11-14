@@ -3,7 +3,7 @@ import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 
 import type { StackDeployment } from "../entities/stackDeployments.ts";
-import { estateCommandResourceSchema } from "../schemas/estateCommandResourceSchema.ts";
+import { hostCommandResourceSchema } from "../schemas/hostCommandResourceSchema.ts";
 import { stackDeploymentResourceSchema } from "../schemas/stackDeploymentResourceSchema.ts";
 import { stackServicesResourceSchema } from "../schemas/stackServicesResourceSchema.ts";
 import { BayRemovalService } from "../services/BayRemovalService.ts";
@@ -14,7 +14,7 @@ import { StackService } from "../services/StackService.ts";
 /**
  * Deploying a stack environment, rolling it back, and its deploy log (#Q2694).
  *
- * There is no estate argument anywhere, as on an app deploy: the estate is a
+ * There is no host argument anywhere, as on an app deploy: the host is a
  * property of the environment (or the stack's default), resolved server-side.
  * Writes take `deploy:manage` behind `apps.stacks`; the log takes `app:read`.
  */
@@ -45,7 +45,7 @@ export class StackDeployController {
     method: "POST",
     path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/deploy",
     description:
-      "Deploy a revision (the newest when none is named) to a stack environment, through its estate.",
+      "Deploy a revision (the newest when none is named) to a stack environment, through its host.",
     schema: {
       params: this.params,
       body: z.object({ revision: z.integer().min(1).optional() }),
@@ -115,7 +115,7 @@ export class StackDeployController {
     method: "POST",
     path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/logs",
     description:
-      "Ask the estate for the tail of one service's logs. Answers a request id; read the lines with the GET of the same path once the machine has answered.",
+      "Ask the host for the tail of one service's logs. Answers a request id; read the lines with the GET of the same path once the machine has answered.",
     schema: {
       params: this.params,
       body: z.object({
@@ -209,7 +209,7 @@ export class StackDeployController {
   });
 
   /**
-   * Ask the estate to take a stack environment down and forget it (#Q3153,
+   * Ask the host to take a stack environment down and forget it (#Q3153,
    * folio #F1455): `bay stack destroy` without `--purge`, so its volumes,
    * variables and registry credentials stay on the machine. Lore's own record
    * of the environment is untouched: delete it once the removal is done.
@@ -226,8 +226,8 @@ export class StackDeployController {
     schema: {
       params: this.params,
       response: z.object({
-        command: estateCommandResourceSchema.optional(),
-        estate: z.string().optional(),
+        command: hostCommandResourceSchema.optional(),
+        host: z.string().optional(),
       }),
     },
     handler: async ({ params, user }) => {
@@ -241,9 +241,7 @@ export class StackDeployController {
         environment,
         user?.id,
       );
-      return queued
-        ? { command: queued.command, estate: queued.estate.slug }
-        : {};
+      return queued ? { command: queued.command, host: queued.host.slug } : {};
     },
   });
 
@@ -253,7 +251,7 @@ export class StackDeployController {
     path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/remove/:commandId",
     schema: {
       params: this.params.extend({ commandId: z.uuid() }),
-      response: estateCommandResourceSchema,
+      response: hostCommandResourceSchema,
     },
     handler: async ({ params }) => {
       const stack = await this.stacks.get(params.projectId, params.stackId);
@@ -270,7 +268,7 @@ export class StackDeployController {
   });
 
   protected resource(row: StackDeployment) {
-    const { estateId: _estateId, ...rest } = row;
+    const { hostId: _hostId, ...rest } = row;
     return rest;
   }
 }

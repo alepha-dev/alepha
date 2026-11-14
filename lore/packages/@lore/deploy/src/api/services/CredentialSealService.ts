@@ -9,7 +9,7 @@ import {
  * Seals a third-party credential so a database that leaks is not a set of
  * cloud accounts that leaks.
  *
- * ## Why this is not `EstateTokenService`
+ * ## Why this is not `HostTokenService`
  *
  * A `bay` secret is one Lore minted, so it is stored hashed and never read
  * back: nothing needs the cleartext again. A cloudflare token is one its
@@ -31,7 +31,7 @@ import {
  * file, and the framework's own precedent is weaker than this (`MfaService`
  * seals TOTP secrets with `APP_SECRET` verbatim, with no label at all).
  *
- * `purpose` is the label, and it is what keeps two callers apart: an estate
+ * `purpose` is the label, and it is what keeps two callers apart: a host
  * token is sealed under `lore:estates:v1` and #1813's app secrets under
  * `lore:app-secrets:v1`, so a ciphertext moved from one column to the other
  * fails to open rather than decrypting into the wrong context. The label is
@@ -48,9 +48,13 @@ import {
  */
 export class CredentialSealService {
   /**
-   * The label for an estate's cloud credential (#1629).
+   * The label for a host's cloud credential (#1629).
+   *
+   * ⚠️ Spelled with the word Lore used before #E147, and staying so: every
+   * credential already stored was sealed under this label, and a new one
+   * would fail to open them all.
    */
-  public static readonly ESTATE_PURPOSE = "lore:estates:v1";
+  public static readonly HOST_PURPOSE = "lore:estates:v1";
 
   /**
    * The label for one deployed copy's environment variables (#1813).

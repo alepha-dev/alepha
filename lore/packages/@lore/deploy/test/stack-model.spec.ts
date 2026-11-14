@@ -14,7 +14,7 @@ import { gzip, tar } from "../src/testing/artifactTarball.ts";
 import {
   bootStackSpec,
   createStack,
-  lentBayEstate,
+  lentBayHost,
   stackWorld,
 } from "./support/stackWorld.ts";
 
@@ -329,14 +329,14 @@ describe("uploading a revision", () => {
     ).rejects.toThrow("not in the bundle");
   });
 
-  it("refuses what the stack's estate cannot run, before anything is stored", async ({
+  it("refuses what the stack's host cannot run, before anything is stored", async ({
     expect,
   }) => {
     const w = await stackWorld(alepha);
-    const estate = await lentBayEstate(w);
+    const host = await lentBayHost(w);
     const stack = await createStack(alepha, w, {
       name: "web",
-      estateId: estate.id,
+      hostId: host.id,
     });
     await expect(
       upload(

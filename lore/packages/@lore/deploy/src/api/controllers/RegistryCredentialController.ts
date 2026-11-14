@@ -12,7 +12,7 @@ import { RegistryCredentialService } from "../services/RegistryCredentialService
  * ⚠️ No response carries a secret, for anybody, on the way in or out. Reads
  * take `app:read` (a member sees which registries the project pulls from);
  * writes take `deploy:manage` behind `apps.deploy`, because a credential is
- * part of what a deploy ships to an estate.
+ * part of what a deploy ships to a host.
  */
 export class RegistryCredentialController {
   protected readonly credentials = $inject(RegistryCredentialService);

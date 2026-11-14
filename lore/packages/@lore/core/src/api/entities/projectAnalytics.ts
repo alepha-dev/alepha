@@ -5,7 +5,7 @@ import { $analytics } from "alepha/api/analytics";
  * Core's portable analytics datasets (#E75: `LoreAnalytics` split per module,
  * dataset names unchanged): the project activity rates, keyed by project,
  * and the MCP tool calls, keyed by tool. Deploy's datasets (views, vitals,
- * errors, estate stats) are in `DeployAnalytics`.
+ * errors, host stats) are in `DeployAnalytics`.
  */
 export class ProjectAnalytics {
   /**
@@ -78,7 +78,7 @@ export class ProjectAnalytics {
    *
    * `project` is a plain `z.text()` rather than a `db.ref` into `projects`,
    * which is where this dataset deliberately differs from the four above.
-   * Those key on a `sigils` / `estates` row whose deletion is a real operator
+   * Those key on a `sigils` / `hosts` row whose deletion is a real operator
    * action the UI warns about; a Lore project is soft-deleted (`deletedAt`)
    * and its `audits` rows carry the same untyped `scopeId` with no foreign
    * key. A cascade here would erase a project's rates on a hard delete while

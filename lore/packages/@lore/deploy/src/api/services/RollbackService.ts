@@ -23,7 +23,7 @@ import {
 export interface RollbackPlan {
   /**
    * `version` when Cloudflare still holds the bytes and this is seconds;
-   * `artifact` when it does not, or the estate cannot do versions at all.
+   * `artifact` when it does not, or the host cannot do versions at all.
    */
   path: "version" | "artifact";
   deployment: Deployment;
@@ -88,9 +88,9 @@ export interface RollbackSchemaCheck {
  * whatever is live. With it, retention stays "one row, one object".
  *
  * The artifact path is the fallback: the version is gone, or the instance's
- * estate changed since. It is an ordinary deploy of an older artifact.
+ * host changed since. It is an ordinary deploy of an older artifact.
  *
- * ⚠️ **Cloudflare only.** A `bay` estate has no version history at all, so a
+ * ⚠️ **Cloudflare only.** A `bay` host has no version history at all, so a
  * rollback there is an artifact deploy through the command queue and the fast
  * path must never be offered for one - not disabled in the UI, unavailable in
  * the plan, so no caller can reach it by asking directly.
@@ -132,10 +132,10 @@ export class RollbackService {
     if (!instance) {
       throw new NotFoundError("That deployed copy is gone.");
     }
-    const estate = await this.gate.assert(instance);
+    const host = await this.gate.assert(instance);
     const risk = await this.risk(target);
 
-    if (estate.type !== "cloudflare") {
+    if (host.type !== "cloudflare") {
       return {
         path: "artifact",
         deployment: target,
@@ -143,7 +143,7 @@ export class RollbackService {
         // Named rather than left blank: an operator wondering why the fast
         // button is missing should not have to guess.
         reason:
-          "This estate keeps no version history, so a rollback redeploys the stored artifact.",
+          "This host keeps no version history, so a rollback redeploys the stored artifact.",
       };
     }
 
@@ -192,10 +192,10 @@ export class RollbackService {
     // the operator has already confirmed.
     const client = new CloudflareDeployClient({
       apiToken: await this.seal.open(
-        estate.credential as string,
-        CredentialSealService.ESTATE_PURPOSE,
+        host.credential as string,
+        CredentialSealService.HOST_PURPOSE,
       ),
-      accountId: estate.accountId as string,
+      accountId: host.accountId as string,
     });
     const versions = await client
       .listVersions(instance.resourceName)
@@ -243,13 +243,13 @@ export class RollbackService {
     }
 
     const instance = await this.instances.findById(plan.deployment.instanceId);
-    const estate = await this.gate.assert(instance as never);
+    const host = await this.gate.assert(instance as never);
     const client = new CloudflareDeployClient({
       apiToken: await this.seal.open(
-        estate.credential as string,
-        CredentialSealService.ESTATE_PURPOSE,
+        host.credential as string,
+        CredentialSealService.HOST_PURPOSE,
       ),
-      accountId: estate.accountId as string,
+      accountId: host.accountId as string,
     });
 
     const row = await this.rows.create({

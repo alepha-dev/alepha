@@ -18,7 +18,7 @@ The backup answers, pinned from both sides, as `logs-result.json` is.
 
 Each verb that uploads runs here against a real bundle and a fake bucket, and
 what it uploads must not carry a field its fixture under
-`testdata/backup-results/` lacks. Lore's `estate-backup-results.spec.ts`
+`testdata/backup-results/` lacks. Lore's `host-backup-results.spec.ts`
 parses the same files (copied to `fixtures/bay/backup-results/`) and asserts
 it strips nothing, so a field Bay starts sending without Lore's schema knowing
 it goes red here first, and a field Lore stops reading goes red there.

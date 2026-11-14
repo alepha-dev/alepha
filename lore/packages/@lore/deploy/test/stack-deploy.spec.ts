@@ -6,15 +6,15 @@ import { NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
-  EstateCommandService,
+  HostCommandService,
   RegistryCredentialController,
   StackController,
   StackDeployController,
   StackVariableController,
 } from "../src/api/index.ts";
-import { estateCommandFrameSchema } from "../src/api/schemas/estateCommandFrameSchema.ts";
+import { hostCommandFrameSchema } from "../src/api/schemas/hostCommandFrameSchema.ts";
 import { stackDeployOutcomeSchema } from "../src/schemas/index.ts";
-import { createTestEstate } from "../src/testing/estates.ts";
+import { createTestHost } from "../src/testing/hosts.ts";
 import {
   bootStackSpec,
   createEnvironment,
@@ -24,7 +24,7 @@ import {
 } from "./support/stackWorld.ts";
 
 /**
- * Stack deploys to a Bay estate over the connector (#Q2694).
+ * Stack deploys to a Bay host over the connector (#Q2694).
  *
  * `test/fixtures/bay/wire-v2/` is Bay's `internal/connector/testdata/stacks`:
  * the frame Lore queues has the shape of Bay's `command-stack-deploy.json`,
@@ -66,7 +66,7 @@ describe("stack deploys", () => {
     options: { deployAllowed?: boolean; variables?: boolean } = {},
   ) => {
     const w = await stackWorld(alepha);
-    const minted = await createTestEstate(
+    const minted = await createTestHost(
       alepha,
       w.user,
       { slug: `bay-${crypto.randomUUID().slice(0, 6)}` },
@@ -74,12 +74,12 @@ describe("stack deploys", () => {
         projectId: w.project.id,
       },
     );
-    await w.rows.estates.updateById(minted.id, {
+    await w.rows.hosts.updateById(minted.id, {
       deployAllowed: options.deployAllowed ?? true,
     });
     const stack = await createStack(alepha, w, {
       name: "shop",
-      estateId: minted.id,
+      hostId: minted.id,
     });
     const env = await createEnvironment(alepha, w, stack.id, {
       env: "production",
@@ -121,7 +121,7 @@ describe("stack deploys", () => {
     const revision = await upload(w, stack.id, umami);
     return {
       w,
-      estateId: minted.id,
+      hostId: minted.id,
       secret: minted.secret as string,
       stack,
       env,
@@ -181,10 +181,10 @@ describe("stack deploys", () => {
       const command = await w.rows.commands.getOne({
         where: { id: { eq: deployed.commandId } },
       });
-      const frame = alepha.inject(EstateCommandService).frameOf(command);
+      const frame = alepha.inject(HostCommandService).frameOf(command);
 
       const fixture = wire("command-stack-deploy.json");
-      expect(estateCommandFrameSchema.parse(fixture).kind).toBe("stack-deploy");
+      expect(hostCommandFrameSchema.parse(fixture).kind).toBe("stack-deploy");
       expect(Object.keys(fixture).sort()).toEqual(Object.keys(frame).sort());
       expect(frame).toMatchObject({
         kind: "stack-deploy",
@@ -205,7 +205,7 @@ describe("stack deploys", () => {
       expect(deployed).toMatchObject({ status: "queued", revision: 1 });
     });
 
-    it("refuses before anything is queued while the estate does not accept deploys, or a variable is unset", async ({
+    it("refuses before anything is queued while the host does not accept deploys, or a variable is unset", async ({
       expect,
     }) => {
       const off = await arrange({ deployAllowed: false });
@@ -263,16 +263,14 @@ describe("stack deploys", () => {
     it("answers no registry credential to a command that is not a stack deploy", async ({
       expect,
     }) => {
-      const { w, estateId, secret } = await arrange();
-      const estate = await w.rows.estates.getOne({
-        where: { id: { eq: estateId } },
+      const { w, hostId, secret } = await arrange();
+      const host = await w.rows.hosts.getOne({
+        where: { id: { eq: hostId } },
       });
-      const restart = await alepha
-        .inject(EstateCommandService)
-        .enqueue(estate, {
-          kind: "restart",
-          payload: { app: "api", environment: "production" },
-        });
+      const restart = await alepha.inject(HostCommandService).enqueue(host, {
+        kind: "restart",
+        payload: { app: "api", environment: "production" },
+      });
       await running(w, restart.id);
       expect((await pull(secret, restart.id, "registries")).status).toBe(404);
     });
@@ -282,7 +280,7 @@ describe("stack deploys", () => {
     it("records Bay's outcome, follows the command to success, and sets the environment's revision", async ({
       expect,
     }) => {
-      const { w, estateId, secret, params, env, revision } = await arrange();
+      const { w, hostId, secret, params, env, revision } = await arrange();
       const deployed = (await deploy(w, params)).data;
       await running(w, deployed.commandId);
       const outcome = wire("outcome-stack-deploy.json");
@@ -292,7 +290,7 @@ describe("stack deploys", () => {
         body: JSON.stringify(outcome),
       });
       expect(stored.status).toBe(200);
-      await alepha.inject(EstateCommandService).ack(estateId, {
+      await alepha.inject(HostCommandService).ack(hostId, {
         type: "ack",
         id: deployed.commandId,
         status: "done",
@@ -319,9 +317,9 @@ describe("stack deploys", () => {
     it("reads a failed command as a failed deploy, with the machine's reason", async ({
       expect,
     }) => {
-      const { w, estateId, params } = await arrange();
+      const { w, hostId, params } = await arrange();
       const deployed = (await deploy(w, params)).data;
-      await alepha.inject(EstateCommandService).ack(estateId, {
+      await alepha.inject(HostCommandService).ack(hostId, {
         type: "ack",
         id: deployed.commandId,
         status: "failed",

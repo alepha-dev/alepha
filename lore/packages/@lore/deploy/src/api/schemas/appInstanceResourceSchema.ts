@@ -2,7 +2,7 @@ import { type Infer, z } from "alepha";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { deployments } from "../entities/deployments.ts";
-import { estates } from "../entities/estates.ts";
+import { hosts } from "../entities/hosts.ts";
 import { sigilResourceSchema } from "./sigilResourceSchema.ts";
 
 /**
@@ -10,13 +10,13 @@ import { sigilResourceSchema } from "./sigilResourceSchema.ts";
  * row, plus **what it has unlocked**.
  *
  * Derived from the entity rather than hand-copied, which is how
- * `lastSeenHost` drifted to an unbounded string the last time a resource
+ * `lastSeenHostname` drifted to an unbounded string the last time a resource
  * restated its columns. `createdBy` is the one field dropped: a raw uuid
  * nothing on this surface resolves to a person.
  *
  * The two nested summaries are what let a caller render the right tab set from
  * one request. Both are `pick`ed from the schemas that own those rows, so a
- * column added to `sigils` or `estates` cannot ride along into a browser.
+ * column added to `sigils` or `hosts` cannot ride along into a browser.
  *
  * ⚠️ There is deliberately no "has artifacts" flag. The presence of a build
  * decides no tab, so the flag would cost a query per row of the list for
@@ -44,16 +44,16 @@ export const appInstanceResourceSchema = appInstances.schema
         kinds: true,
         createdAt: true,
         lastSeenAt: true,
-        lastSeenHost: true,
+        lastSeenHostname: true,
         reportedConfig: true,
         reportedConfigAt: true,
       })
       .optional(),
     /**
-     * Where this instance deploys to, when an estate has been chosen. Enough
+     * Where this instance deploys to, when a host has been chosen. Enough
      * to name it on a page and no more: no credential, no liveness, no stats.
      */
-    estate: estates.schema
+    host: hosts.schema
       .pick({ id: true, slug: true, type: true, label: true })
       .optional(),
     /**
@@ -94,7 +94,7 @@ export const appInstanceResourceSchema = appInstances.schema
       .optional(),
     /**
      * The stack environment this copy is a member of, named: a member deploys
-     * through it and takes its estate from it (#Q2695).
+     * through it and takes its host from it (#Q2695).
      */
     stack: z
       .object({

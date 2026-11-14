@@ -23,8 +23,8 @@ import {
   appSecrets,
   artifacts,
   deployments,
-  estateProjects,
-  estates,
+  hostProjects,
+  hosts,
   stackEnvironments,
   stacks,
 } from "../src/schemas/index.ts";
@@ -45,8 +45,8 @@ const userDataSchema = z.object({ username: z.string(), email: z.email() });
 
 class TestRows {
   public readonly secrets = $repository(appSecrets);
-  public readonly estates = $repository(estates);
-  public readonly grants = $repository(estateProjects);
+  public readonly hosts = $repository(hosts);
+  public readonly grants = $repository(hostProjects);
   public readonly instances = $repository(appInstances);
   public readonly artifacts = $repository(artifacts);
   public readonly deployments = $repository(deployments);
@@ -371,9 +371,9 @@ describe("a deployed copy's environment", () => {
           CredentialSealService.APP_SECRETS_PURPOSE,
         ),
       ).toBe("sk_live_abcdefghijkl");
-      // ...and not under the estate's, which is the whole point of having two.
+      // ...and not under the host's, which is the whole point of having two.
       await expect(
-        seal.open(row.valueSealed, CredentialSealService.ESTATE_PURPOSE),
+        seal.open(row.valueSealed, CredentialSealService.HOST_PURPOSE),
       ).rejects.toThrow();
     });
 
@@ -589,21 +589,21 @@ describe("a deployed copy's environment", () => {
 
   describe("the names Bay writes itself", () => {
     /**
-     * Points the copy at a Bay estate lent to its project.
+     * Points the copy at a Bay host lent to its project.
      */
     const onBay = async (w: Awaited<ReturnType<typeof world>>) => {
       const rows = alepha.inject(TestRows);
-      const estate = await rows.estates.create({
+      const host = await rows.hosts.create({
         ownerUserId: w.user.id,
         slug: `bay-${crypto.randomUUID().slice(0, 6)}`,
         type: "bay",
         deployAllowed: true,
       });
       await rows.grants.create({
-        estateId: estate.id,
+        hostId: host.id,
         projectId: w.project.id,
       });
-      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+      await rows.instances.updateById(w.instance.id, { hostId: host.id });
     };
 
     it.each([
@@ -613,7 +613,7 @@ describe("a deployed copy's environment", () => {
       "data_dir",
       "DATABASE_URL",
     ])(
-      "refuses %s on a copy that deploys to a Bay estate, naming why",
+      "refuses %s on a copy that deploys to a Bay host, naming why",
       async (key) => {
         // Bay writes these into every instance itself and the secret pull
         // leaves them out, so a stored value would sit on the tab and never
@@ -631,10 +631,10 @@ describe("a deployed copy's environment", () => {
     it.each(["APP_SECRET", "APP_NAME"])(
       "refuses %s on a stack's app service, which runs on a Bay",
       async (key) => {
-        // A member's estate is its stack environment's, so the copy carries
+        // A member's host is its stack environment's, so the copy carries
         // none of its own. With Lore escrowing a Bay copy's key and handing
         // it to a rebuilt host, a value typed here would become that host's
-        // key: refused, as on a copy deploying to a Bay estate.
+        // key: refused, as on a copy deploying to a Bay host.
         const w = await world();
         const rows = alepha.inject(TestRows);
         const stack = await rows.stacks.create({
@@ -658,7 +658,7 @@ describe("a deployed copy's environment", () => {
       },
     );
 
-    it("still takes APP_SECRET and APP_NAME on a copy with no Bay estate", async ({
+    it("still takes APP_SECRET and APP_NAME on a copy with no Bay host", async ({
       expect,
     }) => {
       // ⚠️ Deliberately settable there: a copy replacing a live deployment has
@@ -789,13 +789,13 @@ describe("a deployed copy's environment", () => {
 
   describe("the name a deploy gives a copy that has none", () => {
     /**
-     * Points the copy at a Cloudflare estate and pushes a build whose bytes
+     * Points the copy at a Cloudflare host and pushes a build whose bytes
      * are gone, so a run opens the secret set and then fails at the fetch:
      * as far as these cases need it to go.
      */
     const deployable = async (w: Awaited<ReturnType<typeof world>>) => {
       const rows = alepha.inject(TestRows);
-      const estate = await rows.estates.create({
+      const host = await rows.hosts.create({
         ownerUserId: w.user.id,
         slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
         type: "cloudflare",
@@ -803,14 +803,14 @@ describe("a deployed copy's environment", () => {
         accountId: "acct-1",
         credential: await alepha
           .inject(CredentialSealService)
-          .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
+          .seal("cf-token", CredentialSealService.HOST_PURPOSE),
         credentialKeyVersion: CredentialSealService.KEY_VERSION,
       });
       await rows.grants.create({
-        estateId: estate.id,
+        hostId: host.id,
         projectId: w.project.id,
       });
-      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+      await rows.instances.updateById(w.instance.id, { hostId: host.id });
       await rows.artifacts.create({
         projectId: w.project.id,
         app: "my-app",
@@ -1041,7 +1041,7 @@ describe("a deployed copy's environment", () => {
       const secret = "sk_live_donotleakthisvalue";
       await set(w, "STRIPE_SECRET_KEY", secret);
 
-      const estate = await rows.estates.create({
+      const host = await rows.hosts.create({
         ownerUserId: w.user.id,
         slug: "an-account",
         type: "cloudflare",
@@ -1049,14 +1049,14 @@ describe("a deployed copy's environment", () => {
         accountId: "acct-1",
         credential: await alepha
           .inject(CredentialSealService)
-          .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
+          .seal("cf-token", CredentialSealService.HOST_PURPOSE),
         credentialKeyVersion: CredentialSealService.KEY_VERSION,
       });
       await rows.grants.create({
-        estateId: estate.id,
+        hostId: host.id,
         projectId: w.project.id,
       });
-      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+      await rows.instances.updateById(w.instance.id, { hostId: host.id });
 
       await rows.artifacts.create({
         projectId: w.project.id,

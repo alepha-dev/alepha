@@ -12,7 +12,7 @@ import { CredentialSealService } from "./CredentialSealService.ts";
 import { DeployGate } from "./DeployGate.ts";
 
 /**
- * What one copy still holds in its estate, as the deploy recorded it.
+ * What one copy still holds in its host, as the deploy recorded it.
  */
 export interface RecordedResources {
   worker?: string;
@@ -47,7 +47,7 @@ export interface RecordedResources {
  *
  * Every resource is named from `(project, env)`, so the names are reproducible
  * and "recompute the name and delete it" is the obvious implementation. It is
- * also the wrong one, and the reason is the whole design: an **estate is
+ * also the wrong one, and the reason is the whole design: an **host is
  * LENT**. Its Cloudflare account holds resources Lore never created, and one
  * of them may legitimately bear the name a copy would compute. `alepha
  * infra down` may delete by name - it runs on the operator's own machine,
@@ -100,7 +100,7 @@ export class TeardownService {
    * Everything else this service deletes, it deletes because a deploy wrote it
    * down. A record naming a `queue` and no `dlq` was written before
    * `WorkerCloudflareAdapter` recorded one, and honouring only what it names
-   * would leave `<queue>-dlq` standing in the estate's account with nothing
+   * would leave `<queue>-dlq` standing in the host's account with nothing
    * left anywhere that knows its name.
    *
    * It can be shown to be the one Lore made. In every version of the adapter
@@ -132,7 +132,7 @@ export class TeardownService {
   }
 
   /**
-   * Whether this copy has anything of Lore's left in its estate.
+   * Whether this copy has anything of Lore's left in its host.
    */
   public holdsResources(instance: AppInstance): boolean {
     const record = this.read(instance);
@@ -150,7 +150,7 @@ export class TeardownService {
     const record = this.read(instance);
     if (!record) {
       throw new BadRequestError(
-        `Lore has no record of what it created for ${instance.app}/${instance.env}, so it will not delete anything: the names are derived and an estate holds resources Lore never made. Deploy it once to record them, or remove them with \`alepha infra down\` or from the Cloudflare dashboard.`,
+        `Lore has no record of what it created for ${instance.app}/${instance.env}, so it will not delete anything: the names are derived and a host holds resources Lore never made. Deploy it once to record them, or remove them with \`alepha infra down\` or from the Cloudflare dashboard.`,
       );
     }
     if (Object.keys(record).length === 0) {
@@ -159,26 +159,26 @@ export class TeardownService {
 
     // ⚠️ The same gate a deploy applies. Removing what a copy holds is at
     // least as consequential as adding to it, so it answers to the same
-    // question: is this estate still lent, still allowed, still credentialed.
-    const estate = await this.gate.assert(instance);
+    // question: is this host still lent, still allowed, still credentialed.
+    const host = await this.gate.assert(instance);
 
-    // ⚠️ A `bay` estate has no Cloudflare credential at all, and these are
+    // ⚠️ A `bay` host has no Cloudflare credential at all, and these are
     // Cloudflare resources. Refused by name rather than cast through, because
     // the alternative is a teardown that reports success having called
     // nothing.
-    if (!estate.credential || !estate.accountId) {
+    if (!host.credential || !host.accountId) {
       throw new BadRequestError(
-        `The estate '${estate.slug}' has no Cloudflare credential, so Lore cannot remove what ${instance.app}/${instance.env} holds there.`,
+        `The host '${host.slug}' has no Cloudflare credential, so Lore cannot remove what ${instance.app}/${instance.env} holds there.`,
       );
     }
 
     const result = await this.adapter()
       .use({
         apiToken: await this.seal.open(
-          estate.credential,
-          CredentialSealService.ESTATE_PURPOSE,
+          host.credential,
+          CredentialSealService.HOST_PURPOSE,
         ),
-        accountId: estate.accountId,
+        accountId: host.accountId,
       })
       .teardownRecorded(record, {
         // ⚠️ The instance's own claim, made at creation and never revisable.

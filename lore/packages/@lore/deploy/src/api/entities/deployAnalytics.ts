@@ -2,7 +2,7 @@ import { z } from "alepha";
 import { $analytics } from "alepha/api/analytics";
 import { db } from "alepha/orm";
 
-import { estates } from "./estates.ts";
+import { hosts } from "./hosts.ts";
 import { monitors } from "./monitors.ts";
 import { sigils } from "./sigils.ts";
 
@@ -10,8 +10,8 @@ import { sigils } from "./sigils.ts";
  * Deploy's portable analytics datasets (#E75: `LoreAnalytics` split per
  * module, dataset names unchanged).
  *
- * Views, vitals and errors, keyed by sigil, and the estate stats series,
- * keyed by estate. The project activity rates and the MCP tool calls are
+ * Views, vitals and errors, keyed by sigil, and the host stats series,
+ * keyed by host. The project activity rates and the MCP tool calls are
  * core's, in `ProjectAnalytics`. Unique visitors stay in `sigilUniquesDaily` because a
  * distinct count cannot survive sampling or a rollup.
  *
@@ -384,14 +384,14 @@ export class DeployAnalytics {
   });
 
   /**
-   * An estate's CPU and memory over time (#1627): the series behind the
-   * gauge on the `estates` row.
+   * A host's CPU and memory over time (#1627): the series behind the
+   * gauge on the `hosts` row.
    *
    * The two are different questions and live in different places on
-   * purpose. "CPU is 34% right now" is the gauge, upserted onto the estate
-   * row by `EstateStatsService` on every push, exact and never growing.
+   * purpose. "CPU is 34% right now" is the gauge, upserted onto the host
+   * row by `HostStatsService` on every push, exact and never growing.
    * "CPU over 30 days" is this dataset, written on the same push only while
-   * the estate's `collectSeries` switch is on. Nothing appends a row per
+   * the host's `collectSeries` switch is on. Nothing appends a row per
    * push to D1: on Workers this is a `writeDataPoint` into Analytics Engine.
    *
    * ⚠️ The gauge must never be read back from here. Every measure comes back
@@ -399,11 +399,11 @@ export class DeployAnalytics {
    * why the measures are sums and a sample count rather than percentages:
    * `sum` is the one aggregate that survives a rollup and a sampled backend,
    * so the mean of a day is `cpu / samples` on the way out
-   * (`EstateStatsService.series`), never a stored average of averages.
+   * (`HostStatsService.series`), never a stored average of averages.
    *
-   * `estateId` is the index dimension and a real `db.ref` into `estates`
+   * `hostId` is the index dimension and a real `db.ref` into `hosts`
    * with `onDelete: "cascade"`, the same shape `sigilId` has above and for
-   * the same reason: on the relational backend deleting an estate erases
+   * the same reason: on the relational backend deleting a host erases
    * its series instead of orphaning it. Memory and Analytics Engine ignore
    * the reference, since both only read `Object.keys(dimensions.shape)`.
    *
@@ -411,10 +411,10 @@ export class DeployAnalytics {
    * END of the list, whatever it is called, and moves nothing.
    */
   public readonly stats = $analytics({
-    name: "estate_stats",
-    index: "estateId",
+    name: "host_stats",
+    index: "hostId",
     dimensions: z.object({
-      estateId: db.ref(z.uuid(), () => estates.cols.id, {
+      hostId: db.ref(z.uuid(), () => hosts.cols.id, {
         onDelete: "cascade",
       }),
     }),
@@ -424,7 +424,7 @@ export class DeployAnalytics {
       samples: z.number(),
     }),
     slots: {
-      dimensions: ["estateId"],
+      dimensions: ["hostId"],
       measures: ["cpu", "memory", "samples"],
     },
     retention: { hot: "30d", rollup: "day", cold: "400d" },

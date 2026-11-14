@@ -23,16 +23,16 @@ describe("CredentialSealService", () => {
 
     const sealed = await service.seal(
       token,
-      CredentialSealService.ESTATE_PURPOSE,
+      CredentialSealService.HOST_PURPOSE,
     );
 
     // The point of the column: what lands in the database is not the token.
     expect(sealed).not.toContain(token);
     // `v1:iv:tag:ciphertext`: the format is versioned since alepha 0.33.
     expect(sealed.split(":")).toHaveLength(4);
-    expect(
-      await service.open(sealed, CredentialSealService.ESTATE_PURPOSE),
-    ).toBe(token);
+    expect(await service.open(sealed, CredentialSealService.HOST_PURPOSE)).toBe(
+      token,
+    );
   });
 
   it("should not open a credential sealed under another purpose", async ({
@@ -42,11 +42,11 @@ describe("CredentialSealService", () => {
 
     const sealed = await service.seal("cfut_secret", OTHER_PURPOSE);
 
-    // What keeps an estate token and #1813's app secrets on separate keys:
+    // What keeps a host token and #1813's app secrets on separate keys:
     // a ciphertext moved between the two columns fails rather than
     // decrypting into the wrong context.
     await expect(
-      service.open(sealed, CredentialSealService.ESTATE_PURPOSE),
+      service.open(sealed, CredentialSealService.HOST_PURPOSE),
     ).rejects.toThrow();
   });
 
@@ -54,7 +54,7 @@ describe("CredentialSealService", () => {
     const service = await sealer();
     const sealed = await service.seal(
       "cfut_secret",
-      CredentialSealService.ESTATE_PURPOSE,
+      CredentialSealService.HOST_PURPOSE,
     );
 
     const [version, iv, tag, body] = sealed.split(":");
@@ -63,7 +63,7 @@ describe("CredentialSealService", () => {
     await expect(
       service.open(
         `${version}:${iv}:${tag}:${flipped}`,
-        CredentialSealService.ESTATE_PURPOSE,
+        CredentialSealService.HOST_PURPOSE,
       ),
     ).rejects.toThrow();
   });
@@ -81,10 +81,10 @@ describe("CredentialSealService", () => {
     await alepha.start();
 
     await expect(
-      service.seal("cfut_secret", CredentialSealService.ESTATE_PURPOSE),
+      service.seal("cfut_secret", CredentialSealService.HOST_PURPOSE),
     ).rejects.toThrow(/APP_SECRET/);
     await expect(
-      service.open("iv:tag:body", CredentialSealService.ESTATE_PURPOSE),
+      service.open("iv:tag:body", CredentialSealService.HOST_PURPOSE),
     ).rejects.toThrow(/APP_SECRET/);
   });
 
@@ -94,7 +94,7 @@ describe("CredentialSealService", () => {
     // An empty credential would round-trip perfectly and mean nothing; the
     // caller has a bug, and a sealed empty string hides it until a deploy.
     await expect(
-      service.seal("", CredentialSealService.ESTATE_PURPOSE),
+      service.seal("", CredentialSealService.HOST_PURPOSE),
     ).rejects.toThrow();
   });
 });

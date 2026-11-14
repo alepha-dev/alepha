@@ -93,7 +93,7 @@ export const sigils = $entity({
      * nullable `ADD COLUMN` is the one shape that does not make drizzle
      * rebuild it.
      */
-    lastSeenHost: z.string().max(253).optional(),
+    lastSeenHostname: z.string().max(253).optional(),
     /**
      * What the app last SAID it is configured to collect, resolved.
      *
@@ -114,7 +114,7 @@ export const sigils = $entity({
      * than reading as undefined. Nothing here may become required.
      *
      * Optional, and without a `db.default`, for the same table-rebuild reason
-     * as {@link lastSeenHost}.
+     * as {@link lastSeenHostname}.
      */
     reportedConfig: z
       .object({

@@ -7,7 +7,7 @@ import { $repository, DbConflictError } from "alepha/orm";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
-import { estateProjects } from "../entities/estateProjects.ts";
+import { hostProjects } from "../entities/hostProjects.ts";
 import { SIGIL_KINDS, sigils, type Sigil } from "../entities/sigils.ts";
 import { defaultAppInstance } from "../schemas/defaultAppInstance.ts";
 import { AppSecretService } from "./AppSecretService.ts";
@@ -15,7 +15,7 @@ import { SigilTokenService } from "./SigilTokenService.ts";
 
 /**
  * What an app instance IS, stated once: how its two names are normalised, what
- * makes the pair unique, which estate it may point at, and what deleting one
+ * makes the pair unique, which host it may point at, and what deleting one
  * takes with it.
  *
  * Every write to `app_instances` goes through here, and so does every write to
@@ -26,13 +26,13 @@ import { SigilTokenService } from "./SigilTokenService.ts";
  * Auth is deliberately NOT enforced here, following `AreaService`: every caller
  * has already run `ProjectSecurityService.assertOwner` or `assertMember`, and a
  * service that re-checked would need a token it has no business holding. The
- * one exception is {@link setEstate}'s lending check, which is not
+ * one exception is {@link setHost}'s lending check, which is not
  * authorization of the caller but validation of the reference itself.
  */
 export class AppService {
   protected readonly instances = $repository(appInstances);
   protected readonly sigils = $repository(sigils);
-  protected readonly grants = $repository(estateProjects);
+  protected readonly grants = $repository(hostProjects);
   protected readonly tokens = $inject(SigilTokenService);
   protected readonly secrets = $inject(AppSecretService);
   protected readonly alepha = $inject(Alepha);
@@ -393,48 +393,48 @@ export class AppService {
   }
 
   /**
-   * Points this instance at an estate the project has been LENT, or clears it.
+   * Points this instance at a host the project has been LENT, or clears it.
    *
-   * ⚠️ Validated against `estate_projects` and never against `estates`. An
-   * estate belongs to its home project and is lent to others (folio #1194, epic #E126); resolving
-   * the id against the estates table directly would let a project point at an
-   * estate it was never given, which is folio #96's `targetId` hole wearing a
+   * ⚠️ Validated against `host_projects` and never against `hosts`. An
+   * host belongs to its home project and is lent to others (folio #1194, epic #E126); resolving
+   * the id against the hosts table directly would let a project point at an
+   * host it was never given, which is folio #96's `targetId` hole wearing a
    * foreign key. The 404 rather than a 403 is deliberate too: a project that
-   * was never lent an estate should not be able to learn that it exists.
+   * was never lent a host should not be able to learn that it exists.
    *
    * This is the one write path for the column, which is what lets epic #1's
-   * deploy resolve the estate server-side from the row. A client that could
-   * name its own estate at deploy time could deploy into somebody else's cloud
+   * deploy resolve the host server-side from the row. A client that could
+   * name its own host at deploy time could deploy into somebody else's cloud
    * account.
    */
-  async setEstate(
+  async setHost(
     instance: AppInstance,
-    estateId: string | null,
+    hostId: string | null,
   ): Promise<AppInstance> {
-    // ⚠️ A move keeps `resourceEstateId`, the estate the copy last deployed
+    // ⚠️ A move keeps `resourceHostId`, the host the copy last deployed
     // to: its instance still runs there under its name, which
     // `ResourceNameService.assertFree` keeps from any other copy until this one
     // deploys elsewhere. Its Backups tab acts only where both agree.
-    if (estateId === null) {
-      await this.instances.updateById(instance.id, { estateId: null });
-      return { ...instance, estateId: undefined };
+    if (hostId === null) {
+      await this.instances.updateById(instance.id, { hostId: null });
+      return { ...instance, hostId: undefined };
     }
 
     const grant = await this.grants.findOne({
       where: {
-        estateId: { eq: estateId },
+        hostId: { eq: hostId },
         projectId: { eq: instance.projectId },
       },
     });
     if (!grant) {
-      throw new NotFoundError("This project has no such estate");
+      throw new NotFoundError("This project has no such host");
     }
 
-    if (estateId === instance.estateId) {
+    if (hostId === instance.hostId) {
       return instance;
     }
-    await this.instances.updateById(instance.id, { estateId });
-    return { ...instance, estateId };
+    await this.instances.updateById(instance.id, { hostId });
+    return { ...instance, hostId };
   }
 
   /**

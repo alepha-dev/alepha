@@ -8,7 +8,7 @@ import {
   CredentialSealService,
   TeardownService,
 } from "@lore/deploy/api";
-import { appInstances, estateProjects, estates } from "@lore/deploy/schemas";
+import { appInstances, hostProjects, hosts } from "@lore/deploy/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -33,8 +33,8 @@ const userDataSchema = z.object({ username: z.string(), email: z.email() });
 
 class TestRows {
   public readonly instances = $repository(appInstances);
-  public readonly estates = $repository(estates);
-  public readonly grants = $repository(estateProjects);
+  public readonly hosts = $repository(hosts);
+  public readonly grants = $repository(hostProjects);
 }
 
 /**
@@ -129,7 +129,7 @@ describe("tearing a copy's resources down", () => {
     ).data;
 
     const rows = alepha.inject(TestRows);
-    const estate = await rows.estates.create({
+    const host = await rows.hosts.create({
       ownerUserId: user.id,
       type: "cloudflare",
       slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -141,14 +141,14 @@ describe("tearing a copy's resources down", () => {
       // fixture bug.
       credential: await alepha
         .inject(CredentialSealService)
-        .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
+        .seal("cf-token", CredentialSealService.HOST_PURPOSE),
     } as never);
     await rows.grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: project.id,
     });
     await rows.instances.updateById(instance.id, {
-      estateId: estate.id,
+      hostId: host.id,
       ...(resources === undefined
         ? {}
         : { resources: JSON.stringify(resources) }),
@@ -209,7 +209,7 @@ describe("tearing a copy's resources down", () => {
     });
   });
 
-  describe("driving the estate", () => {
+  describe("driving the host", () => {
     /**
      * ⚠️ The case every other test in this file misses, and it is why a broken
      * injection reached production: the refusals return before the adapter is
@@ -343,7 +343,7 @@ describe("tearing a copy's resources down", () => {
      * ⚠️ Deleting the row does not orphan the resources - it makes them
      * UNREACHABLE, since the row is the only place their names are written.
      */
-    it("refuses while the estate still holds what Lore made", async ({
+    it("refuses while the host still holds what Lore made", async ({
       expect,
     }) => {
       const w = await world({ worker: "my-app-production" });

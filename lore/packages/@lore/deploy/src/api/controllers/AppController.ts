@@ -10,7 +10,7 @@ import { $repository } from "alepha/orm";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
-import { type Estate, estates } from "../entities/estates.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import { stackEnvironments } from "../entities/stackEnvironments.ts";
 import { stacks } from "../entities/stacks.ts";
@@ -18,7 +18,7 @@ import {
   type AppInstanceResource,
   appInstanceResourceSchema,
 } from "../schemas/appInstanceResourceSchema.ts";
-import { estateCommandResourceSchema } from "../schemas/estateCommandResourceSchema.ts";
+import { hostCommandResourceSchema } from "../schemas/hostCommandResourceSchema.ts";
 import { AppService } from "../services/AppService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 import { BayRemovalService } from "../services/BayRemovalService.ts";
@@ -54,7 +54,7 @@ export type { AppInstanceResource };
 export class AppController {
   protected instances = $repository(appInstances);
   protected sigils = $repository(sigils);
-  protected estates = $repository(estates);
+  protected hosts = $repository(hosts);
   protected stackEnvironments = $repository(stackEnvironments);
   protected stacks = $repository(stacks);
   protected security = $inject(ProjectSecurityService);
@@ -151,7 +151,7 @@ export class AppController {
    * Create an instance by typing two names. Mints nothing.
    *
    * Audited like a sigil create, because the row IS the deploy target: epic
-   * #1's deploy resolves an estate from it, so who created it is a question
+   * #1's deploy resolves a host from it, so who created it is a question
    * somebody comes back to.
    */
   createApp = $action({
@@ -231,22 +231,22 @@ export class AppController {
   });
 
   /**
-   * Rename either half, pin the address, or point it at an estate.
+   * Rename either half, pin the address, or point it at a host.
    *
    * Every key optional and an absent one meaning "leave it alone", the shape
    * `updateSigil` has and every settings row in this app relies on: the name
-   * fields, the URL field and the estate select are separate surfaces, and
+   * fields, the URL field and the host select are separate surfaces, and
    * each PATCHes only what it owns.
    *
    * `url` follows the empty-string-clears rule, because it is an override
    * whose absence is meaningful; the two names have no such reading, since an
-   * instance without them has no URL segment. `estateId` is `uuid | null` and
-   * goes through {@link AppService.setEstate}, which validates it against the
-   * lending join rather than against `estates`.
+   * instance without them has no URL segment. `hostId` is `uuid | null` and
+   * goes through {@link AppService.setHost}, which validates it against the
+   * lending join rather than against `hosts`.
    *
-   * ⚠️ The rename and the estate are two service calls in one handler and are
+   * ⚠️ The rename and the host are two service calls in one handler and are
    * not wrapped in a transaction. A caller that sends both and half-fails
-   * leaves a renamed instance pointing at the old estate, which is a state a
+   * leaves a renamed instance pointing at the old host, which is a state a
    * second PATCH fixes; the alternative is a transaction around a method that
    * writes two tables, and the mirror write inside it is the thing that must
    * not be split from its rename - which is why THAT pair lives in one method.
@@ -277,10 +277,10 @@ export class AppController {
         url: z.string().max(2048).optional(),
         /**
          * `null` clears the deploy target. Validated against
-         * `estate_projects`: a project cannot point at an estate it was never
+         * `host_projects`: a project cannot point at a host it was never
          * lent, and the refusal is a 404 so it cannot learn one exists.
          */
-        estateId: z.uuid().nullable().optional(),
+        hostId: z.uuid().nullable().optional(),
       }),
       response: appInstanceResourceSchema,
     },
@@ -300,8 +300,8 @@ export class AppController {
       if (body.url !== undefined) {
         instance = await this.service.setUrl(instance, body.url);
       }
-      if (body.estateId !== undefined) {
-        instance = await this.service.setEstate(instance, body.estateId);
+      if (body.hostId !== undefined) {
+        instance = await this.service.setHost(instance, body.hostId);
       }
 
       await this.audits.app.logSuccess("update", {
@@ -387,10 +387,10 @@ export class AppController {
   });
 
   /**
-   * Remove what this copy's deploys created in the estate.
+   * Remove what this copy's deploys created in the host.
    *
    * ⚠️ **Its own verb, and never a side effect.** Deleting the copy, deleting
-   * the project and withdrawing the estate all leave the cloud resources
+   * the project and withdrawing the host all leave the cloud resources
    * alone: destroying somebody's database is not something to infer from a
    * tidy-up. This is the one action that does it, and it says so.
    *
@@ -398,7 +398,7 @@ export class AppController {
    * reflex; typing the name is the only confirmation that requires reading
    * which copy is about to lose its database.
    *
-   * On a **Bay** estate it queues a `remove` for the machine instead (#Q3153,
+   * On a **Bay** host it queues a `remove` for the machine instead (#Q3153,
    * folio #F1455): the copy stops being served and is unregistered, and its
    * database, uploads and `.env` stay on the machine. The answer names the
    * queued command, which `getAppRemoval` follows; `removed` stays empty until
@@ -439,13 +439,13 @@ export class AppController {
           z.object({ resource: z.string(), message: z.string() }),
         ),
         /**
-         * On a Bay: the `remove` queued for the machine, and the estate's
+         * On a Bay: the `remove` queued for the machine, and the host's
          * slug. Follow it with `getAppRemoval`.
          */
         removal: z
           .object({
-            command: estateCommandResourceSchema,
-            estate: z.string(),
+            command: hostCommandResourceSchema,
+            host: z.string(),
           })
           .optional(),
       }),
@@ -456,10 +456,10 @@ export class AppController {
         params.app,
         params.env,
       );
-      const estate = instance.estateId
-        ? await this.estates.findById(instance.estateId)
+      const host = instance.hostId
+        ? await this.hosts.findById(instance.hostId)
         : undefined;
-      const onBay = estate?.type === "bay";
+      const onBay = host?.type === "bay";
 
       const expected = `${instance.app}/${instance.env}`;
       if (body.confirm.trim() !== expected) {
@@ -478,13 +478,13 @@ export class AppController {
           severity: "warning",
           resourceType: "app",
           resourceId: instance.id,
-          description: `${expected}: removal queued on ${queued.estate.slug}, data kept on the machine`,
+          description: `${expected}: removal queued on ${queued.host.slug}, data kept on the machine`,
         });
         return {
           removed: [],
           kept: ["database", "uploads", ".env"],
           failed: [],
-          removal: { command: queued.command, estate: queued.estate.slug },
+          removal: { command: queued.command, host: queued.host.slug },
         };
       }
 
@@ -520,7 +520,7 @@ export class AppController {
 
   /**
    * One removal `destroyAppResources` queued for a copy on a Bay, so a
-   * terminal can follow it to `done` or `failed`. Scoped on the copy's estate
+   * terminal can follow it to `done` or `failed`. Scoped on the copy's host
    * and machine name, like a backup command.
    */
   getAppRemoval = $action({
@@ -534,7 +534,7 @@ export class AppController {
         env: appNameSchema,
         commandId: z.uuid(),
       }),
-      response: estateCommandResourceSchema,
+      response: hostCommandResourceSchema,
     },
     handler: async ({ params }) => {
       const instance = await this.service.load(
@@ -582,7 +582,7 @@ export class AppController {
         params.env,
       );
 
-      // ⚠️ Refused while the estate still holds what this copy's deploys made.
+      // ⚠️ Refused while the host still holds what this copy's deploys made.
       // The record lives on this row, so deleting it does not orphan the
       // resources - it makes them UNREACHABLE, with nothing left anywhere that
       // knows their names. `forget` is for a copy whose resources somebody
@@ -635,8 +635,8 @@ export class AppController {
     const sigilIds = [
       ...new Set(rows.flatMap((row) => (row.sigilId ? [row.sigilId] : []))),
     ];
-    const estateIds = [
-      ...new Set(rows.flatMap((row) => (row.estateId ? [row.estateId] : []))),
+    const hostIds = [
+      ...new Set(rows.flatMap((row) => (row.hostId ? [row.hostId] : []))),
     ];
 
     const environmentIds = [
@@ -647,26 +647,26 @@ export class AppController {
       ),
     ];
 
-    const [sigilRows, estateRows, deployedBuilds, stackSummaries] =
+    const [sigilRows, hostRows, deployedBuilds, stackSummaries] =
       await Promise.all([
         sigilIds.length
           ? this.sigils.findMany({ where: { id: { inArray: sigilIds } } })
           : Promise.resolve([]),
-        estateIds.length
-          ? this.estates.findMany({ where: { id: { inArray: estateIds } } })
+        hostIds.length
+          ? this.hosts.findMany({ where: { id: { inArray: hostIds } } })
           : Promise.resolve([]),
         this.builds.latest(rows.map((row) => row.id)),
         this.stackSummaries(environmentIds),
       ]);
 
     const bySigil = new Map(sigilRows.map((row) => [row.id, row]));
-    const byEstate = new Map(estateRows.map((row) => [row.id, row]));
+    const byHost = new Map(hostRows.map((row) => [row.id, row]));
 
     return rows.map((row) =>
       this.project(
         row,
         row.sigilId ? bySigil.get(row.sigilId) : undefined,
-        row.estateId ? byEstate.get(row.estateId) : undefined,
+        row.hostId ? byHost.get(row.hostId) : undefined,
         deployedBuilds.get(row.id),
         row.stackEnvironmentId
           ? stackSummaries.get(row.stackEnvironmentId)
@@ -764,7 +764,7 @@ export class AppController {
   protected project(
     instance: AppInstance,
     sigil?: Sigil,
-    estate?: Estate,
+    host?: Host,
     build?: DeployedBuild,
     stack?: { id: string; name: string; environmentId: string; env: string },
   ): AppInstanceResource {
@@ -777,13 +777,13 @@ export class AppController {
       env: instance.env,
       url: instance.url,
       sigilId: instance.sigilId,
-      estateId: instance.estateId,
+      hostId: instance.hostId,
       stackEnvironmentId: instance.stackEnvironmentId,
       ...(stack ? { stack } : {}),
       // Exposed on purpose: whether a destroy may take this copy's database is
       // a property somebody should be able to READ before asking for one.
       ephemeral: instance.ephemeral,
-      // The name the estate knows this copy by, which a renamed project no
+      // The name the host knows this copy by, which a renamed project no
       // longer spells: shown so `project1-…` under `project2` reads as expected.
       resourceName: instance.resourceName,
       ...(sigil
@@ -794,19 +794,19 @@ export class AppController {
               kinds: sigil.kinds ?? [],
               createdAt: sigil.createdAt,
               lastSeenAt: sigil.lastSeenAt,
-              lastSeenHost: sigil.lastSeenHost,
+              lastSeenHostname: sigil.lastSeenHostname,
               reportedConfig: sigil.reportedConfig,
               reportedConfigAt: sigil.reportedConfigAt,
             },
           }
         : {}),
-      ...(estate
+      ...(host
         ? {
-            estate: {
-              id: estate.id,
-              slug: estate.slug,
-              type: estate.type,
-              label: estate.label,
+            host: {
+              id: host.id,
+              slug: host.slug,
+              type: host.type,
+              label: host.label,
             },
           }
         : {}),

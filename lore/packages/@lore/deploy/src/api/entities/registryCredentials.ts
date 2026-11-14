@@ -12,9 +12,9 @@ import { $entity, db } from "alepha/orm";
  * `REGISTRY_PURPOSE`. No response carries it, nor any prefix of it: a
  * registry token is not a variable anybody needs to recognise on screen. It
  * is opened for two things only, both server-side: verifying an image
- * reference at push, and the deploy of THIS project's stack to its estate.
+ * reference at push, and the deploy of THIS project's stack to its host.
  *
- * Per project, never per user or per estate: an estate is lent to many
+ * Per project, never per user or per host: a host is lent to many
  * projects, and one project's company registry is not another's.
  */
 export const registryCredentials = $entity({

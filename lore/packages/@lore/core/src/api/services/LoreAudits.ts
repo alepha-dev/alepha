@@ -272,7 +272,7 @@ export class LoreAudits {
 
   /**
    * An app instance is a deploy target, which is why it is audited at all: it
-   * is the row epic #1 resolves an estate from, so who created it and who
+   * is the row epic #1 resolves a host from, so who created it and who
    * repointed it are questions somebody comes back to.
    *
    * `update` folds into one row with a count, like every other editable
@@ -309,16 +309,16 @@ export class LoreAudits {
   });
 
   /**
-   * An estate is a credential too: the secret a machine dials in with, and
+   * A host is a credential too: the secret a machine dials in with, and
    * later (epic #22) a token into somebody's cloud account. Same retention as
    * sigils, for the same reason. `create`, `update`, `rotate` and `delete`
-   * are app-layer, since an estate belongs to a user and not to a project;
+   * are app-layer, since a host belongs to a user and not to a project;
    * `attach` and `detach` are the lending (#1837) and carry the project
    * scope, because a project gaining or losing a deploy destination is what
    * that project's members want to see on their Activity page.
    */
-  readonly estate = $audit({
-    type: "estate",
+  readonly host = $audit({
+    type: "host",
     description: "Deploy destinations and their credentials",
     actions: [
       "create",
@@ -327,7 +327,7 @@ export class LoreAudits {
       "delete",
       "attach",
       "detach",
-      // An estate changing home project, by its managers or by the admin
+      // A host changing home project, by its managers or by the admin
       // (#Q3280).
       "move",
       "assign",
@@ -360,7 +360,7 @@ export class LoreAudits {
       this.member,
       this.app,
       this.sigil,
-      this.estate,
+      this.host,
       this.project,
     ].flatMap((audit) =>
       audit.actions.map((action) => ({ type: audit.type, action })),

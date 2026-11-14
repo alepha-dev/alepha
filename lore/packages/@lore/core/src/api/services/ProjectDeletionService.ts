@@ -39,7 +39,7 @@ export class ProjectDeletionService {
    * Register a refusal that runs before anything is written: before the slug
    * is freed and before every step, for every caller (#Q3280). A module that
    * must keep a project alive while it holds something others depend on (an
-   * estate other projects deploy onto) throws from `check`.
+   * host other projects deploy onto) throws from `check`.
    */
   public registerGuard(guard: ProjectDeletionGuard): void {
     this.guards.push(guard);

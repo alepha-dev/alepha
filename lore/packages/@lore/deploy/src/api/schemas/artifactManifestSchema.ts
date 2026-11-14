@@ -19,7 +19,7 @@ const ARTIFACT_RUNTIMES = ["node", "bun", "workerd", "static"] as const;
  *
  * Every runtime slice the archive carries, in declared order (#Q2462). The
  * first is the primary, which is the row's `runtime` and a quarter of the
- * `artifacts` unique key; the list is what a deploy matches an estate against,
+ * `artifacts` unique key; the list is what a deploy matches a host against,
  * so a `node,workerd` archive deploys to a Bay and to a Cloudflare account
  * alike. An artifact that declares none is refused by name rather than
  * guessed at: guessing would silently file a workerd build under `node`.

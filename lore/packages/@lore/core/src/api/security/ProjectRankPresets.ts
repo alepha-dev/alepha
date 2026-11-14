@@ -93,7 +93,7 @@ export class ProjectRankPresets {
     "error:read",
     "quality:read",
     "quality:push",
-    "estate:read",
+    "host:read",
     "feedback:read",
     "automation:read",
     "automation:write",
@@ -117,7 +117,7 @@ export class ProjectRankPresets {
     "artifact:read",
     "error:read",
     "quality:read",
-    "estate:read",
+    "host:read",
     "feedback:read",
     "automation:read",
   ];

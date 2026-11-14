@@ -345,7 +345,7 @@ export class SigilController {
       kinds: sigil.kinds ?? [],
       createdAt: sigil.createdAt,
       lastSeenAt: sigil.lastSeenAt,
-      lastSeenHost: sigil.lastSeenHost,
+      lastSeenHostname: sigil.lastSeenHostname,
       reportedConfig: sigil.reportedConfig,
       reportedConfigAt: sigil.reportedConfigAt,
     };

@@ -7,7 +7,7 @@ import { sigils } from "../entities/sigils.ts";
  *
  * The entity minus the two fields nothing outside the server may read:
  * `tokenHash` (the credential) and `createdBy` (a raw uuid). Derived rather
- * than restated, because the copy had already drifted - `lastSeenHost` is
+ * than restated, because the copy had already drifted - `lastSeenHostname` is
  * capped at 253 chars on the column and was an unbounded `z.string()` here.
  *
  * Lives here rather than beside the controller because the browser reads it

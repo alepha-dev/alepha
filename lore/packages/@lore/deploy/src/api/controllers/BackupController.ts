@@ -6,49 +6,49 @@ import { $repository } from "alepha/orm";
 import { $action, BadRequestError, NotFoundError } from "alepha/server";
 
 import type { AppInstance } from "../entities/appInstances.ts";
-import { estateCommands } from "../entities/estateCommands.ts";
-import { estateEvents } from "../entities/estateEvents.ts";
-import { type Estate, estates } from "../entities/estates.ts";
+import { hostCommands } from "../entities/hostCommands.ts";
+import { hostEvents } from "../entities/hostEvents.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
 import { appBackupViewSchema } from "../schemas/appBackupViewSchema.ts";
 import {
   BACKUP_KINDS_REFUSED_OFFLINE,
   backupCommandInput,
-  ESTATE_BACKUP_COMMAND_KINDS,
-  estateBackupCommandBodySchema,
-} from "../schemas/estateBackupCommandSchema.ts";
-import { estateCommandResourceSchema } from "../schemas/estateCommandResourceSchema.ts";
+  HOST_BACKUP_COMMAND_KINDS,
+  hostBackupCommandBodySchema,
+} from "../schemas/hostBackupCommandSchema.ts";
+import { hostCommandResourceSchema } from "../schemas/hostCommandResourceSchema.ts";
 import { AppService } from "../services/AppService.ts";
 import { BayRemovalService } from "../services/BayRemovalService.ts";
-import { EstateCommandService } from "../services/EstateCommandService.ts";
-import { EstateEventService } from "../services/EstateEventService.ts";
-import { EstateInventoryService } from "../services/EstateInventoryService.ts";
-import { EstateService } from "../services/EstateService.ts";
+import { HostCommandService } from "../services/HostCommandService.ts";
+import { HostEventService } from "../services/HostEventService.ts";
+import { HostInventoryService } from "../services/HostInventoryService.ts";
+import { HostService } from "../services/HostService.ts";
 
 /**
  * Backups of apps that run on a Bay, as the machine reports them.
  *
- * Two doors onto the same data. The estate owner reads every instance's
- * events from the estate page. A project member reads one copy's backups from
+ * Two doors onto the same data. The host owner reads every instance's
+ * events from the host page. A project member reads one copy's backups from
  * its Backups tab, and with `deploy:manage` sends it the backup verbs: the
- * same commands the estate page sends, aimed by Lore at the copy's own
+ * same commands the host page sends, aimed by Lore at the copy's own
  * instance - never at a name the caller chose, so a project can only reach
  * the instances it deployed. Two things stay the owner's: a restore from
  * another instance, and the backup policy override (Bay's operator layer).
  *
- * ⚠️ A restore is gated twice more, by the estate's `deployAllowed` (here, in
- * `EstateCommandService.assertAccepts`) and again by Bay itself from its
+ * ⚠️ A restore is gated twice more, by the host's `deployAllowed` (here, in
+ * `HostCommandService.assertAccepts`) and again by Bay itself from its
  * `welcome` frame.
  */
 export class BackupController {
-  protected readonly estateService = $inject(EstateService);
+  protected readonly hostService = $inject(HostService);
   protected readonly apps = $inject(AppService);
-  protected readonly commands = $inject(EstateCommandService);
-  protected readonly events = $inject(EstateEventService);
-  protected readonly inventories = $inject(EstateInventoryService);
+  protected readonly commands = $inject(HostCommandService);
+  protected readonly events = $inject(HostEventService);
+  protected readonly inventories = $inject(HostInventoryService);
   protected readonly bay = $inject(BayRemovalService);
   protected readonly files = $inject(FileService);
-  protected readonly rows = $repository(estateCommands);
-  protected readonly estateRows = $repository(estates);
+  protected readonly rows = $repository(hostCommands);
+  protected readonly hostRows = $repository(hosts);
 
   protected writeGate = () =>
     $ownsProject({
@@ -61,27 +61,27 @@ export class BackupController {
     $ownsProject({ param: "projectId", requires: "app:read" });
 
   /** What the machine reported happening, newest first. */
-  listEstateEvents = $action({
+  listHostEvents = $action({
     use: [
       $ownsProject({
-        repository: () => this.estateRows,
-        param: "estateId",
-        requires: "estate:read",
+        repository: () => this.hostRows,
+        param: "hostId",
+        requires: "host:read",
       }),
     ],
     method: "GET",
-    path: "/estates/:estateId/events",
+    path: "/hosts/:hostId/events",
     schema: {
-      params: z.object({ estateId: z.uuid() }),
+      params: z.object({ hostId: z.uuid() }),
       query: z.object({
         app: z.string().min(1).max(100).optional(),
         env: z.string().min(1).max(100).optional(),
         limit: z.integer().min(1).max(200).optional(),
       }),
-      response: z.object({ items: z.array(estateEvents.schema) }),
+      response: z.object({ items: z.array(hostEvents.schema) }),
     },
     handler: async ({ params, query, user }) => {
-      return { items: await this.events.list(params.estateId, query) };
+      return { items: await this.events.list(params.hostId, query) };
     },
   });
 
@@ -110,21 +110,21 @@ export class BackupController {
         return {
           status: target.status,
           events: [],
-          ...(target.estate ? { estate: this.describe(target.estate) } : {}),
+          ...(target.host ? { host: this.describe(target.host) } : {}),
         };
       }
-      const { estate, machineApp } = target;
-      const inventory = await this.inventories.findFor(estate.id);
+      const { host, machineApp } = target;
+      const inventory = await this.inventories.findFor(host.id);
       const row = inventory?.apps.find(
         (app) => app.app === machineApp && app.env === instance.env,
       );
       return {
         status: row ? ("reported" as const) : ("not-reported" as const),
-        estate: this.describe(estate),
+        host: this.describe(host),
         machineApp,
         ...(inventory ? { reportedAt: inventory.reportedAt } : {}),
         ...(row ? { instance: row } : {}),
-        events: await this.events.list(estate.id, {
+        events: await this.events.list(host.id, {
           app: machineApp,
           env: instance.env,
           limit: query.limit ?? 50,
@@ -145,8 +145,8 @@ export class BackupController {
         app: appNameSchema,
         env: appNameSchema,
       }),
-      body: estateBackupCommandBodySchema,
-      response: estateCommandResourceSchema,
+      body: hostBackupCommandBodySchema,
+      response: hostCommandResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const instance = await this.apps.load(
@@ -156,27 +156,27 @@ export class BackupController {
       );
       if ("from" in body && body.from) {
         throw new BadRequestError(
-          "Restoring from another instance is reserved to the estate's console, under estate:update in its home project.",
+          "Restoring from another instance is reserved to the host's console, under host:update in its home project.",
         );
       }
-      // Bay's operator layer belongs to the estate's home project: a project declares its
+      // Bay's operator layer belongs to the host's home project: a project declares its
       // policy with the deploy (`bay({ backup })`), bounded as the app layer.
       if (body.kind === "backup-policy") {
         throw new BadRequestError(
-          "Overriding the backup policy is reserved to the estate's home project: declare it in alepha.config.ts and deploy.",
+          "Overriding the backup policy is reserved to the host's home project: declare it in alepha.config.ts and deploy.",
         );
       }
-      const { estate, machineApp } = await this.requireTarget(instance);
+      const { host, machineApp } = await this.requireTarget(instance);
       const input = backupCommandInput(body, machineApp, instance.env);
       if (
         BACKUP_KINDS_REFUSED_OFFLINE.includes(body.kind) &&
-        !this.estateService.isOnline(estate)
+        !this.hostService.isOnline(host)
       ) {
         throw new BadRequestError(
-          `Estate "${estate.slug}" is not connected right now: a ${body.kind} waits for it to be back rather than running hours later.`,
+          `Host "${host.slug}" is not connected right now: a ${body.kind} waits for it to be back rather than running hours later.`,
         );
       }
-      return this.commands.enqueue(estate, input, user.id);
+      return this.commands.enqueue(host, input, user.id);
     },
   });
 
@@ -191,7 +191,7 @@ export class BackupController {
         env: appNameSchema,
         commandId: z.uuid(),
       }),
-      response: estateCommandResourceSchema,
+      response: hostCommandResourceSchema,
     },
     handler: async ({ params }) => this.loadCommand(params),
   });
@@ -232,7 +232,7 @@ export class BackupController {
   });
 
   /**
-   * One backup command of this copy. Scoped on the estate AND the copy's
+   * One backup command of this copy. Scoped on the host AND the copy's
    * machine name, so a project cannot read another project's commands on a
    * shared machine by guessing ids, nor its log tails through this door.
    */
@@ -253,14 +253,14 @@ export class BackupController {
         ? await this.rows.findOne({
             where: {
               id: { eq: params.commandId },
-              estateId: { eq: target.estate.id },
+              hostId: { eq: target.host.id },
             },
           })
         : undefined;
     if (
       !command ||
       target.status !== "ok" ||
-      !(ESTATE_BACKUP_COMMAND_KINDS as readonly string[]).includes(
+      !(HOST_BACKUP_COMMAND_KINDS as readonly string[]).includes(
         command.kind,
       ) ||
       command.payload.app !== target.machineApp ||
@@ -276,9 +276,9 @@ export class BackupController {
     switch (target.status) {
       case "ok":
         return target;
-      case "no-estate":
+      case "no-host":
         throw new BadRequestError(
-          `${instance.app}/${instance.env} has no estate. Choose one on its Settings tab.`,
+          `${instance.app}/${instance.env} has no host. Choose one on its Settings tab.`,
         );
       case "not-bay":
         throw new BadRequestError(
@@ -286,7 +286,7 @@ export class BackupController {
         );
       case "not-lent":
         throw new NotFoundError(
-          "The estate this copy runs on is no longer lent to this project.",
+          "The host this copy runs on is no longer lent to this project.",
         );
       default:
         throw new BadRequestError(
@@ -303,13 +303,13 @@ export class BackupController {
     return this.bay.target(instance);
   }
 
-  protected describe(estate: Estate) {
+  protected describe(host: Host) {
     return {
-      id: estate.id,
-      slug: estate.slug,
-      ...(estate.label ? { label: estate.label } : {}),
-      online: this.estateService.isOnline(estate),
-      deployAllowed: estate.deployAllowed,
+      id: host.id,
+      slug: host.slug,
+      ...(host.label ? { label: host.label } : {}),
+      online: this.hostService.isOnline(host),
+      deployAllowed: host.deployAllowed,
     };
   }
 }

@@ -23,7 +23,7 @@ import { stacks } from "./stacks.ts";
  * the file as written, kept so a revision can be shown and diffed. A target
  * maps from the model, never from the YAML.
  *
- * {@link digests} are the image digests the estate pinned when it applied
+ * {@link digests} are the image digests the host pinned when it applied
  * this revision, written back by the deploy, so a rollback names exactly what
  * ran.
  */

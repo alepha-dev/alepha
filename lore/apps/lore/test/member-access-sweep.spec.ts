@@ -292,7 +292,7 @@ describe("project members, against every action that names a resource", () => {
       const gated = probes.filter((it) => it.beyond.length > 0);
       const concluded = gated.filter((it) => it.outcome !== "inconclusive");
       // The rest name a row the sweep cannot fake (a quest, an app copy, an
-      // estate) and answer 404 before any rank is asked. Measured 2026-11-10:
+      // host) and answer 404 before any rank is asked. Measured 2026-11-10:
       // 370 actions, 78% concluded as the member, 66% as the floor rank.
       expect(probes.length).toBeGreaterThan(300);
       expect(concluded.length / gated.length).toBeGreaterThan(0.6);

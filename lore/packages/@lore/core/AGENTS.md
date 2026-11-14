@@ -474,7 +474,7 @@ same reason.
 
 **A field is declared once, on the entity, and every other schema reaches it with `pick` / `omit` / `extend`.** Alepha shares a schema across the entity, the controller and MCP; the only reason to write `z.enum([...])` a second time is that nobody noticed the first one.
 
-This is not hypothetical tidiness. Every duplicate found in the 2026-08 pass had already drifted: `sigils.lastSeenHost` was capped at 253 chars on the column and unbounded on the resource; a blight's `sigilId` was `z.uuid()` on the API and `z.string()` over MCP; a quest's status enum existed in four places, one of which listed three values and another four.
+This is not hypothetical tidiness. Every duplicate found in the 2026-08 pass had already drifted: `sigils.lastSeenHostname` was capped at 253 chars on the column and unbounded on the resource; a blight's `sigilId` was `z.uuid()` on the API and `z.string()` over MCP; a quest's status enum existed in four places, one of which listed three values and another four.
 
 ```ts
 // The whole entity minus what the caller may not read.

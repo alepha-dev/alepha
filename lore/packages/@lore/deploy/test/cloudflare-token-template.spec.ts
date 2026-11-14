@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { EstateCloudflareService } from "../src/api/index.ts";
+import { HostCloudflareService } from "../src/api/index.ts";
 import {
   CLOUDFLARE_TOKEN_TEMPLATE,
   cloudflareTokenTemplateUrl,
@@ -24,7 +24,7 @@ import {
  */
 describe("the Cloudflare token template", () => {
   it("names exactly the permissions Lore probes for", () => {
-    const probes = EstateCloudflareService.PERMISSION_PROBES.map(
+    const probes = HostCloudflareService.PERMISSION_PROBES.map(
       (probe) => probe.key,
     ).sort();
     const rows = CLOUDFLARE_TOKEN_TEMPLATE.map((row) => row.probe).sort();
@@ -37,7 +37,7 @@ describe("the Cloudflare token template", () => {
     // duplicate and the other a row it is missing. This is the half that
     // catches it.
     expect(CLOUDFLARE_TOKEN_TEMPLATE).toHaveLength(
-      EstateCloudflareService.PERMISSION_PROBES.length,
+      HostCloudflareService.PERMISSION_PROBES.length,
     );
     expect(
       new Set(CLOUDFLARE_TOKEN_TEMPLATE.map((row) => row.probe)).size,

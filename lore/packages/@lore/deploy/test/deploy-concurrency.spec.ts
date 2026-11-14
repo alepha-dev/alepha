@@ -24,8 +24,8 @@ import {
   appInstances,
   artifacts,
   deployments,
-  estateProjects,
-  estates,
+  hostProjects,
+  hosts,
 } from "../src/schemas/index.ts";
 
 /**
@@ -133,8 +133,8 @@ class HeldDeployRunner extends DeployRunner {
 
 class TestRows {
   public readonly deployments = $repository(deployments);
-  public readonly estates = $repository(estates);
-  public readonly grants = $repository(estateProjects);
+  public readonly hosts = $repository(hosts);
+  public readonly grants = $repository(hostProjects);
   public readonly instances = $repository(appInstances);
   public readonly artifacts = $repository(artifacts);
   public readonly executions = $repository(jobExecutionEntity);
@@ -192,7 +192,7 @@ describe("a deploy that finds no free slot", () => {
   const rows = () => alepha.inject(TestRows);
 
   /**
-   * A copy on a Cloudflare estate that passes the gate, with one stored
+   * A copy on a Cloudflare host that passes the gate, with one stored
    * `workerd` archive to ship.
    */
   const world = async () => {
@@ -229,7 +229,7 @@ describe("a deploy that finds no free slot", () => {
       )
     ).data;
 
-    const estate = await rows().estates.create({
+    const host = await rows().hosts.create({
       ownerUserId: user.id,
       type: "cloudflare",
       slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -238,13 +238,13 @@ describe("a deploy that finds no free slot", () => {
       accountId: "acct",
       credential: await alepha
         .inject(CredentialSealService)
-        .seal("token", CredentialSealService.ESTATE_PURPOSE),
+        .seal("token", CredentialSealService.HOST_PURPOSE),
     } as never);
     await rows().grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: project.id,
     });
-    await rows().instances.updateById(instance.id, { estateId: estate.id });
+    await rows().instances.updateById(instance.id, { hostId: host.id });
 
     const sha256 = "a".repeat(64);
     await rows().artifacts.create({

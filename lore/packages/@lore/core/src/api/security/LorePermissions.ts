@@ -105,7 +105,7 @@ export class LorePermissions {
     "error:read",
     "quality:read",
     "quality:push",
-    "estate:read",
+    "host:read",
     "feedback:read",
   ];
 
@@ -131,12 +131,12 @@ export class LorePermissions {
     "artifact:delete",
     "sigil:manage",
     "error:triage",
-    "estate:lend",
-    // An estate belongs to its home project since #E126: who manages it is a
+    "host:lend",
+    // A host belongs to its home project since #E126: who manages it is a
     // rank question, and only the owner holds these until a rank says more.
-    "estate:create",
-    "estate:update",
-    "estate:delete",
+    "host:create",
+    "host:update",
+    "host:delete",
     "feedback:triage",
     "automation:read",
     "automation:write",
@@ -147,7 +147,7 @@ export class LorePermissions {
    * Application-scope permissions that no project rank ever narrows.
    *
    * There is no project to hold a rank in when a project is created. (An
-   * estate's three acts left this list with #E126: an estate belongs to its
+   * host's three acts left this list with #E126: a host belongs to its
    * home project, so they are {@link OWNER_TODAY}'s.)
    */
   public static readonly OUT_OF_SCOPE = LoreRankBounds.OUT_OF_SCOPE;
@@ -370,7 +370,7 @@ export class LorePermissions {
 
   /**
    * Creating, renaming and deleting a deployed copy, and editing its address
-   * and its estate.
+   * and its host.
    */
   appManage = $permission({
     group: "app",
@@ -491,42 +491,42 @@ export class LorePermissions {
     label: "permission.quality.push",
   });
 
-  estateRead = $permission({
-    group: "estate",
+  hostRead = $permission({
+    group: "host",
     name: "read",
-    label: "permission.estate.read",
-    groupLabel: "permission.group.estate",
+    label: "permission.host.read",
+    groupLabel: "permission.group.host",
     groupOrder: 35,
   });
 
-  estateUpdate = $permission({
-    group: "estate",
+  hostUpdate = $permission({
+    group: "host",
     name: "update",
-    label: "permission.estate.update",
+    label: "permission.host.update",
   });
 
   /**
-   * Lending an estate to a project, and taking it back. Asked in the home
+   * Lending a host to a project, and taking it back. Asked in the home
    * project and in the borrowing one, since a loan exposes the first to the
-   * second. `estate:create`, `estate:update` and `estate:delete` are ranks of
-   * the estate's home project (#E126).
+   * second. `host:create`, `host:update` and `host:delete` are ranks of
+   * the host's home project (#E126).
    */
-  estateLend = $permission({
-    group: "estate",
+  hostLend = $permission({
+    group: "host",
     name: "lend",
-    label: "permission.estate.lend",
+    label: "permission.host.lend",
   });
 
-  estateCreate = $permission({
-    group: "estate",
+  hostCreate = $permission({
+    group: "host",
     name: "create",
-    label: "permission.estate.create",
+    label: "permission.host.create",
   });
 
-  estateDelete = $permission({
-    group: "estate",
+  hostDelete = $permission({
+    group: "host",
     name: "delete",
-    label: "permission.estate.delete",
+    label: "permission.host.delete",
   });
 
   // ---------------------------------------------------------------------------

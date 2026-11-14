@@ -3,7 +3,7 @@ import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { deployments } from "../entities/deployments.ts";
-import { estates } from "../entities/estates.ts";
+import { hosts } from "../entities/hosts.ts";
 import type { ArtifactDetail } from "../schemas/artifactDetailSchema.ts";
 import { DeployedBuildService } from "./DeployedBuildService.ts";
 
@@ -23,7 +23,7 @@ export class ArtifactDetailService {
 
   protected readonly instances = $repository(appInstances);
   protected readonly deployments = $repository(deployments);
-  protected readonly estates = $repository(estates);
+  protected readonly hosts = $repository(hosts);
   protected readonly builds = $inject(DeployedBuildService);
 
   public async surroundings(
@@ -35,12 +35,12 @@ export class ArtifactDetailService {
       where: { projectId: { eq: projectId }, app: { eq: app } },
     });
 
-    const estateIds = [
-      ...new Set(instances.flatMap((it) => (it.estateId ? [it.estateId] : []))),
+    const hostIds = [
+      ...new Set(instances.flatMap((it) => (it.hostId ? [it.hostId] : []))),
     ];
-    const [estateRows, builds, runs] = await Promise.all([
-      estateIds.length
-        ? this.estates.findMany({ where: { id: { inArray: estateIds } } })
+    const [hostRows, builds, runs] = await Promise.all([
+      hostIds.length
+        ? this.hosts.findMany({ where: { id: { inArray: hostIds } } })
         : Promise.resolve([]),
       this.builds.latest(instances.map((it) => it.id)),
       this.deployments.findMany({
@@ -66,25 +66,25 @@ export class ArtifactDetailService {
       }),
     ]);
 
-    const byEstate = new Map(estateRows.map((row) => [row.id, row]));
+    const byHost = new Map(hostRows.map((row) => [row.id, row]));
     const envs = new Map(instances.map((row) => [row.id, row.env]));
 
     return {
       copies: instances
         .map((instance) => {
-          const estate = instance.estateId
-            ? byEstate.get(instance.estateId)
+          const host = instance.hostId
+            ? byHost.get(instance.hostId)
             : undefined;
           const build = builds.get(instance.id);
           return {
             id: instance.id,
             env: instance.env,
-            ...(estate
+            ...(host
               ? {
-                  estate: {
-                    slug: estate.slug,
-                    type: estate.type,
-                    label: estate.label,
+                  host: {
+                    slug: host.slug,
+                    type: host.type,
+                    label: host.label,
                   },
                 }
               : {}),

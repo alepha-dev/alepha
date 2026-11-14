@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { deployments } from "../entities/deployments.ts";
-import { estates } from "../entities/estates.ts";
+import { hosts } from "../entities/hosts.ts";
 import { artifactGroupSchema } from "./artifactGroupSchema.ts";
 
 /**
@@ -16,7 +16,7 @@ export const artifactDetailSchema = artifactGroupSchema.extend({
     z.object({
       id: z.uuid(),
       env: z.string(),
-      estate: estates.schema
+      host: hosts.schema
         .pick({ slug: true, type: true, label: true })
         .optional(),
       /**

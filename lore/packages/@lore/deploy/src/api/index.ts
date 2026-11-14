@@ -3,22 +3,22 @@ import { $module } from "alepha";
 import { AlephaRateLimit } from "alepha/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
 
-import { AdminEstateController } from "./controllers/AdminEstateController.ts";
+import { AdminHostController } from "./controllers/AdminHostController.ts";
 import { AppController } from "./controllers/AppController.ts";
 import { AppSecretController } from "./controllers/AppSecretController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BackupController } from "./controllers/BackupController.ts";
 import { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
 import { DeployController } from "./controllers/DeployController.ts";
-import { EstateCommandController } from "./controllers/EstateCommandController.ts";
-import { EstateController } from "./controllers/EstateController.ts";
-import { EstateEnrolController } from "./controllers/EstateEnrolController.ts";
-import { EstatePullController } from "./controllers/EstatePullController.ts";
-import { EstateSocketController } from "./controllers/EstateSocketController.ts";
+import { HostCommandController } from "./controllers/HostCommandController.ts";
+import { HostController } from "./controllers/HostController.ts";
+import { HostEnrolController } from "./controllers/HostEnrolController.ts";
+import { HostPullController } from "./controllers/HostPullController.ts";
+import { HostSocketController } from "./controllers/HostSocketController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
-import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
+import { ProjectHostController } from "./controllers/ProjectHostController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
@@ -30,15 +30,15 @@ import { StackDeployController } from "./controllers/StackDeployController.ts";
 import { StackVariableController } from "./controllers/StackVariableController.ts";
 import { UptimePushController } from "./controllers/UptimePushController.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
-import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
-import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
-import { EstateExpiryJobs } from "./jobs/EstateExpiryJobs.ts";
+import { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
+import { HostCredentialJobs } from "./jobs/HostCredentialJobs.ts";
+import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
 import { ProjectErrorJobs } from "./jobs/ProjectErrorJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { UptimeJobs } from "./jobs/UptimeJobs.ts";
 import { UptimeRetentionJobs } from "./jobs/UptimeRetentionJobs.ts";
-import { EstateNotifications } from "./notifications/EstateNotifications.ts";
+import { HostNotifications } from "./notifications/HostNotifications.ts";
 import { AppHealthMetric } from "./services/AppHealthMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
@@ -59,8 +59,8 @@ import { DeployBuckets } from "./services/DeployBuckets.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { DeployedBuildService } from "./services/DeployedBuildService.ts";
-import { DeployEstateHomeGuards } from "./services/DeployEstateHomeGuards.ts";
 import { DeployGate } from "./services/DeployGate.ts";
+import { DeployHostHomeGuards } from "./services/DeployHostHomeGuards.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
 import { DeployProjectDeletion } from "./services/DeployProjectDeletion.ts";
@@ -70,13 +70,13 @@ import { DeployReportsSummary } from "./services/DeployReportsSummary.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
-import { EstateAnchorHooks } from "./services/EstateAnchorHooks.ts";
-import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
-import { EstateCommandService } from "./services/EstateCommandService.ts";
-import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
-import { EstateService } from "./services/EstateService.ts";
-import { EstateStatsService } from "./services/EstateStatsService.ts";
-import { EstateTokenService } from "./services/EstateTokenService.ts";
+import { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
+import { HostCloudflareService } from "./services/HostCloudflareService.ts";
+import { HostCommandService } from "./services/HostCommandService.ts";
+import { HostCommandTransport } from "./services/HostCommandTransport.ts";
+import { HostService } from "./services/HostService.ts";
+import { HostStatsService } from "./services/HostStatsService.ts";
+import { HostTokenService } from "./services/HostTokenService.ts";
 import { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
 import { OpenErrorsMetric } from "./services/OpenErrorsMetric.ts";
 import { ProjectDeliveryReportService } from "./services/ProjectDeliveryReportService.ts";
@@ -103,10 +103,10 @@ import { StackVariableService } from "./services/StackVariableService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
-import { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
+import { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTransport.ts";
 
 /**
- * The server half of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and estates.
+ * The server half of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and hosts.
  *
  * It depends on `@lore/core` only: a feature that spans two modules goes through a core registry or a core link, never through an import of another feature module (`check:conventions`).
  *
@@ -120,12 +120,12 @@ export const LoreDeployApi = $module({
   // Core first: booting this module alone boots what it depends on.
   imports: [
     LoreCoreApi,
-    // The estates websocket (epic #20). The first websocket in Lore: on
+    // The hosts websocket (epic #20). The first websocket in Lore: on
     // Cloudflare the build derives the Durable Object binding and its
     // migration from the `$websocket` below, and the `workerd` export
     // condition picks the Durable Object provider over the Node one.
     AlephaWebSocket,
-    // `$rateLimit` on `EstateController.refreshEstate`. Its counters are actors,
+    // `$rateLimit` on `HostController.refreshHost`. Its counters are actors,
     // a Durable Object on workerd, which the Cloudflare build derives from the
     // registered graph, so the module is imported explicitly.
     AlephaRateLimit,
@@ -142,13 +142,13 @@ export const LoreDeployApi = $module({
     DeployDashboard,
     // Registers its project merge step (#Q2782); nothing injects it.
     DeployProjectMerge,
-    // Frees the estates a deleted project held (#Q3169); nothing injects it.
+    // Frees the hosts a deleted project held (#Q3169); nothing injects it.
     DeployProjectDeletion,
-    // Keeps a homed estate's cascade anchor on its project's owner (#Q3278).
-    EstateAnchorHooks,
+    // Keeps a homed host's cascade anchor on its project's owner (#Q3278).
+    HostAnchorHooks,
     // Refuses deleting a project, or turning Apps off, while it is the home of
-    // an estate (#Q3280); nothing injects it.
-    DeployEstateHomeGuards,
+    // a host (#Q3280); nothing injects it.
+    DeployHostHomeGuards,
     // Deploy's "needs you" source (#Q2656).
     DeployAttentionSources,
     // The apps tiles of #E77 (#Q2657).
@@ -168,16 +168,16 @@ export const LoreDeployApi = $module({
     UptimeSocketProber,
     SigilJobs,
     QualityJobs,
-    EstateCommandJobs,
-    EstateCredentialJobs,
-    EstateExpiryJobs,
-    EstateNotifications,
+    HostCommandJobs,
+    HostCredentialJobs,
+    HostExpiryJobs,
+    HostNotifications,
     QualityService,
     ArtifactTarReader,
     ArtifactDetailService,
     ArtifactService,
     DeployedBuildService,
-    // Deploying a stored artifact to an estate (epic #1). `DeployRegistry` is
+    // Deploying a stored artifact to a host (epic #1). `DeployRegistry` is
     // the seam #1201 replaces with the `deployments` table; the runner is what
     // writes through it.
     DeployGate,
@@ -206,7 +206,7 @@ export const LoreDeployApi = $module({
     StackService,
     // A stack environment's variables (#Q2692), sealed like app variables.
     StackVariableService,
-    // Stack deploys over the estate connector (#Q2694).
+    // Stack deploys over the host connector (#Q2694).
     StackDeployService,
     StackConsoleService,
     // Undeploying from a Bay, data kept (#Q3153).
@@ -224,11 +224,11 @@ export const LoreDeployApi = $module({
     // `$repository` names it.
     SigilTokenService,
     SigilIngestService,
-    // The deploy-destination half: a machine's secret and what an estate is.
-    // `EstateTokenService` is deliberately not `SigilTokenService` with a
+    // The deploy-destination half: a machine's secret and what a host is.
+    // `HostTokenService` is deliberately not `SigilTokenService` with a
     // different table, see its doc: the two credentials are one grep apart
     // and mean different things.
-    EstateTokenService,
+    HostTokenService,
     // A cloudflare token is pasted rather than minted, so it is sealed and
     // replayed rather than hashed and forgotten (#1631). Registered before
     // it has a writer: the sealer exists first, so no plaintext credential
@@ -239,18 +239,18 @@ export const LoreDeployApi = $module({
     // written (#1629, #1630). The probe underneath is one authenticated GET
     // over `globalThis.fetch`, and the seam every spec substitutes.
     CloudflareProbeService,
-    EstateCloudflareService,
-    EstateService,
+    HostCloudflareService,
+    HostService,
     // The queue behind the connection, and the seam the websocket endpoint
     // fills in. This default transport reaches nothing, which is the correct
     // behaviour of a Lore with no socket wired: commands wait as `pending`
     // for the machine's next connect.
-    EstateCommandTransport,
-    EstateCommandService,
-    EstateStatsService,
-    // The real transport, substituted for `EstateCommandTransport` in
+    HostCommandTransport,
+    HostCommandService,
+    HostStatsService,
+    // The real transport, substituted for `HostCommandTransport` in
     // `main.server.ts`. Listed so DI scanning sees the class.
-    WebSocketEstateCommandTransport,
+    WebSocketHostCommandTransport,
     DeliveryReportsController,
     ProjectDeliveryReportService,
     ProjectQualityReportService,
@@ -269,14 +269,14 @@ export const LoreDeployApi = $module({
     // The ingest route's refusal log: a hook, so at boot (#Q3404).
     SigilIngestRefusals,
     UptimePushController,
-    EstateController,
-    ProjectEstateController,
-    EstateCommandController,
+    HostController,
+    ProjectHostController,
+    HostCommandController,
     BackupController,
-    EstateSocketController,
-    EstatePullController,
-    EstateEnrolController,
-    AdminEstateController,
+    HostSocketController,
+    HostPullController,
+    HostEnrolController,
+    AdminHostController,
     SigilAnalyticsController,
     InsightsController,
     MonitorController,
@@ -286,19 +286,19 @@ export const LoreDeployApi = $module({
 
 // ---- re-exports, generated by the extraction (#E75) ----
 
-export { AdminEstateController } from "./controllers/AdminEstateController.ts";
+export { AdminHostController } from "./controllers/AdminHostController.ts";
 export { AppController } from "./controllers/AppController.ts";
 export { AppSecretController } from "./controllers/AppSecretController.ts";
 export { ArtifactController } from "./controllers/ArtifactController.ts";
 export { BackupController } from "./controllers/BackupController.ts";
 export { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
 export { DeployController } from "./controllers/DeployController.ts";
-export { EstateCommandController } from "./controllers/EstateCommandController.ts";
-export { EstateController } from "./controllers/EstateController.ts";
-export { EstateEnrolController } from "./controllers/EstateEnrolController.ts";
-export { EstateSocketController } from "./controllers/EstateSocketController.ts";
+export { HostCommandController } from "./controllers/HostCommandController.ts";
+export { HostController } from "./controllers/HostController.ts";
+export { HostEnrolController } from "./controllers/HostEnrolController.ts";
+export { HostSocketController } from "./controllers/HostSocketController.ts";
 export { InsightsController } from "./controllers/InsightsController.ts";
-export { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
+export { ProjectHostController } from "./controllers/ProjectHostController.ts";
 export { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
 export { QualityController } from "./controllers/QualityController.ts";
 export { QualityReportsController } from "./controllers/QualityReportsController.ts";
@@ -312,8 +312,8 @@ export { DeployAnalytics } from "./entities/deployAnalytics.ts";
 export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
-export { EstateExpiryJobs } from "./jobs/EstateExpiryJobs.ts";
-export { EstateNotifications } from "./notifications/EstateNotifications.ts";
+export { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
+export { HostNotifications } from "./notifications/HostNotifications.ts";
 export { StackBundleReader } from "./services/StackBundleReader.ts";
 export { StackComposeParser } from "./services/StackComposeParser.ts";
 export { StackConsoleService } from "./services/StackConsoleService.ts";
@@ -337,14 +337,14 @@ export { DeployLimits } from "./services/DeployLimits.ts";
 export { DeployRegistry } from "./services/DeployRegistry.ts";
 export { type DeployRequest, DeployRunner } from "./services/DeployRunner.ts";
 export { DeployService } from "./services/DeployService.ts";
-export { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
-export { EstateCommandService } from "./services/EstateCommandService.ts";
-export { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
-export { EstateEventService } from "./services/EstateEventService.ts";
-export { EstateInventoryService } from "./services/EstateInventoryService.ts";
-export { EstateService } from "./services/EstateService.ts";
-export { EstateStatsService } from "./services/EstateStatsService.ts";
-export { EstateTokenService } from "./services/EstateTokenService.ts";
+export { HostCloudflareService } from "./services/HostCloudflareService.ts";
+export { HostCommandService } from "./services/HostCommandService.ts";
+export { HostCommandTransport } from "./services/HostCommandTransport.ts";
+export { HostEventService } from "./services/HostEventService.ts";
+export { HostInventoryService } from "./services/HostInventoryService.ts";
+export { HostService } from "./services/HostService.ts";
+export { HostStatsService } from "./services/HostStatsService.ts";
+export { HostTokenService } from "./services/HostTokenService.ts";
 export { ImageRegistryClient } from "./services/ImageRegistryClient.ts";
 export { LoreAnalyticsStore } from "./services/LoreAnalyticsStore.ts";
 export { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
@@ -359,7 +359,7 @@ export { SigilIngestService } from "./services/SigilIngestService.ts";
 export { SigilTokenService } from "./services/SigilTokenService.ts";
 export { TeardownService } from "./services/TeardownService.ts";
 export { BayRemovalService } from "./services/BayRemovalService.ts";
-export { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
+export { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTransport.ts";
 
 export { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
 

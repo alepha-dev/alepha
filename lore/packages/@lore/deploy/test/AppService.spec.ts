@@ -12,11 +12,11 @@ import {
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreDeployApi } from "../src/api/index.ts";
-import { AppService, EstateService } from "../src/api/index.ts";
+import { AppService, HostService } from "../src/api/index.ts";
 import {
   appInstances,
-  estateProjects,
-  estates,
+  hostProjects,
+  hosts,
   type Sigil,
   sigils,
 } from "../src/schemas/index.ts";
@@ -31,14 +31,14 @@ import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 class AppRepositories {
   instances = $repository(appInstances);
   sigils = $repository(sigils);
-  estates = $repository(estates);
-  grants = $repository(estateProjects);
+  hosts = $repository(hosts);
+  grants = $repository(hostProjects);
 }
 
 interface TestContext {
   alepha: Alepha;
   service: AppService;
-  estateService: EstateService;
+  hostService: HostService;
   repos: AppRepositories;
 }
 
@@ -67,7 +67,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     service: alepha.inject(AppService),
-    estateService: alepha.inject(EstateService),
+    hostService: alepha.inject(HostService),
     repos,
   };
 };
@@ -77,7 +77,7 @@ const setup = async (): Promise<TestContext> => {
  * credential — these tests are about the instance that holds it.
  */
 let sigilSeq = 0;
-let estateSeq = 0;
+let hostSeq = 0;
 const createTestSigil = async (
   ctx: TestContext,
   projectId: number,
@@ -455,7 +455,7 @@ describe("AppService — the address an operator pins", () => {
   });
 });
 
-describe("AppService — the estate an instance deploys to", () => {
+describe("AppService — the host an instance deploys to", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -467,51 +467,51 @@ describe("AppService — the estate an instance deploys to", () => {
   });
 
   /**
-   * An estate its owner has NOT lent to the project, plus the grant on
+   * A host its owner has NOT lent to the project, plus the grant on
    * request. Two arrangements, because the whole rule is the difference
    * between them.
    */
-  const anEstate = async (
+  const anHost = async (
     ctx: TestContext,
     projectId: number,
     { lend }: { lend: boolean },
   ) => {
-    // A real `users` row, not a bare uuid: `estates.ownerUserId` cascades on
+    // A real `users` row, not a bare uuid: `hosts.ownerUserId` cascades on
     // that foreign key, so an unbacked id fails at the insert for a reason
-    // that has nothing to do with the estate.
+    // that has nothing to do with the host.
     const users = ctx.alepha.inject(DeployTestEntities).users;
     const owner = await users.create({});
-    estateSeq += 1;
-    const estate = await ctx.repos.estates.create({
+    hostSeq += 1;
+    const host = await ctx.repos.hosts.create({
       ownerUserId: owner.id,
       type: "bay",
-      slug: `ovh-${estateSeq}`,
+      slug: `ovh-${hostSeq}`,
     });
     if (lend) {
-      await ctx.repos.grants.create({ estateId: estate.id, projectId });
+      await ctx.repos.grants.create({ hostId: host.id, projectId });
     }
-    return estate;
+    return host;
   };
 
-  it("accepts an estate the project has been lent", async ({ expect }) => {
+  it("accepts a host the project has been lent", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
       app: "acme",
       env: "production",
     });
-    const estate = await anEstate(ctx, project.id, { lend: true });
+    const host = await anHost(ctx, project.id, { lend: true });
 
-    const updated = await ctx.service.setEstate(instance, estate.id);
+    const updated = await ctx.service.setHost(instance, host.id);
 
-    expect(updated.estateId).toBe(estate.id);
+    expect(updated.hostId).toBe(host.id);
   });
 
   it("refuses one the project was never lent, as a 404", async ({ expect }) => {
-    // Validated against `estate_projects` and never against `estates`:
+    // Validated against `host_projects` and never against `hosts`:
     // resolving the id straight would let a project point at somebody else's
     // cloud account, which is folio #96's `targetId` hole wearing a foreign
-    // key. The 404 is deliberate too — a project that was never lent an estate
+    // key. The 404 is deliberate too — a project that was never lent a host
     // should not learn that it exists.
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
@@ -519,38 +519,38 @@ describe("AppService — the estate an instance deploys to", () => {
       app: "acme",
       env: "production",
     });
-    const estate = await anEstate(ctx, project.id, { lend: false });
+    const host = await anHost(ctx, project.id, { lend: false });
 
-    await expect(ctx.service.setEstate(instance, estate.id)).rejects.toThrow(
+    await expect(ctx.service.setHost(instance, host.id)).rejects.toThrow(
       NotFoundError,
     );
 
     const stored = await ctx.repos.instances.getById(instance.id);
-    expect(stored.estateId ?? null).toBeNull();
+    expect(stored.hostId ?? null).toBeNull();
   });
 
-  it("clears the estate on null", async ({ expect }) => {
+  it("clears the host on null", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const instance = await ctx.service.create({
       projectId: project.id,
       app: "acme",
       env: "production",
     });
-    const estate = await anEstate(ctx, project.id, { lend: true });
-    await ctx.service.setEstate(instance, estate.id);
+    const host = await anHost(ctx, project.id, { lend: true });
+    await ctx.service.setHost(instance, host.id);
 
-    const cleared = await ctx.service.setEstate(instance, null);
+    const cleared = await ctx.service.setHost(instance, null);
 
-    expect(cleared.estateId ?? null).toBeNull();
+    expect(cleared.hostId ?? null).toBeNull();
     // ⚠️ Read back from the DATABASE, not from the returned object. The method
     // builds its answer in memory, so asserting on that proves the method
     // returns what it says and nothing about what it wrote - which is exactly
     // how a clear that never reached the column would pass.
     const stored = await ctx.repos.instances.getById(instance.id);
-    expect(stored.estateId ?? null).toBeNull();
+    expect(stored.hostId ?? null).toBeNull();
   });
 
-  it("refuses to detach an estate an instance still points at", async ({
+  it("refuses to detach a host an instance still points at", async ({
     expect,
   }) => {
     // Never cascade: cascading silently breaks other people's projects, while
@@ -562,11 +562,11 @@ describe("AppService — the estate an instance deploys to", () => {
       app: "acme",
       env: "production",
     });
-    const estate = await anEstate(ctx, project.id, { lend: true });
-    await ctx.service.setEstate(instance, estate.id);
+    const host = await anHost(ctx, project.id, { lend: true });
+    await ctx.service.setHost(instance, host.id);
 
     await expect(
-      ctx.estateService.assertUnreferenced(estate.id, project.id),
+      ctx.hostService.assertUnreferenced(host.id, project.id),
     ).rejects.toThrow(/acme\/production/);
   });
 
@@ -580,17 +580,15 @@ describe("AppService — the estate an instance deploys to", () => {
       app: "acme",
       env: "production",
     });
-    const estate = await anEstate(ctx, project.id, { lend: true });
-    await ctx.service.setEstate(instance, estate.id);
+    const host = await anHost(ctx, project.id, { lend: true });
+    await ctx.service.setHost(instance, host.id);
 
     await expect(
-      ctx.estateService.assertUnreferenced(estate.id, other.id),
+      ctx.hostService.assertUnreferenced(host.id, other.id),
     ).resolves.toBeUndefined();
 
     // Without one, any instance anywhere blocks the delete.
-    await expect(
-      ctx.estateService.assertUnreferenced(estate.id),
-    ).rejects.toThrow();
+    await expect(ctx.hostService.assertUnreferenced(host.id)).rejects.toThrow();
   });
 
   it("stops blocking once the instance is repointed at nothing", async ({
@@ -606,25 +604,25 @@ describe("AppService — the estate an instance deploys to", () => {
       app: "acme",
       env: "production",
     });
-    const estate = await anEstate(ctx, project.id, { lend: true });
-    await ctx.service.setEstate(instance, estate.id);
+    const host = await anHost(ctx, project.id, { lend: true });
+    await ctx.service.setHost(instance, host.id);
     await expect(
-      ctx.estateService.assertUnreferenced(estate.id, project.id),
+      ctx.hostService.assertUnreferenced(host.id, project.id),
     ).rejects.toThrow();
 
-    await ctx.service.setEstate(instance, null);
+    await ctx.service.setHost(instance, null);
 
     await expect(
-      ctx.estateService.assertUnreferenced(estate.id, project.id),
+      ctx.hostService.assertUnreferenced(host.id, project.id),
     ).resolves.toBeUndefined();
   });
 
-  it("lets an unreferenced estate through", async ({ expect }) => {
+  it("lets an unreferenced host through", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
-    const estate = await anEstate(ctx, project.id, { lend: true });
+    const host = await anHost(ctx, project.id, { lend: true });
 
     await expect(
-      ctx.estateService.assertUnreferenced(estate.id),
+      ctx.hostService.assertUnreferenced(host.id),
     ).resolves.toBeUndefined();
   });
 });

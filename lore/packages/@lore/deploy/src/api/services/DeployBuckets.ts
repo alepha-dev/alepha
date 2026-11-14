@@ -13,7 +13,11 @@ import { ArtifactService } from "./ArtifactService.ts";
  */
 export class DeployBuckets {
   /**
-   * The bucket an estate's command results land in.
+   * The bucket a host's command results land in.
+   *
+   * ⚠️ Named after the word Lore used before #E147, and staying so: the
+   * bucket name is where every stored result file lives, and a migration
+   * cannot move files. A new name would orphan every result already stored.
    */
   public static readonly RESULT_BUCKET = "estate-command-results";
 

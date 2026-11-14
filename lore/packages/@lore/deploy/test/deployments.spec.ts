@@ -29,8 +29,8 @@ import {
   appInstances,
   artifacts,
   deployments,
-  estateProjects,
-  estates,
+  hostProjects,
+  hosts,
 } from "../src/schemas/index.ts";
 import { packedArtifact } from "../src/testing/index.ts";
 
@@ -57,8 +57,8 @@ class TestDeployService extends DeployService {
 
 class TestRows {
   public readonly deployments = $repository(deployments);
-  public readonly estates = $repository(estates);
-  public readonly grants = $repository(estateProjects);
+  public readonly hosts = $repository(hosts);
+  public readonly grants = $repository(hostProjects);
   public readonly instances = $repository(appInstances);
   public readonly artifacts = $repository(artifacts);
   public readonly projects = $repository(projects);
@@ -195,7 +195,7 @@ describe("a deployment", () => {
   };
 
   describe("queueing one", () => {
-    it("refuses a copy with no estate, before writing anything", async ({
+    it("refuses a copy with no host, before writing anything", async ({
       expect,
     }) => {
       // There is nowhere to deploy to, and a queued row for a deploy that can
@@ -208,7 +208,7 @@ describe("a deployment", () => {
           instanceId: instance.id,
           tag: "latest",
         }),
-      ).rejects.toThrow(/has no estate/);
+      ).rejects.toThrow(/has no host/);
 
       expect(await alepha.inject(TestRows).deployments.findMany({})).toEqual(
         [],
@@ -228,7 +228,7 @@ describe("a deployment", () => {
           instanceId: instance.id,
           tag: "0.28.0",
         }),
-      ).rejects.toThrow(/has no estate|no artifact tagged/);
+      ).rejects.toThrow(/has no host|no artifact tagged/);
     });
 
     it("refuses a copy from another project", async ({ expect }) => {
@@ -255,14 +255,14 @@ describe("a deployment", () => {
      */
     describe("the format gate", () => {
       /**
-       * A copy on a lent Bay estate, so `acceptedRuntimes` is `["node"]` and
+       * A copy on a lent Bay host, so `acceptedRuntimes` is `["node"]` and
        * a node artifact of either format is a candidate as far as `runtime`
        * is concerned.
        */
       const onBay = async () => {
         const w = await world();
         const rows = alepha.inject(TestRows);
-        const estate = await rows.estates.create({
+        const host = await rows.hosts.create({
           ownerUserId: w.user.id,
           type: "bay",
           slug: `bay-${crypto.randomUUID().slice(0, 6)}`,
@@ -270,10 +270,10 @@ describe("a deployment", () => {
           credentialStatus: "valid",
         } as never);
         await rows.grants.create({
-          estateId: estate.id,
+          hostId: host.id,
           projectId: w.project.id,
         });
-        await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+        await rows.instances.updateById(w.instance.id, { hostId: host.id });
         return { ...w, rows };
       };
 
@@ -382,11 +382,11 @@ describe("a deployment", () => {
       it("never reports 'node, node' when the wrong-variant refusal fires", async ({
         expect,
       }) => {
-        // A Cloudflare estate, a node archive and a node image. The refusal
+        // A Cloudflare host, a node archive and a node image. The refusal
         // lists the ARCHIVE runtimes, so it reads `node` once.
         const w = await world();
         const rows = alepha.inject(TestRows);
-        const estate = await rows.estates.create({
+        const host = await rows.hosts.create({
           ownerUserId: w.user.id,
           type: "cloudflare",
           slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -396,10 +396,10 @@ describe("a deployment", () => {
           credential: "sealed",
         } as never);
         await rows.grants.create({
-          estateId: estate.id,
+          hostId: host.id,
           projectId: w.project.id,
         });
-        await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+        await rows.instances.updateById(w.instance.id, { hostId: host.id });
 
         for (const [format, sha, extra] of [
           ["archive", "a", { size: 10, fileId: crypto.randomUUID() }],
@@ -431,13 +431,13 @@ describe("a deployment", () => {
 
   describe("the sigil a build asks for", () => {
     /**
-     * A project, a copy, a lent Cloudflare estate and one stored artifact
+     * A project, a copy, a lent Cloudflare host and one stored artifact
      * whose manifest declares whatever the caller says.
      */
     const deployable = async (env: string[] | undefined) => {
       const w = await world();
       const rows = alepha.inject(TestRows);
-      const estate = await rows.estates.create({
+      const host = await rows.hosts.create({
         ownerUserId: w.user.id,
         type: "cloudflare",
         slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -447,10 +447,10 @@ describe("a deployment", () => {
         credential: "sealed",
       } as never);
       await rows.grants.create({
-        estateId: estate.id,
+        hostId: host.id,
         projectId: w.project.id,
       } as never);
-      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+      await rows.instances.updateById(w.instance.id, { hostId: host.id });
       await rows.artifacts.create({
         projectId: w.project.id,
         app: "my-app",
@@ -499,7 +499,7 @@ describe("a deployment", () => {
 
     /**
      * One archive, two slices (#Q2462): the row's primary is `node`, and a
-     * Cloudflare estate queues its workerd slice rather than refusing a
+     * Cloudflare host queues its workerd slice rather than refusing a
      * "`node` build".
      */
     it("queues a node-primary archive carrying a workerd slice on Cloudflare", async ({
@@ -596,7 +596,7 @@ describe("a deployment", () => {
       const rows = alepha.inject(TestRows);
 
       // The same tag, as an image: an index document in `manifest`, no
-      // `fileId`, and a `runtime` a Cloudflare estate cannot run anyway.
+      // `fileId`, and a `runtime` a Cloudflare host cannot run anyway.
       await rows.artifacts.create({
         projectId: w.project.id,
         app: "my-app",
@@ -904,12 +904,12 @@ describe("a deployment", () => {
         status: "queued",
       });
 
-      // No estate on the instance, so the run refuses before any side effect.
+      // No host on the instance, so the run refuses before any side effect.
       await expect(alepha.inject(DeployService).run(row)).rejects.toThrow();
 
       const after = await rows.findById(row.id);
       expect(after?.status).toBe("failed");
-      expect(after?.error).toMatch(/has no estate/);
+      expect(after?.error).toMatch(/has no host/);
       expect(after?.finishedAt).toBeDefined();
     });
 
@@ -1076,10 +1076,10 @@ describe("a deployment", () => {
     });
   });
 
-  describe("what the estate now holds", () => {
+  describe("what the host now holds", () => {
     /**
      * ⚠️ The ONLY record there will ever be. Every name a deploy provisions is
-     * derived from `(project, env)` and so is reproducible - but an estate is
+     * derived from `(project, env)` and so is reproducible - but a host is
      * LENT, its account holds resources Lore never created, and one of them
      * may legitimately bear the name a copy would compute. A teardown may
      * remove exactly what Lore can show it made.
@@ -1089,7 +1089,7 @@ describe("a deployment", () => {
     }) => {
       const w = await world();
       const rows = alepha.inject(TestRows);
-      const estate = await rows.estates.create({
+      const host = await rows.hosts.create({
         ownerUserId: w.user.id,
         type: "cloudflare",
         slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -1099,10 +1099,10 @@ describe("a deployment", () => {
         credential: "sealed",
       } as never);
       await rows.grants.create({
-        estateId: estate.id,
+        hostId: host.id,
         projectId: w.project.id,
       } as never);
-      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+      await rows.instances.updateById(w.instance.id, { hostId: host.id });
       const row = await rows.deployments.create({
         projectId: w.project.id,
         instanceId: w.instance.id,
@@ -1119,7 +1119,7 @@ describe("a deployment", () => {
           findOne: async () => ({
             id: "x",
             sha256: "y",
-            // The estate is Cloudflare, so the gate wants the runtime it runs.
+            // The host is Cloudflare, so the gate wants the runtime it runs.
             runtime: "workerd",
           }),
         },
@@ -1152,7 +1152,7 @@ describe("a deployment", () => {
 
     /**
      * ⚠️ Absent means UNKNOWN, never "nothing was provisioned" - a teardown
-     * reading absence as an empty estate would report success having deleted
+     * reading absence as an empty host would report success having deleted
      * nothing. A run that reports none must therefore leave the record alone
      * rather than blanking it.
      */
@@ -1217,7 +1217,7 @@ describe("a deployment", () => {
    */
   describe("the name its resources carry", () => {
     /**
-     * An estate on `accountId`, lent to the project, with the copy pointed at
+     * A host on `accountId`, lent to the project, with the copy pointed at
      * it, and a queued run. The runner is replaced by one that records what it
      * was asked for, so the assertion is on the request itself.
      */
@@ -1226,7 +1226,7 @@ describe("a deployment", () => {
       accountId = "acct",
     ) => {
       const rows = alepha.inject(TestRows);
-      const estate = await rows.estates.create({
+      const host = await rows.hosts.create({
         ownerUserId: w.user.id,
         type: "cloudflare",
         slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -1236,11 +1236,11 @@ describe("a deployment", () => {
         credential: "sealed",
       } as never);
       await rows.grants.create({
-        estateId: estate.id,
+        hostId: host.id,
         projectId: w.project.id,
       } as never);
-      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
-      return estate;
+      await rows.instances.updateById(w.instance.id, { hostId: host.id });
+      return host;
     };
 
     const deploy = async (w: Awaited<ReturnType<typeof world>>) => {
@@ -1457,7 +1457,7 @@ describe("a deployment", () => {
     it("goes when its instance goes", async ({ expect }) => {
       // A deployment says "these bytes are running HERE". With no here it is
       // an orphan nobody can act on: no rollback target, no version list, no
-      // estate to reach.
+      // host to reach.
       const { user, project, instance } = await world();
       const rows = alepha.inject(TestRows).deployments;
       await rows.create({
@@ -1489,17 +1489,17 @@ describe("a deployment", () => {
 /**
  * The gate, and the hole it exists to keep shut.
  *
- * ⚠️ **Nothing on the wire names an estate.** An estate is owned by a USER and
- * lent to several projects, so a request that carried an estate id would let a
+ * ⚠️ **Nothing on the wire names a host.** A host is owned by a USER and
+ * lent to several projects, so a request that carried a host id would let a
  * project owner type somebody else's and have their deploy land in that
  * person's Cloudflare account, on that person's token, with the server
- * complying because it only checked the estate exists. Folio #96 named that
- * hole; it came back when estates became user-owned, and this is what keeps it
+ * complying because it only checked the host exists. Folio #96 named that
+ * hole; it came back when hosts became user-owned, and this is what keeps it
  * shut.
  */
 /**
  * ⚠️ Nothing checked this before. Push a `node` artifact, deploy it to a
- * Cloudflare estate, and you got a broken Worker or a confusing failure deep in
+ * Cloudflare host, and you got a broken Worker or a confusing failure deep in
  * the deploy - after an upload had already happened.
  */
 describe("the runtime gate", () => {
@@ -1513,15 +1513,15 @@ describe("the runtime gate", () => {
     await alepha.stop();
   });
 
-  const cloudflareEstate = { slug: "zug", type: "cloudflare" } as never;
-  const bayEstate = { slug: "vps", type: "bay" } as never;
+  const cloudflareHost = { slug: "zug", type: "cloudflare" } as never;
+  const bayHost = { slug: "vps", type: "bay" } as never;
 
-  it("accepts the variant the estate can run", ({ expect }) => {
+  it("accepts the variant the host can run", ({ expect }) => {
     const gate = alepha.inject(DeployGate);
 
     expect(() =>
       gate.assertRuntime({
-        estate: cloudflareEstate,
+        host: cloudflareHost,
         app: "panda",
         tag: "1.2.3",
         runtimes: ["workerd"],
@@ -1532,7 +1532,7 @@ describe("the runtime gate", () => {
 
   /**
    * One archive, two slices (#Q2462): the row's primary is `node`, and a
-   * Cloudflare estate deploys the workerd slice it carries.
+   * Cloudflare host deploys the workerd slice it carries.
    */
   it("accepts a node-primary archive that carries a workerd slice", ({
     expect,
@@ -1541,7 +1541,7 @@ describe("the runtime gate", () => {
 
     expect(() =>
       gate.assertRuntime({
-        estate: cloudflareEstate,
+        host: cloudflareHost,
         app: "panda",
         tag: "1.2.3",
         runtimes: ["node", "workerd"],
@@ -1550,7 +1550,7 @@ describe("the runtime gate", () => {
     ).not.toThrow();
     expect(() =>
       gate.assertRuntime({
-        estate: bayEstate,
+        host: bayHost,
         app: "panda",
         tag: "1.2.3",
         runtimes: ["node", "workerd"],
@@ -1565,14 +1565,14 @@ describe("the runtime gate", () => {
 
     expect(() =>
       gate.assertRuntime({
-        estate: cloudflareEstate,
+        host: cloudflareHost,
         app: "panda",
         tag: "1.2.3",
         runtimes: ["node"],
         available: ["node", "workerd"],
       }),
     ).toThrow(
-      "Artifact panda@1.2.3 carries `node`; estate 'zug' (cloudflare) runs `workerd`.",
+      "Artifact panda@1.2.3 carries `node`; host 'zug' (cloudflare) runs `workerd`.",
     );
   });
 
@@ -1584,7 +1584,7 @@ describe("the runtime gate", () => {
 
     expect(() =>
       gate.assertRuntime({
-        estate: cloudflareEstate,
+        host: cloudflareHost,
         app: "panda",
         tag: "1.2.3",
         runtimes: ["node"],
@@ -1605,7 +1605,7 @@ describe("the runtime gate", () => {
 
     expect(() =>
       gate.assertRuntime({
-        estate: bayEstate,
+        host: bayHost,
         app: "panda",
         tag: "1.2.3",
         runtimes: ["workerd"],
@@ -1623,13 +1623,13 @@ describe("the runtime gate", () => {
 
     expect(() =>
       gate.assertDeployable({
-        estate: bayEstate,
+        host: bayHost,
         app: "panda",
         tag: "0.30.0",
         images: ["ghcr.io/acme/panda:0.30.0"],
       }),
     ).toThrow(
-      "panda@0.30.0 exists only as a container image (ghcr.io/acme/panda:0.30.0), and Lore cannot deploy an image: estate 'vps' (bay) runs `node` from a packed build. Push one with `lore artifacts push`.",
+      "panda@0.30.0 exists only as a container image (ghcr.io/acme/panda:0.30.0), and Lore cannot deploy an image: host 'vps' (bay) runs `node` from a packed build. Push one with `lore artifacts push`.",
     );
   });
 
@@ -1640,13 +1640,13 @@ describe("the runtime gate", () => {
 
     expect(() =>
       gate.assertDeployable({
-        estate: cloudflareEstate,
+        host: cloudflareHost,
         app: "panda",
         tag: "0.30.0",
         images: [undefined],
       }),
     ).toThrow(
-      "panda@0.30.0 exists only as a container image, and Lore cannot deploy an image: estate 'zug' (cloudflare) runs `workerd` from a packed build. Push one with `lore artifacts push`.",
+      "panda@0.30.0 exists only as a container image, and Lore cannot deploy an image: host 'zug' (cloudflare) runs `workerd` from a packed build. Push one with `lore artifacts push`.",
     );
   });
 });
@@ -1780,14 +1780,14 @@ describe("the deploy gate", () => {
     await alepha.stop();
   });
 
-  it("takes no estate from the client, by any route", async ({ expect }) => {
+  it("takes no host from the client, by any route", async ({ expect }) => {
     // Structural rather than a check: the request schemas carry a project, an
     // instance, a tag and whether this copy should have a sigil - and no
-    // estate at all. A field added here later is the bug, however carefully it
+    // host at all. A field added here later is the bug, however carefully it
     // is validated.
     //
     // ⚠️ `sigil` is on this list because a sigil is a credential Lore mints
-    // for THIS copy. An estate is somebody's cloud account, and a client that
+    // for THIS copy. A host is somebody's cloud account, and a client that
     // could name one could deploy into it.
     const controller = alepha.inject(DeployController);
     const body = (
@@ -1802,25 +1802,25 @@ describe("the deploy gate", () => {
   it("refuses a copy whose lending was revoked after it was pointed there", async ({
     expect,
   }) => {
-    // ⚠️ `estate_projects` is a delete, not a cascade onto `app_instances`, so
-    // the column can name an estate this project no longer holds. Proving it at
+    // ⚠️ `host_projects` is a delete, not a cascade onto `app_instances`, so
+    // the column can name a host this project no longer holds. Proving it at
     // write time is not enough.
     const rows = alepha.inject(TestRows);
     const owner = await aUser(alepha);
     const project = await aProject(alepha, owner);
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
-    const estate = await rows.estates.create({
+    const host = await rows.hosts.create({
       ownerUserId: owner.id,
       slug: "someones-account",
       type: "cloudflare",
       deployAllowed: true,
     } as never);
     const grant = await rows.grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: project.id,
     } as never);
-    await rows.instances.updateById(instance.id, { estateId: estate.id });
+    await rows.instances.updateById(instance.id, { hostId: host.id });
 
     // With the lending in place it passes.
     const gate = alepha.inject(DeployGate);
@@ -1834,8 +1834,8 @@ describe("the deploy gate", () => {
     );
   });
 
-  it("refuses an estate whose owner turned deploys off", async ({ expect }) => {
-    // The message names WHOSE estate it is: the person deploying is often not
+  it("refuses a host whose owner turned deploys off", async ({ expect }) => {
+    // The message names WHOSE host it is: the person deploying is often not
     // the person who can flip this, and a Bay machine is stats-only until its
     // owner says otherwise.
     const rows = alepha.inject(TestRows);
@@ -1843,17 +1843,17 @@ describe("the deploy gate", () => {
     const project = await aProject(alepha, owner);
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
-    const estate = await rows.estates.create({
+    const host = await rows.hosts.create({
       ownerUserId: owner.id,
       slug: "stats-only",
       type: "bay",
       deployAllowed: false,
     } as never);
     await rows.grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: project.id,
     } as never);
-    await rows.instances.updateById(instance.id, { estateId: estate.id });
+    await rows.instances.updateById(instance.id, { hostId: host.id });
 
     await expect(
       alepha
@@ -1862,27 +1862,27 @@ describe("the deploy gate", () => {
     ).rejects.toThrow(/'stats-only' does not accept deploys/);
   });
 
-  it("does not refuse a Bay estate for having no Cloudflare credential", async ({
+  it("does not refuse a Bay host for having no Cloudflare credential", async ({
     expect,
   }) => {
-    // ⚠️ `credentialStatus` is `undefined` for a `bay` estate rather than
+    // ⚠️ `credentialStatus` is `undefined` for a `bay` host rather than
     // `"valid"`, so a `!== "valid"` test would refuse every Bay deploy.
     const rows = alepha.inject(TestRows);
     const owner = await aUser(alepha);
     const project = await aProject(alepha, owner);
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
-    const estate = await rows.estates.create({
+    const host = await rows.hosts.create({
       ownerUserId: owner.id,
       slug: "a-machine",
       type: "bay",
       deployAllowed: true,
     } as never);
     await rows.grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: project.id,
     } as never);
-    await rows.instances.updateById(instance.id, { estateId: estate.id });
+    await rows.instances.updateById(instance.id, { hostId: host.id });
 
     await expect(
       alepha
@@ -1891,7 +1891,7 @@ describe("the deploy gate", () => {
     ).resolves.toMatchObject({ slug: "a-machine" });
   });
 
-  it("refuses a Cloudflare estate whose credential stopped working", async ({
+  it("refuses a Cloudflare host whose credential stopped working", async ({
     expect,
   }) => {
     const rows = alepha.inject(TestRows);
@@ -1899,7 +1899,7 @@ describe("the deploy gate", () => {
     const project = await aProject(alepha, owner);
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
-    const estate = await rows.estates.create({
+    const host = await rows.hosts.create({
       ownerUserId: owner.id,
       slug: "expired",
       type: "cloudflare",
@@ -1907,10 +1907,10 @@ describe("the deploy gate", () => {
       credentialError: "Token is not valid",
     } as never);
     await rows.grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: project.id,
     } as never);
-    await rows.instances.updateById(instance.id, { estateId: estate.id });
+    await rows.instances.updateById(instance.id, { hostId: host.id });
 
     await expect(
       alepha
@@ -1940,7 +1940,7 @@ describe("rolling back", () => {
   });
 
   const world = async (
-    estate: Record<string, unknown>,
+    host: Record<string, unknown>,
     row: Record<string, unknown> = {},
   ) => {
     const rows = alepha.inject(TestRows);
@@ -1948,16 +1948,16 @@ describe("rolling back", () => {
     const project = await aProject(alepha, owner);
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
-    const created = await rows.estates.create({
+    const created = await rows.hosts.create({
       ownerUserId: owner.id,
       deployAllowed: true,
-      ...estate,
+      ...host,
     } as never);
     await rows.grants.create({
-      estateId: created.id,
+      hostId: created.id,
       projectId: project.id,
     } as never);
-    await rows.instances.updateById(instance.id, { estateId: created.id });
+    await rows.instances.updateById(instance.id, { hostId: created.id });
     const deployment = await rows.deployments.create({
       projectId: project.id,
       instanceId: instance.id,
@@ -1970,7 +1970,7 @@ describe("rolling back", () => {
     return { project, instance, deployment, rows };
   };
 
-  it("never offers the fast path for a Bay estate", async ({ expect }) => {
+  it("never offers the fast path for a Bay host", async ({ expect }) => {
     // ⚠️ A Bay machine has NO version history. Unavailable in the plan rather
     // than disabled in the UI, so no caller reaches it by asking directly.
     const { project, deployment } = await world(
@@ -2437,7 +2437,7 @@ describe("rolling back", () => {
  * ⚠️ **The column is `deployments`-backed or it does not ship.** #1773 drew it
  * and #1774 shipped three columns instead, because nothing in Lore knew what an
  * instance was RUNNING: no `deployments` table, no app version on the reporting
- * envelope, and a sha256 with no tag on an estate command's payload. The
+ * envelope, and a sha256 with no tag on a host command's payload. The
  * temptation the deferral note names by hand is filling it with the newest
  * artifact pushed for the app - which is per app rather than per copy, says
  * what was BUILT rather than what runs, and is wrong on the first promotion.

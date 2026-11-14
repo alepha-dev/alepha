@@ -12,7 +12,7 @@ import { stackEnvironments } from "./stackEnvironments.ts";
  * relative to the base domain (`@`, `auth`), because production and staging
  * need different full domains.
  *
- * A domain is unique per environment; the estate refuses one claimed by
+ * A domain is unique per environment; the host refuses one claimed by
  * another environment or app on the same machine.
  */
 export const stackEnvironmentRoutes = $entity({

@@ -11,9 +11,9 @@ import {
   ArtifactController,
   DeployController,
   DeployService,
-  EstateCommandService,
+  HostCommandService,
 } from "../src/api/index.ts";
-import { createTestEstate } from "../src/testing/estates.ts";
+import { createTestHost } from "../src/testing/hosts.ts";
 import { packedArtifact } from "../src/testing/index.ts";
 import {
   bootStackSpec,
@@ -22,7 +22,7 @@ import {
 } from "./support/stackWorld.ts";
 
 /**
- * A copy outside any stack, pointed at a Bay estate, deploys through the
+ * A copy outside any stack, pointed at a Bay host, deploys through the
  * machine's command queue (#Q2706). Before, the row went to the Worker's
  * Cloudflare run and failed with "names no Cloudflare account".
  */
@@ -34,7 +34,7 @@ const wire = (name: string) =>
     ),
   );
 
-describe("an app deploy to a Bay estate", () => {
+describe("an app deploy to a Bay host", () => {
   let alepha: Alepha;
 
   beforeEach(async () => {
@@ -47,7 +47,7 @@ describe("an app deploy to a Bay estate", () => {
 
   const arrange = async () => {
     const w = await stackWorld(alepha);
-    const minted = await createTestEstate(
+    const minted = await createTestHost(
       alepha,
       w.user,
       { slug: `bay-${crypto.randomUUID().slice(0, 6)}` },
@@ -55,7 +55,7 @@ describe("an app deploy to a Bay estate", () => {
         projectId: w.project.id,
       },
     );
-    await w.rows.estates.updateById(minted.id, {
+    await w.rows.hosts.updateById(minted.id, {
       deployAllowed: true,
     });
     const instance = await createInstance(
@@ -71,7 +71,7 @@ describe("an app deploy to a Bay estate", () => {
           app: "minpricing",
           env: "production",
         },
-        body: { estateId: minted.id },
+        body: { hostId: minted.id },
       },
       { user: w.user },
     );
@@ -94,7 +94,7 @@ describe("an app deploy to a Bay estate", () => {
     );
     return {
       w,
-      estateId: minted.id,
+      hostId: minted.id,
       secret: minted.secret as string,
       instance,
     };
@@ -116,8 +116,8 @@ describe("an app deploy to a Bay estate", () => {
     const command = await a.w.rows.commands.getOne({
       where: { id: { eq: row.commandId ?? "" } },
     });
-    expect(command.estateId).toBe(a.estateId);
-    const frame = alepha.inject(EstateCommandService).frameOf(command);
+    expect(command.hostId).toBe(a.hostId);
+    const frame = alepha.inject(HostCommandService).frameOf(command);
     expect(frame).toMatchObject({
       kind: "deploy",
       app: "minpricing",
@@ -144,8 +144,8 @@ describe("an app deploy to a Bay estate", () => {
     const a = await arrange();
     const row = await deploy(a);
     expect(await alepha.inject(DeployService).run(row)).toBe("done");
-    const queue = alepha.inject(EstateCommandService);
-    await queue.ack(a.estateId, {
+    const queue = alepha.inject(HostCommandService);
+    await queue.ack(a.hostId, {
       type: "ack",
       id: row.commandId,
       status: "running",
@@ -154,7 +154,7 @@ describe("an app deploy to a Bay estate", () => {
     const list = () =>
       alepha.inject(DeployService).list(a.w.project.id, a.instance.id);
     expect((await list())[0].status).toBe("running");
-    await queue.ack(a.estateId, {
+    await queue.ack(a.hostId, {
       type: "ack",
       id: row.commandId,
       status: "done",
@@ -170,7 +170,7 @@ describe("an app deploy to a Bay estate", () => {
     const a = await arrange();
     const row = await deploy(a);
     await alepha.inject(DeployService).run(row);
-    await alepha.inject(EstateCommandService).ack(a.estateId, {
+    await alepha.inject(HostCommandService).ack(a.hostId, {
       type: "ack",
       id: row.commandId,
       status: "done",
@@ -193,7 +193,7 @@ describe("an app deploy to a Bay estate", () => {
     const a = await arrange();
     const row = await deploy(a);
     await alepha.inject(DeployService).run(row);
-    await alepha.inject(EstateCommandService).ack(a.estateId, {
+    await alepha.inject(HostCommandService).ack(a.hostId, {
       type: "ack",
       id: row.commandId,
       status: "done",
@@ -221,7 +221,7 @@ describe("an app deploy to a Bay estate", () => {
     });
     const row = await deploy(a);
     await alepha.inject(DeployService).run(row);
-    await alepha.inject(EstateCommandService).ack(a.estateId, {
+    await alepha.inject(HostCommandService).ack(a.hostId, {
       type: "ack",
       id: row.commandId,
       status: "done",

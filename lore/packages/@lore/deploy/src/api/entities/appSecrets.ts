@@ -31,7 +31,7 @@ import { appInstances } from "./appInstances.ts";
  * Epic #22 accepted deferring encryption of the stored Cloudflare credential
  * on the reasoning that Lore was a single-admin instance. Both halves of that
  * are gone: this table holds every downstream app's production secrets, and
- * estates went user-scope on 2026-09-04. So {@link valueSealed} is a
+ * hosts went user-scope on 2026-09-04. So {@link valueSealed} is a
  * `CredentialSealService` ciphertext under `APP_SECRETS_PURPOSE`, never a
  * plaintext column, and there is no second sealer.
  *

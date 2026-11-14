@@ -2,13 +2,13 @@ import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import type { EstateCommand } from "../entities/estateCommands.ts";
-import { estateProjects } from "../entities/estateProjects.ts";
-import { estates } from "../entities/estates.ts";
+import type { HostCommand } from "../entities/hostCommands.ts";
+import { hostProjects } from "../entities/hostProjects.ts";
+import { hosts } from "../entities/hosts.ts";
 import type { StackModel } from "../schemas/stackModelSchema.ts";
 import type { StackServicesResource } from "../schemas/stackServicesResourceSchema.ts";
-import { EstateCommandService } from "./EstateCommandService.ts";
-import { EstateInventoryService } from "./EstateInventoryService.ts";
+import { HostCommandService } from "./HostCommandService.ts";
+import { HostInventoryService } from "./HostInventoryService.ts";
 import { StackService } from "./StackService.ts";
 
 /**
@@ -18,11 +18,11 @@ import { StackService } from "./StackService.ts";
  * `<stack>.<service>/<env>`.
  */
 export class StackConsoleService {
-  protected readonly estates = $repository(estates);
-  protected readonly grants = $repository(estateProjects);
+  protected readonly hosts = $repository(hosts);
+  protected readonly grants = $repository(hostProjects);
   protected readonly stacks = $inject(StackService);
-  protected readonly inventories = $inject(EstateInventoryService);
-  protected readonly queue = $inject(EstateCommandService);
+  protected readonly inventories = $inject(HostInventoryService);
+  protected readonly queue = $inject(HostCommandService);
 
   public static readonly SERVICE_VERBS = ["restart", "stop", "start"] as const;
 
@@ -39,9 +39,9 @@ export class StackConsoleService {
     const model = revision
       ? (JSON.parse(revision.model) as StackModel)
       : undefined;
-    const estateId = this.stacks.estateOf(stack, environment);
-    const inventory = estateId
-      ? await this.inventories.findFor(estateId)
+    const hostId = this.stacks.hostOf(stack, environment);
+    const inventory = hostId
+      ? await this.inventories.findFor(hostId)
       : undefined;
     const members = new Map(
       (inventory?.apps ?? [])
@@ -97,7 +97,7 @@ export class StackConsoleService {
     service: string;
     verb: (typeof StackConsoleService.SERVICE_VERBS)[number];
     requestedBy?: string;
-  }): Promise<EstateCommand> {
+  }): Promise<HostCommand> {
     const stack = await this.stacks.get(input.projectId, input.stackId);
     const environment = await this.stacks.getEnvironment(
       stack,
@@ -116,23 +116,23 @@ export class StackConsoleService {
         `${stack.name}/${environment.env} has no service ${input.service}`,
       );
     }
-    const estateId = this.stacks.estateOf(stack, environment);
-    const estate = estateId ? await this.estates.findById(estateId) : undefined;
-    const grant = estate
+    const hostId = this.stacks.hostOf(stack, environment);
+    const host = hostId ? await this.hosts.findById(hostId) : undefined;
+    const grant = host
       ? await this.grants.findOne({
           where: {
-            estateId: { eq: estate.id },
+            hostId: { eq: host.id },
             projectId: { eq: stack.projectId },
           },
         })
       : undefined;
-    if (!estate || !grant) {
+    if (!host || !grant) {
       throw new BadRequestError(
-        `${stack.name}/${environment.env} runs on no estate lent to this project`,
+        `${stack.name}/${environment.env} runs on no host lent to this project`,
       );
     }
     return await this.queue.enqueue(
-      estate,
+      host,
       {
         kind: input.verb,
         payload: {

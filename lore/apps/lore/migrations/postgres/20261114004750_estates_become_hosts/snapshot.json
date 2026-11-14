@@ -1,0 +1,889 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "913143b4-7b39-489f-8dea-78b74a6329c6",
+  "prevIds": ["be959429-66e0-410b-afd9-33acace5025d"],
+  "footprints": [
+    {
+      "statementType": "rename_table",
+      "statementTarget": ["table", "public", "analytics_estate_stats_raw"],
+      "writes": [
+        "s|tbl|public.analytics_estate_stats_raw",
+        "n|tbl|public.analytics_estate_stats_raw",
+        "n|rel|public.analytics_estate_stats_raw",
+        "n|type|public.analytics_estate_stats_raw",
+        "s|tbl|public.analytics_host_stats_raw",
+        "n|tbl|public.analytics_host_stats_raw",
+        "n|rel|public.analytics_host_stats_raw",
+        "n|type|public.analytics_host_stats_raw"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "rename_table",
+      "statementTarget": ["table", "public", "analytics_estate_stats_rolled"],
+      "writes": [
+        "s|tbl|public.analytics_estate_stats_rolled",
+        "n|tbl|public.analytics_estate_stats_rolled",
+        "n|rel|public.analytics_estate_stats_rolled",
+        "n|type|public.analytics_estate_stats_rolled",
+        "s|tbl|public.analytics_host_stats_rolled",
+        "n|tbl|public.analytics_host_stats_rolled",
+        "n|rel|public.analytics_host_stats_rolled",
+        "n|type|public.analytics_host_stats_rolled"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "rename_table",
+      "statementTarget": ["table", "public", "estate_commands"],
+      "writes": [
+        "s|tbl|public.estate_commands",
+        "n|tbl|public.estate_commands",
+        "n|rel|public.estate_commands",
+        "n|type|public.estate_commands",
+        "s|tbl|public.host_commands",
+        "n|tbl|public.host_commands",
+        "n|rel|public.host_commands",
+        "n|type|public.host_commands"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "rename_table",
+      "statementTarget": ["table", "public", "estate_events"],
+      "writes": [
+        "s|tbl|public.estate_events",
+        "n|tbl|public.estate_events",
+        "n|rel|public.estate_events",
+        "n|type|public.estate_events",
+        "s|tbl|public.host_events",
+        "n|tbl|public.host_events",
+        "n|rel|public.host_events",
+        "n|type|public.host_events"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "rename_table",
+      "statementTarget": ["table", "public", "estate_inventories"],
+      "writes": [
+        "s|tbl|public.estate_inventories",
+        "n|tbl|public.estate_inventories",
+        "n|rel|public.estate_inventories",
+        "n|type|public.estate_inventories",
+        "s|tbl|public.host_inventories",
+        "n|tbl|public.host_inventories",
+        "n|rel|public.host_inventories",
+        "n|type|public.host_inventories"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "rename_table",
+      "statementTarget": ["table", "public", "estate_projects"],
+      "writes": [
+        "s|tbl|public.estate_projects",
+        "n|tbl|public.estate_projects",
+        "n|rel|public.estate_projects",
+        "n|type|public.estate_projects",
+        "s|tbl|public.host_projects",
+        "n|tbl|public.host_projects",
+        "n|rel|public.host_projects",
+        "n|type|public.host_projects"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "rename_table",
+      "statementTarget": ["table", "public", "estates"],
+      "writes": [
+        "s|tbl|public.estates",
+        "n|tbl|public.estates",
+        "n|rel|public.estates",
+        "n|type|public.estates",
+        "s|tbl|public.hosts",
+        "n|tbl|public.hosts",
+        "n|rel|public.hosts",
+        "n|type|public.hosts"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_raw",
+        "estate_id"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_raw.estate_id",
+        "n|col|public.analytics_host_stats_raw.estate_id",
+        "s|col|public.analytics_host_stats_raw.host_id",
+        "n|col|public.analytics_host_stats_raw.host_id"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_raw", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_rolled",
+        "estate_id"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_rolled.estate_id",
+        "n|col|public.analytics_host_stats_rolled.estate_id",
+        "s|col|public.analytics_host_stats_rolled.host_id",
+        "n|col|public.analytics_host_stats_rolled.host_id"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_rolled", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "app_instances", "estate_id"],
+      "writes": [
+        "s|col|public.app_instances.estate_id",
+        "n|col|public.app_instances.estate_id",
+        "s|col|public.app_instances.host_id",
+        "n|col|public.app_instances.host_id"
+      ],
+      "reads": ["n|tbl|public.app_instances", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "app_instances",
+        "resource_estate_id"
+      ],
+      "writes": [
+        "s|col|public.app_instances.resource_estate_id",
+        "n|col|public.app_instances.resource_estate_id",
+        "s|col|public.app_instances.resource_host_id",
+        "n|col|public.app_instances.resource_host_id"
+      ],
+      "reads": ["n|tbl|public.app_instances", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "host_commands", "estate_id"],
+      "writes": [
+        "s|col|public.host_commands.estate_id",
+        "n|col|public.host_commands.estate_id",
+        "s|col|public.host_commands.host_id",
+        "n|col|public.host_commands.host_id"
+      ],
+      "reads": ["n|tbl|public.host_commands", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "host_events", "estate_id"],
+      "writes": [
+        "s|col|public.host_events.estate_id",
+        "n|col|public.host_events.estate_id",
+        "s|col|public.host_events.host_id",
+        "n|col|public.host_events.host_id"
+      ],
+      "reads": ["n|tbl|public.host_events", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "host_inventories", "estate_id"],
+      "writes": [
+        "s|col|public.host_inventories.estate_id",
+        "n|col|public.host_inventories.estate_id",
+        "s|col|public.host_inventories.host_id",
+        "n|col|public.host_inventories.host_id"
+      ],
+      "reads": ["n|tbl|public.host_inventories", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "host_inventories", "host"],
+      "writes": [
+        "s|col|public.host_inventories.host",
+        "n|col|public.host_inventories.host",
+        "s|col|public.host_inventories.machine",
+        "n|col|public.host_inventories.machine"
+      ],
+      "reads": ["n|tbl|public.host_inventories", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "host_projects", "estate_id"],
+      "writes": [
+        "s|col|public.host_projects.estate_id",
+        "n|col|public.host_projects.estate_id",
+        "s|col|public.host_projects.host_id",
+        "n|col|public.host_projects.host_id"
+      ],
+      "reads": ["n|tbl|public.host_projects", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "sigils", "last_seen_host"],
+      "writes": [
+        "s|col|public.sigils.last_seen_host",
+        "n|col|public.sigils.last_seen_host",
+        "s|col|public.sigils.last_seen_hostname",
+        "n|col|public.sigils.last_seen_hostname"
+      ],
+      "reads": ["n|tbl|public.sigils", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "stack_deployments", "estate_id"],
+      "writes": [
+        "s|col|public.stack_deployments.estate_id",
+        "n|col|public.stack_deployments.estate_id",
+        "s|col|public.stack_deployments.host_id",
+        "n|col|public.stack_deployments.host_id"
+      ],
+      "reads": ["n|tbl|public.stack_deployments", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "stack_environments",
+        "estate_id"
+      ],
+      "writes": [
+        "s|col|public.stack_environments.estate_id",
+        "n|col|public.stack_environments.estate_id",
+        "s|col|public.stack_environments.host_id",
+        "n|col|public.stack_environments.host_id"
+      ],
+      "reads": ["n|tbl|public.stack_environments", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "stacks", "estate_id"],
+      "writes": [
+        "s|col|public.stacks.estate_id",
+        "n|col|public.stacks.estate_id",
+        "s|col|public.stacks.host_id",
+        "n|col|public.stacks.host_id"
+      ],
+      "reads": ["n|tbl|public.stacks", "n|sch|public"]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "analytics_host_stats_raw",
+        "analytics_estate_stats_raw_time_bucket_estate_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.analytics_estate_stats_raw_time_bucket_estate_id_idx",
+        "n|idx|public.analytics_estate_stats_raw_time_bucket_estate_id_idx",
+        "n|rel|public.analytics_estate_stats_raw_time_bucket_estate_id_idx",
+        "s|idx|public.analytics_host_stats_raw_time_bucket_host_id_idx",
+        "n|idx|public.analytics_host_stats_raw_time_bucket_host_id_idx",
+        "n|rel|public.analytics_host_stats_raw_time_bucket_host_id_idx"
+      ],
+      "reads": [
+        "e|tbl|public.analytics_host_stats_raw",
+        "n|sch|public",
+        "e|col|public.analytics_host_stats_raw.time_bucket",
+        "e|col|public.analytics_host_stats_raw.host_id"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "analytics_host_stats_rolled",
+        "analytics_estate_stats_rolled_time_bucket_estate_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.analytics_estate_stats_rolled_time_bucket_estate_id_idx",
+        "n|idx|public.analytics_estate_stats_rolled_time_bucket_estate_id_idx",
+        "n|rel|public.analytics_estate_stats_rolled_time_bucket_estate_id_idx",
+        "s|idx|public.analytics_host_stats_rolled_time_bucket_host_id_idx",
+        "n|idx|public.analytics_host_stats_rolled_time_bucket_host_id_idx",
+        "n|rel|public.analytics_host_stats_rolled_time_bucket_host_id_idx"
+      ],
+      "reads": [
+        "e|tbl|public.analytics_host_stats_rolled",
+        "n|sch|public",
+        "e|col|public.analytics_host_stats_rolled.time_bucket",
+        "e|col|public.analytics_host_stats_rolled.host_id"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "app_instances",
+        "app_instances_estate_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.app_instances_estate_id_idx",
+        "n|idx|public.app_instances_estate_id_idx",
+        "n|rel|public.app_instances_estate_id_idx",
+        "s|idx|public.app_instances_host_id_idx",
+        "n|idx|public.app_instances_host_id_idx",
+        "n|rel|public.app_instances_host_id_idx"
+      ],
+      "reads": [
+        "e|tbl|public.app_instances",
+        "n|sch|public",
+        "e|col|public.app_instances.host_id"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_commands",
+        "estate_commands_estate_id_status_idx"
+      ],
+      "writes": [
+        "s|idx|public.estate_commands_estate_id_status_idx",
+        "n|idx|public.estate_commands_estate_id_status_idx",
+        "n|rel|public.estate_commands_estate_id_status_idx",
+        "s|idx|public.host_commands_host_id_status_idx",
+        "n|idx|public.host_commands_host_id_status_idx",
+        "n|rel|public.host_commands_host_id_status_idx"
+      ],
+      "reads": [
+        "e|tbl|public.host_commands",
+        "n|sch|public",
+        "e|col|public.host_commands.host_id",
+        "e|col|public.host_commands.status"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_commands",
+        "estate_commands_estate_id_created_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.estate_commands_estate_id_created_at_idx",
+        "n|idx|public.estate_commands_estate_id_created_at_idx",
+        "n|rel|public.estate_commands_estate_id_created_at_idx",
+        "s|idx|public.host_commands_host_id_created_at_idx",
+        "n|idx|public.host_commands_host_id_created_at_idx",
+        "n|rel|public.host_commands_host_id_created_at_idx"
+      ],
+      "reads": [
+        "e|tbl|public.host_commands",
+        "n|sch|public",
+        "e|col|public.host_commands.host_id",
+        "e|col|public.host_commands.created_at"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_events",
+        "estate_events_estate_id_event_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.estate_events_estate_id_event_id_idx",
+        "n|idx|public.estate_events_estate_id_event_id_idx",
+        "n|rel|public.estate_events_estate_id_event_id_idx",
+        "s|idx|public.host_events_host_id_event_id_idx",
+        "n|idx|public.host_events_host_id_event_id_idx",
+        "n|rel|public.host_events_host_id_event_id_idx"
+      ],
+      "reads": [
+        "e|tbl|public.host_events",
+        "n|sch|public",
+        "e|col|public.host_events.host_id",
+        "e|col|public.host_events.event_id"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_events",
+        "estate_events_estate_id_app_env_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.estate_events_estate_id_app_env_at_idx",
+        "n|idx|public.estate_events_estate_id_app_env_at_idx",
+        "n|rel|public.estate_events_estate_id_app_env_at_idx",
+        "s|idx|public.host_events_host_id_app_env_at_idx",
+        "n|idx|public.host_events_host_id_app_env_at_idx",
+        "n|rel|public.host_events_host_id_app_env_at_idx"
+      ],
+      "reads": [
+        "e|tbl|public.host_events",
+        "n|sch|public",
+        "e|col|public.host_events.host_id",
+        "e|col|public.host_events.app",
+        "e|col|public.host_events.env",
+        "e|col|public.host_events.at"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_inventories",
+        "estate_inventories_estate_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.estate_inventories_estate_id_idx",
+        "n|idx|public.estate_inventories_estate_id_idx",
+        "n|rel|public.estate_inventories_estate_id_idx",
+        "s|idx|public.host_inventories_host_id_idx",
+        "n|idx|public.host_inventories_host_id_idx",
+        "n|rel|public.host_inventories_host_id_idx"
+      ],
+      "reads": [
+        "e|tbl|public.host_inventories",
+        "n|sch|public",
+        "e|col|public.host_inventories.host_id"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_projects",
+        "estate_projects_estate_id_project_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.estate_projects_estate_id_project_id_idx",
+        "n|idx|public.estate_projects_estate_id_project_id_idx",
+        "n|rel|public.estate_projects_estate_id_project_id_idx",
+        "s|idx|public.host_projects_host_id_project_id_idx",
+        "n|idx|public.host_projects_host_id_project_id_idx",
+        "n|rel|public.host_projects_host_id_project_id_idx"
+      ],
+      "reads": [
+        "e|tbl|public.host_projects",
+        "n|sch|public",
+        "e|col|public.host_projects.host_id",
+        "e|col|public.host_projects.project_id"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_projects",
+        "estate_projects_project_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.estate_projects_project_id_idx",
+        "n|idx|public.estate_projects_project_id_idx",
+        "n|rel|public.estate_projects_project_id_idx",
+        "s|idx|public.host_projects_project_id_idx",
+        "n|idx|public.host_projects_project_id_idx",
+        "n|rel|public.host_projects_project_id_idx"
+      ],
+      "reads": [
+        "e|tbl|public.host_projects",
+        "n|sch|public",
+        "e|col|public.host_projects.project_id"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "hosts",
+        "estates_project_id_slug_idx"
+      ],
+      "writes": [
+        "s|idx|public.estates_project_id_slug_idx",
+        "n|idx|public.estates_project_id_slug_idx",
+        "n|rel|public.estates_project_id_slug_idx",
+        "s|idx|public.hosts_project_id_slug_idx",
+        "n|idx|public.hosts_project_id_slug_idx",
+        "n|rel|public.hosts_project_id_slug_idx"
+      ],
+      "reads": [
+        "e|tbl|public.hosts",
+        "n|sch|public",
+        "e|col|public.hosts.project_id",
+        "e|col|public.hosts.slug"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "hosts",
+        "estates_secret_hash_idx"
+      ],
+      "writes": [
+        "s|idx|public.estates_secret_hash_idx",
+        "n|idx|public.estates_secret_hash_idx",
+        "n|rel|public.estates_secret_hash_idx",
+        "s|idx|public.hosts_secret_hash_idx",
+        "n|idx|public.hosts_secret_hash_idx",
+        "n|rel|public.hosts_secret_hash_idx"
+      ],
+      "reads": [
+        "e|tbl|public.hosts",
+        "n|sch|public",
+        "e|col|public.hosts.secret_hash"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "hosts",
+        "estates_enrolment_hash_idx"
+      ],
+      "writes": [
+        "s|idx|public.estates_enrolment_hash_idx",
+        "n|idx|public.estates_enrolment_hash_idx",
+        "n|rel|public.estates_enrolment_hash_idx",
+        "s|idx|public.hosts_enrolment_hash_idx",
+        "n|idx|public.hosts_enrolment_hash_idx",
+        "n|rel|public.hosts_enrolment_hash_idx"
+      ],
+      "reads": [
+        "e|tbl|public.hosts",
+        "n|sch|public",
+        "e|col|public.hosts.enrolment_hash"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "stack_environments",
+        "stack_environments_estate_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.stack_environments_estate_id_idx",
+        "n|idx|public.stack_environments_estate_id_idx",
+        "n|rel|public.stack_environments_estate_id_idx",
+        "s|idx|public.stack_environments_host_id_idx",
+        "n|idx|public.stack_environments_host_id_idx",
+        "n|rel|public.stack_environments_host_id_idx"
+      ],
+      "reads": [
+        "e|tbl|public.stack_environments",
+        "n|sch|public",
+        "e|col|public.stack_environments.host_id"
+      ]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": ["index", "public", "stacks", "stacks_estate_id_idx"],
+      "writes": [
+        "s|idx|public.stacks_estate_id_idx",
+        "n|idx|public.stacks_estate_id_idx",
+        "n|rel|public.stacks_estate_id_idx",
+        "s|idx|public.stacks_host_id_idx",
+        "n|idx|public.stacks_host_id_idx",
+        "n|rel|public.stacks_host_id_idx"
+      ],
+      "reads": [
+        "e|tbl|public.stacks",
+        "n|sch|public",
+        "e|col|public.stacks.host_id"
+      ]
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "host_projects", "id"],
+      "writes": [
+        "s|colprop|public.host_projects.id.identity",
+        "s|colprop|public.host_projects.id.default",
+        "s|colprop|public.host_projects.id.notNull"
+      ],
+      "reads": [
+        "n|tbl|public.host_projects",
+        "n|sch|public",
+        "n|col|public.host_projects.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "rename",
+      "key": "tables\u0000[\"public\",\"analytics_estate_stats_raw\"]",
+      "set": {
+        "name": "analytics_host_stats_raw"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "tables\u0000[\"public\",\"analytics_estate_stats_rolled\"]",
+      "set": {
+        "name": "analytics_host_stats_rolled"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "tables\u0000[\"public\",\"estate_commands\"]",
+      "set": {
+        "name": "host_commands"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "tables\u0000[\"public\",\"estate_events\"]",
+      "set": {
+        "name": "host_events"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "tables\u0000[\"public\",\"estate_inventories\"]",
+      "set": {
+        "name": "host_inventories"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "tables\u0000[\"public\",\"estate_projects\"]",
+      "set": {
+        "name": "host_projects"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "tables\u0000[\"public\",\"estates\"]",
+      "set": {
+        "name": "hosts"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"analytics_host_stats_raw\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"analytics_host_stats_rolled\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"app_instances\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"app_instances\",\"resource_estate_id\"]",
+      "set": {
+        "name": "resource_host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"host_commands\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"host_events\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"host_inventories\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"host_inventories\",\"host\"]",
+      "set": {
+        "name": "machine"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"host_projects\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"sigils\",\"last_seen_host\"]",
+      "set": {
+        "name": "last_seen_hostname"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"stack_deployments\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"stack_environments\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"stacks\",\"estate_id\"]",
+      "set": {
+        "name": "host_id"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"analytics_estate_stats_raw_time_bucket_estate_id_idx\"]",
+      "set": {
+        "name": "analytics_host_stats_raw_time_bucket_host_id_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"analytics_estate_stats_rolled_time_bucket_estate_id_idx\"]",
+      "set": {
+        "name": "analytics_host_stats_rolled_time_bucket_host_id_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"app_instances_estate_id_idx\"]",
+      "set": {
+        "name": "app_instances_host_id_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estate_commands_estate_id_status_idx\"]",
+      "set": {
+        "name": "host_commands_host_id_status_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estate_commands_estate_id_created_at_idx\"]",
+      "set": {
+        "name": "host_commands_host_id_created_at_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estate_events_estate_id_event_id_idx\"]",
+      "set": {
+        "name": "host_events_host_id_event_id_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estate_events_estate_id_app_env_at_idx\"]",
+      "set": {
+        "name": "host_events_host_id_app_env_at_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estate_inventories_estate_id_idx\"]",
+      "set": {
+        "name": "host_inventories_host_id_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estate_projects_estate_id_project_id_idx\"]",
+      "set": {
+        "name": "host_projects_host_id_project_id_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estate_projects_project_id_idx\"]",
+      "set": {
+        "name": "host_projects_project_id_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estates_project_id_slug_idx\"]",
+      "set": {
+        "name": "hosts_project_id_slug_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estates_secret_hash_idx\"]",
+      "set": {
+        "name": "hosts_secret_hash_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"estates_enrolment_hash_idx\"]",
+      "set": {
+        "name": "hosts_enrolment_hash_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"stack_environments_estate_id_idx\"]",
+      "set": {
+        "name": "stack_environments_host_id_idx"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"stacks_estate_id_idx\"]",
+      "set": {
+        "name": "stacks_host_id_idx"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"host_projects\",\"id\"]",
+      "set": {
+        "identity": {
+          "type": "always",
+          "name": "host_projects_id_seq",
+          "increment": "1",
+          "startWith": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": 1,
+          "cycle": false
+        }
+      }
+    }
+  ]
+}

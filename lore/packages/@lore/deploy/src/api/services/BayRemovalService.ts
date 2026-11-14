@@ -3,30 +3,27 @@ import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import type { AppInstance } from "../entities/appInstances.ts";
-import {
-  type EstateCommand,
-  estateCommands,
-} from "../entities/estateCommands.ts";
-import { estateProjects } from "../entities/estateProjects.ts";
-import { type Estate, estates } from "../entities/estates.ts";
+import { type HostCommand, hostCommands } from "../entities/hostCommands.ts";
+import { hostProjects } from "../entities/hostProjects.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
 import type { StackEnvironment } from "../entities/stackEnvironments.ts";
 import type { Stack } from "../entities/stacks.ts";
-import { EstateCommandService } from "./EstateCommandService.ts";
-import { EstateInventoryService } from "./EstateInventoryService.ts";
+import { HostCommandService } from "./HostCommandService.ts";
+import { HostInventoryService } from "./HostInventoryService.ts";
 
 /**
- * Where a copy lives on a Bay, when it does: the estate, and the name the
+ * Where a copy lives on a Bay, when it does: the host, and the name the
  * machine knows it by.
  */
 export type BayCopyTarget =
-  | { status: "ok"; estate: Estate; machineApp: string }
+  | { status: "ok"; host: Host; machineApp: string }
   | {
-      status: "no-estate" | "not-lent" | "not-bay" | "not-deployed";
-      estate?: Estate;
+      status: "no-host" | "not-lent" | "not-bay" | "not-deployed";
+      host?: Host;
     };
 
 /**
- * Undeploying from a Bay estate (#Q3153, folio #F1455): asking the machine to
+ * Undeploying from a Bay host (#Q3153, folio #F1455): asking the machine to
  * stop serving a copy, or a stack environment, and forget it.
  *
  * ## ⚠️ Never the data
@@ -35,65 +32,65 @@ export type BayCopyTarget =
  * no way to ask for one. A copy's database, uploads and `.env`, and a stack's
  * volumes, stay on the machine; deleting them is `bay remove --purge` (or
  * `bay stack destroy --purge`) run there, before the removal, by someone who
- * can reach the host. Both verbs are held to the estate's deploy switch, in
- * `EstateCommandService.assertAccepts` and again by Bay from its `welcome`.
+ * can reach the host. Both verbs are held to the host's deploy switch, in
+ * `HostCommandService.assertAccepts` and again by Bay from its `welcome`.
  *
  * ## The name is the stored one
  *
  * A removal is aimed the way a backup is: at the name the copy was deployed
- * under, on the estate it was deployed to (`resourceName`,
- * `resourceEstateId`), never at a name the caller chose and never at one
+ * under, on the host it was deployed to (`resourceName`,
+ * `resourceHostId`), never at a name the caller chose and never at one
  * recomputed from the project's current slug. A project can only remove what
  * it deployed.
  */
 export class BayRemovalService {
-  protected readonly estates = $repository(estates);
-  protected readonly grants = $repository(estateProjects);
-  protected readonly rows = $repository(estateCommands);
-  protected readonly commands = $inject(EstateCommandService);
-  protected readonly inventories = $inject(EstateInventoryService);
+  protected readonly hosts = $repository(hosts);
+  protected readonly grants = $repository(hostProjects);
+  protected readonly rows = $repository(hostCommands);
+  protected readonly commands = $inject(HostCommandService);
+  protected readonly inventories = $inject(HostInventoryService);
 
   /**
    * The Bay instance a copy is, checked the way `DeployGate` checks a deploy:
-   * an estate, still there, still lent, a Bay, and a name the copy was
-   * deployed under ON THAT estate.
+   * a host, still there, still lent, a Bay, and a name the copy was
+   * deployed under ON THAT host.
    *
    * ⚠️ Reads the STORED name and never `ResourceNameService.resolve`, which
    * stores one: asking must not name a copy that never deployed.
    */
   public async target(instance: AppInstance): Promise<BayCopyTarget> {
-    if (!instance.estateId) {
-      return { status: "no-estate" };
+    if (!instance.hostId) {
+      return { status: "no-host" };
     }
-    const estate = await this.estates.findById(instance.estateId);
-    if (!estate) {
-      return { status: "no-estate" };
+    const host = await this.hosts.findById(instance.hostId);
+    if (!host) {
+      return { status: "no-host" };
     }
     const grant = await this.grants.findOne({
       where: {
-        estateId: { eq: estate.id },
+        hostId: { eq: host.id },
         projectId: { eq: instance.projectId },
       },
     });
     if (!grant) {
       return { status: "not-lent" };
     }
-    if (estate.type !== "bay") {
-      return { status: "not-bay", estate };
+    if (host.type !== "bay") {
+      return { status: "not-bay", host };
     }
     const suffix = `-${instance.env}`;
     const name = instance.resourceName;
-    // ⚠️ The name is only this copy's on the estate it was deployed to under
-    // it. Moved since, the same name on the new estate may be another
+    // ⚠️ The name is only this copy's on the host it was deployed to under
+    // it. Moved since, the same name on the new host may be another
     // project's instance.
     if (
-      instance.resourceEstateId !== estate.id ||
+      instance.resourceHostId !== host.id ||
       !name?.endsWith(suffix) ||
       name.length <= suffix.length
     ) {
-      return { status: "not-deployed", estate };
+      return { status: "not-deployed", host };
     }
-    return { status: "ok", estate, machineApp: name.slice(0, -suffix.length) };
+    return { status: "ok", host, machineApp: name.slice(0, -suffix.length) };
   }
 
   /**
@@ -113,7 +110,7 @@ export class BayRemovalService {
     if (target.status !== "ok") {
       return false;
     }
-    const inventory = await this.inventories.findFor(target.estate.id);
+    const inventory = await this.inventories.findFor(target.host.id);
     if (!inventory) {
       return true;
     }
@@ -128,7 +125,7 @@ export class BayRemovalService {
   public async removeCopy(
     instance: AppInstance,
     requestedBy?: string,
-  ): Promise<{ command: EstateCommand; estate: Estate; machineApp: string }> {
+  ): Promise<{ command: HostCommand; host: Host; machineApp: string }> {
     if (instance.stackEnvironmentId) {
       throw new BadRequestError(
         `${instance.app}/${instance.env} is a member of a stack: it is removed with its stack environment (\`lore stack destroy\`), never on its own.`,
@@ -143,32 +140,32 @@ export class BayRemovalService {
       );
     }
     const command = await this.commands.enqueue(
-      target.estate,
+      target.host,
       {
         kind: "remove",
         payload: { app: target.machineApp, environment: instance.env },
       },
       requestedBy,
     );
-    return { command, estate: target.estate, machineApp: target.machineApp };
+    return { command, host: target.host, machineApp: target.machineApp };
   }
 
   /**
-   * A copy's own removal command, scoped on the estate AND the copy's machine
+   * A copy's own removal command, scoped on the host AND the copy's machine
    * name, so a project cannot read another project's commands on a shared
    * machine by guessing ids.
    */
   public async readCopyRemoval(
     instance: AppInstance,
     commandId: string,
-  ): Promise<EstateCommand> {
+  ): Promise<HostCommand> {
     const target = await this.target(instance);
     const command =
       target.status === "ok"
         ? await this.rows.findOne({
             where: {
               id: { eq: commandId },
-              estateId: { eq: target.estate.id },
+              hostId: { eq: target.host.id },
             },
           })
         : undefined;
@@ -194,13 +191,13 @@ export class BayRemovalService {
     stack: Stack,
     environment: StackEnvironment,
     requestedBy?: string,
-  ): Promise<{ command: EstateCommand; estate: Estate } | undefined> {
+  ): Promise<{ command: HostCommand; host: Host } | undefined> {
     if (!environment.revision) {
       return undefined;
     }
-    const estate = await this.stackEstate(stack, environment);
+    const host = await this.stackHost(stack, environment);
     const command = await this.commands.enqueue(
-      estate,
+      host,
       {
         kind: "stack-remove",
         payload: {
@@ -211,7 +208,7 @@ export class BayRemovalService {
       },
       requestedBy,
     );
-    return { command, estate };
+    return { command, host };
   }
 
   /**
@@ -221,11 +218,11 @@ export class BayRemovalService {
     stack: Stack,
     environment: StackEnvironment,
     commandId: string,
-  ): Promise<EstateCommand> {
-    const estateId = environment.estateId ?? stack.estateId;
-    const command = estateId
+  ): Promise<HostCommand> {
+    const hostId = environment.hostId ?? stack.hostId;
+    const command = hostId
       ? await this.rows.findOne({
-          where: { id: { eq: commandId }, estateId: { eq: estateId } },
+          where: { id: { eq: commandId }, hostId: { eq: hostId } },
         })
       : undefined;
     if (
@@ -239,25 +236,25 @@ export class BayRemovalService {
     return command;
   }
 
-  protected async stackEstate(
+  protected async stackHost(
     stack: Stack,
     environment: StackEnvironment,
-  ): Promise<Estate> {
-    const estateId = environment.estateId ?? stack.estateId;
-    const estate = estateId ? await this.estates.findById(estateId) : undefined;
-    const grant = estate
+  ): Promise<Host> {
+    const hostId = environment.hostId ?? stack.hostId;
+    const host = hostId ? await this.hosts.findById(hostId) : undefined;
+    const grant = host
       ? await this.grants.findOne({
           where: {
-            estateId: { eq: estate.id },
+            hostId: { eq: host.id },
             projectId: { eq: stack.projectId },
           },
         })
       : undefined;
-    if (!estate || !grant || estate.type !== "bay") {
+    if (!host || !grant || host.type !== "bay") {
       throw new BadRequestError(
         `${stack.name}/${environment.env} runs on no Bay lent to this project, so Lore has no machine to ask.`,
       );
     }
-    return estate;
+    return host;
   }
 }

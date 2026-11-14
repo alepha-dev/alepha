@@ -5,12 +5,12 @@ import type { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
-  EstateInventoryService,
+  HostInventoryService,
   StackController,
   StackDeployController,
 } from "../src/api/index.ts";
-import { estateInventoryFrameSchema } from "../src/api/schemas/estateInventoryFrameSchema.ts";
-import { createTestEstate } from "../src/testing/estates.ts";
+import { hostInventoryFrameSchema } from "../src/api/schemas/hostInventoryFrameSchema.ts";
+import { createTestHost } from "../src/testing/hosts.ts";
 import {
   bootStackSpec,
   createEnvironment,
@@ -45,7 +45,7 @@ describe("the stack console", () => {
 
   const arrange = async () => {
     const w = await stackWorld(alepha);
-    const minted = await createTestEstate(
+    const minted = await createTestHost(
       alepha,
       w.user,
       { slug: `bay-${crypto.randomUUID().slice(0, 6)}` },
@@ -55,7 +55,7 @@ describe("the stack console", () => {
     );
     const stack = await createStack(alepha, w, {
       name: "umami",
-      estateId: minted.id,
+      hostId: minted.id,
     });
     const env = await createEnvironment(alepha, w, stack.id, {
       env: "production",
@@ -85,13 +85,13 @@ describe("the stack console", () => {
       stackId: stack.id,
       environmentId: env.id,
     };
-    return { w, estateId: minted.id, stack, env, params };
+    return { w, hostId: minted.id, stack, env, params };
   };
 
   it("keeps Bay's stacks and member fields when an inventory is read", ({
     expect,
   }) => {
-    const frame = estateInventoryFrameSchema.parse(inventoryFixture());
+    const frame = hostInventoryFrameSchema.parse(inventoryFixture());
     expect(frame.stacks?.[0]).toMatchObject({
       stack: "umami",
       env: "production",
@@ -107,7 +107,7 @@ describe("the stack console", () => {
   it("joins each service with what the machine reported, and says which volumes no backup covers", async ({
     expect,
   }) => {
-    const { w, estateId, params } = await arrange();
+    const { w, hostId, params } = await arrange();
     const before = (
       await alepha
         .inject(StackDeployController)
@@ -116,12 +116,12 @@ describe("the stack console", () => {
     expect(before.services.map((s) => s.name)).toEqual(["db", "umami"]);
     expect(before.volumes).toEqual([{ name: "umami-db-data" }]);
 
-    const estate = await w.rows.estates.getOne({
-      where: { id: { eq: estateId } },
+    const host = await w.rows.hosts.getOne({
+      where: { id: { eq: hostId } },
     });
     await alepha
-      .inject(EstateInventoryService)
-      .record(estate, estateInventoryFrameSchema.parse(inventoryFixture()));
+      .inject(HostInventoryService)
+      .record(host, hostInventoryFrameSchema.parse(inventoryFixture()));
     const after = (
       await alepha
         .inject(StackDeployController)

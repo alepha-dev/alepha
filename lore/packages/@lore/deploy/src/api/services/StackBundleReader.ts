@@ -9,7 +9,7 @@ import { StackComposeParser } from "./StackComposeParser.ts";
 
 /**
  * A revision bundle, read: the compose text, every path it carries, and the
- * bytes Lore stores and the estate pulls.
+ * bytes Lore stores and the host pulls.
  */
 export interface StackBundle {
   compose: string;

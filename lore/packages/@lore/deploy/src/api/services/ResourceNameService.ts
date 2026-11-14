@@ -4,22 +4,22 @@ import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
-import { type Estate, estates } from "../entities/estates.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
 
 /**
- * The name a deployed copy carries in its estate, decided on its first deploy
+ * The name a deployed copy carries in its host, decided on its first deploy
  * and read back on every one after (`appInstances.resourceName`).
  *
  * One owner for both deploy paths: a Cloudflare deploy (`DeployService`) names
  * its Worker, D1, R2, KV and queue with it, and a Bay deploy
- * (`EstateCommandController`) sends the project segment Bay composes its
+ * (`HostCommandController`) sends the project segment Bay composes its
  * instance key, directory and default subdomain from. Both need the same three
  * rules, so they live here once.
  *
  * ## ⚠️ Why the project is in the name at all
  *
  * With the app alone, two Lore projects that each call an app `api` and deploy
- * `production` onto one estate compute one name: one Worker, one database, one
+ * `production` onto one host compute one name: one Worker, one database, one
  * Bay directory, silently shared, each deploy overwriting the other.
  *
  * ## ⚠️ Why it is stored rather than recomputed
@@ -30,7 +30,7 @@ import { type Estate, estates } from "../entities/estates.ts";
  */
 export class ResourceNameService {
   protected readonly instances = $repository(appInstances);
-  protected readonly estates = $repository(estates);
+  protected readonly hosts = $repository(hosts);
   protected readonly projects = $repository(projects);
 
   /**
@@ -41,9 +41,9 @@ export class ResourceNameService {
    * Written first, the retry comes back to it even if the project was renamed
    * in between; written after success, it would not.
    */
-  public async resolve(instance: AppInstance, estate: Estate): Promise<string> {
-    const name = instance.resourceName ?? (await this.derive(instance, estate));
-    await this.assertFree(instance, estate, name);
+  public async resolve(instance: AppInstance, host: Host): Promise<string> {
+    const name = instance.resourceName ?? (await this.derive(instance, host));
+    await this.assertFree(instance, host, name);
     if (!instance.resourceName) {
       await this.instances.updateById(instance.id, { resourceName: name });
     }
@@ -52,7 +52,7 @@ export class ResourceNameService {
 
   /**
    * A Bay deploy that came back `done` vouches for its copy: it now runs as
-   * its name on that estate (`resourceEstateId`), which is what lets its
+   * its name on that host (`resourceHostId`), which is what lets its
    * Backups tab drive the instance.
    *
    * ⚠️ **On success, never when queued.** A deploy refused, failed or timed
@@ -61,7 +61,7 @@ export class ResourceNameService {
    * at queue time handed its backups and restores to whoever clicked deploy.
    */
   protected readonly onCommandProgressed = $hook({
-    on: "estate:command:progressed",
+    on: "host:command:progressed",
     handler: async ({ command }) => {
       if (command.kind !== "deploy" || command.status !== "done") {
         return;
@@ -75,13 +75,13 @@ export class ResourceNameService {
         : `${app}-${environment}`;
       const copy = await this.instances.findOne({
         where: {
-          estateId: { eq: command.estateId },
+          hostId: { eq: command.hostId },
           resourceName: { eq: name },
         },
       });
-      if (copy && copy.resourceEstateId !== command.estateId) {
+      if (copy && copy.resourceHostId !== command.hostId) {
         await this.instances.updateById(copy.id, {
-          resourceEstateId: command.estateId,
+          resourceHostId: command.hostId,
         });
       }
     },
@@ -131,12 +131,9 @@ export class ResourceNameService {
    * has been composing. A project with no slug sent no segment before this
    * existed, and still sends none, so its live instance does not move.
    */
-  protected async derive(
-    instance: AppInstance,
-    estate: Estate,
-  ): Promise<string> {
+  protected async derive(instance: AppInstance, host: Host): Promise<string> {
     const project = await this.projects.findById(instance.projectId);
-    if (estate.type === "bay") {
+    if (host.type === "bay") {
       return project?.slug
         ? `${project.slug}-${instance.app}-${instance.env}`
         : `${instance.app}-${instance.env}`;
@@ -156,37 +153,37 @@ export class ResourceNameService {
    * called `project1` would derive the very same name: `ensureD1` / `ensureR2`
    * resolve by NAME, so its first Cloudflare deploy would attach to the other
    * project's live database, and on Bay it would replace the other project's
-   * instance. Moving a copy to an estate that already holds its name ends the
+   * instance. Moving a copy to a host that already holds its name ends the
    * same way.
    *
-   * The place is the Cloudflare ACCOUNT for a Cloudflare estate, because two
-   * estates may lend one account, and the estate itself for a Bay machine. The
+   * The place is the Cloudflare ACCOUNT for a Cloudflare host, because two
+   * hosts may lend one account, and the host itself for a Bay machine. The
    * other copy is not named: it may belong to a project the caller cannot see.
    */
   protected async assertFree(
     instance: AppInstance,
-    estate: Estate,
+    host: Host,
     name: string,
   ): Promise<void> {
-    const scope = estate.accountId
+    const scope = host.accountId
       ? (
-          await this.estates.findMany({
-            where: { accountId: { eq: estate.accountId } },
+          await this.hosts.findMany({
+            where: { accountId: { eq: host.accountId } },
             columns: ["id"],
           })
         ).map((it) => it.id)
-      : [estate.id];
+      : [host.id];
     if (scope.length === 0) {
       return;
     }
     // A copy moved away keeps running under its name where it last deployed
-    // (`resourceEstateId`) until somebody removes it there: that name is not
+    // (`resourceHostId`) until somebody removes it there: that name is not
     // free either.
     const holder = await this.instances.findOne({
       where: {
         or: [
-          { estateId: { inArray: scope } },
-          { resourceEstateId: { inArray: scope } },
+          { hostId: { inArray: scope } },
+          { resourceHostId: { inArray: scope } },
         ],
         resourceName: { eq: name },
         id: { ne: instance.id },
@@ -196,9 +193,9 @@ export class ResourceNameService {
       return;
     }
     throw new BadRequestError(
-      estate.accountId
-        ? `Another copy in this Cloudflare account is already named \`${name}\`, and deploying would share its Worker, database and bucket. Point ${instance.app}/${instance.env} at another estate, or rename this project before its first deploy.`
-        : `Another copy on this Bay machine is already named \`${name}\`, and deploying would replace its instance. Point ${instance.app}/${instance.env} at another estate, or rename this project before its first deploy.`,
+      host.accountId
+        ? `Another copy in this Cloudflare account is already named \`${name}\`, and deploying would share its Worker, database and bucket. Point ${instance.app}/${instance.env} at another host, or rename this project before its first deploy.`
+        : `Another copy on this Bay machine is already named \`${name}\`, and deploying would replace its instance. Point ${instance.app}/${instance.env} at another host, or rename this project before its first deploy.`,
     );
   }
 

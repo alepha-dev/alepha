@@ -3,27 +3,27 @@ import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import type { AppInstance } from "../entities/appInstances.ts";
-import { estateProjects } from "../entities/estateProjects.ts";
-import { type Estate, estates } from "../entities/estates.ts";
-import { EstateCloudflareService } from "./EstateCloudflareService.ts";
-import { EstateService } from "./EstateService.ts";
+import { hostProjects } from "../entities/hostProjects.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
+import { HostCloudflareService } from "./HostCloudflareService.ts";
+import { HostService } from "./HostService.ts";
 
 /**
  * Everything that has to be true before a deploy has a single side effect.
  *
- * ## ⚠️ Nothing on the wire names an estate, and that is structural
+ * ## ⚠️ Nothing on the wire names a host, and that is structural
  *
- * The estate is read from the `app_instances` row and from nowhere else. An
- * endpoint, an MCP tool or a CLI flag that accepts an estate id or slug from a
+ * The host is read from the `app_instances` row and from nowhere else. An
+ * endpoint, an MCP tool or a CLI flag that accepts a host id or slug from a
  * client is the bug however carefully it validates: a project owner would type
- * somebody else's estate name and their deploy would land in that person's
+ * somebody else's host name and their deploy would land in that person's
  * Cloudflare account, on that person's token, with the server complying because
- * it only checked that the estate exists. Folio #96 named that hole; it came
- * back the moment estates became user-owned and lent to several projects, and
+ * it only checked that the host exists. Folio #96 named that hole; it came
+ * back the moment hosts became user-owned and lent to several projects, and
  * `deploy-gate.spec.ts` is what keeps it shut.
  *
- * That is also why there is **no `--estate` flag, ever** (epic #1's own words),
- * and why this class takes an instance rather than an estate.
+ * That is also why there is **no `--host` flag, ever** (epic #1's own words),
+ * and why this class takes an instance rather than a host.
  *
  * ## The caller half is one `$ownsProject` call, not a check in here
  *
@@ -44,13 +44,13 @@ import { EstateService } from "./EstateService.ts";
  *
  * ## The order is cheapest-first, and each clause answers a different question
  *
- * 1. the instance has an estate at all
- * 2. the estate still exists
- * 3. the **lending still stands** - `estate_projects` is a delete and not a
+ * 1. the instance has a host at all
+ * 2. the host still exists
+ * 3. the **lending still stands** - `host_projects` is a delete and not a
  *    cascade onto `app_instances`, so an instance can outlive the grant that
  *    let it point there
  * 4. `deployAllowed`, the owner's kill switch
- * 5. `credentialStatus`, for the estate types that have a credential
+ * 5. `credentialStatus`, for the host types that have a credential
  * 6. the artifact's **runtime**, which is last because it is the only clause
  *    that needs the artifact row
  *
@@ -60,76 +60,76 @@ import { EstateService } from "./EstateService.ts";
  * production, which is why every clause refuses rather than warns.
  */
 export class DeployGate {
-  protected readonly estates = $repository(estates);
-  protected readonly grants = $repository(estateProjects);
-  protected readonly cloudflare = $inject(EstateCloudflareService);
-  protected readonly estateService = $inject(EstateService);
+  protected readonly hosts = $repository(hosts);
+  protected readonly grants = $repository(hostProjects);
+  protected readonly cloudflare = $inject(HostCloudflareService);
+  protected readonly hostService = $inject(HostService);
 
   /**
-   * The estate this instance may deploy to, or a refusal saying why not.
+   * The host this instance may deploy to, or a refusal saying why not.
    *
-   * ⚠️ Returns the estate rather than a boolean, so a caller cannot pass the
-   * gate and then resolve the estate a second way. One read, one answer.
+   * ⚠️ Returns the host rather than a boolean, so a caller cannot pass the
+   * gate and then resolve the host a second way. One read, one answer.
    */
-  public async assert(instance: AppInstance): Promise<Estate> {
-    if (!instance.estateId) {
+  public async assert(instance: AppInstance): Promise<Host> {
+    if (!instance.hostId) {
       throw new BadRequestError(
-        `${instance.app}/${instance.env} has no estate, so there is nowhere to deploy it. Choose one on its Settings tab.`,
+        `${instance.app}/${instance.env} has no host, so there is nowhere to deploy it. Choose one on its Settings tab.`,
       );
     }
 
-    const estate = await this.estates.findById(instance.estateId);
-    if (!estate) {
+    const host = await this.hosts.findById(instance.hostId);
+    if (!host) {
       throw new BadRequestError(
-        "The estate this copy deploys to is gone. Lend one again on the project's Estates page.",
+        "The host this copy deploys to is gone. Lend one again on the project's Hosts page.",
       );
     }
 
-    // ⚠️ Re-checked at deploy time even though `AppService.setEstate` proved it
+    // ⚠️ Re-checked at deploy time even though `AppService.setHost` proved it
     // at write time. A lending can be revoked afterwards, and revoking it does
-    // not cascade onto `app_instances` - so the column can name an estate this
+    // not cascade onto `app_instances` - so the column can name a host this
     // project no longer holds.
     const grant = await this.grants.findOne({
       where: {
-        estateId: { eq: estate.id },
+        hostId: { eq: host.id },
         projectId: { eq: instance.projectId },
       },
     });
     if (!grant) {
       throw new NotFoundError(
-        `The estate '${estate.slug}' is no longer lent to this project, so it cannot deploy there. Ask its home project to lend it again.`,
+        `The host '${host.slug}' is no longer lent to this project, so it cannot deploy there. Ask its home project to lend it again.`,
       );
     }
 
-    if (!estate.deployAllowed) {
-      // ⚠️ The message names WHOSE estate it is, because the person deploying
-      // is often not the person who can flip this. A Cloudflare estate is
+    if (!host.deployAllowed) {
+      // ⚠️ The message names WHOSE host it is, because the person deploying
+      // is often not the person who can flip this. A Cloudflare host is
       // created with it on; a Bay machine is stats-only until its home project says
       // otherwise, so this is the clause that routinely fires there.
       throw new BadRequestError(
-        `The estate '${estate.slug}' does not accept deploys. Somebody with estate:update in its home project can turn that on from its console.`,
+        `The host '${host.slug}' does not accept deploys. Somebody with host:update in its home project can turn that on from its console.`,
       );
     }
 
     // ⚠️ Last, and only for the types that have one. `credentialStatus` is
-    // `undefined` for a `bay` estate rather than `"valid"`, so testing for
+    // `undefined` for a `bay` host rather than `"valid"`, so testing for
     // `!== "valid"` would refuse every Bay deploy for having no Cloudflare
     // credential.
-    if (this.cloudflare.credentialStatus(estate) === "invalid") {
+    if (this.cloudflare.credentialStatus(host) === "invalid") {
       throw new BadRequestError(
-        `The estate '${estate.slug}' does not have a usable Cloudflare credential. Somebody with estate:update in its home project can check it from its console.`,
+        `The host '${host.slug}' does not have a usable Cloudflare credential. Somebody with host:update in its home project can check it from its console.`,
       );
     }
 
-    return estate;
+    return host;
   }
 
   /**
-   * Whether this estate can run these bytes at all.
+   * Whether this host can run these bytes at all.
    *
    * ## ⚠️ Nothing checked this before, and the failure was expensive
    *
-   * Push a `node` artifact, deploy it to a Cloudflare estate, and you get a
+   * Push a `node` artifact, deploy it to a Cloudflare host, and you get a
    * broken Worker or a confusing failure deep in the deploy - after an upload
    * has already happened. `manifest.json`'s own doc names the shape of it:
    * "`runtime: node`, spawn a process against a directory with no entry point".
@@ -150,11 +150,11 @@ export class DeployGate {
    * disagree.
    *
    * `artifacts.runtimes` is read from the manifest at push time, and
-   * `acceptedRuntimes` is a property of the estate's TYPE rather than of the
+   * `acceptedRuntimes` is a property of the host's TYPE rather than of the
    * row.
    */
   public assertRuntime(input: {
-    estate: Estate;
+    host: Host;
     app: string;
     tag: string;
     /**
@@ -175,7 +175,7 @@ export class DeployGate {
      */
     available: string[];
   }): void {
-    const accepted = this.estateService.acceptedRuntimes(input.estate.type);
+    const accepted = this.hostService.acceptedRuntimes(input.host.type);
     if (input.runtimes.some((runtime) => accepted.includes(runtime))) {
       return;
     }
@@ -183,7 +183,7 @@ export class DeployGate {
     const wanted = accepted[0] ?? "unknown";
     if (input.available.includes(wanted)) {
       throw new BadRequestError(
-        `Artifact ${input.app}@${input.tag} carries \`${input.runtimes.join("`, `")}\`; estate '${input.estate.slug}' (${input.estate.type}) runs \`${accepted.join("`, `")}\`.`,
+        `Artifact ${input.app}@${input.tag} carries \`${input.runtimes.join("`, `")}\`; host '${input.host.slug}' (${input.host.type}) runs \`${accepted.join("`, `")}\`.`,
       );
     }
 
@@ -207,13 +207,13 @@ export class DeployGate {
    * refusals live, and a refusal that names the actual state is the whole
    * deliverable of all three.
    *
-   * No estate type can run an image today: `acceptedRuntimes` is `bay` to
+   * No host type can run an image today: `acceptedRuntimes` is `bay` to
    * `["node"]` and `cloudflare` to `["workerd"]`, and Bay runs Node under
    * systemd rather than containers. The day one can, this is the method that
    * learns about it.
    */
   public assertDeployable(input: {
-    estate: Estate;
+    host: Host;
     app: string;
     tag: string;
     /**
@@ -225,7 +225,7 @@ export class DeployGate {
     const named = input.images.filter((it): it is string => Boolean(it));
     const shown = named.length ? ` (${named.join(", ")})` : "";
     throw new BadRequestError(
-      `${input.app}@${input.tag} exists only as a container image${shown}, and Lore cannot deploy an image: estate '${input.estate.slug}' (${input.estate.type}) runs \`${this.estateService.acceptedRuntimes(input.estate.type).join("`, `")}\` from a packed build. Push one with \`lore artifacts push\`.`,
+      `${input.app}@${input.tag} exists only as a container image${shown}, and Lore cannot deploy an image: host '${input.host.slug}' (${input.host.type}) runs \`${this.hostService.acceptedRuntimes(input.host.type).join("`, `")}\` from a packed build. Push one with \`lore artifacts push\`.`,
     );
   }
 }

@@ -5,8 +5,8 @@ import { $repository, DbConflictError } from "alepha/orm";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
-import { estateProjects } from "../entities/estateProjects.ts";
-import { estates } from "../entities/estates.ts";
+import { hostProjects } from "../entities/hostProjects.ts";
+import { hosts } from "../entities/hosts.ts";
 import {
   type StackEnvironmentRoute,
   stackEnvironmentRoutes,
@@ -45,7 +45,7 @@ export interface StackRevisionInput {
  *
  * Authorization is the controller's (`deploy:manage` behind the `apps.stacks`
  * capability). What is checked here is the integrity of the references, which
- * no caller may skip: an estate must be LENT to the project, an app instance
+ * no caller may skip: a host must be LENT to the project, an app instance
  * must be of the stack's project and of the environment's own env name, and
  * belongs to at most one environment, which the column itself guarantees.
  */
@@ -55,9 +55,9 @@ export class StackService {
   protected readonly routes = $repository(stackEnvironmentRoutes);
   protected readonly revisions = $repository(stackRevisions);
   protected readonly instances = $repository(appInstances);
-  protected readonly grants = $repository(estateProjects);
+  protected readonly grants = $repository(hostProjects);
   protected readonly projects = $repository(projects);
-  protected readonly estates = $repository(estates);
+  protected readonly hosts = $repository(hosts);
   protected readonly files = $inject(FileService);
   protected readonly bundles = $inject(StackBundleReader);
   protected readonly parser = $inject(StackComposeParser);
@@ -102,7 +102,7 @@ export class StackService {
   async create(input: {
     projectId: number;
     name?: string;
-    estateId?: string;
+    hostId?: string;
     createdBy?: string;
   }): Promise<Stack> {
     let raw = input.name;
@@ -111,14 +111,14 @@ export class StackService {
       raw = project?.slug ?? String(input.projectId);
     }
     const name = this.normalize(raw, "stack");
-    if (input.estateId) {
-      await this.assertLent(input.projectId, input.estateId);
+    if (input.hostId) {
+      await this.assertLent(input.projectId, input.hostId);
     }
     try {
       return await this.stacks.create({
         projectId: input.projectId,
         name,
-        estateId: input.estateId,
+        hostId: input.hostId,
         createdBy: input.createdBy,
       });
     } catch (error) {
@@ -132,14 +132,14 @@ export class StackService {
   }
 
   /**
-   * Sets or clears the stack's default estate.
+   * Sets or clears the stack's default host.
    */
-  async setEstate(stack: Stack, estateId: string | null): Promise<Stack> {
-    if (estateId !== null) {
-      await this.assertLent(stack.projectId, estateId);
+  async setHost(stack: Stack, hostId: string | null): Promise<Stack> {
+    if (hostId !== null) {
+      await this.assertLent(stack.projectId, hostId);
     }
-    await this.stacks.updateById(stack.id, { estateId });
-    return { ...stack, estateId: estateId ?? undefined };
+    await this.stacks.updateById(stack.id, { hostId });
+    return { ...stack, hostId: hostId ?? undefined };
   }
 
   /**
@@ -199,17 +199,17 @@ export class StackService {
 
   async createEnvironment(
     stack: Stack,
-    input: { env: string; estateId?: string; baseDomain?: string },
+    input: { env: string; hostId?: string; baseDomain?: string },
   ): Promise<StackEnvironment> {
     const env = this.normalize(input.env, "environment");
-    if (input.estateId) {
-      await this.assertLent(stack.projectId, input.estateId);
+    if (input.hostId) {
+      await this.assertLent(stack.projectId, input.hostId);
     }
     try {
       return await this.environments.create({
         stackId: stack.id,
         env,
-        estateId: input.estateId,
+        hostId: input.hostId,
         baseDomain: this.domain(input.baseDomain),
       });
     } catch (error) {
@@ -223,20 +223,20 @@ export class StackService {
   }
 
   /**
-   * Updates an environment's estate override (null clears it, back to the
+   * Updates an environment's host override (null clears it, back to the
    * stack's default) and base domain (null clears it).
    */
   async updateEnvironment(
     stack: Stack,
     environment: StackEnvironment,
-    input: { estateId?: string | null; baseDomain?: string | null },
+    input: { hostId?: string | null; baseDomain?: string | null },
   ): Promise<StackEnvironment> {
-    const patch: { estateId?: string | null; baseDomain?: string | null } = {};
-    if (input.estateId !== undefined) {
-      if (input.estateId !== null) {
-        await this.assertLent(stack.projectId, input.estateId);
+    const patch: { hostId?: string | null; baseDomain?: string | null } = {};
+    if (input.hostId !== undefined) {
+      if (input.hostId !== null) {
+        await this.assertLent(stack.projectId, input.hostId);
       }
-      patch.estateId = input.estateId;
+      patch.hostId = input.hostId;
     }
     if (input.baseDomain !== undefined) {
       patch.baseDomain =
@@ -251,11 +251,11 @@ export class StackService {
   }
 
   /**
-   * The estate an environment deploys to: its own, else the stack's default.
+   * The host an environment deploys to: its own, else the stack's default.
    * Undefined when neither is set.
    */
-  estateOf(stack: Stack, environment: StackEnvironment): string | undefined {
-    return environment.estateId ?? stack.estateId;
+  hostOf(stack: Stack, environment: StackEnvironment): string | undefined {
+    return environment.hostId ?? stack.hostId;
   }
 
   // -------------------------------------------------------------------------
@@ -365,19 +365,19 @@ export class StackService {
   }
 
   /**
-   * The targets a stack's revisions must run on: the type of every estate it
+   * The targets a stack's revisions must run on: the type of every host it
    * or one of its environments deploys to, and Bay when none is chosen yet,
    * since Bay is the one target that runs stacks today.
    */
   async targetsOf(stack: Stack): Promise<string[]> {
     const envs = await this.environmentsOf([stack.id]);
-    const ids = [stack.estateId, ...envs.map((e) => e.estateId)].filter(
+    const ids = [stack.hostId, ...envs.map((e) => e.hostId)].filter(
       (id): id is string => !!id,
     );
     if (ids.length === 0) {
       return ["bay"];
     }
-    const rows = await this.estates.findMany({
+    const rows = await this.hosts.findMany({
       where: { id: { inArray: [...new Set(ids)] } },
     });
     return rows.length === 0 ? ["bay"] : [...new Set(rows.map((r) => r.type))];
@@ -497,18 +497,15 @@ export class StackService {
   // -------------------------------------------------------------------------
 
   /**
-   * Refuses an estate the project was never lent, with the message
-   * `AppService.setEstate` gives, so the two cannot be told apart.
+   * Refuses a host the project was never lent, with the message
+   * `AppService.setHost` gives, so the two cannot be told apart.
    */
-  protected async assertLent(
-    projectId: number,
-    estateId: string,
-  ): Promise<void> {
+  protected async assertLent(projectId: number, hostId: string): Promise<void> {
     const grant = await this.grants.findOne({
-      where: { estateId: { eq: estateId }, projectId: { eq: projectId } },
+      where: { hostId: { eq: hostId }, projectId: { eq: projectId } },
     });
     if (!grant) {
-      throw new NotFoundError("This project has no such estate");
+      throw new NotFoundError("This project has no such host");
     }
   }
 

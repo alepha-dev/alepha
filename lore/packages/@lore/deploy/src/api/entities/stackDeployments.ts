@@ -6,7 +6,7 @@ import { stackEnvironments } from "./stackEnvironments.ts";
 
 /**
  * One stack deploy: a revision applied to a stack environment through its
- * estate, and what became of it.
+ * host, and what became of it.
  *
  * ## Its own table, not `deployments`
  *
@@ -15,9 +15,9 @@ import { stackEnvironments } from "./stackEnvironments.ts";
  * and a revision bundle, and holds several services' outcomes. Bending one
  * table to both would make every column of each optional for the other.
  *
- * ## The status follows the estate command
+ * ## The status follows the host command
  *
- * {@link commandId} is the `estate_commands` row the deploy rode on (soft:
+ * {@link commandId} is the `host_commands` row the deploy rode on (soft:
  * the command history is pruned, this row is not). While the command is
  * open the status is read from it; once it is terminal the status is
  * written here, so the log survives a Worker restart and the command's
@@ -44,7 +44,7 @@ export const stackDeployments = $entity({
     revisionId: z.uuid(),
     revision: z.integer().min(1),
     sha256: z.string().min(64).max(64),
-    estateId: z.uuid(),
+    hostId: z.uuid(),
     commandId: z.uuid(),
     status: z.enum(["queued", "running", "succeeded", "failed"]),
     /**

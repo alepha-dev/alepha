@@ -3,7 +3,7 @@ import { FileService } from "alepha/api/files";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
-  EstateController,
+  HostController,
   StackController,
   StackService,
 } from "../src/api/index.ts";
@@ -12,7 +12,7 @@ import {
   createEnvironment,
   createInstance,
   createStack,
-  lentBayEstate,
+  lentBayHost,
   newUser,
   stackWorld,
 } from "./support/stackWorld.ts";
@@ -20,7 +20,7 @@ import {
 /**
  * Stacks, their environments, routes, revisions and member apps (#Q2690).
  *
- * The refusals are the feature: an estate the project was never lent, an app
+ * The refusals are the feature: a host the project was never lent, an app
  * of another project or of another env name, an app already in another
  * environment.
  */
@@ -40,10 +40,10 @@ describe("stacks", () => {
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const estate = await lentBayEstate(w);
-      const stack = await createStack(alepha, w, { estateId: estate.id });
+      const host = await lentBayHost(w);
+      const stack = await createStack(alepha, w, { hostId: host.id });
       expect(stack.name).toBe(w.project.slug);
-      expect(stack.estateId).toBe(estate.id);
+      expect(stack.hostId).toBe(host.id);
 
       await createEnvironment(alepha, w, stack.id, { env: "production" });
       await createEnvironment(alepha, w, stack.id, {
@@ -69,31 +69,31 @@ describe("stacks", () => {
       );
     });
 
-    it("resolves an environment's estate from its own override, else the stack's default", async ({
+    it("resolves an environment's host from its own override, else the stack's default", async ({
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const main = await lentBayEstate(w);
-      const cheap = await lentBayEstate(w);
+      const main = await lentBayHost(w);
+      const cheap = await lentBayHost(w);
       const stack = await createStack(alepha, w, {
         name: "umami",
-        estateId: main.id,
+        hostId: main.id,
       });
       const production = await createEnvironment(alepha, w, stack.id, {
         env: "production",
       });
       const staging = await createEnvironment(alepha, w, stack.id, {
         env: "staging",
-        estateId: cheap.id,
+        hostId: cheap.id,
       });
 
       const service = alepha.inject(StackService);
       const row = await service.get(w.project.id, stack.id);
       expect(
-        service.estateOf(row, await service.getEnvironment(row, production.id)),
+        service.hostOf(row, await service.getEnvironment(row, production.id)),
       ).toBe(main.id);
       expect(
-        service.estateOf(row, await service.getEnvironment(row, staging.id)),
+        service.hostOf(row, await service.getEnvironment(row, staging.id)),
       ).toBe(cheap.id);
 
       await alepha.inject(StackController).updateStackEnvironment.fetch(
@@ -103,28 +103,28 @@ describe("stacks", () => {
             stackId: stack.id,
             environmentId: staging.id,
           },
-          body: { estateId: null },
+          body: { hostId: null },
         },
         { user: w.user },
       );
       expect(
-        service.estateOf(row, await service.getEnvironment(row, staging.id)),
+        service.hostOf(row, await service.getEnvironment(row, staging.id)),
       ).toBe(main.id);
     });
 
-    it("refuses an estate the project was never lent", async ({ expect }) => {
+    it("refuses a host the project was never lent", async ({ expect }) => {
       const w = await stackWorld(alepha);
-      const foreign = await lentBayEstate(w, { lend: false });
+      const foreign = await lentBayHost(w, { lend: false });
       await expect(
-        createStack(alepha, w, { estateId: foreign.id }),
-      ).rejects.toThrow("no such estate");
+        createStack(alepha, w, { hostId: foreign.id }),
+      ).rejects.toThrow("no such host");
       const stack = await createStack(alepha, w, { name: "app" });
       await expect(
         createEnvironment(alepha, w, stack.id, {
           env: "production",
-          estateId: foreign.id,
+          hostId: foreign.id,
         }),
-      ).rejects.toThrow("no such estate");
+      ).rejects.toThrow("no such host");
     });
 
     it("refuses a second stack or environment of the same name", async ({
@@ -142,21 +142,18 @@ describe("stacks", () => {
     });
   });
 
-  describe("deleting the estate a stack deploys to (#Q3131)", () => {
+  describe("deleting the host a stack deploys to (#Q3131)", () => {
     it("is refused while a stack names it as its default, naming the stack", async ({
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const estate = await lentBayEstate(w);
-      await createStack(alepha, w, { name: "umami", estateId: estate.id });
+      const host = await lentBayHost(w);
+      await createStack(alepha, w, { name: "umami", hostId: host.id });
 
       await expect(
         alepha
-          .inject(EstateController)
-          .deleteEstate.fetch(
-            { params: { estateId: estate.id } },
-            { user: w.user },
-          ),
+          .inject(HostController)
+          .deleteHost.fetch({ params: { hostId: host.id } }, { user: w.user }),
       ).rejects.toThrow("still the deploy target of umami (stack)");
     });
 
@@ -164,24 +161,21 @@ describe("stacks", () => {
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const main = await lentBayEstate(w);
-      const cheap = await lentBayEstate(w);
+      const main = await lentBayHost(w);
+      const cheap = await lentBayHost(w);
       const stack = await createStack(alepha, w, {
         name: "umami",
-        estateId: main.id,
+        hostId: main.id,
       });
       await createEnvironment(alepha, w, stack.id, {
         env: "staging",
-        estateId: cheap.id,
+        hostId: cheap.id,
       });
 
       await expect(
         alepha
-          .inject(EstateController)
-          .deleteEstate.fetch(
-            { params: { estateId: cheap.id } },
-            { user: w.user },
-          ),
+          .inject(HostController)
+          .deleteHost.fetch({ params: { hostId: cheap.id } }, { user: w.user }),
       ).rejects.toThrow("still the deploy target of umami/staging (stack)");
     });
 
@@ -189,8 +183,8 @@ describe("stacks", () => {
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const estate = await lentBayEstate(w);
-      const stack = await createStack(alepha, w, { estateId: estate.id });
+      const host = await lentBayHost(w);
+      const stack = await createStack(alepha, w, { hostId: host.id });
       await alepha
         .inject(StackController)
         .deleteStack.fetch(
@@ -199,11 +193,8 @@ describe("stacks", () => {
         );
 
       const deleted = await alepha
-        .inject(EstateController)
-        .deleteEstate.fetch(
-          { params: { estateId: estate.id } },
-          { user: w.user },
-        );
+        .inject(HostController)
+        .deleteHost.fetch({ params: { hostId: host.id } }, { user: w.user });
       expect(deleted.data).toEqual({ ok: true });
     });
   });
@@ -228,11 +219,11 @@ describe("stacks", () => {
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const estate = await lentBayEstate(w);
-      await w.rows.estates.updateById(estate.id, { publicIp: "203.0.113.10" });
+      const host = await lentBayHost(w);
+      await w.rows.hosts.updateById(host.id, { publicIp: "203.0.113.10" });
       const stack = await createStack(alepha, w, {
         name: "umami",
-        estateId: estate.id,
+        hostId: host.id,
       });
       const env = await createEnvironment(alepha, w, stack.id, {
         env: "production",
@@ -251,18 +242,18 @@ describe("stacks", () => {
       expect(again.routes).toHaveLength(1);
     });
 
-    it("refuses while the estate's address is unknown, naming lore estate wait", async ({
+    it("refuses while the host's address is unknown, naming lore host wait", async ({
       expect,
     }) => {
       const w = await stackWorld(alepha);
-      const estate = await lentBayEstate(w);
-      const stack = await createStack(alepha, w, { estateId: estate.id });
+      const host = await lentBayHost(w);
+      const stack = await createStack(alepha, w, { hostId: host.id });
       const env = await createEnvironment(alepha, w, stack.id, {
         env: "production",
       });
       await expect(
         route(w, { stackId: stack.id, environmentId: env.id }),
-      ).rejects.toThrow(`lore estate wait ${estate.slug}`);
+      ).rejects.toThrow(`lore host wait ${host.slug}`);
     });
   });
 

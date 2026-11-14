@@ -23,8 +23,8 @@ import {
   appInstances,
   artifacts,
   deployments,
-  estateProjects,
-  estates,
+  hostProjects,
+  hosts,
 } from "../src/schemas/index.ts";
 
 /**
@@ -103,8 +103,8 @@ class InstantDeployRunner extends DeployRunner {
 
 class TestRows {
   public readonly deployments = $repository(deployments);
-  public readonly estates = $repository(estates);
-  public readonly grants = $repository(estateProjects);
+  public readonly hosts = $repository(hosts);
+  public readonly grants = $repository(hostProjects);
   public readonly instances = $repository(appInstances);
   public readonly artifacts = $repository(artifacts);
   public readonly executions = $repository(jobExecutionEntity);
@@ -152,7 +152,7 @@ describe("a deploy whose first read times out", () => {
     await alepha.inject(DateTimeProvider).travel([seconds, "seconds"]);
 
   /**
-   * A copy on a Cloudflare estate that passes the gate, with one stored
+   * A copy on a Cloudflare host that passes the gate, with one stored
    * `workerd` archive to ship, and a queued deployment of it.
    */
   const aQueuedDeployment = async (): Promise<string> => {
@@ -188,7 +188,7 @@ describe("a deploy whose first read times out", () => {
         { user },
       )
     ).data;
-    const estate = await rows().estates.create({
+    const host = await rows().hosts.create({
       ownerUserId: user.id,
       type: "cloudflare",
       slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -197,10 +197,10 @@ describe("a deploy whose first read times out", () => {
       accountId: "acct",
       credential: await alepha
         .inject(CredentialSealService)
-        .seal("token", CredentialSealService.ESTATE_PURPOSE),
+        .seal("token", CredentialSealService.HOST_PURPOSE),
     } as never);
-    await rows().grants.create({ estateId: estate.id, projectId: project.id });
-    await rows().instances.updateById(instance.id, { estateId: estate.id });
+    await rows().grants.create({ hostId: host.id, projectId: project.id });
+    await rows().instances.updateById(instance.id, { hostId: host.id });
     const sha256 = "b".repeat(64);
     await rows().artifacts.create({
       projectId: project.id,

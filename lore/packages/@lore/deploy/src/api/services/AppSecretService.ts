@@ -12,7 +12,7 @@ import { appInstances } from "../entities/appInstances.ts";
 import { type AppSecret, appSecrets } from "../entities/appSecrets.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { deployments } from "../entities/deployments.ts";
-import { estates } from "../entities/estates.ts";
+import { hosts } from "../entities/hosts.ts";
 import type { DeclaredEnvKey } from "../schemas/declaredEnvKeySchema.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 
@@ -41,16 +41,16 @@ import { CredentialSealService } from "./CredentialSealService.ts";
 export class AppSecretService {
   protected readonly rows = $repository(appSecrets);
   protected readonly instances = $repository(appInstances);
-  protected readonly estates = $repository(estates);
+  protected readonly hosts = $repository(hosts);
   protected readonly artifacts = $repository(artifacts);
   protected readonly deployments = $repository(deployments);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly crypto = $inject(CryptoProvider);
 
   /**
-   * The label separating this key space from the estate credential's.
+   * The label separating this key space from the host credential's.
    *
-   * Declared on {@link CredentialSealService} beside `ESTATE_PURPOSE` rather
+   * Declared on {@link CredentialSealService} beside `HOST_PURPOSE` rather
    * than written as a literal here, so the two labels are visible in one place
    * and a ciphertext moved between the columns fails to open.
    */
@@ -169,7 +169,7 @@ export class AppSecretService {
   /**
    * Every name this copy refuses, for a client to flag before it sends: the
    * names the deploy derives, plus Bay's own when the copy deploys to a Bay
-   * estate. The server still refuses them itself; this is the preview.
+   * host. The server still refuses them itself; this is the preview.
    */
   public async reservedKeys(instanceId: string): Promise<string[]> {
     const bay = await this.bayCopy(instanceId);
@@ -186,14 +186,14 @@ export class AppSecretService {
   }
 
   /**
-   * Whether this copy runs on a Bay: one deploying to a Bay estate, or a
-   * stack's app service, whose estate is its stack environment's (only a Bay
+   * Whether this copy runs on a Bay: one deploying to a Bay host, or a
+   * stack's app service, whose host is its stack environment's (only a Bay
    * runs stacks) and which carries none of its own. The slug names the
-   * estate when the copy has one, for the refusal to name it.
+   * host when the copy has one, for the refusal to name it.
    */
   protected async bayCopy(
     instanceId: string,
-  ): Promise<{ estate?: string } | undefined> {
+  ): Promise<{ host?: string } | undefined> {
     const instance = await this.instances.findById(instanceId);
     if (!instance) {
       return undefined;
@@ -201,10 +201,10 @@ export class AppSecretService {
     if (instance.stackEnvironmentId) {
       return {};
     }
-    const estate = instance.estateId
-      ? await this.estates.findById(instance.estateId)
+    const host = instance.hostId
+      ? await this.hosts.findById(instance.hostId)
       : undefined;
-    return estate?.type === "bay" ? { estate: estate.slug } : undefined;
+    return host?.type === "bay" ? { host: host.slug } : undefined;
   }
 
   /**
@@ -638,17 +638,17 @@ export class AppSecretService {
   }
 
   /**
-   * That the estate this copy deploys to will deliver a variable by that name.
+   * That the host this copy deploys to will deliver a variable by that name.
    *
    * ⚠️ Bay writes its own names (`BAY_OWNED_SECRET_KEYS`) into every instance
    * itself, and the secret pull leaves them out, so a value stored under one
-   * for a copy on a Bay estate would sit on this tab and never reach the app.
+   * for a copy on a Bay host would sit on this tab and never reach the app.
    * Refused while the operator is still holding the request. Everywhere else
    * APP_SECRET and APP_NAME stay settable, on purpose: see
    * {@link AppSecretService.GENERATED_KEY}.
    *
-   * Asked of the estate the copy deploys to NOW. A copy moved onto a Bay
-   * estate afterwards keeps the rows it had, which is why the pull filters
+   * Asked of the host the copy deploys to NOW. A copy moved onto a Bay
+   * host afterwards keeps the rows it had, which is why the pull filters
    * as well.
    */
   protected async assertDeliverable(
@@ -662,8 +662,8 @@ export class AppSecretService {
     if (!bay) {
       return;
     }
-    const where = bay.estate
-      ? `This copy deploys to the Bay estate '${bay.estate}'`
+    const where = bay.host
+      ? `This copy deploys to the Bay host '${bay.host}'`
       : "This copy is a stack's app service, which runs on a Bay";
     if (key === AppSecretService.GENERATED_KEY) {
       // ⚠️ Not "never reaches the app" any more: Lore holds the machine's

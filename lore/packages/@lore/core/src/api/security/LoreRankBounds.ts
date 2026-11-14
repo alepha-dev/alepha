@@ -44,8 +44,8 @@ export class LoreRankBounds {
    * rank, so a reader is right to look for it and right to find it locked.
    * These belong to no project: there is no project to hold a rank in when
    * one is created. A locked row for one of them would be answering a
-   * question nobody asked on this page. (An estate's create, update and
-   * delete were here until #E126 homed estates in a project.)
+   * question nobody asked on this page. (A host's create, update and
+   * delete were here until #E126 homed hosts in a project.)
    */
   public static readonly OUT_OF_SCOPE: string[] = [
     "project:create",

@@ -7,7 +7,7 @@ import { stackDeployments } from "../entities/stackDeployments.ts";
  * and warnings still JSON text the page parses. Nothing in it is secret.
  */
 export const stackDeploymentResourceSchema = stackDeployments.schema.omit({
-  estateId: true,
+  hostId: true,
 });
 
 export type StackDeploymentResource = Infer<

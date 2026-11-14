@@ -3,7 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { LoreApiClient } from "./LoreApiClient.ts";
-import { LoreEstateChoice } from "./LoreEstateChoice.ts";
+import { LoreHostChoice } from "./LoreHostChoice.ts";
 
 /**
  * One deployed copy, as this client reports it.
@@ -18,7 +18,7 @@ export interface LoreAppInstance {
   app: string;
   env: string;
   url?: string;
-  estateId?: string;
+  hostId?: string;
   version?: string;
 }
 
@@ -76,7 +76,7 @@ export interface LoreDeployInput {
    * on `*.workers.dev`, but nothing here can name where: the adapter reports a
    * URL only for a domain it put into effect.
    *
-   * ⚠️ **The zone has to be on the estate's own Cloudflare account.** A custom
+   * ⚠️ **The zone has to be on the host's own Cloudflare account.** A custom
    * domain is `workers.domains.update` with a zone id, not an arbitrary
    * hostname pointed at a Worker.
    *
@@ -113,19 +113,19 @@ export interface LoreDeployInput {
    */
   ephemeral?: boolean;
   /**
-   * Which estate a newly created copy deploys to, **by slug**.
+   * Which host a newly created copy deploys to, **by slug**.
    *
    * Only read when this call creates the copy; an existing one keeps the
-   * estate it already has. Empty or omitted takes the one estate lent to this
+   * host it already has. Empty or omitted takes the one host lent to this
    * project, and is refused when several are (#Q3144): naming one here is
    * choosing it on the Lore side. A project with none lent is an error.
    *
-   * ⚠️ A slug, never an id, and resolved against the estates lent to THIS
-   * project. An estate belongs to its home project and is lent out, so a client that could
+   * ⚠️ A slug, never an id, and resolved against the hosts lent to THIS
+   * project. A host belongs to its home project and is lent out, so a client that could
    * name an arbitrary one could point a deploy at somebody else's cloud
    * account.
    */
-  estate?: string;
+  host?: string;
 }
 
 /**
@@ -165,12 +165,12 @@ export interface LoreDeployInput {
  * ⚠️ **Only a 404 creates.** A revoked key, a 403 or an unreachable Lore
  * rethrows, so an outage cannot turn into a burst of copies nobody asked for.
  *
- * ## ⚠️ Five round trips, and none of them names an estate on the wire
+ * ## ⚠️ Five round trips, and none of them names a host on the wire
  *
  * Resolve the project, resolve or create the copy, start the run, poll it,
  * read the URL. The destination is read by Lore from the `app_instances` row
- * every time; the only estate this client ever sends is the SLUG
- * {@link LoreDeployInput.estate} names when creating a copy, resolved against
+ * every time; the only host this client ever sends is the SLUG
+ * {@link LoreDeployInput.host} names when creating a copy, resolved against
  * the lending rather than trusted.
  *
  * ## ⚠️ What the caller has to have arranged first
@@ -179,10 +179,10 @@ export interface LoreDeployInput {
  * own words rather than silently:
  *
  * 1. **A build.** `lore apps build` and `lore artifacts push` run in CI, on
- *    the machine holding the source, for the runtime the estate accepts. There
+ *    the machine holding the source, for the runtime the host accepts. There
  *    is no build here: Lore's Worker cannot run Vite, and this client is not
  *    where that changes.
- * 2. **An estate lent to the project**, and the `apps.deploy` capability on.
+ * 2. **A host lent to the project**, and the `apps.deploy` capability on.
  *    The API key's user needs `app:manage` (to create a copy) and
  *    `deploy:manage` (to ship to one).
  */
@@ -208,7 +208,7 @@ export class LoreDeployService {
   /**
    * The whole flow: resolve or create the copy, ship a build to it, wait.
    *
-   * Answers the copy's URL when the estate put one into effect. A run that
+   * Answers the copy's URL when the host put one into effect. A run that
    * ends anything but `succeeded` throws with the run's own error.
    */
   public async deploy(
@@ -269,9 +269,9 @@ export class LoreDeployService {
   /**
    * The copy, made if it is missing.
    *
-   * ⚠️ Two calls rather than one, because `createApp` takes no estate: the row
-   * says a copy exists, and pointing it at an estate is a separate, validated
-   * act (`AppService.setEstate` checks the lending, not the estate table).
+   * ⚠️ Two calls rather than one, because `createApp` takes no host: the row
+   * says a copy exists, and pointing it at a host is a separate, validated
+   * act (`AppService.setHost` checks the lending, not the host table).
    */
   public async ensureInstance(
     projectId: number,
@@ -298,7 +298,7 @@ export class LoreDeployService {
     // error, leaving the copy behind.
     const domain =
       input.domain === undefined ? undefined : this.assertDomain(input.domain);
-    const estateId = await this.estateFor(projectId, input);
+    const hostId = await this.hostFor(projectId, input);
     const created = await this.api.request<LoreAppInstance>(
       "POST",
       `/api/projects/${projectId}/apps`,
@@ -322,7 +322,7 @@ export class LoreDeployService {
     const linked = await this.api.request<LoreAppInstance>(
       "PATCH",
       `/api/projects/${projectId}/apps/${encodeURIComponent(created.app)}/${encodeURIComponent(created.env)}`,
-      { estateId },
+      { hostId },
     );
     this.log.info(`Created ${linked.app}/${linked.env}`);
     return linked;
@@ -407,9 +407,9 @@ export class LoreDeployService {
   }
 
   /**
-   * Which estate a newly created copy points at.
+   * Which host a newly created copy points at.
    *
-   * The slug when one is named, and otherwise the one estate lent to this
+   * The slug when one is named, and otherwise the one host lent to this
    * project. Several lent with none named is refused (#Q3144), naming them:
    * which machine a copy deploys to is decided on the Lore side, and the
    * oldest-lending default this used to apply was a silent choice of machine.
@@ -417,21 +417,18 @@ export class LoreDeployService {
    * deploy: that copy would be created, would fail its deploy, and would be
    * left behind for somebody to find.
    */
-  protected async estateFor(
+  protected async hostFor(
     projectId: number,
     input: LoreDeployInput,
   ): Promise<string> {
     const lent = await this.api.request<{
       items?: Array<{ id: string; slug: string }>;
-    }>("GET", `/api/projects/${projectId}/estates`);
+    }>("GET", `/api/projects/${projectId}/hosts`);
     const items = lent?.items ?? [];
 
     // The rule itself is shared with the CLI's infra adapter, which creates
-    // copies too: see `LoreEstateChoice`.
-    return LoreEstateChoice.pick(
-      items,
-      input.estate,
-      `${input.app}/${input.env}`,
-    ).id;
+    // copies too: see `LoreHostChoice`.
+    return LoreHostChoice.pick(items, input.host, `${input.app}/${input.env}`)
+      .id;
   }
 }

@@ -10,11 +10,11 @@ import { RollbackService } from "../services/RollbackService.ts";
 /**
  * Starting a deploy, and following one.
  *
- * ## ⚠️ There is no `--estate` and there never will be
+ * ## ⚠️ There is no `--host` and there never will be
  *
- * The client names a project, a deployed copy and a tag. The estate is
+ * The client names a project, a deployed copy and a tag. The host is
  * resolved server-side from the `app_instances` row, because a client that can
- * name its own estate can deploy into somebody else's cloud account.
+ * name its own host can deploy into somebody else's cloud account.
  *
  * ## ⚠️ This endpoint can only ever deploy STORED bytes
  *
@@ -43,7 +43,7 @@ export class DeployController {
    * `requires: "deploy:manage"` because deploying into somebody's cloud
    * account is the most powerful act in Lore, and it is its own permission
    * rather than `app:manage` for the reason `sigil:manage` is its own: letting
-   * somebody rename a copy is not letting them push code into an estate. On
+   * somebody rename a copy is not letting them push code into a host. On
    * nobody by default, so widening it is an owner creating a rank that carries
    * it. The capability option because a project that does not deploy through
    * Lore should not have the endpoint at all.

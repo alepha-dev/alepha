@@ -1,5 +1,5 @@
 /**
- * The browser-safe schemas of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and estates.
+ * The browser-safe schemas of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and hosts.
  *
  * What another package, a browser page or an end-to-end spec may import as a
  * runtime value. Nothing here reaches a server-only module.
@@ -14,11 +14,11 @@ export { appSecrets } from "../api/entities/appSecrets.ts";
 export { artifacts } from "../api/entities/artifacts.ts";
 export { projectErrors } from "../api/entities/projectErrors.ts";
 export { deployments } from "../api/entities/deployments.ts";
-export { estateCommands } from "../api/entities/estateCommands.ts";
-export { estateEvents } from "../api/entities/estateEvents.ts";
-export { estateInventories } from "../api/entities/estateInventories.ts";
-export { estateProjects } from "../api/entities/estateProjects.ts";
-export { type Estate, estates } from "../api/entities/estates.ts";
+export { hostCommands } from "../api/entities/hostCommands.ts";
+export { hostEvents } from "../api/entities/hostEvents.ts";
+export { hostInventories } from "../api/entities/hostInventories.ts";
+export { hostProjects } from "../api/entities/hostProjects.ts";
+export { type Host, hosts } from "../api/entities/hosts.ts";
 export { qualityRuns } from "../api/entities/qualityRuns.ts";
 export { registryCredentials } from "../api/entities/registryCredentials.ts";
 export type { RegistryCredentialResource } from "../api/schemas/registryCredentialResourceSchema.ts";
@@ -32,7 +32,7 @@ export { stackDeployments } from "../api/entities/stackDeployments.ts";
 export type { StackDeploymentResource } from "../api/schemas/stackDeploymentResourceSchema.ts";
 export { stackDeployOutcomeSchema } from "../api/schemas/stackDeployOutcomeSchema.ts";
 export type { StackServicesResource } from "../api/schemas/stackServicesResourceSchema.ts";
-export type { EstateInventoryStack } from "../api/schemas/estateInventoryStackSchema.ts";
+export type { HostInventoryStack } from "../api/schemas/hostInventoryStackSchema.ts";
 export { stackEnvironmentRoutes } from "../api/entities/stackEnvironmentRoutes.ts";
 export { stackEnvironments } from "../api/entities/stackEnvironments.ts";
 export { stackRevisions } from "../api/entities/stackRevisions.ts";
@@ -44,30 +44,30 @@ export type { StackModel } from "../api/schemas/stackModelSchema.ts";
 export type { StackModelService } from "../api/schemas/stackModelServiceSchema.ts";
 export type { StackResource } from "../api/schemas/stackResourceSchema.ts";
 export type { StackRevisionResource } from "../api/schemas/stackRevisionResourceSchema.ts";
-export type { AdminEstateResource } from "../api/schemas/adminEstateResourceSchema.ts";
+export type { AdminHostResource } from "../api/schemas/adminHostResourceSchema.ts";
 export type { AppInstanceResource } from "../api/schemas/appInstanceResourceSchema.ts";
 export { appsCapabilityOptionsSchema } from "../api/schemas/appsCapabilityOptionsSchema.ts";
 export {
   CLOUDFLARE_TOKEN_TEMPLATE,
   cloudflareTokenTemplateUrl,
 } from "../api/schemas/cloudflareTokenTemplate.ts";
-export { createEstateBodySchema } from "../api/schemas/createEstateBodySchema.ts";
+export { createHostBodySchema } from "../api/schemas/createHostBodySchema.ts";
 export { defaultAppInstance } from "../api/schemas/defaultAppInstance.ts";
 export {
-  estateBackupsListResultSchema,
-  estateBackupVerifyResultSchema,
-  estateRestoreResultSchema,
-  estateTargetProbeResultSchema,
-} from "../api/schemas/estateBackupResultSchemas.ts";
-export { estateClientFrameSchema } from "../api/schemas/estateClientFrameSchema.ts";
-export type { EstateCommandFrame } from "../api/schemas/estateCommandFrameSchema.ts";
-export { estateCommandResultSchema } from "../api/schemas/estateCommandResultSchema.ts";
-export type { EstateInventoryFrame } from "../api/schemas/estateInventoryFrameSchema.ts";
+  hostBackupsListResultSchema,
+  hostBackupVerifyResultSchema,
+  hostRestoreResultSchema,
+  hostTargetProbeResultSchema,
+} from "../api/schemas/hostBackupResultSchemas.ts";
+export { hostClientFrameSchema } from "../api/schemas/hostClientFrameSchema.ts";
+export type { HostCommandFrame } from "../api/schemas/hostCommandFrameSchema.ts";
+export { hostCommandResultSchema } from "../api/schemas/hostCommandResultSchema.ts";
+export type { HostInventoryFrame } from "../api/schemas/hostInventoryFrameSchema.ts";
 export {
-  type EstateServerFrame,
-  estateServerFrameSchema,
-} from "../api/schemas/estateServerFrameSchema.ts";
-export type { EstateStatsFrame } from "../api/schemas/estateStatsFrameSchema.ts";
+  type HostServerFrame,
+  hostServerFrameSchema,
+} from "../api/schemas/hostServerFrameSchema.ts";
+export type { HostStatsFrame } from "../api/schemas/hostStatsFrameSchema.ts";
 export { insightsDimensionResourceSchema } from "../api/schemas/insightsDimensionResourceSchema.ts";
 export type { QualityRunPush } from "../api/schemas/qualityRunPushSchema.ts";
 

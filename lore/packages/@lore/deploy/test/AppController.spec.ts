@@ -11,8 +11,8 @@ import { LoreDeployApi } from "../src/api/index.ts";
 import { AppController } from "../src/api/index.ts";
 import {
   appInstances,
-  estateProjects,
-  estates,
+  hostProjects,
+  hosts,
   sigils,
   defaultAppInstance,
 } from "../src/schemas/index.ts";
@@ -21,8 +21,8 @@ import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 class AppRepositories {
   instances = $repository(appInstances);
   sigils = $repository(sigils);
-  estates = $repository(estates);
-  grants = $repository(estateProjects);
+  hosts = $repository(hosts);
+  grants = $repository(hostProjects);
 }
 
 interface TestContext {
@@ -301,7 +301,7 @@ describe("AppController", () => {
   });
 
   it("leaves every key the PATCH did not mention", async ({ expect }) => {
-    // The name fields, the URL field and the estate select are separate
+    // The name fields, the URL field and the host select are separate
     // surfaces, and each PATCHes only what it owns.
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
@@ -324,8 +324,8 @@ describe("AppController", () => {
     expect(updated.url).toBe("https://acme.example");
   });
 
-  it("refuses an estate the project was never lent", async ({ expect }) => {
-    // Validated against `estate_projects` and never against `estates`: the
+  it("refuses a host the project was never lent", async ({ expect }) => {
+    // Validated against `host_projects` and never against `hosts`: the
     // whole point of the lending join.
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
@@ -337,7 +337,7 @@ describe("AppController", () => {
       { user },
     );
     const owner = await ctx.alepha.inject(DeployTestEntities).users.create({});
-    const estate = await ctx.repos.estates.create({
+    const host = await ctx.repos.hosts.create({
       ownerUserId: owner.id,
       type: "bay",
       slug: "ovh-1",
@@ -347,32 +347,32 @@ describe("AppController", () => {
       ctx.controller.updateApp(
         {
           params: { projectId: project.id, app: "acme", env: "production" },
-          body: { estateId: estate.id },
+          body: { hostId: host.id },
         },
         { user },
       ),
-    ).rejects.toThrow(/no such estate/i);
+    ).rejects.toThrow(/no such host/i);
 
     // And accepts it once the loan exists.
     await ctx.repos.grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: project.id,
     });
     const pointed = await ctx.controller.updateApp(
       {
         params: { projectId: project.id, app: "acme", env: "production" },
-        body: { estateId: estate.id },
+        body: { hostId: host.id },
       },
       { user },
     );
-    expect(pointed.estate?.slug).toBe("ovh-1");
+    expect(pointed.host?.slug).toBe("ovh-1");
   });
 
-  it("clears the estate through the endpoint, and unblocks the detach", async ({
+  it("clears the host through the endpoint, and unblocks the detach", async ({
     expect,
   }) => {
     // ⚠️ Driven through the CONTROLLER rather than the service: `null` has to
-    // survive the body schema to reach `setEstate`, and an `estateId` that
+    // survive the body schema to reach `setHost`, and an `hostId` that
     // arrived as `undefined` would skip the branch entirely and leave the
     // column set - which reads as a cleared select and a refusal that never
     // lifts.
@@ -386,41 +386,41 @@ describe("AppController", () => {
       { user },
     );
     const owner = await ctx.alepha.inject(DeployTestEntities).users.create({});
-    const estate = await ctx.repos.estates.create({
+    const host = await ctx.repos.hosts.create({
       ownerUserId: owner.id,
       type: "bay",
       slug: "ovh-clear",
     });
     await ctx.repos.grants.create({
-      estateId: estate.id,
+      hostId: host.id,
       projectId: project.id,
     });
     await ctx.controller.updateApp(
       {
         params: { projectId: project.id, app: "acme", env: "production" },
-        body: { estateId: estate.id },
+        body: { hostId: host.id },
       },
       { user },
     );
 
     // ⚠️ Through `.fetch()`, which runs the body SCHEMA, rather than calling the
     // handler directly. `null` has to survive `z.uuid().nullable().optional()`
-    // to reach `setEstate`; an `estateId` that arrived as `undefined` would skip
+    // to reach `setHost`; an `hostId` that arrived as `undefined` would skip
     // the branch and leave the column set, which is invisible to a spec that
     // hands the handler a already-parsed object.
     const cleared = await ctx.controller.updateApp.fetch(
       {
         params: { projectId: project.id, app: "acme", env: "production" },
-        body: { estateId: null },
+        body: { hostId: null },
       },
       { user },
     );
 
-    expect(cleared.data.estate).toBeUndefined();
+    expect(cleared.data.host).toBeUndefined();
     const stored = await ctx.repos.instances.findOne({
       where: { projectId: { eq: project.id }, app: { eq: "acme" } },
     });
-    expect(stored?.estateId ?? null).toBeNull();
+    expect(stored?.hostId ?? null).toBeNull();
   });
 
   it("takes the sigil with the instance on delete", async ({ expect }) => {

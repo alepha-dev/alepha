@@ -9,23 +9,23 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
-import type { EstateCommand } from "../entities/estateCommands.ts";
-import { estateCommands } from "../entities/estateCommands.ts";
-import { estateProjects } from "../entities/estateProjects.ts";
-import { estates } from "../entities/estates.ts";
+import type { HostCommand } from "../entities/hostCommands.ts";
+import { hostCommands } from "../entities/hostCommands.ts";
+import { hostProjects } from "../entities/hostProjects.ts";
+import { hosts } from "../entities/hosts.ts";
 import {
   type StackDeployment,
   stackDeployments,
 } from "../entities/stackDeployments.ts";
 import { stackEnvironments } from "../entities/stackEnvironments.ts";
 import { stackRevisions } from "../entities/stackRevisions.ts";
-import { estateCommandResultSchema } from "../schemas/estateCommandResultSchema.ts";
+import { hostCommandResultSchema } from "../schemas/hostCommandResultSchema.ts";
 import type { StackDeployOutcome } from "../schemas/stackDeployOutcomeSchema.ts";
 import type { StackModel } from "../schemas/stackModelSchema.ts";
 import { AppSecretService } from "./AppSecretService.ts";
 import { AppService } from "./AppService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
-import { EstateCommandService } from "./EstateCommandService.ts";
+import { HostCommandService } from "./HostCommandService.ts";
 import type { RegistryCredential } from "./ImageRegistryClient.ts";
 import { RegistryCredentialService } from "./RegistryCredentialService.ts";
 import { StackService } from "./StackService.ts";
@@ -34,16 +34,16 @@ import { StackVariableService } from "./StackVariableService.ts";
 
 /**
  * Deploying a stack environment: one `stack-deploy` command queued to its
- * estate, recorded as a `stack_deployments` row, and the machine-facing
+ * host, recorded as a `stack_deployments` row, and the machine-facing
  * answers that command needs (the bundle, the variables, the registry
  * credentials) resolved from that row and nothing else.
  *
  * ## Everything is checked before anything is queued
  *
- * The estate (the environment's own, else the stack's default) must be lent
+ * The host (the environment's own, else the stack's default) must be lent
  * to the project, run stacks, and accept deploys: the same message as an app
  * deploy when it does not, and Bay refuses on its side too. The revision must
- * run on the estate's target and every variable it needs must be set.
+ * run on the host's target and every variable it needs must be set.
  *
  * ## A rollback is a deploy of an earlier revision
  *
@@ -57,11 +57,11 @@ export class StackDeployService {
   protected readonly appDeployments = $repository(deployments);
   protected readonly instances = $repository(appInstances);
   protected readonly artifacts = $repository(artifacts);
-  protected readonly commands = $repository(estateCommands);
+  protected readonly commands = $repository(hostCommands);
   protected readonly environments = $repository(stackEnvironments);
   protected readonly revisions = $repository(stackRevisions);
-  protected readonly estates = $repository(estates);
-  protected readonly grants = $repository(estateProjects);
+  protected readonly hosts = $repository(hosts);
+  protected readonly grants = $repository(hostProjects);
   protected readonly projects = $repository(projects);
   protected readonly stacks = $inject(StackService);
   protected readonly variables = $inject(StackVariableService);
@@ -69,7 +69,7 @@ export class StackDeployService {
   protected readonly apps = $inject(AppService);
   protected readonly registries = $inject(RegistryCredentialService);
   protected readonly targets = $inject(StackTargets);
-  protected readonly queue = $inject(EstateCommandService);
+  protected readonly queue = $inject(HostCommandService);
   protected readonly files = $inject(FileService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -87,7 +87,7 @@ export class StackDeployService {
     );
     const where = `${stack.name}/${environment.env}`;
 
-    const estate = await this.estateFor(stack, environment, where);
+    const host = await this.hostFor(stack, environment, where);
 
     const revisions = await this.stacks.revisionsOf(stack);
     const revision =
@@ -102,13 +102,13 @@ export class StackDeployService {
       );
     }
     const model = JSON.parse(revision.model) as StackModel;
-    this.targets.assert(model, [estate.type]);
+    this.targets.assert(model, [host.type]);
     await this.variables.assertComplete(model, environment, stack.name);
 
     const routes = await this.stacks.routesOf([environment.id]);
     const project = await this.projects.findById(stack.projectId);
     const command = await this.queue.enqueue(
-      estate,
+      host,
       {
         kind: "stack-deploy",
         payload: {
@@ -133,7 +133,7 @@ export class StackDeployService {
       revisionId: revision.id,
       revision: revision.number,
       sha256: revision.sha256,
-      estateId: estate.id,
+      hostId: host.id,
       commandId: command.id,
       status: "queued",
       createdBy: input.createdBy,
@@ -141,46 +141,46 @@ export class StackDeployService {
   }
 
   /**
-   * The estate a stack environment deploys to, checked: lent to the project,
+   * The host a stack environment deploys to, checked: lent to the project,
    * a Bay, accepting deploys. The same messages as an app deploy.
    */
-  protected async estateFor(
-    stack: { projectId: number; estateId?: string },
-    environment: { estateId?: string },
+  protected async hostFor(
+    stack: { projectId: number; hostId?: string },
+    environment: { hostId?: string },
     where: string,
   ) {
-    const estateId = environment.estateId ?? stack.estateId;
-    if (!estateId) {
+    const hostId = environment.hostId ?? stack.hostId;
+    if (!hostId) {
       throw new BadRequestError(
-        `${where} has no estate, so there is nowhere to deploy it. Choose one on the stack's Settings.`,
+        `${where} has no host, so there is nowhere to deploy it. Choose one on the stack's Settings.`,
       );
     }
-    const estate = await this.estates.findById(estateId);
-    const grant = estate
+    const host = await this.hosts.findById(hostId);
+    const grant = host
       ? await this.grants.findOne({
           where: {
-            estateId: { eq: estate.id },
+            hostId: { eq: host.id },
             projectId: { eq: stack.projectId },
           },
         })
       : undefined;
-    if (!estate || !grant) {
+    if (!host || !grant) {
       throw new NotFoundError(
-        `The estate ${where} deploys to is no longer lent to this project. Ask its home project to lend it again.`,
+        `The host ${where} deploys to is no longer lent to this project. Ask its home project to lend it again.`,
       );
     }
-    if (estate.type !== "bay") {
+    if (host.type !== "bay") {
       throw new BadRequestError(
-        `The estate '${estate.slug}' is a ${estate.type} estate, and only a Bay runs stacks today.`,
+        `The host '${host.slug}' is a ${host.type} host, and only a Bay runs stacks today.`,
       );
     }
-    if (!estate.deployAllowed) {
+    if (!host.deployAllowed) {
       throw new BadRequestError(
-        `The estate '${estate.slug}' does not accept deploys. Somebody with estate:update in its home project can turn that on from its console.`,
+        `The host '${host.slug}' does not accept deploys. Somebody with host:update in its home project can turn that on from its console.`,
       );
     }
 
-    return estate;
+    return host;
   }
 
   /**
@@ -190,7 +190,7 @@ export class StackDeployService {
    * no other service is touched (#Q2695).
    *
    * Recorded as an ordinary `deployments` row of the instance, whose status
-   * follows the estate command rather than a run in this Worker.
+   * follows the host command rather than a run in this Worker.
    */
   async deployMember(input: {
     instance: AppInstance;
@@ -211,7 +211,7 @@ export class StackDeployService {
       environment.stackId,
     );
     const where = `${stack.name}/${environment.env}`;
-    const estate = await this.estateFor(stack, environment, where);
+    const host = await this.hostFor(stack, environment, where);
     if (!environment.revision) {
       throw new BadRequestError(
         `${where} has never been deployed, so ${instance.app} has no service to go into yet: deploy the stack first`,
@@ -241,7 +241,7 @@ export class StackDeployService {
       );
     }
     const command = await this.queue.enqueue(
-      estate,
+      host,
       {
         kind: "deploy",
         payload: {
@@ -272,17 +272,17 @@ export class StackDeployService {
       log: [
         {
           at: new Date(this.dateTime.nowMillis()).toISOString(),
-          text: `Queued for ${service.name} in ${where} on ${estate.slug}`,
+          text: `Queued for ${service.name} in ${where} on ${host.slug}`,
         },
       ],
     });
   }
 
   /**
-   * Asks the estate for the tail of one service's logs: a `logs` command for
+   * Asks the host for the tail of one service's logs: a `logs` command for
    * the member `<stack>.<service>`, which is how Bay keys it. Answers the
    * command id to read the answer with. A read, so it does not need the
-   * estate to accept deploys, only to be lent and connected-capable.
+   * host to accept deploys, only to be lent and connected-capable.
    */
   async requestLogs(input: {
     projectId: number;
@@ -291,23 +291,23 @@ export class StackDeployService {
     service: string;
     lines: number;
     createdBy?: string;
-  }): Promise<EstateCommand> {
+  }): Promise<HostCommand> {
     const stack = await this.stacks.get(input.projectId, input.stackId);
     const environment = await this.stacks.getEnvironment(
       stack,
       input.environmentId,
     );
-    const estateId = environment.estateId ?? stack.estateId;
-    const estate = estateId ? await this.estates.findById(estateId) : undefined;
-    const grant = estate
+    const hostId = environment.hostId ?? stack.hostId;
+    const host = hostId ? await this.hosts.findById(hostId) : undefined;
+    const grant = host
       ? await this.grants.findOne({
           where: {
-            estateId: { eq: estate.id },
+            hostId: { eq: host.id },
             projectId: { eq: stack.projectId },
           },
         })
       : undefined;
-    if (!estate || !grant || estate.type !== "bay") {
+    if (!host || !grant || host.type !== "bay") {
       throw new BadRequestError(
         `${stack.name}/${environment.env} runs on no Bay this project can read logs from`,
       );
@@ -316,7 +316,7 @@ export class StackDeployService {
       throw new BadRequestError(`${input.service} is not a service name`);
     }
     return await this.queue.enqueue(
-      estate,
+      host,
       {
         kind: "logs",
         payload: {
@@ -367,7 +367,7 @@ export class StackDeployService {
     }
     try {
       const file = await this.files.streamFile(command.resultFileId);
-      const result = estateCommandResultSchema.parse(
+      const result = hostCommandResultSchema.parse(
         JSON.parse(await file.text()),
       );
       return { status: "done", lines: result.lines };
@@ -381,7 +381,7 @@ export class StackDeployService {
    * riding on that command, a stack deploy or a member's app deploy.
    */
   protected readonly onCommandProgressed = $hook({
-    on: "estate:command:progressed",
+    on: "host:command:progressed",
     handler: async ({ command, url, appSecretSource, warning }) => {
       const stackRow = await this.rows.findOne({
         where: { commandId: { eq: command.id } },
@@ -522,7 +522,7 @@ export class StackDeployService {
     return out;
   }
 
-  protected statusOf(command: EstateCommand): StackDeployment["status"] {
+  protected statusOf(command: HostCommand): StackDeployment["status"] {
     switch (command.status) {
       case "done":
         return "succeeded";
@@ -546,7 +546,7 @@ export class StackDeployService {
    * registry credentials.
    */
   protected async deploymentOf(
-    command: EstateCommand,
+    command: HostCommand,
   ): Promise<StackDeployment | undefined> {
     if (command.kind !== "stack-deploy") {
       return undefined;
@@ -561,7 +561,7 @@ export class StackDeployService {
    * row recorded and the digest matches.
    */
   async bundleFor(
-    command: EstateCommand,
+    command: HostCommand,
   ): Promise<{ fileId: string; size: number; sha256: string } | undefined> {
     const deployment = await this.deploymentOf(command);
     const named = command.payload.artifact;
@@ -583,7 +583,7 @@ export class StackDeployService {
    * The environment's variables, opened, for the command that deploys it.
    */
   async variablesFor(
-    command: EstateCommand,
+    command: HostCommand,
   ): Promise<Record<string, string> | undefined> {
     const deployment = await this.deploymentOf(command);
     return deployment
@@ -597,7 +597,7 @@ export class StackDeployService {
    * instance carries this command id.
    */
   async memberSecretsFor(
-    command: EstateCommand,
+    command: HostCommand,
   ): Promise<Record<string, string> | undefined> {
     const instanceId = await this.memberInstanceFor(command);
     if (!instanceId) {
@@ -630,7 +630,7 @@ export class StackDeployService {
    * Append a line to the log of the app deploy riding on this command, the
    * row carrying its `commandId`. Nothing when there is none.
    */
-  async noteOnDeploy(command: EstateCommand, text: string): Promise<void> {
+  async noteOnDeploy(command: HostCommand, text: string): Promise<void> {
     const row = await this.appDeployments.findOne({
       where: { commandId: { eq: command.id } },
     });
@@ -651,7 +651,7 @@ export class StackDeployService {
    * one check that ties a machine's command to a member copy. Undefined for
    * anything else, which callers refuse like an unknown command.
    */
-  async memberInstanceFor(command: EstateCommand): Promise<string | undefined> {
+  async memberInstanceFor(command: HostCommand): Promise<string | undefined> {
     const instanceId = command.payload.instanceId;
     if (command.kind !== "deploy" || !instanceId) {
       return undefined;
@@ -667,7 +667,7 @@ export class StackDeployService {
    * one of its stacks. Undefined for any other command.
    */
   async registriesFor(
-    command: EstateCommand,
+    command: HostCommand,
   ): Promise<RegistryCredential[] | undefined> {
     const deployment = await this.deploymentOf(command);
     return deployment
@@ -680,7 +680,7 @@ export class StackDeployService {
    * the digests it pinned, on the revision row for a later reader.
    */
   async recordOutcome(
-    command: EstateCommand,
+    command: HostCommand,
     outcome: StackDeployOutcome,
   ): Promise<boolean> {
     const deployment = await this.deploymentOf(command);
