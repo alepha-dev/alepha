@@ -52,7 +52,7 @@ permission and one column per rank: tick what each rank may do.
 ![The Ranks tab: a grid of permissions by rank](/screenshots/lore/ranks-light.png)
 
 Permissions are grouped the way the project is: Project, Members, Quests,
-Epics, Releases, Folios, Feedback, Apps, Estates and so on, each spelled out in
+Epics, Releases, Folios, Feedback, Apps, Hosts and so on, each spelled out in
 plain words ("Create, edit and publish releases"). A group only appears when
 its capability is on.
 
@@ -98,5 +98,5 @@ they can give the project back.
   which decides what ranks have to cover.
 - [Notifications](/lore/docs/project-notifications): how members hear about
   what concerns them.
-- [Estates](/lore/docs/apps-estates): who may add and change the machines a
+- [Hosts](/lore/docs/apps-hosts): who may add and change the machines a
   project deploys to.

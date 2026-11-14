@@ -306,7 +306,7 @@ export class JobProvider {
   public registerJob(name: string, options: JobPrimitiveOptions): void {
     if (typeof name !== "string" || !this.namePattern.test(name)) {
       throw new AlephaError(
-        `Job name '${name}' does not follow the convention: <domain>.<action>, or system.<domain>.<action> for a job shipped from packages/, in lowercase kebab-case (${this.namePattern.source}). For example 'estates.sweep-commands'.`,
+        `Job name '${name}' does not follow the convention: <domain>.<action>, or system.<domain>.<action> for a job shipped from packages/, in lowercase kebab-case (${this.namePattern.source}). For example 'hosts.sweep-commands'.`,
       );
     }
     const description =

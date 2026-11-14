@@ -55,7 +55,7 @@ class ArtifactReadyCloudflareAdapter extends CloudflareAdapter {
         this.uploads.push({
           secrets: { ...plan.secrets },
           modules: plan.modules.map((it) => it.name),
-          apiToken: this.estate.apiToken,
+          apiToken: this.host.apiToken,
         });
         return { versionId: "v1" };
       },

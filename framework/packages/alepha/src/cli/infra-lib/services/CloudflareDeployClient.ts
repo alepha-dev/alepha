@@ -169,7 +169,7 @@ export interface CloudflareDeployAssets {
  * account. And a token read from wrangler means a shell, which never enters a
  * Worker bundle.
  *
- * So the token and the account id come in from the estate row (Lore) or from
+ * So the token and the account id come in from the host row (Lore) or from
  * `CloudflareCredentialSource` (the CLI), at the moment of use, and this file
  * imports nothing that reads `process.env` or spawns a process.
  * `workerdEntryGraph.spec.ts` is what keeps that true.
@@ -204,7 +204,7 @@ export interface CloudflareDeployAssets {
  *
  * ⚠️ Step 5 is `workers.domains.update` and never `workers.routes.create`. The
  * first is account-level and covered by the `workers` probe; the second is
- * zone-scoped and would need a probe no estate can run for a zone it does not
+ * zone-scoped and would need a probe no host can run for a zone it does not
  * know. Wildcard hosts went away with the owner's 2026-09-06 ruling, so a Lore
  * deploy never emits a route.
  */
@@ -281,12 +281,12 @@ export class CloudflareDeployClient {
   }) {
     if (!options.apiToken) {
       throw new AlephaError(
-        "A Cloudflare deploy needs an API token from the estate. Nothing here falls back to the environment: that would deploy into the operator's own account.",
+        "A Cloudflare deploy needs an API token from the host. Nothing here falls back to the environment: that would deploy into the operator's own account.",
       );
     }
     if (!options.accountId) {
       throw new AlephaError(
-        "A Cloudflare deploy needs the estate's account id. Nothing here falls back to the environment.",
+        "A Cloudflare deploy needs the host's account id. Nothing here falls back to the environment.",
       );
     }
     this.accountId = options.accountId;
@@ -750,7 +750,7 @@ export class CloudflareDeployClient {
   /**
    * One batch of assets, under the session's own credential.
    *
-   * ⚠️ **The session's JWT, not the estate's API token.** This is the one call
+   * ⚠️ **The session's JWT, not the host's API token.** This is the one call
    * in the whole deploy whose credential is not the client's own: the upload
    * session answers a token scoped to itself, and this endpoint authenticates
    * with that. Sending the API token instead is answered with a flat
@@ -1045,7 +1045,7 @@ export class CloudflareDeployClient {
    *
    * ⚠️ **No new token permission.** #F1224 finding 2 dropped the workers.dev
    * probe on the grounds that it proves the same permission group as the
-   * `workers` probe - Workers Scripts - so an estate token that passes the six
+   * `workers` probe - Workers Scripts - so a host token that passes the six
    * probes can already read this. What that finding could not do was run the
    * call at SAVE time, because `10007` for an account with no subdomain is
    * indistinguishable from a bad token there. Deploy time is where the same

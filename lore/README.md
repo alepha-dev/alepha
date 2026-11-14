@@ -3,7 +3,7 @@
 Lore is the planning memory, telemetry sink and deploy chain for
 [Alepha](../framework/) applications: quests, epics and
 releases for the work, folios for the decisions, sigils for what a deployed app
-reports, and estates for where it runs. It is built for AI agents first, over
+reports, and hosts for where it runs. It is built for AI agents first, over
 MCP, and for the people working with them. It runs at
 [lore.alepha.dev](https://lore.alepha.dev).
 

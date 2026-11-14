@@ -23,18 +23,18 @@ be deployed to without a rebuild: a preview per branch, or a copy per customer.
 
 | Thing            | What it is                                                                                                |
 | ---------------- | --------------------------------------------------------------------------------------------------------- |
-| **Estate**       | A Bay machine or Cloudflare account. It belongs to a project and is lent to the ones that deploy onto it. |
+| **Host**         | A Bay machine or Cloudflare account. It belongs to a project and is lent to the ones that deploy onto it. |
 | **App instance** | One deployed copy, named by a pair: an app and an environment. `my-app` in `production`.                  |
 | **Artifact**     | A build somebody pushed, named by a tag. It never changes, except under the tag `latest`.                 |
 | **Deployment**   | One run of "put this build on that copy", with its log.                                                   |
 
 See [Apps and instances](/lore/docs/apps-instances),
-[Estates](/lore/docs/apps-estates) and [Artifacts](/lore/docs/apps-artifacts).
+[Hosts](/lore/docs/apps-hosts) and [Artifacts](/lore/docs/apps-artifacts).
 
 A new app can start on this path. `npm create alepha my-app -- --infra lore`
 (or `alepha init --infra lore`) sets the project in `alepha.config.ts`, adds
 `@alepha/lore`, wires telemetry, and links the directory to the project when
-you are signed in. After that, adding an estate and running `alepha deploy`
+you are signed in. After that, adding a host and running `alepha deploy`
 (production by default, `-e` for another environment) is the whole loop.
 
 ## 1. Turn deploys on
@@ -47,17 +47,17 @@ Creating a copy needs the `app:manage` permission. Deploying, rolling back and
 changing what a copy runs with need `deploy:manage`. The owner holds both, and
 a [rank](/lore/docs/project-members) can be given them.
 
-## 2. Add or borrow an estate
+## 2. Add or borrow a host
 
-Open **Settings ▸ Apps ▸ Estates** and choose **Add an estate**. The estate
-belongs to this project and is lent to it. An estate another project lends to
+Open **Settings ▸ Apps ▸ Hosts** and choose **Add a host**. The host
+belongs to this project and is lent to it. A host another project lends to
 yours appears on the same page.
 
-A Cloudflare estate needs an account id and an API token, and Lore checks the
-token against that account before the estate exists. See
+A Cloudflare host needs an account id and an API token, and Lore checks the
+token against that account before the host exists. See
 [The Cloudflare token](/lore/docs/apps-cloudflare-token) for the permissions it
-needs. Everything else about estates, lending included, is in
-[Estates](/lore/docs/apps-estates).
+needs. Everything else about hosts, lending included, is in
+[Hosts](/lore/docs/apps-hosts).
 
 ## 3. Create the copy
 
@@ -65,17 +65,17 @@ needs. Everything else about estates, lending included, is in
 2. Type the app and the environment. Both are free names: `production`,
    `staging`, `eu-staging` and `pr-1841` are all fine, so you slice a fleet as
    finely as you want.
-3. Open the copy's **Settings** tab and pick its estate under **Deploys to**.
-   Only estates lent to the project are offered.
+3. Open the copy's **Settings** tab and pick its host under **Deploys to**.
+   Only hosts lent to the project are offered.
 
-Creating the copy creates nothing in your cloud account. Choosing its estate
+Creating the copy creates nothing in your cloud account. Choosing its host
 is what makes its **Deploy** and **Environment** tabs appear.
 
-The estate is always chosen in Lore, never in `alepha.config.ts`. A first
-`alepha deploy` that creates the copy itself uses the one estate lent to the
+The host is always chosen in Lore, never in `alepha.config.ts`. A first
+`alepha deploy` that creates the copy itself uses the one host lent to the
 project, and refuses when several are lent, naming them.
 
-### The name it gets in your estate
+### The name it gets in your host
 
 A copy's first deploy names everything it creates `<project>-<app>-<env>`,
 such as `acme-shop-production`: on Cloudflare the Worker, the D1 database, the
@@ -93,7 +93,7 @@ deployed again comes back to its own database.
 
 On a **Bay** machine, the machine builds the instance name from the app and
 the environment it is sent. A deploy is refused when the copy does not exist
-in Lore or points at another estate. A copy whose app or environment was
+in Lore or points at another host. A copy whose app or environment was
 renamed after its first Bay deploy is refused too, instead of being started
 again as a new, empty instance: rename it back.
 
@@ -138,7 +138,7 @@ Three families of name are refused, and the refusal says so:
   on Cloudflare, and only for a Postgres URL: see
   [D1 or Postgres](#d1-or-postgres).
 - Settings the platform sets itself, like `LOG_LEVEL`.
-- On a copy that runs on a **Bay** (one deploying to a Bay estate, or a
+- On a copy that runs on a **Bay** (one deploying to a Bay host, or a
   stack's app service), the names Bay writes into every instance:
   `APP_SECRET`, `APP_NAME`, `NODE_ENV`, `DATABASE_URL`, `DATA_DIR`,
   `STORAGE_PATH`, `SERVER_HOST`, `SERVER_PORT` and the `S3_*` names.
@@ -171,16 +171,16 @@ always wins.
 On a Bay copy, the machine owns the key. Bay creates it and sends it to Lore,
 so the `APP_SECRET` row always holds the key the copy runs on, and the tab
 says it was **set by the machine**. A Bay host rebuilt from scratch, or a copy
-moved onto a Bay estate, takes that key back on its first deploy, so nobody is
+moved onto a Bay host, takes that key back on its first deploy, so nobody is
 signed out. If the row held another key, the machine's replaces it and the
 deploy's log says so. The same holds for a stack's app service.
 
-A copy moved onto a Bay estate keeps the variables it already had. Those among
+A copy moved onto a Bay host keeps the variables it already had. Those among
 them that Bay writes itself stay listed and are not sent to the machine, so
 moving the copy back finds them where they were.
 
-⚠️ **A copy keeps its key when it moves between estates**, in either
-direction. The estate it left, and that machine's backups on a Bay, still hold
+⚠️ **A copy keeps its key when it moves between hosts**, in either
+direction. The host it left, and that machine's backups on a Bay, still hold
 the key it runs on: whoever controls them can sign sessions for it. After
 moving a copy off a machine you do not control, change its key: with
 `bay secret replace` on its new Bay, or by setting `APP_SECRET` on this tab
@@ -216,7 +216,7 @@ Postgres server and database, never the password.
   naming the host, port and database another copy already uses: both would
   apply their migrations to one set of tables.
 - **The server needs a publicly trusted certificate** on a DNS name, and the
-  estate's token needs **Hyperdrive: Edit** (see
+  host's token needs **Hyperdrive: Edit** (see
   [The Cloudflare token](/lore/docs/apps-cloudflare-token)).
 - **Backups are yours.** D1 has Time Travel; a Postgres server is backed up
   by whoever runs it.
@@ -276,7 +276,7 @@ An explicit `--env` or `LORE_ENV` always wins.
 `lore apps deploy` is the same command.
 
 No way of deploying names a cloud account. You name a project, an app and an
-environment, and Lore finds the estate from the copy itself.
+environment, and Lore finds the host from the copy itself.
 
 ## 7. Watch it
 
@@ -291,7 +291,7 @@ Every successful run on the **Deploy** tab offers **Roll back**.
 
 Cloudflare keeps every Worker version it has been sent, so the usual rollback
 points the copy at an older version: seconds, no upload, and it works even if
-you only ever push `latest`. When that version is gone, or the copy's estate
+you only ever push `latest`. When that version is gone, or the copy's host
 has changed, Lore redeploys the stored build instead. The confirmation says
 which of the two it will do.
 
@@ -367,7 +367,7 @@ of them expires. The flag only says what a destroy you ask for may take.
 
 The same command asks the machine to remove the copy. Bay stops serving it and
 unregisters it, and **its database, uploads and `.env` stay on the machine**,
-so a deploy of the same copy brings it back. The estate must accept deploys,
+so a deploy of the same copy brings it back. The host must accept deploys,
 and the command waits for the machine to say it is done. Lore keeps the copy
 until you delete it with `lore apps instance delete`, which it refuses while
 the machine still runs the copy.
@@ -379,7 +379,7 @@ the copy and its data together.
 ### What a destroy will not touch
 
 ⚠️ **Lore deletes only what it recorded creating.** The names are derived from
-the project, the app and the environment, and your estate may hold resources
+the project, the app and the environment, and your host may hold resources
 Lore never made, one of which could bear the same name. A copy with nothing
 recorded is refused.
 
@@ -396,32 +396,32 @@ by hand.
 Every refusal names what is missing, because the person running the command is
 often not the person who can fix it.
 
-| It says                                                      | What to do                                                                                                             |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| `… has no estate`                                            | Choose one on the copy's Settings tab.                                                                                 |
-| `Several estates are lent to this project …`                 | Create the copy with `lore apps instance create --estate <slug>`, or choose its estate on the Apps page, then deploy.  |
-| `lore() takes no estate …`                                   | Remove `estate` from `alepha.config.ts`; the copy's estate is set in Lore.                                             |
-| `… is no longer lent to this project`                        | Ask its home project to lend it again.                                                                                 |
-| `… does not accept deploys`                                  | Somebody with `estate:update` in its home project turns that on from its console.                                      |
-| `… does not have a usable Cloudflare credential`             | Somebody with `estate:update` in its home project checks the token from its console.                                   |
-| `… has no artifact tagged '…'`                               | Push one, or deploy a tag that exists.                                                                                 |
-| `… has no \`workerd\` build`                                 | Build for that runtime: the message names the exact command.                                                           |
-| `Another copy in this Cloudflare account is already named …` | Another copy already uses that name: point this copy at another estate, or rename the project before its first deploy. |
-| `Another copy on this Bay machine is already named …`        | The same, on one Bay machine.                                                                                          |
-| `… has no copy named …`                                      | Create the copy on the Apps page and choose this estate on its Settings tab.                                           |
-| `… was first deployed to this machine as …`                  | Rename the copy's app or environment back to the names it was deployed under.                                          |
+| It says                                                      | What to do                                                                                                           |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `… has no host`                                              | Choose one on the copy's Settings tab.                                                                               |
+| `Several hosts are lent to this project …`                   | Create the copy with `lore apps instance create --host <slug>`, or choose its host on the Apps page, then deploy.    |
+| `lore() takes no host …`                                     | Remove `host` from `alepha.config.ts`; the copy's host is set in Lore.                                               |
+| `… is no longer lent to this project`                        | Ask its home project to lend it again.                                                                               |
+| `… does not accept deploys`                                  | Somebody with `host:update` in its home project turns that on from its console.                                      |
+| `… does not have a usable Cloudflare credential`             | Somebody with `host:update` in its home project checks the token from its console.                                   |
+| `… has no artifact tagged '…'`                               | Push one, or deploy a tag that exists.                                                                               |
+| `… has no \`workerd\` build`                                 | Build for that runtime: the message names the exact command.                                                         |
+| `Another copy in this Cloudflare account is already named …` | Another copy already uses that name: point this copy at another host, or rename the project before its first deploy. |
+| `Another copy on this Bay machine is already named …`        | The same, on one Bay machine.                                                                                        |
+| `… has no copy named …`                                      | Create the copy on the Apps page and choose this host on its Settings tab.                                           |
+| `… was first deployed to this machine as …`                  | Rename the copy's app or environment back to the names it was deployed under.                                        |
 
 About the missing build: an artifact is identified by its app, its tag **and
 its runtime**, so `1.2.3` built for Cloudflare and `1.2.3` built for a Bay
 machine are two stored builds, not a collision. A deploy looks up the one the
-estate can run.
+host can run.
 
 ## From the command line
 
 Beyond the commands above:
 
 ```bash
-lore apps instance create --app my-app --env production --estate my-vps
+lore apps instance create --app my-app --env production --host my-vps
 lore secrets set --file .env.production --env production
 lore deploy status --app my-app --env production
 lore deploy rollback --deployment <id>
@@ -438,7 +438,7 @@ ephemeral. See [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next
 
-- [Estates](/lore/docs/apps-estates)
+- [Hosts](/lore/docs/apps-hosts)
 - [Artifacts](/lore/docs/apps-artifacts)
 - [Telemetry](/lore/docs/apps-telemetry)
 - [Stacks](/lore/docs/apps-stacks)

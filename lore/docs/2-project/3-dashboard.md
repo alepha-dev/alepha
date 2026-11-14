@@ -187,7 +187,7 @@ The **Add card** panel lists them in these groups.
 | Card                   | What it shows                     |
 | ---------------------- | --------------------------------- |
 | **Untriaged feedback** | Reports waiting for triage        |
-| **Open blights**       | For the project or a list of apps |
+| **Open errors**        | For the project or a list of apps |
 
 **Apps**
 

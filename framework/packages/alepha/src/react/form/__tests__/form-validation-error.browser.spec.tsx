@@ -95,7 +95,7 @@ describe("FormValidationError", () => {
   /**
    * The schema's own refusal arrives as the same type a handler throws, so
    * whoever listens to `react:action:error` can tell a person's input from a
-   * fault (blight #585, #Q2343). It still reaches the field.
+   * fault (error #585, #Q2343). It still reaches the field.
    */
   it("hands on the schema's own refusal as a FormValidationError", async () => {
     const alepha = Alepha.create().with(AlephaLogger);

@@ -532,13 +532,13 @@ export class OAuthController {
           // SEP-837. Absent, the general rule (https, or http to the
           // loopback) still applies rather than RFC 7591's `web` default:
           // native clients that predate the field register a loopback
-          // redirect without it, and refusing them re-opened Blight #625.
+          // redirect without it, and refusing them re-opened Error #625.
           applicationType: body.application_type,
         });
       } catch (error) {
         // RFC 7591 §3.2.2: a registration refused for its metadata is the
         // client's mistake, answered 400 with a machine-readable code. It
-        // used to escape as a 500, a server error and a blight for every
+        // used to escape as a 500, a server error and an error for every
         // client that sent a redirect_uri this server does not accept.
         if (!(error instanceof OAuthClientMetadataError)) {
           throw error;

@@ -2,13 +2,13 @@
 
 To deploy to a Cloudflare account, Lore needs an API token that you create at
 Cloudflare and paste into the form that adds a Cloudflare
-[estate](/lore/docs/apps-estates), beside the account id. This page says which
+[host](/lore/docs/apps-hosts), beside the account id. This page says which
 token to create.
 
 ## What to create
 
 A **Custom token** with these six permissions, limited to the one account the
-estate deploys to:
+host deploys to:
 
 | Permission             | Access | What it is for                                             |
 | ---------------------- | ------ | ---------------------------------------------------------- |
@@ -26,7 +26,7 @@ A copy that runs on **Postgres** (its `DATABASE_URL` names a Postgres server)
 also needs **Hyperdrive**, Edit. Lore does not check it when you save, since
 most copies never use it: without it, the deploy stops at its Hyperdrive
 step with Cloudflare's "Authentication error". Add it to the token at
-Cloudflare; the estate needs no change.
+Cloudflare; the host needs no change.
 
 The quickest way:
 
@@ -35,7 +35,7 @@ The quickest way:
    Lore shows the same link under the token field, as **Mint one with the
    right permissions**.
 2. Under **Account Resources**, choose **Include** and pick the one account
-   this estate names.
+   this host names.
 3. **Continue to summary**, then **Create Token**.
 4. Copy the token. Cloudflare shows it once.
 5. Back in Lore, paste it into **Cloudflare API token**, with the
@@ -78,9 +78,9 @@ prefilled link:
 5. Give it a name you will recognise in six months, such as `lore-deploy`.
 6. Add the six permissions from the table above.
 7. Under **Account Resources**, choose **Include** and pick the one account
-   this estate will name, not "All accounts".
+   this host will name, not "All accounts".
 8. **TTL** and **Client IP Address Filtering** are optional. If you set an
-   expiry, Lore shows it on the estate and checks the token again every night,
+   expiry, Lore shows it on the host and checks the token again every night,
    so you find out it lapsed before a deploy does.
 9. **Continue to summary**, then **Create Token**.
 10. Copy the token. Cloudflare shows it once.
@@ -121,11 +121,11 @@ the account.
 Lore checks the token with Cloudflare before it saves anything, and the dialog
 says **Checking with Cloudflare…** meanwhile.
 
-- **Every check passes.** The estate is created, lent to the project, and
+- **Every check passes.** The host is created, lent to the project, and
   ready to deploy to.
 - **One fails.** The message names the missing permission, in Cloudflare's own
   words, beside the field it concerns. Nothing is saved, so there is no
-  half-made estate to repair: fix the token, or create a better one, and try
+  half-made host to repair: fix the token, or create a better one, and try
   again.
 - **Cloudflare cannot be reached.** Lore says so and saves nothing. It does
   not mark the token as invalid: an outage says nothing about your token.
@@ -164,35 +164,35 @@ eight characters (`cfut_a1B2c3D4`), or the first eight for an older token with
 no prefix: enough to tell two tokens apart, and far too few to rebuild one.
 
 ⚠️ **Lore never shows the token back, not even right after you save it.** This
-differs from a Bay estate, whose secret Lore creates and shows once. Here you
+differs from a Bay host, whose secret Lore creates and shows once. Here you
 brought the token and already have it. The only way to change it is **Replace
-token**, in the estate's drawer, and nothing is revealed after that either.
+token**, in the host's drawer, and nothing is revealed after that either.
 
 ## The nightly check
 
-Once a night Lore asks Cloudflare again about every Cloudflare estate. If a
-token has stopped passing, the estate shows as **credential invalid** with the
+Once a night Lore asks Cloudflare again about every Cloudflare host. If a
+token has stopped passing, the host shows as **credential invalid** with the
 reason, deploys to it are refused until the token is replaced, and every
-member of its home project whose rank grants `estate:update` gets one email.
+member of its home project whose rank grants `host:update` gets one email.
 So a token revoked or narrowed at Cloudflare is reported within a day, not by
 the first deploy that fails.
 
-**Check again**, in the estate's drawer, does the same thing on demand, which
+**Check again**, in the host's drawer, does the same thing on demand, which
 is what you want right after widening a token at Cloudflare.
 
-## Deleting an estate does not revoke the token
+## Deleting a host does not revoke the token
 
-⚠️ Deleting the estate removes Lore's copy of the token, and the projects the
-estate was lent to lose a place to deploy. The token itself goes on existing
+⚠️ Deleting the host removes Lore's copy of the token, and the projects the
+host was lent to lose a place to deploy. The token itself goes on existing
 and working, for anything else that holds it. To revoke it, go back to where
 you created it, **API Tokens** for a user token or **Account API Tokens** for
 an account-owned one, and delete it there.
 
 ## Next
 
-- [Estates](/lore/docs/apps-estates): lending the estate to other projects,
+- [Hosts](/lore/docs/apps-hosts): lending the host to other projects,
   who can manage it, deleting it.
-- [Deploying an app](/lore/docs/apps-deploying): pick the estate and ship a
+- [Deploying an app](/lore/docs/apps-deploying): pick the host and ship a
   build.
 - [Notifications](/lore/docs/project-notifications): how the email about a
   failing token reaches you.

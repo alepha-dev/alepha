@@ -107,8 +107,8 @@ describe("the Cloudflare deploy client", () => {
     };
 
     const client = new CloudflareDeployClient({
-      apiToken: "estate-token",
-      accountId: "estate-account",
+      apiToken: "host-token",
+      accountId: "host-account",
       client: api,
       // A fixed clock, so the session-deadline case is a decision rather than
       // a race with the wall.
@@ -136,7 +136,7 @@ describe("the Cloudflare deploy client", () => {
     });
     expect(of("versions.get")[0]!.args).toEqual([
       "live",
-      { account_id: "estate-account", script_name: "my-app-staging" },
+      { account_id: "host-account", script_name: "my-app-staging" },
     ]);
   });
 
@@ -202,10 +202,10 @@ describe("the Cloudflare deploy client", () => {
       ).toThrow(/operator's own account/);
       expect(
         () => new CloudflareDeployClient({ apiToken: "t", accountId: "" }),
-      ).toThrow(/estate's account id/);
+      ).toThrow(/host's account id/);
     });
 
-    it("sends the estate's account on every call", async ({ expect }) => {
+    it("sends the host's account on every call", async ({ expect }) => {
       const { client, calls } = fake({ jwt: "session" });
       await client.deploy(
         plan({
@@ -220,13 +220,11 @@ describe("the Cloudflare deploy client", () => {
         if (call.name === "script.put") {
           // The raw upload carries the account in its path rather than in a
           // params object, so it is asserted separately below.
-          expect(call.args[0], call.name).toContain(
-            "/accounts/estate-account/",
-          );
+          expect(call.args[0], call.name).toContain("/accounts/host-account/");
           continue;
         }
         const params = call.args.at(-1) as { account_id?: string };
-        expect(params.account_id, call.name).toBe("estate-account");
+        expect(params.account_id, call.name).toBe("host-account");
       }
     });
   });
@@ -505,8 +503,8 @@ describe("the Cloudflare deploy client", () => {
         // Not the multipart endpoint.
         expect(of("assets.upload")).toHaveLength(0);
         expect(calls.map((it) => it.url).sort()).toEqual([
-          "https://api.cloudflare.com/client/v4/accounts/estate-account/workers/assets/upload/aaaa",
-          "https://api.cloudflare.com/client/v4/accounts/estate-account/workers/assets/upload/bbbb",
+          "https://api.cloudflare.com/client/v4/accounts/host-account/workers/assets/upload/aaaa",
+          "https://api.cloudflare.com/client/v4/accounts/host-account/workers/assets/upload/bbbb",
         ]);
         const app = calls.find((it) => it.url.endsWith("/bbbb"))!;
         expect(app.body).toBe("bytes of /app.js");
@@ -593,7 +591,7 @@ describe("the Cloudflare deploy client", () => {
      *
      * The upload session answers a JWT scoped to that session, and the batch
      * endpoint authenticates with it. The client is constructed with the
-     * estate's API token and sends it on every other call, so without an
+     * host's API token and sends it on every other call, so without an
      * override this batch goes out under the wrong credential entirely.
      *
      * It survived because nothing ever called `uploadAssets` against the real
@@ -896,8 +894,8 @@ describe("the Cloudflare deploy client", () => {
       expect,
     }) => {
       // ⚠️ `workers.domains.update` and never `workers.routes.create`: the
-      // first is account-level and covered by the estate's `workers` probe,
-      // the second is zone-scoped and no estate can probe a zone it does not
+      // first is account-level and covered by the host's `workers` probe,
+      // the second is zone-scoped and no host can probe a zone it does not
       // know. Wildcard hosts went away with the owner's 2026-09-06 ruling.
       const { client, of } = fake();
       await client.putDomain(
@@ -965,7 +963,7 @@ describe("the Cloudflare deploy client", () => {
 
         expect(await client.getSubdomain()).toBe("acme");
         expect(of("subdomains.get")[0].args[0]).toMatchObject({
-          account_id: "estate-account",
+          account_id: "host-account",
         });
       });
 
@@ -1119,8 +1117,8 @@ describe("the Cloudflare deploy client", () => {
           },
         };
         const client = new CloudflareDeployClient({
-          apiToken: "estate-token",
-          accountId: "estate-account",
+          apiToken: "host-token",
+          accountId: "host-account",
           client: api as unknown as CloudflareDeployApi,
         });
         return { client, rows };
@@ -1289,8 +1287,8 @@ describe("the Cloudflare deploy client", () => {
 
         try {
           const client = new CloudflareDeployClient({
-            apiToken: "estate-token",
-            accountId: "estate-account",
+            apiToken: "host-token",
+            accountId: "host-account",
             baseURL: "https://cf.test/client/v4",
           });
           await client.putQueueConsumers(
@@ -1310,9 +1308,9 @@ describe("the Cloudflare deploy client", () => {
         }
 
         expect(sent).toEqual([
-          { call: "GET /accounts/estate-account/queues/q-bound/consumers" },
+          { call: "GET /accounts/host-account/queues/q-bound/consumers" },
           {
-            call: "PUT /accounts/estate-account/queues/q-bound/consumers/c1",
+            call: "PUT /accounts/host-account/queues/q-bound/consumers/c1",
             body: {
               type: "worker",
               script_name: "my-app-staging",
@@ -1320,9 +1318,9 @@ describe("the Cloudflare deploy client", () => {
               settings: { batch_size: 1 },
             },
           },
-          { call: "GET /accounts/estate-account/queues/q-new/consumers" },
+          { call: "GET /accounts/host-account/queues/q-new/consumers" },
           {
-            call: "POST /accounts/estate-account/queues/q-new/consumers",
+            call: "POST /accounts/host-account/queues/q-new/consumers",
             body: {
               type: "worker",
               script_name: "my-app-staging",
@@ -1351,7 +1349,7 @@ describe("the Cloudflare deploy client", () => {
 
       expect(versions.map((it) => it.id)).toEqual(["v2", "v1"]);
       expect(of("versions.list")[0].args[1]).toMatchObject({
-        account_id: "estate-account",
+        account_id: "host-account",
       });
     });
 

@@ -39,7 +39,7 @@ import {
 /**
  * The credential one deploy runs under.
  *
- * ⚠️ **Per deploy, not per process.** Every field comes from the estate row,
+ * ⚠️ **Per deploy, not per process.** Every field comes from the host row,
  * opened at the moment of use. There is deliberately no way to fill this from
  * the environment: `CLOUDFLARE_ACCOUNT_ID` inside Lore's Worker is Lore's OWN
  * account, so an environment fallback would deploy a user's artifact, and
@@ -92,7 +92,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   static readonly id = "cloudflare";
   /**
    * `domain` only: the account, the jurisdiction and the bindings come from
-   * the estate's credential, never from a config file.
+   * the host's credential, never from a config file.
    */
   static readonly options = environmentOptionsSchema;
 
@@ -227,24 +227,24 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       : { ...this.provisioned, TRACING_SAMPLE_RATIO: ratio };
   }
 
-  protected get estate(): WorkerCloudflareCredential {
+  protected get host(): WorkerCloudflareCredential {
     if (!this.credential) {
       throw new AlephaError(
-        "This adapter has no Cloudflare credential. The runner has to call `use()` with the estate's token and account id before driving a deploy; nothing here falls back to the environment.",
+        "This adapter has no Cloudflare credential. The runner has to call `use()` with the host's token and account id before driving a deploy; nothing here falls back to the environment.",
       );
     }
     return this.credential;
   }
 
   protected provisioner(): CloudflareProvisionClient {
-    return new CloudflareProvisionClient(this.estate);
+    return new CloudflareProvisionClient(this.host);
   }
 
   protected deployer(): CloudflareDeployClient {
     // The clock travels in, because the client is a plain `new` with no
     // container of its own and the asset session carries a real deadline.
     return new CloudflareDeployClient({
-      ...this.estate,
+      ...this.host,
       now: () => this.dateTime.nowMillis(),
     });
   }
@@ -261,7 +261,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     _ctx?: InfraContext<EnvironmentOptions>,
     _run?: RunnerMethod,
   ): Promise<void> {
-    void this.estate;
+    void this.host;
   }
 
   /**
@@ -564,7 +564,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    *
    * The names are derived from `(project, env)` and are therefore
    * reproducible, which makes "recompute the name and delete it" the obvious
-   * implementation and the wrong one: on a lent estate that deletes whatever
+   * implementation and the wrong one: on a lent host that deletes whatever
    * currently bears the name, including a database somebody created before
    * Lore ever saw the account. `alepha infra down` may do that - it runs on
    * your own machine against your own account, at your own typing - but Lore
@@ -593,7 +593,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
      * ⚠️ Recorded under its own key, never derived from `queue` at teardown:
      * what may be deleted is what a deploy wrote down, and until this existed
      * every teardown of a copy with a job queue left `<queue>-dlq` standing in
-     * the estate's account.
+     * the host's account.
      */
     dlq?: string;
     /**
@@ -1427,7 +1427,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * ⚠️ **Resolved, never created.** A consumer the account has no queue for is
    * refused by name rather than provisioned here: `provision` makes the queues
    * Lore records for teardown, and a queue made at deploy time is one no
-   * teardown knows about, on an estate that was only lent. This is also
+   * teardown knows about, on a host that was only lent. This is also
    * wrangler's rule, which refuses a consumer of a queue that does not exist.
    *
    * ⚠️ **wrangler's units are not the API's.** `max_batch_timeout` is seconds
@@ -1525,7 +1525,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * ## ⚠️ It takes a RECORD, not a context
    *
    * Every other method here derives names from `ctx.naming`. This one refuses
-   * to: an estate is LENT, so the account holds resources Lore never created,
+   * to: a host is LENT, so the account holds resources Lore never created,
    * and what may be deleted is what a deploy wrote down when it made it.
    *
    * ## ⚠️ Every failure is reported, never thrown
@@ -1633,7 +1633,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
 
   /**
    * ⚠️ The ADAPTER interface's teardown, which this deliberately does not
-   * implement. It derives every name from the context, and on a lent estate
+   * implement. It derives every name from the context, and on a lent host
    * that is the delete this class exists to refuse - see
    * {@link teardownRecorded}, which takes what a deploy wrote down instead.
    */

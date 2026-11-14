@@ -310,14 +310,14 @@ The middlewares run on the upgrade request, before the socket exists. An unauthe
 `$secure` answers "is a person signed in". Some endpoints are opened by a machine holding a secret rather than by a person with a session: a build agent, a fleet of servers reporting in. Give those an `authorize` hook instead:
 
 ```typescript
-estates = $websocket({
-  channel: this.channels.estates,
+hosts = $websocket({
+  channel: this.channels.hosts,
   handler: async ({ roomId, message }) => {
     /* ... */
   },
   authorize: async ({ headers }) => {
-    const estate = await this.estates.verify(headers.authorization);
-    return estate ? { roomId: estate.id } : undefined;
+    const host = await this.hosts.verify(headers.authorization);
+    return host ? { roomId: host.id } : undefined;
   },
 });
 ```

@@ -541,7 +541,7 @@ jobs:
       # secrets itself. `--prebuilt`: the workerd build above carries the
       # llms.txt files `gen:llms` wrote after it, and a fresh build would
       # drop them. Only `LORE_API_KEY`: the Cloudflare credential is the
-      # estate's, held by Lore.
+      # host's, held by Lore.
       - name: Deploy docs
         if: inputs.dry_run != true
         working-directory: docs

@@ -11,7 +11,7 @@ some later feature.
 
 Every other example here declares its environments in a committed file and ships
 with `alepha deploy`. This one declares nothing: the environment is a **row
-in Lore**, the build target is resolved through the estate behind it, and
+in Lore**, the build target is resolved through the host behind it, and
 `APP_SECRET` and `PUBLIC_URL` are filled in by the deploy.
 
 So the absence of that file is the assertion. If someone adds one to quiet a

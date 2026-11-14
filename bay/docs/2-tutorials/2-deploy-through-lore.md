@@ -125,12 +125,12 @@ the Lore CLI, and `--tag` deploys a stored build without building:
 ```bash
 npx lore deploy status -e production
 npx lore insights read
-npx lore blight list
+npx lore error list
 ```
 
 `insights read` gives page views, unique visitors, Web Vitals and the error
-budget; `blight list` gives the app's failures, one row per root cause. The
-same is on the project's **Apps** and **Blights** pages, with the server's CPU
+budget; `error list` gives the app's failures, one row per root cause. The
+same is on the project's **Apps** and **Errors** pages, with the server's CPU
 and memory on the host's page. [Telemetry](/lore/docs/apps-telemetry)
 explains each number.
 

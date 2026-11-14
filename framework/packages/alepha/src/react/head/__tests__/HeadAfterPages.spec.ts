@@ -29,7 +29,7 @@ describe("$head({ afterPages })", () => {
         afterPages: ({ head, layers }) => {
           seen.push({ title: head.title, names: layers.map((it) => it.name) });
           const page = layers[layers.length - 1];
-          return { title: `Acme › Estates › ${page?.params?.estateSlug}` };
+          return { title: `Acme › Hosts › ${page?.params?.hostSlug}` };
         },
       });
     }
@@ -42,14 +42,14 @@ describe("$head({ afterPages })", () => {
         layer(
           "bayOverview",
           (_props, previous) => ({ title: `${previous?.title} › Overview` }),
-          { estateSlug: "ovh" },
+          { hostSlug: "ovh" },
         ),
       ],
     };
 
     provider.fillHead(state as any);
 
-    expect((state.head as any).title).toBe("Acme › Estates › ovh");
+    expect((state.head as any).title).toBe("Acme › Hosts › ovh");
     // It saw what the pages had left, and every layer in order.
     expect(seen).toEqual([
       { title: "Acme › Overview", names: ["project", "bayOverview"] },

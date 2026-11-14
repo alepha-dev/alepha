@@ -51,7 +51,7 @@ Live in `src/web/app/atoms/`, filled by this module's `ProjectLoaderRegistry` en
 - `currentAssignedQuestsAtom` — quests assigned to the viewer
 - `currentReleasesAtom` — release list
 - `currentFeedbackCountAtom` — pending-feedback badge for the project header
-- `currentQuestCountAtom` — open-quests badge for the project header (new: Quests has no feature gate, unlike Blights/Feedback, so this badge is always on)
+- `currentQuestCountAtom` — open-quests badge for the project header (new: Quests has no feature gate, unlike Errors/Feedback, so this badge is always on)
 - `currentEpicCountAtom` — draft-epics badge. It exists because `countOpenQuests` applies the backlog gate, so quests inside a draft epic are left out of the Quests count and would otherwise be invisible in the sidebar
 - `currentAreasAtom` — every area of the project, and the ONLY list the area pickers read. They used to read `project.areas`, a stored JSON array, which left ten production areas visible on the board and yet unselectable
 
@@ -75,7 +75,7 @@ It lives in `atoms/kanbanReloadAtom.ts`.
 
 ## Kanban is a route again (epic #2)
 
-The board is `projectKanban` at `/:projectSlug/kanban`, with its own sidebar entry. Between the 2026-08 rename and epic #2 it was a _mode_ of the Quests page — no URL, no entry, reachable only through the view bar, which is precisely why that bar had to be invented ("unreachable from the UI at all"). Restoring the route collapsed `ProjectView`'s `kanbanView` special case into the machinery Epics, Folios and Blights already use.
+The board is `projectKanban` at `/:projectSlug/kanban`, with its own sidebar entry. Between the 2026-08 rename and epic #2 it was a _mode_ of the Quests page — no URL, no entry, reachable only through the view bar, which is precisely why that bar had to be invented ("unreachable from the UI at all"). Restoring the route collapsed `ProjectView`'s `kanbanView` special case into the machinery Epics, Folios and Errors already use.
 
 **A bare `/:projectSlug` always lands on the list.** Between 2026-08 and 2026-09-02 `project.defaultSurface` (`"list" | "kanban"`) could send it to the board through the `projectQuests` loader, owner-settable as "Open on the board" on the Kanban settings page. That setting, its write path and the redirect were removed with feedback #2066 ("not needed"). The column itself was dropped with #E74.
 
@@ -323,7 +323,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 **Visibility / access**
 
 - Submit: any logged-in Lore user (no membership required), provided the project has the **Support** capability. Its switch on `/settings/capabilities` is the owner's opt-in/out lever.
-- List/detail (read): any project member (`assertMember`). Triage — accept/reject/remove: project owner only (`assertOwner`). Same read-vs-mutate split applies to Blights and Insights (members can view the inbox / crash telemetry / analytics; owner-only actions stay gated).
+- List/detail (read): any project member (`assertMember`). Triage — accept/reject/remove: project owner only (`assertOwner`). Same read-vs-mutate split applies to Errors and Insights (members can view the inbox / crash telemetry / analytics; owner-only actions stay gated).
 
 **Where to look**
 

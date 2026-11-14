@@ -129,11 +129,11 @@ jobs:
   # `shop.alepha.dev`, deployed with `alepha deploy` through Lore (#Q2778),
   # the way `docs.yml` deploys `alepha.dev`.
   #
-  # Each app's `lore({ project: "alepha", estate: "cf-feunard" })` deploys its
+  # Each app's `lore({ project: "alepha", host: "cf-feunard" })` deploys its
   # copy (`ui/production`, `shop/production`) in Lore project `alepha`, and
   # Lore names the Worker `alepha-<app>-production`, the one `cloudflare()`
   # deployed before (#Q2576), so it is taken over in place. Lore holds the
-  # Cloudflare credential (the estate), so the job needs `LORE_API_KEY` alone,
+  # Cloudflare credential (the host), so the job needs `LORE_API_KEY` alone,
   # a repository secret. Each app's own secrets live in its GitHub environment,
   # reach `alepha deploy` through the job env, and are sealed into the copy
   # before the run starts.

@@ -19,7 +19,7 @@ import { $websocket } from "../primitives/$websocket.ts";
  * the security realm, and the room came from the URL on both engines: any
  * signed-in user could open `?roomId=<somebody else's room>` and be admitted
  * before `onConnect` or `onJoin` had a chance to refuse, and a room-scoped
- * `emit()` reaches every socket in the room in between. Epic #20's estates
+ * `emit()` reaches every socket in the room in between. Epic #20's hosts
  * are what gave that hole a name.
  */
 
@@ -88,7 +88,7 @@ describe("$websocket authorize", () => {
         channel: this.ch,
         handler: async () => {},
         authorize: async ({ headers }) =>
-          headers.authorization === SECRET ? { roomId: "estate-1" } : undefined,
+          headers.authorization === SECRET ? { roomId: "host-1" } : undefined,
         onConnect: ({ roomIds, userId }) => {
           connects.push({ roomIds, userId });
         },
@@ -107,14 +107,14 @@ describe("$websocket authorize", () => {
     await waitForOpen(ws);
     await delay(100);
 
-    expect(connects).toEqual([{ roomIds: ["estate-1"], userId: undefined }]);
+    expect(connects).toEqual([{ roomIds: ["host-1"], userId: undefined }]);
 
     await controller.ws.emit({
       roomId: "other",
       message: { content: "for the forged room" },
     });
     await controller.ws.emit({
-      roomId: "estate-1",
+      roomId: "host-1",
       message: { content: "for the real room" },
     });
     await delay(200);
@@ -274,7 +274,7 @@ describe("$room authorize", () => {
         handler: async () => {},
         authorize: async ({ ip }) => {
           seen.push(ip);
-          return { roomId: "estate-1" };
+          return { roomId: "host-1" };
         },
       });
     }

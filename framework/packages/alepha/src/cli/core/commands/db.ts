@@ -1344,7 +1344,7 @@ if (typeof registerHooks === "function") {
    *
    * ```sql
    * -- alepha-allow-drop-table: rebuild of a table nothing references
-   * DROP TABLE `sigil_blight_rate`;
+   * DROP TABLE `sigil_rate_limits`;
    * ```
    *
    * Silence used to be how a drop was accepted: fail once at generate time,

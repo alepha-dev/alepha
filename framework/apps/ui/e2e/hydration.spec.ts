@@ -20,7 +20,7 @@ test.describe("Hydration", () => {
    * a render of the request. The prerender boots the app to `configure` and
    * never `start`, so a store value set on `start` is missing from that file
    * while the browser has it. The theme list was one: the file had no theme
-   * picker, the browser rendered one, and every first load threw #418 (blight
+   * picker, the browser rendered one, and every first load threw #418 (error
    * #586, quest #2341).
    *
    * ⚠️ The prerendered file is served explicitly. `yarn start` is a node

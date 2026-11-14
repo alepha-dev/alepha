@@ -166,7 +166,10 @@ describe("init --infra", () => {
       expect(config).toContain('import { lore } from "@alepha/lore/cli";');
       expect(config).toContain('import { infra } from "alepha/cli/infra";');
       expect(config).toContain('production: lore({ project: "project" }),');
-      expect(config).not.toMatch(/estate\s*:/);
+      // The Lore block names the project and nothing else: no host to deploy
+      // to, which Lore resolves from the copy (#E147).
+      const block = config.match(/lore\(\{[^}]*\}\)/)?.[0];
+      expect(block).toBe('lore({ project: "project" })');
       expect(config).not.toContain("url:");
 
       const pkg = JSON.parse(fs.getFileContent("/project/package.json")!);

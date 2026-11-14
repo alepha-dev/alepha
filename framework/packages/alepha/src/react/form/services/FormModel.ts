@@ -736,7 +736,7 @@ export class FormModel<T extends ZObject> {
    * and the browser sigil files what it receives as a crash unless it can
    * tell a refusal from a fault: a `SchemaValidationError` raised INSIDE the
    * handler (a response that broke its own schema) is a fault and still
-   * reports, while this one is somebody leaving a title empty (blight #585,
+   * reports, while this one is somebody leaving a title empty (error #585,
    * #Q2343). The subclass keeps every `instanceof SchemaValidationError` and
    * `value.path` check that routes the error to its field working unchanged.
    */

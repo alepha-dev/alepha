@@ -234,7 +234,7 @@ describe("OAuthController", () => {
 
   /**
    * RFC 8252 §7.3 has a native client (a CLI, a desktop MCP client) register
-   * the loopback IP literal. Blight #625 was exactly this registration
+   * the loopback IP literal. Error #625 was exactly this registration
    * turned away, and turned away as a 500.
    */
   it("registers a native client on the loopback IP literal", async ({

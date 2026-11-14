@@ -97,11 +97,11 @@ When an outage opens:
 
 - **An incident** is recorded, with its cause and start. It closes when the
   monitor recovers.
-- **A blight** named `UptimeOutage` appears in the project's
-  [Blights](/lore/docs/apps-telemetry#blights) inbox, one per monitor, with the
+- **An error** named `UptimeOutage` appears in the project's
+  [Errors](/lore/docs/apps-telemetry#errors) inbox, one per monitor, with the
   monitor, the target and the failure. It is resolved by itself on recovery, and
   the next outage opens it again. The inbox stays reachable while it is open,
-  even with no sigil in the project. It follows the retention of any open blight,
+  even with no sigil in the project. It follows the retention of any open error,
   so an outage that outlasts that window loses it.
 - **An email** goes out, and a second one on recovery.
 
@@ -140,7 +140,7 @@ same address counts.
 Each row of the list has **Edit**, **Pause** or **Resume**, and **Delete**.
 
 **Delete** removes the monitor, its checks and its incidents. The hourly totals
-are kept, and a blight still open stays for you to resolve.
+are kept, and an error still open stays for you to resolve.
 
 Reading monitors needs the `app:read` permission, which the default Member rank
 holds. Creating, editing, pausing and deleting them needs `app:manage`, which
@@ -165,11 +165,11 @@ lore monitor pause <id>
 `monitor_delete` change them. See [The lore CLI](/lore/docs/reference-cli#monitors)
 and [MCP tools](/lore/docs/reference-mcp-tools#uptime).
 
-An outage also reaches an agent as a blight: `blight_list` shows it under the
+An outage also reaches an agent as an error: `error_list` shows it under the
 name `UptimeOutage`.
 
 ## Next
 
-- [Telemetry](/lore/docs/apps-telemetry): the Blights inbox an outage lands in.
+- [Telemetry](/lore/docs/apps-telemetry): the Errors inbox an outage lands in.
 - [Notifications](/lore/docs/project-notifications)
 - [Apps and instances](/lore/docs/apps-instances)

@@ -258,7 +258,7 @@ describe("OAuthClientService wildcard redirect_uri", () => {
 });
 
 /**
- * Which redirect URIs a client may register (#Q2342, blight #625): https
+ * Which redirect URIs a client may register (#Q2342, error #625): https
  * anywhere, plain http to the loopback interface only. A native client
  * registering the RFC 8252 form `http://127.0.0.1:{port}/...` was refused,
  * while `http://localhost.example.com` passed a prefix check.

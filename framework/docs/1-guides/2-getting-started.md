@@ -346,7 +346,7 @@ export default defineConfig({
 });
 ```
 
-The config never names a machine: the estate a copy deploys to is chosen in Lore. Then `npx alepha deploy` builds what that estate runs, pushes it, seals your local secrets into the copy and deploys.
+The config never names a machine: the host a copy deploys to is chosen in Lore. Then `npx alepha deploy` builds what that host runs, pushes it, seals your local secrets into the copy and deploys.
 
 ## Project Structure
 

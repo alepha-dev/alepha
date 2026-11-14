@@ -42,7 +42,7 @@ test.describe("Hydration", () => {
    * path (`not_found_handling: "404-page"` in alepha.config.ts), so the
    * client hydrates HTML that was rendered at `/404` while the URL says
    * `/docs/<missing>`. Anything in the shell that derives from the URL then
-   * differs between the two, and React #418 fires on every 404 (blight
+   * differs between the two, and React #418 fires on every 404 (error
    * #521, quest #1675). The node server behind this suite renders the URL
    * it is given, so the mismatch is reproduced by fulfilling the navigation
    * with the built 404 page, the way the edge does.
@@ -77,7 +77,7 @@ test.describe("Hydration", () => {
    * A `$primitive` reference page is linked, and listed in the sitemap, as
    * `%24`. The edge decodes that before its lookup, so it serves the file
    * written under the `$` name, and it used to find none: every visit got
-   * the 404 shell and hydrated the real route over it, React #418 (blight
+   * the 404 shell and hydrated the real route over it, React #418 (error
    * #620, quest #2340). Like the tests around it, the file the edge would
    * serve is fulfilled here, since the node server renders the URL itself.
    */

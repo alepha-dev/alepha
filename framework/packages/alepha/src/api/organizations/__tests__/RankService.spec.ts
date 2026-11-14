@@ -577,6 +577,6 @@ describe("alepha/api/organizations - RankService", () => {
     expect((await ranks.holdersOf(org, "organization:read")).sort()).toEqual(
       [ctx.owner.id, ctx.member.id, writer.id, reader.id].sort(),
     );
-    expect(await ranks.holdersOf(org, "estate:update")).toEqual([ctx.owner.id]);
+    expect(await ranks.holdersOf(org, "host:update")).toEqual([ctx.owner.id]);
   });
 });

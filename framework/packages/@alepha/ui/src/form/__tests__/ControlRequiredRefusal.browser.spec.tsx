@@ -11,7 +11,7 @@ import { Control } from "../Control.tsx";
 
 /**
  * A required field left empty is refused by the form's own schema, and the
- * person has to see that beside the field (blight #585, #Q2343: the quest
+ * person has to see that beside the field (error #585, #Q2343: the quest
  * form's title). The form sets `noValidate`, so the browser's own tooltip
  * never steps in: this inline message is the only one there is.
  *

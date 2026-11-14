@@ -6,7 +6,7 @@ import { describe, it } from "vitest";
 /**
  * A request cut short by its client is an outcome, not an error (#E85):
  * no `server:request:error` (the hook every reporter listens to), no
- * error-level log entry (what a blight is raised from), one debug line.
+ * error-level log entry (what an error is raised from), one debug line.
  */
 describe("ServerRouterProvider aborted requests", () => {
   const deferred = () => {

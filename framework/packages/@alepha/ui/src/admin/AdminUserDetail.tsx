@@ -128,7 +128,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
   // away re-renders this component with the next route's params before it
   // unmounts: `userId` becomes `""`, the dep changes, and the query re-runs
   // with it. The batch then posts `params: { id: "" }` and the server answers
-  // `Invalid GUID at /id` — blight #358, seven hits, and #118 before it on
+  // `Invalid GUID at /id` — error #358, seven hits, and #118 before it on
   // the previous bundle.
   //
   // Skipping the request is also what makes the fallback fail VISIBLY: with

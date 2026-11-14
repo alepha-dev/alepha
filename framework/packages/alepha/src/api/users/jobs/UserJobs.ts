@@ -105,7 +105,7 @@ export class UserJobs {
   /**
    * Rows one batch selects and deletes: 1000, or fewer when the driver binds
    * fewer parameters per statement. The delete binds one parameter per id,
-   * so on D1 (a ceiling of 100) it is 90, the number `BlightJobs` uses in
+   * so on D1 (a ceiling of 100) it is 90, the number `ProjectErrorJobs` uses in
    * Lore, with room left for the rest of the statement.
    */
   protected batchSize(): number {

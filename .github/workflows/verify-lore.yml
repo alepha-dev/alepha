@@ -166,7 +166,7 @@ jobs:
       # The specs naming a module that writes raw SQL (`sql\``, `sql.raw`,
       # `.execute(`), plus those reaching the uncovered ones through their
       # controller: project counts and recency (home-open-counts,
-      # owns-project-query-count, quest-count, open-blight-counter) and
+      # owns-project-query-count, quest-count, open-error-counter) and
       # UptimeReadService (uptime-controller). Vitest takes each word as a
       # path filter, so `automation-` picks up a new automation spec unasked;
       # a spec for a new raw-SQL module elsewhere needs adding here.

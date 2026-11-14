@@ -924,7 +924,7 @@ export class ProjectScaffolder {
 
     // Refused before any scaffold file or install, so a refusal changes nothing.
     // `--infra lore` names a project and, for a self-hosted instance, a URL;
-    // never an estate, which is chosen in Lore.
+    // never a host, which is chosen in Lore.
     const lore =
       flags.infra === "lore"
         ? {

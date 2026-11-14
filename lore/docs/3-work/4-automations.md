@@ -59,7 +59,7 @@ The presets:
 | **Weekly report**                    | Sends the Reports summary of the last seven days to one member, every Monday at 08:00 UTC.                   |
 | **Epic completed**                   | Notifies one member when an epic in progress completes.                                                      |
 | **Coverage regression**              | Compares line coverage over the two last full UTC days, and alerts when it dropped by more than a threshold. |
-| **Open blights cross a threshold**   | Samples the number of open blights every five minutes, and alerts when it rises above a threshold.           |
+| **Open errors cross a threshold**    | Samples the number of open errors every five minutes, and alerts when it rises above a threshold.            |
 | **Publish release notes to a folio** | Appends a published release's changelog to a folio, then notifies one member. Each publication appends once. |
 | **Deployment failed**                | Notifies one member when a deployment of the chosen app fails, in any environment. Raw logs are left out.    |
 
@@ -107,7 +107,7 @@ A schedule reads one of three things:
   and the actions run separately for each row, up to 50.
 - **A list as one digest**, such as the open quests with a tag: the actions run
   once, with up to 50 rows. An empty list sends nothing.
-- **A number**, such as the count of open blights or a coverage percentage: the
+- **A number**, such as the count of open errors or a coverage percentage: the
   actions run once if the condition matches. A measured zero is a value; a
   missing sample is "no data", and the rule does nothing.
 

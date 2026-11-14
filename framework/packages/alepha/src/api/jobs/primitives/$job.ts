@@ -221,7 +221,7 @@ export interface JobPrimitiveOptions<
 > extends PipelinePrimitiveOptions {
   /**
    * The job's name: `<domain>.<action>`, lowercase kebab-case segments, such
-   * as `estates.sweep-commands` or `quests.send-due-reminders`. The domain is
+   * as `hosts.sweep-commands` or `quests.send-due-reminders`. The domain is
    * the module or business area, a plural noun where natural, and the action
    * does not repeat it. Everything shipped from `packages/` (alepha and every
    * `@alepha/*`) is `system.<domain>.<action>`, so a framework job never

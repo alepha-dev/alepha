@@ -31,7 +31,7 @@ const rows: Row[] = [{ id: 1, title: "Alpha" }];
  *
  * `reconcilePersistedFilters` was written for the Quests table going from
  * one value per filter to many, and had no coverage until four more filters
- * made the same move (feedback #2092: Releases, Blights, MyFeedback and
+ * made the same move (feedback #2092: Releases, Errors, MyFeedback and
  * Activity).
  */
 describe("DataTable (persisted filters that changed shape)", () => {
@@ -133,7 +133,7 @@ describe("DataTable (persisted filters that changed shape)", () => {
   });
 
   it("drops a stored filter the schema no longer has", async () => {
-    // `blights.status` carried an `"all"` value that left the enum with
+    // `projectErrors.status` carried an `"all"` value that left the enum with
     // feedback #2092. A removed FIELD must not reappear in the fetch
     // payload either, or the server is asked to filter on something the
     // page no longer offers.

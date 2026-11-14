@@ -5,7 +5,7 @@ import { type Infer, z } from "alepha";
  *
  * `cloudflare` (or `cf`) generates an explicit Cloudflare descriptor. `lore`
  * generates a `lore({ project })` environment from `@alepha/lore/cli`, the
- * adapter that builds what the estate runs and deploys it through Lore: the
+ * adapter that builds what the host runs and deploys it through Lore: the
  * framework gains no dependency on Lore, only the generated project imports
  * it.
  */

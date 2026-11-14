@@ -16,7 +16,7 @@ Lore does not transmit it and keeps no copy of what you pasted.
 
 With the option on, an **Agent Prompts** menu appears in two forms: a robot
 button on a page (an epic, a quest, a feedback item, the Quests page, the
-blights inbox, the Reports summary), and an **Agent Prompts** entry in the row
+errors inbox, the Reports summary), and an **Agent Prompts** entry in the row
 menu of the epic and quest lists.
 
 Pick an entry. Lore confirms that the prompt was copied, and you paste it into
@@ -32,7 +32,7 @@ your coding agent. The agent needs access to the project to act on it: see
 | **Work on it** (quest)      | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is ready or in progress |
 | **Work on it** (feedback)   | the feedback detail panel                                          | the report is pending or accepted                                                |
 | **Triage the inbox**        | the feedback detail panel                                          | always, with the **Collect feedback** capability on                              |
-| **Triage the blights**      | the blights inbox toolbar                                          | always, with the **Deploy and watch apps** capability on                         |
+| **Triage the errors**       | the errors inbox toolbar                                           | always, with the **Deploy and watch apps** capability on                         |
 | **Work the loose quests**   | the Quests page toolbar                                            | always                                                                           |
 | **Write the weekly status** | the Reports **Summary** tab                                        | always                                                                           |
 
@@ -76,7 +76,7 @@ The last four are about a page, not one item. Three of them are loops that
 read their list again every round, because they change the list they read.
 
 **Triage the inbox** accepts, rejects or asks about every pending report until
-none is left. **Triage the blights** files a quest for each real defect and
+none is left. **Triage the errors** files a quest for each real defect and
 resolves the noise.
 
 **Work the loose quests** hands over every to-do quest that belongs to no epic,

@@ -2,8 +2,8 @@ import type { InfraProvider } from "../schemas/infraProviderSchema.ts";
 
 /**
  * Where a `--infra lore` project deploys: the Lore project, and the instance
- * when it is not `https://lore.alepha.dev`. Never an estate: which machine a
- * copy deploys to is chosen in Lore, where the estate is lent.
+ * when it is not `https://lore.alepha.dev`. Never a host: which machine a
+ * copy deploys to is chosen in Lore, where the host is lent.
  */
 export interface AlephaConfigLoreOptions {
   project: string;
@@ -68,9 +68,9 @@ export default defineConfig({
   // Resources come from the app's declarations; no wrangler.toml to maintain.
 ${
   lore
-    ? `  // Deployed through Lore: \`alepha deploy\` builds what the copy's estate
+    ? `  // Deployed through Lore: \`alepha deploy\` builds what the copy's host
   // runs, pushes it, seals the local secrets into the copy and deploys. The
-  // estate is chosen in Lore, never here.
+  // host is chosen in Lore, never here.
   plugins: [
     infra({
       environments: {

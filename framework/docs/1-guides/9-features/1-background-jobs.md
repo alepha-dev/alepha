@@ -109,7 +109,7 @@ class Reminders {
 
 Every job declares a `name` and a `description`.
 
-- The name is `<domain>.<action>` in lowercase kebab-case: `estates.sweep-commands`,
+- The name is `<domain>.<action>` in lowercase kebab-case: `hosts.sweep-commands`,
   `quests.send-due-reminders`. The domain is the module or business area, a
   plural noun where natural; the action is a verb phrase that does not repeat
   it.

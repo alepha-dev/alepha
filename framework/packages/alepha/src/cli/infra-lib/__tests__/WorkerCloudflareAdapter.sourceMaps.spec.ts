@@ -25,7 +25,7 @@ describe("WorkerCloudflareAdapter source maps", () => {
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
     const adapter = alepha.inject(WorkerCloudflareAdapter);
-    adapter.use({ apiToken: "estate-token", accountId: "estate-account" });
+    adapter.use({ apiToken: "host-token", accountId: "host-account" });
 
     const calls: Array<Record<string, any>> = [];
     Object.assign(adapter as unknown as Record<string, unknown>, {

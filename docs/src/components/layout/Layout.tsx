@@ -191,7 +191,7 @@ const LayoutContent = () => {
   // `/404` route has, which is also the shell the edge serves for EVERY
   // unknown path (`not_found_handling: "404-page"`). Wrapping it in the IDE
   // layout instead, tabs, explorer and status bar around a 404, is what
-  // broke hydration on every missing docs URL in production (blight #521,
+  // broke hydration on every missing docs URL in production (error #521,
   // quest #1675): the prerendered shell had none of it.
   const layer = state.layers.slice(-1)[0];
   const hasSidebar = layer?.route?.sidebar === true && !layer?.error;

@@ -19,7 +19,7 @@ queue job that handles them.
 
 | Option        | Type                  | Required | Description                                                                                                                           |
 | ------------- | --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`        | `string`              | Yes      | The job's name: `<domain>.<action>`, lowercase kebab-case segments, such as `estates.sweep-commands` or `quests.send-due-reminders`   |
+| `name`        | `string`              | Yes      | The job's name: `<domain>.<action>`, lowercase kebab-case segments, such as `hosts.sweep-commands` or `quests.send-due-reminders`     |
 | `description` | `string`              | Yes      | What the job does, in one sentence, shown to operators in the admin                                                                   |
 | `schema`      | `T`                   | No       | Payload schema (Zod)                                                                                                                  |
 | `cron`        | `string`              | No       | Cron expression for recurring execution                                                                                               |

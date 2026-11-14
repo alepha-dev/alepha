@@ -30,7 +30,7 @@ import type {
  * Engine. (The deleted `CloudflareApi` did both; the CLI's environment
  * fallback now lives in `CloudflareCredentialSource`, outside this class.) A provisioning client that resolved its account that way would create
  * a user's D1 database in the operator's account and bill it to them. So the
- * token and the account id are constructor arguments, from the estate row, and
+ * token and the account id are constructor arguments, from the host row, and
  * nothing here reads the environment. Same contract as
  * `CloudflareDeployClient`, which is the class this one stands beside.
  *
@@ -71,12 +71,12 @@ export class CloudflareProvisionClient {
   }) {
     if (!options.apiToken) {
       throw new AlephaError(
-        "Provisioning needs an API token from the estate. Nothing here falls back to the environment: that would create resources in the operator's own account.",
+        "Provisioning needs an API token from the host. Nothing here falls back to the environment: that would create resources in the operator's own account.",
       );
     }
     if (!options.accountId) {
       throw new AlephaError(
-        "Provisioning needs the estate's account id. Nothing here falls back to the environment.",
+        "Provisioning needs the host's account id. Nothing here falls back to the environment.",
       );
     }
     this.apiToken = options.apiToken;

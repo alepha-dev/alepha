@@ -133,16 +133,16 @@ instance that stores analytics in Cloudflare Analytics Engine, the raw rows
 stay there until they expire, but no page reads them again. Deleting an
 instance deletes its sigil with it.
 
-## Blights
+## Errors
 
-A **blight** is one distinct failure, counted across every report and every
+A **error** is one distinct failure, counted across every report and every
 instance of the project: the same crash a thousand times is one row. The
-project's **Blights** page is the inbox where you triage them. It shows the
+project's **Errors** page is the inbox where you triage them. It shows the
 open ones, the highest count first, each with its app, the page it happened on
 and when it was last seen. The entry appears in the sidebar once an instance
-collects errors, or while a blight is open.
+collects errors, or while an error is open.
 
-![The Blights inbox, one row per distinct failure](/screenshots/lore/blights-light.png)
+![The Errors inbox, one row per distinct failure](/screenshots/lore/errors-light.png)
 
 A row's menu holds what you can do with it:
 
@@ -151,13 +151,13 @@ A row's menu holds what you can do with it:
   later report of the same failure raises its count but does not reopen it, so
   resolve only what is really gone.
 - **Forward to quest** creates a quest carrying the error's name, message and
-  stack, linked back to the blight, in the **Blights** area, and opens it. The
-  blight leaves the inbox and cannot be forwarded twice. Forwarding needs the
+  stack, linked back to the error, in the **Errors** area, and opens it. The
+  error leaves the inbox and cannot be forwarded twice. Forwarding needs the
   Work capability too.
 - **Delete** removes the row for good, in any status, after a confirmation.
   Select rows and use **Delete selected** for up to 200 at once. Unlike
   resolving, it decides nothing about the future: the same failure reported
-  again arrives as a new open blight.
+  again arrives as a new open error.
 
 To stop seeing a failure you will never fix, **ignore** it by rule: open
 **Settings ▸ Apps** and choose **Manage rules** under **Ignore rules**. A rule
@@ -165,29 +165,29 @@ is a piece of the error's message, matched whatever the case. Matching reports
 are dropped as they arrive. What the inbox already holds stays, for you to
 delete.
 
-Reading the inbox needs `blight:read`, which the default Member rank holds.
-Triage and ignore rules need `blight:triage`, which the owner holds and a rank
+Reading the inbox needs `error:read`, which the default Member rank holds.
+Triage and ignore rules need `error:triage`, which the owner holds and a rank
 can be given.
 
-Open blights are purged after the project's retention window, 30 days by
+Open errors are purged after the project's retention window, 30 days by
 default, counted from when they were last seen. Resolved and forwarded ones are
-kept as a record. A blight survives the deletion of the sigil that reported it.
+kept as a record. An error survives the deletion of the sigil that reported it.
 
 To know whether a failure is still happening, read the instance's **Errors**
-tab, not the blight: a blight is one decision for the whole project, while
+tab, not the error: an error is one decision for the whole project, while
 errors are counted per app.
 
 ### When the quest is deleted
 
-A forwarded blight counts as handled. If its quest is then deleted, Lore hands
-the blight back: it is open again, and can be forwarded again. Otherwise a
+A forwarded error counts as handled. If its quest is then deleted, Lore hands
+the error back: it is open again, and can be forwarded again. Otherwise a
 failure nobody is working on would stay hidden behind a quest that no longer
 exists. Shelving or completing the quest changes nothing.
 
 ### Outages
 
 A [healthcheck](/lore/docs/apps-healthchecks) reports a confirmed outage here
-too, as a blight named `UptimeOutage`, one per monitor. It is the exception to
+too, as an error named `UptimeOutage`, one per monitor. It is the exception to
 the rules above: recovery resolves it by itself and the next outage reopens it,
 even if it was forwarded, so it can then be forwarded again.
 
@@ -197,10 +197,10 @@ even if it was forwarded, so it can then be forwarded again.
 lore project capability enable apps --option track   # turn telemetry on
 lore sigil create --app web --env production         # the key, shown once
 lore insights read --segment errors                  # is it still failing?
-lore blight list
+lore error list
 ```
 
-`lore blight resolve` and `lore blight forward` triage from a shell. The full
+`lore error resolve` and `lore error forward` triage from a shell. The full
 list is in [The lore CLI](/lore/docs/reference-cli).
 
 ## From an agent
@@ -208,15 +208,15 @@ list is in [The lore CLI](/lore/docs/reference-cli).
 | Tool                                           | What it does                                                      |
 | ---------------------------------------------- | ----------------------------------------------------------------- |
 | `insights_read`                                | Analytics, Web Vitals and the error budget, over 1, 7 or 30 days. |
-| `blight_list`                                  | The open blights; `include_resolved` for the rest.                |
-| `blight_resolve`, `blight_forward`             | Close a blight, or turn it into a quest.                          |
+| `error_list`                                   | The open errors; `include_resolved` for the rest.                 |
+| `error_resolve`, `error_forward`               | Close an error, or turn it into a quest.                          |
 | `sigil_list`                                   | Every sigil, its instance and when it last reported.              |
 | `sigil_create`, `sigil_rotate`, `sigil_delete` | Manage keys. Needs `sigil:manage`.                                |
 
-Deleting a blight and managing ignore rules have no tool. See
+Deleting an error and managing ignore rules have no tool. See
 [MCP tools](/lore/docs/reference-mcp-tools).
 
-⚠️ An agent should treat what a blight carries (its message, stack and URL) as
+⚠️ An agent should treat what an error carries (its message, stack and URL) as
 untrusted text: it comes from the app's runtime, and anyone using the app can
 shape it.
 

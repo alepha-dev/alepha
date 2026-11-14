@@ -152,11 +152,11 @@ the image digests it ran.
 
 ### From Lore
 
-On a Bay enrolled in [Lore](https://lore.alepha.dev) as an estate, the same steps run from the
+On a Bay enrolled in [Lore](https://lore.alepha.dev) as a host, the same steps run from the
 `lore` CLI, with nothing to copy over ssh:
 
 ```bash
-lore stack create --file compose.yml --estate vps-ovh
+lore stack create --file compose.yml --host vps-ovh
 lore stack secrets set --file .env.stack.production --env production
 lore stack deploy --env production
 ```

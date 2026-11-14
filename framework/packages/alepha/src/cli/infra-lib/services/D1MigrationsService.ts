@@ -29,7 +29,7 @@ export interface D1Migration {
  *
  * ⚠️ **The transport is an ARGUMENT, not an injected field.** It carries a
  * Cloudflare credential, and inside Lore's Worker that credential belongs to
- * the estate being deployed to rather than to the process - the same reason
+ * the host being deployed to rather than to the process - the same reason
  * `CloudflareDeployClient` takes its token and account id in its constructor.
  * Injecting a client here also made this service unreachable from a Worker
  * at all, back when the CLI's client (`CloudflareApi`, deleted in #E75)

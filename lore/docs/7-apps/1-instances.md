@@ -46,11 +46,11 @@ Creating an instance records that a copy runs somewhere. It changes nothing
 outside Lore. An instance's page then offers three optional next steps, and
 each one unlocks something:
 
-| Step                 | What it is                                        | What it unlocks                                 |
-| -------------------- | ------------------------------------------------- | ----------------------------------------------- |
-| **Create a sigil**   | The key this copy reports with.                   | The Analytics, Vitals, Errors and Explore tabs. |
-| **Pin an address**   | Where this copy lives, if it will not say itself. | A link to it, and a healthcheck prefilled.      |
-| **Choose an estate** | The machine or account this copy deploys to.      | The Deploy and Environment tabs.                |
+| Step               | What it is                                        | What it unlocks                                 |
+| ------------------ | ------------------------------------------------- | ----------------------------------------------- |
+| **Create a sigil** | The key this copy reports with.                   | The Analytics, Vitals, Errors and Explore tabs. |
+| **Pin an address** | Where this copy lives, if it will not say itself. | A link to it, and a healthcheck prefilled.      |
+| **Choose a host**  | The machine or account this copy deploys to.      | The Deploy and Environment tabs.                |
 
 ## The sigil
 
@@ -82,7 +82,7 @@ something behind it.
 | **Artifacts**   | The builds kept for this app. See [Artifacts](/lore/docs/apps-artifacts). |
 | **Deploy**      | Deploy and roll back. See [Deploying an app](/lore/docs/apps-deploying).  |
 | **Environment** | The variables and secrets the copy runs with.                             |
-| **Settings**    | Its names and address, its sigil, and the estate it deploys to.           |
+| **Settings**    | Its names and address, its sigil, and the host it deploys to.             |
 
 ## From the command line
 
@@ -102,4 +102,4 @@ the token once. See [The lore CLI](/lore/docs/reference-cli).
   outside.
 - [Deploying an app](/lore/docs/apps-deploying): ship a build to a machine you
   own.
-- [Estates](/lore/docs/apps-estates): the machines themselves.
+- [Hosts](/lore/docs/apps-hosts): the machines themselves.

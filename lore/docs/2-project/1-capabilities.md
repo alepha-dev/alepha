@@ -11,7 +11,7 @@ operates a product turns on all four.
 | ----------------------------- | -------------------------------------------- | ---------------------------------------------------- |
 | **Plan and track work**       | Quests, Kanban, Epics, Releases, Automations | The work: what is planned, in progress and shipped.  |
 | **Write and keep knowledge**  | Folios                                       | The memory: linked notes, files and their history.   |
-| **Deploy and watch apps**     | Apps, Blights, Stacks, Artifacts, Uptime     | What you run: analytics, errors, checks and deploys. |
+| **Deploy and watch apps**     | Apps, Errors, Stacks, Artifacts, Uptime      | What you run: analytics, errors, checks and deploys. |
 | **Collect feedback**          | Feedback                                     | What your users ask for, and an inbox to triage it.  |
 
 These pages call them **Work**, **Knowledge**, **Apps** and **Support** for

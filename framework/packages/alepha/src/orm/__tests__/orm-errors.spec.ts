@@ -275,13 +275,13 @@ describe("Database Error Tests", () => {
      * `count()` and `paginate()`'s count half were the two statements in
      * `Repository` with no `handleError` around them.
      *
-     * Blights #325 and #326 are the same incident through two routes, in the
+     * Errors #325 and #326 are the same incident through two routes, in the
      * same millisecond: #325 came through `findMany`, classified and
      * scrubbed; #326 came through the count as a raw
      * `DrizzleQueryError: Failed query: select count(*) from "quests"
      * where ... params: 1,1`. On a filtered query those bound values are
      * whatever the caller filtered on, and they were published into the
-     * blight inbox verbatim.
+     * error inbox verbatim.
      */
     describe("the count paths are wrapped like every sibling statement", () => {
       const withDroppedTable = async () => {
@@ -909,7 +909,7 @@ describe("Database Error Tests", () => {
     it("classifies D1's refusal, which used to read `Query select has failed`", async ({
       expect,
     }) => {
-      // Verbatim from blight #529, the production incident this exists for.
+      // Verbatim from error #529, the production incident this exists for.
       const error = await wrap(
         "too many SQL variables at offset 266: SQLITE_ERROR",
       );

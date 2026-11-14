@@ -1616,7 +1616,7 @@ describe("$job: naming", () => {
   };
 
   for (const name of [
-    "estates.sweep-commands",
+    "hosts.sweep-commands",
     "quality.prune-runs",
     "system.notifications.send",
     "system.commerce.release-expired-reservations",
@@ -1630,12 +1630,12 @@ describe("$job: naming", () => {
   for (const [name, why] of [
     ["api:users:purgeExpiredSessions", "colons"],
     ["UserJobs.purgeExpiredSessions", "a class-derived name"],
-    ["estates.sweepCommands", "camelCase"],
-    ["estates", "a single segment"],
-    ["lore.estates.sweep-commands", "three segments without system."],
-    ["estates/sweep", "a slash"],
-    ["estates.-sweep", "a leading hyphen"],
-    ["estates.sweep--commands", "a double hyphen"],
+    ["hosts.sweepCommands", "camelCase"],
+    ["hosts", "a single segment"],
+    ["lore.hosts.sweep-commands", "three segments without system."],
+    ["hosts/sweep", "a slash"],
+    ["hosts.-sweep", "a leading hyphen"],
+    ["hosts.sweep--commands", "a double hyphen"],
     ["", "an empty name"],
   ] as const) {
     it(`refuses ${why}, quoting the rule`, ({ expect }) => {

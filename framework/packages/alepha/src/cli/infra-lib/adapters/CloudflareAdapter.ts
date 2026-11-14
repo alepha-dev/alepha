@@ -1275,7 +1275,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
    * Delete everything this environment's names derive, data included.
    *
    * ⚠️ Overrides a deliberate refusal. The parent tears down only what a
-   * deploy recorded (`teardownRecorded`), because on a lent estate a name
+   * deploy recorded (`teardownRecorded`), because on a lent host a name
    * can belong to somebody else's database. `alepha infra down` runs against
    * your own account, behind a typed confirmation, which is exactly the
    * name-derived delete the parent leaves to this class.

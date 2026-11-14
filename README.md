@@ -108,7 +108,7 @@ curl -sSL https://alepha.dev/bay/install.sh | sudo sh
 
 ### [Lore](lore/): project memory for AI agents
 
-Planning built for AI agents first, over MCP: quests and epics for the work, folios for the decisions, sigils for what a deployed app reports, estates for where it runs. Your agent knows why the code is the way it is. Lore is itself an Alepha app, running at [lore.alepha.dev](https://lore.alepha.dev).
+Planning built for AI agents first, over MCP: quests and epics for the work, folios for the decisions, sigils for what a deployed app reports, hosts for where it runs. Your agent knows why the code is the way it is. Lore is itself an Alepha app, running at [lore.alepha.dev](https://lore.alepha.dev).
 
 ```bash
 npx @alepha/lore login

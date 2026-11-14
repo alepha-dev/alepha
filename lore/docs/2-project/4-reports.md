@@ -24,7 +24,7 @@ off still has Summary and Team. See
 | **Planning**  | Work      | Epics and releases: timeline, burn-up, scope change, forecast, slip         |
 | **Support**   | Support   | Feedback from intake to shipped                                             |
 | **Knowledge** | Knowledge | Folio activity, stale pages, orphans, the link graph                        |
-| **Delivery**  | Apps      | The four DORA keys and reliability: blights, errors, uptime                 |
+| **Delivery**  | Apps      | The four DORA keys and reliability: errors, errors, uptime                  |
 | **Quality**   | Apps      | Coverage and tests CI pushed, by branch, against a target, per release tag  |
 | **Team**      | -         | Load and contribution per member, how work arrives, agents, automations     |
 
@@ -175,5 +175,5 @@ status** prompt on the Summary tab builds on it: see
   day.
 - [Automations](/lore/docs/work-automations): set up the weekly report.
 - [Quests](/lore/docs/work-quests): the work every figure counts.
-- [Telemetry](/lore/docs/apps-telemetry): the blights and errors the Delivery
+- [Telemetry](/lore/docs/apps-telemetry): the errors and errors the Delivery
   tab counts.

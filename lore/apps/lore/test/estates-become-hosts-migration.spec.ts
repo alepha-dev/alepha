@@ -103,7 +103,10 @@ describe("estates become hosts migration", () => {
     insert(db, "parameters", {
       id: "p1",
       name: "lore.campaign.limits",
-      content: JSON.stringify({ maxProjectsPerUser: 5, maxCommandsPerEstate: 50 }),
+      content: JSON.stringify({
+        maxProjectsPerUser: 5,
+        maxCommandsPerEstate: 50,
+      }),
     });
 
     exec(db, sqlOf(MIGRATION));

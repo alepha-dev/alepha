@@ -53,19 +53,19 @@ Every command that works inside a project looks for it in this order:
   tool `quest_create` is `lore quest create`, and every tool has its command.
   Three subjects are plural here: `lore apps`, `lore artifacts` and
   `lore releases`. The CLI also does what no tool does: uploading a file,
-  building and pushing an app, and managing secrets, estates and registries.
+  building and pushing an app, and managing secrets, hosts and registries.
 - **Flags left out of the tables.** Every command that works inside a project
   takes `--project` (`-p`), and most take `--output`. The tables below list
   the others.
 - **Output** is human-readable by default. `--output json` prints JSON for
   scripts on the commands whose `--help` lists it: the planning commands, the
-  estates and most reads, but not `lore deploy` or `lore secrets`, for
+  hosts and most reads, but not `lore deploy` or `lore secrets`, for
   instance. Logs go to standard error, so piping the output stays clean; a
   command that only logs, like `lore secrets list`, leaves standard output
   empty.
 - **A delete needs `--yes`**, and refuses without it rather than prompting: a
   script has nothing to answer with. Five commands do ask in a terminal, and
-  `--yes` answers for a script: `lore estate rotate`, `move` and `delete`, and
+  `--yes` answers for a script: `lore host rotate`, `move` and `delete`, and
   `lore stack destroy` and `delete`. `lore project delete` and
   `lore apps destroy` want a name typed again in `--confirm` instead.
 - **Long text** (descriptions, folio content, comments, a rule's JSON) can be
@@ -73,7 +73,7 @@ Every command that works inside a project looks for it in this order:
   whose help says so.
 - **References.** A quest is `12`, `Q12` or `'#Q12'` (quoted, or the shell
   treats `#` as a comment). The same goes for an epic (`45`, `E45`), a folio
-  (`F12`), a feedback item (`P120`), a blight (`B12`), a directory (`D12`) and
+  (`F12`), a feedback item (`P120`), an error (`B12`), a directory (`D12`) and
   a folio's attachment (`A12`). The exceptions take the bare number:
   `--quest` and `--folio` on `lore attachments push`, and `--directory` on
   `lore folio create` and `update`.
@@ -125,7 +125,7 @@ see [Capabilities](/lore/docs/project-capabilities).
 
 `lore project delete` prints what goes with the project first (its quests,
 folios and deployed copies), whether `--confirm` matches or not. There is no
-`--yes`: the slug is typed twice. Nothing running on an estate is stopped.
+`--yes`: the slug is typed twice. Nothing running on a host is stopped.
 
 ## Quests
 
@@ -332,16 +332,16 @@ since is refused rather than overwritten.
 
 See [Automations](/lore/docs/work-automations).
 
-## Blights and insights
+## Errors and insights
 
-| Command                     | What it does                                                                         | Flags                               |
-| --------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------- |
-| `lore blight list`          | The inbox: one row per root cause, most widespread first. Open ones only by default. | `--include-resolved`                |
-| `lore blight resolve <ref>` | Close a blight for good. A later report raises its count and never reopens it.       |                                     |
-| `lore blight forward <ref>` | Turn a blight into a new quest and close it. One blight, one quest.                  |                                     |
-| `lore insights read`        | Analytics, Web Vitals and the error budget of each app.                              | `--range`, `--segment`, `--traffic` |
+| Command                    | What it does                                                                         | Flags                               |
+| -------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------- |
+| `lore error list`          | The inbox: one row per root cause, most widespread first. Open ones only by default. | `--include-resolved`                |
+| `lore error resolve <ref>` | Close an error for good. A later report raises its count and never reopens it.       |                                     |
+| `lore error forward <ref>` | Turn an error into a new quest and close it. One error, one quest.                   |                                     |
+| `lore insights read`       | Analytics, Web Vitals and the error budget of each app.                              | `--range`, `--segment`, `--traffic` |
 
-Before resolving a blight, check `lore insights read --segment errors`: it is
+Before resolving an error, check `lore insights read --segment errors`: it is
 what says whether the failure is still happening.
 
 | Flag        | Values                                                                       |
@@ -399,17 +399,17 @@ An instance is one deployed copy of an app, named by `--app` and `--env`. Both
 are required on every command here but `list`: neither is ever guessed. See
 [Apps and instances](/lore/docs/apps-instances).
 
-| Command                     | What it does                                                                | Flags                                                                                                |
-| --------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `lore apps instance list`   | Every copy this project tracks.                                             |                                                                                                      |
-| `lore apps instance get`    | One copy, with what it has unlocked.                                        | `--app`, `--env`                                                                                     |
-| `lore apps instance create` | Track a copy. Nothing is minted: `lore sigil create` adds its key.          | `--app`, `--env`, `--url`, `--ephemeral`, `--estate <slug>`                                          |
-| `lore apps instance update` | Rename either half, pin the address, or point the copy at an estate.        | `--app`, `--env`, `--new-app`, `--new-env`, `--url`, `--estate <slug>` or `--estate-id` (`0` clears) |
-| `lore apps instance delete` | Forget a copy, its sigil and everything it reported. This cannot be undone. | `--app`, `--env`, `--yes` (required)                                                                 |
+| Command                     | What it does                                                                | Flags                                                                                            |
+| --------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `lore apps instance list`   | Every copy this project tracks.                                             |                                                                                                  |
+| `lore apps instance get`    | One copy, with what it has unlocked.                                        | `--app`, `--env`                                                                                 |
+| `lore apps instance create` | Track a copy. Nothing is minted: `lore sigil create` adds its key.          | `--app`, `--env`, `--url`, `--ephemeral`, `--host <slug>`                                        |
+| `lore apps instance update` | Rename either half, pin the address, or point the copy at a host.           | `--app`, `--env`, `--new-app`, `--new-env`, `--url`, `--host <slug>` or `--host-id` (`0` clears) |
+| `lore apps instance delete` | Forget a copy, its sigil and everything it reported. This cannot be undone. | `--app`, `--env`, `--yes` (required)                                                             |
 
 `lore apps instance delete` undeploys nothing, and is refused while the copy
-still runs: take it down with `lore apps destroy` first. `--estate` names an
-estate lent to the project; pass it or `--estate-id`, not both. An empty
+still runs: take it down with `lore apps destroy` first. `--host` names an
+host lent to the project; pass it or `--host-id`, not both. An empty
 `--url` clears the pinned address.
 
 ## Sigils
@@ -496,63 +496,63 @@ credential first, see [Container registries](#container-registries).
 
 See [Artifacts](/lore/docs/apps-artifacts).
 
-## Estates
+## Hosts
 
-An estate is a machine a project deploys onto.
+A host is a machine a project deploys onto.
 
-| Command                     | What it does                                                                                                    | Flags                                                                                                 |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `lore estate provision`     | Buy a server from a cloud provider, install Bay on it, enrol it as an estate and wait until it is online.       | `--provider`, `--project` (required), `--name`, `--type`, `--zone`, `--no-allow-deploys`, `--timeout` |
-| `lore estate add <slug>`    | Create a Bay estate in the project, lend it there, and print the command to run on the machine.                 | `--label`, `--allow-deploys`, `--ttl`                                                                 |
-| `lore estate list`          | The estates the project can deploy onto: home or borrowed, connected or not, with current CPU and memory.       |                                                                                                       |
-| `lore estate get <slug>`    | One estate: home project, online or not, last seen, deploys, the projects it is lent to, what the machine runs. | `--home`                                                                                              |
-| `lore estate wait <slug>`   | Block until an estate is online. Exits `1` on timeout, with the last state seen.                                | `--timeout` (seconds, default 120), `--home`                                                          |
-| `lore estate stats <slug>`  | An estate's CPU and memory: the current reading, then one mean per day.                                         | `--since` (an ISO date, default 30 days ago), `--home`                                                |
-| `lore estate lend <slug>`   | Lend an estate to `--project`, so its apps can deploy there. Needs `estate:lend` in both projects.              | `--home`                                                                                              |
-| `lore estate unlend <slug>` | Withdraw an estate's loan to `--project`. Refused while a copy there still deploys to it, naming the copies.    | `--home`                                                                                              |
-| `lore estate update <slug>` | Change whether an estate accepts deploys, its label or its expiry.                                              | `--allow-deploys` / `--no-allow-deploys`, `--label` (empty clears it), `--ttl`                        |
-| `lore estate rotate <slug>` | Mint a new secret for a Bay estate and print the connector command once.                                        | `--yes`                                                                                               |
-| `lore estate move <slug>`   | Move an estate to another project. Its slug, its machine and its loans stay.                                    | `--to` (required), `--yes`                                                                            |
-| `lore estate assign <id>`   | For an instance admin: give an estate a home project, by its id. Its loans do not change.                       | `--to` (required)                                                                                     |
-| `lore estate delete <slug>` | Delete an estate the project is the home of, never one it only borrows.                                         | `--yes`, `--keep-server`                                                                              |
+| Command                   | What it does                                                                                                  | Flags                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `lore host provision`     | Buy a server from a cloud provider, install Bay on it, enrol it as a host and wait until it is online.        | `--provider`, `--project` (required), `--name`, `--type`, `--zone`, `--no-allow-deploys`, `--timeout` |
+| `lore host add <slug>`    | Create a Bay host in the project, lend it there, and print the command to run on the machine.                 | `--label`, `--allow-deploys`, `--ttl`                                                                 |
+| `lore host list`          | The hosts the project can deploy onto: home or borrowed, connected or not, with current CPU and memory.       |                                                                                                       |
+| `lore host get <slug>`    | One host: home project, online or not, last seen, deploys, the projects it is lent to, what the machine runs. | `--home`                                                                                              |
+| `lore host wait <slug>`   | Block until a host is online. Exits `1` on timeout, with the last state seen.                                 | `--timeout` (seconds, default 120), `--home`                                                          |
+| `lore host stats <slug>`  | A host's CPU and memory: the current reading, then one mean per day.                                          | `--since` (an ISO date, default 30 days ago), `--home`                                                |
+| `lore host lend <slug>`   | Lend a host to `--project`, so its apps can deploy there. Needs `host:lend` in both projects.                 | `--home`                                                                                              |
+| `lore host unlend <slug>` | Withdraw a host's loan to `--project`. Refused while a copy there still deploys to it, naming the copies.     | `--home`                                                                                              |
+| `lore host update <slug>` | Change whether a host accepts deploys, its label or its expiry.                                               | `--allow-deploys` / `--no-allow-deploys`, `--label` (empty clears it), `--ttl`                        |
+| `lore host rotate <slug>` | Mint a new secret for a Bay host and print the connector command once.                                        | `--yes`                                                                                               |
+| `lore host move <slug>`   | Move a host to another project. Its slug, its machine and its loans stay.                                     | `--to` (required), `--yes`                                                                            |
+| `lore host assign <id>`   | For an instance admin: give a host a home project, by its id. Its loans do not change.                        | `--to` (required)                                                                                     |
+| `lore host delete <slug>` | Delete a host the project is the home of, never one it only borrows.                                          | `--yes`, `--keep-server`                                                                              |
 
 **Provisioning.** `--provider scaleway` buys the server through the provider's
 own CLI: it needs `scw` installed and `scw login` done. Without `--provider`
 the command lists the providers and what each needs. `--project` is the project
-the estate belongs to, created with the **Deploy and watch apps** capability
+the host belongs to, created with the **Deploy and watch apps** capability
 when it does not exist; a project that has it off is refused before anything is
 bought. `--name` defaults to three random words, `--type` and `--zone` to the
-provider's, and `--timeout` to 300 seconds. A provisioned estate accepts
+provider's, and `--timeout` to 300 seconds. A provisioned host accepts
 deploys unless `--no-allow-deploys`.
 
-**Adding a machine by hand.** `lore estate add` leaves deploys off unless
+**Adding a machine by hand.** `lore host add` leaves deploys off unless
 `--allow-deploys`: a new machine reports stats only until someone who manages
 it says otherwise. With `--output json` it prints `id`, `slug`,
 `deployAllowed`, `lore`, `secret` and `command`, so a script can read
-`.secret`. `lore estate rotate` prints the same shape, and the old secret stops
+`.secret`. `lore host rotate` prints the same shape, and the old secret stops
 working at once.
 
 **Expiry.** `--ttl` takes a duration such as `30m`, `2h` or `3d`. Past it the
-estate shows as overdue and you are told once; Lore stops nothing. On
-`lore estate update`, `--ttl` counts from now and `--ttl none` clears it.
+host shows as overdue and you are told once; Lore stops nothing. On
+`lore host update`, `--ttl` counts from now and `--ttl none` clears it.
 
-**Deleting.** `lore estate delete` is refused while an app, a stack or a stack
-environment deploys to the estate. A provisioned estate's server is terminated
+**Deleting.** `lore host delete` is refused while an app, a stack or a stack
+environment deploys to the host. A provisioned host's server is terminated
 with its IP and its disk; `--keep-server` leaves it running, and billing. For
 a machine added by hand, Lore forgets it and nothing on it stops.
 
-**Which estate a slug means.** A slug is unique inside a home project. A
+**Which host a slug means.** A slug is unique inside a home project. A
 managing verb (`update`, `rotate`, `move`, `delete`) resolves it among the
-estates the project is the home of; a reading verb (`get`, `wait`, `stats`) and
-`lend` among the estates you can read, and `--home <project>` picks one when
+hosts the project is the home of; a reading verb (`get`, `wait`, `stats`) and
+`lend` among the hosts you can read, and `--home <project>` picks one when
 two share the slug.
 
-See [Estates](/lore/docs/apps-estates).
+See [Hosts](/lore/docs/apps-hosts).
 
 ## Container registries
 
 A project stores one credential per registry host. Private images are pulled
-with it: by `lore artifacts push-image` to verify them, and by the estate at
+with it: by `lore artifacts push-image` to verify them, and by the host at
 deploy.
 
 | Command                       | What it does                                   | Flags                                                                        |
@@ -568,33 +568,33 @@ The token is never typed inline: it comes from standard input
 ## Stacks
 
 A stack is a group of apps and services deployed together from one
-`compose.yml` onto a Bay estate. `--name` picks the stack and defaults to the
+`compose.yml` onto a Bay host. `--name` picks the stack and defaults to the
 project slug. `--env` (`-e`) picks the environment.
 
-| Command                              | What it does                                                                                           | Flags                                                                                             |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `lore stack create`                  | Create a stack with its default estate, and upload its first revision.                                 | `--file` (`-f`), `--estate`                                                                       |
-| `lore stack deploy`                  | Deploy to an environment, `production` by default, uploading the compose file as a new revision first. | `--env`, `--file`, `--revision`, `--estate`, `--app` with `--tag`, `--test-hostname`, `--dry-run` |
-| `lore stack rollback`                | Deploy an earlier revision again. Volumes and their data are untouched.                                | `--env`, `--to <revision>` (both required)                                                        |
-| `lore stack destroy`                 | Remove an environment from its Bay, its volumes kept, then forget it in Lore.                          | `--env` (required), `--purge`, `--yes`                                                            |
-| `lore stack delete [name]`           | Delete a stack with no environment left, with its routes and revisions.                                | `--yes`                                                                                           |
-| `lore stack list`                    | The project's stacks and their environments.                                                           |                                                                                                   |
-| `lore stack get`                     | One stack: each environment's routes, members, services and newest deploys. Never a variable's value.  | `--env` (only this environment)                                                                   |
-| `lore stack revisions`               | A stack's revisions, newest first.                                                                     |                                                                                                   |
-| `lore stack secrets set [KEY=VALUE]` | Set a variable of an environment: `KEY=VALUE`, or `KEY` to read `$KEY`.                                | `--env` (required), `--file` (a dotenv file), `--generate`, `--length`                            |
-| `lore stack secrets list`            | An environment's variables: names and masks, never a value.                                            | `--env` (required)                                                                                |
-| `lore stack secrets unset <KEY>`     | Remove one variable.                                                                                   | `--env` (required)                                                                                |
-| `lore stack route add <service>`     | Serve a full domain from one service of an environment.                                                | `--env`, `--domain` (`-d`) (both required)                                                        |
-| `lore stack route list`              | An environment's routes.                                                                               | `--env` (default `production`)                                                                    |
-| `lore stack route remove <domain>`   | Stop serving a domain.                                                                                 | `--env` (required)                                                                                |
-| `lore stack ps`                      | The services: state, memory, restarts and the image digest each runs.                                  | `--env` (default `production`)                                                                    |
-| `lore stack logs <service>`          | The tail of one service's logs, asked of the machine.                                                  | `--env` (default `production`), `--lines` (default 200, max 2000)                                 |
-| `lore stack restart <service>`       | Restart one service.                                                                                   | `--env` (default `production`)                                                                    |
+| Command                              | What it does                                                                                           | Flags                                                                                           |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `lore stack create`                  | Create a stack with its default host, and upload its first revision.                                   | `--file` (`-f`), `--host`                                                                       |
+| `lore stack deploy`                  | Deploy to an environment, `production` by default, uploading the compose file as a new revision first. | `--env`, `--file`, `--revision`, `--host`, `--app` with `--tag`, `--test-hostname`, `--dry-run` |
+| `lore stack rollback`                | Deploy an earlier revision again. Volumes and their data are untouched.                                | `--env`, `--to <revision>` (both required)                                                      |
+| `lore stack destroy`                 | Remove an environment from its Bay, its volumes kept, then forget it in Lore.                          | `--env` (required), `--purge`, `--yes`                                                          |
+| `lore stack delete [name]`           | Delete a stack with no environment left, with its routes and revisions.                                | `--yes`                                                                                         |
+| `lore stack list`                    | The project's stacks and their environments.                                                           |                                                                                                 |
+| `lore stack get`                     | One stack: each environment's routes, members, services and newest deploys. Never a variable's value.  | `--env` (only this environment)                                                                 |
+| `lore stack revisions`               | A stack's revisions, newest first.                                                                     |                                                                                                 |
+| `lore stack secrets set [KEY=VALUE]` | Set a variable of an environment: `KEY=VALUE`, or `KEY` to read `$KEY`.                                | `--env` (required), `--file` (a dotenv file), `--generate`, `--length`                          |
+| `lore stack secrets list`            | An environment's variables: names and masks, never a value.                                            | `--env` (required)                                                                              |
+| `lore stack secrets unset <KEY>`     | Remove one variable.                                                                                   | `--env` (required)                                                                              |
+| `lore stack route add <service>`     | Serve a full domain from one service of an environment.                                                | `--env`, `--domain` (`-d`) (both required)                                                      |
+| `lore stack route list`              | An environment's routes.                                                                               | `--env` (default `production`)                                                                  |
+| `lore stack route remove <domain>`   | Stop serving a domain.                                                                                 | `--env` (required)                                                                              |
+| `lore stack ps`                      | The services: state, memory, restarts and the image digest each runs.                                  | `--env` (default `production`)                                                                  |
+| `lore stack logs <service>`          | The tail of one service's logs, asked of the machine.                                                  | `--env` (default `production`), `--lines` (default 200, max 2000)                               |
+| `lore stack restart <service>`       | Restart one service.                                                                                   | `--env` (default `production`)                                                                  |
 
 On `lore stack deploy`:
 
-- An environment is created on its first deploy. `--estate` then picks its
-  estate instead of the stack's default.
+- An environment is created on its first deploy. `--host` then picks its
+  host instead of the stack's default.
 - `--revision` deploys that revision instead of the newest. Without it or
   `--file`, the compose file in the current directory is uploaded.
 - `--app` deploys one member app alone, blue/green, from a stored build.

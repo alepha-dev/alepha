@@ -127,7 +127,7 @@ export const buildManifestSchema = z
      * every `$job({ cron })`. Empty when `hasCron` is false.
      *
      * Every deploy target reads it: Bay schedules from it, a Worker gets one
-     * trigger per expression, and Lore's estate inventory counts it.
+     * trigger per expression, and Lore's host inventory counts it.
      */
     crons: z.array(z.string()),
     /**

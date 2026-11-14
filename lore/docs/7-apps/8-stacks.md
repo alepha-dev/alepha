@@ -16,8 +16,8 @@ Stacks are the **Stacks** option of the Apps capability, off by default, in
 [Capabilities](/lore/docs/project-capabilities)). It adds **Stacks** to the
 sidebar.
 
-A stack needs somewhere to run: a Bay [estate](/lore/docs/apps-estates) lent to
-the project, with **Allow deploys** on. Only a Bay estate runs stacks.
+A stack needs somewhere to run: a Bay [host](/lore/docs/apps-hosts) lent to
+the project, with **Allow deploys** on. Only a Bay host runs stacks.
 
 Reading takes `app:read`, which the default Member rank holds. Everything that
 changes something takes `deploy:manage` and the option on. So does reading a
@@ -29,29 +29,29 @@ deploying one app service alone, and storing a registry credential.
 
 ## Stacks, environments and revisions
 
-| Word        | What it is                                                                                            |
-| ----------- | ----------------------------------------------------------------------------------------------------- |
-| Stack       | A name, unique in the project, and a default estate. Lowercase letters, digits and hyphens, up to 64. |
-| Environment | One running copy of the stack, such as `production`, addressed as `<stack>/<env>`.                    |
-| Revision    | One numbered upload of the Compose file, with the files it references. A stack has many.              |
-| Member      | An [app instance](/lore/docs/apps-instances) that runs as one service of an environment.              |
+| Word        | What it is                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------- |
+| Stack       | A name, unique in the project, and a default host. Lowercase letters, digits and hyphens, up to 64. |
+| Environment | One running copy of the stack, such as `production`, addressed as `<stack>/<env>`.                  |
+| Revision    | One numbered upload of the Compose file, with the files it references. A stack has many.            |
+| Member      | An [app instance](/lore/docs/apps-instances) that runs as one service of an environment.            |
 
 ```mermaid
 flowchart LR
   Revision[Revision 3] -->|deploy| Env1[crm/production]
   Revision -->|deploy| Env2[crm/staging]
-  Env1 --> Estate1[Estate]
-  Env2 --> Estate2[Estate]
+  Env1 --> Host1[Host]
+  Env2 --> Host2[Host]
 ```
 
-An environment deploys to its own estate if it names one, and otherwise to the
+An environment deploys to its own host if it names one, and otherwise to the
 stack's default. A deploy never asks where: that is a property of the
 environment.
 
 ## Creating a stack
 
 1. Open **Stacks**. In the **New stack** card, type a **Name** (left empty, it
-   is the project's slug), choose the **Default estate**, and click
+   is the project's slug), choose the **Default host**, and click
    **Create**.
 2. On the stack's card, type an environment name such as `production` and
    click **Add environment**.
@@ -66,7 +66,7 @@ deployed and watched.
 A revision is a `compose.yml`, or a gzip or zstd tar bundle holding one with
 the files it mounts. Upload it from the stack's card on the **Stacks** page.
 
-Lore checks the file before storing anything, against every estate the stack
+Lore checks the file before storing anything, against every host the stack
 deploys to, so a file the server would refuse is refused at upload. Every
 reason is listed at once:
 
@@ -95,8 +95,8 @@ N**: it sends the newest revision.
 
 Lore checks everything before anything reaches the server, and refuses:
 
-- an environment with no estate, or one no longer lent to the project;
-- an estate that is not a Bay estate, or that does not accept deploys;
+- an environment with no host, or one no longer lent to the project;
+- a host that is not a Bay host, or that does not accept deploys;
 - a revision that cannot run there;
 - a Compose file that uses a required variable this environment has not set,
   naming every one.
@@ -135,7 +135,7 @@ other service is touched and nothing of the Compose file is applied.
 
 An instance joins the environment of its own environment name:
 `crm-api/staging` can join `crm/staging`, never `crm/production`. It belongs to
-one environment at a time, and it takes its estate from that environment, not
+one environment at a time, and it takes its host from that environment, not
 from its own **Settings** tab.
 
 ## The environment page
@@ -150,7 +150,7 @@ Each environment has seven tabs:
 | Routes    | The full domains it serves.                                                                  |
 | Variables | Its variables, never their values.                                                           |
 | Volumes   | The named volumes of the running revision, and whether a backup hook covers each.            |
-| Settings  | The stack's default estate, this environment's own estate, its base domain, and deleting it. |
+| Settings  | The stack's default host, this environment's own host, its base domain, and deleting it.     |
 
 ⚠️ A stopped service stays stopped, across reboots too. The way back is
 **Start**, or a deploy.
@@ -179,7 +179,7 @@ Compose itself.
 
 A Compose file carries route labels, never full domains, so that production
 and staging can use different ones. Labels resolve against the environment's
-**Base domain**, set on its **Settings** tab (left empty, the estate's default
+**Base domain**, set on its **Settings** tab (left empty, the host's default
 is used). How labels and base domains work is Bay's, see
 [Routes and domains](/bay/docs/guides-stacks#routes-and-domains).
 
@@ -190,7 +190,7 @@ The **Routes** tab adds a full domain on top, served by one service: pick the
 
 A server bought for an hour has an IP and no domain. From the command line,
 `--test-hostname <service>` on `lore stack deploy` serves that service on a
-name derived from the estate's public IP, before the deploy runs:
+name derived from the host's public IP, before the deploy runs:
 
 ```bash
 lore stack deploy -e staging --test-hostname web
@@ -204,8 +204,8 @@ The name is `<env>-<stack>.<ip-with-dashes>.sslip.io`. sslip.io answers any
 such name with the IP it contains, so it points at the server at once, and Bay
 gets a real certificate for it as for any route. Nothing is created in
 anyone's DNS, so nothing needs cleaning: the route goes with the environment.
-The IP is the one Lore saw when the server connected, so the estate must have
-connected once (`lore estate wait`). `lore estate get` shows it.
+The IP is the one Lore saw when the server connected, so the host must have
+connected once (`lore host wait`). `lore host get` shows it.
 
 ## Private registries
 
@@ -224,7 +224,7 @@ See [The lore CLI](/lore/docs/reference-cli#container-registries).
 Lore, with its routes and variables. Its member apps stay, as ordinary
 instances.
 
-⚠️ **Nothing on the estate is touched**: what runs keeps running. To take the
+⚠️ **Nothing on the host is touched**: what runs keeps running. To take the
 environment off the server as well, use `lore stack destroy`, below.
 
 A whole stack, with its revisions, is deleted once it has no environment left:
@@ -236,7 +236,7 @@ changes.
 From a project directory, `lore stack` covers the same ground:
 
 ```bash
-lore stack create --estate my-vps --file compose.yml
+lore stack create --host my-vps --file compose.yml
 lore stack deploy -e staging                 # upload ./compose.yml, then deploy
 lore stack deploy -e staging --file deploy/compose.yml
 lore stack deploy -e staging --revision 4    # a revision already uploaded
@@ -248,8 +248,8 @@ lore stack route add web --domain app.example.com -e production
 
 - The stack's name defaults to the project's slug. `lore stack deploy` uploads
   the Compose file beside the command as a new revision first, and creates the
-  environment on its first deploy, on the stack's default estate unless
-  `--estate` names another. `-e` defaults to `production`.
+  environment on its first deploy, on the stack's default host unless
+  `--host` names another. `-e` defaults to `production`.
 - `lore stack logs` takes up to 2,000 lines, as does the `stack_logs` tool.
 
 Variables are set with `lore stack secrets`:
@@ -269,7 +269,7 @@ Removing goes further than the page does:
 
 - `lore stack destroy --env <env>` asks the server to remove the environment
   first, keeping its volumes, variables and registry credentials, then forgets
-  it in Lore. On an estate that does not accept deploys, it forgets the
+  it in Lore. On a host that does not accept deploys, it forgets the
   environment and prints the `bay stack destroy` to run on the server.
 - `--purge` asks the server for nothing: Lore never deletes data on a server,
   so it forgets the environment and prints `bay stack destroy --purge`.
@@ -290,13 +290,13 @@ The full list is in [The lore CLI](/lore/docs/reference-cli#stacks).
 | `stack_rollback` | Deploy an earlier revision again.                                                                                            |
 | `stack_logs`     | Two calls: with `service` it asks for the tail and answers a `request`; with that `request` it answers the lines when ready. |
 
-No `stack_*` tool takes an estate. Creating a stack, uploading a revision and
+No `stack_*` tool takes a host. Creating a stack, uploading a revision and
 setting variables and routes have no tool: those are for the page and the
 command line. See [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next
 
-- [Estates](/lore/docs/apps-estates): the servers a stack deploys to.
+- [Hosts](/lore/docs/apps-hosts): the servers a stack deploys to.
 - [Stacks](/bay/docs/guides-stacks) in the Bay documentation: the Compose
   file, `x-lore` fields, backups and volumes.
 - [A throwaway server](/bay/docs/tutorials-a-throwaway-server): a server, a

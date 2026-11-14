@@ -52,7 +52,7 @@ import { InfraOrchestrator } from "../services/InfraOrchestrator.ts";
  * its second run, which is the only way a test of idempotence can go red.
  */
 describe("a Worker deploy, replayed against the account it deployed to", () => {
-  const credential = { apiToken: "estate-token", accountId: "estate-account" };
+  const credential = { apiToken: "host-token", accountId: "host-account" };
 
   /**
    * What `DeployRunner.resourcesOf` reads out of the artifact.
@@ -541,7 +541,7 @@ class FakeCloudflareAccount {
     }
     const at = path.slice(prefix.length);
 
-    // Every call carries the estate's token, except the asset upload, which
+    // Every call carries the host's token, except the asset upload, which
     // authenticates with the session's own.
     if (
       at !== "/workers/assets/upload" &&

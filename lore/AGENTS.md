@@ -13,7 +13,7 @@ It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and 
 | `@lore/core`      | the glue         | projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, dashboard, reports, agent prompts, the web shell, every registry |
 | `@lore/work`      | Lore as Jira     | quests, epics, releases, areas, kanban, roadmap, feedback                                                                                                                                |
 | `@lore/knowledge` | Lore as Obsidian | folios, directories, attachments, revisions, names                                                                                                                                       |
-| `@lore/deploy`    | Lore as Vercel   | apps, telemetry, deployments, estates                                                                                                                                                    |
+| `@lore/deploy`    | Lore as Vercel   | apps, telemetry, deployments, hosts                                                                                                                                                      |
 
 Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first; the entries are the only place they meet. Scenario specs boot them the same way, through `bootLore()` in `apps/lore/test/fixtures/bootLore.ts`. `./web` is registered by BOTH entries.
 
@@ -25,7 +25,7 @@ core <- knowledge
 core <- deploy
 ```
 
-- A feature module never imports another. A feature spanning two goes through a core registry or a core link (an epic files folios, a blight is forwarded to a quest, a release lists its artifacts).
+- A feature module never imports another. A feature spanning two goes through a core registry or a core link (an epic files folios, an error is forwarded to a quest, a release lists its artifacts).
 - `./web` imports another package's `./api` or `./mcp` as `import type` only; runtime values come from `./schemas` or `./web`.
 - No deep import past `exports`, no import of `apps/*` (nor of `lore`), no `@/` inside a package.
 

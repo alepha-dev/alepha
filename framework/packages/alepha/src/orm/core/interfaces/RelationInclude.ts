@@ -52,7 +52,7 @@ export interface RelationArgs<
    * Read rows the repository would normally hide.
    *
    * Today that means soft-deleted ones: `deletedAt` is filtered out of every
-   * read, and some views want the history anyway — a blight inbox still shows
+   * read, and some views want the history anyway — an error inbox still shows
    * crashes reported by a sigil that has since been revoked. It is the same
    * flag the plain repository takes, and it applies to this level only, so a
    * parent can ask for deleted rows without its relations doing the same.

@@ -90,7 +90,7 @@ describe("the worker-side Cloudflare adapter", () => {
     return { run: method, steps };
   };
 
-  const credential = { apiToken: "estate-token", accountId: "estate-account" };
+  const credential = { apiToken: "host-token", accountId: "host-account" };
 
   const recordingProvisioner = (failing: string[] = []) => {
     const calls: string[] = [];
@@ -110,7 +110,7 @@ describe("the worker-side Cloudflare adapter", () => {
     };
   };
 
-  it("refuses to do anything without the estate's credential", async ({
+  it("refuses to do anything without the host's credential", async ({
     expect,
   }) => {
     // ⚠️ There is deliberately no environment fallback:
@@ -343,7 +343,7 @@ describe("the worker-side Cloudflare adapter", () => {
     await expect(adapter.inspect()).rejects.toThrow(/does not inspect/);
     // ⚠️ It tears down only what a deploy RECORDED, through `teardownRecorded`.
     // The adapter interface's own `teardown` derives every name from the
-    // context, and on a lent estate that is the delete this class refuses.
+    // context, and on a lent host that is the delete this class refuses.
     await expect(adapter.teardown()).rejects.toThrow(
       /only what a deploy recorded/,
     );
@@ -961,7 +961,7 @@ describe("the worker-side Cloudflare adapter", () => {
     /**
      * Refused before the upload, and never created here. `provision` makes
      * the queues Lore records for teardown; a queue made at deploy time would
-     * be one no teardown knows about, on an estate that was only LENT.
+     * be one no teardown knows about, on a host that was only LENT.
      */
     it("refuses by name a consumer whose queue the account does not have", async ({
       expect,
@@ -1143,7 +1143,7 @@ describe("the worker-side Cloudflare adapter", () => {
    * `provision` ensures `<name>-dlq` because a consumer naming a dead-letter
    * queue Cloudflare does not have is refused at bind time. Until it was
    * recorded, every teardown of a copy with a job queue left it standing in the
-   * estate's account, with nothing on Lore's side that could name it again.
+   * host's account, with nothing on Lore's side that could name it again.
    */
   describe("the dead-letter queue", () => {
     it("is recorded beside the queue it serves", async ({ expect }) => {

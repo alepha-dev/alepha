@@ -2241,7 +2241,7 @@ export abstract class Repository<T extends ZObject> {
         // drizzle error carries the SQL and its BOUND VALUES in the message —
         // `Failed query: select count(*) from "quests" where ... params: 1,1` —
         // so on a filtered query it publishes whatever the caller filtered on
-        // into error reporting. That text reached Lore's blight inbox
+        // into error reporting. That text reached Lore's error inbox
         // (#326, beside #325 which is the same incident through `findMany`,
         // classified and scrubbed).
         //
