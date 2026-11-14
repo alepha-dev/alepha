@@ -15,13 +15,20 @@ export class OAuthChallengeService {
   protected readonly security = $inject(SecurityProvider);
 
   /**
-   * The `scope` of a 401 challenge (SEP-835): every declared scope that is
-   * not an identity scope (`permissions: []`), space-separated; `mcp` when
-   * the application declares none.
+   * The `scope` of a 401 challenge (SEP-835).
+   *
+   * - `mcp` when the application declares it, or declares no scope at all.
+   * - Otherwise every declared scope that is not an identity scope
+   *   (`permissions: []`), space-separated.
+   *
+   * `mcp` is what dynamic registration gives a client that names no scope,
+   * so it is what an MCP client holds. A challenge naming more makes a client
+   * that checks it against its grant refuse to refresh, and send its user
+   * back to sign in at every token expiry.
    */
   public unauthorizedScope(): string {
     const declared = Object.entries(this.options.scopes ?? {});
-    if (declared.length === 0) {
+    if (declared.length === 0 || this.options.scopes?.mcp) {
       return "mcp";
     }
     const useful = declared
