@@ -41,7 +41,7 @@ test.describe("Project settings — capabilities", () => {
     await expect(releases).toHaveAttribute("aria-checked", "true");
 
     const off = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/work"),
+      res.url().includes("/capabilities/plan"),
     );
     await releases.click();
     expect((await off).ok()).toBe(true);
@@ -55,7 +55,7 @@ test.describe("Project settings — capabilities", () => {
     await expect(sidebarReleases).toHaveCount(0);
 
     const on = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/work"),
+      res.url().includes("/capabilities/plan"),
     );
     await page.getByRole("switch", { name: /^releases$/i }).click();
     expect((await on).ok()).toBe(true);
@@ -86,7 +86,7 @@ test.describe("Project settings — capabilities", () => {
     await expect(master).toHaveAttribute("aria-checked", "true");
 
     const saved = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/knowledge"),
+      res.url().includes("/capabilities/remember"),
     );
     await master.click();
     expect((await saved).ok()).toBe(true);
@@ -106,7 +106,7 @@ test.describe("Project settings — capabilities", () => {
 
     // And back. Nothing was deleted, so the folios are where they were.
     const back = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/knowledge"),
+      res.url().includes("/capabilities/remember"),
     );
     await page
       .getByRole("switch", { name: "Write and keep knowledge" })

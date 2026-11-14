@@ -552,7 +552,7 @@ test.describe("Apps", () => {
       const deploy = page.getByRole("switch", { name: /^deploy apps$/i });
       for (const _ of [0, 1]) {
         const saved = page.waitForResponse((res) =>
-          res.url().includes("/capabilities/apps"),
+          res.url().includes("/capabilities/ship"),
         );
         await deploy.click();
         expect((await saved).ok()).toBe(true);

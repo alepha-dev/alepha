@@ -126,7 +126,7 @@ test.describe("deploying through Lore", () => {
       await expect(deploy).toHaveAttribute("aria-checked", "false");
 
       const saved = page.waitForResponse((res) =>
-        res.url().includes("/capabilities/apps"),
+        res.url().includes("/capabilities/ship"),
       );
       await deploy.click();
       expect((await saved).ok()).toBe(true);
@@ -380,7 +380,7 @@ test.describe("deploying through Lore", () => {
       await page.waitForLoadState("networkidle");
 
       const off = page.waitForResponse((res) =>
-        res.url().includes("/capabilities/apps"),
+        res.url().includes("/capabilities/ship"),
       );
       await page.getByRole("switch", { name: /^deploy apps$/i }).click();
       expect((await off).ok()).toBe(true);

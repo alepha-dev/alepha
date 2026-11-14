@@ -132,7 +132,7 @@ test.describe("agent prompts", () => {
       // state says nothing about what was stored. Wait for the write.
       const saved = page.waitForResponse(
         (r) =>
-          r.url().includes(`/capabilities/work`) &&
+          r.url().includes(`/capabilities/plan`) &&
           r.request().method() === "PUT",
       );
       await toggle.click();

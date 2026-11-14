@@ -417,7 +417,7 @@ test.describe("Project capabilities", () => {
     await page.goto(`/${slug}/settings/capabilities`);
     await page.waitForLoadState("networkidle");
     const back = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/work"),
+      res.url().includes("/capabilities/plan"),
     );
     await page
       .getByRole("switch", { name: "Plan and track work", exact: true })

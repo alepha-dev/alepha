@@ -26,7 +26,7 @@ test.describe("Uptime healthchecks", () => {
     });
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     const saved = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/apps"),
+      res.url().includes("/capabilities/ship"),
     );
     await toggle.click();
     expect((await saved).ok()).toBe(true);
@@ -34,7 +34,7 @@ test.describe("Uptime healthchecks", () => {
     await page.reload();
     await expect(toggle).toHaveAttribute("aria-checked", "true");
     const disabled = page.waitForResponse((res) =>
-      res.url().includes("/capabilities/apps"),
+      res.url().includes("/capabilities/ship"),
     );
     await toggle.click();
     expect((await disabled).ok()).toBe(true);
