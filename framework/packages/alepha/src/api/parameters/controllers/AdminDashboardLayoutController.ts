@@ -64,18 +64,24 @@ export class AdminDashboardLayoutController {
       response: adminDashboardLayoutResponseSchema,
     },
     handler: async () => {
-      // Read from the database, not the cached value: the version is read
-      // there, and a layout older than its version would let a save
-      // overwrite a change its author never saw.
-      const [{ current }, version] = await Promise.all([
-        this.provider.loadCurrentAndNext(this.layout.name),
-        this.provider.getLatestVersion(this.layout.name),
-      ]);
-      const stored = adminDashboardLayoutSchema.safeParse(current?.content);
+      // Read from the database, not the cached value, and the layout and its
+      // version from ONE row, the latest version: a layout older than its
+      // version would let a save overwrite a change its author never saw.
+      //
+      // ⚠️ Not `loadCurrentAndNext` beside `getLatestVersion`, which is what
+      // this read was until #Q3676. Those pick by different orders, activation
+      // time and version number, so whenever the two disagree (a version
+      // scheduled ahead, a tie on the timestamp) the answer paired an older
+      // layout with the newest version. Every save from this API is
+      // immediate, so the latest version is the one in force.
+      const [latest] = await this.provider.getHistory(this.layout.name, {
+        limit: 1,
+      });
+      const stored = adminDashboardLayoutSchema.safeParse(latest?.content);
       const layout: AdminDashboardLayout = stored.success
         ? stored.data
         : { tiles: [] };
-      return { layout, version };
+      return { layout, version: latest?.version ?? 0 };
     },
   });
 
