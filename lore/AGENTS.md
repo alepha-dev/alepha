@@ -45,7 +45,7 @@ The repository's workflow is "The workflow" in `../framework/AGENTS.md`: one bra
 
 A pull request touching `lore/`, `framework/` or `bay/` runs **Verify Lore** (`.github/workflows/verify-lore.yml` at the root: `checks`, `test` x2, `e2e-lore` x6, `e2e-cli`, `docker`).
 
-⚠️ **`main` deploys to production with no human gate.** **Deploy Lore** (`deploy-lore.yml`) runs `alepha deploy` on `lore-production` once **Verify Lore** succeeds on `main` (a push, or the Release commit), unless the repository variable `LORE_DEPLOY`, the kill switch, is set to anything but `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/AGENTS.md` before pushing one.
+⚠️ **`main` deploys to production with no human gate.** **Deploy Lore** (`deploy-lore.yml`) runs `alepha deploy` on `lore-production` once **Verify Lore** succeeds on `main` after a push (a merged pull request), unless the repository variable `LORE_DEPLOY`, the kill switch, is set to anything but `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/AGENTS.md` before pushing one.
 
 **A hotfix can skip the wait** (#Q2707): `gh workflow run deploy-lore.yml --ref main` (or `deploy-all.yml`, which also ships the framework apps and the docs) deploys main as it stands, without waiting for Verify Lore on main. Use it only when every commit main holds beyond the last deploy was green on its own branch, and never when one of them carries a migration. A dispatch from any other ref is skipped.
 
@@ -58,7 +58,7 @@ A pull request touching `lore/`, `framework/` or `bay/` runs **Verify Lore** (`.
 
 ### Releasing
 
-Lore ships in the repository's one release (#Q2776): `release.yml` at the root sets `apps/lore` and `@alepha/lore` to the framework's version, publishes the package to npm (trusted publishing, which names `release.yml`), pushes `ghcr.io/alepha-dev/lore`, records the artifact and image in project `alepha`, and publishes the Lore release of that version there, all under one bare `x.y.z` tag. The changelog is Lore's own release feature: the quests attached to the release.
+Lore ships in the repository's one release (#Q2776): `release.yml` at the root sets `apps/lore` and `@alepha/lore` to the release version on its runner (never committed, #Q3640), publishes the package to npm (trusted publishing, which names `release.yml`), pushes `ghcr.io/alepha-dev/lore`, records the artifact and image in project `alepha`, and publishes the Lore release of that version there, all under one bare `x.y.z` tag. The changelog is Lore's own release feature: the quests attached to the release.
 
 ## Lore MCP: the planning memory
 
