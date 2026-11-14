@@ -334,29 +334,30 @@ describe("ReleaseController: the default release", () => {
    * sorts ahead of every integer.
    */
   // SQLite only on purpose: it reads SQLite's typeof().
-  it.skipIf(onPostgres)("stores the swapped defaultSince as an integer on SQLite", async ({
-    expect,
-  }) => {
-    const user = await createTestUser(ctx);
-    const project = await createTestProject(ctx, user);
-    const first = await createRelease(ctx, user, project.id, "0.28.0");
-    const second = await createRelease(ctx, user, project.id, "0.29.0");
-    await setDefault(ctx, user, project.id, first.id);
-    await setDefault(ctx, user, project.id, second.id);
+  it.skipIf(onPostgres)(
+    "stores the swapped defaultSince as an integer on SQLite",
+    async ({ expect }) => {
+      const user = await createTestUser(ctx);
+      const project = await createTestProject(ctx, user);
+      const first = await createRelease(ctx, user, project.id, "0.28.0");
+      const second = await createRelease(ctx, user, project.id, "0.29.0");
+      await setDefault(ctx, user, project.id, first.id);
+      await setDefault(ctx, user, project.id, second.id);
 
-    const rows = await ctx.probe.releases.provider.execute(
-      sql`SELECT id, typeof(default_since) AS type FROM releases WHERE project_id = ${project.id} ORDER BY id`,
-    );
+      const rows = await ctx.probe.releases.provider.execute(
+        sql`SELECT id, typeof(default_since) AS type FROM releases WHERE project_id = ${project.id} ORDER BY id`,
+      );
 
-    expect(rows).toEqual([
-      { id: first.id, type: "null" },
-      { id: second.id, type: "integer" },
-    ]);
-    const stored = await ctx.probe.releases.findById(second.id);
-    expect(Number.isNaN(new Date(stored?.defaultSince ?? "").getTime())).toBe(
-      false,
-    );
-  });
+      expect(rows).toEqual([
+        { id: first.id, type: "null" },
+        { id: second.id, type: "integer" },
+      ]);
+      const stored = await ctx.probe.releases.findById(second.id);
+      expect(Number.isNaN(new Date(stored?.defaultSince ?? "").getTime())).toBe(
+        false,
+      );
+    },
+  );
 
   it("refuses a published release with the reopen-it-first wording", async ({
     expect,

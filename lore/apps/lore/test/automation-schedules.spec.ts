@@ -408,30 +408,32 @@ describe("Automation schedules and named selections", () => {
     expect(digest.contexts[0].collection?.truncated).toBe(true);
   });
   // SQLite only on purpose: it reads SQLite's EXPLAIN QUERY PLAN.
-  it.skipIf(onPostgres)("indexes both due scheduling and unfinished occurrence checks", async ({
-    expect,
-  }) => {
-    const plan = await alepha
-      .inject(DatabaseProvider)
-      .execute(
-        sql`EXPLAIN QUERY PLAN SELECT id FROM automations WHERE enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL AND next_run_at <= ${time.nowMillis()} AND NOT EXISTS (SELECT 1 FROM automation_receipts WHERE automation_id = automations.id AND kind = 'occurrence' AND status IN ('ready', 'claimed')) ORDER BY next_run_at, id LIMIT 51`,
+  it.skipIf(onPostgres)(
+    "indexes both due scheduling and unfinished occurrence checks",
+    async ({ expect }) => {
+      const plan = await alepha
+        .inject(DatabaseProvider)
+        .execute(
+          sql`EXPLAIN QUERY PLAN SELECT id FROM automations WHERE enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL AND next_run_at <= ${time.nowMillis()} AND NOT EXISTS (SELECT 1 FROM automation_receipts WHERE automation_id = automations.id AND kind = 'occurrence' AND status IN ('ready', 'claimed')) ORDER BY next_run_at, id LIMIT 51`,
+        );
+      expect(JSON.stringify(plan)).toContain("next_run_at");
+      expect(JSON.stringify(plan)).toContain(
+        "automation_receipts_rule_state_idx",
       );
-    expect(JSON.stringify(plan)).toContain("next_run_at");
-    expect(JSON.stringify(plan)).toContain(
-      "automation_receipts_rule_state_idx",
-    );
-  });
+    },
+  );
   // SQLite only on purpose: it reads SQLite's EXPLAIN QUERY PLAN.
-  it.skipIf(onPostgres)("uses the reminder due index to filter before its stable cap", async ({
-    expect,
-  }) => {
-    const plan = await alepha
-      .inject(DatabaseProvider)
-      .execute(
-        sql`EXPLAIN QUERY PLAN SELECT id FROM quests WHERE project_id = ${project.id} AND deleted_at IS NULL AND completed_at IS NULL AND shelved_at IS NULL AND accepted_at IS NOT NULL AND accepted_by IS NOT NULL AND reminder_interval IS NOT NULL AND reminder_next_at IS NOT NULL AND reminder_next_at <= ${time.nowMillis()} ORDER BY reminder_next_at ASC, short_id ASC LIMIT 51`,
-      );
-    expect(JSON.stringify(plan)).toContain("quests_automation_reminders_idx");
-  });
+  it.skipIf(onPostgres)(
+    "uses the reminder due index to filter before its stable cap",
+    async ({ expect }) => {
+      const plan = await alepha
+        .inject(DatabaseProvider)
+        .execute(
+          sql`EXPLAIN QUERY PLAN SELECT id FROM quests WHERE project_id = ${project.id} AND deleted_at IS NULL AND completed_at IS NULL AND shelved_at IS NULL AND accepted_at IS NOT NULL AND accepted_by IS NOT NULL AND reminder_interval IS NOT NULL AND reminder_next_at IS NOT NULL AND reminder_next_at <= ${time.nowMillis()} ORDER BY reminder_next_at ASC, short_id ASC LIMIT 51`,
+        );
+      expect(JSON.stringify(plan)).toContain("quests_automation_reminders_idx");
+    },
+  );
   it("recompiles a shared cron and rearms only a changed schedule", async ({
     expect,
   }) => {
@@ -553,7 +555,9 @@ describe("Automation schedules and named selections", () => {
     expect(
       await alepha
         .inject(DatabaseProvider)
-        .execute("SELECT CAST(COUNT(*) AS INTEGER) AS n FROM reminder_test_effect"),
+        .execute(
+          "SELECT CAST(COUNT(*) AS INTEGER) AS n FROM reminder_test_effect",
+        ),
     ).toEqual([{ n: 0 }]);
     const receipt = await alepha
       .inject(AutomationClaims)

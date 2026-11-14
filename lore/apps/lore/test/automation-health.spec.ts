@@ -479,23 +479,24 @@ describe("Automation enable intent and health", () => {
     expect(await persistence.runs.count({ projectId: project.id })).toBe(count);
   });
   // SQLite only on purpose: its refusal is a SQLite trigger.
-  it.skipIf(onPostgres)("binds health and its transition evidence atomically and ignores stale validation", async ({
-    expect,
-  }) => {
-    const rule = await create();
-    const database = alepha.inject(AutomationDatabase);
-    await database.batch([
-      sql`CREATE TRIGGER refuse_health BEFORE INSERT ON automation_runs BEGIN SELECT RAISE(ABORT, 'refuse health'); END`,
-    ]);
-    await expect(
-      alepha
-        .inject(AutomationRunEvidence)
-        .transition(rule.id, "broken", "Dependency unavailable", false),
-    ).rejects.toThrow("Atomic automation batch failed");
-    expect(await persistence.rules.getById(rule.id)).toEqual(rule);
-    await database.batch([sql`DROP TRIGGER refuse_health`]);
-    await enable(rule.id, false);
-    await health.reconcile(rule);
-    expect((await persistence.rules.getById(rule.id)).enabled).toBe(false);
-  });
+  it.skipIf(onPostgres)(
+    "binds health and its transition evidence atomically and ignores stale validation",
+    async ({ expect }) => {
+      const rule = await create();
+      const database = alepha.inject(AutomationDatabase);
+      await database.batch([
+        sql`CREATE TRIGGER refuse_health BEFORE INSERT ON automation_runs BEGIN SELECT RAISE(ABORT, 'refuse health'); END`,
+      ]);
+      await expect(
+        alepha
+          .inject(AutomationRunEvidence)
+          .transition(rule.id, "broken", "Dependency unavailable", false),
+      ).rejects.toThrow("Atomic automation batch failed");
+      expect(await persistence.rules.getById(rule.id)).toEqual(rule);
+      await database.batch([sql`DROP TRIGGER refuse_health`]);
+      await enable(rule.id, false);
+      await health.reconcile(rule);
+      expect((await persistence.rules.getById(rule.id)).enabled).toBe(false);
+    },
+  );
 });

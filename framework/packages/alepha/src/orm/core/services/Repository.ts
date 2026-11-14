@@ -1319,7 +1319,9 @@ export abstract class Repository<T extends ZObject> {
     const codecs = (
       this.provider.db as unknown as {
         dialect?: {
-          codecs?: { apply(column: unknown, type: string, value: unknown): unknown };
+          codecs?: {
+            apply(column: unknown, type: string, value: unknown): unknown;
+          };
         };
       }
     ).dialect?.codecs;

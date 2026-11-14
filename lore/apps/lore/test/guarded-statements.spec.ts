@@ -150,158 +150,161 @@ const setup = async () => {
 };
 
 // SQLite only on purpose: its setup substitutes NodeSqliteProvider, the D1 emulation.
-describe.skipIf(onPostgres)("guarded statements without transactions (#Q2550)", () => {
-  let ctx: Awaited<ReturnType<typeof setup>>;
+describe.skipIf(onPostgres)(
+  "guarded statements without transactions (#Q2550)",
+  () => {
+    let ctx: Awaited<ReturnType<typeof setup>>;
 
-  afterEach(async () => {
-    await ctx?.alepha.stop();
-  });
-
-  it("a double forward of one error makes one quest", async ({ expect }) => {
-    ctx = await setup();
-    const now = ctx.alepha.inject(DateTimeProvider).nowISOString();
-    const projectError = await ctx.rows.projectErrors.create({
-      projectId: ctx.projectId,
-      fingerprint: "abc",
-      name: "TypeError",
-      message: "boom",
-      firstSeenAt: now,
-      lastSeenAt: now,
+    afterEach(async () => {
+      await ctx?.alepha.stop();
     });
-    const forward = () =>
-      ctx.alepha
-        .inject(ProjectErrorController)
-        .forwardProjectErrorToQuest.fetch(
-          { params: { projectId: ctx.projectId, errorId: projectError.id } },
+
+    it("a double forward of one error makes one quest", async ({ expect }) => {
+      ctx = await setup();
+      const now = ctx.alepha.inject(DateTimeProvider).nowISOString();
+      const projectError = await ctx.rows.projectErrors.create({
+        projectId: ctx.projectId,
+        fingerprint: "abc",
+        name: "TypeError",
+        message: "boom",
+        firstSeenAt: now,
+        lastSeenAt: now,
+      });
+      const forward = () =>
+        ctx.alepha
+          .inject(ProjectErrorController)
+          .forwardProjectErrorToQuest.fetch(
+            { params: { projectId: ctx.projectId, errorId: projectError.id } },
+            { user: ctx.user },
+          );
+
+      // The second click lands after the first one read the error open.
+      ctx.interleave.table = "project_errors";
+      ctx.interleave.next = forward;
+
+      await expect(forward()).rejects.toThrow("already forwarded");
+
+      const forwarded = (await ctx.rows.quests.findMany({})).filter(
+        (quest) => quest.source?.projectErrorId === projectError.id,
+      );
+      expect(forwarded).toHaveLength(1);
+      const after = await ctx.rows.projectErrors.getById(projectError.id);
+      expect(after.status).toBe(`quest:${forwarded[0]!.id}`);
+    });
+
+    it("a default set racing a publish leaves no default on a published release", async ({
+      expect,
+    }) => {
+      ctx = await setup();
+      const controller = ctx.alepha.inject(ReleaseController);
+      const release = await controller.createRelease.fetch(
+        { params: { projectId: ctx.projectId }, body: { tag: "1.0.0" } },
+        { user: ctx.user },
+      );
+
+      // After the handler reads the target unpublished: its first read of
+      // `releases` is the current default.
+      ctx.interleave.table = "releases";
+      ctx.interleave.skip = 1;
+      ctx.interleave.next = () =>
+        controller.publishRelease.fetch(
+          { params: { id: release.data.id }, body: {} },
           { user: ctx.user },
         );
 
-    // The second click lands after the first one read the error open.
-    ctx.interleave.table = "project_errors";
-    ctx.interleave.next = forward;
+      await expect(
+        controller.setDefaultRelease.fetch(
+          {
+            params: { projectId: ctx.projectId },
+            body: { releaseId: release.data.id },
+          },
+          { user: ctx.user },
+        ),
+      ).rejects.toMatchObject({ status: 409 });
 
-    await expect(forward()).rejects.toThrow("already forwarded");
+      const row = await ctx.rows.releases.getById(release.data.id);
+      expect(row.releasedAt).toBeDefined();
+      expect(row.defaultSince).toBeUndefined();
+    });
 
-    const forwarded = (await ctx.rows.quests.findMany({})).filter(
-      (quest) => quest.source?.projectErrorId === projectError.id,
-    );
-    expect(forwarded).toHaveLength(1);
-    const after = await ctx.rows.projectErrors.getById(projectError.id);
-    expect(after.status).toBe(`quest:${forwarded[0]!.id}`);
-  });
-
-  it("a default set racing a publish leaves no default on a published release", async ({
-    expect,
-  }) => {
-    ctx = await setup();
-    const controller = ctx.alepha.inject(ReleaseController);
-    const release = await controller.createRelease.fetch(
-      { params: { projectId: ctx.projectId }, body: { tag: "1.0.0" } },
-      { user: ctx.user },
-    );
-
-    // After the handler reads the target unpublished: its first read of
-    // `releases` is the current default.
-    ctx.interleave.table = "releases";
-    ctx.interleave.skip = 1;
-    ctx.interleave.next = () =>
-      controller.publishRelease.fetch(
-        { params: { id: release.data.id }, body: {} },
-        { user: ctx.user },
-      );
-
-    await expect(
-      controller.setDefaultRelease.fetch(
+    it("a directory delete failing midway deletes nothing from storage", async ({
+      expect,
+    }) => {
+      ctx = await setup();
+      const directory = await ctx.alepha
+        .inject(DirectoryController)
+        .createDirectory.fetch(
+          { params: { projectId: ctx.projectId }, body: { name: "Docs" } },
+          { user: ctx.user },
+        );
+      const folio = await ctx.alepha.inject(FolioController).create.fetch(
         {
-          params: { projectId: ctx.projectId },
-          body: { releaseId: release.data.id },
+          body: {
+            projectId: ctx.projectId,
+            title: "Inside",
+            content: "",
+            directoryId: directory.data.id,
+          },
         },
-        { user: ctx.user },
-      ),
-    ).rejects.toMatchObject({ status: 409 });
-
-    const row = await ctx.rows.releases.getById(release.data.id);
-    expect(row.releasedAt).toBeDefined();
-    expect(row.defaultSince).toBeUndefined();
-  });
-
-  it("a directory delete failing midway deletes nothing from storage", async ({
-    expect,
-  }) => {
-    ctx = await setup();
-    const directory = await ctx.alepha
-      .inject(DirectoryController)
-      .createDirectory.fetch(
-        { params: { projectId: ctx.projectId }, body: { name: "Docs" } },
         { user: ctx.user },
       );
-    const folio = await ctx.alepha.inject(FolioController).create.fetch(
-      {
-        body: {
-          projectId: ctx.projectId,
-          title: "Inside",
-          content: "",
-          directoryId: directory.data.id,
-        },
-      },
-      { user: ctx.user },
-    );
 
-    ctx.links.fail = true;
-    await expect(
-      ctx.alepha
+      ctx.links.fail = true;
+      await expect(
+        ctx.alepha
+          .inject(DirectoryController)
+          .deleteDirectory.fetch(
+            { params: { id: directory.data.id }, query: { cascade: true } },
+            { user: ctx.user },
+          ),
+      ).rejects.toThrow("link cleanup failed");
+
+      // The folio survives, and storage was never asked to drop anything:
+      // bytes go last, after every row that pointed at them.
+      expect(await ctx.rows.folios.findById(folio.data.id)).toBeDefined();
+      expect(ctx.attachments.deletedFiles).toEqual([]);
+    });
+
+    it("a cascading directory delete leaves no orphan outbound link", async ({
+      expect,
+    }) => {
+      ctx = await setup();
+      const folios = ctx.alepha.inject(FolioController);
+      const target = await folios.create.fetch(
+        { body: { projectId: ctx.projectId, title: "Target", content: "" } },
+        { user: ctx.user },
+      );
+      const directory = await ctx.alepha
+        .inject(DirectoryController)
+        .createDirectory.fetch(
+          { params: { projectId: ctx.projectId }, body: { name: "Gone" } },
+          { user: ctx.user },
+        );
+      const inside = await folios.create.fetch(
+        {
+          body: {
+            projectId: ctx.projectId,
+            title: "Linker",
+            content: `See [[#F${target.data.shortId}]].`,
+            directoryId: directory.data.id,
+          },
+        },
+        { user: ctx.user },
+      );
+      expect(
+        await ctx.rows.links.count({ fromId: { eq: inside.data.id } }),
+      ).toBe(1);
+
+      await ctx.alepha
         .inject(DirectoryController)
         .deleteDirectory.fetch(
           { params: { id: directory.data.id }, query: { cascade: true } },
           { user: ctx.user },
-        ),
-    ).rejects.toThrow("link cleanup failed");
+        );
 
-    // The folio survives, and storage was never asked to drop anything:
-    // bytes go last, after every row that pointed at them.
-    expect(await ctx.rows.folios.findById(folio.data.id)).toBeDefined();
-    expect(ctx.attachments.deletedFiles).toEqual([]);
-  });
-
-  it("a cascading directory delete leaves no orphan outbound link", async ({
-    expect,
-  }) => {
-    ctx = await setup();
-    const folios = ctx.alepha.inject(FolioController);
-    const target = await folios.create.fetch(
-      { body: { projectId: ctx.projectId, title: "Target", content: "" } },
-      { user: ctx.user },
-    );
-    const directory = await ctx.alepha
-      .inject(DirectoryController)
-      .createDirectory.fetch(
-        { params: { projectId: ctx.projectId }, body: { name: "Gone" } },
-        { user: ctx.user },
-      );
-    const inside = await folios.create.fetch(
-      {
-        body: {
-          projectId: ctx.projectId,
-          title: "Linker",
-          content: `See [[#F${target.data.shortId}]].`,
-          directoryId: directory.data.id,
-        },
-      },
-      { user: ctx.user },
-    );
-    expect(await ctx.rows.links.count({ fromId: { eq: inside.data.id } })).toBe(
-      1,
-    );
-
-    await ctx.alepha
-      .inject(DirectoryController)
-      .deleteDirectory.fetch(
-        { params: { id: directory.data.id }, query: { cascade: true } },
-        { user: ctx.user },
-      );
-
-    expect(await ctx.rows.links.count({ fromId: { eq: inside.data.id } })).toBe(
-      0,
-    );
-  });
-});
+      expect(
+        await ctx.rows.links.count({ fromId: { eq: inside.data.id } }),
+      ).toBe(0);
+    });
+  },
+);

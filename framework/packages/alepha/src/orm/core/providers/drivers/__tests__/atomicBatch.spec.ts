@@ -88,7 +88,10 @@ describe("DatabaseProvider.atomicBatch", () => {
   it("stays atomic on sqlite with ordinary transactions switched off", async () => {
     await switchedOff(
       Alepha.create({
-        env: { DATABASE_URL: "sqlite://:memory:", DATABASE_TRANSACTIONS: false },
+        env: {
+          DATABASE_URL: "sqlite://:memory:",
+          DATABASE_TRANSACTIONS: false,
+        },
       }),
     );
   });

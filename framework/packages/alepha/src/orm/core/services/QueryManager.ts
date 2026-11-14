@@ -502,9 +502,7 @@ export class QueryManager {
     }
 
     if (operator?.notLike != null) {
-      conditions.push(
-        notLike(patternTarget(), patternValue(operator.notLike)),
-      );
+      conditions.push(notLike(patternTarget(), patternValue(operator.notLike)));
     }
 
     if (operator?.eqInsensitive != null) {

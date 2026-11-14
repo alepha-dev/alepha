@@ -952,30 +952,31 @@ describe("Shared automation application service and HTTP actions", () => {
     ).rejects.toThrow("identity or version");
   });
   // SQLite only on purpose: its refusal is a SQLite trigger.
-  it.skipIf(onPostgres)("rolls configuration and transition evidence back when their audit cannot be recorded", async ({
-    expect,
-  }) => {
-    const database = alepha.inject(AutomationDatabase);
-    const rule = await create();
-    const before = await persistence.rules.getById(rule.id);
-    const runs = await persistence.runs.count();
-    await database.batch([
-      sql`CREATE TRIGGER reject_configuration_audit BEFORE INSERT ON audits WHEN NEW.type = 'automation' BEGIN SELECT RAISE(ABORT, 'configuration audit failed'); END`,
-    ]);
-    await expect(
-      service.create(project.id, user, {
-        title: "Must roll back",
-        rule: ast(),
-      }),
-    ).rejects.toThrow("Atomic automation batch failed");
-    expect(await persistence.rules.count()).toBe(1);
-    await expect(
-      service.setEnabled(project.id, rule.id, user, true, 0),
-    ).rejects.toThrow("Atomic automation batch failed");
-    expect(await persistence.rules.getById(rule.id)).toEqual(before);
-    expect(await persistence.runs.count()).toBe(runs);
-    await database.batch([sql`DROP TRIGGER reject_configuration_audit`]);
-  });
+  it.skipIf(onPostgres)(
+    "rolls configuration and transition evidence back when their audit cannot be recorded",
+    async ({ expect }) => {
+      const database = alepha.inject(AutomationDatabase);
+      const rule = await create();
+      const before = await persistence.rules.getById(rule.id);
+      const runs = await persistence.runs.count();
+      await database.batch([
+        sql`CREATE TRIGGER reject_configuration_audit BEFORE INSERT ON audits WHEN NEW.type = 'automation' BEGIN SELECT RAISE(ABORT, 'configuration audit failed'); END`,
+      ]);
+      await expect(
+        service.create(project.id, user, {
+          title: "Must roll back",
+          rule: ast(),
+        }),
+      ).rejects.toThrow("Atomic automation batch failed");
+      expect(await persistence.rules.count()).toBe(1);
+      await expect(
+        service.setEnabled(project.id, rule.id, user, true, 0),
+      ).rejects.toThrow("Atomic automation batch failed");
+      expect(await persistence.rules.getById(rule.id)).toEqual(before);
+      expect(await persistence.runs.count()).toBe(runs);
+      await database.batch([sql`DROP TRIGGER reject_configuration_audit`]);
+    },
+  );
   it("excludes delayed events from an older activation and preserves history after soft deletion", async ({
     expect,
   }) => {

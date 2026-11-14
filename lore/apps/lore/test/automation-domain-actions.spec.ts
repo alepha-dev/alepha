@@ -555,35 +555,38 @@ describe("Idempotent automation domain actions through normal controllers", () =
     expect(await nativeAudits(opened.rule.id)).toHaveLength(1);
   });
   // SQLite only on purpose: its refusal is a SQLite trigger.
-  it.skipIf(onPostgres)("rolls content, revision and receipt back if the required native audit cannot be written", async ({
-    expect,
-  }) => {
-    const folio = await createFolio();
-    const before = await rows.revisions.findMany({
-      where: { folioId: folio.id },
-    });
-    const opened = await open([
-      { kind: "appendFolio", folio: folio.id, text: "Audited" },
-    ]);
-    const database = alepha.inject(DatabaseProvider);
-    await database.execute(
-      "CREATE TRIGGER automation_test_audit_refusal BEFORE INSERT ON audits WHEN json_extract(NEW.metadata, '$.automationId') IS NOT NULL BEGIN SELECT RAISE(ABORT, 'test audit refusal'); END",
-    );
-    await expect(execute(opened)).rejects.toThrow(
-      "Atomic automation batch failed",
-    );
-    expect((await entities.folios.getById(folio.id)).content).toBe("Original");
-    expect(
-      await rows.revisions.findMany({ where: { folioId: folio.id } }),
-    ).toEqual(before);
-    expect(await nativeAudits(opened.rule.id)).toHaveLength(0);
-    await database.execute("DROP TRIGGER automation_test_audit_refusal");
-    await execute(opened);
-    expect((await entities.folios.getById(folio.id)).content).toBe(
-      "Original\n\nAudited",
-    );
-    expect(await nativeAudits(opened.rule.id)).toHaveLength(1);
-  });
+  it.skipIf(onPostgres)(
+    "rolls content, revision and receipt back if the required native audit cannot be written",
+    async ({ expect }) => {
+      const folio = await createFolio();
+      const before = await rows.revisions.findMany({
+        where: { folioId: folio.id },
+      });
+      const opened = await open([
+        { kind: "appendFolio", folio: folio.id, text: "Audited" },
+      ]);
+      const database = alepha.inject(DatabaseProvider);
+      await database.execute(
+        "CREATE TRIGGER automation_test_audit_refusal BEFORE INSERT ON audits WHEN json_extract(NEW.metadata, '$.automationId') IS NOT NULL BEGIN SELECT RAISE(ABORT, 'test audit refusal'); END",
+      );
+      await expect(execute(opened)).rejects.toThrow(
+        "Atomic automation batch failed",
+      );
+      expect((await entities.folios.getById(folio.id)).content).toBe(
+        "Original",
+      );
+      expect(
+        await rows.revisions.findMany({ where: { folioId: folio.id } }),
+      ).toEqual(before);
+      expect(await nativeAudits(opened.rule.id)).toHaveLength(0);
+      await database.execute("DROP TRIGGER automation_test_audit_refusal");
+      await execute(opened);
+      expect((await entities.folios.getById(folio.id)).content).toBe(
+        "Original\n\nAudited",
+      );
+      expect(await nativeAudits(opened.rule.id)).toHaveLength(1);
+    },
+  );
   it("preflights the same targets without reserving quest counters, areas, audits or execution evidence", async ({
     expect,
   }) => {

@@ -77,39 +77,40 @@ describe("sigil entities", () => {
   });
 
   // SQLite only on purpose: PRAGMA foreign_key_list is SQLite's catalog.
-  it.skipIf(onPostgres)("declares a real foreign key from errors.sigilId to sigils.id", async ({
-    expect,
-  }) => {
-    // Regression guard: `.optional()` chained *after* `db.ref(...)` returns a
-    // new wrapper that the model builder's `PG_REF in value` check never
-    // sees (`pgAttr` mutates the schema object `db.ref()` returns, and
-    // `.optional()` wraps rather than mutates) — so the column silently gets
-    // no FK constraint at all. `.optional()` must be applied to the type
-    // passed *into* `db.ref(...)`, not chained onto its result.
-    class Repos {
-      organizations = $repository(organizations);
-      projects = $repository(projects);
-      users = $repository(users);
-      sigils = $repository(sigils);
-      projectErrors = $repository(projectErrors);
-    }
-    // `DATABASE_URL` is a Postgres URL under the repo-root vitest config and
-    // unset under this app's own — pinned here so the spec means the same
-    // thing from both.
-    const alepha = Alepha.create({ env: { DATABASE_URL: ":memory:" } }).with(
-      Repos,
-    );
-    alepha.inject(Repos);
-    await alepha.start();
+  it.skipIf(onPostgres)(
+    "declares a real foreign key from errors.sigilId to sigils.id",
+    async ({ expect }) => {
+      // Regression guard: `.optional()` chained *after* `db.ref(...)` returns a
+      // new wrapper that the model builder's `PG_REF in value` check never
+      // sees (`pgAttr` mutates the schema object `db.ref()` returns, and
+      // `.optional()` wraps rather than mutates) — so the column silently gets
+      // no FK constraint at all. `.optional()` must be applied to the type
+      // passed *into* `db.ref(...)`, not chained onto its result.
+      class Repos {
+        organizations = $repository(organizations);
+        projects = $repository(projects);
+        users = $repository(users);
+        sigils = $repository(sigils);
+        projectErrors = $repository(projectErrors);
+      }
+      // `DATABASE_URL` is a Postgres URL under the repo-root vitest config and
+      // unset under this app's own — pinned here so the spec means the same
+      // thing from both.
+      const alepha = Alepha.create({ env: { DATABASE_URL: ":memory:" } }).with(
+        Repos,
+      );
+      alepha.inject(Repos);
+      await alepha.start();
 
-    const provider = alepha.inject(DatabaseProvider);
-    const foreignKeys = await provider.execute(
-      sql`PRAGMA foreign_key_list(project_errors)`,
-    );
+      const provider = alepha.inject(DatabaseProvider);
+      const foreignKeys = await provider.execute(
+        sql`PRAGMA foreign_key_list(project_errors)`,
+      );
 
-    const sigilForeignKey = foreignKeys.find((row) => row.table === "sigils");
-    expect(sigilForeignKey).toBeDefined();
-    expect(sigilForeignKey?.from).toBe("sigil_id");
-    expect(sigilForeignKey?.on_delete).toBe("SET NULL");
-  });
+      const sigilForeignKey = foreignKeys.find((row) => row.table === "sigils");
+      expect(sigilForeignKey).toBeDefined();
+      expect(sigilForeignKey?.from).toBe("sigil_id");
+      expect(sigilForeignKey?.on_delete).toBe("SET NULL");
+    },
+  );
 });

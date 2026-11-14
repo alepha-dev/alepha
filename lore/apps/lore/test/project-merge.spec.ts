@@ -98,27 +98,31 @@ describe("ProjectMergeService across every module", () => {
   });
 
   // SQLite only on purpose: it lists tables from sqlite_master.
-  it.skipIf(onPostgres)("accounts for every table with a project_id, moved or left on purpose", async ({
-    expect,
-  }) => {
-    const tables = await ctx.database.execute(
-      "SELECT name FROM sqlite_master WHERE type = 'table'",
-    );
-    const scoped: string[] = [];
-    for (const row of tables) {
-      const name = String(row.name);
-      const columns = await ctx.database.execute(
-        `SELECT name FROM pragma_table_info('${name}')`,
+  it.skipIf(onPostgres)(
+    "accounts for every table with a project_id, moved or left on purpose",
+    async ({ expect }) => {
+      const tables = await ctx.database.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table'",
       );
-      if (columns.some((column) => column.name === "project_id")) {
-        scoped.push(name);
+      const scoped: string[] = [];
+      for (const row of tables) {
+        const name = String(row.name);
+        const columns = await ctx.database.execute(
+          `SELECT name FROM pragma_table_info('${name}')`,
+        );
+        if (columns.some((column) => column.name === "project_id")) {
+          scoped.push(name);
+        }
       }
-    }
-    const handled = new Set([...ctx.merge.tables(), ...Object.keys(NOT_MOVED)]);
+      const handled = new Set([
+        ...ctx.merge.tables(),
+        ...Object.keys(NOT_MOVED),
+      ]);
 
-    expect(scoped.filter((name) => !handled.has(name))).toEqual([]);
-    expect(scoped.length).toBeGreaterThan(20);
-  });
+      expect(scoped.filter((name) => !handled.has(name))).toEqual([]);
+      expect(scoped.length).toBeGreaterThan(20);
+    },
+  );
 
   it("refuses a deployed copy both projects hold, and names it on a dry run", async ({
     expect,
