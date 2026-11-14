@@ -1,7 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { Alepha, z } from "alepha";
-import { OAuthClientService, oauthOptions } from "alepha/api/oauth";
+import {
+  OAuthClientService,
+  type OAuthScope,
+  oauthOptions,
+} from "alepha/api/oauth";
 import { AlephaEmail } from "alepha/email";
 import { $tool, AlephaMcp, StreamableHttpMcpTransport } from "alepha/mcp";
 import { AlephaOrmTestPostgres } from "alepha/orm";
@@ -45,7 +49,7 @@ class TestApp {
   });
 }
 
-const setup = async () => {
+const setup = async (extraScopes: Record<string, OAuthScope> = {}) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error", SERVER_PORT: 0 } })
     .with(AlephaServer)
     .with(AlephaOrmTestPostgres)
@@ -61,6 +65,7 @@ const setup = async () => {
       write: { label: "Write", permissions: ["docs:write"] },
       admin: { label: "Admin", permissions: ["admin:docs"] },
       openid: { label: "Identity", permissions: [] },
+      ...extraScopes,
     },
   });
   alepha.inject(TestApp);
@@ -140,6 +145,18 @@ describe("MCP authorization challenges", () => {
     expect(res.headers.get("www-authenticate")).toMatch(
       /^Bearer resource_metadata="https?:\/\/[^"]+\/\.well-known\/oauth-protected-resource", scope="read write admin"$/,
     );
+    await alepha.stop();
+  });
+
+  it("names only mcp on the 401 when it is declared, as a registered MCP client holds it", async () => {
+    const { alepha, call } = await setup({
+      mcp: { label: "MCP", permissions: ["docs:read", "docs:write"] },
+    });
+
+    const res = await call("read_docs");
+
+    expect(res.status).toBe(401);
+    expect(res.headers.get("www-authenticate")).toMatch(/, scope="mcp"$/);
     await alepha.stop();
   });
 
