@@ -11,12 +11,12 @@ are in [Stacks](/bay/docs/guides-stacks) in the Bay documentation.
 
 ## Turning it on
 
-Stacks are the **Stacks** option of the Apps capability, off by default, in
+Stacks are the **Stacks** option of the Ship capability, off by default, in
 **Settings ▸ General ▸ Capabilities** (see
 [Capabilities](/lore/docs/project-capabilities)). It adds **Stacks** to the
 sidebar.
 
-A stack needs somewhere to run: a Bay [host](/lore/docs/apps-hosts) lent to
+A stack needs somewhere to run: a Bay [host](/lore/docs/ship-hosts) lent to
 the project, with **Allow deploys** on. Only a Bay host runs stacks.
 
 Reading takes `app:read`, which the default Member rank holds. Everything that
@@ -34,7 +34,7 @@ deploying one app service alone, and storing a registry credential.
 | Stack       | A name, unique in the project, and a default host. Lowercase letters, digits and hyphens, up to 64. |
 | Environment | One running copy of the stack, such as `production`, addressed as `<stack>/<env>`.                  |
 | Revision    | One numbered upload of the Compose file, with the files it references. A stack has many.            |
-| Member      | An [app instance](/lore/docs/apps-instances) that runs as one service of an environment.            |
+| Member      | An [app instance](/lore/docs/ship-instances) that runs as one service of an environment.            |
 
 ```mermaid
 flowchart LR
@@ -117,7 +117,7 @@ you want.
 This part is optional: a stack of plain images needs none of it. A stack can
 also run an app deployed through Lore as one of its services, beside the
 database it uses. Deploying an app through Lore needs an app built with Alepha
-(see [Deploying an app](/lore/docs/apps-deploying)).
+(see [Deploying an app](/lore/docs/ship-deploying)).
 
 Such an app names its stack in `alepha.config.ts`:
 
@@ -296,10 +296,10 @@ command line. See [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next
 
-- [Hosts](/lore/docs/apps-hosts): the servers a stack deploys to.
+- [Hosts](/lore/docs/ship-hosts): the servers a stack deploys to.
 - [Stacks](/bay/docs/guides-stacks) in the Bay documentation: the Compose
   file, `x-lore` fields, backups and volumes.
 - [A throwaway server](/bay/docs/tutorials-a-throwaway-server): a server, a
   stack and an app from a shell, in a few minutes.
-- [Deploying an app](/lore/docs/apps-deploying): an app on its own, without a
+- [Deploying an app](/lore/docs/ship-deploying): an app on its own, without a
   stack.

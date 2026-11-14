@@ -5,8 +5,8 @@ import type { CapabilityKey } from "@lore/core/schemas";
  * (#Q3212): one entry per `##` section of each guide, with the guide's title,
  * the section's heading, its URL on the docs site and a short body.
  *
- * A guide is named by its path under `lore/docs`, `3-work/1-quests.md`, which
- * is what gives it its slug (`work-quests`) and its capability.
+ * A guide is named by its path under `lore/docs`, `3-plan/1-quests.md`, which
+ * is what gives it its slug (`plan-quests`) and its capability.
  *
  * Run by `scripts/generate-docs-corpus.ts`, which writes `docsCorpus.ts`, and
  * by `assistant-docs.spec.ts`, which refuses a committed corpus that differs
@@ -30,11 +30,9 @@ export class LoreDocsCorpusBuilder {
    * capability, not rank: a screen a rank cannot reach is still documented.
    */
   protected readonly capabilityOf: Record<string, CapabilityKey> = {
-    work: "plan",
-    knowledge: "remember",
-    // Feedback was a capability of its own until #E143.
-    support: "plan",
-    apps: "ship",
+    plan: "plan",
+    remember: "remember",
+    ship: "ship",
   };
 
   /**
@@ -130,7 +128,7 @@ export class LoreDocsCorpusBuilder {
 
   /**
    * A guide's path without its order prefixes or extension:
-   * `3-work/1-quests.md` is `["work", "quests"]`, the docs site's slug once
+   * `3-plan/1-quests.md` is `["plan", "quests"]`, the docs site's slug once
    * joined with dashes.
    */
   protected partsOf(name: string): string[] {

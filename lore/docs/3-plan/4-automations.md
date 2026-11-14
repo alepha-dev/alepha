@@ -5,7 +5,7 @@ schedule, Lore checks a condition and carries out a short list of actions, such
 as notifying a member, appending to a folio or creating a quest. A rule does
 exactly what it says, every time. No AI runs inside it.
 
-Automations are part of the **Plan and track work** capability: every project
+Automations are part of the **Plan** capability: every project
 that has it has automations, with no switch of their own (see
 [Capabilities](/lore/docs/project-capabilities)). That grants nothing by
 itself. A rank also needs the **Automations** permissions, which only the owner
@@ -67,7 +67,7 @@ Every input belongs to this rule alone unless you choose **Share with other
 automations**, which uses or creates a [shared variable](#shared-variables).
 
 A page can also offer a preset as a subscription of your own: the bell above
-the [feedback inbox](/lore/docs/support-feedback) creates a **New feedback**
+the [feedback inbox](/lore/docs/plan-feedback) creates a **New feedback**
 rule that notifies you, and deletes it when you turn the bell off. The rule
 shows on the automations page like any other. If you disable it there, the bell
 reads as off, and turning it on again replaces it.
@@ -336,6 +336,6 @@ The full list is in [MCP tools](/lore/docs/reference-mcp-tools).
 
 - [Notifications](/lore/docs/project-notifications): where the messages land,
   and how a member turns them off.
-- [Releases](/lore/docs/work-releases): what a published release holds.
-- [Folios](/lore/docs/knowledge-folios): where a rule can append.
+- [Releases](/lore/docs/plan-releases): what a published release holds.
+- [Folios](/lore/docs/remember-folios): where a rule can append.
 - [Members](/lore/docs/project-members): who may write and manage rules.

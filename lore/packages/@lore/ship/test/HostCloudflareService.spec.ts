@@ -82,7 +82,7 @@ describe("HostCloudflareService, the probe table", () => {
 
   /**
    * ⚠️ This case is the contract with #1517 and with the guide at
-   * `docs/7-apps/7-cloudflare-token.md`. When #1517 learns what a Lore
+   * `docs/6-ship/7-cloudflare-token.md`. When #1517 learns what a Lore
    * deploy really calls, this list, the table on `HostCloudflareService`
    * and that page change together. Nothing checks the drift.
    */

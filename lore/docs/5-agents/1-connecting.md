@@ -132,9 +132,9 @@ list the moment it may have leaked.
 Connecting is the easy part. What makes an agent useful is what it finds:
 
 - **Pin a folio with your conventions.** Pinned folios are handed to every
-  agent with the project's context. See [Folios](/lore/docs/knowledge-folios).
+  agent with the project's context. See [Folios](/lore/docs/remember-folios).
 - **Describe your areas**, so a new quest lands in the right one. See
-  [Quests](/lore/docs/work-quests).
+  [Quests](/lore/docs/plan-quests).
 - **Use [agent prompts](/lore/docs/agents-prompts)** to hand an agent a quest
   or an epic with one click, with the instructions your team agreed on.
 

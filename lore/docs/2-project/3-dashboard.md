@@ -8,7 +8,7 @@ anything else.
 ![The project dashboard with its cards](/screenshots/lore/dashboard-light.png)
 
 Lore sometimes calls the dashboard "the board". It is not the **Kanban** page
-of [Quests](/lore/docs/work-quests).
+of [Quests](/lore/docs/plan-quests).
 
 ## One dashboard for the whole team
 
@@ -123,7 +123,7 @@ three entries.
 
 Which cards you can add depends on the project's capabilities and your
 permissions: a card about releases needs releases turned on, a card about apps
-needs the Apps capability (see [Capabilities](/lore/docs/project-capabilities)).
+needs the Ship capability (see [Capabilities](/lore/docs/project-capabilities)).
 Most cards take a scope: the project, an epic, a release, a tag or an app. Flow
 cards read the same figures as [Reports](/lore/docs/project-reports) and link
 to the tab that explains them.
@@ -239,7 +239,7 @@ default to return to. Another dashboard is emptied card by card, or deleted.
 
 - [Reports](/lore/docs/project-reports): the fixed measures behind the flow
   cards.
-- [Quests](/lore/docs/work-quests): the work most cards count.
+- [Quests](/lore/docs/plan-quests): the work most cards count.
 - [Members](/lore/docs/project-members): who may edit the dashboard.
 - [Notifications](/lore/docs/project-notifications): what Lore tells you
   without being asked.

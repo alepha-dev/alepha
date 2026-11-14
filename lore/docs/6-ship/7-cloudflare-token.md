@@ -2,7 +2,7 @@
 
 To deploy to a Cloudflare account, Lore needs an API token that you create at
 Cloudflare and paste into the form that adds a Cloudflare
-[host](/lore/docs/apps-hosts), beside the account id. This page says which
+[host](/lore/docs/ship-hosts), beside the account id. This page says which
 token to create.
 
 ## What to create
@@ -190,9 +190,9 @@ an account-owned one, and delete it there.
 
 ## Next
 
-- [Hosts](/lore/docs/apps-hosts): lending the host to other projects,
+- [Hosts](/lore/docs/ship-hosts): lending the host to other projects,
   who can manage it, deleting it.
-- [Deploying an app](/lore/docs/apps-deploying): pick the host and ship a
+- [Deploying an app](/lore/docs/ship-deploying): pick the host and ship a
   build.
 - [Notifications](/lore/docs/project-notifications): how the email about a
   failing token reaches you.

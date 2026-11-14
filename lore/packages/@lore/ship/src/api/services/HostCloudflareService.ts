@@ -74,7 +74,7 @@ export interface CloudflarePermissionProbe {
  * the message says "Edit" and the guide names the template.
  *
  * ⚠️ {@link PERMISSION_PROBES} is a **contract** with #1517, with the guide
- * (`docs/7-apps/7-cloudflare-token.md`), and with
+ * (`docs/6-ship/7-cloudflare-token.md`), and with
  * `schemas/cloudflareTokenTemplate.ts` - the list that pre-fills the
  * dashboard form a person mints the token on. When #1517 learns what a Lore
  * deploy really calls, this table, that module, the spec that pins them and

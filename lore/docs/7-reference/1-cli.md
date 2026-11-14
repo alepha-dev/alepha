@@ -118,7 +118,7 @@ Every command that works inside a project looks for it in this order:
 The sections of `lore project report` are `summary`, `flow`, `backlog`,
 `planning`, `support`, `knowledge`, `delivery` and `team`.
 
-`lore project create` makes a project with the **Deploy and watch apps**
+`lore project create` makes a project with the **Ship**
 capability only, its **Deploy apps** option on and **Track apps** off. Turn on
 the rest with `lore project capability enable` or in the project's settings:
 see [Capabilities](/lore/docs/project-capabilities).
@@ -171,7 +171,7 @@ On `lore quest update`, a flag replaces what was there:
 - `--expected-updated-at` takes the `updatedAt` of your last read: an edit
   that landed since is refused rather than overwritten.
 
-See [Quests](/lore/docs/work-quests) for the statuses and rules behind these.
+See [Quests](/lore/docs/plan-quests) for the statuses and rules behind these.
 
 ## Epics
 
@@ -188,8 +188,8 @@ See [Quests](/lore/docs/work-quests) for the statuses and rules behind these.
 | `lore epic review create <ref>` | File a review of a draft or ready epic: its questions, decisions and changes.     | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
 | `lore epic review answer <ref>` | Record the owner's answer to one review item.                                     | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
 
-See [Epics](/lore/docs/work-epics), and
-[Reviewing an epic](/lore/docs/work-epics#reviewing-an-epic) for what a review
+See [Epics](/lore/docs/plan-epics), and
+[Reviewing an epic](/lore/docs/plan-epics#reviewing-an-epic) for what a review
 holds.
 
 ## Releases
@@ -230,7 +230,7 @@ Two of these lose something:
 - `lore releases delete` on a published release also deletes its frozen
   changelog and counts, which exist nowhere else.
 
-See [Releases](/lore/docs/work-releases) for how these fit in a release job.
+See [Releases](/lore/docs/plan-releases) for how these fit in a release job.
 
 ## Folios
 
@@ -251,7 +251,7 @@ See [Releases](/lore/docs/work-releases) for how these fit in a release job.
 A pinned folio's whole content opens every `lore project context`, so pin
 sparingly.
 
-See [Folios](/lore/docs/knowledge-folios).
+See [Folios](/lore/docs/remember-folios).
 
 ## Directories
 
@@ -284,7 +284,7 @@ lore attachments push ./notes.pdf --folio 12 --name "Meeting notes.pdf"
 A folio adds a suffix to a name it already holds, and the command prints the
 name it stored. To read a file back, use `lore quest attachment get` or
 `lore folio attachment list`. See
-[Attachments](/lore/docs/knowledge-attachments).
+[Attachments](/lore/docs/remember-attachments).
 
 ## Feedback
 
@@ -300,7 +300,7 @@ name it stored. To read a file back, use `lore quest attachment get` or
 `--status` is `pending`, `accepted`, `rejected` or `all`. Accepting creates no
 quest: file one with `lore quest create --feedback <ref>`.
 
-See [Feedback](/lore/docs/support-feedback).
+See [Feedback](/lore/docs/plan-feedback).
 
 ## Automations
 
@@ -330,7 +330,7 @@ since is refused rather than overwritten.
 `quest-reminders` or `release-notifications`. `catalog`, `test` and
 `adoption preview` always print JSON.
 
-See [Automations](/lore/docs/work-automations).
+See [Automations](/lore/docs/plan-automations).
 
 ## Errors and insights
 
@@ -350,7 +350,7 @@ what says whether the failure is still happening.
 | `--segment` | `errors`, `vitals`, `analytics`. Repeatable; all three by default.           |
 | `--traffic` | `all` (the default), `humans` or `bots`. It narrows analytics, never errors. |
 
-See [Telemetry](/lore/docs/apps-telemetry).
+See [Telemetry](/lore/docs/ship-telemetry).
 
 ## Quality
 
@@ -391,13 +391,13 @@ Compose file.
   current schema (the refusal names each change), or, when its schema is
   unknown, when migrations landed since that run.
 
-See [Deploying an app](/lore/docs/apps-deploying) for the whole flow.
+See [Deploying an app](/lore/docs/ship-deploying) for the whole flow.
 
 ## App instances
 
 An instance is one deployed copy of an app, named by `--app` and `--env`. Both
 are required on every command here but `list`: neither is ever guessed. See
-[Apps and instances](/lore/docs/apps-instances).
+[Apps and instances](/lore/docs/ship-instances).
 
 | Command                     | What it does                                                                | Flags                                                                                            |
 | --------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -415,7 +415,7 @@ host lent to the project; pass it or `--host-id`, not both. An empty
 ## Sigils
 
 A sigil is the key one copy reports its telemetry with. See
-[Telemetry](/lore/docs/apps-telemetry).
+[Telemetry](/lore/docs/ship-telemetry).
 
 | Command                  | What it does                                                         | Flags                                              |
 | ------------------------ | -------------------------------------------------------------------- | -------------------------------------------------- |
@@ -430,7 +430,7 @@ revoke a leaked token, use `rotate`: `delete` throws the history away.
 ## Monitors
 
 A monitor checks one target on an interval, or waits for a job to push. See
-[Healthchecks](/lore/docs/apps-healthchecks). A monitor is named by its id, as
+[Healthchecks](/lore/docs/ship-healthchecks). A monitor is named by its id, as
 `lore monitor list` prints it, so only `list` and `create` take `--project`.
 
 | Command                    | What it does                                                                    | Flags                                        |
@@ -494,7 +494,7 @@ checked: the push is refused if the registry reports another one. An image on
 credential first, see [Container registries](#container-registries).
 `--format` is `archive` or `image`.
 
-See [Artifacts](/lore/docs/apps-artifacts).
+See [Artifacts](/lore/docs/ship-artifacts).
 
 ## Hosts
 
@@ -519,7 +519,7 @@ A host is a machine a project deploys onto.
 **Provisioning.** `--provider scaleway` buys the server through the provider's
 own CLI: it needs `scw` installed and `scw login` done. Without `--provider`
 the command lists the providers and what each needs. `--project` is the project
-the host belongs to, created with the **Deploy and watch apps** capability
+the host belongs to, created with the **Ship** capability
 when it does not exist; a project that has it off is refused before anything is
 bought. `--name` defaults to three random words, `--type` and `--zone` to the
 provider's, and `--timeout` to 300 seconds. A provisioned host accepts
@@ -547,7 +547,7 @@ hosts the project is the home of; a reading verb (`get`, `wait`, `stats`) and
 `lend` among the hosts you can read, and `--home <project>` picks one when
 two share the slug.
 
-See [Hosts](/lore/docs/apps-hosts).
+See [Hosts](/lore/docs/ship-hosts).
 
 ## Container registries
 
@@ -613,7 +613,7 @@ prints the `bay stack destroy --purge` command to run on the machine.
 `lore stack delete` is refused while an environment remains, and changes
 nothing on a machine.
 
-See [Stacks](/lore/docs/apps-stacks) for Lore's side, and
+See [Stacks](/lore/docs/ship-stacks) for Lore's side, and
 [Stacks](/bay/docs/guides-stacks) in the Bay documentation for the file's
 format.
 
@@ -621,5 +621,5 @@ format.
 
 - [How agents and the CLI connect](/lore/docs/agents-connecting)
 - [MCP tools](/lore/docs/reference-mcp-tools)
-- [Deploying an app](/lore/docs/apps-deploying)
-- [Quests](/lore/docs/work-quests)
+- [Deploying an app](/lore/docs/ship-deploying)
+- [Quests](/lore/docs/plan-quests)

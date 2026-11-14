@@ -7,7 +7,7 @@ other projects so that they deploy there too.
 
 Hosts live in projects with the **Apps** capability on (see
 [Capabilities](/lore/docs/project-capabilities)). A project's hosts are in
-**Settings ▸ Apps ▸ Hosts**: the ones it is the home of, and the ones other
+**Settings ▸ Ship ▸ Hosts**: the ones it is the home of, and the ones other
 projects lend it. Your account has no hosts page, since a host is never
 yours alone.
 
@@ -15,12 +15,12 @@ yours alone.
 
 | Kind           | What it is            | What it runs                              | How Lore reaches it                                                                                           |
 | -------------- | --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Bay**        | A server running Bay. | Apps and [stacks](/lore/docs/apps-stacks) | The server connects out to Lore, with a secret Lore creates. No port has to be opened on the server for Lore. |
+| **Bay**        | A server running Bay. | Apps and [stacks](/lore/docs/ship-stacks) | The server connects out to Lore, with a secret Lore creates. No port has to be opened on the server for Lore. |
 | **Cloudflare** | A Cloudflare account. | Apps, as Workers                          | Lore calls Cloudflare's API with the account id and an API token you create.                                  |
 
 ## Adding a host
 
-1. Open **Settings ▸ Apps ▸ Hosts** and click **Add a host**.
+1. Open **Settings ▸ Ship ▸ Hosts** and click **Add a host**.
 2. Choose **Create a new one**. (**Use one of mine** lends a host that
    already exists, see [Lending](#lending-a-host-to-another-project).)
 3. Pick the kind, **Bay** or **Cloudflare**, and give the host a **Name**:
@@ -78,7 +78,7 @@ before it creates anything, and again every night. If the token lacks a
 permission, the dialog says which one and nothing is saved.
 
 Which token to create, with which permissions, is the whole of
-[The Cloudflare token](/lore/docs/apps-cloudflare-token). A Cloudflare host
+[The Cloudflare token](/lore/docs/ship-cloudflare-token). A Cloudflare host
 is created in the browser only: `lore host add` creates Bay hosts.
 
 ### A server bought for you
@@ -103,8 +103,8 @@ In about three minutes, with no SSH and no page:
 4. The command waits until the server is online (`--timeout`, 300 seconds by
    default) and prints its address, its price, and what to run next.
 
-`--project` is required. The project is created with Apps on when it does not
-exist; an existing project with Apps off is refused before any server is
+`--project` is required. The project is created with Ship on when it does not
+exist; an existing project with Ship off is refused before any server is
 bought. The host is named with three random words unless you pass `--name`,
 and it accepts deploys (`--no-allow-deploys` for a server that only reports its
 stats). Run the command without `--provider` to list the providers and what
@@ -134,8 +134,8 @@ A Cloudflare host accepts deploys from creation. The same switch, in its
 Then each app instance picks its host on its own **Settings** tab, and a
 stack names its host in its own settings. A deploy never asks which machine:
 it goes where the instance or the stack says. See
-[Deploying an app](/lore/docs/apps-deploying) and
-[Stacks](/lore/docs/apps-stacks).
+[Deploying an app](/lore/docs/ship-deploying) and
+[Stacks](/lore/docs/ship-stacks).
 
 ## Who can do what
 
@@ -174,7 +174,7 @@ keep managing it.
 A host is lent to its home when it is created. For another project to
 deploy onto it:
 
-1. Open **Settings ▸ Apps ▸ Hosts** in the project that borrows, and click
+1. Open **Settings ▸ Ship ▸ Hosts** in the project that borrows, and click
    **Add a host**.
 2. Under **Use one of mine**, pick the host. The list offers the hosts you
    may lend.
@@ -199,7 +199,7 @@ deploys onto the host. Point it at another host or delete it first.
 
 A host changes home from its console: **Settings ▸ Move to another
 project**. It takes `host:delete` in the home it leaves and `host:create`
-in the one it joins, which must have Apps on.
+in the one it joins, which must have Ship on.
 
 Its name, its server, its secret, its commands and its loans stay. The
 previous home keeps deploying there through its loan, and the dialog lists the
@@ -234,8 +234,8 @@ any project, still deploys onto the host. The refusal names them: point them
 at another host or remove them first.
 
 A project that is the home of a host cannot be deleted, and cannot turn
-Apps off: other projects may deploy onto its hosts, and nobody could manage
-them any more. Its danger zone and its Apps switch name the hosts in the
+Ship off: other projects may deploy onto its hosts, and nobody could manage
+them any more. Its danger zone and its Ship switch name the hosts in the
 way. Move or delete them first.
 
 ## The console of a Bay host
@@ -370,10 +370,10 @@ never sees a host's secret. See
 
 ## Next
 
-- [The Cloudflare token](/lore/docs/apps-cloudflare-token): which token to
+- [The Cloudflare token](/lore/docs/ship-cloudflare-token): which token to
   create for a Cloudflare host.
-- [Deploying an app](/lore/docs/apps-deploying): pick a host and ship a
+- [Deploying an app](/lore/docs/ship-deploying): pick a host and ship a
   build.
-- [Stacks](/lore/docs/apps-stacks): deploy a Compose file onto a Bay host.
-- [Apps and instances](/lore/docs/apps-instances): what an app, an instance
+- [Stacks](/lore/docs/ship-stacks): deploy a Compose file onto a Bay host.
+- [Apps and instances](/lore/docs/ship-instances): what an app, an instance
   and a sigil are.

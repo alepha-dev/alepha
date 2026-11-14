@@ -6,7 +6,7 @@ one command or one button. This page goes from an empty project to a rollback.
 
 Deploying an app through Lore needs an app built with Alepha: what Lore ships
 is the output of `alepha build`. For anything else,
-[Stacks](/lore/docs/apps-stacks) deploy any Compose file.
+[Stacks](/lore/docs/ship-stacks) deploy any Compose file.
 
 ## Do you need Lore to deploy?
 
@@ -28,8 +28,8 @@ be deployed to without a rebuild: a preview per branch, or a copy per customer.
 | **Artifact**     | A build somebody pushed, named by a tag. It never changes, except under the tag `latest`.                 |
 | **Deployment**   | One run of "put this build on that copy", with its log.                                                   |
 
-See [Apps and instances](/lore/docs/apps-instances),
-[Hosts](/lore/docs/apps-hosts) and [Artifacts](/lore/docs/apps-artifacts).
+See [Apps and instances](/lore/docs/ship-instances),
+[Hosts](/lore/docs/ship-hosts) and [Artifacts](/lore/docs/ship-artifacts).
 
 A new app can start on this path. `npm create alepha my-app -- --infra lore`
 (or `alepha init --infra lore`) sets the project in `alepha.config.ts`, adds
@@ -39,8 +39,8 @@ you are signed in. After that, adding a host and running `alepha deploy`
 
 ## 1. Turn deploys on
 
-Turn on **Deploy and watch apps** in **Settings ▸ General ▸ Capabilities**,
-then open **Settings ▸ Apps** and turn on **Deploy apps**. See
+Turn on **Ship** in **Settings ▸ General ▸ Capabilities**,
+then open **Settings ▸ Ship** and turn on **Deploy apps**. See
 [Capabilities](/lore/docs/project-capabilities).
 
 Creating a copy needs the `app:manage` permission. Deploying, rolling back and
@@ -49,15 +49,15 @@ a [rank](/lore/docs/project-members) can be given them.
 
 ## 2. Add or borrow a host
 
-Open **Settings ▸ Apps ▸ Hosts** and choose **Add a host**. The host
+Open **Settings ▸ Ship ▸ Hosts** and choose **Add a host**. The host
 belongs to this project and is lent to it. A host another project lends to
 yours appears on the same page.
 
 A Cloudflare host needs an account id and an API token, and Lore checks the
 token against that account before the host exists. See
-[The Cloudflare token](/lore/docs/apps-cloudflare-token) for the permissions it
+[The Cloudflare token](/lore/docs/ship-cloudflare-token) for the permissions it
 needs. Everything else about hosts, lending included, is in
-[Hosts](/lore/docs/apps-hosts).
+[Hosts](/lore/docs/ship-hosts).
 
 ## 3. Create the copy
 
@@ -100,7 +100,7 @@ again as a new, empty instance: rename it back.
 ### Telemetry wires itself
 
 If the app includes the reporting module (see
-[Telemetry](/lore/docs/apps-telemetry)), there is nothing to set up. A deploy
+[Telemetry](/lore/docs/ship-telemetry)), there is nothing to set up. A deploy
 creates the copy's sigil and writes `SIGIL_KEY` straight into the copy's
 environment. The token never appears in your terminal.
 
@@ -217,7 +217,7 @@ Postgres server and database, never the password.
   apply their migrations to one set of tables.
 - **The server needs a publicly trusted certificate** on a DNS name, and the
   host's token needs **Hyperdrive: Edit** (see
-  [The Cloudflare token](/lore/docs/apps-cloudflare-token)).
+  [The Cloudflare token](/lore/docs/ship-cloudflare-token)).
 - **Backups are yours.** D1 has Time Travel; a Postgres server is backed up
   by whoever runs it.
 
@@ -238,7 +238,7 @@ lore artifacts push --tag 1.2.3
 
 The first builds the app, the second stores the build in your project. Both
 take `--project <slug>` (or `LORE_PROJECT`), and sign in with `lore login` or
-with `LORE_API_KEY` in CI. See [Artifacts](/lore/docs/apps-artifacts).
+with `LORE_API_KEY` in CI. See [Artifacts](/lore/docs/ship-artifacts).
 
 ⚠️ `latest` is the default tag and the **only** one whose build may be
 replaced. Two copies both showing `latest` may be running different code. Name
@@ -438,7 +438,7 @@ ephemeral. See [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next
 
-- [Hosts](/lore/docs/apps-hosts)
-- [Artifacts](/lore/docs/apps-artifacts)
-- [Telemetry](/lore/docs/apps-telemetry)
-- [Stacks](/lore/docs/apps-stacks)
+- [Hosts](/lore/docs/ship-hosts)
+- [Artifacts](/lore/docs/ship-artifacts)
+- [Telemetry](/lore/docs/ship-telemetry)
+- [Stacks](/lore/docs/ship-stacks)

@@ -6,7 +6,7 @@ know: a decision and its reasons, how a subsystem fits together, a runbook, the
 conventions of the codebase. Anything the next person, or the next agent
 session, should not have to rediscover.
 
-Folios need the **Write and keep knowledge** capability, switched in
+Folios need the **Remember** capability, switched in
 **Settings ▸ General ▸ Capabilities**. See
 [Capabilities](/lore/docs/project-capabilities).
 
@@ -54,7 +54,7 @@ A few habits keep folios useful:
   an agent reads to decide whether to open the folio at all.
 
 The **Summary for agents** field appears on a folio when the **Summaries for
-agents** option is on, in **Settings ▸ Folios ▸ Features**. Agents read and
+agents** option is on, in **Settings ▸ Remember ▸ Features**. Agents read and
 write the summary either way.
 
 ## Directories
@@ -96,7 +96,7 @@ you did not know was related.
 
 A folio can carry files: images shown in its body, diagrams, PDFs. Paste or
 drop an image into the body while editing, or use **Add files** on the
-**Files** tab. See [Attachments](/lore/docs/knowledge-attachments).
+**Files** tab. See [Attachments](/lore/docs/remember-attachments).
 
 ## History
 
@@ -129,7 +129,7 @@ agent is told so. Encrypted folios are never included.
 
 ## Folios and epics
 
-A design note that belongs to an [epic](/lore/docs/work-epics) can be filed
+A design note that belongs to an [epic](/lore/docs/plan-epics) can be filed
 under it. On the epic's **Folios** tab, **Attach Folio** picks the folio and
 **Detach** takes it out again, without deleting it.
 
@@ -192,7 +192,7 @@ and `directory_delete` refuses a directory that is not empty unless it passes
 
 ## Next
 
-- [Attachments](/lore/docs/knowledge-attachments): files on a folio or a quest.
-- [Epics](/lore/docs/work-epics): the plans a design note is filed under.
+- [Attachments](/lore/docs/remember-attachments): files on a folio or a quest.
+- [Epics](/lore/docs/plan-epics): the plans a design note is filed under.
 - [Connecting an agent](/lore/docs/agents-connecting): give an agent access to
   the project's folios.

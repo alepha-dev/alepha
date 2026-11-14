@@ -4,7 +4,7 @@ Lore watches the apps a project runs: how many people visit, how fast the pages
 are, and what breaks. The app reports all of it itself, with a key called a
 sigil, and Lore turns the errors into an inbox your team triages.
 
-Telemetry is the **Track apps** option of the **Deploy and watch apps**
+Telemetry is the **Track apps** option of the **Ship**
 capability, in **Settings ▸ General ▸ Capabilities**. See
 [Capabilities](/lore/docs/project-capabilities).
 
@@ -13,7 +13,7 @@ capability, in **Settings ▸ General ▸ Capabilities**. See
 Telemetry is read per instance: one app in one environment, such as
 `web/production`, listed on the project's **Apps** page. What an app, an
 instance and a sigil are, and how to create them, is in
-[Apps and instances](/lore/docs/apps-instances).
+[Apps and instances](/lore/docs/ship-instances).
 
 ## Reading an instance
 
@@ -97,7 +97,7 @@ An app deployed by Lore needs none of this by hand. The deploy creates the
 sigil and writes `SIGIL_KEY` into the copy's environment when the build
 includes the sigil module. What the copy collects is then switched on its
 **Settings** tab, under **Sigil features**, and applies on the next deploy.
-See [Deploying an app](/lore/docs/apps-deploying).
+See [Deploying an app](/lore/docs/ship-deploying).
 
 ### What an app sends
 
@@ -111,9 +111,9 @@ See [Deploying an app](/lore/docs/apps-deploying).
 - **Web Vitals**, as ranges.
 - **Errors**, grouped in the app before they are sent, so the same bug in two
   builds is one error.
-- **Feedback**, when the project also has the **Collect feedback** capability:
+- **Feedback**, when the project also has **Plan** with its **Feedback** option on:
   a button the app shows by itself, or a link you place with
-  `useFeedbackUrl()`. See [Feedback](/lore/docs/support-feedback).
+  `useFeedbackUrl()`. See [Feedback](/lore/docs/plan-feedback).
 
 Every report also carries the app's host, which is how Lore learns the
 instance's address, and the configuration the app runs with, which is what
@@ -160,7 +160,7 @@ A row's menu holds what you can do with it:
   again arrives as a new open error.
 
 To stop seeing a failure you will never fix, **ignore** it by rule: open
-**Settings ▸ Apps** and choose **Manage rules** under **Ignore rules**. A rule
+**Settings ▸ Ship** and choose **Manage rules** under **Ignore rules**. A rule
 is a piece of the error's message, matched whatever the case. Matching reports
 are dropped as they arrive. What the inbox already holds stays, for you to
 delete.
@@ -186,7 +186,7 @@ exists. Shelving or completing the quest changes nothing.
 
 ### Outages
 
-A [healthcheck](/lore/docs/apps-healthchecks) reports a confirmed outage here
+A [healthcheck](/lore/docs/ship-healthchecks) reports a confirmed outage here
 too, as an error named `UptimeOutage`, one per monitor. It is the exception to
 the rules above: recovery resolves it by itself and the next outage reopens it,
 even if it was forwarded, so it can then be forwarded again.
@@ -222,7 +222,7 @@ shape it.
 
 ## Next
 
-- [Apps and instances](/lore/docs/apps-instances)
-- [Healthchecks](/lore/docs/apps-healthchecks)
-- [Deploying an app](/lore/docs/apps-deploying)
+- [Apps and instances](/lore/docs/ship-instances)
+- [Healthchecks](/lore/docs/ship-healthchecks)
+- [Deploying an app](/lore/docs/ship-deploying)
 - [Reports](/lore/docs/project-reports)

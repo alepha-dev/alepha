@@ -239,7 +239,7 @@ describe("ProjectArtifacts", () => {
      */
     const docs = getByTestId("artifacts-empty-docs") as HTMLAnchorElement;
     expect(docs.getAttribute("href")).toBe(
-      "https://alepha.dev/lore/docs/apps-artifacts",
+      "https://alepha.dev/lore/docs/ship-artifacts",
     );
     expect(docs.getAttribute("target")).toBe("_blank");
     // The tutorial is gone from the page, not merely hidden.

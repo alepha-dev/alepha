@@ -13,15 +13,15 @@ work the same for a Rust service, a mobile app or a hardware product.
 
 ## What a project holds
 
-A project is made of four **capabilities**. You pick them when you create the
-project and you can switch any of them later, without losing anything.
+A project is made of three **capabilities**, one for each thing Lore does:
+**Plan**, **Remember** and **Ship**. You pick them when you create the project
+and you can switch any of them later, without losing anything.
 
-| Capability    | What you get                                                                                           | Start here                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
-| **Work**      | **Quests** (units of work), grouped into **epics** and shipped in **releases**, with a list and board. | [Quests](/lore/docs/work-quests)                |
-| **Knowledge** | **Folios**: linked notes in a tree, with files and history. The project's memory.                      | [Folios](/lore/docs/knowledge-folios)           |
-| **Support**   | **Feedback**: a request form for your users and an inbox to triage what they send.                     | [Feedback](/lore/docs/support-feedback)         |
-| **Apps**      | Your deployed apps: analytics, errors, healthchecks and deploys.                                       | [Apps and instances](/lore/docs/apps-instances) |
+| Capability   | What you get                                                                                                                               | Start here                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| **Plan**     | **Quests** (units of work), grouped into **epics** and shipped in **releases**, with a list and a board, and **feedback** your users send. | [Quests](/lore/docs/plan-quests)                |
+| **Remember** | **Folios**: linked notes in a tree, with files and history. The project's memory.                                                          | [Folios](/lore/docs/remember-folios)            |
+| **Ship**     | Your deployed apps: deploys, analytics, errors and healthchecks.                                                                           | [Apps and instances](/lore/docs/ship-instances) |
 
 Every project also has a [dashboard](/lore/docs/project-dashboard),
 [reports](/lore/docs/project-reports), members with
@@ -40,10 +40,9 @@ flowchart LR
   People[People in the browser] --> Project[Lore project]
   Agents[AI agents over MCP] --> Project
   CLI[The lore command, CI] --> Project
-  Project --> Work
-  Project --> Knowledge
-  Project --> Support
-  Project --> Apps
+  Project --> Plan
+  Project --> Remember
+  Project --> Ship
 ```
 
 - **In the browser.** This is where most of this documentation takes place.
@@ -65,11 +64,11 @@ Lore is built with the [Alepha](/docs/guides-introduction) framework and is
 released alongside it, which is why its documentation lives on this site. You
 do not need to know Alepha, or use it in your own project, to use Lore.
 
-Two features of the Apps capability are made for apps built with Alepha today:
-[telemetry](/lore/docs/apps-telemetry), which an app reports through an Alepha
-module, and [app deploys](/lore/docs/apps-deploying), which ship an Alepha
-build. [Healthchecks](/lore/docs/apps-healthchecks) watch any address, and
-[stacks](/lore/docs/apps-stacks) deploy any Compose file.
+Two features of Ship are made for apps built with Alepha today:
+[telemetry](/lore/docs/ship-telemetry), which an app reports through an Alepha
+module, and [app deploys](/lore/docs/ship-deploying), which ship an Alepha
+build. [Healthchecks](/lore/docs/ship-healthchecks) watch any address, and
+[stacks](/lore/docs/ship-stacks) deploy any Compose file.
 
 ## Next
 

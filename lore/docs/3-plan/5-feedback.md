@@ -4,9 +4,9 @@ Feedback is how people outside a project's team report a bug or ask for a
 feature. A report lands in an inbox, someone on the team accepts or rejects it,
 and an accepted report becomes one or more quests.
 
-Feedback is the **Support** capability, labelled **Collect feedback** in
-**Settings ▸ General ▸ Capabilities**. It has no options. See
-[Capabilities](/lore/docs/project-capabilities).
+Feedback is the **Feedback** option of the **Plan** capability, a switch under
+**Plan** in **Settings ▸ General ▸ Capabilities**. It is off until you turn it
+on. See [Capabilities](/lore/docs/project-capabilities).
 
 Turning it off hides the inbox and deletes nothing. The form answers "Feedback
 is closed", a new report is refused, and existing discussions can still be read
@@ -142,7 +142,7 @@ A report with no tag gets the tag `feedback`.
 
 An app that reports to Lore through the sigil gets a feedback button without
 any code. The sigil is a module of the Alepha framework, so this part needs an
-app built with Alepha; see [Telemetry](/lore/docs/apps-telemetry) for the
+app built with Alepha; see [Telemetry](/lore/docs/ship-telemetry) for the
 wiring. Any other app uses the link above.
 
 The sigil mounts a floating button that opens the form in a popup, carrying
@@ -170,7 +170,7 @@ stored, because every member of the project can read it.
 The bell above the inbox's status filter notifies you of every new report.
 Turning it on asks how, **In-app** or **Email**, and creates a rule of yours
 from the **New feedback** preset, enabled at once. It stays an ordinary rule,
-listed under [Automations](/lore/docs/work-automations), where you can edit it.
+listed under [Automations](/lore/docs/plan-automations), where you can edit it.
 Turning the bell off, after a confirmation, deletes that rule. The bell shows
 only to a member who can create automations, in a project with automations on.
 
@@ -219,10 +219,10 @@ as instructions.
 
 ## Next
 
-- [Quests](/lore/docs/work-quests): what an accepted report turns into.
+- [Quests](/lore/docs/plan-quests): what an accepted report turns into.
 - [Notifications](/lore/docs/project-notifications): what the reporter and
   the team are told.
-- [Automations](/lore/docs/work-automations): alert someone when a report
+- [Automations](/lore/docs/plan-automations): alert someone when a report
   arrives.
-- [Telemetry](/lore/docs/apps-telemetry): wire the sigil that mounts the
+- [Telemetry](/lore/docs/ship-telemetry): wire the sigil that mounts the
   button.

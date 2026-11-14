@@ -1,21 +1,20 @@
 # Apps and instances
 
-The **Apps** capability is where a project keeps track of what it runs. This
+The **Ship** capability is where a project keeps track of what it runs. This
 page explains the three words the other pages in this section rely on: app,
 instance and sigil.
 
-Apps is the **Deploy and watch apps** capability, in
-**Settings ▸ General ▸ Capabilities**. Each thing it does is an option you turn
+Ship is switched in **Settings ▸ General ▸ Capabilities**. Each thing it does is an option you turn
 on when you need it. See [Capabilities](/lore/docs/project-capabilities).
 
 ## What you can do with it
 
 | You want to                                         | Option           | Works with               | Page                                          |
 | --------------------------------------------------- | ---------------- | ------------------------ | --------------------------------------------- |
-| Know when a site, a port or a nightly job goes down | **Monitor apps** | Anything with an address | [Healthchecks](/lore/docs/apps-healthchecks)  |
-| Run services from a Compose file on your server     | **Stacks**       | Any Compose file         | [Stacks](/lore/docs/apps-stacks)              |
-| See visitors, page speed and errors                 | **Track apps**   | Apps built with Alepha   | [Telemetry](/lore/docs/apps-telemetry)        |
-| Build, deploy and roll back from Lore               | **Deploy apps**  | Apps built with Alepha   | [Deploying an app](/lore/docs/apps-deploying) |
+| Know when a site, a port or a nightly job goes down | **Monitor apps** | Anything with an address | [Healthchecks](/lore/docs/ship-healthchecks)  |
+| Run services from a Compose file on your server     | **Stacks**       | Any Compose file         | [Stacks](/lore/docs/ship-stacks)              |
+| See visitors, page speed and errors                 | **Track apps**   | Apps built with Alepha   | [Telemetry](/lore/docs/ship-telemetry)        |
+| Build, deploy and roll back from Lore               | **Deploy apps**  | Apps built with Alepha   | [Deploying an app](/lore/docs/ship-deploying) |
 
 Healthchecks and stacks need nothing from this page: go straight to theirs.
 The rest of this page is for telemetry and deploys.
@@ -57,7 +56,7 @@ each one unlocks something:
 A **sigil** is the credential one instance reports with. You create it from
 the instance's **Settings** tab, or with the instance itself. Its token is
 shown once: paste it into the app's configuration as `SIGIL_KEY`.
-[Telemetry](/lore/docs/apps-telemetry) explains the wiring and what is sent.
+[Telemetry](/lore/docs/ship-telemetry) explains the wiring and what is sent.
 
 One sigil belongs to one instance, so `web/production` and `web/staging` never
 mix their numbers.
@@ -75,12 +74,12 @@ something behind it.
 | Tab             | What it shows                                                             |
 | --------------- | ------------------------------------------------------------------------- |
 | **Overview**    | Its address, its last report, and what it sends beside what Lore accepts. |
-| **Analytics**   | Visitors and page views. See [Telemetry](/lore/docs/apps-telemetry).      |
+| **Analytics**   | Visitors and page views. See [Telemetry](/lore/docs/ship-telemetry).      |
 | **Vitals**      | Web Vitals, per page.                                                     |
 | **Errors**      | The errors this copy reported.                                            |
 | **Explore**     | The raw data, to slice by hand.                                           |
-| **Artifacts**   | The builds kept for this app. See [Artifacts](/lore/docs/apps-artifacts). |
-| **Deploy**      | Deploy and roll back. See [Deploying an app](/lore/docs/apps-deploying).  |
+| **Artifacts**   | The builds kept for this app. See [Artifacts](/lore/docs/ship-artifacts). |
+| **Deploy**      | Deploy and roll back. See [Deploying an app](/lore/docs/ship-deploying).  |
 | **Environment** | The variables and secrets the copy runs with.                             |
 | **Settings**    | Its names and address, its sigil, and the host it deploys to.             |
 
@@ -96,10 +95,10 @@ the token once. See [The lore CLI](/lore/docs/reference-cli).
 
 ## Next
 
-- [Telemetry](/lore/docs/apps-telemetry): wire an app and read what it
+- [Telemetry](/lore/docs/ship-telemetry): wire an app and read what it
   reports.
-- [Healthchecks](/lore/docs/apps-healthchecks): watch an address from the
+- [Healthchecks](/lore/docs/ship-healthchecks): watch an address from the
   outside.
-- [Deploying an app](/lore/docs/apps-deploying): ship a build to a machine you
+- [Deploying an app](/lore/docs/ship-deploying): ship a build to a machine you
   own.
-- [Hosts](/lore/docs/apps-hosts): the machines themselves.
+- [Hosts](/lore/docs/ship-hosts): the machines themselves.

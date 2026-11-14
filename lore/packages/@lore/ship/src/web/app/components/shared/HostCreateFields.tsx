@@ -220,7 +220,7 @@ const HostCreateFields = (props: HostCreateFieldsProps) => {
                   // ⚠️ Absolute, through `loreDocsUrl`. Written
                   // root-relative it resolved against Lore's own origin and
                   // 404'd (feedback #P2142).
-                  href={loreDocsUrl("apps-cloudflare-token")}
+                  href={loreDocsUrl("ship-cloudflare-token")}
                   className="underline underline-offset-4"
                   data-testid="host-create-guide"
                 >

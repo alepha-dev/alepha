@@ -4,7 +4,7 @@ A quest is one piece of work in a project: a bug to fix, a feature to build, a
 chore to do. It says what has to change, who is on it and how far along it is,
 and it keeps the discussion and the commits that went with it.
 
-Quests come with the **Plan and track work** capability. The board, estimates,
+Quests come with the **Plan** capability, with a list and a board. Estimates,
 the timer and reminders are options of it: see
 [Capabilities](/lore/docs/project-capabilities).
 
@@ -18,7 +18,7 @@ quest.
 The bar above the table searches, and filters by **Status**, **Area**, **Tag**,
 **Release** and **Epic**. Two kinds of quests are left out until you ask for
 them: shelved quests, which appear when the Status filter names **Shelved**, and
-the quests of a draft [epic](/lore/docs/work-epics), which appear when the Epic
+the quests of a draft [epic](/lore/docs/plan-epics), which appear when the Epic
 filter names that epic. The Release and Epic filters both start with **None**,
 for the quests that belong to no release or no epic.
 
@@ -51,7 +51,7 @@ a release in one go.
 | **Objectives**        | A checklist of at most 10 steps. More than that is more than one quest.                                          |
 | **Depends on**        | Another quest that must be completed before this one can start.                                                  |
 | **Due date**          | A deadline, independent of any release's.                                                                        |
-| **Epic**, **release** | Where it belongs, when the project uses [epics](/lore/docs/work-epics) and [releases](/lore/docs/work-releases). |
+| **Epic**, **release** | Where it belongs, when the project uses [epics](/lore/docs/plan-epics) and [releases](/lore/docs/plan-releases). |
 
 Area, tags and epic answer three different questions. The **area** is _where_
 (a module, a package, a screen), the **tags** are _what kind_ of work, and the
@@ -62,11 +62,11 @@ With the **Estimates** option on, a quest also says how long it should take.
 With **Timer**, it records how long it actually took, from a timer you start
 and pause on the quest. With **Reminders**, whoever holds the quest can ask for
 a daily, weekly or monthly email nudge. All three are switched in
-**Settings ▸ Quests ▸ Features**.
+**Settings ▸ Plan ▸ Features**.
 
 ### Areas
 
-Areas are the project's map of itself. **Settings ▸ Quests ▸ Areas** lists them
+Areas are the project's map of itself. **Settings ▸ Plan ▸ Areas** lists them
 with their open quests, and lets someone whose rank may manage areas describe,
 rename, merge and delete them. Renaming an area onto an existing one merges the
 two. An area that still holds quests cannot be deleted: merge it into another
@@ -156,7 +156,7 @@ frozen, and only its area, tags, release and completion summary can still
 change. Follow-up work is a new quest.
 
 Quests inside an epic follow its workflow too: they can be accepted only while
-the epic is ready or in progress. See [Epics](/lore/docs/work-epics).
+the epic is ready or in progress. See [Epics](/lore/docs/plan-epics).
 
 ### Deleting a quest
 
@@ -178,7 +178,7 @@ as cards in columns.
 The board starts with **To do** and **Completed**. Someone whose rank may
 change the project's settings (the owner, by default) adds up to five columns
 between them, with **Add a column** on the board or in
-**Settings ▸ Quests ▸ Board**. A column's menu on the board renames it, colours
+**Settings ▸ Plan ▸ Board**. A column's menu on the board renames it, colours
 it or deletes it once it is empty. The settings page orders the columns and
 sets, for each one:
 
@@ -235,9 +235,9 @@ quest to an agent from the browser, see
 
 ## Next
 
-- [Epics](/lore/docs/work-epics): group quests into a plan that starts and
+- [Epics](/lore/docs/plan-epics): group quests into a plan that starts and
   ends.
-- [Releases](/lore/docs/work-releases): say what ships when.
-- [Attachments](/lore/docs/knowledge-attachments): files on a quest.
+- [Releases](/lore/docs/plan-releases): say what ships when.
+- [Attachments](/lore/docs/remember-attachments): files on a quest.
 - [Dashboard](/lore/docs/project-dashboard): see the project's quests at a
   glance.

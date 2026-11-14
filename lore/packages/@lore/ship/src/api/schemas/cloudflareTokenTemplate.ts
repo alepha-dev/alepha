@@ -13,7 +13,7 @@
  * ## ⚠️ It is the THIRD copy of one list, and the only guarded one
  *
  * `HostCloudflareService.PERMISSION_PROBES` is what Lore actually checks,
- * the guide (`docs/7-apps/7-cloudflare-token.md`) is what a person reads,
+ * the guide (`docs/6-ship/7-cloudflare-token.md`) is what a person reads,
  * and this is what the link pre-fills. The day someone adds a seventh probe
  * and forgets this file, the link mints a token Lore then refuses - a worse
  * failure than today's, because the person followed our own link.

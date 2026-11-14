@@ -4,7 +4,7 @@ A release is a named goal that holds the work due to ship in it: `0.28.0`,
 `demo-1`, `v1.0.0-rc.1`. It answers "what is in this version" while the work is
 going on, and keeps a changelog of what shipped once it is published.
 
-Releases are the **Releases** option of the **Plan and track work** capability:
+Releases are the **Releases** option of the **Plan** capability:
 see [Capabilities](/lore/docs/project-capabilities). Creating, publishing and
 deleting them needs a rank that may manage releases, which the owner has and a
 plain **Member** does not by default (see
@@ -36,7 +36,7 @@ On the release's page, **Edit** adds a **Title**, a **Target date** and a
 **Description**. The target date is an estimate: nothing enforces it.
 
 ⚠️ Changing a release's tag moves its URL, so links already shared stop
-working, and [artifacts](/lore/docs/apps-artifacts) built against the old tag
+working, and [artifacts](/lore/docs/ship-artifacts) built against the old tag
 drop off the release. The title is safe to change at any time.
 
 ### Creating the next version
@@ -113,9 +113,9 @@ above five tabs:
   other.
 - **Changelog**: the completed quests attached to it, as Markdown. **Copy** it,
   download it as `.md`, or **Save to Folios** to keep it as a
-  [folio](/lore/docs/knowledge-folios).
+  [folio](/lore/docs/remember-folios).
 - **Artifacts**: the builds pushed under the same tag (see
-  [Artifacts](/lore/docs/apps-artifacts)).
+  [Artifacts](/lore/docs/ship-artifacts)).
 
 The progress bar counts the quests in four groups: done, in progress, not
 started and declined (shelved).
@@ -244,9 +244,9 @@ The full list is in [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next
 
-- [Epics](/lore/docs/work-epics): the plans a release ships.
-- [Artifacts](/lore/docs/apps-artifacts): the builds pushed under a release's
+- [Epics](/lore/docs/plan-epics): the plans a release ships.
+- [Artifacts](/lore/docs/ship-artifacts): the builds pushed under a release's
   tag.
-- [Automations](/lore/docs/work-automations): append each published changelog
+- [Automations](/lore/docs/plan-automations): append each published changelog
   to a folio.
 - [Reports](/lore/docs/project-reports): how a release is progressing.

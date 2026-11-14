@@ -21,7 +21,7 @@ quest.
 ## On a folio
 
 A folio's files are managed on the **Files** tab of the inspector, on the
-right of the [folio workspace](/lore/docs/knowledge-folios). The folio has to
+right of the [folio workspace](/lore/docs/remember-folios). The folio has to
 be saved once before it can take a file.
 
 - **Add files** picks one or several files. Dropping files on the tab does the
@@ -134,6 +134,6 @@ See [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next
 
-- [Folios](/lore/docs/knowledge-folios): the notes these files illustrate.
-- [Quests](/lore/docs/work-quests): where a screenshot explains the work.
+- [Folios](/lore/docs/remember-folios): the notes these files illustrate.
+- [Quests](/lore/docs/plan-quests): where a screenshot explains the work.
 - [The lore CLI](/lore/docs/reference-cli): install it and sign in.

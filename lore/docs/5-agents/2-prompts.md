@@ -8,7 +8,7 @@ paste into your agent or anything else that reads a paste.
 Nothing is sent anywhere. The prompt is put together in your browser and copied.
 Lore does not transmit it and keeps no copy of what you pasted.
 
-**It starts off.** Turn on the **Agent prompts** option in **Settings ▸ Quests
+**It starts off.** Turn on the **Agent prompts** option in **Settings ▸ Plan
 ▸ Features**, once per project. Until then the menus are not shown. See
 [Capabilities](/lore/docs/project-capabilities).
 
@@ -31,8 +31,8 @@ your coding agent. The agent needs access to the project to act on it: see
 | **Work on it** (epic)       | the same two places                                                | the epic is ready or in progress, or a draft that you may mark ready             |
 | **Work on it** (quest)      | a quest's row menu, the epic's own quest table, and the quest page | the quest is not completed, and its epic, if it has one, is ready or in progress |
 | **Work on it** (feedback)   | the feedback detail panel                                          | the report is pending or accepted                                                |
-| **Triage the inbox**        | the feedback detail panel                                          | always, with the **Collect feedback** capability on                              |
-| **Triage the errors**       | the errors inbox toolbar                                           | always, with the **Deploy and watch apps** capability on                         |
+| **Triage the inbox**        | the feedback detail panel                                          | always, with Plan's **Feedback** option on                                       |
+| **Triage the errors**       | the errors inbox toolbar                                           | always, with the **Ship** capability on                                          |
 | **Work the loose quests**   | the Quests page toolbar                                            | always                                                                           |
 | **Write the weekly status** | the Reports **Summary** tab                                        | always                                                                           |
 
@@ -45,7 +45,7 @@ with numbered questions, decisions and changes, and lists the questions in its
 reply by those numbers, so you can answer on the epic's Review tab or in the
 chat ("answer 3: B"). It reads the earlier reviews' decisions first, and does
 not ask again what is already answered. See
-[Reviewing an epic](/lore/docs/work-epics#reviewing-an-epic).
+[Reviewing an epic](/lore/docs/plan-epics#reviewing-an-epic).
 
 **Work on it** hands the whole epic over, quest by quest: accept, work, verify,
 commit and complete each quest in turn. It treats the epic's decisions as
@@ -92,7 +92,7 @@ what moved and what needs a decision. See
 
 ## Writing your own
 
-Each prompt has a built-in default. **Settings ▸ Quests ▸ Agent prompts** is
+Each prompt has a built-in default. **Settings ▸ Plan ▸ Agent prompts** is
 where you replace it: a legend of the placeholders, then one editor per prompt,
 each with **Save** and **Reset to default**.
 
@@ -177,6 +177,6 @@ The prompts are stored per project, not per member: one project, one set.
 
 - [Connecting an agent](/lore/docs/agents-connecting): what an agent needs
   before a pasted prompt can do anything.
-- [Epics](/lore/docs/work-epics): drafts, reviews and marking an epic ready.
+- [Epics](/lore/docs/plan-epics): drafts, reviews and marking an epic ready.
 - [Assistant](/lore/docs/agents-assistant): the chat inside Lore.
 - [MCP tools](/lore/docs/reference-mcp-tools): the tools the prompts name.

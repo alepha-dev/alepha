@@ -322,7 +322,7 @@ See the [Infra Plugin](/docs/cli-plugins-infra) guide for full configuration, se
 
 ### Deploy through Lore
 
-[Lore](/lore/docs/apps-deploying) deploys an app to the machines you lend a project, a Bay server or a Cloudflare account, and collects its telemetry. Scaffold the app for it:
+[Lore](/lore/docs/ship-deploying) deploys an app to the machines you lend a project, a Bay server or a Cloudflare account, and collects its telemetry. Scaffold the app for it:
 
 ```bash
 npm create alepha my-app -- --infra lore

@@ -18,7 +18,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const guides = join(here, "../../../docs");
 const target = join(here, "../src/assistant/docs/docsCorpus.ts");
 
-// Every guide, named by its path under `lore/docs`: `3-work/1-quests.md`.
+// Every guide, named by its path under `lore/docs`: `3-plan/1-quests.md`.
 const names = (await readdir(guides, { recursive: true }))
   .filter((name) => name.endsWith(".md"))
   .map((name) => name.split("\\").join("/"));

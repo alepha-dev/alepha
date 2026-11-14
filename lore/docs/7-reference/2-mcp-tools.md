@@ -23,7 +23,7 @@ them.
 
 - **Start with `project_context`.** It answers the capability set, then only
   the sections those capabilities own, such as the folio index and the pinned
-  folios for Knowledge. A section a project has turned off is absent, not
+  folios for Remember. A section a project has turned off is absent, not
   empty.
 - **Naming the project.** `project` is the id. `project_name` is the title or
   the slug, case-insensitive.
@@ -35,8 +35,10 @@ them.
   `[[#R7]]` a release.
 - **Mentions reach people.** `@name` in a comment puts a message in that
   member's [notifications](/lore/docs/project-notifications).
-- **Capabilities.** A write into a capability the project does not have is
-  refused, with an error naming the capability and how to turn it on. Reads of
+- **Capabilities.** The keys are `plan`, `remember` and `ship`, and the
+  `feedback_*` tools need the `feedback` option of `plan`. A write into a
+  capability or an option the project does not have is refused, with an error
+  naming it (`plan.feedback`) and how to turn it on. Reads of
   what already exists stay allowed, except `stack_logs`, which has to ask the
   machine. See [Capabilities](/lore/docs/project-capabilities).
 - **Lists are paged** on the tools that say so. `feedback_list` answers at most
@@ -72,7 +74,7 @@ can reach, by id and title.
 
 ## Quests
 
-See [Quests](/lore/docs/work-quests).
+See [Quests](/lore/docs/plan-quests).
 
 | Tool                   | What it does                                                                        |
 | ---------------------- | ----------------------------------------------------------------------------------- |
@@ -97,7 +99,7 @@ See [Quests](/lore/docs/work-quests).
 
 ## Epics
 
-See [Epics](/lore/docs/work-epics).
+See [Epics](/lore/docs/plan-epics).
 
 | Tool                 | What it does                                                                    |
 | -------------------- | ------------------------------------------------------------------------------- |
@@ -114,7 +116,7 @@ See [Epics](/lore/docs/work-epics).
 
 ## Releases
 
-See [Releases](/lore/docs/work-releases).
+See [Releases](/lore/docs/plan-releases).
 
 | Tool                  | What it does                                                          |
 | --------------------- | --------------------------------------------------------------------- |
@@ -132,8 +134,8 @@ See [Releases](/lore/docs/work-releases).
 
 ## Folios and directories
 
-See [Folios](/lore/docs/knowledge-folios) and
-[Attachments](/lore/docs/knowledge-attachments).
+See [Folios](/lore/docs/remember-folios) and
+[Attachments](/lore/docs/remember-attachments).
 
 | Tool                      | What it does                                                      |
 | ------------------------- | ----------------------------------------------------------------- |
@@ -157,7 +159,7 @@ See [Folios](/lore/docs/knowledge-folios) and
 
 ## Feedback
 
-See [Feedback](/lore/docs/support-feedback).
+See [Feedback](/lore/docs/plan-feedback).
 
 | Tool                      | What it does                                         |
 | ------------------------- | ---------------------------------------------------- |
@@ -170,7 +172,7 @@ See [Feedback](/lore/docs/support-feedback).
 
 ## Automations
 
-See [Automations](/lore/docs/work-automations).
+See [Automations](/lore/docs/plan-automations).
 
 | Tool                             | What it does                                                                    |
 | -------------------------------- | ------------------------------------------------------------------------------- |
@@ -191,8 +193,8 @@ See [Automations](/lore/docs/work-automations).
 
 ## Apps and telemetry
 
-See [Apps and instances](/lore/docs/apps-instances) and
-[Telemetry](/lore/docs/apps-telemetry).
+See [Apps and instances](/lore/docs/ship-instances) and
+[Telemetry](/lore/docs/ship-telemetry).
 
 | Tool                  | What it does                                                                       |
 | --------------------- | ---------------------------------------------------------------------------------- |
@@ -212,7 +214,7 @@ See [Apps and instances](/lore/docs/apps-instances) and
 
 ## Uptime
 
-See [Healthchecks](/lore/docs/apps-healthchecks). Reading needs `app:read`;
+See [Healthchecks](/lore/docs/ship-healthchecks). Reading needs `app:read`;
 the rest needs `app:manage` and the **Monitor apps** option.
 
 | Tool                              | What it does                                                                       |
@@ -226,9 +228,9 @@ the rest needs `app:manage` and the **Monitor apps** option.
 
 ## Deploys
 
-See [Deploying an app](/lore/docs/apps-deploying),
-[Artifacts](/lore/docs/apps-artifacts), [Stacks](/lore/docs/apps-stacks) and
-[Hosts](/lore/docs/apps-hosts).
+See [Deploying an app](/lore/docs/ship-deploying),
+[Artifacts](/lore/docs/ship-artifacts), [Stacks](/lore/docs/ship-stacks) and
+[Hosts](/lore/docs/ship-hosts).
 
 | Tool              | What it does                                                                                |
 | ----------------- | ------------------------------------------------------------------------------------------- |
@@ -261,12 +263,12 @@ Some of Lore is not reachable over MCP. Reach for the page or the
 | [Notifications](/lore/docs/project-notifications)                | The bell. A comment naming someone reaches them.                                      |
 | Deleting a feedback report                                       | The Feedback page.                                                                    |
 | Deleting an error                                                | The Errors page.                                                                      |
-| Error ignore rules                                               | **Settings ▸ Apps**.                                                                  |
+| Error ignore rules                                               | **Settings ▸ Ship**.                                                                  |
 | Pushing a build                                                  | CI, with `lore artifacts push`.                                                       |
 | Building an app, or taking a deployed copy down                  | `lore deploy` and `lore apps destroy`.                                                |
 | Secrets of a deployed copy                                       | `lore secrets`, and the Environment tab.                                              |
 | Creating a stack, uploading a revision, its variables and routes | `lore stack`, and the Stacks page.                                                    |
-| [Hosts](/lore/docs/apps-hosts) and their secrets                 | `lore host`. `host_stats` only reads: no tool creates, moves, assigns or deletes one. |
+| [Hosts](/lore/docs/ship-hosts) and their secrets                 | `lore host`. `host_stats` only reads: no tool creates, moves, assigns or deletes one. |
 | Container registry credentials                                   | `lore registry`.                                                                      |
 | API keys and account settings                                    | Your account, from a signed-in session.                                               |
 

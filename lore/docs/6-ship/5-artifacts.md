@@ -14,7 +14,7 @@ lore artifacts push --tag 1.2.3
 ```
 
 `alepha build` writes `dist/`. `lore artifacts push` packs it and uploads it to
-your project. Like the [app deploys](/lore/docs/apps-deploying) that ship it,
+your project. Like the [app deploys](/lore/docs/ship-deploying) that ship it,
 a pushed build is the build of an app made with Alepha.
 
 ## Pushing a build
@@ -140,6 +140,6 @@ from a shell. See [MCP tools](/lore/docs/reference-mcp-tools) and
 
 ## Next
 
-- [Deploying an app](/lore/docs/apps-deploying)
-- [Releases](/lore/docs/work-releases)
-- [Apps and instances](/lore/docs/apps-instances)
+- [Deploying an app](/lore/docs/ship-deploying)
+- [Releases](/lore/docs/plan-releases)
+- [Apps and instances](/lore/docs/ship-instances)

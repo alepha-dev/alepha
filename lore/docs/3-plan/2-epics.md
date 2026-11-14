@@ -3,10 +3,10 @@
 An epic is a bounded piece of work made of several quests: a feature, a
 migration, a redesign. You write its plan, the team works its quests, and it
 ends. It is not a category: an **area** is where work happens and never ends, a
-[release](/lore/docs/work-releases) is when something ships, and an epic is
+[release](/lore/docs/plan-releases) is when something ships, and an epic is
 what is being built.
 
-Epics are the **Epics** option of the **Plan and track work** capability: see
+Epics are the **Epics** option of the **Plan** capability: see
 [Capabilities](/lore/docs/project-capabilities).
 
 ## The epic list and the epic page
@@ -24,7 +24,7 @@ An epic's page is split into tabs:
 - **Flow**: a map of how those quests depend on each other.
 - **Review**: the questions and decisions of its reviews (see
   [Reviewing an epic](#reviewing-an-epic)).
-- **Folios**: the [folios](/lore/docs/knowledge-folios) filed under it, such as
+- **Folios**: the [folios](/lore/docs/remember-folios) filed under it, such as
   a spec or an outcome note. They can be attached and detached in every status.
 - **Activity**: what happened to it.
 
@@ -210,7 +210,7 @@ progress bar on a draft or ready epic reads as "not started" rather than
 "stalled". The roadmap draws the order only. Whether an epic is blocked right
 now is on the epic's own page.
 
-Who can see the roadmap is set in **Settings ▸ Quests ▸ Features**, under
+Who can see the roadmap is set in **Settings ▸ Plan ▸ Features**, under
 **Roadmap**: **Off**, **Members only** or **Public**. The same card gives the
 link to share. A change can take up to a minute to reach visitors.
 
@@ -257,7 +257,7 @@ the epic ready as it copies, so a finished plan is handed over in one click.
 
 ## Next
 
-- [Quests](/lore/docs/work-quests): the work inside an epic.
-- [Releases](/lore/docs/work-releases): where an epic ships.
+- [Quests](/lore/docs/plan-quests): the work inside an epic.
+- [Releases](/lore/docs/plan-releases): where an epic ships.
 - [Agent prompts](/lore/docs/agents-prompts): hand an epic to a coding agent.
 - [Reports](/lore/docs/project-reports): how the work is flowing.

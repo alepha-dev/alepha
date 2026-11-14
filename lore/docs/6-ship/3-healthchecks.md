@@ -5,9 +5,9 @@ TLS certificate, or a scheduled job that should have reported in. It works for
 any address, whatever the stack behind it, and needs no sigil and no app in
 Lore.
 
-Healthchecks are the **Monitor apps** option of the **Deploy and watch apps**
+Healthchecks are the **Monitor apps** option of the **Ship**
 capability, off by default, in **Settings ▸ General ▸ Capabilities** and
-**Settings ▸ Apps**. Turning it on adds **Uptime** to the sidebar. It works on
+**Settings ▸ Ship**. Turning it on adds **Uptime** to the sidebar. It works on
 its own: a project can keep **Track apps** and **Deploy apps** off and still
 watch any address, with its history and its alerts. See
 [Capabilities](/lore/docs/project-capabilities).
@@ -98,7 +98,7 @@ When an outage opens:
 - **An incident** is recorded, with its cause and start. It closes when the
   monitor recovers.
 - **An error** named `UptimeOutage` appears in the project's
-  [Errors](/lore/docs/apps-telemetry#errors) inbox, one per monitor, with the
+  [Errors](/lore/docs/ship-telemetry#errors) inbox, one per monitor, with the
   monitor, the target and the failure. It is resolved by itself on recovery, and
   the next outage opens it again. The inbox stays reachable while it is open,
   even with no sigil in the project. It follows the retention of any open error,
@@ -173,6 +173,6 @@ name `UptimeOutage`.
 
 ## Next
 
-- [Telemetry](/lore/docs/apps-telemetry): the Errors inbox an outage lands in.
+- [Telemetry](/lore/docs/ship-telemetry): the Errors inbox an outage lands in.
 - [Notifications](/lore/docs/project-notifications)
-- [Apps and instances](/lore/docs/apps-instances)
+- [Apps and instances](/lore/docs/ship-instances)

@@ -30,12 +30,12 @@ Choose **New Project** on the home page. The wizard asks three things:
 
 1. **A name.** Lore derives the project's address from it:
    `https://lore.alepha.dev/<slug>`.
-2. **What the project does.** Each switch is a capability: planning work,
-   keeping knowledge, watching and deploying apps, collecting feedback. Pick
-   at least one. **Plan and track work** and **Write and keep knowledge** are
-   on by default, and they are all this page needs.
+2. **What the project does.** Each switch is a capability: **Plan** (quests,
+   epics, releases, feedback), **Remember** (folios) and **Ship** (apps and
+   their deploys). Pick at least one. **Plan** and **Remember** are on by
+   default, and they are all this page needs.
 3. **How to set it up.** The options of what you picked, such as epics,
-   releases and the board.
+   releases and feedback.
 
 ![The project wizard asking what the project does](/screenshots/lore/new-project-light.png)
 
@@ -62,7 +62,7 @@ choose **Complete quest** when the work has landed.
 ![A quest in progress, with its objectives and discussion](/screenshots/lore/quest-light.png)
 
 Every quest has a number in its project, written `#Q12`. Use it in commit
-messages, comments and folios, and Lore links it. [Quests](/lore/docs/work-quests)
+messages, comments and folios, and Lore links it. [Quests](/lore/docs/plan-quests)
 covers statuses, the board and everything else.
 
 ## 4. Invite your team
@@ -85,7 +85,7 @@ something breaks. Link folios to each other and to quests with `[[#F3]]` and
 
 A good first folio is the one a new teammate, or an agent, should read before
 touching anything: your conventions. Pin it and it is handed to every agent
-that opens the project. See [Folios](/lore/docs/knowledge-folios).
+that opens the project. See [Folios](/lore/docs/remember-folios).
 
 ## 6. Connect an agent (optional)
 
@@ -104,10 +104,10 @@ other clients, API keys and the `lore` command for terminals and CI.
 
 ## Next
 
-- [Quests](/lore/docs/work-quests), then [Epics](/lore/docs/work-epics) and
-  [Releases](/lore/docs/work-releases): planning beyond a single quest.
+- [Quests](/lore/docs/plan-quests), then [Epics](/lore/docs/plan-epics) and
+  [Releases](/lore/docs/plan-releases): planning beyond a single quest.
 - [Dashboard](/lore/docs/project-dashboard): where the project stands, on one
   page.
-- [Feedback](/lore/docs/support-feedback): let your users file requests.
-- [Apps and instances](/lore/docs/apps-instances): watch and deploy what you
+- [Feedback](/lore/docs/plan-feedback): let your users file requests.
+- [Apps and instances](/lore/docs/ship-instances): watch and deploy what you
   ship.
