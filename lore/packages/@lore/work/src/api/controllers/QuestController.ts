@@ -829,7 +829,7 @@ export class QuestController {
 
       // Quest-creation mechanics (shortId sequence, area-ensure, HTML
       // sanitization, defaults) live in QuestService — the single path
-      // shared with BlightController.forwardBlightToQuest.
+      // shared with ProjectErrorController.forwardProjectErrorToQuest.
       const quest = await this.questService.createQuest({
         projectId: body.projectId,
         releaseId,
@@ -1579,7 +1579,7 @@ export class QuestController {
   /**
    * Open-quest count for the sidebar badge. "Open" is everything neither
    * completed nor shelved — the same "still needs attention" meaning the
-   * blight and feedback badges carry, so all three numbers read the same way.
+   * error and feedback badges carry, so all three numbers read the same way.
    *
    * Shelved quests are deliberately out of scope, and the list this badge
    * links to already hides them, so counting them made the sidebar disagree

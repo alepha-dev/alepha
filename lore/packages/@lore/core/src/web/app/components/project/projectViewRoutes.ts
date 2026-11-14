@@ -147,7 +147,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectFoliosNew",
   "projectFoliosFolio",
   "projectFeedback",
-  "projectBlights",
+  "projectErrors",
   // The same shape as its two neighbours above, and it was missing
   // (feedback #P2129): capped, the message table sat in a ~900px column with
   // the project background down both sides while Message truncated inside
@@ -283,7 +283,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectFoliosNew: "project.menu.folios",
   projectFoliosFolio: "project.menu.folios",
   projectFeedback: "project.menu.feedback",
-  projectBlights: "project.menu.blights",
+  projectErrors: "project.menu.errors",
   projectApps: "project.menu.apps",
   projectApp: "project.menu.apps",
   projectAppRedirect: "project.menu.apps",

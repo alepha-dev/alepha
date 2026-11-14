@@ -125,7 +125,7 @@ export const sigilEnvelope = z.object({
          * Capped: the sink adds it to a stored total, and an unbounded count
          * from one anonymous post (the proxy has no `$secure`) pushed that
          * total past the safe-integer range, after which every read of the
-         * project's blight list threw.
+         * project's error list threw.
          */
         count: z.integer().min(1).max(1_000_000).optional(),
       }),

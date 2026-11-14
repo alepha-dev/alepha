@@ -26,11 +26,11 @@ describe("Uptime in the project sidebar", () => {
     };
     expect(
       shell.offeredNav(project, context).map((row) => row.route),
-    ).not.toContain("projectBlights");
+    ).not.toContain("projectErrors");
     alepha.store.set(currentBlightCountAtom, { count: 1 });
     expect(
       shell.offeredNav(project, context).map((row) => row.route),
-    ).toContain("projectBlights");
+    ).toContain("projectErrors");
   });
   it("hides when off or absent and appears without a sigil when enabled", ({
     expect,

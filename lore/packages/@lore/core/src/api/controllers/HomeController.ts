@@ -140,7 +140,7 @@ export class HomeController {
   }
 
   /**
-   * Draft epics, open blights and pending feedback per project, each counted
+   * Draft epics, open errors and pending feedback per project, each counted
    * by the module that owns it (`ProjectCountRegistry`, #E75 #Q2623) and all
    * three in ONE statement for every project at once; zero for a count no
    * module registered.
@@ -152,21 +152,21 @@ export class HomeController {
     Array<{
       projectId: number;
       epics: number;
-      blights: number;
+      projectErrors: number;
       feedback: number;
     }>
   > {
     const counts = await this.counts.countMany(
-      ["draftEpics", "openBlights", "pendingFeedback"],
+      ["draftEpics", "openErrors", "pendingFeedback"],
       projectIds,
     );
     const epics = counts.get("draftEpics") ?? new Map<number, number>();
-    const blights = counts.get("openBlights") ?? new Map<number, number>();
+    const projectErrors = counts.get("openErrors") ?? new Map<number, number>();
     const feedback = counts.get("pendingFeedback") ?? new Map<number, number>();
     return projectIds.map((projectId) => ({
       projectId,
       epics: epics.get(projectId) ?? 0,
-      blights: blights.get(projectId) ?? 0,
+      projectErrors: projectErrors.get(projectId) ?? 0,
       feedback: feedback.get(projectId) ?? 0,
     }));
   }

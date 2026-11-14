@@ -5,7 +5,7 @@ import { type Infer, z } from "alepha";
  *
  * Conceptually a tagged union — `all | projects[] | apps[] | epic |
  * release` — because the tiles need genuinely different shapes: unique
- * visitors takes one app, open blights takes a list of apps that may span
+ * visitors takes one app, open errors takes a list of apps that may span
  * projects, active quests takes one project. Each metric declares the kinds
  * it accepts (`DashboardMetricCatalog`), so a card whose scope kind its
  * metric does not accept is invalid by construction.

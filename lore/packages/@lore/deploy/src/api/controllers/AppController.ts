@@ -75,7 +75,7 @@ export class AppController {
    * for a projection of the first one is a request that can disagree with it.
    *
    * Member-gated, like `listSigils` before it: the list is an inventory of
-   * what this project runs, which is what the sidebar, the blights filter and
+   * what this project runs, which is what the sidebar, the errors filter and
    * the insights page all mean, and none of those is owner-only.
    */
   listApps = $action({
@@ -321,8 +321,8 @@ export class AppController {
    *
    * A warning, like deleting a sigil, and for the same reason: the four
    * aggregate tables cascade on `sigilId`, so this takes that copy's views,
-   * uniques, vitals and error groups with it. Blights survive
-   * (`blights.sigilId` is `ON DELETE SET NULL`): a triage decision outlives
+   * uniques, vitals and error groups with it. Errors survive
+   * (`projectErrors.sigilId` is `ON DELETE SET NULL`): a triage decision outlives
    * the credential that surfaced it.
    *
    * ⚠️ **Deleting an instance undeploys nothing**, and is refused while the
@@ -622,7 +622,7 @@ export class AppController {
    *
    * `inArray` over the ids this project's own rows carry, so the list is
    * bounded by the project's instance count. ⚠️ If that ever approaches D1's
-   * 100-parameter ceiling (folio #1173), chunk at 90 like `BlightJobs.chunked`
+   * 100-parameter ceiling (folio #1173), chunk at 90 like `ProjectErrorJobs.chunked`
    * rather than raising it.
    */
   protected async toResources(

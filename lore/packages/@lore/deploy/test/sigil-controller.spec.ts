@@ -225,7 +225,7 @@ describe("SigilController", () => {
   }) => {
     // `sigils.name` is a mirror written by `AppService` and by nobody else, so
     // the credential a caller gets back already says which deployed copy it
-    // belongs to - which is what the blights filter and the insights dimension
+    // belongs to - which is what the errors filter and the insights dimension
     // render.
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
@@ -397,7 +397,7 @@ describe("SigilController", () => {
     );
     expect(created.data.kinds).toEqual([
       "feedback",
-      "blights",
+      "errors",
       "beacon",
       "vitals",
     ]);
@@ -513,7 +513,7 @@ describe("SigilController", () => {
       { user: owner },
     );
 
-    // Reads are member-gated: the inventory drives the blights filter and the
+    // Reads are member-gated: the inventory drives the errors filter and the
     // insights page, neither of which is owner-only.
     const list = await ctx.sigilController.listSigils.fetch(
       { params: { projectId } },

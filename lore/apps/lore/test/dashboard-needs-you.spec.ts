@@ -1,7 +1,7 @@
 import { DashboardMetricRegistry } from "@lore/core/api";
 import type { DashboardCardValue, Project } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
-import { blights } from "@lore/deploy/schemas";
+import { projectErrors } from "@lore/deploy/schemas";
 import { feedback } from "@lore/work/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -23,7 +23,7 @@ import {
 } from "./fixtures/entities.ts";
 
 class NeedsYouRepositories {
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
   feedback = $repository(feedback);
 }
 
@@ -87,10 +87,10 @@ describe("dashboard needs you", () => {
       )
     )[0]!;
 
-  const blight = async (project: Project, name: string) => {
+  const projectError = async (project: Project, name: string) => {
     seq += 1;
     const stamp = dateTime.nowISOString();
-    return repos.blights.create({
+    return repos.projectErrors.create({
       projectId: project.id,
       fingerprint: `fp-${seq}`,
       name,
@@ -125,23 +125,23 @@ describe("dashboard needs you", () => {
       title: "late",
       dueAt: dateTime.now().subtract(2, "day").toISOString(),
     });
-    await blight(project, "TypeError");
+    await projectError(project, "TypeError");
     await pending(project, "Login is slow");
 
     const value = await resolve(project, user);
 
     expect(value.rows?.map((row) => [row.title, row.badge])).toEqual([
       ["late", "overdue"],
-      ["TypeError", "blight"],
+      ["TypeError", "error"],
       ["parked", "held"],
       ["Login is slow", "untriaged"],
     ]);
     expect(value.value).toBe(4);
   });
 
-  it("titles a blight named only Error by its message", async ({ expect }) => {
+  it("titles an error named only Error by its message", async ({ expect }) => {
     const { project, user } = await projectOf();
-    await blight(project, "Error");
+    await projectError(project, "Error");
 
     const value = await resolve(project, user);
 
@@ -171,7 +171,7 @@ describe("dashboard needs you", () => {
     const { project, user } = await projectOf({
       capabilities: [{ key: "work" }],
     });
-    await blight(project, "TypeError");
+    await projectError(project, "TypeError");
     await pending(project, "ignored");
     await createTestQuest(alepha, project, {
       title: "parked",
@@ -195,14 +195,14 @@ describe("dashboard needs you", () => {
     expect,
   }) => {
     const { project, user } = await projectOf();
-    for (let i = 0; i < 10; i += 1) await blight(project, `Error ${i}`);
+    for (let i = 0; i < 10; i += 1) await projectError(project, `Error ${i}`);
 
     const value = await resolve(project, user);
     const more = value.rows?.filter((row) => row.badge === "more") ?? [];
 
-    expect(value.rows?.filter((row) => row.badge === "blight")).toHaveLength(8);
+    expect(value.rows?.filter((row) => row.badge === "error")).toHaveLength(8);
     expect(more).toEqual([
-      expect.objectContaining({ title: "blights", value: 2 }),
+      expect.objectContaining({ title: "errors", value: 2 }),
     ]);
   });
 });

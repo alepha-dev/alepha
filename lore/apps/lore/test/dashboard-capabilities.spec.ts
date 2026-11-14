@@ -207,7 +207,7 @@ describe("dashboard cards and capabilities", () => {
       // landing page pointing at a project they may not even be in.
       expect(catalog.on("home").map((it) => it.key)).toEqual([
         "activeQuests",
-        "openBlights",
+        "openErrors",
         "untriagedFeedback",
         "uniqueVisitors",
       ]);
@@ -243,19 +243,19 @@ describe("dashboard cards and capabilities", () => {
       expect(metricUnavailableKey(activeQuests, projects, [])).toBeUndefined();
     });
 
-    it("needs the option, not just the capability, for blights", ({
+    it("needs the option, not just the capability, for errors", ({
       expect,
     }) => {
       const catalog = ctx.alepha.inject(DashboardMetricCatalog);
-      const openBlights = catalog.get("openBlights");
+      const openErrors = catalog.get("openErrors");
 
       expect(
-        eligibleProjects(openBlights, [
+        eligibleProjects(openErrors, [
           aProject(1, [{ key: "apps", options: { track: false } }]),
         ]),
       ).toEqual([]);
       expect(
-        eligibleProjects(openBlights, [
+        eligibleProjects(openErrors, [
           aProject(1, [{ key: "apps", options: { track: true } }]),
         ]).map((it) => it.id),
       ).toEqual([1]);
@@ -333,21 +333,17 @@ describe("dashboard cards and capabilities", () => {
       expect(catalog.offers("testHomeOnly", "project")).toBe(false);
     });
 
-    it("offers blights, visitors and feedback on a project board", ({
+    it("offers errors, visitors and feedback on a project board", ({
       expect,
     }) => {
       const catalog = ctx.alepha.inject(DashboardMetricCatalog);
 
-      for (const key of [
-        "openBlights",
-        "uniqueVisitors",
-        "untriagedFeedback",
-      ]) {
+      for (const key of ["openErrors", "uniqueVisitors", "untriagedFeedback"]) {
         expect(catalog.offers(key, "project"), key).toBe(true);
       }
       // The project itself, or some of its apps, for the two that can name
       // apps; nothing to ask for feedback, which no flow attributes to an app.
-      expect(catalog.pickableScopeKinds("openBlights", "project")).toEqual([
+      expect(catalog.pickableScopeKinds("openErrors", "project")).toEqual([
         "projects",
         "apps",
       ]);
@@ -376,7 +372,7 @@ describe("dashboard cards and capabilities", () => {
         releaseProgress: { capability: "work", option: "releases" },
         tagCompletion: { capability: "work" },
         untriagedFeedback: { capability: "support" },
-        openBlights: { capability: "apps", option: "track" },
+        openErrors: { capability: "apps", option: "track" },
         uniqueVisitors: { capability: "apps", option: "track" },
       });
       // Core's own metrics (`needsYou`) gate per SOURCE instead.
@@ -436,9 +432,9 @@ describe("dashboard cards and capabilities", () => {
         },
       ];
 
-      // Blights: `beacon` is irrelevant, the project is not.
+      // Errors: `beacon` is irrelevant, the project is not.
       expect(
-        eligibleApps(catalog.get("openBlights"), apps, projects).map(
+        eligibleApps(catalog.get("openErrors"), apps, projects).map(
           (it) => it.id,
         ),
       ).toEqual(["a", "b"]);

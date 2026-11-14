@@ -131,7 +131,7 @@ export class SigilController {
    * Every sigil on a project, newest first.
    *
    * Member-gated rather than owner-gated: the list is an inventory of which
-   * apps report, which is exactly what the blights inbox's filter and the
+   * apps report, which is exactly what the errors inbox's filter and the
    * insights page mean, and neither of those is owner-only.
    */
   listSigils = $action({
@@ -211,7 +211,7 @@ export class SigilController {
    * had to intersect it with the project's own feature flags to give an owner
    * any lever at all — a lever that necessarily applied to every app at once.
    * With this in place the kinds are the lever, per app, and the project flags
-   * for blights / beacon / vitals are retired.
+   * for errors / beacon / vitals are retired.
    *
    * Replaces the list rather than patching it: "what may this app report" is
    * one answer, and a partial update of a set invites two clients to disagree
@@ -222,7 +222,7 @@ export class SigilController {
    * `app_instances`: the address is `AppService.setUrl`, and the name is a
    * server-written mirror of `"<app>/<env>"` that only `AppService.rename`
    * writes. A second writer for that column would let the mirror drift from the
-   * instance it names, which every label in the blights inbox and the insights
+   * instance it names, which every label in the errors inbox and the insights
    * dimension reads.
    *
    * Owner-only, like rotate and delete — a member may read the inventory but
@@ -272,7 +272,7 @@ export class SigilController {
    * A hard delete — the entity carries no soft-delete column, and the four
    * aggregate tables cascade. Analytics Engine has no delete, so its raw rows
    * stay until they expire, but every read filters on the project's sigils and
-   * none reaches them again. Blights survive, because `blights.sigilId` is
+   * none reaches them again. Errors survive, because `projectErrors.sigilId` is
    * `ON DELETE SET NULL`: a triage decision outlives the credential that
    * surfaced it.
    */

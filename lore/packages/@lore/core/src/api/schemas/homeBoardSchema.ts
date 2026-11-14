@@ -53,7 +53,7 @@ export const homeBoardSchema = z.object({
   ),
   /**
    * What is open in each project beyond its quests, for the table's
-   * Open column: draft epics, open blights, pending feedback. The
+   * Open column: draft epics, open errors, pending feedback. The
    * quest count is already on the overview (`openQuestCount`). One
    * entry per project, zeros included.
    */
@@ -61,7 +61,7 @@ export const homeBoardSchema = z.object({
     z.object({
       projectId: z.integer(),
       epics: z.integer(),
-      blights: z.integer(),
+      projectErrors: z.integer(),
       feedback: z.integer(),
     }),
   ),

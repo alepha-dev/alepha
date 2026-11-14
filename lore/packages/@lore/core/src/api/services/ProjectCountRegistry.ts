@@ -3,7 +3,7 @@ import { DatabaseProvider, sql } from "alepha/orm";
 
 /**
  * Per-project counts that core shows and a feature module owns (#E75,
- * #Q2623): the Home cards' draft epics, open blights and pending feedback,
+ * #Q2623): the Home cards' draft epics, open errors and pending feedback,
  * the overview's areas and open quests.
  *
  * Core reads no module's table. Each module registers a provider for the

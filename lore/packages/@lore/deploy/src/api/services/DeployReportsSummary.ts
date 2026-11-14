@@ -4,10 +4,10 @@ import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
-import { blights } from "../entities/blights.ts";
 import { deployments } from "../entities/deployments.ts";
 import { monitorIncidents } from "../entities/monitorIncidents.ts";
 import { monitors } from "../entities/monitors.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 import { qualityRuns } from "../entities/qualityRuns.ts";
 
 /**
@@ -20,7 +20,7 @@ import { qualityRuns } from "../entities/qualityRuns.ts";
 export class DeployReportsSummary {
   protected readonly summary = $inject(ReportsSummaryRegistry);
   protected readonly deployments = $repository(deployments);
-  protected readonly blights = $repository(blights);
+  protected readonly projectErrors = $repository(projectErrors);
   protected readonly monitors = $repository(monitors);
   protected readonly incidents = $repository(monitorIncidents);
   protected readonly quality = $repository(qualityRuns);
@@ -39,7 +39,7 @@ export class DeployReportsSummary {
       ...(query.to ? { lte: query.to } : {}),
     };
     const period = query.from || query.to ? { createdAt: within } : {};
-    const [finished, succeeded, openBlights, coverage, uptime] =
+    const [finished, succeeded, openErrors, coverage, uptime] =
       await Promise.all([
         this.deployments.count({
           projectId: { eq: projectId },
@@ -51,7 +51,7 @@ export class DeployReportsSummary {
           status: { eq: "succeeded" },
           ...period,
         }),
-        this.blights.count({
+        this.projectErrors.count({
           projectId: { eq: projectId },
           status: { eq: "open" },
         }),
@@ -80,8 +80,8 @@ export class DeployReportsSummary {
           ]
         : []),
       {
-        key: "openBlights",
-        value: openBlights,
+        key: "openErrors",
+        value: openErrors,
         format: "count" as const,
         snapshot: true,
         tab,

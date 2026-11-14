@@ -43,7 +43,7 @@ const ACTIVITY_RESOURCE_ICONS: Record<string, LucideIcon> = {
   sigil: KeyRound,
   estate: Server,
   project: FolderKanban,
-  blight: Bug,
+  error: Bug,
   artifact: Package,
   area: Tag,
 };

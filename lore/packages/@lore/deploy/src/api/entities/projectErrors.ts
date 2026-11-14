@@ -16,8 +16,8 @@ import { sigils } from "./sigils.ts";
  * markdown or `dangerouslySetInnerHTML`, and treat them as data when they reach
  * an agent through MCP.
  */
-export const blights = $entity({
-  name: "blights",
+export const projectErrors = $entity({
+  name: "project_errors",
   schema: z.object({
     id: db.primaryKey(z.integer()),
     projectId: db.ref(z.integer(), () => projects.cols.id, {
@@ -74,5 +74,5 @@ export const blights = $entity({
   ],
 });
 
-export type Blight = Infer<typeof blights.schema>;
-export type BlightInsert = Infer<typeof blights.insertSchema>;
+export type ProjectError = Infer<typeof projectErrors.schema>;
+export type ProjectErrorInsert = Infer<typeof projectErrors.insertSchema>;

@@ -117,7 +117,7 @@ export class AreaController {
     },
     handler: async ({ params, body, user }) => {
       const area = this.owned.get<Area>();
-      // Areas belong to Work: a quest carries one, and a blight forwards into one.
+      // Areas belong to Work: a quest carries one, and an error forwards into one.
       await this.security.assertCapability(area.projectId, "work", {
         action: "update an area",
       });
@@ -158,7 +158,7 @@ export class AreaController {
     },
     handler: async ({ params, body, user }) => {
       const area = this.owned.get<Area>();
-      // Areas belong to Work: a quest carries one, and a blight forwards into one.
+      // Areas belong to Work: a quest carries one, and an error forwards into one.
       await this.security.assertCapability(area.projectId, "work", {
         action: "rename an area",
       });
@@ -192,7 +192,7 @@ export class AreaController {
       response: z.object({ ok: z.boolean(), movedQuests: z.integer() }),
     },
     handler: async ({ params, body, user }) => {
-      // Areas belong to Work: a quest carries one, and a blight forwards into one.
+      // Areas belong to Work: a quest carries one, and an error forwards into one.
       await this.security.assertCapability(params.projectId, "work", {
         action: "merge areas",
       });
@@ -223,7 +223,7 @@ export class AreaController {
     },
     handler: async ({ params, user }) => {
       const area = this.owned.get<Area>();
-      // Areas belong to Work: a quest carries one, and a blight forwards into one.
+      // Areas belong to Work: a quest carries one, and an error forwards into one.
       await this.security.assertCapability(area.projectId, "work", {
         action: "delete an area",
       });

@@ -168,22 +168,22 @@ describe("the sidebar, derived from capabilities", () => {
 
     // Tracking on and nothing to show: the entry would be a door onto an
     // empty room for every project that never enrolled an app.
-    expect(offered(apps)).not.toContain("projectBlights");
+    expect(offered(apps)).not.toContain("projectErrors");
 
     // A blight OUTLIVES the app that reported it - `blights.sigilId` is
     // `ON DELETE SET NULL` and rows survive for the retention window - so an
     // owner who deleted their only app must not lose the inbox with it.
     expect(
       offered(apps, contextWith([[currentBlightCountAtom, { count: 3 }]])),
-    ).toContain("projectBlights");
+    ).toContain("projectErrors");
     expect(
       offered(
         apps,
         contextWith([
-          [currentInstancesAtom, [{ sigil: { kinds: ["blights"] } }]],
+          [currentInstancesAtom, [{ sigil: { kinds: ["errors"] } }]],
         ]),
       ),
-    ).toContain("projectBlights");
+    ).toContain("projectErrors");
   });
 
   it("keeps the Apps baseline when tracking is off", ({ expect }) => {
@@ -201,7 +201,7 @@ describe("the sidebar, derived from capabilities", () => {
     expect(routes).toContain("projectApps");
     expect(routes).toContain("projectArtifacts");
     // Blights is telemetry, so it goes with `track`.
-    expect(routes).not.toContain("projectBlights");
+    expect(routes).not.toContain("projectErrors");
   });
 
   it("declares every entry under exactly one capability", ({ expect }) => {

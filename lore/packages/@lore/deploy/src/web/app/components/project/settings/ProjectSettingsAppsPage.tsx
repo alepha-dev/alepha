@@ -92,12 +92,12 @@ const ProjectSettingsAppsPage = () => {
               three cards of this page share one edge (#Q3373). */}
           <SettingsSection>
             <SettingsRow
-              label={tr("blights.rules.title")}
-              description={tr("blights.rules.settingsDescription")}
+              label={tr("errors.rules.title")}
+              description={tr("errors.rules.settingsDescription")}
             >
               <Button variant="outlined" onClick={() => setRulesOpen(true)}>
                 <Ban className="size-4" />
-                {tr("blights.rules.manage")}
+                {tr("errors.rules.manage")}
               </Button>
             </SettingsRow>
           </SettingsSection>

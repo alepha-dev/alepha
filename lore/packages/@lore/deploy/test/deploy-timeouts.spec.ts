@@ -5,7 +5,7 @@ import { describe, it } from "vitest";
 import { DeployJobs, DeployLimits } from "../src/api/index.ts";
 
 /**
- * Three limits bound one deploy, and they only work in one order (blight
+ * Three limits bound one deploy, and they only work in one order (error
  * #616, #Q2344):
  *
  *   deploy timer (`DeployLimits.timeoutMs`)

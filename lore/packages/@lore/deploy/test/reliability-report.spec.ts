@@ -6,16 +6,16 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { blights } from "../src/api/entities/blights.ts";
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { monitors } from "../src/api/entities/monitors.ts";
+import { projectErrors } from "../src/api/entities/projectErrors.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import { ProjectReliabilityReportService } from "../src/api/services/ProjectReliabilityReportService.ts";
 
 class Repositories {
   projects = $repository(projects);
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
   monitors = $repository(monitors);
   incidents = $repository(monitorIncidents);
 }
@@ -54,8 +54,8 @@ describe("ProjectReliabilityReportService", () => {
       analytics,
       project,
       iso,
-      blight: (patch: object) =>
-        repos.blights.create({
+      projectError: (patch: object) =>
+        repos.projectErrors.create({
           projectId: project.id,
           fingerprint: `f${++fingerprint}`,
           name: "TypeError",
@@ -71,30 +71,30 @@ describe("ProjectReliabilityReportService", () => {
     };
   };
 
-  it("counts new, resolved and open per day, a forwarded blight as gone", async ({
+  it("counts new, resolved and open per day, a forwarded error as gone", async ({
     expect,
   }) => {
     const ctx = await setup();
     try {
-      await ctx.blight({ count: 2 });
-      await ctx.blight({
+      await ctx.projectError({ count: 2 });
+      await ctx.projectError({
         count: 9,
         status: "resolved",
         lastSeenAt: ctx.iso(1),
       });
-      await ctx.blight({ status: "quest:12", lastSeenAt: ctx.iso(1) });
+      await ctx.projectError({ status: "quest:12", lastSeenAt: ctx.iso(1) });
 
       const report = await ctx.report();
 
       const threeDaysAgo = ctx.iso(3).slice(0, 10);
-      const row = report.blights.find((it) => it.date === threeDaysAgo);
+      const row = report.projectErrors.find((it) => it.date === threeDaysAgo);
       expect(row).toMatchObject({ opened: 3, resolved: 0, open: 3 });
-      expect(report.blights.at(-1)).toMatchObject({ open: 1 });
-      expect(report.topBlights[0]).toMatchObject({
+      expect(report.projectErrors.at(-1)).toMatchObject({ open: 1 });
+      expect(report.topErrors[0]).toMatchObject({
         count: 9,
         status: "resolved",
       });
-      expect(report.topBlights.map((it) => it.status)).toContain("forwarded");
+      expect(report.topErrors.map((it) => it.status)).toContain("forwarded");
     } finally {
       await ctx.alepha.stop();
     }

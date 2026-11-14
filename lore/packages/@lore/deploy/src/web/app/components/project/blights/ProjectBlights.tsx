@@ -36,9 +36,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import type { BlightController } from "../../../../../api/controllers/BlightController.ts";
-import { QUEST_STATUS_PREFIX } from "../../../../../api/schemas/blightQuestStatus.ts";
-import type { BlightResource } from "../../../../../api/schemas/blightResourceSchema.ts";
+import type { ProjectErrorController } from "../../../../../api/controllers/ProjectErrorController.ts";
+import { QUEST_STATUS_PREFIX } from "../../../../../api/schemas/projectErrorQuestStatus.ts";
+import type { ProjectErrorResource } from "../../../../../api/schemas/projectErrorResourceSchema.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import BlightSourceCell from "./BlightSourceCell.tsx";
 import { sigilNameParts } from "./sigilNameParts.ts";
@@ -68,12 +68,12 @@ const ProjectBlights = () => {
   // component ends up rendered.
   const appsEnabled = hasCapability(project, "apps");
   const alepha = useAlepha();
-  const blightApi = useClient<BlightController>();
-  const canTriage = blightApi.resolveBlight.can();
+  const blightApi = useClient<ProjectErrorController>();
+  const canTriage = blightApi.resolveProjectError.can();
   const toaster = useToast();
   const dialog = useDialog();
 
-  const [stackView, setStackView] = useState<BlightResource | null>(null);
+  const [stackView, setStackView] = useState<ProjectErrorResource | null>(null);
   // Sigil options for the "filter by sigil" dropdown, hydrated from the list
   // response rather than from `SigilController.listSigils`: the filter needs
   // id + label, and that endpoint hands back the whole credential row
@@ -88,27 +88,27 @@ const ProjectBlights = () => {
   // refresh, the navigation) run inside the handler, so none follows a
   // failure.
   const deleteManyAction = useAction<
-    [selected: BlightResource[], ctx: BulkActionContext],
+    [selected: ProjectErrorResource[], ctx: BulkActionContext],
     void
   >(
     {
       handler: async (_ctx, selected, ctx) => {
         if (!project || selected.length === 0) return;
         const ok = await dialog.confirm({
-          title: tr("blights.deleteSelectedConfirm", {
+          title: tr("errors.deleteSelectedConfirm", {
             args: [String(selected.length)],
           }),
-          confirmLabel: tr("blights.action.delete"),
+          confirmLabel: tr("errors.action.delete"),
           cancelLabel: tr("common.cancel"),
           destructive: true,
         });
         if (!ok) return;
-        const res = await blightApi.deleteBlights({
+        const res = await blightApi.deleteProjectErrors({
           params: { projectId: project.id },
           body: { ids: selected.map((b) => b.id) },
         });
         toaster.success(
-          tr("blights.toast.deletedMany", {
+          tr("errors.toast.deletedMany", {
             args: [String(res.deleted)],
           }),
         );
@@ -120,16 +120,16 @@ const ProjectBlights = () => {
   );
 
   const resolveAction = useAction<
-    [blight: BlightResource, refresh: () => void],
+    [projectError: ProjectErrorResource, refresh: () => void],
     void
   >(
     {
-      handler: async (_ctx, blight, refresh) => {
+      handler: async (_ctx, projectError, refresh) => {
         if (!project) return;
-        await blightApi.resolveBlight({
-          params: { projectId: project.id, blightId: blight.id },
+        await blightApi.resolveProjectError({
+          params: { projectId: project.id, errorId: projectError.id },
         });
-        toaster.success(tr("blights.toast.resolved"));
+        toaster.success(tr("errors.toast.resolved"));
         refresh();
       },
     },
@@ -137,17 +137,17 @@ const ProjectBlights = () => {
   );
 
   const forwardAction = useAction<
-    [blight: BlightResource, refresh: () => void],
+    [projectError: ProjectErrorResource, refresh: () => void],
     void
   >(
     {
-      handler: async (_ctx, blight, refresh) => {
+      handler: async (_ctx, projectError, refresh) => {
         if (!project) return;
-        const res = await blightApi.forwardBlightToQuest({
-          params: { projectId: project.id, blightId: blight.id },
+        const res = await blightApi.forwardProjectErrorToQuest({
+          params: { projectId: project.id, errorId: projectError.id },
         });
         toaster.success(
-          tr("blights.toast.forwarded", {
+          tr("errors.toast.forwarded", {
             args: [formatReference("quest", res.questShortId)],
           }),
         );
@@ -164,23 +164,23 @@ const ProjectBlights = () => {
   );
 
   const deleteAction = useAction<
-    [blight: BlightResource, refresh: () => void],
+    [projectError: ProjectErrorResource, refresh: () => void],
     void
   >(
     {
-      handler: async (_ctx, blight, refresh) => {
+      handler: async (_ctx, projectError, refresh) => {
         if (!project) return;
         const ok = await dialog.confirm({
-          title: tr("blights.deleteConfirm"),
-          confirmLabel: tr("blights.action.delete"),
+          title: tr("errors.deleteConfirm"),
+          confirmLabel: tr("errors.action.delete"),
           cancelLabel: tr("common.cancel"),
           destructive: true,
         });
         if (!ok) return;
-        await blightApi.deleteBlight({
-          params: { projectId: project.id, blightId: blight.id },
+        await blightApi.deleteProjectError({
+          params: { projectId: project.id, errorId: projectError.id },
         });
-        toaster.success(tr("blights.toast.deleted"));
+        toaster.success(tr("errors.toast.deleted"));
         refresh();
       },
     },
@@ -197,13 +197,13 @@ const ProjectBlights = () => {
 
   const renderStatus = (status: string) => {
     if (status === "resolved") {
-      return <Badge variant="secondary">{tr("blights.status.resolved")}</Badge>;
+      return <Badge variant="secondary">{tr("errors.status.resolved")}</Badge>;
     }
     // The status carries the quest's database id after the prefix, not its
     // per-project number, so the badge says only that it was forwarded
     // (epic #32): a `#` before a database id read as a reference nobody had.
     if (status.startsWith(QUEST_STATUS_PREFIX)) {
-      return <Badge variant="outline">{tr("blights.status.quest")}</Badge>;
+      return <Badge variant="outline">{tr("errors.status.quest")}</Badge>;
     }
     return null;
   };
@@ -227,14 +227,14 @@ const ProjectBlights = () => {
      */
     status: {
       schema: z.array(z.enum(["open", "resolved"])),
-      label: tr("blights.filter.status"),
+      label: tr("errors.filter.status"),
       icon: CircleDot,
       items: [
-        { label: tr("blights.filter.open"), value: "open" },
-        { label: tr("blights.filter.resolved"), value: "resolved" },
+        { label: tr("errors.filter.open"), value: "open" },
+        { label: tr("errors.filter.resolved"), value: "resolved" },
       ],
       control: {
-        clearLabel: tr("blights.filter.all"),
+        clearLabel: tr("errors.filter.all"),
       },
     },
     /**
@@ -246,11 +246,11 @@ const ProjectBlights = () => {
      */
     sigilId: {
       schema: z.string(),
-      label: tr("blights.filter.sigil"),
+      label: tr("errors.filter.sigil"),
       icon: AppWindow,
       items: sigilOptions.map((s) => ({ label: s.label, value: s.id })),
       hidden: sigilOptions.length === 0,
-      control: { clearLabel: tr("blights.filter.allApps") },
+      control: { clearLabel: tr("errors.filter.allApps") },
     },
   } satisfies DataTableFilterFields;
 
@@ -266,7 +266,7 @@ const ProjectBlights = () => {
     size: number;
     sort?: string;
     filters?: DataTableFilterValues<typeof filterFields>;
-  }): Promise<Page<BlightResource>> => {
+  }): Promise<Page<ProjectErrorResource>> => {
     if (!project) {
       return emptyPage(page, size);
     }
@@ -276,7 +276,7 @@ const ProjectBlights = () => {
     // `"all"` value used to name.
     const statuses = filters?.status ?? [];
     const openOnly = statuses.length === 1 && statuses[0] === "open";
-    const res = await blightApi.listBlights({
+    const res = await blightApi.listProjectErrors({
       params: { projectId: project.id },
       query: { includeResolved: !openOnly },
     });
@@ -324,11 +324,11 @@ const ProjectBlights = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-2">
-      <DataTable<BlightResource, typeof filterFields>
+      <DataTable<ProjectErrorResource, typeof filterFields>
         className="min-h-0 flex-1"
         persistenceKey={project ? `lor.blights.${project.id}` : "lor.blights"}
         defaultSort={{ field: "count", direction: "desc" }}
-        emptyMessage={tr("blights.empty")}
+        emptyMessage={tr("errors.empty")}
         filters={{
           fields: filterFields,
           initialValues: { status: ["open"] },
@@ -346,8 +346,8 @@ const ProjectBlights = () => {
               appsEnabled
                 ? [
                     {
-                      kind: "blightTriage" as const,
-                      subject: () => promptSubject.forPage("projectBlights"),
+                      kind: "errorTriage" as const,
+                      subject: () => promptSubject.forPage("projectErrors"),
                     },
                   ]
                 : []
@@ -363,7 +363,7 @@ const ProjectBlights = () => {
             : [
                 {
                   icon: Trash2,
-                  label: tr("blights.action.deleteSelected"),
+                  label: tr("errors.action.deleteSelected"),
                   destructive: true,
                   // Hidden while a triage verb runs: the bulk bar has no
                   // disabled state, and a second click would be dropped by
@@ -376,7 +376,7 @@ const ProjectBlights = () => {
         }
         columns={{
           error: {
-            label: tr("blights.col.error"),
+            label: tr("errors.col.error"),
             className: "max-w-[420px]",
             cell: (b) => (
               <div className="flex flex-col gap-1">
@@ -386,7 +386,7 @@ const ProjectBlights = () => {
                   <Badge
                     variant={b.origin === "server" ? "default" : "outline"}
                   >
-                    {tr(`blights.origin.${b.origin}`)}
+                    {tr(`errors.origin.${b.origin}`)}
                   </Badge>
                   {renderStatus(b.status)}
                 </div>
@@ -397,7 +397,7 @@ const ProjectBlights = () => {
             ),
           },
           app: {
-            label: tr("blights.col.app"),
+            label: tr("errors.col.app"),
             className: "max-w-[180px]",
             // The app that reported the blight most recently, linked to its
             // page, named "lore/production" the way the filter lists it. A
@@ -425,20 +425,20 @@ const ProjectBlights = () => {
             },
           },
           page: {
-            label: tr("blights.col.page"),
+            label: tr("errors.col.page"),
             className: "max-w-[260px]",
             // A link out for an http(s) page, text for a route pattern or a
             // job name (feedback #P2200); the scheme check lives in the cell.
             cell: (b) => <BlightSourceCell sourceUrl={b.sourceUrl} />,
           },
           count: {
-            label: tr("blights.col.count"),
+            label: tr("errors.col.count"),
             sortable: true,
             align: "right",
             cell: (b) => <span className="tabular-nums">{b.count}</span>,
           },
           lastSeenAt: {
-            label: tr("blights.col.lastSeen"),
+            label: tr("errors.col.lastSeen"),
             sortable: true,
             // This column was the reference implementation - relative label,
             // exact date on hover - and `TimeAgo` is that pattern extracted.
@@ -458,10 +458,10 @@ const ProjectBlights = () => {
           return [
             {
               icon: FileText,
-              label: tr("blights.action.viewStack"),
+              label: tr("errors.action.viewStack"),
               onClick: () => setStackView(b),
             },
-            // ⚠️ Triage is `blight:triage`. A rank without it reads the
+            // ⚠️ Triage is `error:triage`. A rank without it reads the
             // inbox and the stack traces and is offered no verb - off the
             // ACTION, so nothing here repeats a permission string.
             ...(triaged || !canTriage
@@ -469,21 +469,21 @@ const ProjectBlights = () => {
               : [
                   {
                     icon: CheckCircle2,
-                    label: tr("blights.action.resolve"),
+                    label: tr("errors.action.resolve"),
                     disabled: () => busy,
                     onClick: (
-                      blight: BlightResource,
+                      projectError: ProjectErrorResource,
                       { refresh }: { refresh: () => void },
-                    ) => void resolveAction.run(blight, refresh),
+                    ) => void resolveAction.run(projectError, refresh),
                   },
                   {
                     icon: Send,
-                    label: tr("blights.action.forward"),
+                    label: tr("errors.action.forward"),
                     disabled: () => busy,
                     onClick: (
-                      blight: BlightResource,
+                      projectError: ProjectErrorResource,
                       { refresh }: { refresh: () => void },
-                    ) => void forwardAction.run(blight, refresh),
+                    ) => void forwardAction.run(projectError, refresh),
                   },
                 ]),
             ...(!canTriage
@@ -491,13 +491,13 @@ const ProjectBlights = () => {
               : [
                   {
                     icon: Trash2,
-                    label: tr("blights.action.delete"),
+                    label: tr("errors.action.delete"),
                     destructive: true,
                     disabled: () => busy,
                     onClick: (
-                      blight: BlightResource,
+                      projectError: ProjectErrorResource,
                       { refresh }: { refresh: () => void },
-                    ) => void deleteAction.run(blight, refresh),
+                    ) => void deleteAction.run(projectError, refresh),
                   },
                 ]),
           ];
@@ -537,9 +537,9 @@ export default ProjectBlights;
  * columns (`count`, `lastSeenAt`); anything else falls back to count desc.
  */
 const sortBlights = (
-  items: BlightResource[],
+  items: ProjectErrorResource[],
   sort?: string,
-): BlightResource[] => {
+): ProjectErrorResource[] => {
   const field = sort?.replace(/^-/, "") ?? "count";
   const dir = sort?.startsWith("-") ? -1 : 1;
   const rows = [...items];
@@ -559,7 +559,7 @@ const sortBlights = (
 /**
  * Empty `Page` returned before the project atom is hydrated.
  */
-const emptyPage = (page: number, size: number): Page<BlightResource> => ({
+const emptyPage = (page: number, size: number): Page<ProjectErrorResource> => ({
   content: [],
   page: {
     number: page,

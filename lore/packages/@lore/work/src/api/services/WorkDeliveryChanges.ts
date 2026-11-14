@@ -1,5 +1,5 @@
 import {
-  type BlightForward,
+  type ProjectErrorForward,
   type DeliveryChange,
   DeliveryChangeRegistry,
 } from "@lore/core/api";
@@ -25,20 +25,20 @@ export class WorkDeliveryChanges {
     );
   }
 
-  protected async forwards(projectId: number): Promise<BlightForward[]> {
+  protected async forwards(projectId: number): Promise<ProjectErrorForward[]> {
     const rows = await this.quests.findMany({
       where: {
         projectId: { eq: projectId },
-        source: { like: '%"sigilBlightId"%' },
+        source: { like: '%"projectErrorId"%' },
       } as PgQueryWhere<typeof quests.schema>,
       columns: ["source", "completedAt"],
     });
     return rows.flatMap((row) =>
-      row.source?.sigilBlightId === undefined
+      row.source?.projectErrorId === undefined
         ? []
         : [
             {
-              blightId: row.source.sigilBlightId,
+              errorId: row.source.projectErrorId,
               ...(row.completedAt ? { completedAt: row.completedAt } : {}),
             },
           ],

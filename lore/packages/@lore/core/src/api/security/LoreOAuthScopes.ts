@@ -62,7 +62,7 @@ export class LoreOAuthScopes {
     "area",
     "folio",
     "feedback",
-    "blight",
+    "error",
     "quality",
     "app",
     "sigil",
@@ -99,14 +99,14 @@ export class LoreOAuthScopes {
     /*
      * ⚠️ `mcp` is one scope and it is the whole project surface. A client
      * holding it reads and writes every project this account is a member of:
-     * quests, folios, feedback, blights, the lot. The copy says so in those
+     * quests, folios, feedback, errors, the lot. The copy says so in those
      * words rather than in the word "mcp", which tells a reader nothing about
      * what they are handing over.
      */
     mcp: {
       label: "Your projects",
       description:
-        "Read and manage the projects you are a member of - their quests, folios, feedback and blights.",
+        "Read and manage the projects you are a member of - their quests, folios, feedback and errors.",
       permissions: LoreOAuthScopes.MEMBER_PERMISSIONS,
     },
     /*

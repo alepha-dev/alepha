@@ -58,15 +58,15 @@ export const reportsDeliverySchema = z.object({
     }),
   ),
   /**
-   * Blights, errors and uptime (#Q3009).
+   * Errors, error occurrences and uptime (#Q3009).
    */
   reliability: z.object({
     /**
-     * Per grain: new blights, resolved ones, and how many stood open at its
-     * end. A resolved blight sits on the day it was last seen: nothing records
+     * Per grain: new errors, resolved ones, and how many stood open at its
+     * end. A resolved error sits on the day it was last seen: nothing records
      * when it was resolved.
      */
-    blights: z.array(
+    projectErrors: z.array(
       z.object({
         date: z.string(),
         opened: z.integer(),
@@ -74,7 +74,7 @@ export const reportsDeliverySchema = z.object({
         open: z.integer(),
       }),
     ),
-    topBlights: z.array(
+    topErrors: z.array(
       z.object({
         name: z.string(),
         origin: z.string(),
@@ -83,7 +83,7 @@ export const reportsDeliverySchema = z.object({
       }),
     ),
     /**
-     * Blights forwarded to a quest, and from first seen to that quest done.
+     * Errors forwarded to a quest, and from first seen to that quest done.
      */
     forwarded: z.object({
       total: z.integer(),

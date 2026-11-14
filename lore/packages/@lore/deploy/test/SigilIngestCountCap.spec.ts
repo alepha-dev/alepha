@@ -8,25 +8,29 @@ import { describe, it } from "vitest";
 
 import { LoreDeployApi } from "../src/api/index.ts";
 import { SigilIngestService } from "../src/api/index.ts";
-import { blights, sigilErrorGroups, sigils } from "../src/schemas/index.ts";
+import {
+  projectErrors,
+  sigilErrorGroups,
+  sigils,
+} from "../src/schemas/index.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
 class Repositories {
   sigils = $repository(sigils);
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
   groups = $repository(sigilErrorGroups);
 }
 
 /**
  * #Q2503: `count` was summed without a bound, in SQL and in the fold. Two
  * reports of `MAX_SAFE_INTEGER` pushed a stored total past the safe-integer
- * range, and every read of the project's blights then threw on the
- * `z.integer()` decode: the list, `blight_list` and the blight page, with no
+ * range, and every read of the project's errors then threw on the
+ * `z.integer()` decode: the list, `error_list` and the error page, with no
  * way to delete the row from the UI. The envelope caps one report now, and
  * this is the backstop behind it: the service is handed what the sink's own
  * schema accepted, so it is fed the unbounded value directly.
  */
-describe("SigilIngestService - blight counts", () => {
+describe("SigilIngestService - error counts", () => {
   const setup = async () => {
     const alepha = Alepha.create({
       env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
@@ -47,7 +51,7 @@ describe("SigilIngestService - blight counts", () => {
       name: "count-cap",
       tokenHash: "hash-count-cap",
       tokenPrefix: "sg_test_",
-      kinds: ["blights"],
+      kinds: ["errors"],
     });
 
     return {
@@ -74,7 +78,7 @@ describe("SigilIngestService - blight counts", () => {
     await ingest.absorb(sigil, { errors: [huge] });
     await ingest.absorb(sigil, { errors: [huge] });
 
-    const rows = await repos.blights.findMany({
+    const rows = await repos.projectErrors.findMany({
       where: { projectId: { eq: project.id } },
     });
     expect(rows).toHaveLength(1);
@@ -91,7 +95,7 @@ describe("SigilIngestService - blight counts", () => {
 
     await ingest.absorb(sigil, { errors: [huge, huge, huge] });
 
-    const rows = await repos.blights.findMany({
+    const rows = await repos.projectErrors.findMany({
       where: { projectId: { eq: project.id } },
     });
     expect(rows[0].count).toBe(1_000_000_000);
@@ -103,7 +107,7 @@ describe("SigilIngestService - blight counts", () => {
     await ingest.absorb(sigil, { errors: [{ ...huge, count: 3 }] });
     await ingest.absorb(sigil, { errors: [{ ...huge, count: 4 }] });
 
-    const rows = await repos.blights.findMany({
+    const rows = await repos.projectErrors.findMany({
       where: { projectId: { eq: project.id } },
     });
     expect(rows[0].count).toBe(7);

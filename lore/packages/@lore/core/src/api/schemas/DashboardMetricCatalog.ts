@@ -117,7 +117,7 @@ export interface DashboardCardTarget {
  *
  * `option` is why this lives here rather than only on
  * `CapabilityRegistry.dashboardCards`, which is a flat list of keys per
- * capability: blights and visitors both need Apps **with tracking on**, since
+ * capability: errors and visitors both need Apps **with tracking on**, since
  * Apps without it is a project that deploys and does not watch. The two
  * declarations are pinned to each other by
  * `test/dashboard-capabilities.spec.ts`.
@@ -278,7 +278,7 @@ export class DashboardMetricCatalog {
    */
   /**
    * Every metric, registered by the module that owns it (#E75, #Q2623):
-   * Work's quest, epic, release, tag and feedback metrics, Deploy's blights
+   * Work's quest, epic, release, tag and feedback metrics, Deploy's errors
    * and visitors. Kept in `order`, the order the Add-card panel shows them.
    */
   protected readonly metrics: DashboardMetricDescriptor[] = [];
@@ -381,9 +381,9 @@ export class DashboardMetricCatalog {
         !(kind === "viewer" && kinds.length === 1),
     );
     // ⚠️ A metric that takes the whole project AND something narrower (open
-    // blights, visitors: the project, or some of its apps) keeps "this
+    // errors, visitors: the project, or some of its apps) keeps "this
     // project" as a choice beside the narrower one (#Q2650). Dropping it
-    // would make every blights card on a project board name an app, and a
+    // would make every errors card on a project board name an app, and a
     // project with one app would be asked a question with one answer.
     if (
       narrower.length > 0 &&

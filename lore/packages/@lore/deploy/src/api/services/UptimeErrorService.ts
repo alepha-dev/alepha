@@ -1,23 +1,23 @@
 import { $repository } from "alepha/orm";
 
-import { blights } from "../entities/blights.ts";
 import { monitorIncidents } from "../entities/monitorIncidents.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 import type { UptimeTransition } from "./UptimeStateService.ts";
 
 /**
  * One inbox item per monitor, with the incident table as its source of truth.
  */
-export class UptimeBlightService {
-  protected readonly blights = $repository(blights);
+export class UptimeErrorService {
+  protected readonly projectErrors = $repository(projectErrors);
   protected readonly incidents = $repository(monitorIncidents);
 
   public async handle(transition: UptimeTransition): Promise<void> {
     const { monitor, incident, kind } = transition;
     const fingerprint = `uptime:${monitor.projectId}:${monitor.id}`;
     if (kind === "closed") {
-      // A retention purge or manual deletion can remove the blight mid-outage.
+      // A retention purge or manual deletion can remove the error mid-outage.
       // Recovery never recreates it, and the exact incident history survives.
-      await this.blights.updateMany(
+      await this.projectErrors.updateMany(
         { projectId: monitor.projectId, fingerprint },
         {
           status: "resolved",
@@ -43,7 +43,7 @@ export class UptimeBlightService {
       .slice(0, 4096);
     // Counting source incidents makes a repeated delivery idempotent.
     const count = await this.incidents.count({ monitorId: monitor.id });
-    await this.blights.upsertMany(
+    await this.projectErrors.upsertMany(
       [
         {
           projectId: monitor.projectId,

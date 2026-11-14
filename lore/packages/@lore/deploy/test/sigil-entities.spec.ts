@@ -4,7 +4,7 @@ import { organizations } from "alepha/api/organizations";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { blights, sigils } from "../src/schemas/index.ts";
+import { projectErrors, sigils } from "../src/schemas/index.ts";
 
 describe("sigil entities", () => {
   it("identifies a sigil by name within a project", async ({ expect }) => {
@@ -40,7 +40,7 @@ describe("sigil entities", () => {
       name: "lore",
       tokenHash: "h",
       tokenPrefix: "sg_abc",
-      kinds: ["beacon", "vitals", "blights", "feedback"],
+      kinds: ["beacon", "vitals", "errors", "feedback"],
     });
 
     expect(created.name).toBe("lore");
@@ -71,7 +71,7 @@ describe("sigil entities", () => {
     expect(elsewhere.name).toBe("lore");
   });
 
-  it("declares a real foreign key from blights.sigilId to sigils.id", async ({
+  it("declares a real foreign key from errors.sigilId to sigils.id", async ({
     expect,
   }) => {
     // Regression guard: `.optional()` chained *after* `db.ref(...)` returns a
@@ -85,7 +85,7 @@ describe("sigil entities", () => {
       projects = $repository(projects);
       users = $repository(users);
       sigils = $repository(sigils);
-      blights = $repository(blights);
+      projectErrors = $repository(projectErrors);
     }
     // `DATABASE_URL` is a Postgres URL under the repo-root vitest config and
     // unset under this app's own — pinned here so the spec means the same
@@ -98,7 +98,7 @@ describe("sigil entities", () => {
 
     const provider = alepha.inject(DatabaseProvider);
     const foreignKeys = await provider.execute(
-      sql`PRAGMA foreign_key_list(blights)`,
+      sql`PRAGMA foreign_key_list(project_errors)`,
     );
 
     const sigilForeignKey = foreignKeys.find((row) => row.table === "sigils");

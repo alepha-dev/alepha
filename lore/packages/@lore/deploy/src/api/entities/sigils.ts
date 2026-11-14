@@ -5,7 +5,7 @@ import { $entity, db } from "alepha/orm";
 /**
  * The capabilities a sigil may grant.
  */
-export const SIGIL_KINDS = ["feedback", "blights", "beacon", "vitals"] as const;
+export const SIGIL_KINDS = ["feedback", "errors", "beacon", "vitals"] as const;
 
 export type SigilKind = (typeof SIGIL_KINDS)[number];
 
@@ -45,7 +45,7 @@ export const sigils = $entity({
      * instance it names.
      *
      * It stays a column rather than a join because it is read as a display
-     * label in five places - `BlightController.listBlights`,
+     * label in five places - `ProjectErrorController.listProjectErrors`,
      * `InsightsController.labels`, `DashboardMetricRegistry.scopeNames`,
      * `LoreAudits` descriptions and MCP `sigil_list` - and all five keep
      * working with zero joins. `/` is outside `APP_NAME_PATTERN`, so a mirror

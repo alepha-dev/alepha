@@ -185,7 +185,7 @@ jobs:
             packages/@lore/deploy/test/lore-analytics.spec.ts
             packages/@lore/deploy/test/uptime-retention.spec.ts
             packages/@lore/deploy/test/uptime-controller.spec.ts
-            packages/@lore/deploy/test/open-blight-counter.spec.ts
+            packages/@lore/deploy/test/open-error-counter.spec.ts
             packages/@lore/knowledge/test/folio-
             packages/@lore/work/test/WorkAutomationSelections.spec.ts
             packages/@lore/work/test/release-default.spec.ts

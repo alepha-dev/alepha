@@ -16,7 +16,7 @@ import type { SearchHit } from "../schemas/searchHitSchema.ts";
  * - a `[[#Q12]]` reference resolves through the kind that owns the letter
  *   `Q`, and renders as plain text when no module registered it;
  * - the ⌘K palette asks every kind that declares a search source;
- * - forwarding a blight asks the `quest` kind to `create`, and deleting a
+ * - forwarding an error asks the `quest` kind to `create`, and deleting a
  *   quest tells whoever subscribed to its `onDeleted`.
  *
  * An action needing a kind no module registered is refused by name
@@ -209,7 +209,7 @@ export interface ResourceKind {
   search?: ResourceSearchSource;
 
   /**
-   * Create one, for an action that crosses modules (a blight forwarded to a
+   * Create one, for an action that crosses modules (an error forwarded to a
    * quest). Fields beyond the common ones are the kind's own.
    */
   create?: (input: ResourceCreateInput) => Promise<ResourceCreated>;

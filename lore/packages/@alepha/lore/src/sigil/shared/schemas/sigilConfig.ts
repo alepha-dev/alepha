@@ -48,6 +48,12 @@ export const sigilConfig = z.object({
 
   /**
    * Client and server errors.
+   *
+   * ⚠️ Named `blights` on purpose, and staying so: Lore calls a deduplicated
+   * failure an error since #E147, but this key is wire. Every deployed app
+   * reads it from its own `SIGIL_CONFIG` with the `@alepha/lore` it pinned,
+   * and Lore stores the variable as that app's secret, so a new name would
+   * turn errors back on for every app that switched them off.
    */
   blights: z.boolean().default(true),
 

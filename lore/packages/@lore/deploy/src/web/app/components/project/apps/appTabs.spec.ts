@@ -59,7 +59,7 @@ describe("the instance's tab set", () => {
   it("unlocks four more with a sigil that collects everything", ({
     expect,
   }) => {
-    expect(routes(anInstance(["beacon", "blights"]))).toEqual([
+    expect(routes(anInstance(["beacon", "errors"]))).toEqual([
       "app",
       "appAnalytics",
       "appVitals",
@@ -74,8 +74,8 @@ describe("the instance's tab set", () => {
     // groups. An instance can carry either without the other, and copying one
     // gate from the other tab would get both backwards.
     expect(routes(anInstance(["beacon"]))).not.toContain("appErrors");
-    expect(routes(anInstance(["blights"]))).toContain("appErrors");
-    expect(routes(anInstance(["blights"]))).not.toContain("appAnalytics");
+    expect(routes(anInstance(["errors"]))).toContain("appErrors");
+    expect(routes(anInstance(["errors"]))).not.toContain("appAnalytics");
   });
 
   it("unlocks nothing for a sigil with every kind switched off", ({
@@ -162,8 +162,8 @@ describe("the instance's tab set", () => {
       undefined,
       [],
       ["beacon"],
-      ["blights"],
-      ["beacon", "blights"],
+      ["errors"],
+      ["beacon", "errors"],
     ]) {
       const set = routes(anInstance(kinds));
       expect(set.at(0)).toBe("app");
@@ -174,7 +174,7 @@ describe("the instance's tab set", () => {
   it("takes the telemetry four away when the project's track option is off", ({
     expect,
   }) => {
-    const instance = anInstance(["beacon", "blights"]);
+    const instance = anInstance(["beacon", "errors"]);
     expect(
       appTabsFor(instance, { track: false }).map((tab) => tab.route),
     ).toEqual(["app", "appSettings"]);
@@ -190,7 +190,7 @@ describe("the instance's tab set", () => {
     // server's own reads. An empty bag is a project with nothing switched on,
     // not a caller declining to filter.
     expect(
-      appTabsFor(anInstance(["beacon", "blights"]), {}).map((tab) => tab.route),
+      appTabsFor(anInstance(["beacon", "errors"]), {}).map((tab) => tab.route),
     ).toEqual(["app", "appSettings"]);
   });
 

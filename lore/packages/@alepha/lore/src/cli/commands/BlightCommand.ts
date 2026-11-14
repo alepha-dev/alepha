@@ -1,4 +1,7 @@
-import type { BlightController, InsightsController } from "@lore/deploy/api";
+import type {
+  ProjectErrorController,
+  InsightsController,
+} from "@lore/deploy/api";
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $client } from "alepha/server/links";
@@ -43,7 +46,9 @@ export class BlightCommand {
    * ⚠️ Declared after `client`: a field initializer reading a field declared
    * below it sees `undefined`.
    */
-  protected readonly blightApi = $client<BlightController>(this.client.scope());
+  protected readonly blightApi = $client<ProjectErrorController>(
+    this.client.scope(),
+  );
   protected readonly insightsApi = $client<InsightsController>(
     this.client.scope(),
   );
@@ -79,7 +84,7 @@ export class BlightCommand {
       await this.refusals.guard(context, async () => {
         const { projectId } = await this.projects.named(flags.project, context);
 
-        const inbox = await this.blightApi.listBlights({
+        const inbox = await this.blightApi.listProjectErrors({
           params: { projectId },
           query: { includeResolved: flags["include-resolved"] },
         });
@@ -91,10 +96,10 @@ export class BlightCommand {
 
         this.render.list(
           print,
-          inbox.items.map((blight) => ({
-            handle: `B${blight.id}`,
-            title: `${blight.name}: ${blight.message}`,
-            fields: [`x${blight.count}`, blight.status],
+          inbox.items.map((projectError) => ({
+            handle: `B${projectError.id}`,
+            title: `${projectError.name}: ${projectError.message}`,
+            fields: [`x${projectError.count}`, projectError.status],
           })),
           undefined,
           "No open blights.",
@@ -115,18 +120,18 @@ export class BlightCommand {
     handler: async ({ args, flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
-        const blightId = this.refs.blight(args);
+        const errorId = this.refs.projectError(args);
         const { projectId } = await this.projects.named(flags.project, context);
 
-        const result = await this.blightApi.resolveBlight({
-          params: { projectId, blightId },
+        const result = await this.blightApi.resolveProjectError({
+          params: { projectId, errorId },
         });
 
         this.render.written(
           print,
           flags.output,
           result,
-          `Resolved B${blightId}`,
+          `Resolved B${errorId}`,
         );
       });
     },
@@ -144,18 +149,18 @@ export class BlightCommand {
     handler: async ({ args, flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
-        const blightId = this.refs.blight(args);
+        const errorId = this.refs.projectError(args);
         const { projectId } = await this.projects.named(flags.project, context);
 
-        const result = await this.blightApi.forwardBlightToQuest({
-          params: { projectId, blightId },
+        const result = await this.blightApi.forwardProjectErrorToQuest({
+          params: { projectId, errorId },
         });
 
         this.render.written(
           print,
           flags.output,
           result,
-          `Forwarded B${blightId} to Q${result.questShortId}`,
+          `Forwarded B${errorId} to Q${result.questShortId}`,
         );
       });
     },
@@ -166,7 +171,7 @@ export class BlightCommand {
    * `findLast`, so a second class declaring `blight` would shadow this one
    * silently.
    */
-  public readonly blight = $command({
+  public readonly projectError = $command({
     name: "blight",
     description:
       "A project's blights, the failures its apps report: list, resolve and forward them",

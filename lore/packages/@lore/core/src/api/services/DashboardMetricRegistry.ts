@@ -74,7 +74,7 @@ export class DashboardMetricRegistry {
   /**
    * Every resolver, by metric key, registered by the module that owns the
    * metric (#E75, #Q2623): Work's quest, epic, release, tag and feedback
-   * metrics, Deploy's blights and visitors. A card whose metric no module
+   * metrics, Deploy's errors and visitors. A card whose metric no module
    * resolves fails as an unknown metric would.
    */
   protected readonly resolverByMetric = new Map<

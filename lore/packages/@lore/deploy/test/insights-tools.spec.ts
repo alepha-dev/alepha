@@ -13,7 +13,11 @@ import { LoreDeployApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/index.ts";
 import { LoreDeployMcp } from "../src/mcp/index.ts";
 import { BlightTools, InsightsTools } from "../src/mcp/index.ts";
-import { blights, sigilErrorGroups, sigils } from "../src/schemas/index.ts";
+import {
+  projectErrors,
+  sigilErrorGroups,
+  sigils,
+} from "../src/schemas/index.ts";
 
 /**
  * The error budget over MCP.
@@ -27,7 +31,7 @@ import { blights, sigilErrorGroups, sigils } from "../src/schemas/index.ts";
 class Probe {
   sigils = $repository(sigils);
   errorGroups = $repository(sigilErrorGroups);
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
 }
 
 const setup = async () => {
@@ -77,7 +81,7 @@ const setup = async () => {
       name,
       tokenHash: minted.hash,
       tokenPrefix: minted.prefix,
-      kinds: ["beacon", "vitals", "blights", "feedback"],
+      kinds: ["beacon", "vitals", "errors", "feedback"],
     });
   };
 

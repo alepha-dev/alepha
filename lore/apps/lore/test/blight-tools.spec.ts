@@ -1,6 +1,6 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { BlightTools } from "@lore/deploy/mcp";
-import { blights } from "@lore/deploy/schemas";
+import { projectErrors } from "@lore/deploy/schemas";
 import { QuestTools } from "@lore/work/mcp";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
@@ -22,7 +22,7 @@ import { createTestMemberByProjectId } from "./fixtures/entities.ts";
  */
 
 class Probe {
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
 }
 
 const setup = async () => {
@@ -120,7 +120,7 @@ describe("Lore MCP — blights", () => {
     projectId: number,
     over: Record<string, unknown> = {},
   ) =>
-    await probe.blights.create({
+    await probe.projectErrors.create({
       projectId,
       fingerprint: "fp-1",
       name: "TypeError",
@@ -144,7 +144,7 @@ describe("Lore MCP — blights", () => {
     const res = await call(blightTools.blight_list, { project: project.id });
 
     expect(res.openCount).toBe(1);
-    expect(res.blights[0]).toMatchObject({
+    expect(res.projectErrors[0]).toMatchObject({
       fingerprint: "fp-1",
       name: "TypeError",
       message: "Cannot read properties of undefined",
@@ -161,14 +161,14 @@ describe("Lore MCP — blights", () => {
     await fileBlight(probe, project.id, { status: "resolved" });
 
     const open = await call(blightTools.blight_list, { project: project.id });
-    expect(open.blights).toHaveLength(0);
+    expect(open.projectErrors).toHaveLength(0);
     expect(open.openCount).toBe(0);
 
     const all = await call(blightTools.blight_list, {
       project: project.id,
       include_resolved: true,
     });
-    expect(all.blights).toHaveLength(1);
+    expect(all.projectErrors).toHaveLength(1);
   });
 
   it("should resolve a blight the inbox just listed", async () => {
@@ -186,7 +186,7 @@ describe("Lore MCP — blights", () => {
     const after = await call(blightTools.blight_list, {
       project: project.id,
     });
-    expect(after.blights).toHaveLength(0);
+    expect(after.projectErrors).toHaveLength(0);
   });
 
   it("should forward a blight into a quest and close it", async () => {
@@ -206,7 +206,7 @@ describe("Lore MCP — blights", () => {
     const after = await call(blightTools.blight_list, {
       project: project.id,
     });
-    expect(after.blights).toHaveLength(0);
+    expect(after.projectErrors).toHaveLength(0);
   });
 
   it("keeps a hostile stack inside its fence and the source URL a code span (#Q2520)", async () => {
@@ -279,14 +279,16 @@ describe("Lore MCP — blights", () => {
       project: project.id,
       blight_id: filed.id,
     });
-    expect((await probe.blights.findById(filed.id))?.status).toMatch(/^quest:/);
+    expect((await probe.projectErrors.findById(filed.id))?.status).toMatch(
+      /^quest:/,
+    );
 
     await call(questTools.quest_delete, {
       project: project.id,
       shortId: questShortId,
     });
 
-    expect((await probe.blights.findById(filed.id))?.status).toBe("open");
+    expect((await probe.projectErrors.findById(filed.id))?.status).toBe("open");
     const inbox = await call(blightTools.blight_list, {
       project: project.id,
     });
@@ -306,7 +308,7 @@ describe("Lore MCP — blights", () => {
       project: project.id,
       blight_id: filed.id,
     });
-    const held = (await probe.blights.findById(filed.id))?.status;
+    const held = (await probe.projectErrors.findById(filed.id))?.status;
 
     const unrelated = await call(questTools.quest_create, {
       project: project.id,
@@ -320,7 +322,7 @@ describe("Lore MCP — blights", () => {
       shortId: unrelated.shortId,
     });
 
-    expect((await probe.blights.findById(filed.id))?.status).toBe(held);
+    expect((await probe.projectErrors.findById(filed.id))?.status).toBe(held);
   });
 
   describe("who may triage", () => {
@@ -336,7 +338,7 @@ describe("Lore MCP — blights", () => {
         {
           key: "triager",
           name: "Triager",
-          permissions: ["project:read", "blight:read", "blight:triage"],
+          permissions: ["project:read", "error:read", "error:triage"],
         },
         { id: owner.id, roles: ["user"] },
       );
@@ -349,7 +351,7 @@ describe("Lore MCP — blights", () => {
       return { ...world, triager, member };
     };
 
-    it("is whoever holds blight:triage, not only the owner", async () => {
+    it("is whoever holds error:triage, not only the owner", async () => {
       const { probe, blightTools, project, call, triager } = await withRanks();
       const resolved = await fileBlight(probe, project.id);
       const forwarded = await fileBlight(probe, project.id, {
@@ -381,7 +383,7 @@ describe("Lore MCP — blights", () => {
       ]) {
         await expect(
           call(tool, { project: project.id, blight_id: filed.id }, member.id),
-        ).rejects.toThrow(/blight:triage/);
+        ).rejects.toThrow(/error:triage/);
       }
     });
 
@@ -392,7 +394,7 @@ describe("Lore MCP — blights", () => {
         blightTools.blight_resolve,
         blightTools.blight_forward,
       ]) {
-        expect(tool.options.description).toContain("Needs `blight:triage`");
+        expect(tool.options.description).toContain("Needs `error:triage`");
         expect(tool.options.description).not.toContain("owner only");
       }
     });

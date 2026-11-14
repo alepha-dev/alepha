@@ -397,7 +397,7 @@ export const quests = $entity({
     }),
     /**
      * Provenance for quests spawned by an automated source (currently the
-     * Blights inbox forward-to-quest action). Absent for hand-authored
+     * Errors inbox forward-to-quest action). Absent for hand-authored
      * quests. Opaque JSON — adding fields to `questSourceSchema` never
      * needs a migration. See `questSourceSchema`.
      */

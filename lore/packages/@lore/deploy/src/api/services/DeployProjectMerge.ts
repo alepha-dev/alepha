@@ -14,12 +14,12 @@ import { $repository, type SQLLike } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
-import { blightIgnoreRules } from "../entities/blightIgnoreRules.ts";
-import { blights } from "../entities/blights.ts";
 import { deployments } from "../entities/deployments.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { estates } from "../entities/estates.ts";
 import { monitors } from "../entities/monitors.ts";
+import { projectErrorIgnoreRules } from "../entities/projectErrorIgnoreRules.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 import { qualityRuns } from "../entities/qualityRuns.ts";
 import { registryCredentials } from "../entities/registryCredentials.ts";
 import { sigils } from "../entities/sigils.ts";
@@ -29,7 +29,7 @@ import { EstateService } from "./EstateService.ts";
 
 /**
  * Deploy's step of a project merge, registered on core's
- * `ProjectMergeService` (#E94, #Q2782): every deployed copy, sigil, blight,
+ * `ProjectMergeService` (#E94, #Q2782): every deployed copy, sigil, error,
  * artifact, stack, monitor and estate homed there moves into the target
  * project.
  *
@@ -41,7 +41,7 @@ import { EstateService } from "./EstateService.ts";
  * writes is reached through the sigil, not the project.
  *
  * A unique key the target already holds is refused for what a row IS (a
- * deployed copy, a sigil, a stack, a blight), and the target's row kept
+ * deployed copy, a sigil, a stack, an error), and the target's row kept
  * for what only describes the project or repeats it: an estate it already
  * borrows, a registry it already logs in to, a day of coverage on a branch
  * it already measured, a build it was pushed too.
@@ -77,12 +77,12 @@ export class DeployProjectMerge {
       onCollision: "keepTarget",
     },
     {
-      kind: "blight",
-      entity: blights,
+      kind: "error",
+      entity: projectErrors,
       keys: ["fingerprint"],
       onCollision: "refuse",
     },
-    { kind: "blight ignore rule", entity: blightIgnoreRules },
+    { kind: "error ignore rule", entity: projectErrorIgnoreRules },
     { kind: "deployment", entity: deployments },
     {
       kind: "stack",

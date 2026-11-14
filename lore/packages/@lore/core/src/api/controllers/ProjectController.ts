@@ -946,7 +946,7 @@ export class ProjectController {
         // The repository a quest's commit shas link into. `null` clears it,
         // and the shas go back to being plain text.
         repositoryUrl: projectRepositoryUrlSchema.nullable().optional(),
-        // Blights retention window in days (Quest #90). `null` clears the
+        // Errors retention window in days (Quest #90). `null` clears the
         // override → the purge cron falls back to the global 30-day default.
         retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
         // The coverage line on the Delivery tab. `null` clears it.

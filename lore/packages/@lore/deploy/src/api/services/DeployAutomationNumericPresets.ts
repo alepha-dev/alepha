@@ -42,15 +42,15 @@ export class DeployAutomationNumericPresets {
       (values) => this.coverage(values),
     );
     this.register(
-      "blight-crossing",
-      "Open blights cross a threshold",
-      "Sample aggregate open blights every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
-      "openBlights",
+      "error-crossing",
+      "Open errors cross a threshold",
+      "Sample aggregate open errors every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
+      "openErrors",
       "*/5 * * * *",
       {
         threshold: { kind: "number", required: true, min: 0 },
       },
-      (values) => this.blights(values),
+      (values) => this.projectErrors(values),
     );
   }
   protected register(
@@ -133,13 +133,13 @@ export class DeployAutomationNumericPresets {
       ],
     };
   }
-  protected blights(values: AutomationPresetValues): AutomationRule {
+  protected projectErrors(values: AutomationPresetValues): AutomationRule {
     return {
       version: 1,
       trigger: { kind: "schedule", cron: "*/5 * * * *" },
       select: {
         kind: "scalar",
-        key: "openBlights",
+        key: "openErrors",
         filters: { status: "open" },
       },
       guard: {
@@ -153,8 +153,8 @@ export class DeployAutomationNumericPresets {
       actions: [
         this.notify(
           values,
-          "Open blights crossed a threshold",
-          `Open blights: {{value}}.\nCrossed above ${typeof values.threshold === "number" ? values.threshold : String(values.threshold)}.\n{{project}}`,
+          "Open errors crossed a threshold",
+          `Open errors: {{value}}.\nCrossed above ${typeof values.threshold === "number" ? values.threshold : String(values.threshold)}.\n{{project}}`,
         ),
       ],
     };

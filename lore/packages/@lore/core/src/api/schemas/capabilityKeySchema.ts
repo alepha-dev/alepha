@@ -8,7 +8,7 @@ import { type Infer, z } from "alepha";
  * - `knowledge` is its memory: folios, directories, links, revisions,
  *   attachments.
  * - `apps` is its software: instances, artifacts, quality, and with the
- *   `track` option sigils, analytics, vitals and blights.
+ *   `track` option sigils, analytics, vitals and errors.
  * - `support` is its users: the public request form, the triage inbox,
  *   feedback comments.
  *
@@ -19,8 +19,9 @@ import { type Infer, z } from "alepha";
  * label. That is the direct lesson of `features.milestones`, which gates a
  * module called Releases and can never be renamed because it is a required
  * key inside a JSON column. A label moves; a key never does. The same rule
- * already binds `sigils.kinds`, whose persisted values are `beacon` (meaning
- * analytics) and `blights` (meaning errors).
+ * already binds `sigils.kinds`, whose persisted values include `beacon`
+ * (meaning analytics): renaming one is a data migration in the same deploy,
+ * as #E147 did for `errors`.
  *
  * `mode: "text"` so no `CHECK` constraint is generated and a fifth capability
  * later is a code-only change with no migration. Same reasoning as

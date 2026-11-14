@@ -210,7 +210,7 @@ describe("dashboard data gate", () => {
     it("answers noBeacon when apps report but none of them page views", async ({
       expect,
     }) => {
-      await sigil(["blights"]);
+      await sigil(["errors"]);
 
       const value = await onHome("uniqueVisitors", {
         kind: "projects",
@@ -221,11 +221,11 @@ describe("dashboard data gate", () => {
     });
   });
 
-  describe("openBlights", () => {
+  describe("openErrors", () => {
     it("answers noSigil at zero when the project has no app", async ({
       expect,
     }) => {
-      const value = await onHome("openBlights", {
+      const value = await onHome("openErrors", {
         kind: "projects",
         projectIds: [project.id],
       });
@@ -236,12 +236,9 @@ describe("dashboard data gate", () => {
     it("answers silent at zero when no app reported in 30 days", async ({
       expect,
     }) => {
-      await sigil(
-        ["blights"],
-        dateTime.now().subtract(40, "day").toISOString(),
-      );
+      await sigil(["errors"], dateTime.now().subtract(40, "day").toISOString());
 
-      const value = await onHome("openBlights", {
+      const value = await onHome("openErrors", {
         kind: "projects",
         projectIds: [project.id],
       });
@@ -252,9 +249,9 @@ describe("dashboard data gate", () => {
     it("keeps a measured zero when an app reported this month", async ({
       expect,
     }) => {
-      await sigil(["blights"], dateTime.now().subtract(2, "day").toISOString());
+      await sigil(["errors"], dateTime.now().subtract(2, "day").toISOString());
 
-      const value = await onHome("openBlights", {
+      const value = await onHome("openErrors", {
         kind: "projects",
         projectIds: [project.id],
       });

@@ -43,7 +43,7 @@ const NAV_ROUTE_NAMES = [
   // Opening a card — KanbanBoard.tsx
   "projectEpics",
   "projectEpic",
-  "projectBlights",
+  "projectErrors",
   "projectFeedback",
   "projectReleases",
   // Opening a release from the list — ProjectReleases.tsx

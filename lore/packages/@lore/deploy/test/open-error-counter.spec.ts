@@ -8,25 +8,25 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreDeployApi } from "../src/api/index.ts";
-import { OpenBlightCounter } from "../src/api/index.ts";
+import { OpenErrorCounter } from "../src/api/index.ts";
 import {
-  blights,
+  projectErrors,
   sigilErrorGroups,
   type Sigil,
   sigils,
 } from "../src/schemas/index.ts";
 import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 
-class BlightTestRepositories {
+class ProjectErrorTestRepositories {
   sigils = $repository(sigils);
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
   errorGroups = $repository(sigilErrorGroups);
 }
 
 interface TestContext {
   alepha: Alepha;
-  counter: OpenBlightCounter;
-  repos: BlightTestRepositories;
+  counter: OpenErrorCounter;
+  repos: ProjectErrorTestRepositories;
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -42,11 +42,11 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(LoreDeployApi);
 
   alepha.inject(DeployTestEntities);
-  const repos = alepha.inject(BlightTestRepositories);
+  const repos = alepha.inject(ProjectErrorTestRepositories);
 
   await alepha.start();
 
-  return { alepha, counter: alepha.inject(OpenBlightCounter), repos };
+  return { alepha, counter: alepha.inject(OpenErrorCounter), repos };
 };
 
 let tokenSeq = 0;
@@ -62,13 +62,13 @@ const createSigil = async (
     name,
     tokenHash: `hash-${tokenSeq}`,
     tokenPrefix: `sg_${tokenSeq}`,
-    kinds: ["blights"],
+    kinds: ["errors"],
   });
 };
 
 /**
  * Reproduces what an ingest writes: a per-app error group AND the shared
- * project-wide blight row, with `blights.sigilId` set to the latest reporter.
+ * project-wide error row, with `projectErrors.sigilId` set to the latest reporter.
  */
 const report = async (
   ctx: TestContext,
@@ -100,23 +100,23 @@ const report = async (
     });
   }
 
-  const existingBlight = await ctx.repos.blights.findOne({
+  const existingProjectError = await ctx.repos.projectErrors.findOne({
     where: {
       projectId: { eq: sigil.projectId },
       fingerprint: { eq: fingerprint },
     },
   });
-  if (existingBlight) {
-    await ctx.repos.blights.updateOne(
-      { id: { eq: existingBlight.id } },
+  if (existingProjectError) {
+    await ctx.repos.projectErrors.updateOne(
+      { id: { eq: existingProjectError.id } },
       {
-        count: (existingBlight.count ?? 0) + count,
+        count: (existingProjectError.count ?? 0) + count,
         // The trap this whole service exists for: last reporter wins.
         sigilId: sigil.id,
       },
     );
   } else {
-    await ctx.repos.blights.create({
+    await ctx.repos.projectErrors.create({
       projectId: sigil.projectId,
       sigilId: sigil.id,
       fingerprint,
@@ -130,7 +130,7 @@ const report = async (
   }
 };
 
-describe("OpenBlightCounter", () => {
+describe("OpenErrorCounter", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -155,7 +155,7 @@ describe("OpenBlightCounter", () => {
     });
 
     expect(result.count).toBe(1);
-    // Occurrences come from the two groups, not from the blight row.
+    // Occurrences come from the two groups, not from the error row.
     expect(result.occurrences).toBe(7);
     expect(result.apps).toBe(2);
   });
@@ -174,7 +174,7 @@ describe("OpenBlightCounter", () => {
       status: "open",
     });
 
-    // `blights.sigilId` now points at an app the card never selected. A count
+    // `projectErrors.sigilId` now points at an app the card never selected. A count
     // filtered on that column would drop to zero here; this one must not move.
     await report(ctx, other, "fp-shared", 50);
 
@@ -190,7 +190,7 @@ describe("OpenBlightCounter", () => {
     expect(after.apps).toBe(1);
   });
 
-  it("excludes resolved and quest-forwarded blights", async ({ expect }) => {
+  it("excludes resolved and quest-forwarded errors", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const web = await createSigil(ctx, project, "web");
     await report(ctx, web, "fp-open");
@@ -212,16 +212,18 @@ describe("OpenBlightCounter", () => {
     expect(all.count).toBe(3);
   });
 
-  it("does not count a group whose blight row has been purged", async ({
+  it("does not count a group whose error row has been purged", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);
     const web = await createSigil(ctx, project, "web");
     await report(ctx, web, "fp-aged", 9);
 
-    // What `BlightJobs.purgeStaleBlights` does past `retentionDays`. Nothing
+    // What `ProjectErrorJobs.purgeStaleProjectErrors` does past `retentionDays`. Nothing
     // purges `sigil_error_groups`, so the group outlives its triage row.
-    await ctx.repos.blights.deleteMany({ fingerprint: { eq: "fp-aged" } });
+    await ctx.repos.projectErrors.deleteMany({
+      fingerprint: { eq: "fp-aged" },
+    });
 
     const result = await ctx.counter.count({
       projectIds: [project.id],
@@ -239,7 +241,7 @@ describe("OpenBlightCounter", () => {
     const theirs = await createTestProject(ctx.alepha);
     const myApp = await createSigil(ctx, mine, "web");
     const theirApp = await createSigil(ctx, theirs, "web");
-    // The same bug, independently present in both projects: two blight rows.
+    // The same bug, independently present in both projects: two error rows.
     await report(ctx, myApp, "fp-common");
     await report(ctx, theirApp, "fp-common");
 
@@ -253,14 +255,14 @@ describe("OpenBlightCounter", () => {
     expect(result.topProjectId).toBe(mine.id);
   });
 
-  it("counts every blight in a project scope, including unattributed ones", async ({
+  it("counts every error in a project scope, including unattributed ones", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);
     const web = await createSigil(ctx, project, "web");
     await report(ctx, web, "fp-attributed", 2);
     // A row from before the per-app split existed: no error group at all.
-    await ctx.repos.blights.create({
+    await ctx.repos.projectErrors.create({
       projectId: project.id,
       fingerprint: "fp-legacy",
       name: "TypeError",

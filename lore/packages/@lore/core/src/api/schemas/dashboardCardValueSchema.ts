@@ -56,7 +56,7 @@ export const dashboardCardValueSchema = z.object({
    * resolver and rendered by that metric's footer:
    *
    * - `activeQuests` — `todoCount`, `inProgressCount`
-   * - `openBlights` — `occurrences`, `apps`
+   * - `openErrors` — `occurrences`, `apps`
    * - `untriagedFeedback` — `oldestWaitingDays`
    * - `uniqueVisitors` — `previous`
    */

@@ -58,7 +58,7 @@ describe("searchDocs", () => {
       ).sections;
     };
 
-    const telemetry = "telemetry blights sigil feedback inbox";
+    const telemetry = "telemetry errors sigil feedback inbox";
     const allOn = await ask(everything.id, telemetry, everything.createdBy);
     expect(allOn.some((s) => s.url.includes("apps-telemetry"))).toBe(true);
 

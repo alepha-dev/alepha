@@ -41,7 +41,7 @@ export class ReportsDigest {
     foliosRevised: "Folio revisions",
     deploys: "Deploys",
     deploySuccess: "Deploy success",
-    openBlights: "Open blights",
+    openErrors: "Open errors",
     uptime: "Uptime",
     coverage: "Coverage",
   };

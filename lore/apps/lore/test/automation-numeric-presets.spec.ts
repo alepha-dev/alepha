@@ -13,7 +13,7 @@ import {
 } from "@lore/core/api";
 import type { AutomationResource } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { blights, qualityRuns, sigils } from "@lore/deploy/schemas";
+import { projectErrors, qualityRuns, sigils } from "@lore/deploy/schemas";
 import { Alepha, AlephaError } from "alepha";
 import { JobQueueProvider, jobExecutionEntity } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
@@ -34,7 +34,7 @@ class NumericPresetQueue extends JobQueueProvider {
 }
 class NumericPresetRows {
   public readonly quality = $repository(qualityRuns);
-  public readonly blights = $repository(blights);
+  public readonly projectErrors = $repository(projectErrors);
   public readonly sigils = $repository(sigils);
   public readonly jobs = $repository(jobExecutionEntity);
 }
@@ -125,8 +125,8 @@ describe("Numeric automation presets through actual registered metrics", () => {
       testsSkipped: 0,
       durationMs: 100,
     });
-  const addBlight = () =>
-    rows.blights.create({
+  const addProjectError = () =>
+    rows.projectErrors.create({
       projectId: project.id,
       fingerprint: crypto.randomUUID(),
       name: "Error",
@@ -171,9 +171,9 @@ describe("Numeric automation presets through actual registered metrics", () => {
       },
     });
     expect(
-      catalog.presets.find((preset) => preset.key === "blight-crossing"),
+      catalog.presets.find((preset) => preset.key === "error-crossing"),
     ).toMatchObject({
-      permissions: expect.arrayContaining(["blight:read"]),
+      permissions: expect.arrayContaining(["error:read"]),
       needs: expect.arrayContaining([{ capability: "apps", option: "track" }]),
     });
     const rule = await arm("coverage-regression", { threshold: 5 });
@@ -294,9 +294,9 @@ describe("Numeric automation presets through actual registered metrics", () => {
       tokenPrefix: "fixture",
       lastSeenAt: time.nowISOString(),
     });
-    const first = await addBlight();
-    const second = await addBlight();
-    let rule = await arm("blight-crossing", { threshold: 2 });
+    const first = await addProjectError();
+    const second = await addProjectError();
+    let rule = await arm("error-crossing", { threshold: 2 });
     expect((await persistence.rules.getById(rule.id)).scheduleCron).toBe(
       "*/5 * * * *",
     );
@@ -307,7 +307,7 @@ describe("Numeric automation presets through actual registered metrics", () => {
     expect((await persistence.rules.getById(rule.id)).baseline).toMatchObject({
       value: 2,
     });
-    await addBlight();
+    await addProjectError();
     expect(await persistence.events.count()).toBe(0);
     await time.travel([5, "minutes"]);
     const crossed = await sample(rule);
@@ -334,17 +334,17 @@ describe("Numeric automation presets through actual registered metrics", () => {
     expect(await notificationCount()).toBe(1);
     await time.travel([5, "minutes"]);
     expect((await sample(rule)).status).toBe("skipped");
-    await addBlight();
+    await addProjectError();
     await time.travel([5, "minutes"]);
     expect((await sample(rule)).status).toBe("skipped");
-    await rows.blights.updateById(first.id, { status: "resolved" });
-    await rows.blights.updateById(second.id, { status: "resolved" });
+    await rows.projectErrors.updateById(first.id, { status: "resolved" });
+    await rows.projectErrors.updateById(second.id, { status: "resolved" });
     await time.travel([5, "minutes"]);
     expect((await sample(rule)).status).toBe("skipped");
     expect((await persistence.rules.getById(rule.id)).baseline).toMatchObject({
       value: 2,
     });
-    await rows.blights.updateById(first.id, { status: "open" });
+    await rows.projectErrors.updateById(first.id, { status: "open" });
     await time.travel([5, "minutes"]);
     expect((await sample(rule)).status).toBe("succeeded");
     expect(await notificationCount()).toBe(2);
@@ -355,7 +355,7 @@ describe("Numeric automation presets through actual registered metrics", () => {
     expect((await persistence.rules.getById(rule.id)).baseline).toBeUndefined();
     await time.travel([5, "minutes"]);
     expect((await sample(rule)).status).toBe("skipped");
-    await addBlight();
+    await addProjectError();
     await time.travel([5, "minutes"]);
     expect((await sample(rule)).status).toBe("succeeded");
     expect(await notificationCount()).toBe(3);
@@ -365,7 +365,7 @@ describe("Numeric automation presets through actual registered metrics", () => {
         ...rule.rule!,
         select: {
           kind: "scalar",
-          key: "openBlights",
+          key: "openErrors",
           filters: { status: "all" },
         },
       },

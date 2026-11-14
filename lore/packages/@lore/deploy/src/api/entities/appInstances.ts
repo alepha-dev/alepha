@@ -129,7 +129,7 @@ export const appInstances = $entity({
      *
      * ⚠️ The foreign key lives HERE and never on `sigils`. That table is the
      * `ON DELETE CASCADE` parent of its analytics tables and of
-     * `blights.sigilId`, and adding a column to it is a drizzle rebuild, which
+     * `projectErrors.sigilId`, and adding a column to it is a drizzle rebuild, which
      * on D1 is the cascade wipe documented in `apps/lore/AGENTS.md`. This table
      * is new, so both its foreign keys are free.
      *

@@ -8,7 +8,7 @@ import { afterEach, describe, it } from "vitest";
 import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../src/api/entities/monitors.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
-import { UptimeBlightService } from "../src/api/services/UptimeBlightService.ts";
+import { UptimeErrorService } from "../src/api/services/UptimeErrorService.ts";
 import { UptimeNotificationService } from "../src/api/services/UptimeNotificationService.ts";
 import { UptimeProber } from "../src/api/services/UptimeProber.ts";
 import { UptimeStateService } from "../src/api/services/UptimeStateService.ts";
@@ -31,7 +31,7 @@ class MemoryProber extends UptimeProber {
       : { ok: true, result: "up" as const, latencyMs: 20 };
   }
 }
-class FailingBlights extends UptimeBlightService {
+class FailingProjectErrors extends UptimeErrorService {
   public override async handle() {
     throw new AlephaError("Injected inbox failure");
   }
@@ -42,7 +42,7 @@ describe("Uptime email alerts", () => {
   afterEach(async () => {
     for (const alepha of containers.splice(0)) await alepha.stop();
   });
-  const setup = async (failBlight = false) => {
+  const setup = async (failProjectError = false) => {
     const alepha = Alepha.create({
       env: {
         DATABASE_URL: ":memory:",
@@ -53,8 +53,8 @@ describe("Uptime email alerts", () => {
     })
       .with(AlephaEmail)
       .with({ provide: UptimeProber, use: MemoryProber });
-    if (failBlight)
-      alepha.with({ provide: UptimeBlightService, use: FailingBlights });
+    if (failProjectError)
+      alepha.with({ provide: UptimeErrorService, use: FailingProjectErrors });
     alepha.with(LoreDeployApi);
     const repos = alepha.inject(Repositories);
     const clock = alepha.inject(DateTimeProvider);

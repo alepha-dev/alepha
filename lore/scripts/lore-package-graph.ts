@@ -13,7 +13,7 @@ import { dirname, join, normalize } from "node:path";
  * | `deploy`    | Lore as Vercel   | `core`      |
  *
  * A feature module never imports another one. A feature that spans two of
- * them (an epic files folios, a blight is forwarded to a quest, a release
+ * them (an epic files folios, an error is forwarded to a quest, a release
  * lists its artifacts) goes through a core registry or a core link. The table
  * is {@link LorePackageGraph.GRAPH}; changing the direction is a one-line edit
  * there, and nowhere else.

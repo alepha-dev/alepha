@@ -95,7 +95,7 @@ const setup = async (): Promise<TestContext> => {
     name: "probe",
     tokenHash: "hash-probe",
     tokenPrefix: "sg_probe",
-    kinds: ["blights", "beacon", "vitals"],
+    kinds: ["errors", "beacon", "vitals"],
   });
 
   return {

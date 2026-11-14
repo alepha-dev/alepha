@@ -15,7 +15,7 @@ export const reportsSummaryLineSchema = z.object({
   value: z.number(),
   /**
    * The previous period's figure. Absent for a figure with no past to read
-   * (open blights today), and when the period has no start.
+   * (open errors today), and when the period has no start.
    */
   previous: z.number().optional(),
   format: z.enum(["count", "hours", "percent"]),

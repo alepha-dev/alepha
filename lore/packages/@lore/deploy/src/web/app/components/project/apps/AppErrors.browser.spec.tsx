@@ -29,8 +29,8 @@ class FakeLinkProvider extends LinkProvider {
 }
 
 class Routes {
-  blights = $page({
-    name: "projectBlights",
+  projectErrors = $page({
+    name: "projectErrors",
     path: "/:projectSlug/blights",
     component: () => null,
   });
@@ -48,7 +48,7 @@ const INSTANCE: AppInstanceResource = {
   sigil: {
     id: "00000000-0000-4000-8000-000000000001",
     tokenPrefix: "sg_lore_ab",
-    kinds: ["beacon", "vitals", "blights", "feedback"],
+    kinds: ["beacon", "vitals", "errors", "feedback"],
     createdAt: "2026-08-01T10:00:00.000Z",
   },
 } as AppInstanceResource;

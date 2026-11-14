@@ -21,7 +21,7 @@
  */
 export class BoundParameters {
   /**
-   * Values per statement. 90, matching `BlightJobs.PURGE_BATCH_SIZE`, which
+   * Values per statement. 90, matching `ProjectErrorJobs.PURGE_BATCH_SIZE`, which
    * arrived at the same number for the same reason.
    */
   readonly limit = 90;

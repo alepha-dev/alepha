@@ -458,7 +458,7 @@ export {
   type ActivityChannelValue,
 } from "./services/ActivityChannel.ts";
 export {
-  type BlightForward,
+  type ProjectErrorForward,
   type DeliveryChange,
   DeliveryChangeRegistry,
 } from "./services/DeliveryChangeRegistry.ts";

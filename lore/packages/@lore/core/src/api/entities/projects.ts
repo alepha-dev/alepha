@@ -68,9 +68,9 @@ export const projects = $entity({
      */
     repositoryUrl: z.string().max(200).optional(),
     /**
-     * Blights retention window, in days. A daily purge cron deletes `open`
-     * blights whose `lastSeenAt` is older than this many days (resolved and
-     * `quest:`-forwarded blights are kept as audit trail). `null`/absent
+     * Errors retention window, in days. A daily purge cron deletes `open`
+     * errors whose `lastSeenAt` is older than this many days (resolved and
+     * `quest:`-forwarded errors are kept as audit trail). `null`/absent
      * means fall back to the global 30-day default.
      *
      * NB: declared as `z.optional` with NO `db.default(...)` ON PURPOSE.

@@ -55,7 +55,7 @@ const ReportsReliability = (props: ReportsReliabilityProps) => {
   } satisfies ChartConfig;
   const errorConfig = {
     count: {
-      label: tr("reports.reliability.series.errors"),
+      label: tr("reports.reliability.series.occurrences"),
       color: "var(--danger)",
     },
   } satisfies ChartConfig;
@@ -63,15 +63,15 @@ const ReportsReliability = (props: ReportsReliabilityProps) => {
   return (
     <>
       <ReportsSection
-        title={tr("reports.reliability.blights.title")}
-        definition={tr("reports.reliability.blights.definition")}
-        csv={{ filename: "blights", rows: reliability.blights }}
+        title={tr("reports.reliability.errors.title")}
+        definition={tr("reports.reliability.errors.definition")}
+        csv={{ filename: "blights", rows: reliability.projectErrors }}
       >
         <ChartContainer
           config={blightConfig}
           className="aspect-auto h-[220px] w-full"
         >
-          <ComposedChart data={reliability.blights}>
+          <ComposedChart data={reliability.projectErrors}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="date"
@@ -124,15 +124,15 @@ const ReportsReliability = (props: ReportsReliabilityProps) => {
       <ReportsSection
         title={tr("reports.reliability.top.title")}
         definition={tr("reports.reliability.top.definition")}
-        csv={{ filename: "top-blights", rows: reliability.topBlights }}
+        csv={{ filename: "top-blights", rows: reliability.topErrors }}
       >
-        {reliability.topBlights.length === 0 ? (
+        {reliability.topErrors.length === 0 ? (
           <p className="text-muted-foreground py-2 text-sm">
             {tr("reports.reliability.top.empty")}
           </p>
         ) : (
           <ul className="flex flex-col gap-1 text-sm">
-            {reliability.topBlights.map((row) => (
+            {reliability.topErrors.map((row) => (
               <li
                 key={`${row.name}/${row.count}`}
                 className="flex items-center gap-3"
@@ -153,8 +153,8 @@ const ReportsReliability = (props: ReportsReliabilityProps) => {
       </ReportsSection>
 
       <ReportsSection
-        title={tr("reports.reliability.errors.title")}
-        definition={tr("reports.reliability.errors.definition")}
+        title={tr("reports.reliability.occurrences.title")}
+        definition={tr("reports.reliability.occurrences.definition")}
         csv={{ filename: "errors", rows: reliability.errors }}
       >
         <ChartContainer

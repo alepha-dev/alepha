@@ -29,8 +29,8 @@ class Routes {
     path: "/feedback",
     component: () => null,
   });
-  blights = $page({
-    name: "projectBlights",
+  projectErrors = $page({
+    name: "projectErrors",
     path: "/blights",
     component: () => null,
   });
@@ -76,7 +76,7 @@ describe("useWorkPromptSubject, over useAgentPromptSubject", () => {
         // A page of another module, through core alone (#E75, #Q2624).
         forBlightsInbox: useAgentPromptSubject().forPage.bind(
           null,
-          "projectBlights",
+          "projectErrors",
         ),
       }),
       {

@@ -10,12 +10,12 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
 
-import { blights } from "../entities/blights.ts";
 import { DeployAnalytics } from "../entities/deployAnalytics.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
-import { BlightRuleService } from "./BlightRuleService.ts";
 import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
+import { ProjectErrorRuleService } from "./ProjectErrorRuleService.ts";
 
 /**
  * What one sigil is allowed to write, right now.
@@ -47,7 +47,7 @@ export interface SigilGates {
  *
  * ## Errors are written twice, on purpose
  *
- * `sigil_error_groups` dedups on `(sigilId, fingerprint)` and `blights` on
+ * `sigil_error_groups` dedups on `(sigilId, fingerprint)` and `projectErrors` on
  * `(projectId, fingerprint)`, and both are written for every accepted error.
  * They are not two copies of one thing — they answer two different questions:
  *
@@ -56,20 +56,20 @@ export interface SigilGates {
  *   That is `sigil_error_groups`.
  * - *"Have we decided what to do about this bug?"* is one decision per bug, not
  *   one per place it was seen. An inbox that lists the same `TypeError` twice
- *   because a second app has it too is a worse inbox, and `blights.status` —
+ *   because a second app has it too is a worse inbox, and `projectErrors.status` —
  *   open, resolved, `quest:<id>` — is exactly the kind of state that must not
- *   fork. That is `blights`.
+ *   fork. That is `projectErrors`.
  *
  * So the counts differ by design: a group's `count` is what that app saw, a
- * blight's `count` is the project-wide total, which is the right sort key for
- * triage by blast radius. `blights.sigilId` records the **most recent**
+ * error's `count` is the project-wide total, which is the right sort key for
+ * triage by blast radius. `projectErrors.sigilId` records the **most recent**
  * reporter, which is what the inbox's "filter by sigil" dropdown means; the
  * per-app breakdown lives in the groups, where it is not lossy.
  */
 export class SigilIngestService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly rules = $inject(BlightRuleService);
+  protected readonly rules = $inject(ProjectErrorRuleService);
   /**
    * The capability read behind {@link gatesFor}. Cached and memoised there,
    * so an ingest batch pays for it once.
@@ -82,7 +82,7 @@ export class SigilIngestService {
    * `../entities/sigilAnalytics.ts` — see that class's doc for why a distinct visitor
    * count is the one question storage-swappable `$analytics()` datasets
    * cannot answer, and so is the one thing that stayed on a repository.
-   * Error groups and blights stay on repositories for an unrelated reason:
+   * Error groups and errors stay on repositories for an unrelated reason:
    * they keep the *first* stack sample, which needs a read before every
    * write, something an append-only analytics backend cannot do.
    */
@@ -95,12 +95,12 @@ export class SigilIngestService {
   protected readonly datasets = $inject(DeployAnalytics);
 
   /**
-   * The most a stored `count` ever holds, on a group or a blight.
+   * The most a stored `count` ever holds, on a group or an error.
    *
    * The envelope caps what one report adds, but the sum still grows without
    * bound across reports, and a row past the safe-integer range fails the
-   * `z.integer()` decode of every read that returns it: the whole blight
-   * list, `blight_list` and the blight page, with no way to delete the row
+   * `z.integer()` decode of every read that returns it: the whole error
+   * list, `error_list` and the error page, with no way to delete the row
    * from the UI. A billion occurrences reads the same in triage as more.
    */
   protected readonly maxCount = 1_000_000_000;
@@ -108,12 +108,12 @@ export class SigilIngestService {
   protected readonly projects = $repository(projects);
   protected readonly sigils = $repository(sigils);
   protected readonly errorGroups = $repository(sigilErrorGroups);
-  protected readonly blights = $repository(blights);
+  protected readonly projectErrors = $repository(projectErrors);
 
   /**
    * Absorbs one batch.
    *
-   * Every section is gated on {@link gatesFor}: Blights, Beacon and Vitals on
+   * Every section is gated on {@link gatesFor}: Errors, Beacon and Vitals on
    * the project's `sigils` master switch and the sigil's own kinds; Feedback
    * additionally on the project's `feedback` flag. Enforcing here matters
    * because the reporting client fails open on any config error — a well-behaved app stops sending at the
@@ -134,7 +134,7 @@ export class SigilIngestService {
     // Awaited in turn they cost their round trips to the D1 primary END TO
     // END, which against D1 is the whole cost: a batch spends ~50ms of CPU
     // across ~900ms of wall time. Issuing them together is also the headroom a
-    // stalled primary eats before `DATABASE_TIMEOUT` fires — the blights of
+    // stalled primary eats before `DATABASE_TIMEOUT` fires — the errors of
     // 2026-08-29/30 all timed out on the FIRST statement of the request, with
     // the primary's queue already deep when it arrived.
     //
@@ -229,7 +229,7 @@ export class SigilIngestService {
    * the former `GET /sigils/config` on read), and stating it twice is how a
    * sink ends up advertising a capability it then discards.
    *
-   * Blights, Beacon and Vitals are **the sigil's own decision**, under the
+   * Errors, Beacon and Vitals are **the sigil's own decision**, under the
    * project's `sigils` master switch. They used to be intersected with
    * project-level feature flags as well, because `kinds` had no update path and
    * an owner needed some lever — but that lever applied to every enrolled app
@@ -259,7 +259,7 @@ export class SigilIngestService {
 
     return {
       views: master && this.carries(sigil, "beacon"),
-      errors: master && this.carries(sigil, "blights"),
+      errors: master && this.carries(sigil, "errors"),
       vitals: master && this.carries(sigil, "vitals"),
       // The one place a capability reads another's state, and it NARROWS:
       // Support must never silently enable tracking. Feedback arrives through
@@ -345,7 +345,7 @@ export class SigilIngestService {
       },
     );
 
-    await this.blights.upsertMany(
+    await this.projectErrors.upsertMany(
       folded.map((error) => ({
         projectId: sigil.projectId,
         sigilId: sigil.id,
@@ -363,8 +363,8 @@ export class SigilIngestService {
         target: ["projectId", "fingerprint"],
         set: {
           count: this.cappedSum(
-            this.blights.table.count,
-            this.blights.excluded("count"),
+            this.projectErrors.table.count,
+            this.projectErrors.excluded("count"),
           ),
           lastSeenAt: now,
           // Which app reported it last. Deliberately overwritten:
@@ -409,7 +409,7 @@ export class SigilIngestService {
    * first and Postgres only the second, and this runs on both.
    */
   protected cappedSum(
-    column: typeof this.blights.table.count,
+    column: typeof this.projectErrors.table.count,
     incoming: ReturnType<typeof sql>,
   ) {
     return sql`CASE WHEN ${column} + ${incoming} > ${this.maxCount} THEN ${this.maxCount} ELSE ${column} + ${incoming} END`;
@@ -433,7 +433,7 @@ export class SigilIngestService {
    */
   protected async foldByFingerprint(
     errors: NonNullable<SigilForwarded["errors"]>,
-    ignoreRules: Awaited<ReturnType<BlightRuleService["listForProject"]>>,
+    ignoreRules: Awaited<ReturnType<ProjectErrorRuleService["listForProject"]>>,
   ): Promise<FoldedError[]> {
     const folded = new Map<string, FoldedError>();
 
@@ -808,7 +808,7 @@ export class SigilIngestService {
  * already summed into `count`.
  *
  * Produced by {@link SigilIngestService.foldByFingerprint} and written to both
- * `sigil_error_groups` and `blights`, which is why it carries the union of what
+ * `sigil_error_groups` and `projectErrors`, which is why it carries the union of what
  * the two tables need under neutral names — `stack` becomes `stackSample` on
  * one of them.
  */

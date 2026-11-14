@@ -201,7 +201,7 @@ export class SigilProxyController {
       // reports through the sink provider directly, never through this
       // unauthenticated endpoint. The origin is the envelope's to claim, so
       // it is overwritten rather than trusted; left alone, anyone could post
-      // blights that read as server failures.
+      // errors that read as server failures.
       const body = request.body.errors
         ? {
             ...request.body,

@@ -205,7 +205,7 @@ export class DashboardCardService {
    * yesterday's visitors when the user actually has an app that reports
    * them. A metric with no data available is not offered, so it is not
    * seeded either. The order follows the mockup's own default set: visitors
-   * (Deploy, 10), quests (Work, 20), blights (Deploy, 30), feedback (Work,
+   * (Deploy, 10), quests (Work, 20), errors (Deploy, 30), feedback (Work,
    * 40).
    */
   protected async seed(user: UserAccountToken): Promise<void> {

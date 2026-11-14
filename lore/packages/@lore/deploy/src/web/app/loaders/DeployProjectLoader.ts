@@ -3,7 +3,7 @@ import { $inject, Alepha } from "alepha";
 import { $client } from "alepha/server/links";
 
 import type { AppController } from "../../../api/controllers/AppController.ts";
-import type { BlightController } from "../../../api/controllers/BlightController.ts";
+import type { ProjectErrorController } from "../../../api/controllers/ProjectErrorController.ts";
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 
@@ -16,7 +16,7 @@ export class DeployProjectLoader {
   protected readonly alepha = $inject(Alepha);
   protected readonly loaders = $inject(ProjectLoaderRegistry);
   protected readonly appApi = $client<AppController>();
-  protected readonly blightApi = $client<BlightController>();
+  protected readonly blightApi = $client<ProjectErrorController>();
 
   constructor() {
     this.loaders.register({
@@ -25,7 +25,7 @@ export class DeployProjectLoader {
       load: async (project) => {
         const projectId = project.id;
         const apps = hasCapability(project, "apps");
-        const [instances, openBlights] = await Promise.all([
+        const [instances, openErrors] = await Promise.all([
           // The project's app instances. Member-readable (`listApps` is
           // gated on `project:read`, unlike every mutation) but `.catch`
           // keeps a transient failure from taking the whole project down
@@ -46,7 +46,7 @@ export class DeployProjectLoader {
           // `ProjectView` reads this count to keep the inbox entry reachable.
           apps
             ? this.blightApi
-                .countOpenBlights({ params: { projectId } })
+                .countOpenProjectErrors({ params: { projectId } })
                 .then((r) => r.count)
                 .catch(() => 0)
             : Promise.resolve(0),
@@ -54,7 +54,7 @@ export class DeployProjectLoader {
         return () => {
           this.alepha.store.set(currentInstancesAtom, instances);
           this.alepha.store.set(currentBlightCountAtom, {
-            count: openBlights,
+            count: openErrors,
           });
         };
       },

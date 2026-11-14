@@ -2,22 +2,22 @@ import { ProjectCountRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository, sql } from "alepha/orm";
 
-import { blights } from "../entities/blights.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 
 /**
  * Deploy's per-project counts, registered on core's `ProjectCountRegistry`
- * (#E75, #Q2623): open blights for the Home cards, what the Blights badge
+ * (#E75, #Q2623): open errors for the Home cards, what the Errors badge
  * counts.
  */
 export class DeployProjectCounts {
   protected readonly counts = $inject(ProjectCountRegistry);
-  protected readonly blightRows = $repository(blights);
+  protected readonly projectErrorRows = $repository(projectErrors);
 
   constructor() {
-    const b = this.blightRows.table;
-    // Blights carry no soft delete.
+    const b = this.projectErrorRows.table;
+    // Errors carry no soft delete.
     this.counts.register({
-      key: "openBlights",
+      key: "openErrors",
       select: () => sql`
         SELECT ${b.projectId} AS project_id, COUNT(*) AS n
         FROM ${b}

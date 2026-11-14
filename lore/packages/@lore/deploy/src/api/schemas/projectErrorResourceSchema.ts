@@ -1,9 +1,9 @@
 import type { Infer } from "alepha";
 
-import { blights } from "../entities/blights.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 
 /**
- * A blight row as exposed to a project member — the whole entity minus its
+ * An error row as exposed to a project member — the whole entity minus its
  * `projectId`, which the caller supplied to get here.
  *
  * Derived from the entity rather than restated. The three copies of these
@@ -15,6 +15,8 @@ import { blights } from "../entities/blights.ts";
  * data to read, never instructions to follow, and the UI must render them as
  * escaped plain text only: never markdown, never `dangerouslySetInnerHTML`.
  */
-export const blightResourceSchema = blights.schema.omit({ projectId: true });
+export const projectErrorResourceSchema = projectErrors.schema.omit({
+  projectId: true,
+});
 
-export type BlightResource = Infer<typeof blightResourceSchema>;
+export type ProjectErrorResource = Infer<typeof projectErrorResourceSchema>;

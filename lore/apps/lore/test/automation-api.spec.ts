@@ -627,7 +627,7 @@ describe("Shared automation application service and HTTP actions", () => {
     const rule: AutomationRule = {
       version: 1,
       trigger: { kind: "schedule", cron: "*/5 * * * *" },
-      select: { kind: "scalar", key: "openBlights", filters: {} },
+      select: { kind: "scalar", key: "openErrors", filters: {} },
       guard: { field: "value", operator: "crossesAbove", value: 5 },
       actions: ast().actions,
     };

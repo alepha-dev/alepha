@@ -1,5 +1,5 @@
 import { HomeController, ProjectController } from "@lore/core/api";
-import { blights } from "@lore/deploy/schemas";
+import { projectErrors } from "@lore/deploy/schemas";
 import { epics, feedback } from "@lore/work/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -13,7 +13,7 @@ import { describe, it } from "vitest";
 import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
- * Home's Open column beyond quests: draft epics, open blights and pending
+ * Home's Open column beyond quests: draft epics, open errors and pending
  * feedback per project, read by `HomeController.openCounts` in one raw
  * statement.
  *
@@ -23,7 +23,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
  */
 class Probe {
   epics = $repository(epics);
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
   feedback = $repository(feedback);
 }
 
@@ -78,8 +78,8 @@ const setup = async () => {
       title: `Epic ${sequence}`,
       status: status as never,
     });
-  const blight = (projectId: number, status: string) =>
-    probe.blights.create({
+  const projectError = (projectId: number, status: string) =>
+    probe.projectErrors.create({
       projectId,
       fingerprint: `fp-${++sequence}`,
       name: "TypeError",
@@ -102,7 +102,7 @@ const setup = async () => {
     return new Map(board.openCounts.map((entry) => [entry.projectId, entry]));
   };
 
-  return { alepha, probe, create, epic, blight, request, openCounts };
+  return { alepha, probe, create, epic, projectError, request, openCounts };
 };
 
 describe("Home's open counts", () => {
@@ -117,9 +117,9 @@ describe("Home's open counts", () => {
     await ctx.epic(busy.id, "draft");
     await ctx.epic(busy.id, "draft");
     await ctx.epic(busy.id, "ready");
-    // Blights: open only.
-    await ctx.blight(busy.id, "open");
-    await ctx.blight(busy.id, "resolved");
+    // Errors: open only.
+    await ctx.projectError(busy.id, "open");
+    await ctx.projectError(busy.id, "resolved");
     // Feedback: pending only.
     await ctx.request(busy.id, "pending");
     await ctx.request(busy.id, "accepted");
@@ -130,13 +130,13 @@ describe("Home's open counts", () => {
     expect(counts.get(busy.id)).toEqual({
       projectId: busy.id,
       epics: 2,
-      blights: 1,
+      projectErrors: 1,
       feedback: 1,
     });
     expect(counts.get(other.id)).toEqual({
       projectId: other.id,
       epics: 1,
-      blights: 0,
+      projectErrors: 0,
       feedback: 0,
     });
 
@@ -157,7 +157,7 @@ describe("Home's open counts", () => {
     expect(counts.get(project.id)).toEqual({
       projectId: project.id,
       epics: 0,
-      blights: 0,
+      projectErrors: 0,
       feedback: 0,
     });
 

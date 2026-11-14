@@ -102,7 +102,7 @@ export class LorePermissions {
     "app:read",
     "artifact:read",
     "artifact:push",
-    "blight:read",
+    "error:read",
     "quality:read",
     "quality:push",
     "estate:read",
@@ -130,7 +130,7 @@ export class LorePermissions {
     "deploy:manage",
     "artifact:delete",
     "sigil:manage",
-    "blight:triage",
+    "error:triage",
     "estate:lend",
     // An estate belongs to its home project since #E126: who manages it is a
     // rank question, and only the owner holds these until a rank says more.
@@ -454,22 +454,22 @@ export class LorePermissions {
     label: "permission.artifact.delete",
   });
 
-  blightRead = $permission({
-    group: "blight",
+  errorRead = $permission({
+    group: "error",
     name: "read",
-    label: "permission.blight.read",
-    groupLabel: "permission.group.blight",
+    label: "permission.error.read",
+    groupLabel: "permission.group.error",
     groupOrder: 33,
   });
 
   /**
-   * Resolving a blight, ignoring one by rule, forwarding one to a quest and
+   * Resolving an error, ignoring one by rule, forwarding one to a quest and
    * deleting one.
    */
-  blightTriage = $permission({
-    group: "blight",
+  errorTriage = $permission({
+    group: "error",
     name: "triage",
-    label: "permission.blight.triage",
+    label: "permission.error.triage",
   });
 
   qualityRead = $permission({

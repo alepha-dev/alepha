@@ -46,9 +46,9 @@ describe("ResourceRegistry", () => {
 
     expect(registry.get("quest")).toBeUndefined();
     expect(() =>
-      registry.require("quest", "forward a blight into a quest"),
+      registry.require("quest", "forward an error into a quest"),
     ).toThrow(
-      "Cannot forward a blight into a quest: no module registers the 'quest' resource here",
+      "Cannot forward an error into a quest: no module registers the 'quest' resource here",
     );
   });
 

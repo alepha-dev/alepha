@@ -52,7 +52,7 @@ export class LoreAuditService extends AuditService {
    * back, so an audit insert that throws here used to turn a change that
    * happened into a 500, and invite a retry that repeats it (a duplicate
    * quest on create). The failure is logged at error level instead, which
-   * the sigil reports as a blight, and the action answers success. The
+   * the sigil reports as an error, and the action answers success. The
    * accepted cost: an action can occasionally succeed with no audit row.
    *
    * `record`, not `create`: `AdminAuditController` calls `create` directly

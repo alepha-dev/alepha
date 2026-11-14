@@ -5,7 +5,7 @@ import { LoreCoreApi } from "@lore/core/api";
 import { projects, users } from "@lore/core/schemas";
 import { LoreDeployApi } from "@lore/deploy/api";
 import {
-  blights,
+  projectErrors,
   sigilErrorGroups,
   sigils,
   sigilUniquesDaily,
@@ -444,7 +444,7 @@ describe("migration safety", () => {
     it("refuses a parent whose only children are SET NULL", ({ expect }) => {
       const previous = {
         ddl: [
-          fk("blights", "sigils", "SET NULL"),
+          fk("project_errors", "sigils", "SET NULL"),
           fk("app_instances", "sigils", "SET NULL"),
         ],
       };
@@ -455,7 +455,7 @@ describe("migration safety", () => {
         }),
       ).toEqual([
         expect.stringContaining(
-          "app_instances.sigils_id (SET NULL), blights.sigils_id (SET NULL)",
+          "app_instances.sigils_id (SET NULL), project_errors.sigils_id (SET NULL)",
         ),
       ]);
     });
@@ -513,7 +513,7 @@ describe("migration safety", () => {
       projects = $repository(projects);
       users = $repository(users);
       sigils = $repository(sigils);
-      blights = $repository(blights);
+      projectErrors = $repository(projectErrors);
       uniques = $repository(sigilUniquesDaily);
       errorGroups = $repository(sigilErrorGroups);
     }
@@ -531,7 +531,7 @@ describe("migration safety", () => {
     // is generic over its own entity, and an array of them collapses to a
     // union of signatures TypeScript refuses to call.
     expect(await repos.sigils.findMany({ limit: 1 })).toEqual([]);
-    expect(await repos.blights.findMany({ limit: 1 })).toEqual([]);
+    expect(await repos.projectErrors.findMany({ limit: 1 })).toEqual([]);
     expect(await repos.uniques.findMany({ limit: 1 })).toEqual([]);
     expect(await repos.errorGroups.findMany({ limit: 1 })).toEqual([]);
   });

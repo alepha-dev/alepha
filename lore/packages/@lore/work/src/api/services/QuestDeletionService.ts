@@ -17,10 +17,10 @@ import { type Quest, quests } from "../entities/quests.ts";
  * two paths cannot drift on it.
  *
  * It writes three times before the row goes: it clears dependents'
- * `dependsOn`, tells the registry (Deploy hands a forwarded blight back to
+ * `dependsOn`, tells the registry (Deploy hands a forwarded error back to
  * its inbox), then removes the outbound links and the row. No transaction
  * (D1 has none), and none is needed: the order is the safe one. A failure
- * partway leaves dependencies severed or a blight reopened next to a quest
+ * partway leaves dependencies severed or an error reopened next to a quest
  * that still exists, and a retry of the delete converges on the intended end
  * state.
  */
@@ -46,9 +46,9 @@ export class QuestDeletionService {
     );
 
     // Whoever subscribed to a quest's deletion runs now, with the row
-    // still readable: Deploy hands a forwarded blight back to its inbox
-    // (`BlightQuestHandBack`). Through the registry, so this module never
-    // reads `blights` (#E75, #Q2610).
+    // still readable: Deploy hands a forwarded error back to its inbox
+    // (`ProjectErrorQuestHandBack`). Through the registry, so this module never
+    // reads `projectErrors` (#E75, #Q2610).
     await this.resources.deleted({
       kind: "quest",
       id: quest.id,

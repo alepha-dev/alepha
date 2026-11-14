@@ -307,7 +307,7 @@ export class CapabilityRegistry {
         "dueSoon",
         "recentlyShipped",
       ],
-      // Areas belong here: quests carry one, blights forward into one, and
+      // Areas belong here: quests carry one, errors forward into one, and
       // `project_context` files them beside the epic index.
       permissionGroups: ["quest", "epic", "release", "area", "automation"],
     },
@@ -420,7 +420,7 @@ export class CapabilityRegistry {
       searchKinds: [],
       activityKinds: ["app", "sigil", "estate"],
       dashboardCards: [
-        "openBlights",
+        "openErrors",
         "uniqueVisitors",
         // The apps tiles of #E77 (#Q2657).
         "appHealth",
@@ -442,7 +442,7 @@ export class CapabilityRegistry {
         // into the estate's cloud account.
         "deploy",
         "artifact",
-        "blight",
+        "error",
         "quality",
         "sigil",
         "estate",
@@ -627,7 +627,7 @@ export class CapabilityRegistry {
    * Which capability owns a `DashboardMetricCatalog` key, or `undefined`.
    *
    * ⚠️ The catalogue carries the same fact on each metric's `needs`, because
-   * a card can additionally require an OPTION (`openBlights` needs
+   * a card can additionally require an OPTION (`openErrors` needs
    * `apps.track`, not merely `apps`) and this list has no room to say so.
    * `dashboard-capabilities.spec.ts` pins the two together: every metric's
    * `needs.capability` must be the capability that claims it here, and every

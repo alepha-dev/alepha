@@ -148,7 +148,7 @@ const PORTED = [
  * The control, and it has to be synthetic now.
  *
  * This list used to name seven real endpoints that still called
- * `assertMember` in their handlers - Areas, the board, Blights, Reports. #Q1955
+ * `assertMember` in their handlers - Areas, the board, Errors, Reports. #Q1955
  * ported the last of them, so there is no in-handler gate left in the
  * application to measure against, and the before-figure would have gone with
  * it. Seven actions declared here reproduce exactly the shape that was

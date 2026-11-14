@@ -306,7 +306,7 @@ describe("Automation numeric guards and shared quality metrics", () => {
   it("stores crossing observations exactly once, rearms on falling values and resumes the original decision after a crash", async ({
     expect,
   }) => {
-    const row = await create(ast("openBlights", "crossesAbove", 5));
+    const row = await create(ast("openErrors", "crossesAbove", 5));
     const claims = alepha.inject(AutomationClaims);
     let index = 0;
     const observe = async (value: number | null) => {
@@ -356,7 +356,7 @@ describe("Automation numeric guards and shared quality metrics", () => {
     expect(await observe(6)).toMatchObject({ matched: true });
     expect(await observe(7)).toMatchObject({ matched: false });
     await persistence.rules.updateById(row.id, {
-      rule: ast("openBlights", "crossesAbove", 6),
+      rule: ast("openErrors", "crossesAbove", 6),
       revision: row.revision + 1,
     });
     expect(await observe(8)).toMatchObject({ matched: false });
@@ -364,7 +364,7 @@ describe("Automation numeric guards and shared quality metrics", () => {
   it("makes dry comparisons write nothing and signs effective predicates rather than recipients, prose or cron", async ({
     expect,
   }) => {
-    const row = await create(ast("openBlights", "crossesAbove", 5));
+    const row = await create(ast("openErrors", "crossesAbove", 5));
     const first = await guards.evaluate({
       rule: row,
       context: { value: 4 },
@@ -413,7 +413,7 @@ describe("Automation numeric guards and shared quality metrics", () => {
         key,
         value: { kind: typeof value === "number" ? "number" : "text", value },
       });
-    const config = ast("openBlights", "crossesAbove", "{{threshold}}");
+    const config = ast("openErrors", "crossesAbove", "{{threshold}}");
     config.trigger = { kind: "schedule", cron: "{{cadence}}" };
     config.actions[0] = {
       ...config.actions[0],

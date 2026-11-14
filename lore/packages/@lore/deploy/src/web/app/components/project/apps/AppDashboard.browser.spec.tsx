@@ -67,7 +67,7 @@ const instanceOf = (
   sigil: {
     id: "00000000-0000-4000-8000-000000000001",
     tokenPrefix: "sg_lore_ab",
-    kinds: ["beacon", "vitals", "blights", "feedback"],
+    kinds: ["beacon", "vitals", "errors", "feedback"],
     createdAt: "2026-08-01T10:00:00.000Z",
     ...sigil,
   },

@@ -313,7 +313,7 @@ export default defineConfig({
         "agentPrompts.settings.feedbackLoop.",
         "agentPrompts.settings.questLoop.",
         "agentPrompts.settings.weeklyStatus.",
-        "agentPrompts.settings.blightTriage.",
+        "agentPrompts.settings.errorTriage.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
         // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail
@@ -340,8 +340,8 @@ export default defineConfig({
         // audit type reaches the page the moment it exists, and the call site
         // falls back to the raw value until somebody writes the label.
         "activity.resource.",
-        // tr(`blights.origin.${origin}`) — client/server crash provenance badge.
-        "blights.origin.",
+        // tr(`errors.origin.${origin}`) — client/server crash provenance badge.
+        "errors.origin.",
         // tr(`language.${code}`) — @alepha/ui button-language picker labels.
         "language.",
         // tr(`quest.create.estimate.unit.${unit}`) and its `.one` singular —

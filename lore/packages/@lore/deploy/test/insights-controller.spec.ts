@@ -992,7 +992,7 @@ describe("InsightsController", () => {
       const prod = await createSigil(ctx, projectId, "lore-prod", owner);
       const staging = await createSigil(ctx, projectId, "lore-staging", owner);
 
-      // One fingerprint, both apps. The Blights inbox folds these into a single
+      // One fingerprint, both apps. The Errors inbox folds these into a single
       // row on purpose; the budget must not, or "is it still happening over
       // there" has no answer.
       await ctx.probe.errorGroups.create({

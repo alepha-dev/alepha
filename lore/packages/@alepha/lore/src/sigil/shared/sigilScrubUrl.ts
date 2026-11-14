@@ -5,8 +5,8 @@
  * Views and vitals have always been scrubbed at the sink — `normalizePath`
  * splits on `?` and `#` before the path reaches a bucket. Errors were not: the
  * browser fills `sourceUrl` from `location.href`, query string intact, and the
- * sink stored it verbatim on both the error group and the blight. So a throw on
- * `/auth/reset-password?token=abc123` shipped the token, and a blight is
+ * sink stored it verbatim on both the error group and the error. So a throw on
+ * `/auth/reset-password?token=abc123` shipped the token, and an error is
  * readable by every project member and survives the retention sweep once it is
  * resolved or forwarded to a quest.
  *

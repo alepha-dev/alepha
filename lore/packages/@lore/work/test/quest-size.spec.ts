@@ -89,7 +89,7 @@ describe("quest size", () => {
     const user = await createUser(ctx);
     const projectId = await createProject(ctx, user);
 
-    // The path Lore's own creators take — blight forwarding and feedback
+    // The path Lore's own creators take — error forwarding and feedback
     // acceptance have no basis for a size, and must not have to invent one.
     const created = await ctx.quests.createQuest.fetch(
       {

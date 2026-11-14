@@ -113,7 +113,7 @@ const setup = async (
     name: "demo",
     tokenHash: minted.hash,
     tokenPrefix: minted.prefix,
-    kinds: ["beacon", "vitals", "blights", "feedback"],
+    kinds: ["beacon", "vitals", "errors", "feedback"],
   });
 
   const post = (body: unknown) =>

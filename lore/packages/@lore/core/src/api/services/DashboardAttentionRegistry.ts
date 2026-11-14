@@ -58,7 +58,7 @@ export interface DashboardAttentionSource {
 
 /**
  * The sources of the "needs you" list (#E77, #Q2656): held, stale, overdue
- * and unassigned quests from Work, open blights from Deploy, untriaged
+ * and unassigned quests from Work, open errors from Deploy, untriaged
  * feedback from Work's Support side. Core reads none of their tables; each
  * module registers a source that does.
  */

@@ -9,7 +9,7 @@ import { $logger } from "alepha/logger";
  * a mention that throws after the row it belongs to has been written used to
  * answer 500 for a change that happened, and invite a retry that repeated
  * it. Through here the failure is logged at error level, with the `Error`
- * itself as data, so the sigil reports it as a blight with its stack, and
+ * itself as data, so the sigil reports it as an error with its stack, and
  * the action carries on.
  *
  * Audits do not come through here: `LoreAuditService.record` is best effort

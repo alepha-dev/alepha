@@ -1,7 +1,7 @@
 import { ProjectController, ResourceLinkService } from "@lore/core/api";
 import { folioLinks } from "@lore/core/schemas";
-import { BlightController } from "@lore/deploy/api";
-import { blights } from "@lore/deploy/schemas";
+import { ProjectErrorController } from "@lore/deploy/api";
+import { projectErrors } from "@lore/deploy/schemas";
 import {
   DirectoryController,
   FolioController,
@@ -77,7 +77,7 @@ class FailingLinks extends ResourceLinkService {
 }
 
 class Rows {
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
   quests = $repository(quests);
   releases = $repository(releases);
   folios = $repository(folios);
@@ -151,10 +151,10 @@ describe("guarded statements without transactions (#Q2550)", () => {
     await ctx?.alepha.stop();
   });
 
-  it("a double forward of one blight makes one quest", async ({ expect }) => {
+  it("a double forward of one error makes one quest", async ({ expect }) => {
     ctx = await setup();
     const now = ctx.alepha.inject(DateTimeProvider).nowISOString();
-    const blight = await ctx.rows.blights.create({
+    const projectError = await ctx.rows.projectErrors.create({
       projectId: ctx.projectId,
       fingerprint: "abc",
       name: "TypeError",
@@ -164,23 +164,23 @@ describe("guarded statements without transactions (#Q2550)", () => {
     });
     const forward = () =>
       ctx.alepha
-        .inject(BlightController)
-        .forwardBlightToQuest.fetch(
-          { params: { projectId: ctx.projectId, blightId: blight.id } },
+        .inject(ProjectErrorController)
+        .forwardProjectErrorToQuest.fetch(
+          { params: { projectId: ctx.projectId, errorId: projectError.id } },
           { user: ctx.user },
         );
 
-    // The second click lands after the first one read the blight open.
-    ctx.interleave.table = "blights";
+    // The second click lands after the first one read the error open.
+    ctx.interleave.table = "project_errors";
     ctx.interleave.next = forward;
 
     await expect(forward()).rejects.toThrow("already forwarded");
 
     const forwarded = (await ctx.rows.quests.findMany({})).filter(
-      (quest) => quest.source?.sigilBlightId === blight.id,
+      (quest) => quest.source?.projectErrorId === projectError.id,
     );
     expect(forwarded).toHaveLength(1);
-    const after = await ctx.rows.blights.getById(blight.id);
+    const after = await ctx.rows.projectErrors.getById(projectError.id);
     expect(after.status).toBe(`quest:${forwarded[0]!.id}`);
   });
 

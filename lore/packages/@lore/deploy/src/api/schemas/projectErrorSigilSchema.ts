@@ -1,6 +1,6 @@
 import { z } from "alepha";
 
-export const blightSigilSchema = z.object({
+export const projectErrorSigilSchema = z.object({
   id: z.uuid(),
   label: z.string(),
 });

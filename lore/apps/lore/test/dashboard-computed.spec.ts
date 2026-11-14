@@ -159,23 +159,20 @@ describe("the computed project board", () => {
 
     it("gives a silent app with no beacon no apps slot", async ({ expect }) => {
       const { project, user } = await projectOf();
-      await sigil(project, ["blights"], 40);
+      await sigil(project, ["errors"], 40);
 
       const board = await load(project, user);
 
       expect(board.cards.some((card) => card.slot === "apps")).toBe(false);
     });
 
-    it("fills the apps slot with blights for an app that reported this month", async ({
+    it("fills the apps slot with errors for an app that reported this month", async ({
       expect,
     }) => {
       const { project, user } = await projectOf();
-      await sigil(project, ["blights"], 1);
+      await sigil(project, ["errors"], 1);
 
-      expect(await slots(project, user)).toContainEqual([
-        "apps",
-        "openBlights",
-      ]);
+      expect(await slots(project, user)).toContainEqual(["apps", "openErrors"]);
     });
   });
 
@@ -184,11 +181,8 @@ describe("the computed project board", () => {
       expect,
     }) => {
       const { project, user } = await projectOf();
-      await sigil(project, ["blights"], 1);
-      expect(await slots(project, user)).toContainEqual([
-        "apps",
-        "openBlights",
-      ]);
+      await sigil(project, ["errors"], 1);
+      expect(await slots(project, user)).toContainEqual(["apps", "openErrors"]);
 
       await repos.capabilities.updateMany(
         { projectId: { eq: project.id }, key: { eq: "apps" } },

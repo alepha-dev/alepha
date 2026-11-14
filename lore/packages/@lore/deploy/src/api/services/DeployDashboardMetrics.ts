@@ -1,11 +1,11 @@
 import { DashboardMetricCatalog } from "@lore/core/schemas";
 import { $inject } from "alepha";
 
-import { openBlightsFiltersSchema } from "../schemas/openBlightsFiltersSchema.ts";
+import { openErrorsFiltersSchema } from "../schemas/openErrorsFiltersSchema.ts";
 import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSchema.ts";
 
 /**
- * Deploy's blights and visitors metrics, as the dashboard catalogue lists them, registered on core's
+ * Deploy's errors and visitors metrics, as the dashboard catalogue lists them, registered on core's
  * `DashboardMetricCatalog` (#E75, #Q2623).
  *
  * The declarative half only, and browser-safe like the catalogue itself: it
@@ -18,10 +18,10 @@ export class DeployDashboardMetrics {
 
   constructor() {
     this.catalog.register({
-      key: "openBlights",
+      key: "openErrors",
       automation: {
         kind: "number",
-        requires: "blight:read",
+        requires: "error:read",
         slots: {
           status: {
             kind: "text",
@@ -38,14 +38,14 @@ export class DeployDashboardMetrics {
        */
       boards: ["home", "project"],
       group: "inbox",
-      labelKey: "dashboard.metric.openBlights",
-      hintKey: "dashboard.metric.openBlights.hint",
+      labelKey: "dashboard.metric.openErrors",
+      hintKey: "dashboard.metric.openErrors.hint",
       icon: "bug",
       presentation: "scalar",
       scopeKinds: ["apps", "projects", "all"],
-      filters: openBlightsFiltersSchema,
+      filters: openErrorsFiltersSchema,
       /**
-       * `apps.track`, not bare `apps`. Blights arrive on the same ingest
+       * `apps.track`, not bare `apps`. Errors arrive on the same ingest
        * path the option governs, so a project that deploys without watching
        * has no source for this number.
        */
@@ -53,7 +53,7 @@ export class DeployDashboardMetrics {
       link: (_scope, target) =>
         target.projectSlug
           ? {
-              route: "projectBlights",
+              route: "projectErrors",
               params: { projectSlug: target.projectSlug },
             }
           : undefined,

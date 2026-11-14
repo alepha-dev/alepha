@@ -3,15 +3,15 @@ import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
- * A project-wide **blight ignore rule** — a case-insensitive substring that,
+ * A project-wide **error ignore rule** — a case-insensitive substring that,
  * when found in an incoming crash's `message`, drops the event at ingestion so
- * it never lands in the Blights inbox.
+ * it never lands in the Errors inbox.
  *
  * Scoped to the project (not the sigil) so one rule mutes a noisy error
  * across every sigil the project owns — e.g. a `pattern` of `"Unknown tenant"`
  * drops `Unknown tenant: east/1`, `Unknown tenant: testemail`, … from any
  * sigil at once. Matching is a plain case-insensitive `includes` (see
- * {@link BlightRuleService.matches}); the variable suffix after the prefix is
+ * {@link ProjectErrorRuleService.matches}); the variable suffix after the prefix is
  * irrelevant.
  *
  * The rule is **future-only**: it filters new ingest, it does NOT retro-purge
@@ -23,15 +23,15 @@ import { $entity, db } from "alepha/orm";
  * project-scoped tables); `createdBy` is `set null` so deleting the author
  * keeps the rule intact.
  */
-export const blightIgnoreRules = $entity({
-  name: "blight_ignore_rules",
+export const projectErrorIgnoreRules = $entity({
+  name: "project_error_ignore_rules",
   schema: z.object({
     id: db.primaryKey(z.integer()),
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     /**
-     * Case-insensitive substring matched against a blight's `message`.
+     * Case-insensitive substring matched against an error's `message`.
      */
     pattern: z.string().min(1).max(200),
     /**
@@ -46,7 +46,9 @@ export const blightIgnoreRules = $entity({
   indexes: [{ columns: ["projectId"] }],
 });
 
-export type BlightIgnoreRule = Infer<typeof blightIgnoreRules.schema>;
-export type BlightIgnoreRuleInsert = Infer<
-  typeof blightIgnoreRules.insertSchema
+export type ProjectErrorIgnoreRule = Infer<
+  typeof projectErrorIgnoreRules.schema
+>;
+export type ProjectErrorIgnoreRuleInsert = Infer<
+  typeof projectErrorIgnoreRules.insertSchema
 >;

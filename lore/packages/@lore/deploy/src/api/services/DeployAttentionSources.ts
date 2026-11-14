@@ -6,53 +6,53 @@ import type { Project } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { blights } from "../entities/blights.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 
 /**
- * Deploy's contribution to "needs you" (#Q2656): open blights, most recently
+ * Deploy's contribution to "needs you" (#Q2656): open errors, most recently
  * seen first, under Apps with tracking on. A crash outranks a hold and is
  * outranked only by overdue work.
  */
 export class DeployAttentionSources {
   protected readonly attention = $inject(DashboardAttentionRegistry);
-  protected readonly blights = $repository(blights);
+  protected readonly projectErrors = $repository(projectErrors);
 
   constructor() {
     this.attention.register({
-      key: "blights",
+      key: "errors",
       needs: { capability: "apps", option: "track" },
-      read: (project) => this.blightsOf(project),
+      read: (project) => this.projectErrorsOf(project),
     });
   }
 
-  protected async blightsOf(
+  protected async projectErrorsOf(
     project: Project,
   ): Promise<DashboardAttentionItems> {
     const where = { projectId: { eq: project.id }, status: { eq: "open" } };
     const [open, total] = await Promise.all([
-      this.blights.findMany({
+      this.projectErrors.findMany({
         where,
         orderBy: [{ column: "lastSeenAt", direction: "desc" }],
         limit: 8,
       }),
-      this.blights.count(where),
+      this.projectErrors.count(where),
     ]);
     const link = {
-      route: "projectBlights",
+      route: "projectErrors",
       params: { projectSlug: project.slug ?? "" },
     };
     return {
-      items: open.map((blight) => ({
+      items: open.map((projectError) => ({
         weight: 35,
         row: {
           // A bare `Error` names nothing: the row read as a failed source
           // on the board (#Q3524), so the message speaks for it instead.
           title:
-            blight.name && blight.name !== "Error"
-              ? blight.name
-              : blight.message || blight.name,
-          meta: String(blight.count),
-          badge: "blight",
+            projectError.name && projectError.name !== "Error"
+              ? projectError.name
+              : projectError.message || projectError.name,
+          meta: String(projectError.count),
+          badge: "error",
           state: "bad" as const,
           link,
         },

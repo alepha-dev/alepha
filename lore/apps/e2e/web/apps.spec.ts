@@ -1399,7 +1399,7 @@ test.describe("Apps", () => {
 
       await setSigilKinds(page, projectId, pair, [
         "feedback",
-        "blights",
+        "errors",
         "beacon",
         "vitals",
       ]);

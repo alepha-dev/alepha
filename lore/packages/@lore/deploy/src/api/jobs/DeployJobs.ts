@@ -138,7 +138,7 @@ export class DeployJobs {
    * value exists because the sweep calls a silent execution dead after twice
    * the job's timeout, and with none declared that fell back to twice the
    * default `runTimeout`, so a run the platform killed was noticed 30 to 45
-   * minutes later (blight #616, #Q2344). It sits ABOVE the deploy timer so it
+   * minutes later (error #616, #Q2344). It sits ABOVE the deploy timer so it
    * never fires first on a run that is still going to report.
    */
   public static readonly RUN_TIMEOUT_MS = DeployLimits.MAX_TIMEOUT_MS + 60_000;

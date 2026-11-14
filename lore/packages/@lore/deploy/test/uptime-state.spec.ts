@@ -4,20 +4,20 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { afterEach, describe, it } from "vitest";
 
-import { blights } from "../src/api/entities/blights.ts";
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../src/api/entities/monitorHeartbeats.ts";
 import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../src/api/entities/monitors.ts";
+import { projectErrors } from "../src/api/entities/projectErrors.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import type { ProbeResult } from "../src/api/schemas/probeResultSchema.ts";
-import { UptimeBlightService } from "../src/api/services/UptimeBlightService.ts";
+import { UptimeErrorService } from "../src/api/services/UptimeErrorService.ts";
 import { UptimeProber } from "../src/api/services/UptimeProber.ts";
 import { UptimeStateService } from "../src/api/services/UptimeStateService.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
 
 class Repositories extends DeployTestEntities {
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
   monitors = $repository(monitors);
   incidents = $repository(monitorIncidents);
   beats = $repository(monitorHeartbeats);
@@ -111,7 +111,7 @@ describe("The uptime tick and state machine", () => {
     error: "Connection refused",
   };
 
-  it("deduplicates flapping outages, resolves recovery and tolerates a purged blight", async ({
+  it("deduplicates flapping outages, resolves recovery and tolerates a purged error", async ({
     expect,
   }) => {
     const ctx = await setup();
@@ -140,8 +140,8 @@ describe("The uptime tick and state machine", () => {
       { ok: true, result: "up", latencyMs: 20 },
     ]);
     await advance();
-    await expect.poll(() => ctx.repos.blights.count()).toBe(1);
-    const first = await ctx.repos.blights.getOne({
+    await expect.poll(() => ctx.repos.projectErrors.count()).toBe(1);
+    const first = await ctx.repos.projectErrors.getOne({
       where: { projectId: ctx.project.id },
     });
     expect(first.status).toBe("open");
@@ -153,28 +153,30 @@ describe("The uptime tick and state machine", () => {
       where: { monitorId: monitor.id },
     });
     expect(first.stack).toContain(incident.startedAt);
-    const effect = ctx.alepha.inject(UptimeBlightService);
+    const effect = ctx.alepha.inject(UptimeErrorService);
     await effect.handle({ kind: "opened", monitor, incident });
-    expect((await ctx.repos.blights.getById(first.id)).count).toBe(1);
+    expect((await ctx.repos.projectErrors.getById(first.id)).count).toBe(1);
     await advance();
-    expect(await ctx.repos.blights.count()).toBe(1);
-    expect((await ctx.repos.blights.getById(first.id)).count).toBe(1);
+    expect(await ctx.repos.projectErrors.count()).toBe(1);
+    expect((await ctx.repos.projectErrors.getById(first.id)).count).toBe(1);
     await advance();
     await expect
-      .poll(async () => (await ctx.repos.blights.getById(first.id)).status)
+      .poll(
+        async () => (await ctx.repos.projectErrors.getById(first.id)).status,
+      )
       .toBe("resolved");
     await advance();
-    expect(await ctx.repos.blights.count()).toBe(1);
+    expect(await ctx.repos.projectErrors.count()).toBe(1);
     await expect
-      .poll(async () => (await ctx.repos.blights.getById(first.id)).count)
+      .poll(async () => (await ctx.repos.projectErrors.getById(first.id)).count)
       .toBe(2);
-    const reopened = await ctx.repos.blights.getById(first.id);
+    const reopened = await ctx.repos.projectErrors.getById(first.id);
     expect(reopened.status).toBe("open");
     expect(reopened.count).toBe(2);
     expect(reopened.firstSeenAt).toBe(first.firstSeenAt);
-    await ctx.repos.blights.deleteById(first.id);
+    await ctx.repos.projectErrors.deleteById(first.id);
     await advance();
-    expect(await ctx.repos.blights.count()).toBe(0);
+    expect(await ctx.repos.projectErrors.count()).toBe(0);
     const incidents = await ctx.repos.incidents.findMany({
       where: { monitorId: monitor.id },
     });

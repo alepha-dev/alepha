@@ -294,7 +294,7 @@ export const insightsResourceSchema = z.object({
    * The per-app error budget: one row per `(sigil, fingerprint)` still seen
    * inside the window, worst first.
    *
-   * This is the question `sigil_error_groups` exists to answer and the Blights
+   * This is the question `sigil_error_groups` exists to answer and the Errors
    * inbox structurally cannot — the inbox folds every sigil into one row per
    * project, because a triage decision must not fork, which is exactly what
    * makes it useless for "is this still happening *in that app*".

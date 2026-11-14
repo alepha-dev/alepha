@@ -1,5 +1,5 @@
 /**
- * The browser-safe schemas of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, blights, quality), deployments and estates.
+ * The browser-safe schemas of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and estates.
  *
  * What another package, a browser page or an end-to-end spec may import as a
  * runtime value. Nothing here reaches a server-only module.
@@ -12,7 +12,7 @@
 export { appInstances } from "../api/entities/appInstances.ts";
 export { appSecrets } from "../api/entities/appSecrets.ts";
 export { artifacts } from "../api/entities/artifacts.ts";
-export { blights } from "../api/entities/blights.ts";
+export { projectErrors } from "../api/entities/projectErrors.ts";
 export { deployments } from "../api/entities/deployments.ts";
 export { estateCommands } from "../api/entities/estateCommands.ts";
 export { estateEvents } from "../api/entities/estateEvents.ts";

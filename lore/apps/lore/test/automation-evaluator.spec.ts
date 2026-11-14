@@ -55,13 +55,13 @@ class ControlledSelections extends AutomationSelections {
     input: Parameters<AutomationSelections["evaluate"]>[0],
   ): Promise<AutomationSelected> {
     if (
-      input.rule.rule.select?.key !== "openBlights" ||
+      input.rule.rule.select?.key !== "openErrors" ||
       this.scalar === undefined
     )
       return super.evaluate(input);
     const context = await this.contexts.source(
       input.rule.projectId,
-      "openBlights",
+      "openErrors",
       { value: this.scalar },
     );
     return {
@@ -504,7 +504,7 @@ describe("Pure automation evaluation and durable worker", () => {
   }) => {
     const rule = ast();
     rule.trigger = { kind: "schedule", cron: "*/5 * * * *" };
-    rule.select = { kind: "scalar", key: "openBlights", filters: {} };
+    rule.select = { kind: "scalar", key: "openErrors", filters: {} };
     rule.guard = { field: "value", operator: "crossesAbove", value: 2 };
     rule.actions = [notify("Count {{value}}")];
     const stored = await create(rule);

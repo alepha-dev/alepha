@@ -134,9 +134,9 @@ describe("dashboard apps tiles", () => {
     it("draws one pill per copy from its deploy and its liveness", async ({
       expect,
     }) => {
-      const web = await copy("web", "production", ["blights"], 1);
-      await copy("web", "staging", ["blights"], 72);
-      await copy("api", "production", ["blights"], 1);
+      const web = await copy("web", "production", ["errors"], 1);
+      await copy("web", "staging", ["errors"], 72);
+      await copy("api", "production", ["errors"], 1);
       await repos.deployments.create({
         projectId: project.id,
         instanceId: web.instance.id,
@@ -170,7 +170,7 @@ describe("dashboard apps tiles", () => {
     it("zero-fills the window and marks each deployment", async ({
       expect,
     }) => {
-      const web = await copy("web", "production", ["blights"], 1);
+      const web = await copy("web", "production", ["errors"], 1);
       await repos.deployments.create({
         projectId: project.id,
         instanceId: web.instance.id,
@@ -260,7 +260,7 @@ describe("dashboard apps tiles", () => {
     });
 
     it("is absent when every app is silent", async ({ expect }) => {
-      await copy("site", "production", ["blights"], 24 * 40);
+      await copy("site", "production", ["errors"], 24 * 40);
 
       expect(await slots()).toEqual([]);
     });
@@ -268,7 +268,7 @@ describe("dashboard apps tiles", () => {
     it("leads with health once an app reported this month", async ({
       expect,
     }) => {
-      await copy("site", "production", ["blights"], 2);
+      await copy("site", "production", ["errors"], 2);
 
       expect(await slots()).toEqual(["appHealth"]);
     });

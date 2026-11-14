@@ -142,9 +142,7 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
     if (props.metric === "openBlights") {
       const apps = Number(detail.apps ?? 0);
       return tr(
-        apps === 1
-          ? "dashboard.footer.blights.one"
-          : "dashboard.footer.blights",
+        apps === 1 ? "dashboard.footer.errors.one" : "dashboard.footer.errors",
         { args: [String(detail.occurrences ?? 0), String(apps)] },
       );
     }

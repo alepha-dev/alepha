@@ -172,8 +172,8 @@ const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
             description: tr("app.sigil.analytics.desc"),
           },
           blights: {
-            label: tr("app.sigil.blights"),
-            description: tr("app.sigil.blights.desc"),
+            label: tr("app.sigil.errors"),
+            description: tr("app.sigil.errors.desc"),
           },
           vitals: {
             label: tr("app.sigil.vitals"),

@@ -12,75 +12,75 @@ import {
   okSchema,
 } from "alepha/server";
 
-import type { BlightIgnoreRule } from "../entities/blightIgnoreRules.ts";
-import { type Blight, blights } from "../entities/blights.ts";
+import type { ProjectErrorIgnoreRule } from "../entities/projectErrorIgnoreRules.ts";
+import { type ProjectError, projectErrors } from "../entities/projectErrors.ts";
 import { sigils } from "../entities/sigils.ts";
-import { QUEST_STATUS_PREFIX } from "../schemas/blightQuestStatus.ts";
+import { QUEST_STATUS_PREFIX } from "../schemas/projectErrorQuestStatus.ts";
 import {
-  type BlightResource,
-  blightResourceSchema,
-} from "../schemas/blightResourceSchema.ts";
+  type ProjectErrorResource,
+  projectErrorResourceSchema,
+} from "../schemas/projectErrorResourceSchema.ts";
 import {
-  type BlightRuleResource,
-  blightRuleResourceSchema,
-} from "../schemas/blightRuleResourceSchema.ts";
-import { blightSigilSchema } from "../schemas/blightSigilSchema.ts";
-import { BlightRuleService } from "../services/BlightRuleService.ts";
+  type ProjectErrorRuleResource,
+  projectErrorRuleResourceSchema,
+} from "../schemas/projectErrorRuleResourceSchema.ts";
+import { projectErrorSigilSchema } from "../schemas/projectErrorSigilSchema.ts";
+import { ProjectErrorRuleService } from "../services/ProjectErrorRuleService.ts";
 
 /**
- * Owner-facing triage surface for blights — the deduplicated uncaught
+ * Owner-facing triage surface for errors — the deduplicated uncaught
  * exceptions captured by a project's sigils.
  *
  * Read endpoints (list + count) are member-gated via
  * `ProjectSecurityService.assertMember` so any project member can view the
  * inbox; mutations (resolve/forward/delete) stay owner-only via
- * `assertOwner`. A blight carries its own `projectId`, so the scope is a
+ * `assertOwner`. An error carries its own `projectId`, so the scope is a
  * WHERE clause rather than a walk through the project's sigils — one less
- * step to get wrong, and it keeps working for a blight whose sigil has since
+ * step to get wrong, and it keeps working for an error whose sigil has since
  * been deleted.
  *
- * ⚠️ SECURITY: `name`, `message`, `stack`, `sourceUrl` on a blight row are
+ * ⚠️ SECURITY: `name`, `message`, `stack`, `sourceUrl` on an error row are
  * 100% attacker-controlled. They are persisted verbatim and shown to the
  * project owner (the highest-value target). They must only ever be
  * rendered as escaped plain text — never markdown / `dangerouslySetInnerHTML`.
  * The forward-to-quest description embeds the stack as plain text too.
  * See folio #12.
  */
-export class BlightController {
+export class ProjectErrorController {
   /**
-   * Area every blight-forwarded quest is filed under — predictable triage.
+   * Area every error-forwarded quest is filed under — predictable triage.
    */
-  protected readonly BLIGHT_AREA = "Blights";
+  protected readonly ERROR_AREA = "Errors";
 
-  protected currentBlights = $repository(blights);
+  protected currentProjectErrors = $repository(projectErrors);
   protected sigils = $repository(sigils);
   protected security = $inject(ProjectSecurityService);
   protected resources = $inject(ResourceRegistry);
-  protected ruleService = $inject(BlightRuleService);
+  protected ruleService = $inject(ProjectErrorRuleService);
 
   /**
-   * List blights for a project, newest-spread first (`count` desc).
+   * List errors for a project, newest-spread first (`count` desc).
    * Open-only by default; `includeResolved` also returns `resolved` and
    * `quest:*` rows. Owner-only.
    */
-  listBlights = $action({
-    use: [$ownsProject({ requires: "blight:read", param: "projectId" })],
+  listProjectErrors = $action({
+    use: [$ownsProject({ requires: "error:read", param: "projectId" })],
     method: "GET",
-    path: "/projects/:projectId/blights",
+    path: "/projects/:projectId/errors",
     schema: {
       params: z.object({ projectId: z.integer() }),
       query: z.object({
         includeResolved: z.boolean().optional(),
       }),
       response: z.object({
-        items: z.array(blightResourceSchema),
+        items: z.array(projectErrorResourceSchema),
         openCount: z.integer(),
-        sigils: z.array(blightSigilSchema),
+        sigils: z.array(projectErrorSigilSchema),
       }),
     },
     handler: async ({ params, query, user }) => {
       const all = (
-        await this.currentBlights.findMany({
+        await this.currentProjectErrors.findMany({
           where: { projectId: { eq: params.projectId } },
           orderBy: [{ column: "count", direction: "desc" }],
         })
@@ -91,7 +91,7 @@ export class BlightController {
       // one that was never enrolled.
       //
       // The wire field stays `label` — it is what the filter shows, and renaming
-      // it would break every MCP client reading `blight_list` — but its value is
+      // it would break every MCP client reading `error_list` — but its value is
       // now the sigil's `name`, the column `label` having been folded into it.
       const projectSigils = await this.sigils.findMany({
         where: { projectId: { eq: params.projectId } },
@@ -116,13 +116,13 @@ export class BlightController {
   });
 
   /**
-   * Count of `open` blights for a project — feeds the sidebar badge.
+   * Count of `open` errors for a project — feeds the sidebar badge.
    * Readable by any project member.
    */
-  countOpenBlights = $action({
-    use: [$ownsProject({ requires: "blight:read", param: "projectId" })],
+  countOpenProjectErrors = $action({
+    use: [$ownsProject({ requires: "error:read", param: "projectId" })],
     method: "GET",
-    path: "/projects/:projectId/blights/count",
+    path: "/projects/:projectId/errors/count",
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.object({ count: z.integer() }),
@@ -132,7 +132,7 @@ export class BlightController {
       // through sigils would now return zero for every project, because
       // nothing has written to that table since Lore stopped ingesting — the
       // badge would sit at 0 over a full inbox.
-      const open = await this.currentBlights.findMany({
+      const open = await this.currentProjectErrors.findMany({
         where: {
           projectId: { eq: params.projectId },
           status: { eq: "open" },
@@ -145,54 +145,59 @@ export class BlightController {
   });
 
   /**
-   * Resolve a blight — `status = "resolved"`. The row stays for audit; the
+   * Resolve an error — `status = "resolved"`. The row stays for audit; the
    * default inbox view hides it. Owner-only.
    */
-  resolveBlight = $action({
+  resolveProjectError = $action({
     use: [
       $ownsProject({
-        requires: "blight:triage",
+        requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "resolve a blight" },
+        capability: { key: "apps", action: "resolve an error" },
       }),
     ],
     method: "POST",
-    path: "/projects/:projectId/blights/:blightId/resolve",
+    path: "/projects/:projectId/errors/:errorId/resolve",
     schema: {
       params: z.object({
         projectId: z.integer(),
-        blightId: z.integer(),
+        errorId: z.integer(),
       }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const blight = await this.loadBlight(params.projectId, params.blightId);
-      await this.currentBlights.updateById(blight.id, { status: "resolved" });
+      const projectError = await this.loadProjectError(
+        params.projectId,
+        params.errorId,
+      );
+      await this.currentProjectErrors.updateById(projectError.id, {
+        status: "resolved",
+      });
       return { ok: true };
     },
   });
 
   /**
-   * Forward a blight to a new quest. Creates a quest in the project with
-   * the blight's name/message as the title and the stack + spread summary
+   * Forward an error to a new quest. Creates a quest in the project with
+   * the error's name/message as the title and the stack + spread summary
    * as the (plain-text) description, links the quest back via
-   * `quests.source.sigilBlightId`, and flips the blight to
+   * `quests.source.projectErrorId`, and flips the error to
    * `status = "quest:<id>"`. Owner-only.
    */
-  forwardBlightToQuest = $action({
+  forwardProjectErrorToQuest = $action({
     use: [
       $ownsProject({
-        requires: "blight:triage",
+        requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "forward a blight" },
+        capability: { key: "apps", action: "forward an error" },
       }),
     ],
     method: "POST",
-    path: "/projects/:projectId/blights/:blightId/forward",
+    path: "/projects/:projectId/errors/:errorId/forward",
     schema: {
       params: z.object({
         projectId: z.integer(),
-        blightId: z.integer(),
+        errorId: z.integer(),
       }),
       response: z.object({ questId: z.integer(), questShortId: z.integer() }),
     },
@@ -202,20 +207,23 @@ export class BlightController {
       // does, never to widen it. Forwarding creates a quest, so it needs Work
       // as well as Apps; the button hides in the UI and the API refuses here.
       await this.security.assertCapability(params.projectId, "work", {
-        action: "forward a blight into a quest",
+        action: "forward an error into a quest",
       });
-      const blight = await this.loadBlight(params.projectId, params.blightId);
+      const projectError = await this.loadProjectError(
+        params.projectId,
+        params.errorId,
+      );
 
-      if (blight.status.startsWith(QUEST_STATUS_PREFIX)) {
-        throw new BadRequestError("Blight already forwarded to a quest");
+      if (projectError.status.startsWith(QUEST_STATUS_PREFIX)) {
+        throw new BadRequestError("Error already forwarded to a quest");
       }
 
-      // Title: `[Blight] TypeError: cannot read…` — name + message,
+      // Title: `[ProjectError] TypeError: cannot read…` — name + message,
       // truncated. Plain text, never rendered as markdown.
-      const summary = [blight.name, blight.message]
+      const summary = [projectError.name, projectError.message]
         .filter((s) => s.trim().length > 0)
         .join(": ");
-      const title = `[Blight] ${summary}`.slice(0, 200);
+      const title = `[Error] ${summary}`.slice(0, 200);
 
       // Description: attacker-controlled text, and the quest description is
       // rendered as markdown downstream (and read by MCP agents). Anonymous
@@ -225,21 +233,24 @@ export class BlightController {
       // the source URL is a code span, never a link or an image. The stack
       // is cut BEFORE fencing, so the length cap can never slice the closing
       // fence off.
-      const stack = (blight.stack || "(no stack captured)").slice(0, 9_000);
+      const stack = (projectError.stack || "(no stack captured)").slice(
+        0,
+        9_000,
+      );
       const description = [
-        `Forwarded from blight #${blight.id} (${blight.fingerprint.slice(0, 12)}…).`,
+        `Forwarded from error #${projectError.id} (${projectError.fingerprint.slice(0, 12)}…).`,
         "",
-        `Seen ${blight.count} time(s), last on ${blight.lastSeenAt}.`,
+        `Seen ${projectError.count} time(s), last on ${projectError.lastSeenAt}.`,
         "",
-        blight.sourceUrl
-          ? `Source: ${this.codeSpan(blight.sourceUrl.slice(0, 500))}`
+        projectError.sourceUrl
+          ? `Source: ${this.codeSpan(projectError.sourceUrl.slice(0, 500))}`
           : "",
         "",
         "Stack:",
         this.codeFence(stack),
       ].join("\n");
 
-      // Blight-forwarded quests always land in a dedicated "Blights" area
+      // Error-forwarded quests always land in a dedicated "Errors" area
       // (created on the project if absent) — predictable triage, not
       // whatever the project's arbitrary first area happens to be.
       // Creation mechanics (shortId, area-ensure, defaults) are Work's: this
@@ -248,28 +259,28 @@ export class BlightController {
       // by name.
       const questKind = this.resources.require(
         "quest",
-        "forward a blight into a quest",
+        "forward an error into a quest",
       );
       const quest = await questKind.create!({
         projectId: params.projectId,
         title,
         description,
-        area: this.BLIGHT_AREA,
+        area: this.ERROR_AREA,
         priority: "medium",
-        tags: ["bug", "blight"],
+        tags: ["bug"],
         createdBy: user.id,
-        source: { sigilBlightId: blight.id },
+        source: { projectErrorId: projectError.id },
       });
 
       // The refusal above, again, inside the write (#Q2550): a double click
       // passes the read twice. No transaction (D1): the loser's quest is
       // hard-deleted instead of rolled back. Nothing points at it yet (this
       // path writes no link and no audit), its shortId stays a gap, and a
-      // "Blights" area it may have created stays as a legal empty row.
+      // "Errors" area it may have created stays as a legal empty row.
       try {
-        await this.currentBlights.updateOne(
+        await this.currentProjectErrors.updateOne(
           {
-            id: { eq: blight.id },
+            id: { eq: projectError.id },
             status: { notLike: `${QUEST_STATUS_PREFIX}%` },
           },
           { status: `${QUEST_STATUS_PREFIX}${quest.id}` },
@@ -277,7 +288,7 @@ export class BlightController {
       } catch (error) {
         if (!(error instanceof DbEntityNotFoundError)) throw error;
         await questKind.discard!(quest.id);
-        throw new BadRequestError("Blight already forwarded to a quest");
+        throw new BadRequestError("Error already forwarded to a quest");
       }
 
       return { questId: quest.id, questShortId: quest.shortId };
@@ -285,48 +296,51 @@ export class BlightController {
   });
 
   /**
-   * Hard-delete a blight row. Owner-only.
+   * Hard-delete an error row. Owner-only.
    */
-  deleteBlight = $action({
+  deleteProjectError = $action({
     use: [
       $ownsProject({
-        requires: "blight:triage",
+        requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "delete a blight" },
+        capability: { key: "apps", action: "delete an error" },
       }),
     ],
     method: "DELETE",
-    path: "/projects/:projectId/blights/:blightId",
+    path: "/projects/:projectId/errors/:errorId",
     schema: {
       params: z.object({
         projectId: z.integer(),
-        blightId: z.integer(),
+        errorId: z.integer(),
       }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const blight = await this.loadBlight(params.projectId, params.blightId);
-      await this.currentBlights.deleteById(blight.id);
+      const projectError = await this.loadProjectError(
+        params.projectId,
+        params.errorId,
+      );
+      await this.currentProjectErrors.deleteById(projectError.id);
       return { ok: true };
     },
   });
 
   /**
-   * Mass-delete blights by id. Each id is validated to belong to the project
+   * Mass-delete errors by id. Each id is validated to belong to the project
    * (the `projectId` filter is the cross-project guard), so stray ids are
    * silently skipped rather than leaking or 404-ing the whole batch.
    * Owner-only. Returns how many rows were actually removed.
    */
-  deleteBlights = $action({
+  deleteProjectErrors = $action({
     use: [
       $ownsProject({
-        requires: "blight:triage",
+        requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "delete blights" },
+        capability: { key: "apps", action: "delete errors" },
       }),
     ],
     method: "DELETE",
-    path: "/projects/:projectId/blights",
+    path: "/projects/:projectId/errors",
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
@@ -335,34 +349,34 @@ export class BlightController {
       response: z.object({ deleted: z.integer() }),
     },
     handler: async ({ params, body, user }) => {
-      // Scoped by `projectId`, not by the project's sigil ids: a blight whose
+      // Scoped by `projectId`, not by the project's sigil ids: an error whose
       // sigil was deleted keeps `projectId` and loses `sigilId`, and the
       // sigil-list version silently refused to delete exactly those rows.
-      const rows = await this.currentBlights.findMany({
+      const rows = await this.currentProjectErrors.findMany({
         where: {
           id: { inArray: body.ids },
           projectId: { eq: params.projectId },
         },
       });
       for (const row of rows) {
-        await this.currentBlights.deleteById(row.id);
+        await this.currentProjectErrors.deleteById(row.id);
       }
       return { deleted: rows.length };
     },
   });
 
   /**
-   * List the project's blight ignore rules — the message substrings that
+   * List the project's error ignore rules — the message substrings that
    * drop matching crashes at ingestion. Readable by any project member (the
    * inbox surfaces them in the rules dialog); mutations stay owner-only.
    */
-  listBlightRules = $action({
-    use: [$ownsProject({ requires: "blight:read", param: "projectId" })],
+  listProjectErrorRules = $action({
+    use: [$ownsProject({ requires: "error:read", param: "projectId" })],
     method: "GET",
-    path: "/projects/:projectId/blights/rules",
+    path: "/projects/:projectId/errors/rules",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      response: z.object({ items: z.array(blightRuleResourceSchema) }),
+      response: z.object({ items: z.array(projectErrorRuleResourceSchema) }),
     },
     handler: async ({ params, user }) => {
       const rules = await this.ruleService.listForProject(params.projectId);
@@ -371,27 +385,27 @@ export class BlightController {
   });
 
   /**
-   * Add a blight ignore rule. The `pattern` is a case-insensitive substring
+   * Add an error ignore rule. The `pattern` is a case-insensitive substring
    * matched against an incoming crash's `message`; matching events are dropped
    * at ingestion going forward (existing rows are untouched — use mass-delete
    * to clear them). Owner-only.
    */
-  createBlightRule = $action({
+  createProjectErrorRule = $action({
     use: [
       $ownsProject({
-        requires: "blight:triage",
+        requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "create a blight rule" },
+        capability: { key: "apps", action: "create an error rule" },
       }),
     ],
     method: "POST",
-    path: "/projects/:projectId/blights/rules",
+    path: "/projects/:projectId/errors/rules",
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
         pattern: z.string().min(1).max(200),
       }),
-      response: blightRuleResourceSchema,
+      response: projectErrorRuleResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const pattern = body.pattern.trim();
@@ -408,18 +422,18 @@ export class BlightController {
   });
 
   /**
-   * Delete a blight ignore rule. Owner-only.
+   * Delete an error ignore rule. Owner-only.
    */
-  deleteBlightRule = $action({
+  deleteProjectErrorRule = $action({
     use: [
       $ownsProject({
-        requires: "blight:triage",
+        requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "delete a blight rule" },
+        capability: { key: "apps", action: "delete an error rule" },
       }),
     ],
     method: "DELETE",
-    path: "/projects/:projectId/blights/rules/:ruleId",
+    path: "/projects/:projectId/errors/rules/:ruleId",
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -440,25 +454,25 @@ export class BlightController {
   });
 
   /**
-   * Load a blight by id, asserting it belongs to the expected project.
+   * Load an error by id, asserting it belongs to the expected project.
    * Returns 404 otherwise — never leaks cross-project rows.
    *
-   * The project scope is a column rather than a join: a blight carries its own
+   * The project scope is a column rather than a join: an error carries its own
    * `projectId`, so cross-project leakage is one WHERE clause instead of a
-   * two-step lookup that could be got wrong — and it still answers for a blight
+   * two-step lookup that could be got wrong — and it still answers for an error
    * whose sigil has since been deleted.
    */
-  protected async loadBlight(projectId: number, blightId: number) {
-    const blight = await this.currentBlights.findOne({
-      where: { id: { eq: blightId }, projectId: { eq: projectId } },
+  protected async loadProjectError(projectId: number, errorId: number) {
+    const projectError = await this.currentProjectErrors.findOne({
+      where: { id: { eq: errorId }, projectId: { eq: projectId } },
     });
-    if (!blight) {
-      throw new NotFoundError("Blight not found");
+    if (!projectError) {
+      throw new NotFoundError("Error not found");
     }
-    return blight;
+    return projectError;
   }
 
-  protected toResource(b: Blight): BlightResource {
+  protected toResource(b: ProjectError): ProjectErrorResource {
     return {
       id: b.id,
       sigilId: b.sigilId,
@@ -475,7 +489,9 @@ export class BlightController {
     };
   }
 
-  protected toRuleResource(r: BlightIgnoreRule): BlightRuleResource {
+  protected toRuleResource(
+    r: ProjectErrorIgnoreRule,
+  ): ProjectErrorRuleResource {
     return {
       id: r.id,
       pattern: r.pattern,

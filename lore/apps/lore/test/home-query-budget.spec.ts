@@ -38,7 +38,7 @@ const BUDGET = {
   // 8 -> 9 for the dock (#E139): its row is read with the overview. Creating
   // a project already seeded it (#Q3435), so no insert is counted here.
   getHomeOverview: 9,
-  // Projects; last activity; open epics, blights and feedback in one
+  // Projects; last activity; open epics, errors and feedback in one
   // statement. It was 5 while the Recent activity panel existed - its own
   // read, plus one more for actor names whenever that feed had any - and the
   // panel was deleted in #E64. It was 4 until #E65 moved momentum onto the

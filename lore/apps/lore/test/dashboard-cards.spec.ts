@@ -94,7 +94,7 @@ describe("dashboard cards", () => {
 
     expect(cards.map((card) => card.metric)).toEqual([
       "activeQuests",
-      "openBlights",
+      "openErrors",
       "untriagedFeedback",
     ]);
     expect(cards.map((card) => card.position)).toEqual([0, 1, 2]);
@@ -125,9 +125,9 @@ describe("dashboard cards", () => {
     await ctx.dashboard.sigils.create({
       projectId: project.id,
       name: "api",
-      tokenHash: "hash-blights",
+      tokenHash: "hash-errors",
       tokenPrefix: "sg_y",
-      kinds: ["blights"],
+      kinds: ["errors"],
     });
 
     const { cards } = await ctx.controller.listCards({}, { user });

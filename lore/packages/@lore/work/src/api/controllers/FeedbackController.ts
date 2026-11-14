@@ -440,7 +440,7 @@ export class FeedbackController {
    * Its own endpoint because `listFeedback` is paged now: the badge used to
    * read `items.length` off the list, which after paging would have counted
    * a page and reported "10" over an inbox of 106. Mirrors
-   * `countOpenBlights` / `countOpenQuests`.
+   * `countOpenProjectErrors` / `countOpenQuests`.
    */
   countFeedback = $action({
     use: [$ownsProject({ param: "projectId", requires: "feedback:read" })],

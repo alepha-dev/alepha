@@ -984,7 +984,7 @@ export class FolioController {
       }
       const created = folio;
       // Everything below follows the committed row, and is best effort
-      // (#Q2555): a failure is logged as a blight, never a 500 that invites
+      // (#Q2555): a failure is logged as an error, never a 500 that invites
       // a retry creating a second folio.
       //
       // Sync outbound `[[...]]` references. Skipped for protected folios

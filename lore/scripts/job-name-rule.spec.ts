@@ -37,8 +37,8 @@ describe("JobNameRule", () => {
 
     expect(
       rule.check(
-        "packages/@lore/deploy/src/api/jobs/BlightJobs.ts",
-        job("system.blight.purge"),
+        "packages/@lore/deploy/src/api/jobs/ProjectErrorJobs.ts",
+        job("system.error.purge"),
       ).names,
     ).toHaveLength(1);
   });

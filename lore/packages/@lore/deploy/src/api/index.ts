@@ -8,7 +8,6 @@ import { AppController } from "./controllers/AppController.ts";
 import { AppSecretController } from "./controllers/AppSecretController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BackupController } from "./controllers/BackupController.ts";
-import { BlightController } from "./controllers/BlightController.ts";
 import { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
 import { DeployController } from "./controllers/DeployController.ts";
 import { EstateCommandController } from "./controllers/EstateCommandController.ts";
@@ -18,6 +17,7 @@ import { EstatePullController } from "./controllers/EstatePullController.ts";
 import { EstateSocketController } from "./controllers/EstateSocketController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { MonitorController } from "./controllers/MonitorController.ts";
+import { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
@@ -29,11 +29,11 @@ import { StackController } from "./controllers/StackController.ts";
 import { StackDeployController } from "./controllers/StackDeployController.ts";
 import { StackVariableController } from "./controllers/StackVariableController.ts";
 import { UptimePushController } from "./controllers/UptimePushController.ts";
-import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { EstateExpiryJobs } from "./jobs/EstateExpiryJobs.ts";
+import { ProjectErrorJobs } from "./jobs/ProjectErrorJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { UptimeJobs } from "./jobs/UptimeJobs.ts";
@@ -46,8 +46,6 @@ import { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BayRemovalService } from "./services/BayRemovalService.ts";
-import { BlightQuestHandBack } from "./services/BlightQuestHandBack.ts";
-import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
@@ -79,9 +77,11 @@ import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
 import { EstateService } from "./services/EstateService.ts";
 import { EstateStatsService } from "./services/EstateStatsService.ts";
 import { EstateTokenService } from "./services/EstateTokenService.ts";
-import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
-import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
+import { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
+import { OpenErrorsMetric } from "./services/OpenErrorsMetric.ts";
 import { ProjectDeliveryReportService } from "./services/ProjectDeliveryReportService.ts";
+import { ProjectErrorQuestHandBack } from "./services/ProjectErrorQuestHandBack.ts";
+import { ProjectErrorRuleService } from "./services/ProjectErrorRuleService.ts";
 import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
 import { ProjectReliabilityReportService } from "./services/ProjectReliabilityReportService.ts";
 import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
@@ -106,7 +106,7 @@ import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 import { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
 
 /**
- * The server half of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, blights, quality), deployments and estates.
+ * The server half of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and estates.
  *
  * It depends on `@lore/core` only: a feature that spans two modules goes through a core registry or a core link, never through an import of another feature module (`check:conventions`).
  *
@@ -138,7 +138,7 @@ export const LoreDeployApi = $module({
     DeployAutomationEventSubjects,
     DeployAutomationReferences,
     DeployDashboardMetrics,
-    BlightQuestHandBack,
+    ProjectErrorQuestHandBack,
     DeployDashboard,
     // Registers its project merge step (#Q2782); nothing injects it.
     DeployProjectMerge,
@@ -161,7 +161,7 @@ export const LoreDeployApi = $module({
     DeployAutomationNumericPresets,
     DeployAutomationPresets,
     DeployProjectCounts,
-    BlightJobs,
+    ProjectErrorJobs,
     UptimeRetentionJobs,
     UptimeJobs,
     UptimeHttpProber,
@@ -211,10 +211,10 @@ export const LoreDeployApi = $module({
     StackConsoleService,
     // Undeploying from a Bay, data kept (#Q3153).
     BayRemovalService,
-    BlightRuleService,
-    OpenBlightCounter,
+    ProjectErrorRuleService,
+    OpenErrorCounter,
     DailyVisitorsService,
-    OpenBlightsMetric,
+    OpenErrorsMetric,
     UniqueVisitorsMetric,
     // The sink half: the token an app presents, and what happens to what it
     // sends. `SigilIngestService` itself holds no repository on any of the
@@ -280,7 +280,7 @@ export const LoreDeployApi = $module({
     SigilAnalyticsController,
     InsightsController,
     MonitorController,
-    BlightController,
+    ProjectErrorController,
   ],
 });
 
@@ -291,7 +291,7 @@ export { AppController } from "./controllers/AppController.ts";
 export { AppSecretController } from "./controllers/AppSecretController.ts";
 export { ArtifactController } from "./controllers/ArtifactController.ts";
 export { BackupController } from "./controllers/BackupController.ts";
-export { BlightController } from "./controllers/BlightController.ts";
+export { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
 export { DeployController } from "./controllers/DeployController.ts";
 export { EstateCommandController } from "./controllers/EstateCommandController.ts";
 export { EstateController } from "./controllers/EstateController.ts";
@@ -328,7 +328,7 @@ export { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
 export { ArtifactSchemaStore } from "./services/ArtifactSchemaStore.ts";
 export { ArtifactService } from "./services/ArtifactService.ts";
 export { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
-export { BlightRuleService } from "./services/BlightRuleService.ts";
+export { ProjectErrorRuleService } from "./services/ProjectErrorRuleService.ts";
 export { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 export { CredentialSealService } from "./services/CredentialSealService.ts";
 export { DeployAssetCache } from "./services/DeployAssetCache.ts";
@@ -347,7 +347,7 @@ export { EstateStatsService } from "./services/EstateStatsService.ts";
 export { EstateTokenService } from "./services/EstateTokenService.ts";
 export { ImageRegistryClient } from "./services/ImageRegistryClient.ts";
 export { LoreAnalyticsStore } from "./services/LoreAnalyticsStore.ts";
-export { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
+export { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
 export { QualityService } from "./services/QualityService.ts";
 export { RegistryTransport } from "./services/RegistryTransport.ts";
 export { RollbackService } from "./services/RollbackService.ts";

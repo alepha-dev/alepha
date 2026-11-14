@@ -7,11 +7,7 @@ import type { LucideIcon } from "lucide-react";
  */
 export interface HomeOpenLink {
   kind: string;
-  route:
-    | "projectQuests"
-    | "projectEpics"
-    | "projectBlights"
-    | "projectFeedback";
+  route: "projectQuests" | "projectEpics" | "projectErrors" | "projectFeedback";
   icon: LucideIcon;
   count: number;
   /**

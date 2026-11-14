@@ -52,7 +52,7 @@ export class DeployAppsDashboardMetrics {
       link: (_scope, target) =>
         target.projectSlug
           ? {
-              route: "projectBlights",
+              route: "projectErrors",
               params: { projectSlug: target.projectSlug },
             }
           : undefined,

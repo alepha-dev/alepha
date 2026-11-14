@@ -167,7 +167,7 @@ describe("Preset setup, explicit bindings and project pickers", () => {
       ).toEqual(expect.arrayContaining(Object.values(bindings)));
       if (
         preset.key === "coverage-regression" ||
-        preset.key === "blight-crossing"
+        preset.key === "error-crossing"
       ) {
         expect(made.rule?.guard?.value).toBe(`{{${bindings.threshold.key}}}`);
         expect(JSON.stringify(made.rule?.actions)).toContain(

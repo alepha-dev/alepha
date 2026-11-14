@@ -16,13 +16,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   DeployAnalytics,
-  BlightRuleService,
+  ProjectErrorRuleService,
   SigilIngestService,
   SigilTokenService,
 } from "../src/api/index.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import {
-  blights,
+  projectErrors,
   sigilErrorGroups,
   sigils,
   sigilUniquesDaily,
@@ -34,7 +34,7 @@ class Probe {
   sigils = $repository(sigils);
   uniques = $repository(sigilUniquesDaily);
   errorGroups = $repository(sigilErrorGroups);
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
 }
 
 /**
@@ -180,7 +180,7 @@ const setup = async (
   const service = alepha.inject(SigilIngestService);
   await alepha.start();
 
-  // A real user row: `blight_ignore_rules.createdBy` carries a foreign key to
+  // A real user row: `project_error_ignore_rules.createdBy` carries a foreign key to
   // it, so a made-up id fails the constraint rather than the assertion.
   const owner = await users.createUser({ username: "owner" });
 
@@ -208,7 +208,7 @@ const setup = async (
     name: "demo",
     tokenHash: minted.hash,
     tokenPrefix: minted.prefix,
-    kinds: over.kinds ?? ["beacon", "vitals", "blights", "feedback"],
+    kinds: over.kinds ?? ["beacon", "vitals", "errors", "feedback"],
   });
 
   // Built from the package's own constants, not from literals. That is what
@@ -383,7 +383,7 @@ describe("sigil ingest", () => {
   });
 
   it("ignores engagements when the sigil cannot report views", async () => {
-    const { analytics, sigil, post } = await setup({ kinds: ["blights"] });
+    const { analytics, sigil, post } = await setup({ kinds: ["errors"] });
 
     const res = await post({ engagements: [{ path: "/" }] });
     expect(res.status).toBe(204);
@@ -537,7 +537,7 @@ describe("sigil ingest", () => {
   });
 
   it("ignores a kind the sigil does not carry", async () => {
-    const { analytics, sigil, post } = await setup({ kinds: ["blights"] });
+    const { analytics, sigil, post } = await setup({ kinds: ["errors"] });
 
     const res = await post({ views: [{ path: "/home" }] });
     expect(res.status).toBe(204);
@@ -547,7 +547,7 @@ describe("sigil ingest", () => {
   });
 
   /*
-    One negative case per gate. A mistyped kind — `"blight"` for `"blights"` —
+    One negative case per gate. A mistyped kind — `"error"` for `"errors"` —
     does not throw, it silently disables that capability for every sigil
     forever, and the only symptom is a table that stays empty. `carries()` takes
     a `SigilKind` so the compiler catches the typo; these prove the three arms
@@ -555,7 +555,7 @@ describe("sigil ingest", () => {
   */
   it("refuses vitals from a sigil without the vitals kind", async () => {
     const { analytics, sigil, post } = await setup({
-      kinds: ["beacon", "blights"],
+      kinds: ["beacon", "errors"],
     });
 
     const res = await post({
@@ -566,7 +566,7 @@ describe("sigil ingest", () => {
     expect(await readVitals(analytics, sigil.id)).toHaveLength(0);
   });
 
-  it("refuses errors from a sigil without the blights kind", async () => {
+  it("refuses errors from a sigil without the errors kind", async () => {
     const { probe, project, sigil, post } = await setup({
       kinds: ["beacon", "vitals"],
     });
@@ -581,7 +581,7 @@ describe("sigil ingest", () => {
       }),
     ).toHaveLength(0);
     expect(
-      await probe.blights.findMany({
+      await probe.projectErrors.findMany({
         where: { projectId: { eq: project.id } },
       }),
     ).toHaveLength(0);
@@ -603,7 +603,7 @@ describe("sigil ingest", () => {
     expect(await readViews(analytics, sigil.id)).toHaveLength(0);
     expect(await readVitals(analytics, sigil.id)).toHaveLength(0);
     expect(
-      await probe.blights.findMany({
+      await probe.projectErrors.findMany({
         where: { projectId: { eq: project.id } },
       }),
     ).toHaveLength(0);
@@ -621,7 +621,7 @@ describe("sigil ingest", () => {
     // `SIGIL_CONFIG`, and this half decides what is kept. Vitals is withheld
     // via the sigil's own kinds.
     const { analytics, sigil, post } = await setup({
-      kinds: ["beacon", "blights", "feedback"],
+      kinds: ["beacon", "errors", "feedback"],
     });
 
     await post({
@@ -805,7 +805,7 @@ describe("sigil ingest", () => {
     expect(groups[0].count).toBe(7);
 
     // The project-wide editorial decision: one row, one status.
-    const inbox = await probe.blights.findMany({
+    const inbox = await probe.projectErrors.findMany({
       where: { projectId: { eq: project.id } },
     });
     expect(inbox).toHaveLength(1);
@@ -889,7 +889,7 @@ describe("sigil ingest", () => {
     // envelope or an hour ago in another.
     expect(groups[0].message).toBe("first sighting");
 
-    const inbox = await probe.blights.findMany({
+    const inbox = await probe.projectErrors.findMany({
       where: { projectId: { eq: project.id } },
     });
     expect(inbox).toHaveLength(1);
@@ -933,7 +933,7 @@ describe("sigil ingest", () => {
       name: "demo-staging",
       tokenHash: staging.hash,
       tokenPrefix: staging.prefix,
-      kinds: ["blights"],
+      kinds: ["errors"],
     });
 
     await post({ errors: [anError({ count: 2 })] });
@@ -945,7 +945,7 @@ describe("sigil ingest", () => {
     expect(groups.map((g) => g.count).sort((a, b) => a - b)).toEqual([2, 5]);
 
     // One triage decision, because one bug.
-    const inbox = await probe.blights.findMany({
+    const inbox = await probe.projectErrors.findMany({
       where: { projectId: { eq: project.id } },
     });
     expect(inbox).toHaveLength(1);
@@ -958,18 +958,18 @@ describe("sigil ingest", () => {
     const { probe, project, post } = await setup();
 
     await post({ errors: [anError({ count: 2 })] });
-    const [filed] = await probe.blights.findMany({
+    const [filed] = await probe.projectErrors.findMany({
       where: { projectId: { eq: project.id } },
     });
-    await probe.blights.updateById(filed.id, { status: "resolved" });
+    await probe.projectErrors.updateById(filed.id, { status: "resolved" });
 
     // The load-bearing half of the "one row per project" ruling: the whole
-    // reason `blights` is keyed by project rather than by sigil is that a
+    // reason `projectErrors` is keyed by project rather than by sigil is that a
     // triage decision must not fork. If `status` ever joins the upsert's `set`
     // clause, resolving a bug becomes a decision the next batch undoes.
     await post({ errors: [anError({ count: 3 })] });
 
-    const rows = await probe.blights.findMany({
+    const rows = await probe.projectErrors.findMany({
       where: { projectId: { eq: project.id } },
     });
     expect(rows).toHaveLength(1);
@@ -982,7 +982,7 @@ describe("sigil ingest", () => {
     const { alepha, probe, owner, project, sigil, post } = await setup();
 
     await alepha
-      .inject(BlightRuleService)
+      .inject(ProjectErrorRuleService)
       .create(project.id, "ResizeObserver", owner.id);
 
     await post({
@@ -997,7 +997,7 @@ describe("sigil ingest", () => {
       }),
     ).toHaveLength(0);
     expect(
-      await probe.blights.findMany({
+      await probe.projectErrors.findMany({
         where: { projectId: { eq: project.id } },
       }),
     ).toHaveLength(0);
@@ -1191,7 +1191,7 @@ describe("sigil ingest", () => {
     });
   });
 
-  it("gates blights, beacon and vitals on the sigil's kinds alone", async () => {
+  it("gates errors, beacon and vitals on the sigil's kinds alone", async () => {
     // Apps tracking on and nothing else said about telemetry: under the rule
     // that preceded this, three retired project flags each had to be on too.
     const { service, sigil } = await setup({
@@ -1200,7 +1200,7 @@ describe("sigil ingest", () => {
 
     const gates = await service.gatesFor({
       ...sigil,
-      kinds: ["blights", "beacon", "vitals"],
+      kinds: ["errors", "beacon", "vitals"],
     });
 
     expect(gates.errors).toBe(true);
@@ -1233,7 +1233,7 @@ describe("sigil ingest", () => {
 
     const gates = await service.gatesFor({
       ...sigil,
-      kinds: ["blights", "beacon", "vitals", "feedback"],
+      kinds: ["errors", "beacon", "vitals", "feedback"],
     });
 
     expect(gates.errors).toBe(false);

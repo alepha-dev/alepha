@@ -12,28 +12,28 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { type Sigil, sigils } from "../entities/sigils.ts";
-import type { OpenBlightsFilters } from "../schemas/openBlightsFiltersSchema.ts";
-import { OpenBlightCounter } from "./OpenBlightCounter.ts";
+import type { OpenErrorsFilters } from "../schemas/openErrorsFiltersSchema.ts";
+import { OpenErrorCounter } from "./OpenErrorCounter.ts";
 
 /**
  * The crash inbox at a glance: distinct open bugs, with occurrences and app
  * count in the footer.
  *
- * The counting is all in `OpenBlightCounter`, which is where the hard part
- * lives — `blights.sigilId` is *last reporter* and cannot answer "how many
- * open blights do apps [A, B] have" without moving whenever an unrelated app
+ * The counting is all in `OpenErrorCounter`, which is where the hard part
+ * lives — `projectErrors.sigilId` is *last reporter* and cannot answer "how many
+ * open errors do apps [A, B] have" without moving whenever an unrelated app
  * reports the same bug.
  *
  * ## The headline stays the bug count
  *
  * `312 occurrences` is a far larger and more volatile number than `4 open
- * blights`, and it is the less useful one: occurrences say how loud a crash
+ * errors`, and it is the less useful one: occurrences say how loud a crash
  * loop is, the bug count says how many things are wrong. The footer is the
  * right place for it, and the two must not swap.
  *
- * ## Blights outlive their apps
+ * ## Errors outlive their apps
  *
- * `blights.sigilId` is `ON DELETE SET NULL` and rows survive their reporter,
+ * `projectErrors.sigilId` is `ON DELETE SET NULL` and rows survive their reporter,
  * so an owner who deletes their last app still has an inbox full of open
  * crashes. A card scoped to apps inherits that: deleting a selected app
  * makes the card's scope name something that no longer exists, and
@@ -41,7 +41,7 @@ import { OpenBlightCounter } from "./OpenBlightCounter.ts";
  * degraded tile saying so. It deliberately does NOT silently drop to zero
  * the moment a token is revoked — a zero would read as "nothing is wrong".
  */
-export class OpenBlightsMetric implements DashboardMetricResolver {
+export class OpenErrorsMetric implements DashboardMetricResolver {
   protected readonly dashboard = $inject(DashboardMetricRegistry);
 
   constructor() {
@@ -49,9 +49,9 @@ export class OpenBlightsMetric implements DashboardMetricResolver {
     this.dashboard.register(this);
   }
 
-  readonly metric = "openBlights";
+  readonly metric = "openErrors";
 
-  protected readonly counter = $inject(OpenBlightCounter);
+  protected readonly counter = $inject(OpenErrorCounter);
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly sigils = $repository(sigils);
@@ -88,7 +88,7 @@ export class OpenBlightsMetric implements DashboardMetricResolver {
       .toISOString();
 
     for (const entry of cards) {
-      const { status } = entry.filters as OpenBlightsFilters;
+      const { status } = entry.filters as OpenErrorsFilters;
       const result = await this.counter.count({
         projectIds: entry.scope.projectIds,
         sigilIds: entry.scope.sigilIds,

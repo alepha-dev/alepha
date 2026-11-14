@@ -5,7 +5,7 @@ import { type Infer, z } from "alepha";
  *
  * Apps has a **baseline plus two options**: instances, artifacts and quality
  * are there whenever Apps is on, `track` adds the sigil telemetry surfaces
- * (analytics, vitals, errors, explore, blights, sigils), and `deploy` adds
+ * (analytics, vitals, errors, explore, errors, sigils), and `deploy` adds
  * epic #1's: the Deploy and Environment tabs, `lore apps deploy`, the
  * `deploy_*` MCP tools and the server gate behind all three.
  *
@@ -13,7 +13,7 @@ import { type Infer, z } from "alepha";
  * is pushed by CI under a CI credential, it is about the software rather than
  * about a running copy, and it already shares the never-turn-someone's-build-red
  * rule with artifact push and sigil ingest. Its Reports tab self-hides until a
- * run exists, exactly as the Blights entry self-hides. That is why the backfill
+ * run exists, exactly as the Errors entry self-hides. That is why the backfill
  * takes `apps` from `features.sigils` OR `features.quality`.
  *
  * ⚠️ **What `deploy` gates, and what it deliberately does not.** It gates epic

@@ -116,9 +116,9 @@ export default {
   "automation.preset.coverage-regression.title": "Baisse de couverture",
   "automation.preset.coverage-regression.description":
     "Comparer la couverture des lignes des deux dernières journées UTC entièrement écoulées à 00:10 UTC. Alerter uniquement si la baisse dépasse le seuil en points de pourcentage.",
-  "automation.preset.blight-crossing.title":
+  "automation.preset.error-crossing.title":
     "Dépassement du seuil des erreurs ouvertes",
-  "automation.preset.blight-crossing.description":
+  "automation.preset.error-crossing.description":
     "Mesurer le nombre total d’erreurs ouvertes toutes les cinq minutes. Le premier relevé fixe une référence ; un retour au seuil ou en dessous réarme l’alerte.",
   "automation.setup.folio": "Folio",
   "automation.setup.app": "Application",
@@ -231,7 +231,7 @@ export default {
   "home.table.momentum.flat": "stable",
   "home.table.open.quests": "$1 quêtes ouvertes",
   "home.table.open.epics": "$1 épopées en brouillon",
-  "home.table.open.blights": "$1 fléaux ouverts",
+  "home.table.open.errors": "$1 fléaux ouverts",
   "home.table.open.feedback": "$1 retours en attente",
   "auth.register.intent.createProject":
     "Avant de créer un projet, créez un compte.",
@@ -1171,8 +1171,8 @@ export default {
   "reports.summary.line.deploySuccess": "Réussite des déploiements",
   "reports.summary.line.deploySuccess.definition":
     "Déploiements réussis sur déploiements terminés, hors annulés.",
-  "reports.summary.line.openBlights": "Blights ouverts",
-  "reports.summary.line.openBlights.definition": "Blights ouverts aujourd’hui.",
+  "reports.summary.line.openErrors": "Blights ouverts",
+  "reports.summary.line.openErrors.definition": "Blights ouverts aujourd’hui.",
   "reports.summary.line.uptime": "Disponibilité",
   "reports.summary.line.uptime.definition":
     "Temps de surveillance hors incident, sur la période.",
@@ -1461,13 +1461,13 @@ export default {
   "reports.delivery.apps.empty": "Aucun déploiement terminé sur cette période.",
   "reports.delivery.apps.app": "Application",
   "reports.delivery.apps.rollbacks": "Retours arrière",
-  "reports.reliability.blights.title": "Blights",
-  "reports.reliability.blights.definition":
+  "reports.reliability.errors.title": "Blights",
+  "reports.reliability.errors.definition":
     "Nouveaux blights et blights résolus par intervalle, et combien restaient ouverts. Un blight résolu est placé au jour de sa dernière occurrence : rien n’enregistre sa résolution.",
   "reports.reliability.series.opened": "Nouveaux",
   "reports.reliability.series.resolved": "Résolus",
   "reports.reliability.series.open": "Ouverts",
-  "reports.reliability.series.errors": "Erreurs",
+  "reports.reliability.series.occurrences": "Erreurs",
   "reports.reliability.top.title": "Principaux blights",
   "reports.reliability.top.definition":
     "Les blights aux occurrences les plus nombreuses, quelle que soit leur date.",
@@ -1480,8 +1480,8 @@ export default {
   "reports.reliability.fix.definition":
     "De la première occurrence d’un blight transmis à la fin de sa quête.",
   "reports.reliability.fix.hint": "p85 $1",
-  "reports.reliability.errors.title": "Erreurs",
-  "reports.reliability.errors.definition":
+  "reports.reliability.occurrences.title": "Erreurs",
+  "reports.reliability.occurrences.definition":
     "Occurrences d’erreurs par intervalle, sur les applications du projet. Une ligne pointillée marque un intervalle avec un déploiement réussi.",
   "reports.reliability.uptime.title": "Disponibilité",
   "reports.reliability.uptime.definition":
@@ -1935,7 +1935,7 @@ export default {
 
   "project.menu.inbox": "Notifications",
   "project.menu.feedback": "Retours",
-  "project.menu.blights": "Fléaux",
+  "project.menu.errors": "Fléaux",
   "project.menu.apps": "Applications",
 
   "apps.filter.app": "Application",
@@ -2069,8 +2069,8 @@ export default {
     "SIGIL_CONFIG est défini, mais Lore ne peut pas le relire (il est stocké comme secret, ou n'est pas valide) : ce sont donc les valeurs par défaut. Enregistrer le remplace.",
   "app.sigil.analytics": "Pages vues",
   "app.sigil.analytics.desc": "Visites, pages, référents et appareils.",
-  "app.sigil.blights": "Erreurs",
-  "app.sigil.blights.desc": "Erreurs client et serveur, regroupées en blights.",
+  "app.sigil.errors": "Erreurs",
+  "app.sigil.errors.desc": "Erreurs client et serveur, regroupées en blights.",
   "app.sigil.vitals": "Web vitals",
   "app.sigil.vitals.desc":
     "Temps de chargement et d'interaction mesurés sur de vraies visites.",
@@ -2363,48 +2363,48 @@ export default {
   "insights.vitals.needsImprovement": "À améliorer",
   "insights.vitals.poor": "Médiocre",
 
-  "blights.empty":
+  "errors.empty":
     "Aucun fléau. Les plantages capturés par vos sigils apparaîtront ici.",
-  "blights.filter.open": "Ouverts",
-  "blights.filter.resolved": "Résolus",
-  "blights.filter.all": "Tous",
-  "blights.filter.status": "Statut",
-  "blights.filter.sigil": "Sigil",
-  "blights.col.error": "Erreur",
-  "blights.col.app": "Application",
-  "blights.col.page": "Page",
-  "blights.col.count": "Occurrences",
-  "blights.col.lastSeen": "Vu récemment",
-  "blights.origin.client": "Navigateur",
-  "blights.origin.server": "Serveur",
-  "blights.filter.allApps": "Toutes les applications",
-  "blights.action.resolve": "Résoudre",
-  "blights.action.forward": "Convertir en quête",
-  "blights.action.delete": "Supprimer",
-  "blights.action.deleteSelected": "Supprimer la sélection",
-  "blights.action.viewStack": "Voir la stack trace",
-  "blights.toast.resolved": "Fléau résolu",
-  "blights.toast.forwarded": "Quête $1 créée depuis le fléau",
-  "blights.toast.deleted": "Fléau supprimé",
-  "blights.toast.deletedMany": "$1 fléaux supprimés",
-  "blights.deleteConfirm": "Supprimer définitivement ce fléau ?",
-  "blights.deleteSelectedConfirm":
+  "errors.filter.open": "Ouverts",
+  "errors.filter.resolved": "Résolus",
+  "errors.filter.all": "Tous",
+  "errors.filter.status": "Statut",
+  "errors.filter.sigil": "Sigil",
+  "errors.col.error": "Erreur",
+  "errors.col.app": "Application",
+  "errors.col.page": "Page",
+  "errors.col.count": "Occurrences",
+  "errors.col.lastSeen": "Vu récemment",
+  "errors.origin.client": "Navigateur",
+  "errors.origin.server": "Serveur",
+  "errors.filter.allApps": "Toutes les applications",
+  "errors.action.resolve": "Résoudre",
+  "errors.action.forward": "Convertir en quête",
+  "errors.action.delete": "Supprimer",
+  "errors.action.deleteSelected": "Supprimer la sélection",
+  "errors.action.viewStack": "Voir la stack trace",
+  "errors.toast.resolved": "Fléau résolu",
+  "errors.toast.forwarded": "Quête $1 créée depuis le fléau",
+  "errors.toast.deleted": "Fléau supprimé",
+  "errors.toast.deletedMany": "$1 fléaux supprimés",
+  "errors.deleteConfirm": "Supprimer définitivement ce fléau ?",
+  "errors.deleteSelectedConfirm":
     "Supprimer définitivement les $1 fléaux sélectionnés ?",
-  "blights.rules.title": "Règles d'exclusion",
-  "blights.rules.description":
+  "errors.rules.title": "Règles d'exclusion",
+  "errors.rules.description":
     "Ignorer les crashs entrants dont le message contient l'une de ces sous-chaînes (insensible à la casse). Les règles ne s'appliquent qu'aux nouveaux envois ; les fléaux existants restent jusqu'à leur suppression.",
-  "blights.rules.settingsDescription":
+  "errors.rules.settingsDescription":
     "Les crashs dont le message correspond à l'une de ces sous-chaînes sont écartés à l'arrivée, avant même d'atteindre la boîte de réception.",
-  "blights.rules.manage": "Gérer les règles",
-  "blights.rules.placeholder": "ex. Tenant inconnu",
-  "blights.rules.add": "Ajouter",
-  "blights.rules.remove": "Supprimer la règle",
-  "blights.rules.loading": "Chargement des règles…",
-  "blights.rules.empty": "Aucune règle d'exclusion.",
-  "blights.rules.toast.added": "Règle d'exclusion ajoutée",
-  "blights.rules.toast.removed": "Règle d'exclusion supprimée",
-  "blights.status.resolved": "Résolu",
-  "blights.status.quest": "Transmis à une quête",
+  "errors.rules.manage": "Gérer les règles",
+  "errors.rules.placeholder": "ex. Tenant inconnu",
+  "errors.rules.add": "Ajouter",
+  "errors.rules.remove": "Supprimer la règle",
+  "errors.rules.loading": "Chargement des règles…",
+  "errors.rules.empty": "Aucune règle d'exclusion.",
+  "errors.rules.toast.added": "Règle d'exclusion ajoutée",
+  "errors.rules.toast.removed": "Règle d'exclusion supprimée",
+  "errors.status.resolved": "Résolu",
+  "errors.status.quest": "Transmis à une quête",
 
   "sigils.token.title":
     "Copiez ce jeton maintenant : il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, seule variable nécessaire. Ajoutez SIGIL_SINK pointant vers cette instance si ce n’est pas le collecteur par défaut de l’application.",
@@ -2950,7 +2950,7 @@ export default {
   "agentPrompts.menu": "Invites pour agents",
   "agentPrompts.review": "Relire l’épopée",
   "agentPrompts.triageInbox": "Traiter la boîte",
-  "agentPrompts.triageBlights": "Traiter les anomalies",
+  "agentPrompts.triageErrors": "Traiter les anomalies",
   "agentPrompts.workLooseQuests": "Traiter les quêtes libres",
   "agentPrompts.workOnIt": "S’en charger",
   "agentPrompts.copied":
@@ -2995,8 +2995,8 @@ export default {
   "agentPrompts.settings.feedbackLoop.title": "Retours : traiter la boîte",
   "agentPrompts.settings.feedbackLoop.description":
     "Proposée sur la boîte des retours. Accepte, rejette ou questionne chaque retour en attente jusqu’à ce qu’il n’en reste aucun.",
-  "agentPrompts.settings.blightTriage.title": "Anomalies : traiter",
-  "agentPrompts.settings.blightTriage.description":
+  "agentPrompts.settings.errorTriage.title": "Anomalies : traiter",
+  "agentPrompts.settings.errorTriage.description":
     "Proposée sur la boîte des anomalies. Crée une quête pour chaque vrai défaut et résout le bruit.",
   "agentPrompts.weeklyStatus": "Rédiger le point hebdomadaire",
   "agentPrompts.settings.weeklyStatus.title":
@@ -3291,10 +3291,10 @@ export default {
   "dashboard.more": "$1 de plus : $2",
   "dashboard.source.quests": "quêtes",
   "dashboard.source.feedback": "retours",
-  "dashboard.source.blights": "plantages",
+  "dashboard.source.errors": "plantages",
   "dashboard.badge.stale": "en souffrance",
   "dashboard.badge.unassigned": "sans responsable",
-  "dashboard.badge.blight": "plantage",
+  "dashboard.badge.error": "plantage",
   "dashboard.badge.untriaged": "à trier",
   "dashboard.metric.appHealth": "Santé des applications",
   "dashboard.metric.appHealth.hint":
@@ -3431,8 +3431,8 @@ export default {
   "dashboard.metric.tagCompletion": "Avancement par tag",
   "dashboard.metric.tagCompletion.hint":
     "un tag, terminees sur total ; une quete a deux tags compte dans les deux",
-  "dashboard.metric.openBlights": "Fleaux ouverts",
-  "dashboard.metric.openBlights.hint": "un projet, ou une liste d'apps",
+  "dashboard.metric.openErrors": "Fleaux ouverts",
+  "dashboard.metric.openErrors.hint": "un projet, ou une liste d'apps",
   "dashboard.metric.untriagedFeedback": "Retours non traites",
   "dashboard.metric.untriagedFeedback.card": "Retours",
   "dashboard.metric.untriagedFeedback.hint": "un projet ou tous",
@@ -3476,8 +3476,8 @@ export default {
   "dashboard.footer.held": "sur $1 quetes ouvertes",
   "dashboard.footer.held.one": "sur 1 quete ouverte",
   "dashboard.footer.held.none": "rien en pause",
-  "dashboard.footer.blights": "$1 occurrences, $2 apps",
-  "dashboard.footer.blights.one": "$1 occurrences, 1 app",
+  "dashboard.footer.errors": "$1 occurrences, $2 apps",
+  "dashboard.footer.errors.one": "$1 occurrences, 1 app",
   "dashboard.footer.feedback.none": "rien en attente",
   "dashboard.footer.feedback.today": "le plus ancien est arrive aujourd'hui",
   "dashboard.footer.feedback.oneDay": "le plus ancien attend depuis 1 jour",
@@ -3617,9 +3617,9 @@ export default {
   "permission.artifact.read": "Voir ce que la CI a publié",
   "permission.artifact.delete": "Supprimer un build",
   "permission.artifact.push": "Publier un build",
-  "permission.group.blight": "Anomalies",
-  "permission.blight.read": "Lire la boîte des anomalies",
-  "permission.blight.triage": "Résoudre, ignorer et transférer les anomalies",
+  "permission.group.error": "Anomalies",
+  "permission.error.read": "Lire la boîte des anomalies",
+  "permission.error.triage": "Résoudre, ignorer et transférer les anomalies",
   "permission.group.quality": "Qualité",
   "permission.quality.read": "Lire la couverture et les totaux de tests",
   "permission.quality.push": "Enregistrer la couverture et les totaux de tests",
@@ -3920,7 +3920,7 @@ export default {
   "automation.source.quests.remindersDue": "Rappels de quête à envoyer",
   "automation.source.activeQuests": "Quêtes actives (nombre)",
   "automation.source.heldQuests": "Quêtes en attente (nombre)",
-  "automation.source.openBlights": "Fléaux ouverts (nombre)",
+  "automation.source.openErrors": "Fléaux ouverts (nombre)",
   "automation.source.untriagedFeedback": "Retours non triés (nombre)",
   "automation.source.uniqueVisitors": "Visiteurs uniques",
   "automation.source.quality.coverage.lines": "Couverture des lignes (%)",

@@ -26,7 +26,7 @@ import { projects } from "./projects.ts";
  *
  * ⚠️ What lives here and what does not. `options` holds **switches**, the
  * things a capability turns on and off. Configuration stays where it is:
- * `retentionDays` (read by the blight purge cron as
+ * `retentionDays` (read by the error purge cron as
  * `project.retentionDays ?? 30`), `roadmapVisibility`, `kanbanColumns`,
  * `kanbanColumnConfig` and `tagColors` are all columns on `projects` for
  * reasons of their own, and one value does not get two homes.

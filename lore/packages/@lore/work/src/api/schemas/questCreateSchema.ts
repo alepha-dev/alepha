@@ -18,10 +18,10 @@ export const questCreateSchema = z.object({
    * T-shirt size, 1 (XS) to 5 (XL). See the entity for what it claims.
    *
    * Optional on the wire with a server-side default of 3 (M), even though the
-   * form always sends one: Lore's own programmatic creators (blight
+   * form always sends one: Lore's own programmatic creators (error
    * forwarding, feedback acceptance) have no basis for a value, and forcing
    * them to supply one is precisely what discredited the erased `difficulty`
-   * (its blight path hardcoded `2`). An absent size means "nobody sized it",
+   * (its error path hardcoded `2`). An absent size means "nobody sized it",
    * and 3 is the same neutral middle the backfill used.
    */
   size: z.integer().min(1).max(5).optional(),

@@ -230,7 +230,7 @@ const AppErrors = () => {
           <Button
             variant="outlined"
             size="sm"
-            href={router.path("projectBlights", {
+            href={router.path("projectErrors", {
               params: { projectSlug: project.slug },
             })}
           >

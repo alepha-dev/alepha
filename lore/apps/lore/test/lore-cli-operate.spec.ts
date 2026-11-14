@@ -1,6 +1,6 @@
 import { AlephaLoreCli } from "@alepha/lore/cli";
 import { ProjectController } from "@lore/core/api";
-import { blights } from "@lore/deploy/schemas";
+import { projectErrors } from "@lore/deploy/schemas";
 import {
   EpicController,
   FeedbackCommentController,
@@ -43,7 +43,7 @@ const userDataSchema = z.object({
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
 class Rows {
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
 }
 
 interface TestContext {
@@ -298,7 +298,7 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     const rows = ctx.alepha.inject(Rows);
     const now = new Date().toISOString();
     const seed = (fingerprint: string) =>
-      rows.blights.create({
+      rows.projectErrors.create({
         projectId: project.id,
         fingerprint,
         name: "TypeError",

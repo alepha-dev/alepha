@@ -14,7 +14,7 @@ import type { DashboardScope } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
 import {
   appInstances,
-  blights,
+  projectErrors,
   sigilErrorGroups,
   type Sigil,
   sigils,
@@ -44,7 +44,7 @@ import {
 class ResolveTestRepositories {
   instances = $repository(appInstances);
   sigils = $repository(sigils);
-  blights = $repository(blights);
+  projectErrors = $repository(projectErrors);
   errorGroups = $repository(sigilErrorGroups);
   uniques = $repository(sigilUniquesDaily);
   feedback = $repository(feedback);
@@ -1078,13 +1078,13 @@ describe("dashboard resolve", () => {
     });
   });
 
-  describe("openBlights", () => {
+  describe("openErrors", () => {
     it("counts a bug in two selected apps once, with the footer figures", async ({
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
-      const web = await createSigil(ctx, project, "web", ["blights"]);
-      const api = await createSigil(ctx, project, "api", ["blights"]);
+      const web = await createSigil(ctx, project, "web", ["errors"]);
+      const api = await createSigil(ctx, project, "api", ["errors"]);
       const stamp = new Date(ctx.dateTime.nowMillis()).toISOString();
 
       for (const sigil of [web, api]) {
@@ -1100,7 +1100,7 @@ describe("dashboard resolve", () => {
           count: 6,
         });
       }
-      await ctx.repos.blights.create({
+      await ctx.repos.projectErrors.create({
         projectId: project.id,
         sigilId: api.id,
         fingerprint: "fp-shared",
@@ -1114,7 +1114,7 @@ describe("dashboard resolve", () => {
 
       await only(ctx, user, [
         {
-          metric: "openBlights",
+          metric: "openErrors",
           scope: { kind: "apps", sigilIds: [web.id, api.id] },
         },
       ]);
@@ -1130,7 +1130,7 @@ describe("dashboard resolve", () => {
       });
       expect(values[0]?.scopeNames).toEqual(["web", "api"]);
       expect(values[0]?.link).toEqual({
-        route: "projectBlights",
+        route: "projectErrors",
         params: { projectSlug: project.slug },
       });
     });
@@ -1139,9 +1139,9 @@ describe("dashboard resolve", () => {
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
-      const web = await createSigil(ctx, project, "web", ["blights"]);
+      const web = await createSigil(ctx, project, "web", ["errors"]);
       const stamp = new Date(ctx.dateTime.nowMillis()).toISOString();
-      await ctx.repos.blights.create({
+      await ctx.repos.projectErrors.create({
         projectId: project.id,
         sigilId: web.id,
         fingerprint: "fp-live",
@@ -1154,7 +1154,7 @@ describe("dashboard resolve", () => {
       });
 
       await only(ctx, user, [
-        { metric: "openBlights", scope: { kind: "apps", sigilIds: [web.id] } },
+        { metric: "openErrors", scope: { kind: "apps", sigilIds: [web.id] } },
       ]);
       await ctx.repos.sigils.deleteMany({ id: { eq: web.id } });
 
@@ -1163,7 +1163,7 @@ describe("dashboard resolve", () => {
         { user },
       );
 
-      // Blights outlive their apps: `blights.sigilId` is ON DELETE SET NULL
+      // Errors outlive their apps: `projectErrors.sigilId` is ON DELETE SET NULL
       // and the row survives. A zero here would read as "nothing is wrong",
       // which is exactly what an inbox full of open crashes is not.
       expect(values[0]).toMatchObject({ ok: false });
@@ -1302,7 +1302,7 @@ describe("dashboard resolve", () => {
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
-      await createSigil(ctx, project, "api", ["blights"]);
+      await createSigil(ctx, project, "api", ["errors"]);
 
       await only(ctx, user, [
         {
@@ -1597,10 +1597,10 @@ describe("dashboard resolve", () => {
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
-      const app = await createSigil(ctx, project, "web", ["blights"]);
+      const app = await createSigil(ctx, project, "web", ["errors"]);
       const [id] = await only(ctx, user, [
         {
-          metric: "openBlights",
+          metric: "openErrors",
           scope: { kind: "apps", sigilIds: [app.id] },
         },
       ]);

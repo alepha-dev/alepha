@@ -44,7 +44,7 @@ export class DeployLimits {
    * after **15 minutes of wall clock**. A deploy timer set past that never
    * fires: the platform kills the isolate first, the run writes nothing, and
    * the only trace is `Execution assumed crashed (recovered by sweep)` half an
-   * hour later (blight #616, #Q2344). The parameter used to accept 60 minutes.
+   * hour later (error #616, #Q2344). The parameter used to accept 60 minutes.
    *
    * Thirteen, not fifteen: what runs before the timer starts (the gate, the
    * artifact lookup, opening the secrets) and the failure write after it

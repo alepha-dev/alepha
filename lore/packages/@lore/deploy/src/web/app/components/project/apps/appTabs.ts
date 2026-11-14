@@ -112,7 +112,7 @@ export const APP_TABS: AppTab[] = [
   {
     route: "appErrors",
     labelKey: "app.tab.errors",
-    unlockedBy: (instance) => collects(instance, "blights"),
+    unlockedBy: (instance) => collects(instance, "errors"),
     option: "track",
   },
   // Last of the four on purpose. Analytics and Vitals answer the questions

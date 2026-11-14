@@ -115,9 +115,9 @@ export class DeployShell {
         // Offer an inbox for an app collecting crashes, or for retained
         // open blights. Uptime outages have no sigil, and removing an app
         // must not hide the inbox while its failures still need triage.
-        route: "projectBlights",
-        permission: "blight:read",
-        labelKey: "project.menu.blights",
+        route: "projectErrors",
+        permission: "error:read",
+        labelKey: "project.menu.errors",
         icon: Bug,
         group: "work",
         order: 50,
@@ -132,7 +132,7 @@ export class DeployShell {
           (ctx.get(currentBlightCountAtom)?.count ?? 0) > 0 ||
           (capabilityOption(ctx.get(currentProjectAtom), "apps", "track") &&
             (ctx.get(currentInstancesAtom) ?? []).some((it) =>
-              it.sigil?.kinds.includes("blights"),
+              it.sigil?.kinds.includes("errors"),
             )),
         badge: (ctx) => ctx.get(currentBlightCountAtom)?.count || undefined,
       },
@@ -278,10 +278,10 @@ export class DeployShell {
     // `Bug`, not `ListChecks`: both are triage loops, and the surface is
     // what tells them apart in a menu.
     this.prompts.register({
-      kind: "blightTriage",
+      kind: "errorTriage",
       template: blightTriagePromptDefault,
       icon: Bug,
-      labelKey: "agentPrompts.triageBlights",
+      labelKey: "agentPrompts.triageErrors",
     });
 
     this.pickers.registerApps({ useApps: useDashboardApps });

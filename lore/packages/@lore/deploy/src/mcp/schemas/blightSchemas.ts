@@ -1,7 +1,7 @@
 import { projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
 
-import { blightResourceSchema } from "../../api/schemas/blightResourceSchema.ts";
+import { projectErrorResourceSchema } from "../../api/schemas/projectErrorResourceSchema.ts";
 
 // -----------------------------------------------------------------------------
 // blight_list
@@ -17,7 +17,7 @@ export const blightListParamsSchema = projectParamsSchema.extend({
 });
 
 export const blightListResultSchema = z.object({
-  blights: z.array(blightResourceSchema),
+  projectErrors: z.array(projectErrorResourceSchema),
   openCount: z.integer(),
   /**
    * The apps that report here, for reading `sigilId` back to a name.

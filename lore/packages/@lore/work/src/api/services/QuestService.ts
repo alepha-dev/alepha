@@ -79,7 +79,7 @@ export interface CreateQuestInput {
    */
   releaseId?: number;
   /**
-   * Provenance marker, e.g. `{ sigilBlightId }` for blight-forwarded quests.
+   * Provenance marker, e.g. `{ projectErrorId }` for error-forwarded quests.
    */
   source?: Quest["source"];
   /**
@@ -94,8 +94,8 @@ export interface CreateQuestInput {
  * payload with defaults.
  *
  * Both `QuestController.createQuest` and
- * `BlightController.forwardBlightToQuest` delegate here so the two paths can
- * never diverge again (the blight path historically skipped sanitization,
+ * `ProjectErrorController.forwardProjectErrorToQuest` delegate here so the two paths can
+ * never diverge again (the error path historically skipped sanitization,
  * back when there was any).
  * Controllers keep ownership of auth / permission checks; only the creation
  * mechanics live here.
@@ -206,7 +206,7 @@ export class QuestService {
     // Before the sequence, so a refused create does not burn a shortId.
     // Here rather than in the controllers because this is the single
     // creation path - the quest form, the MCP tool, the CSV import and
-    // blight forwarding all land on it, and a cap enforced in only some
+    // error forwarding all land on it, and a cap enforced in only some
     // of them is not a cap.
     await this.assertCapacity(input.projectId);
 

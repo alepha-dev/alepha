@@ -30,7 +30,7 @@ export class AdminProjectController {
   /**
    * How long a project may go untouched before the list calls it dormant.
    *
-   * Thirty days matches the retention window blights already use, so the two
+   * Thirty days matches the retention window errors already use, so the two
    * "is this still alive" judgements in the app agree rather than each picking
    * their own number.
    */

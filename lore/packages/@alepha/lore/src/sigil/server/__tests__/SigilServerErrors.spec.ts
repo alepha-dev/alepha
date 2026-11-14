@@ -142,7 +142,7 @@ describe("SigilServerErrors — background jobs", () => {
     await alepha.start();
 
     await alepha.events.emit("job:error", {
-      name: "lore:blights:purge",
+      name: "lore:errors:purge",
       error: new Error("D1 unreachable"),
       executionId: "exec-1",
     });
@@ -152,7 +152,7 @@ describe("SigilServerErrors — background jobs", () => {
     // The job name is the source: a stack from a cron says nothing about which
     // cron, and that is the first thing anyone needs.
     expect(sink.ingested[0].errors[0]).toMatchObject({
-      sourceUrl: "job:lore:blights:purge",
+      sourceUrl: "job:lore:errors:purge",
       origin: "server",
       message: "D1 unreachable",
     });
@@ -240,7 +240,7 @@ describe("SigilServerErrors — error-level logs", () => {
     return { alepha, sink, errors, worker };
   };
 
-  it("records one blight for a caught-and-logged error, with its stack", async () => {
+  it("records one error for a caught-and-logged error, with its stack", async () => {
     const { errors, worker } = await setup();
     const error = Object.assign(new Error("links sync failed"), {
       name: "DbError",
@@ -321,7 +321,7 @@ describe("SigilServerErrors — error-level logs", () => {
     expect(sink.ingested).toHaveLength(1);
   });
 
-  it("records one blight for a failing MCP tool", async () => {
+  it("records one error for a failing MCP tool", async () => {
     const alepha = make().with(AlephaMcp);
     class Tools {
       failing = $tool({

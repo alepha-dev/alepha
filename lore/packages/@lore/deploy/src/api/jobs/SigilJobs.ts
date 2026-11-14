@@ -21,7 +21,7 @@ import {
  * table. The collapse is privacy maintenance, not storage maintenance: it is
  * what makes the per-visitor hashes stop existing after
  * {@link SigilJobs.UNIQUES_COLLAPSE_AFTER_DAYS}, not a way to save space. Nothing else
- * would delete them at all — `BlightJobs` sweeps `blights` only.
+ * would delete them at all — `ProjectErrorJobs` sweeps `projectErrors` only.
  *
  * The collapse *folds* rather than deletes, so `uniqueVisitors` never changes
  * for a window that was already fully outside the collapse boundary — see
@@ -66,7 +66,7 @@ export class SigilJobs {
 
   /**
    * Hourly sweep. Runs on the shared `0 * * * *` slot alongside
-   * `BlightJobs.purgeStaleBlights` to keep the Cloudflare cron-trigger count
+   * `ProjectErrorJobs.purgeStaleProjectErrors` to keep the Cloudflare cron-trigger count
    * down; neither pass is time-critical to the hour.
    */
   public readonly collapseAnalytics = $job({

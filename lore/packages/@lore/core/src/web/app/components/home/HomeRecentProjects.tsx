@@ -25,7 +25,10 @@ export interface HomeRecentProjectsProps {
   momentum: Map<number, number[]> | undefined;
   days: string[];
   lastActivity: Map<number, string>;
-  openCounts: Map<number, { epics: number; blights: number; feedback: number }>;
+  openCounts: Map<
+    number,
+    { epics: number; projectErrors: number; feedback: number }
+  >;
 }
 
 /**

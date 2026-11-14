@@ -546,7 +546,7 @@ export class SigilBrowserProvider {
    * call, so every 4xx an API hands a form was filed as a crash. A public
    * login form across N tenants meant every mistyped password minted ingest
    * traffic and an inbox row - and the fingerprint is stack-based, so each
-   * deploy re-fingerprinted them into fresh blights.
+   * deploy re-fingerprinted them into fresh errors.
    *
    * Kept: 5xx, and anything with no status at all. A missing status means the
    * error never reached the point of becoming a response, which is the
@@ -565,7 +565,7 @@ export class SigilBrowserProvider {
    * required field left empty, which `FormModel` rethrows as one), or its
    * handler did, by throwing one. Neither carries a status, so `isCrash`
    * alone kept them, and somebody submitting the quest form without a title
-   * filed a crash (blight #585, #Q2343).
+   * filed a crash (error #585, #Q2343).
    *
    * ⚠️ Both halves are needed. `type: "form"` alone would also drop a
    * `SchemaValidationError` raised inside a form's handler, which is a

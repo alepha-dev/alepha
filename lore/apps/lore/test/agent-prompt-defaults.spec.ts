@@ -136,7 +136,7 @@ describe("the default prompts", () => {
    */
   const SURFACE_SCOPED: AgentPromptKind[] = [
     "feedbackLoop",
-    "blightTriage",
+    "errorTriage",
     "questLoop",
     "weeklyStatus",
   ];

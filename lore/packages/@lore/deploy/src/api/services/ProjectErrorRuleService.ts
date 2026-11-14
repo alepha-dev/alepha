@@ -1,16 +1,16 @@
 import { $repository } from "alepha/orm";
 
 import {
-  type BlightIgnoreRule,
-  blightIgnoreRules,
-} from "../entities/blightIgnoreRules.ts";
+  type ProjectErrorIgnoreRule,
+  projectErrorIgnoreRules,
+} from "../entities/projectErrorIgnoreRules.ts";
 
 /**
- * Owns the project-wide blight ignore rules — the substrings that, when
+ * Owns the project-wide error ignore rules — the substrings that, when
  * matched against an incoming crash's `message`, drop the event at ingestion.
  *
- * Declaring `$repository(blightIgnoreRules)` here registers the
- * `blight_ignore_rules` table in the ORM/migration graph (the migration
+ * Declaring `$repository(projectErrorIgnoreRules)` here registers the
+ * `project_error_ignore_rules` table in the ORM/migration graph (the migration
  * generator scans instantiated repositories — same pattern as
  * {@link SigilIngestService}).
  *
@@ -18,15 +18,15 @@ import {
  * - {@link SigilIngestService} — calls {@link listForProject} once per batch
  *   then {@link matches} per error to drop muted messages before they are
  *   recorded.
- * - `BlightController` — owner CRUD over the rule list.
+ * - `ProjectErrorController` — owner CRUD over the rule list.
  */
-export class BlightRuleService {
-  protected rules = $repository(blightIgnoreRules);
+export class ProjectErrorRuleService {
+  protected rules = $repository(projectErrorIgnoreRules);
 
   /**
    * Every ignore rule for a project, newest first.
    */
-  async listForProject(projectId: number): Promise<BlightIgnoreRule[]> {
+  async listForProject(projectId: number): Promise<ProjectErrorIgnoreRule[]> {
     return this.rules.findMany({
       where: { projectId: { eq: projectId } },
       orderBy: [{ column: "createdAt", direction: "desc" }],
@@ -39,7 +39,7 @@ export class BlightRuleService {
    * the rule list never carries one). Pure: takes the already-loaded rules so
    * the caller controls how often the DB is hit.
    */
-  matches(message: string, rules: BlightIgnoreRule[]): boolean {
+  matches(message: string, rules: ProjectErrorIgnoreRule[]): boolean {
     if (!message) {
       return false;
     }
@@ -55,7 +55,7 @@ export class BlightRuleService {
     projectId: number,
     pattern: string,
     userId: string,
-  ): Promise<BlightIgnoreRule> {
+  ): Promise<ProjectErrorIgnoreRule> {
     return this.rules.create({
       projectId,
       pattern,

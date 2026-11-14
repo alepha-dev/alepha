@@ -5,12 +5,12 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
-import { blights } from "../entities/blights.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 
 /**
- * Keeps the blights inbox from growing without bound.
+ * Keeps the errors inbox from growing without bound.
  */
-export class BlightJobs {
+export class ProjectErrorJobs {
   /**
    * Milliseconds in a day — for the retention-cutoff arithmetic.
    */
@@ -18,28 +18,28 @@ export class BlightJobs {
 
   /**
    * How many project ids one purge statement may carry as bound parameters.
-   * See {@link BlightJobs.chunked} for why there is a bound at all.
+   * See {@link ProjectErrorJobs.chunked} for why there is a bound at all.
    */
   protected readonly PURGE_BATCH_SIZE = 90;
 
   /**
-   * Fallback Blights retention window when a project sets no `retentionDays`.
+   * Fallback Errors retention window when a project sets no `retentionDays`.
    */
   protected readonly DEFAULT_RETENTION_DAYS = 30;
 
   protected readonly log = $logger();
   protected readonly projects = $repository(projects);
-  protected readonly blights = $repository(blights);
+  protected readonly projectErrors = $repository(projectErrors);
   protected readonly dt = $inject(DateTimeProvider);
 
   /**
-   * Hourly purge of stale blights.
+   * Hourly purge of stale errors.
    *
-   * For each project, deletes `blights` rows whose `lastSeenAt` is older than
+   * For each project, deletes `projectErrors` rows whose `lastSeenAt` is older than
    * `project.retentionDays ?? 30` days — but ONLY rows with `status = 'open'`.
-   * Resolved blights (`status = 'resolved'`) and quest-forwarded blights
+   * Resolved errors (`status = 'resolved'`) and quest-forwarded errors
    * (`status` starts with `quest:`) are kept indefinitely as an audit trail
-   * (see folio #10 §Blights "Auto-purge").
+   * (see folio #10 §Errors "Auto-purge").
    *
    * Retention is measured in days/weeks so the exact cadence isn't
    * significant; runs on the shared `0 * * * *` slot to keep the Cloudflare
@@ -49,10 +49,10 @@ export class BlightJobs {
    * the window that applies to them, so this issues one `DELETE` per distinct
    * retention value rather than one per project. See {@link byRetention}.
    */
-  public readonly purgeStaleBlights = $job({
-    name: "blights.purge-stale",
+  public readonly purgeStaleProjectErrors = $job({
+    name: "errors.purge-stale",
     description:
-      "Deletes open blights with no new occurrence within their project's retention window (30 days by default).",
+      "Deletes open errors with no new occurrence within their project's retention window (30 days by default).",
     cron: "0 * * * *",
     // Two minutes. One DELETE per distinct retention window, so the cost
     // grows with the number of windows rather than with the project count,
@@ -73,9 +73,9 @@ export class BlightJobs {
 
         for (const chunk of this.chunked(projectIds)) {
           try {
-            // Scoped straight to the projects — a blight carries its own
+            // Scoped straight to the projects — an error carries its own
             // `projectId`, so there is no sigil indirection to resolve.
-            const purged = await this.blights.deleteMany({
+            const purged = await this.projectErrors.deleteMany({
               projectId: { inArray: chunk },
               status: { eq: "open" },
               lastSeenAt: { lt: cutoff },
@@ -83,14 +83,14 @@ export class BlightJobs {
             totalDeleted += purged.length;
           } catch (err) {
             this.log.warn(
-              `Blight purge failed for ${chunk.length} project(s) at ${retentionDays}d retention: ${String(err)}`,
+              `Error purge failed for ${chunk.length} project(s) at ${retentionDays}d retention: ${String(err)}`,
             );
           }
         }
       }
 
       if (totalDeleted > 0) {
-        this.log.info(`Purged ${totalDeleted} stale open blight(s)`);
+        this.log.info(`Purged ${totalDeleted} stale open error(s)`);
       }
     },
   });

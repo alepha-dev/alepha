@@ -19,7 +19,10 @@ import type { HomeOpenLink } from "./HomeOpenLinks.tsx";
  * the board, so until the board arrives those three read 0.
  */
 export const useHomeOpenTags = (
-  openCounts: Map<number, { epics: number; blights: number; feedback: number }>,
+  openCounts: Map<
+    number,
+    { epics: number; projectErrors: number; feedback: number }
+  >,
 ) => {
   const { tr } = useI18n<I18n, "en">();
 
@@ -48,13 +51,13 @@ export const useHomeOpenTags = (
       });
     }
     if (capabilityOption(project, "apps", "track")) {
-      const count = counts?.blights ?? 0;
+      const count = counts?.projectErrors ?? 0;
       tags.push({
         kind: "blights",
-        route: "projectBlights",
+        route: "projectErrors",
         icon: Bug,
         count,
-        label: tr("home.table.open.blights", { args: [String(count)] }),
+        label: tr("home.table.open.errors", { args: [String(count)] }),
       });
     }
     if (hasCapability(project, "support")) {

@@ -4,27 +4,27 @@ import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
-import { blights } from "../entities/blights.ts";
 import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { deployments } from "../entities/deployments.ts";
 import { monitorIncidents } from "../entities/monitorIncidents.ts";
 import { monitors } from "../entities/monitors.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 import { sigils } from "../entities/sigils.ts";
 
 /**
- * The Delivery tab's reliability half (#Q3009): blights, errors and uptime.
+ * The Delivery tab's reliability half (#Q3009): errors, error occurrences and uptime.
  *
- * ⚠️ **A blight has no `resolvedAt`.** `status` is all that moves, so a
- * resolved blight is placed on the day it was last seen, which is the last
- * evidence there is that it was alive. It reads a little early for a blight
+ * ⚠️ **An error has no `resolvedAt`.** `status` is all that moves, so a
+ * resolved error is placed on the day it was last seen, which is the last
+ * evidence there is that it was alive. It reads a little early for an error
  * resolved long after it went quiet. A forwarded one counts as resolved too,
  * since it left the inbox.
  *
- * `name` on a blight is attacker-controlled: it travels as data and the page
+ * `name` on an error is attacker-controlled: it travels as data and the page
  * renders it as text, never as markup.
  */
 export class ProjectReliabilityReportService {
-  protected readonly blights = $repository(blights);
+  protected readonly projectErrors = $repository(projectErrors);
   protected readonly sigils = $repository(sigils);
   protected readonly deployments = $repository(deployments);
   protected readonly monitors = $repository(monitors);
@@ -43,7 +43,7 @@ export class ProjectReliabilityReportService {
     const axis = this.stats.between(from, to);
     const grain = query.grain ?? this.stats.grainFor(axis.length);
     const [rows, forwarded, errors, uptime] = await Promise.all([
-      this.blights.findMany({
+      this.projectErrors.findMany({
         where: { projectId: { eq: projectId } },
         columns: [
           "id",
@@ -55,7 +55,7 @@ export class ProjectReliabilityReportService {
           "lastSeenAt",
         ],
       }),
-      this.changes.forwardedBlights(projectId),
+      this.changes.forwardedProjectErrors(projectId),
       this.errors(projectId, axis, grain),
       this.uptime(projectId, from, to),
     ]);
@@ -70,7 +70,7 @@ export class ProjectReliabilityReportService {
 
     const firstSeen = new Map(rows.map((row) => [row.id, row.firstSeenAt]));
     const fixHours = forwarded.flatMap((quest) => {
-      const seen = firstSeen.get(quest.blightId);
+      const seen = firstSeen.get(quest.errorId);
       return seen && quest.completedAt
         ? [
             (this.dt.of(quest.completedAt).valueOf() -
@@ -81,7 +81,7 @@ export class ProjectReliabilityReportService {
     });
 
     return {
-      blights: buckets.map((date, index) => ({
+      projectErrors: buckets.map((date, index) => ({
         date,
         opened: rows.filter((row) => opened(row.firstSeenAt) === date).length,
         resolved: rows.filter(
@@ -93,7 +93,7 @@ export class ProjectReliabilityReportService {
             (isOpen(row.status) || row.lastSeenAt >= endOf(index)),
         ).length,
       })),
-      topBlights: rows
+      topErrors: rows
         .toSorted((a, b) => b.count - a.count)
         .slice(0, query.top ?? 10)
         .map((row) => ({
@@ -115,8 +115,8 @@ export class ProjectReliabilityReportService {
   }
 
   /**
-   * Occurrences per bucket, from the dataset rather than the blight rows: a
-   * blight holds a running total and could not say when they happened.
+   * Occurrences per bucket, from the dataset rather than the error rows: a
+   * error holds a running total and could not say when they happened.
    */
   protected async errors(
     projectId: number,

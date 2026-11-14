@@ -177,12 +177,12 @@ Read endpoints are member-gated; mutations are owner-only. **Ingest has its own 
 
 **Where to look**
 
-- Entities: `src/api/entities/sigils.ts` (the credential + `(projectId, name)` unique index), `blights.ts`, `sigilErrorGroups.ts`, `sigilUniquesDaily.ts`
+- Entities: `src/api/entities/sigils.ts` (the credential + `(projectId, name)` unique index), `projectErrors.ts`, `sigilErrorGroups.ts`, `sigilUniquesDaily.ts`
 - Owner CRUD: `src/api/controllers/SigilController.ts` (create / list / rotate / **update** `kinds` / delete)
 - App name rule: `src/api/schemas/appNameSchema.ts` (`APP_NAME_PATTERN` / `APP_NAME_MAX_LENGTH`; the entity column itself stays permissive, on purpose — see the comment there)
 - Ingest: `src/api/controllers/SigilIngestController.ts` + `src/api/services/SigilIngestService.ts`
 - Credential: `src/api/services/SigilTokenService.ts` (mint / verify / bearer)
-- Triage: `src/api/controllers/BlightController.ts`, `src/api/services/BlightRuleService.ts`, `src/api/jobs/BlightJobs.ts`
+- Triage: `src/api/controllers/ProjectErrorController.ts`, `src/api/services/ProjectErrorRuleService.ts`, `src/api/jobs/ProjectErrorJobs.ts`
 - Analytics: `src/api/controllers/InsightsController.ts` (schemas extracted to `src/api/schemas/insightsResourceSchema.ts` / `sigilResourceSchema.ts` so the browser can validate the atoms without importing a controller)
 - UI - inventory: `src/web/app/components/project/settings/ProjectSettingsSigilsPage.tsx` (read-only list beside the master toggle; `ProjectSettingsSigilRow` and `ProjectSettingsSigilsEnrollDialog` were deleted with the enrol flow), `shared/TokenReveal.tsx`
 - UI - per instance: `src/web/app/components/project/apps/AppLayout.tsx` (+ `AppDashboard`, `AppAnalytics`, `AppVitals`, `AppErrors`, `AppSettings` and its five `AppSettings*` rows, `useAppInsights` / `AppInsightsControls` - the per-tab fetch and its two toggles); the single Apps nav entry in `project/ProjectView.tsx`; atoms `currentInstancesAtom` / `currentInstanceAtom`

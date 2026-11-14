@@ -8,7 +8,7 @@ import { $repository } from "alepha/orm";
 import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../entities/monitorHeartbeats.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
-import { UptimeBlightService } from "../services/UptimeBlightService.ts";
+import { UptimeErrorService } from "../services/UptimeErrorService.ts";
 import { UptimeNotificationService } from "../services/UptimeNotificationService.ts";
 import { UptimeProber } from "../services/UptimeProber.ts";
 import {
@@ -26,7 +26,7 @@ export class UptimeJobs {
   protected readonly capabilities = $repository(projectCapabilities);
   protected readonly analytics = $inject(DeployAnalytics);
   protected readonly notifications = $inject(UptimeNotificationService);
-  protected readonly blights = $inject(UptimeBlightService);
+  protected readonly projectErrors = $inject(UptimeErrorService);
   protected readonly prober = $inject(UptimeProber);
   protected readonly state = $inject(UptimeStateService);
   protected readonly clock = $inject(DateTimeProvider);
@@ -120,10 +120,10 @@ export class UptimeJobs {
    */
   protected async transition(transition: UptimeTransition): Promise<void> {
     try {
-      await this.blights.handle(transition);
+      await this.projectErrors.handle(transition);
     } catch (error) {
       this.log.error(
-        `Uptime blight could not be written for incident ${transition.incident.id}`,
+        `Uptime error could not be written for incident ${transition.incident.id}`,
         error,
       );
     }

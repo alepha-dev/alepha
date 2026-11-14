@@ -220,8 +220,8 @@ export class DeployRouter {
     lazy: () => import("./components/project/artifacts/ProjectArtifact.tsx"),
   });
 
-  projectBlights = $pageProject({
-    name: "projectBlights",
+  projectErrors = $pageProject({
+    name: "projectErrors",
     path: "/blights",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Blights`,
@@ -751,7 +751,7 @@ export class DeployRouter {
    */
   protected assertBlights(): void {
     const instance = this.alepha.store.get(currentInstanceAtom);
-    if (!instance?.sigil?.kinds.includes("blights")) {
+    if (!instance?.sigil?.kinds.includes("errors")) {
       throw new NotFoundError("Blights are not enabled for this app");
     }
   }

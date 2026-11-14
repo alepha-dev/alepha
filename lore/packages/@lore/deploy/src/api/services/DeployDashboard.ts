@@ -11,7 +11,7 @@ import { sigils } from "../entities/sigils.ts";
 
 /**
  * Deploy's part of the dashboard, registered on core (#E75, #Q2623): how a
- * card's `apps` scope is proven, and the visitors and blights cards a fresh
+ * card's `apps` scope is proven, and the visitors and errors cards a fresh
  * board starts with.
  */
 export class DeployDashboard {
@@ -22,7 +22,7 @@ export class DeployDashboard {
 
   constructor() {
     // The apps slot of the computed board (#Q2652, #Q2657): per-copy
-    // health, then open blights, then visitors, each only while an app of
+    // health, then open errors, then visitors, each only while an app of
     // the project has reported in 30 days. A project with no sigil and
     // one whose apps went silent get no apps tile (folio #F1364).
     const heard = (value: { detail: Record<string, unknown> }) =>
@@ -37,7 +37,7 @@ export class DeployDashboard {
     this.slots.register({
       slot: "apps",
       rank: 20,
-      metric: "openBlights",
+      metric: "openErrors",
       keep: heard,
     });
     this.slots.register({
@@ -73,7 +73,7 @@ export class DeployDashboard {
     this.cards.registerSeed({
       order: 30,
       cards: async () => [
-        { metric: "openBlights", scope: { kind: "all" as const } },
+        { metric: "openErrors", scope: { kind: "all" as const } },
       ],
     });
 

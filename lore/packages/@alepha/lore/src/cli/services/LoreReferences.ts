@@ -37,7 +37,7 @@ export class LoreReferences {
     return this.parse(ref, "P", "feedback");
   }
 
-  public blight(ref: string): number {
+  public projectError(ref: string): number {
     return this.parse(ref, "B", "blight");
   }
 

@@ -48,7 +48,7 @@ const CAPABILITIES: Array<{
   },
   {
     reported: "errors",
-    accepted: "blights",
+    accepted: "errors",
     labelKey: "app.dashboard.capability.errors",
   },
   {

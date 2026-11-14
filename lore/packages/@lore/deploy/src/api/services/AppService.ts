@@ -69,7 +69,7 @@ export class AppService {
    * that fails its column's schema does not read as `undefined`, it throws
    * every query that touches the table. That is the `projects.features`
    * incident of 2026-08-05 from the same direction, and it would land on
-   * `sigils`, which the blights inbox and the insights page both read.
+   * `sigils`, which the errors inbox and the insights page both read.
    *
    * Checked on create and on every rename, whether or not the instance has a
    * sigil today: one may be minted tomorrow and the pair would already be
@@ -88,7 +88,7 @@ export class AppService {
    *
    * The column cannot be left alone: it is `NOT NULL`, unique on
    * `(projectId, name)`, and read as a display label by
-   * `BlightController.listBlights`, `InsightsController.labels`,
+   * `ProjectErrorController.listProjectErrors`, `InsightsController.labels`,
    * `DashboardMetricRegistry.scopeNames`, `LoreAudits` and MCP `sigil_list`.
    * Two instances of `acme` with two sigils cannot both be named `acme`.
    *

@@ -119,9 +119,7 @@ describe("Automation catalogue", () => {
       "release.published",
     ]);
     expect(
-      result.entries.some((entry) =>
-        /uptime|blight\.threshold/.test(entry.key),
-      ),
+      result.entries.some((entry) => /uptime|error\.threshold/.test(entry.key)),
     ).toBe(false);
     expect(
       result.entries
@@ -131,7 +129,7 @@ describe("Automation catalogue", () => {
     ).toEqual([
       "activeQuests",
       "heldQuests",
-      "openBlights",
+      "openErrors",
       "quality.coverage.branches",
       "quality.coverage.functions",
       "quality.coverage.lines",

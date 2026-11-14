@@ -14,8 +14,8 @@ import { useI18n } from "alepha/react/i18n";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import type { BlightController } from "../../../../../api/controllers/BlightController.ts";
-import type { BlightRuleResource } from "../../../../../api/schemas/blightRuleResourceSchema.ts";
+import type { ProjectErrorController } from "../../../../../api/controllers/ProjectErrorController.ts";
+import type { ProjectErrorRuleResource } from "../../../../../api/schemas/projectErrorRuleResourceSchema.ts";
 
 export interface ProjectBlightRulesDialogProps {
   open: boolean;
@@ -32,10 +32,10 @@ export interface ProjectBlightRulesDialogProps {
  */
 const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const blightApi = useClient<BlightController>();
+  const blightApi = useClient<ProjectErrorController>();
   // The rule list stays readable - it is what the inbox is filtering on - and
   // only the two writes close.
-  const canManage = blightApi.createBlightRule.can();
+  const canManage = blightApi.createProjectErrorRule.can();
   const toaster = useToast();
 
   const [pattern, setPattern] = useState("");
@@ -60,7 +60,9 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
       enabled: props.open,
       keepPreviousData: true,
       handler: () =>
-        blightApi.listBlightRules({ params: { projectId: props.projectId } }),
+        blightApi.listProjectErrorRules({
+          params: { projectId: props.projectId },
+        }),
     },
     [blightApi, props.projectId],
   );
@@ -72,25 +74,25 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
       handler: async () => {
         const value = pattern.trim();
         if (!value) return;
-        await blightApi.createBlightRule({
+        await blightApi.createProjectErrorRule({
           params: { projectId: props.projectId },
           body: { pattern: value },
         });
         setPattern("");
-        toaster.success(tr("blights.rules.toast.added"));
+        toaster.success(tr("errors.rules.toast.added"));
       },
       invalidates: [["blight-rules", props.projectId]],
     },
     [blightApi, pattern, props.projectId, toaster, tr],
   );
 
-  const removeAction = useAction<[rule: BlightRuleResource], void>(
+  const removeAction = useAction<[rule: ProjectErrorRuleResource], void>(
     {
       handler: async (_ctx, rule) => {
-        await blightApi.deleteBlightRule({
+        await blightApi.deleteProjectErrorRule({
           params: { projectId: props.projectId, ruleId: rule.id },
         });
-        toaster.success(tr("blights.rules.toast.removed"));
+        toaster.success(tr("errors.rules.toast.removed"));
       },
       invalidates: [["blight-rules", props.projectId]],
     },
@@ -104,9 +106,9 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{tr("blights.rules.title")}</DialogTitle>
+          <DialogTitle>{tr("errors.rules.title")}</DialogTitle>
           <DialogDescription>
-            {tr("blights.rules.description")}
+            {tr("errors.rules.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -119,7 +121,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
         >
           <Input
             value={pattern}
-            placeholder={tr("blights.rules.placeholder")}
+            placeholder={tr("errors.rules.placeholder")}
             onChange={(e) => setPattern(e.target.value)}
           />
           <Button
@@ -127,18 +129,18 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
             disabled={saving || !pattern.trim() || !canManage}
           >
             <Plus className="size-4" />
-            {tr("blights.rules.add")}
+            {tr("errors.rules.add")}
           </Button>
         </form>
 
         <div className="flex max-h-[50vh] flex-col gap-1 overflow-auto">
           {loading ? (
             <p className="text-muted-foreground py-4 text-center text-sm">
-              {tr("blights.rules.loading")}
+              {tr("errors.rules.loading")}
             </p>
           ) : rules.length === 0 ? (
             <p className="text-muted-foreground py-4 text-center text-sm">
-              {tr("blights.rules.empty")}
+              {tr("errors.rules.empty")}
             </p>
           ) : (
             rules.map((rule) => (
@@ -156,7 +158,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
                   className="text-danger-text shrink-0"
                   disabled={saving || !canManage}
                   onClick={() => void removeAction.run(rule)}
-                  aria-label={tr("blights.rules.remove")}
+                  aria-label={tr("errors.rules.remove")}
                 >
                   <Trash2 className="size-4" />
                 </Button>

@@ -16,7 +16,7 @@ import {
  * The `quest` resource (`#Q`), registered by Work: how core resolves,
  * describes, finds and creates a quest without reading `quests` itself.
  *
- * `create` is what lets another module make one: a blight forwarded to a
+ * `create` is what lets another module make one: an error forwarded to a
  * quest asks this kind, never `QuestService` (#Q2610).
  */
 export class QuestResourceKind {

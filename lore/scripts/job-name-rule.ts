@@ -11,7 +11,7 @@
  * ⚠️ **`packages/@lore/` is application code**, not framework. The `@lore/*`
  * packages are Lore split into modules (#E75): their jobs are Lore's, named
  * `<domain>.<action>` since they were written (`quest.reminders`,
- * `blight.purge`...), and requiring `system.` there would force a rename of
+ * `errors.purge-stale`...), and requiring `system.` there would force a rename of
  * every one of them, which is exactly the lost history this rule exists to
  * prevent.
  *

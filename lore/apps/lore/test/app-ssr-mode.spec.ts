@@ -56,7 +56,7 @@ const GUARDED_ROUTES = [
   "projectQuest",
   "projectFolios",
   "projectSettingsMembers",
-  "projectBlights",
+  "projectErrors",
   "appAnalytics",
   "reportsFlow",
   // The admin shell, which already carried

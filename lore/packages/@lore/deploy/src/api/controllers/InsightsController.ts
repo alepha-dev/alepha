@@ -58,7 +58,7 @@ export type { InsightsResource };
  * `sigil_error_groups` is the only table that keeps failures split by app, and
  * it keeps the *first* stack sample — which needs a read before every write,
  * something an append-only analytics dataset cannot do. "Is this still
- * happening over there" is a per-app question the project-wide Blights inbox
+ * happening over there" is a per-app question the project-wide Errors inbox
  * cannot answer by construction. This is the surface that asks it — the same
  * range selector, the same member gate, no second route for one list.
  *

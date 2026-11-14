@@ -154,7 +154,7 @@ const setup = async (
     name: "lore",
     tokenHash: await crypto.hash(KEY),
     tokenPrefix: KEY.slice(0, 10),
-    kinds: over.kinds ?? ["beacon", "vitals", "blights", "feedback"],
+    kinds: over.kinds ?? ["beacon", "vitals", "errors", "feedback"],
   });
 
   return { alepha, probe, analytics, project, sigil, sink };
@@ -189,7 +189,7 @@ describe("Lore reports to Lore", () => {
     // half — what the sink keeps. Beacon is withheld via the sigil's kinds, so
     // a view arriving anyway is dropped here rather than trusted.
     const { analytics, sigil, sink } = await setup({
-      kinds: ["vitals", "blights", "feedback"],
+      kinds: ["vitals", "errors", "feedback"],
     });
 
     await sink.ingest({
