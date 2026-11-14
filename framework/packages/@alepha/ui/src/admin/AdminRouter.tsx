@@ -5,7 +5,10 @@ import type { FileController } from "alepha/api/files";
 import type { AdminJobController } from "alepha/api/jobs";
 import type { AdminApiKeyController } from "alepha/api/keys";
 import type { AdminNotificationController } from "alepha/api/notifications";
-import type { AdminParameterController } from "alepha/api/parameters";
+import type {
+  AdminDashboardLayoutController,
+  AdminParameterController,
+} from "alepha/api/parameters";
 import type { AdminPaymentController } from "alepha/api/payments";
 import type {
   AdminSessionController,
@@ -176,6 +179,12 @@ export class AdminRouter {
   protected readonly auditApi = $client<AdminAuditController>();
   protected readonly fileApi = $client<FileController>();
   protected readonly parameterApi = $client<AdminParameterController>();
+  /**
+   * The dashboard layout's two actions, served by the parameters module. A
+   * type-only import like every other API here: no server code reaches the
+   * browser, and without the module both actions report `can()` false.
+   */
+  protected readonly layoutApi = $client<AdminDashboardLayoutController>();
   protected readonly paymentApi = $client<AdminPaymentController>();
   protected readonly analyticsApi = $client<AdminAnalyticsController>();
   protected readonly webhookApi = $client<AdminWebhookController>();

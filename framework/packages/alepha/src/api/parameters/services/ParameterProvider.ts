@@ -518,7 +518,21 @@ export class ParameterProvider {
     });
 
     const latestVersion = versions[0];
-    const newVersion = (latestVersion?.version ?? 0) + 1;
+    if (
+      options.expectedVersion !== undefined &&
+      options.expectedVersion > (latestVersion?.version ?? 0)
+    ) {
+      // A version from the future: nothing a writer read. A smaller one needs
+      // no check here, since the insert below collides on the unique index,
+      // which is also what catches two writers that read the same version.
+      throw new DbConflictError(
+        `Parameter '${name}' is at version ${latestVersion?.version ?? 0}, not ${options.expectedVersion}`,
+      );
+    }
+    const newVersion =
+      options.expectedVersion !== undefined
+        ? options.expectedVersion + 1
+        : (latestVersion?.version ?? 0) + 1;
 
     // Find previous content from the latest activated version
     const currentVersion = versions.find(
@@ -624,6 +638,19 @@ export class ParameterProvider {
         ],
       },
     };
+  }
+
+  /**
+   * The latest version number of a parameter, scheduled ones included, or 0
+   * when it was never saved: what a writer passes back as `expectedVersion`.
+   */
+  public async getLatestVersion(name: string): Promise<number> {
+    const [latest] = await this.repo.findMany({
+      where: { name },
+      orderBy: { column: "version", direction: "desc" },
+      limit: 1,
+    });
+    return latest?.version ?? 0;
   }
 
   /**
@@ -1318,4 +1345,12 @@ export interface SaveParameterOptions {
   tags?: string[];
   creatorId?: string;
   creatorName?: string;
+  /**
+   * The version the caller's edit started from (0 for a parameter never
+   * saved). The new row is inserted as `expectedVersion + 1`, so when another
+   * writer saved in between, the unique `(name, version)` index refuses it and
+   * `save` throws `DbConflictError` instead of silently writing over their
+   * change. Omitted, the new row takes the latest version + 1, as always.
+   */
+  expectedVersion?: number;
 }

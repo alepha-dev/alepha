@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 
 import { ParameterAudits } from "./audits/ParameterAudits.ts";
+import { AdminDashboardLayoutController } from "./controllers/AdminDashboardLayoutController.ts";
 import { AdminParameterController } from "./controllers/AdminParameterController.ts";
 import { $parameter } from "./primitives/$parameter.ts";
 import { ParameterProvider } from "./services/ParameterProvider.ts";
@@ -9,6 +10,7 @@ import { ParameterProvider } from "./services/ParameterProvider.ts";
 
 // Controller exports
 export * from "./audits/ParameterAudits.ts";
+export * from "./controllers/AdminDashboardLayoutController.ts";
 export * from "./controllers/AdminParameterController.ts";
 // Entity exports
 export * from "./entities/parameters.ts";
@@ -16,6 +18,8 @@ export * from "./entities/parameters.ts";
 export * from "./primitives/$parameter.ts";
 // Schema exports (types for UI)
 export * from "./schemas/activateParameterBodySchema.ts";
+export * from "./schemas/adminDashboardLayoutResponseSchema.ts";
+export * from "./schemas/adminDashboardLayoutSchema.ts";
 export * from "./schemas/createParameterVersionBodySchema.ts";
 export * from "./schemas/parameterCurrentResponseSchema.ts";
 export * from "./schemas/parameterHistoryResponseSchema.ts";
@@ -27,6 +31,7 @@ export * from "./schemas/parameterTreeNodeSchema.ts";
 export * from "./schemas/parameterVersionParamSchema.ts";
 export * from "./schemas/parameterVersionResponseSchema.ts";
 export * from "./schemas/rollbackParameterBodySchema.ts";
+export * from "./schemas/setAdminDashboardLayoutBodySchema.ts";
 // Service exports
 export * from "./services/ParameterProvider.ts";
 
@@ -47,6 +52,10 @@ export * from "./services/ParameterProvider.ts";
 export const AlephaApiParameters = $module({
   name: "alepha.api.parameters",
   primitives: [$parameter],
-  services: [ParameterProvider, AdminParameterController],
+  services: [
+    ParameterProvider,
+    AdminParameterController,
+    AdminDashboardLayoutController,
+  ],
   variants: [ParameterAudits],
 });
