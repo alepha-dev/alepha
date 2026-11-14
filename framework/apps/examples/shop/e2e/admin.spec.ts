@@ -620,11 +620,9 @@ test.describe("the admin sidebar", () => {
      * The whole tile set, in order.
      *
      * The shop's two cards carry no `order`, so they sort at 0 and lead the
-     * single built-in parked at 1000. Asserted as an exact list rather than
-     * per-tile visibility because both halves of the decision are
-     * load-bearing and invisible to a looser check: that an application's
-     * cards come first, and that the framework ships exactly ONE baseline
-     * tile rather than a dashboard of its own plumbing.
+     * three built-ins parked at 1000 and up. Asserted as an exact list rather
+     * than per-tile visibility, because that an application's cards come
+     * first is the load-bearing half and a looser check would not see it.
      */
     const tiles = await page
       .locator('[data-slot="card-title"]')
@@ -636,6 +634,276 @@ test.describe("the admin sidebar", () => {
       // The built-in tile reads its label from the same key as the sidebar
       // entry it links to, so it is French here too.
       "Utilisateurs",
+      "Connectés",
+      "Connexions échouées",
     ]);
+  });
+});
+
+/**
+ * Each built-in tile opens its list filtered to the same number (#Q3536),
+ * and a filter the admin stored on that list last time does not narrow it:
+ * the Users tile carries no filter of its own, so it relies on `?filters=none`.
+ */
+test.describe("the dashboard's tiles", () => {
+  // The card title, not any link: the sidebar entry says "Utilisateurs" too.
+  const tileOf = (page: Page, label: string) =>
+    page.getByRole("link").filter({
+      has: page
+        .locator('[data-slot="card-title"]')
+        .getByText(label, { exact: true }),
+    });
+
+  const tileValue = async (page: Page, label: string) => {
+    const value = tileOf(page, label).locator('[data-slot="stat-value"]');
+    await expect(value).toHaveText(/^[\d\s\u202f.,]+$/);
+    return Number((await value.innerText()).replace(/\D/g, ""));
+  };
+
+  const expectListTotal = async (page: Page, total: number) => {
+    // The footer reads "Page 1 sur 1 · 3 sur 3"; an empty list says so.
+    if (total === 0) {
+      await expect(page.getByText(/Aucun résultat|No results/)).toBeVisible();
+      return;
+    }
+    await expect(
+      page.getByText(new RegExp(`·\\s*\\d+ sur ${total}$`)),
+    ).toBeVisible();
+  };
+
+  test("each tile's click lands on a list whose total equals the tile, even with a stored filter", async ({
+    page,
+  }) => {
+    // One failed sign-in, so the failures tile has something to count.
+    await page.goto("/auth/login");
+    await page.locator('input[name="identifier"]').fill("nobody@example.test");
+    await page.locator('input[name="password"]').fill("not-the-password");
+    await page.getByRole("button", { name: /Sign in|Se connecter/ }).click();
+    await expect(page.locator('input[name="password"]')).toBeVisible();
+
+    await signInAsAdmin(page);
+    await page.goto("/admin");
+    // Stored filters that would each narrow the list under its tile.
+    await page.evaluate(() => {
+      window.localStorage.setItem(
+        "admin.users.filters",
+        JSON.stringify({ status: "disabled" }),
+      );
+      window.localStorage.setItem(
+        "admin.audits.filters",
+        JSON.stringify({ status: "ok" }),
+      );
+    });
+
+    for (const [label, url] of [
+      ["Utilisateurs", /\/admin\/users\?filters=none$/],
+      ["Connectés", /\/admin\/users\?active=24$/],
+      [
+        "Connexions échouées",
+        /\/admin\/audits\?status=failed&type=auth,security&createdAt=/,
+      ],
+    ] as const) {
+      await page.goto("/admin");
+      const value = await tileValue(page, label);
+      await tileOf(page, label).click();
+      await expect(page).toHaveURL(url);
+      await expectListTotal(page, value);
+    }
+  });
+
+  /**
+   * The stored layout is read by the page's loader (#Q3537), on the server,
+   * and shipped with the page: the first render is already the final grid,
+   * and the browser never fetches the layout after mount, so no tile moves.
+   * (The admin shell is client-rendered, being behind a guard, but its
+   * loaders still run on the server.)
+   */
+  test("the first render is the stored layout, with no fetch after mount", async ({
+    page,
+  }) => {
+    await signInAsAdmin(page);
+    const read = await page.request.get("/api/dashboard/layout");
+    expect(read.ok()).toBe(true);
+    const { version } = (await read.json()) as { version: number };
+    const save = (tiles: Array<{ id: string; enabled: boolean }>, at: number) =>
+      page.request.put("/api/dashboard/layout", {
+        data: { layout: { tiles }, expectedVersion: at },
+      });
+
+    const saved = await save(
+      [
+        { id: "failed-sign-ins", enabled: true },
+        { id: "users", enabled: true },
+        { id: "shop-pieces", enabled: false },
+      ],
+      version,
+    );
+    expect(saved.ok()).toBe(true);
+
+    try {
+      const layoutReads: string[] = [];
+      page.on("request", (request) => {
+        if (request.url().includes("/api/dashboard/layout")) {
+          layoutReads.push(request.url());
+        }
+      });
+      await page.goto("/admin");
+      await expect(page.locator('[data-slot="card-title"]')).toHaveCount(4);
+      const titles = await page
+        .locator('[data-slot="card-title"]')
+        .allInnerTexts();
+      // The layout's two, then the tiles it does not name, in code order.
+      expect(titles.map((title) => title.trim())).toEqual([
+        "Connexions échouées",
+        "Utilisateurs",
+        "Commandes",
+        "Connectés",
+      ]);
+      expect(layoutReads).toEqual([]);
+    } finally {
+      // Back to the code defaults for the specs that follow.
+      expect((await save([], version + 1)).ok()).toBe(true);
+    }
+  });
+});
+
+/**
+ * Customize mode (#Q3538): one layout for every admin, saved with a version
+ * check, so a second admin sees it and a concurrent save gets a notice.
+ */
+test.describe("customizing the dashboard", () => {
+  const SECOND = {
+    email: "second-admin@example.test",
+    password: "second-admin-2026",
+  };
+
+  const titlesOf = async (page: Page) =>
+    (await page.locator('[data-slot="card-title"]').allInnerTexts()).map(
+      (title) => title.trim(),
+    );
+
+  const cellTitles = async (page: Page) =>
+    (
+      await page
+        .locator('[data-slot="dashboard-edit-cell"] > div:first-child span')
+        .allInnerTexts()
+    ).map((title) => title.trim());
+
+  test("hide and reorder, save, reload; a second admin sees it; a concurrent save gets the notice", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    await signInAsAdmin(page);
+
+    // A second admin, made through the admin API by the first.
+    const created = await page.request.post("/api/users", {
+      data: {
+        email: SECOND.email,
+        username: "second-admin",
+        roles: ["admin"],
+        emailVerified: true,
+      },
+    });
+    expect(created.ok()).toBe(true);
+    const { id } = (await created.json()) as { id: string };
+    expect(
+      (
+        await page.request.post(`/api/users/${id}/password`, {
+          data: { password: SECOND.password },
+        })
+      ).ok(),
+    ).toBe(true);
+
+    const second = await browser.newContext({ baseURL, locale: "fr-FR" });
+    const other = await second.newPage();
+    await other.goto("/auth/login");
+    await other.locator('input[name="identifier"]').fill(SECOND.email);
+    await other.locator('input[name="password"]').fill(SECOND.password);
+    await other.getByRole("button", { name: /Sign in|Se connecter/ }).click();
+    await other.waitForURL((url) => !url.pathname.startsWith("/auth/"));
+
+    try {
+      // The first admin hides Commandes and moves Connectés first.
+      await page.goto("/admin");
+      await page.getByRole("button", { name: "Personnaliser" }).click();
+      await expect(
+        page.getByText(
+          "Les modifications s'appliquent à tous les administrateurs.",
+        ),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Retirer Commandes" }).click();
+      for (let i = 0; i < 2; i++) {
+        await page.getByRole("button", { name: "Avancer Connectés" }).click();
+      }
+      expect(await cellTitles(page)).toEqual([
+        "Connectés",
+        "Produits",
+        "Utilisateurs",
+        "Connexions échouées",
+      ]);
+
+      // The second admin opens Customize on the same version, meanwhile.
+      await other.goto("/admin");
+      await other.getByRole("button", { name: "Personnaliser" }).click();
+
+      await page.getByRole("button", { name: "Enregistrer" }).click();
+      await expect(
+        page.getByRole("button", { name: "Personnaliser" }),
+      ).toBeVisible();
+      const expected = [
+        "Connectés",
+        "Produits",
+        "Utilisateurs",
+        "Connexions échouées",
+      ];
+      expect(await titlesOf(page)).toEqual(expected);
+
+      await page.reload();
+      await expect(page.locator('[data-slot="card-title"]')).toHaveCount(4);
+      expect(await titlesOf(page)).toEqual(expected);
+
+      // The second admin's save started from the old version: refused, with
+      // the notice, and the first admin's layout stands.
+      await other.getByRole("button", { name: "Retirer Produits" }).click();
+      await other.getByRole("button", { name: "Enregistrer" }).click();
+      await expect(
+        other.getByText(
+          "Un autre administrateur a enregistré la disposition entre-temps",
+        ),
+      ).toBeVisible();
+      await other
+        .getByRole("button", { name: "Charger sa disposition" })
+        .click();
+      await expect(
+        other.getByRole("button", { name: "Personnaliser" }),
+      ).toBeVisible();
+      await expect(other.locator('[data-slot="card-title"]')).toHaveCount(4);
+      expect(await titlesOf(other)).toEqual(expected);
+
+      // Reset, confirmed: back to the defaults for everyone.
+      await other.getByRole("button", { name: "Personnaliser" }).click();
+      await other
+        .getByRole("button", { name: "Rétablir les tuiles par défaut" })
+        .click();
+      await other
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Rétablir les tuiles par défaut" })
+        .click();
+      await expect(
+        other.getByRole("button", { name: "Personnaliser" }),
+      ).toBeVisible();
+      await page.reload();
+      await expect(page.locator('[data-slot="card-title"]')).toHaveCount(5);
+      expect(await titlesOf(page)).toEqual([
+        "Produits",
+        "Commandes",
+        "Utilisateurs",
+        "Connectés",
+        "Connexions échouées",
+      ]);
+    } finally {
+      await second.close();
+    }
   });
 });

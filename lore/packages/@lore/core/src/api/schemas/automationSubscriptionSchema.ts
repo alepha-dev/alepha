@@ -11,6 +11,11 @@ export const automationSubscriptionSchema = z
     automationId: z.uuid().optional(),
     /** The channel the rule notifies on, when subscribed. */
     channel: z.string().max(64).optional(),
+    /**
+     * Every channel the subscription notifies on, one marked rule each
+     * (#Q3602): `channel` is the first of them.
+     */
+    channels: z.array(z.string().max(64)).max(8).optional(),
   })
   .strict();
 export type AutomationSubscription = Infer<typeof automationSubscriptionSchema>;

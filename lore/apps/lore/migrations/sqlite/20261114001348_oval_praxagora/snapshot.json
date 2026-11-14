@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "9dc3f0e6-430f-4485-95bb-d63e6e1436fb",
+  "id": "9e194bb3-f328-4316-9b33-7c584c88a280",
   "prevIds": ["347445d1-57a0-4f62-b7de-74aecba68c5b"],
   "ddl": [
     {
@@ -122,6 +122,14 @@
     },
     {
       "name": "automations",
+      "entityType": "tables"
+    },
+    {
+      "name": "blight_ignore_rules",
+      "entityType": "tables"
+    },
+    {
+      "name": "blights",
       "entityType": "tables"
     },
     {
@@ -282,14 +290,6 @@
     },
     {
       "name": "project_dashboards",
-      "entityType": "tables"
-    },
-    {
-      "name": "project_error_ignore_rules",
-      "entityType": "tables"
-    },
-    {
-      "name": "project_errors",
       "entityType": "tables"
     },
     {
@@ -3573,6 +3573,186 @@
       "notNull": false,
       "autoincrement": false,
       "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blight_ignore_rules",
+      "name": "id",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blight_ignore_rules",
+      "name": "project_id",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blight_ignore_rules",
+      "name": "pattern",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blight_ignore_rules",
+      "name": "created_by",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blight_ignore_rules",
+      "name": "created_at",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "id",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "project_id",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "sigil_id",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "fingerprint",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "name",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "message",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "stack",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "''",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "source_url",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "''",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "origin",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'client'",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "first_seen_at",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "last_seen_at",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "count",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "1",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "blights",
+      "name": "status",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'open'",
       "generated": null,
       "entityType": "columns"
     },
@@ -8067,186 +8247,6 @@
       "entityType": "columns"
     },
     {
-      "table": "project_error_ignore_rules",
-      "name": "id",
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": true,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_error_ignore_rules",
-      "name": "project_id",
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_error_ignore_rules",
-      "name": "pattern",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_error_ignore_rules",
-      "name": "created_by",
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_error_ignore_rules",
-      "name": "created_at",
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "(unixepoch('subsec') * 1000)",
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "id",
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": true,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "project_id",
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "sigil_id",
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "fingerprint",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "name",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "message",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "stack",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "''",
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "source_url",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "''",
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "origin",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "'client'",
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "first_seen_at",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "last_seen_at",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "count",
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "1",
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "project_errors",
-      "name": "status",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "'open'",
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
       "table": "project_prompts",
       "name": "id",
       "type": "integer",
@@ -12189,6 +12189,56 @@
       "entityType": "indexes"
     },
     {
+      "table": "blight_ignore_rules",
+      "name": "blight_ignore_rules_project_id_idx",
+      "columns": [
+        {
+          "value": "project_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "blights",
+      "name": "blights_project_id_fingerprint_idx",
+      "columns": [
+        {
+          "value": "project_id",
+          "isExpression": false
+        },
+        {
+          "value": "fingerprint",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "blights",
+      "name": "blights_project_id_last_seen_at_idx",
+      "columns": [
+        {
+          "value": "project_id",
+          "isExpression": false
+        },
+        {
+          "value": "last_seen_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
       "table": "cache_entries",
       "name": "cache_entries_container_cache_key_idx",
       "columns": [
@@ -13743,56 +13793,6 @@
       "entityType": "indexes"
     },
     {
-      "table": "project_error_ignore_rules",
-      "name": "project_error_ignore_rules_project_id_idx",
-      "columns": [
-        {
-          "value": "project_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "entityType": "indexes"
-    },
-    {
-      "table": "project_errors",
-      "name": "project_errors_project_id_fingerprint_idx",
-      "columns": [
-        {
-          "value": "project_id",
-          "isExpression": false
-        },
-        {
-          "value": "fingerprint",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "entityType": "indexes"
-    },
-    {
-      "table": "project_errors",
-      "name": "project_errors_project_id_last_seen_at_idx",
-      "columns": [
-        {
-          "value": "project_id",
-          "isExpression": false
-        },
-        {
-          "value": "last_seen_at",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "entityType": "indexes"
-    },
-    {
       "table": "project_prompts",
       "name": "project_prompts_project_id_kind_idx",
       "columns": [
@@ -14222,6 +14222,20 @@
       "columns": [
         {
           "value": "expires_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "sessions",
+      "name": "sessions_last_used_at_idx",
+      "columns": [
+        {
+          "value": "last_used_at",
           "isExpression": false
         }
       ],
@@ -14968,6 +14982,50 @@
       "entityType": "fks"
     },
     {
+      "table": "blight_ignore_rules",
+      "name": "fk_blight_ignore_rules_project_id_projects_id_fk",
+      "columns": ["project_id"],
+      "tableTo": "projects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "blight_ignore_rules",
+      "name": "fk_blight_ignore_rules_created_by_users_id_fk",
+      "columns": ["created_by"],
+      "tableTo": "users",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "SET NULL",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "blights",
+      "name": "fk_blights_project_id_projects_id_fk",
+      "columns": ["project_id"],
+      "tableTo": "projects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "blights",
+      "name": "fk_blights_sigil_id_sigils_id_fk",
+      "columns": ["sigil_id"],
+      "tableTo": "sigils",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "SET NULL",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
       "table": "dashboard_cards",
       "name": "fk_dashboard_cards_user_id_users_id_fk",
       "columns": ["user_id"],
@@ -15518,50 +15576,6 @@
       "entityType": "fks"
     },
     {
-      "table": "project_error_ignore_rules",
-      "name": "fk_blight_ignore_rules_project_id_projects_id_fk",
-      "columns": ["project_id"],
-      "tableTo": "projects",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "nameExplicit": false,
-      "entityType": "fks"
-    },
-    {
-      "table": "project_error_ignore_rules",
-      "name": "fk_blight_ignore_rules_created_by_users_id_fk",
-      "columns": ["created_by"],
-      "tableTo": "users",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "SET NULL",
-      "nameExplicit": false,
-      "entityType": "fks"
-    },
-    {
-      "table": "project_errors",
-      "name": "fk_blights_project_id_projects_id_fk",
-      "columns": ["project_id"],
-      "tableTo": "projects",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "nameExplicit": false,
-      "entityType": "fks"
-    },
-    {
-      "table": "project_errors",
-      "name": "fk_blights_sigil_id_sigils_id_fk",
-      "columns": ["sigil_id"],
-      "tableTo": "sigils",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "SET NULL",
-      "nameExplicit": false,
-      "entityType": "fks"
-    },
-    {
       "table": "project_prompts",
       "name": "fk_project_prompts_project_id_projects_id_fk",
       "columns": ["project_id"],
@@ -16059,6 +16073,20 @@
       "entityType": "pks"
     },
     {
+      "table": "blight_ignore_rules",
+      "name": "blight_ignore_rules_pk",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "blights",
+      "name": "blights_pk",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
       "table": "cache_entries",
       "name": "cache_entries_pk",
       "columns": ["id"],
@@ -16339,20 +16367,6 @@
       "entityType": "pks"
     },
     {
-      "table": "project_error_ignore_rules",
-      "name": "blight_ignore_rules_pk",
-      "columns": ["id"],
-      "nameExplicit": false,
-      "entityType": "pks"
-    },
-    {
-      "table": "project_errors",
-      "name": "blights_pk",
-      "columns": ["id"],
-      "nameExplicit": false,
-      "entityType": "pks"
-    },
-    {
       "table": "project_prompts",
       "name": "project_prompts_pk",
       "columns": ["id"],
@@ -16506,8 +16520,5 @@
       "entityType": "checks"
     }
   ],
-  "renames": [
-    "blight_ignore_rules->project_error_ignore_rules",
-    "blights->project_errors"
-  ]
+  "renames": []
 }

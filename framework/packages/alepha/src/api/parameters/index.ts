@@ -1,14 +1,17 @@
 import { $module } from "alepha";
 
 import { ParameterAudits } from "./audits/ParameterAudits.ts";
+import { AdminDashboardLayoutController } from "./controllers/AdminDashboardLayoutController.ts";
 import { AdminParameterController } from "./controllers/AdminParameterController.ts";
 import { $parameter } from "./primitives/$parameter.ts";
+import { AdminDashboardLayoutParameter } from "./services/AdminDashboardLayoutParameter.ts";
 import { ParameterProvider } from "./services/ParameterProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 // Controller exports
 export * from "./audits/ParameterAudits.ts";
+export * from "./controllers/AdminDashboardLayoutController.ts";
 export * from "./controllers/AdminParameterController.ts";
 // Entity exports
 export * from "./entities/parameters.ts";
@@ -16,6 +19,8 @@ export * from "./entities/parameters.ts";
 export * from "./primitives/$parameter.ts";
 // Schema exports (types for UI)
 export * from "./schemas/activateParameterBodySchema.ts";
+export * from "./schemas/adminDashboardLayoutResponseSchema.ts";
+export * from "./schemas/adminDashboardLayoutSchema.ts";
 export * from "./schemas/createParameterVersionBodySchema.ts";
 export * from "./schemas/parameterCurrentResponseSchema.ts";
 export * from "./schemas/parameterHistoryResponseSchema.ts";
@@ -27,7 +32,9 @@ export * from "./schemas/parameterTreeNodeSchema.ts";
 export * from "./schemas/parameterVersionParamSchema.ts";
 export * from "./schemas/parameterVersionResponseSchema.ts";
 export * from "./schemas/rollbackParameterBodySchema.ts";
+export * from "./schemas/setAdminDashboardLayoutBodySchema.ts";
 // Service exports
+export * from "./services/AdminDashboardLayoutParameter.ts";
 export * from "./services/ParameterProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -41,12 +48,19 @@ export * from "./services/ParameterProvider.ts";
  * - Schema validation with migration detection
  * - Cross-instance notification via pub/sub
  * - Async `.get()` with lazy loading (works in Node and Cloudflare Workers)
+ * - The admin dashboard's layout (`admin.dashboard.layout`), read by any admin
+ *   and saved with a version check (`AdminDashboardLayoutController`)
  *
  * @module alepha.api.parameters
  */
 export const AlephaApiParameters = $module({
   name: "alepha.api.parameters",
   primitives: [$parameter],
-  services: [ParameterProvider, AdminParameterController],
+  services: [
+    ParameterProvider,
+    AdminDashboardLayoutParameter,
+    AdminParameterController,
+    AdminDashboardLayoutController,
+  ],
   variants: [ParameterAudits],
 });

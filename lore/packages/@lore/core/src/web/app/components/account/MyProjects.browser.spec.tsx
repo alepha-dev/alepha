@@ -132,6 +132,24 @@ describe("MyProjects", () => {
     expect(screen.getAllByText("No").length).toBeGreaterThan(0);
   });
 
+  it("opens with Archived as its only default filter, Role one click away (#Q3599)", async ({
+    expect,
+  }) => {
+    window.localStorage.removeItem("lor.account.projects.filters");
+    await mount();
+    await screen.findAllByTestId("account-project-row");
+
+    const onBar = [...document.querySelectorAll("[data-filter]")].map((it) =>
+      it.getAttribute("data-filter"),
+    );
+    expect(onBar).toContain("archived");
+    expect(onBar).not.toContain("role");
+    // Still offered from the Role column's header.
+    expect(
+      screen.getByRole("columnheader", { name: /Your role/ }),
+    ).toBeTruthy();
+  });
+
   it("lists an archived project with an Archived badge once asked for", async ({
     expect,
   }) => {

@@ -1,6 +1,10 @@
-import { LayoutDashboard } from "lucide-react";
-import { Fragment } from "react";
+import type { AdminDashboardLayoutController } from "alepha/api/parameters";
+import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { LayoutDashboard, Settings2 } from "lucide-react";
+import { Fragment, useState } from "react";
 
+import { Button } from "../core/Button.tsx";
 import {
   Empty,
   EmptyDescription,
@@ -9,15 +13,33 @@ import {
   EmptyTitle,
 } from "../core/Empty.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+import { AdminDashboardEditor } from "./AdminDashboardEditor.tsx";
+import {
+  type AdminDashboardLayoutTile,
+  resolveAdminDashboardLayout,
+} from "./adminDashboardLayout.ts";
 import { AdminPage } from "./AdminPage.tsx";
 
 export interface AdminDashboardProps {
   /**
-   * Built-in cards followed by the application's, already concatenated by
-   * `AdminRouter`. Ordering and gating happen here rather than there so the
-   * two sets obey exactly one rule.
+   * The catalog: built-in cards followed by the application's, already
+   * concatenated by `AdminRouter`. Ordering and gating happen here rather
+   * than there so the two sets obey exactly one rule.
    */
   cards?: AdminDashboardCard[];
+
+  /**
+   * The deployment's stored layout, loaded by the page's loader before the
+   * first render so the grid never reflows. Absent or empty means the code
+   * defaults.
+   */
+  layout?: { tiles: AdminDashboardLayoutTile[] };
+
+  /**
+   * The stored layout's version, which a save sends back. Absent when the
+   * layout API is not registered or not readable.
+   */
+  layoutVersion?: number;
 }
 
 /**
@@ -29,9 +51,20 @@ export interface AdminDashboardProps {
  * nav entry whose backend never shipped.
  */
 const AdminDashboard = (props: AdminDashboardProps) => {
-  const cards = (props.cards ?? [])
-    .filter((card) => (card.can ? card.can() : true))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const { tr } = useI18n();
+  const layoutApi = useClient<AdminDashboardLayoutController>();
+  const [editing, setEditing] = useState(false);
+  const cards = resolveAdminDashboardLayout(
+    props.cards ?? [],
+    props.layout?.tiles,
+  );
+  // Only for an admin who can both read and write the layout, and only when
+  // the loader actually read it: without its version a save could not be
+  // checked against another admin's.
+  const customizable =
+    props.layoutVersion !== undefined &&
+    layoutApi.getAdminDashboardLayout.can() &&
+    layoutApi.setAdminDashboardLayout.can();
 
   return (
     // `p-6`, not the shell's `p-2`. That 8px frame is for the table pages,
@@ -39,7 +72,27 @@ const AdminDashboard = (props: AdminDashboardProps) => {
     // sitting 8px off the layout read as unframed (#Q2291). The one call site
     // of `AdminPage` that is not a table, hence the only one that overrides.
     <AdminPage className="p-6">
-      {cards.length === 0 ? (
+      {customizable && !editing ? (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outlined"
+            size="sm"
+            onClick={() => setEditing(true)}
+          >
+            <Settings2 className="size-4" />
+            {tr("admin.dashboard.customize", { default: "Customize" })}
+          </Button>
+        </div>
+      ) : null}
+      {editing && props.layoutVersion !== undefined ? (
+        <AdminDashboardEditor
+          cards={props.cards ?? []}
+          layout={props.layout}
+          version={props.layoutVersion}
+          onClose={() => setEditing(false)}
+        />
+      ) : cards.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">

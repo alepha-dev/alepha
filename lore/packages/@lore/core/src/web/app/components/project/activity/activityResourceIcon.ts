@@ -1,4 +1,5 @@
 import {
+  Activity,
   AppWindow,
   BookOpen,
   Bug,
@@ -42,6 +43,7 @@ const ACTIVITY_RESOURCE_ICONS: Record<string, LucideIcon> = {
   app: AppWindow,
   sigil: KeyRound,
   host: Server,
+  monitor: Activity,
   project: FolderKanban,
   error: Bug,
   artifact: Package,

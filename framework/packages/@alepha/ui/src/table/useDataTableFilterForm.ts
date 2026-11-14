@@ -14,6 +14,10 @@ import {
   reconcilePersistedFilters,
 } from "./dataTablePersistence.ts";
 import { isEmptyFilterValue } from "./dataTablePresets.ts";
+import {
+  DATA_TABLE_FILTERS_QUERY_KEY,
+  DATA_TABLE_NO_STORED_FILTERS,
+} from "./dataTableQueryKeys.ts";
 import type {
   DataTableFilterFields,
   DataTableFilterMode,
@@ -129,14 +133,31 @@ export const useDataTableFilterForm = <T>(
    * carrying `?status=done&statusOp=not`, read without the operator, would
    * select the very rows it excluded.
    */
-  const queryFilterValues = useMemo(() => {
-    const fromQuery = props.filters?.fromQuery;
-    if (!fromQuery || !definition) return undefined;
-    const query = (
+  const routerQuery = useMemo(() => {
+    if (!props.filters?.fromQuery || !definition) return undefined;
+    return (
       alepha.store.get("alepha.react.router.state") as
         | { query?: Record<string, any> }
         | undefined
     )?.query;
+  }, []);
+
+  /**
+   * `?filters=none` (`DATA_TABLE_NO_STORED_FILTERS`): the link's filters are
+   * the whole filter even when it carries none. A drill-through to an
+   * unfiltered list (a dashboard's "every user" tile) has no filter of its
+   * own to replace the stored ones with, so without this the reader's
+   * filters from last week would narrow the list the link promised. Read
+   * only when the table opted into `fromQuery`, like every other param.
+   */
+  const ignoreStored =
+    routerQuery?.[DATA_TABLE_FILTERS_QUERY_KEY] ===
+    DATA_TABLE_NO_STORED_FILTERS;
+
+  const queryFilterValues = useMemo(() => {
+    const fromQuery = props.filters?.fromQuery;
+    if (!fromQuery || !definition) return undefined;
+    const query = routerQuery;
     if (!query) return undefined;
     let keys: readonly string[] = definition.keys;
     const fields = props.filters?.fields;
@@ -161,7 +182,9 @@ export const useDataTableFilterForm = <T>(
       // adding to it: a drill-through or a preset's values arriving by URL
       // mean those rows, and a filter the reader set last week kept on top
       // of them would silently narrow the list the link promised.
-      ...(hasQueryFilters(queryFilterValues) ? {} : persistedFilterValues),
+      ...(ignoreStored || hasQueryFilters(queryFilterValues)
+        ? {}
+        : persistedFilterValues),
       ...queryFilterValues,
       // Last: an explicit `seedValues` is the caller deciding for a case of
       // its own, and outranks what the URL happened to carry.

@@ -12,6 +12,7 @@ import type {
   DataTableFilterFields,
   DataTableSource,
 } from "./dataTableTypes.ts";
+import { reorderKeys } from "./reorderKeys.ts";
 
 export interface UseDataTableColumnsOptions<T> {
   props: DataTableBaseProps<T, DataTableFilterFields> &
@@ -103,9 +104,7 @@ export const useDataTableColumns = <T>(
    */
   const reorderColumn = (key: string, target: string) => {
     if (key === target) return;
-    const next = orderedKeys.filter((k) => k !== key);
-    next.splice(next.indexOf(target), 0, key);
-    commitOrder(next);
+    commitOrder(reorderKeys(orderedKeys, key, target));
   };
 
   const commitOrder = (next: string[]) => {

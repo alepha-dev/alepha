@@ -10,7 +10,7 @@ import {
   Textarea,
   useToast,
 } from "@alepha/ui";
-import type { I18n } from "@lore/core/web";
+import { AttachmentLightbox, type I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
@@ -57,6 +57,9 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  // An image attachment opened full size in place (#Q3604), so the
+  // drawer's unsaved edits stay where they are.
+  const [zoomed, setZoomed] = useState<string | null>(null);
 
   // Row click opens this drawer for any feedback, but editing is pending-only
   // (the server enforces it too). Non-pending feedback render read-only.
@@ -180,38 +183,44 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
                 <ul className="flex flex-wrap gap-2">
                   {props.feedback.attachmentUrls.map((file) => (
                     <li key={file.id}>
-                      {/* `target="_blank"` on both shapes: the drawer holds
-                          unsaved edits, so opening the file in place would
-                          discard them. */}
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        title={`${file.name} (${Math.round(file.size / 1024)} KB)`}
-                        className="border-border hover:bg-hover flex items-center gap-2 rounded-md border p-1.5 text-sm"
-                      >
-                        {file.mimeType?.startsWith("image/") ? (
-                          // The thumbnail IS the identifying detail for a
-                          // screenshot: a reporter checking they attached the
-                          // right one cannot tell from `Screenshot 5.png`.
+                      {file.mimeType?.startsWith("image/") ? (
+                        // The thumbnail IS the identifying detail for a
+                        // screenshot: a reporter checking they attached the
+                        // right one cannot tell from `Screenshot 5.png`.
+                        // It opens full size over the drawer (#Q3604).
+                        <button
+                          type="button"
+                          title={`${file.name} (${Math.round(file.size / 1024)} KB)`}
+                          aria-label={tr("attachments.zoom", {
+                            args: [file.name],
+                          })}
+                          onClick={() => setZoomed(file.id)}
+                          className="border-border hover:bg-hover flex cursor-zoom-in items-center rounded-md border p-1.5"
+                        >
                           <img
                             src={file.url}
                             alt={file.name}
                             className="size-16 rounded object-cover"
                           />
-                        ) : (
-                          <>
-                            <Paperclip className="size-3.5 shrink-0" />
-                            <span className="max-w-40 truncate">
-                              {file.name}
-                            </span>
-                            <span className="text-muted-foreground text-xs whitespace-nowrap">
-                              {file.mimeType ?? ""}{" "}
-                              {Math.round(file.size / 1024)} KB
-                            </span>
-                          </>
-                        )}
-                      </a>
+                        </button>
+                      ) : (
+                        // `target="_blank"`: the drawer holds unsaved edits,
+                        // so opening the file in place would discard them.
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={`${file.name} (${Math.round(file.size / 1024)} KB)`}
+                          className="border-border hover:bg-hover flex items-center gap-2 rounded-md border p-1.5 text-sm"
+                        >
+                          <Paperclip className="size-3.5 shrink-0" />
+                          <span className="max-w-40 truncate">{file.name}</span>
+                          <span className="text-muted-foreground text-xs whitespace-nowrap">
+                            {file.mimeType ?? ""} {Math.round(file.size / 1024)}{" "}
+                            KB
+                          </span>
+                        </a>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -246,6 +255,20 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
             </Button>
           )}
         </SheetFooter>
+        <AttachmentLightbox
+          items={(props.feedback?.attachmentUrls ?? [])
+            .filter((file) => file.mimeType?.startsWith("image/"))
+            .map((file) => ({
+              fileId: file.id,
+              name: file.name,
+              mimeType: file.mimeType ?? "image/*",
+              src: file.url,
+            }))}
+          openId={zoomed}
+          onOpenChange={(open) => {
+            if (!open) setZoomed(null);
+          }}
+        />
       </SheetContent>
     </Sheet>
   );

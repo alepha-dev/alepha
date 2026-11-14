@@ -14,7 +14,7 @@ import { describe, it } from "vitest";
  * in its old spelling, and applies the SQL for real.
  */
 describe("estates become hosts migration", () => {
-  const MIGRATION = "20261114004743_estates_become_hosts";
+  const MIGRATION = "20261114021313_errors_and_hosts";
   const dir = join(import.meta.dirname, "../migrations/sqlite");
   const sqlOf = (name: string) =>
     readFileSync(join(dir, name, "migration.sql"), "utf8");

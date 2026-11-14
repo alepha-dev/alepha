@@ -60,7 +60,7 @@ export default {
   "automation.list.noMatchDescription":
     "Try another name or clear the state filter.",
   "automation.gallery.description":
-    "Start from a preset. It is created disabled, so you can test it before turning it on.",
+    "Start from a preset. Create and enable runs it right away; Save as draft keeps it off so you can test it first.",
   "automation.enable": "Enable",
   "automation.disable": "Disable",
   "automation.delete": "Delete",
@@ -866,6 +866,7 @@ export default {
   // both mount. Under `quest.view.*` until it was lifted (#Q2021).
   "attachments.position": "$1 of $2",
   "attachments.previewTooLarge": "Too large to preview. Open the file instead.",
+  "attachments.zoom": "Open $1 full size",
   "attachments.tab.preview": "Preview",
   "attachments.tab.code": "Code",
 
@@ -927,17 +928,6 @@ export default {
   "project.settings.tab.board": "Board",
   "project.settings.tab.prompts": "Agent prompts",
   "project.settings.tab.automations": "Automations",
-  "project.settings.section.general":
-    "The project itself, and which parts of Lore it uses.",
-  "project.settings.section.members":
-    "Who is in the project, and what each rank may do.",
-  "project.settings.section.automations":
-    "Rules that act on the project when something happens.",
-  "project.settings.section.work":
-    "How quests are estimated, tagged and shown on the board.",
-  "project.settings.section.knowledge": "How folios are shown.",
-  "project.settings.section.apps":
-    "What apps report, where they deploy, and which errors are ignored.",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
@@ -2234,6 +2224,12 @@ export default {
   "app.settings.host.saved": "Deploy target saved",
   "app.settings.danger": "Danger zone",
   "apps.delete.title": "Delete $1 apps?",
+  "apps.delete.failed": "$1 could not be deleted.",
+  "apps.delete.refusedTitle": "$1 not deleted",
+  "apps.delete.forgetConsequence":
+    "You can delete them anyway: Lore forgets them and leaves what they run in place, on the machine or in the cloud account, and nothing will know their names afterwards. To remove them from their machine first, run lore apps destroy, then delete them.",
+  "apps.delete.forget": "Delete and leave running",
+  "apps.delete.keep": "Keep them",
   "apps.delete.confirm": "Delete $1 apps",
   "apps.delete.one": "Removes Lore’s record of $1 and its deploy history.",
   "apps.delete.many":
@@ -2917,6 +2913,16 @@ export default {
   "admin.sessions.revoked": "Session revoked",
   "admin.sessions.bulkRevokeTitle": "Revoke sessions",
 
+  // Admin → Dashboard: Lore's Projects tile.
+  "admin.projectsTile.title": "Projects",
+  "admin.projectsTile.description":
+    "Projects on this instance, archived excluded, with creations against the week before.",
+  "admin.projectsTile.tooltip":
+    "Every project on this instance, archived projects excluded.",
+  "admin.projectsTile.note": "Created in 7 days: $1",
+  "admin.projectsTile.delta":
+    "Projects created, last 7 days vs the 7 before (archived included)",
+
   // Admin → Parameters: the tree's group labels, keyed by `$parameter` path.
   // Labels only: the stored names (`lore.campaign.limits`,
   // `lore.deploy.limits`) keep their old words, since renaming one orphans
@@ -3550,6 +3556,7 @@ export default {
   // reading "App" in one dropdown told the reader nothing.
   "activity.resource.sigil": "Sigil",
   "activity.resource.host": "Host",
+  "activity.resource.monitor": "Monitor",
   "activity.resource.project": "Project",
   "activity.fields": "changed $1",
   "activity.capability.enabled": "turned on $1",
@@ -3772,6 +3779,9 @@ export default {
   "uptime.status.latency": "Slow",
   "uptime.uptime": "Uptime",
   "uptime.lastLatency": "Last latency",
+  "uptime.cell.state": "State",
+  "uptime.cell.lastIncident": "Last incident",
+  "uptime.cell.noIncident": "None recorded",
   "uptime.latencyValue": "$1 ms",
   "uptime.edit": "Edit",
   "uptime.pause": "Pause",
@@ -3838,13 +3848,15 @@ export default {
   "automation.adoption.reminderCount": "$1 configured quest reminders",
   "automation.adoption.replacement": "Replacement rule",
   "automation.adoption.create": "Create my compatibility rule",
-  "automation.subscription.on": "Subscribed: click to stop notifications",
+  "automation.subscription.on":
+    "Subscribed: click to change or stop notifications",
   "automation.subscription.channel": "Notify me by",
   "automation.subscription.channel.inbox": "In-app",
   "automation.subscription.channel.email": "Email",
   "automation.subscription.rule":
     "This creates an automation of yours, listed under Automations, where you can edit it.",
   "automation.subscription.confirm": "Subscribe",
+  "automation.subscription.save": "Save",
   "automation.subscription.cancel": "Cancel",
   "automation.subscription.offTitle": "Unsubscribe?",
   "automation.subscription.offConfirm": "Unsubscribe",

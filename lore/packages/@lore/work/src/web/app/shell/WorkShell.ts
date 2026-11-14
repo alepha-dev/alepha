@@ -180,7 +180,6 @@ export class WorkShell {
       key: "automations",
       order: 25,
       labelKey: "project.settings.nav.automations",
-      descriptionKey: "project.settings.section.automations",
       icon: Workflow,
       capability: "work",
       tabs: [
@@ -203,7 +202,6 @@ export class WorkShell {
       key: "work",
       order: 30,
       labelKey: "project.settings.nav.plan",
-      descriptionKey: "project.settings.section.work",
       icon: SquareCheckBig,
       capability: "work",
       tabs: [

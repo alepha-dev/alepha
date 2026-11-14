@@ -34,6 +34,15 @@ export class ProjectRankController {
     path: "/projects/:projectId/rank-presets",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      query: z.object({
+        /**
+         * The language the page asking is shown in (#Q3593). Lore's UI
+         * language is its URL prefix, which an `/api` call does not carry,
+         * so the page sends it. `Accept-Language` is only the fallback for a
+         * caller that does not say.
+         */
+        language: z.text().max(35).optional(),
+      }),
       response: z.object({
         items: z.array(
           z.object({
@@ -44,9 +53,11 @@ export class ProjectRankController {
         ),
       }),
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, query }) => {
       const enabled = await this.security.capabilitiesOf(params.projectId);
-      const language = this.alepha.store.get("alepha.http.request")?.language;
+      const language =
+        query.language ??
+        this.alepha.store.get("alepha.http.request")?.language;
 
       return {
         items: await Promise.all(

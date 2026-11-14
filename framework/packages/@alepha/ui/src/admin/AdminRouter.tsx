@@ -5,14 +5,17 @@ import type { FileController } from "alepha/api/files";
 import type { AdminJobController } from "alepha/api/jobs";
 import type { AdminApiKeyController } from "alepha/api/keys";
 import type { AdminNotificationController } from "alepha/api/notifications";
-import type { AdminParameterController } from "alepha/api/parameters";
+import type {
+  AdminDashboardLayoutController,
+  AdminParameterController,
+} from "alepha/api/parameters";
 import type { AdminPaymentController } from "alepha/api/payments";
 import type {
   AdminSessionController,
   AdminUserController,
 } from "alepha/api/users";
 import type { AdminWebhookController } from "alepha/api/webhooks";
-import { I18nProvider, Translate } from "alepha/react/i18n";
+import { I18nProvider } from "alepha/react/i18n";
 import { $client } from "alepha/server/links";
 import {
   Bell,
@@ -31,9 +34,13 @@ import {
 import { createElement } from "react";
 
 import { $pageNav } from "../shell/$pageNav.tsx";
+import { AdminConnectedTile } from "./AdminConnectedTile.tsx";
+import type { AdminDashboardProps } from "./AdminDashboard.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
-import { AdminDashboardCountCard } from "./AdminDashboardCountCard.tsx";
+import { adminDashboardCatalog } from "./adminDashboardLayout.ts";
+import { AdminFailedSignInsTile } from "./AdminFailedSignInsTile.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
+import { AdminUsersTile } from "./AdminUsersTile.tsx";
 
 /**
  * The whole `/admin` surface, fifteen pages and their shell, mounted and wired.
@@ -176,6 +183,12 @@ export class AdminRouter {
   protected readonly auditApi = $client<AdminAuditController>();
   protected readonly fileApi = $client<FileController>();
   protected readonly parameterApi = $client<AdminParameterController>();
+  /**
+   * The dashboard layout's two actions, served by the parameters module. A
+   * type-only import like every other API here: no server code reaches the
+   * browser, and without the module both actions report `can()` false.
+   */
+  protected readonly layoutApi = $client<AdminDashboardLayoutController>();
   protected readonly paymentApi = $client<AdminPaymentController>();
   protected readonly analyticsApi = $client<AdminAnalyticsController>();
   protected readonly webhookApi = $client<AdminWebhookController>();
@@ -267,45 +280,95 @@ export class AdminRouter {
       order: 0,
     },
     lazy: () => import("./AdminDashboard.tsx"),
-    props: () => ({ cards: this.dashboardCards() }),
+    props: (): Partial<AdminDashboardProps> => ({
+      cards: this.dashboardCatalog(),
+    }),
+    // The stored layout, before the first render: the server renders the
+    // final grid, and the browser never moves tiles after mount.
+    loader: () => this.loadDashboardLayout(),
   });
 
   /**
-   * Exactly one built-in card, then the application's.
+   * The catalog, in code order, ids checked unique. An application's card
+   * reusing an id is refused earlier, when the options are set
+   * (`adminRouterOptionsAtom`'s schema); this check is the net behind it.
+   */
+  protected dashboardCatalog(): AdminDashboardCard[] {
+    return adminDashboardCatalog(this.dashboardCards());
+  }
+
+  /**
+   * The deployment's layout and its version, or nothing.
    *
-   * One is deliberate. The framework's job here is the contract, not the
-   * content: `users` exists to show what a card looks like — gated on an
-   * action so it disappears with its module, parked in the reserved 1000
-   * band so an application's own cards lead — and nothing more. A dashboard
-   * of framework tiles would decide what every admin's landing page says,
-   * which is the application's call, and it would be the wrong call for most
-   * of them: Sessions and Jobs are plumbing, not headlines.
+   * Nothing (the code defaults) when the parameters module is absent or this
+   * admin may not read the layout, and when the read fails: a dashboard
+   * still renders, in its default order, rather than an error page.
+   */
+  protected async loadDashboardLayout(): Promise<
+    Pick<AdminDashboardProps, "layout" | "layoutVersion">
+  > {
+    if (!this.layoutApi.getAdminDashboardLayout.can()) {
+      return {};
+    }
+    try {
+      const read = await this.layoutApi.getAdminDashboardLayout();
+      return { layout: read.layout, layoutVersion: read.version };
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * The built-in tiles, then the application's.
    *
-   * An application says what matters by contributing
-   * `AdminRouterOptions.dashboardCards`; see `apps/examples/shop`, which adds
-   * its catalogue and orders and so leads with them.
+   * Three, each a number an operator acts on and each opening its list
+   * filtered to that same number: **Users** (every account, with sign-ups
+   * against the week before), **Connected** (distinct users signed in or
+   * refreshed in 24 hours) and **Failed sign-ins** (7 days, warning above a
+   * threshold). This reverses the earlier "exactly one built-in card" rule:
+   * with a layout an admin edits, a framework tile nobody wants is hidden in
+   * a click rather than a deploy, so shipping useful defaults no longer
+   * decides an application's landing page for it.
+   *
+   * The rest of the contract stands. Each tile is gated on the action it
+   * reads, never a permission, so it disappears with its module; and they
+   * sit in the reserved 1000 band, so an application's own cards, which
+   * declare no `order`, still lead.
    */
   protected dashboardCards(): AdminDashboardCard[] {
     return [
       {
         id: "users",
+        title: "Users",
+        titleKey: "admin.nav.users",
+        description: "Every account, with sign-ups against the week before.",
+        descriptionKey: "admin.dashboard.usersDescription",
         order: 1000,
-        can: () => this.userApi.findUsers.can(),
+        can: () => this.userApi.getUserStats.can(),
+        render: () => createElement(AdminUsersTile, { id: "users" }),
+      },
+      {
+        id: "connected",
+        title: "Connected",
+        titleKey: "admin.dashboard.connected",
+        description: "Distinct users signed in or refreshed in 24 hours.",
+        descriptionKey: "admin.dashboard.connectedDescription",
+        order: 1010,
+        can: () => this.userApi.getUserStats.can(),
+        render: () => createElement(AdminConnectedTile, { id: "connected" }),
+      },
+      {
+        id: "failed-sign-ins",
+        title: "Failed sign-ins",
+        titleKey: "admin.dashboard.failedSignIns",
+        description: "Failed sign-in and security audits over 7 days.",
+        descriptionKey: "admin.dashboard.failedSignInsDescription",
+        order: 1020,
+        can: () => this.auditApi.findAudits.can(),
         render: () =>
-          createElement(AdminDashboardCountCard, {
-            // `render` runs inside `AdminDashboard`'s render but not inside a
-            // hook-safe position, so the label is an element that looks the
-            // key up itself rather than a `tr` call here. Same key as the nav
-            // entry: it is the same word on the same subject.
-            label: createElement(Translate, {
-              k: "admin.nav.users",
-              fallback: "Users",
-            }),
-            href: "/admin/users",
-            icon: createElement(UsersIcon, { className: "size-4" }),
-            load: async () =>
-              (await this.userApi.findUsers({ query: { size: 1 } })).page
-                .totalElements ?? 0,
+          createElement(AdminFailedSignInsTile, {
+            id: "failed-sign-ins",
+            alertThreshold: this.options.failedSignInsAlertThreshold,
           }),
       },
       ...(this.options.dashboardCards ?? []),

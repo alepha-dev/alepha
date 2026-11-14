@@ -3,8 +3,9 @@ import {
   type VerificationController,
   VerificationService,
 } from "alepha/api/verifications";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import type { Page } from "alepha/orm";
+import type { Page, SQL } from "alepha/orm";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -17,6 +18,8 @@ import type { CreateUser } from "../schemas/createUserSchema.ts";
 import type { CredentialsIdentityData } from "../schemas/credentialsIdentityDataSchema.ts";
 import type { UpdateUser } from "../schemas/updateUserSchema.ts";
 import type { UserQuery } from "../schemas/userQuerySchema.ts";
+import type { UserStatsQuery } from "../schemas/userStatsQuerySchema.ts";
+import type { UserStats } from "../schemas/userStatsSchema.ts";
 import { CredentialService } from "./CredentialService.ts";
 
 export class UserService {
@@ -30,6 +33,7 @@ export class UserService {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly cryptoProvider = $inject(CryptoProvider);
   protected readonly credentialService = $inject(CredentialService);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   protected userAudits(realmName?: string) {
     // Registered by every `$realm` whatever its features say; a realm
@@ -282,6 +286,12 @@ export class UserService {
       where.roles = { arrayContains: q.roles };
     }
 
+    if (q.activeWithinHours) {
+      where.id = {
+        inArray: this.activeUserIds(q.activeWithinHours, userRealmName),
+      };
+    }
+
     const result = await this.users(userRealmName).paginate(
       q,
       { where },
@@ -294,6 +304,77 @@ export class UserService {
     });
 
     return result;
+  }
+
+  /**
+   * The ids of the users with a session signed in or refreshed within the
+   * last `hours`, as a subquery on the sessions table.
+   *
+   * One helper for the two callers that must agree: `findUsers`'
+   * `activeWithinHours` and `getUserStats().connected`. Both apply it to the
+   * users table already narrowed to the realm, which is what scopes it:
+   * sessions carry no realm, and the default realms share one sessions
+   * table, so a count over sessions alone would count every realm.
+   *
+   * `lastUsedAt` is written at sign-in and on each token refresh, not per
+   * request, so this lags by up to the access token's lifetime and does not
+   * see API-key callers, which have no session.
+   */
+  public activeUserIds(hours: number, userRealmName?: string): SQL {
+    const since = new Date(
+      this.dateTime.nowMillis() - hours * 3_600_000,
+    ).toISOString();
+    return this.realmProvider
+      .sessionRepository(userRealmName)
+      .subquery({ lastUsedAt: { gte: since } }, "userId");
+  }
+
+  /**
+   * The numbers the admin dashboard's Users and Connected tiles show, for
+   * one realm.
+   *
+   * Sign-up windows are whole UTC days, `windowDays` long and ending with
+   * today, so a tile matches the list it opens, which filters by day.
+   */
+  public async getUserStats(
+    q: UserStatsQuery = {},
+    userRealmName?: string,
+  ): Promise<UserStats> {
+    const windowDays = q.windowDays ?? 7;
+    const connectedHours = q.connectedHours ?? 24;
+    const users = this.users(userRealmName);
+    const realm = this.realmProvider.getRealm(userRealmName).name;
+
+    const DAY = 86_400_000;
+    // Epoch days are UTC days: the next UTC midnight closes the window.
+    const end = Math.floor(this.dateTime.nowMillis() / DAY) * DAY + DAY;
+    const from = end - windowDays * DAY;
+    const previousFrom = from - windowDays * DAY;
+    const iso = (millis: number) => new Date(millis).toISOString();
+
+    const [total, current, previous, connected] = await Promise.all([
+      users.count({ realm: { eq: realm } }),
+      users.count({
+        realm: { eq: realm },
+        createdAt: { gte: iso(from), lt: iso(end) },
+      }),
+      users.count({
+        realm: { eq: realm },
+        createdAt: { gte: iso(previousFrom), lt: iso(from) },
+      }),
+      users.count({
+        realm: { eq: realm },
+        id: { inArray: this.activeUserIds(connectedHours, userRealmName) },
+      }),
+    ]);
+
+    return {
+      total,
+      signups: { current, previous, from: iso(from), to: iso(end) },
+      connected,
+      windowDays,
+      connectedHours,
+    };
   }
 
   /**

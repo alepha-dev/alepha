@@ -471,13 +471,69 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.audits.colStatus": "Statut",
   "admin.audits.colWhen": "Date",
   "admin.audits.failed": "Échec",
+  "admin.audits.filterType": "Type",
   "admin.audits.layerAll": "Toutes les portées",
   "admin.audits.layerApp": "Application",
   "admin.audits.layerScoped": "Par ressource",
   "admin.audits.ok": "OK",
   "admin.audits.statusAll": "Tous les statuts",
+  "admin.audits.typeAll": "Tous les types",
   "admin.audits.actorAll": "Tous les auteurs",
   "admin.audits.dateAll": "Toute date",
+  "admin.dashboard.add": "Ajouter",
+  "admin.dashboard.addNamedTile": "Ajouter $1",
+  "admin.dashboard.addTile": "Ajouter une tuile",
+  "admin.dashboard.allTilesShown":
+    "Toutes les tuiles sont sur le tableau de bord.",
+  "admin.dashboard.cancel": "Annuler",
+  "admin.dashboard.conflictDescription":
+    "Vos modifications n'ont pas été enregistrées, pour ne pas écraser les siennes. Chargez sa disposition, puis personnalisez à nouveau.",
+  "admin.dashboard.conflictTitle":
+    "Un autre administrateur a enregistré la disposition entre-temps",
+  "admin.dashboard.customize": "Personnaliser",
+  "admin.dashboard.loadTheirs": "Charger sa disposition",
+  "admin.dashboard.moveEarlier": "Avancer $1",
+  "admin.dashboard.moveLater": "Reculer $1",
+  "admin.dashboard.moved": "$1 déplacée en position $2 sur $3",
+  "admin.dashboard.removeTile": "Retirer $1",
+  "admin.dashboard.reset": "Rétablir les tuiles par défaut",
+  "admin.dashboard.resetDescription":
+    "Tous les administrateurs verront les tuiles par défaut, dans l'ordre par défaut.",
+  "admin.dashboard.resetTitle": "Réinitialiser le tableau de bord ?",
+  "admin.dashboard.save": "Enregistrer",
+  "admin.dashboard.sharedNotice":
+    "Les modifications s'appliquent à tous les administrateurs.",
+  "admin.dashboard.unavailableTile": "Indisponible",
+  "admin.dashboard.unavailableTileHint":
+    "Son module ne vous est pas accessible. Elle reste telle quelle dans la disposition.",
+  "admin.dashboard.connected": "Connectés",
+  "admin.dashboard.connectedDescription":
+    "Utilisateurs distincts connectés ou rafraîchis en 24 heures.",
+  "admin.dashboard.connectedNote":
+    "Connexion ou session rafraîchie dans les dernières 24 heures.",
+  "admin.dashboard.connectedTooltip":
+    "Utilisateurs distincts qui se sont connectés ou ont rafraîchi une session dans les dernières 24 heures, clés d'API non comprises.",
+  "admin.dashboard.deltaNew": "nouveau",
+  "admin.dashboard.failedSignIns": "Connexions échouées",
+  "admin.dashboard.failedSignInsDescription":
+    "Audits de connexion et de sécurité en échec sur 7 jours.",
+  "admin.dashboard.failedSignInsDelta":
+    "7 derniers jours par rapport aux 7 précédents",
+  "admin.dashboard.failedSignInsNote": "7 derniers jours, UTC.",
+  "admin.dashboard.failedSignInsTooltip":
+    "Audits de connexion et de sécurité en échec (mot de passe ou code erroné, tentative bloquée ou limitée), sur les 7 derniers jours en UTC. Un verrouillage en écrit deux.",
+  "admin.dashboard.unavailable": "n.d.",
+  "admin.dashboard.usersDescription":
+    "Tous les comptes, avec les inscriptions comparées à la semaine précédente.",
+  "admin.dashboard.usersDelta":
+    "Inscriptions, 7 derniers jours par rapport aux 7 précédents",
+  "admin.dashboard.usersSignups": {
+    one: "{count} inscription en 7 jours",
+    other: "{count} inscriptions en 7 jours",
+  },
+  "admin.dashboard.usersTooltip":
+    "Tous les comptes, comptes désactivés compris.",
+  "admin.dashboard.vsPrevious": "par rapport à la période précédente",
   "admin.detail.copyValue": "Copier $1",
   "admin.files.allBuckets": "Tous les buckets",
   "admin.files.bulkDelete": "Supprimer la sélection",
@@ -1128,6 +1184,10 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.userDetail.usernameRequired": "L'identifiant est requis",
   "admin.userDetail.verified": "Vérifié",
   "admin.users.active": "Actif",
+  "admin.users.activeAny": "N'importe quand",
+  "admin.users.activeWithin1": "Dernière heure",
+  "admin.users.activeWithin168": "Dernière semaine",
+  "admin.users.activeWithin24": "Dernier jour",
   "admin.users.bulkDelete": "Supprimer la sélection",
   "admin.users.bulkDeleteConfirm": {
     one: "Supprimer {count} utilisateur ? L'opération est irréversible.",
@@ -1173,6 +1233,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.users.createTitle": "Créer un utilisateur",
   "admin.users.createUsernameRequired": "L'identifiant est requis",
   "admin.users.created": "Utilisateur créé",
+  "admin.users.filterActive": "Dernière activité",
   "admin.users.deleteConfirm":
     "Supprimer définitivement $1 ? L'opération est irréversible.",
   "admin.users.deleteTitle": "Supprimer l'utilisateur",

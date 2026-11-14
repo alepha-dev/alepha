@@ -21,16 +21,17 @@ export const useBulkReport = (): BulkReport => {
   const toaster = useToast();
   const { tr } = useI18n<I18n, "en">();
 
-  return (outcome, done, skipped) => {
+  return (outcome, done, skipped, failed) => {
     const parts = [outcome.done.length > 0 ? done : undefined, skipped].filter(
       (it): it is string => Boolean(it),
     );
     if (outcome.failed.length > 0) {
       toaster.error(
         [
-          tr("board.bulk.failed", {
-            args: [String(outcome.failed.length)],
-          }),
+          failed ??
+            tr("board.bulk.failed", {
+              args: [String(outcome.failed.length)],
+            }),
           ...parts,
         ].join(" "),
       );
@@ -43,10 +44,13 @@ export const useBulkReport = (): BulkReport => {
 /**
  * `done` is what to say about the ids that landed, already rendered, and is
  * dropped when nothing landed. `skipped` names rows the caller filtered out
- * before calling at all, which is not the same thing as a refusal.
+ * before calling at all, which is not the same thing as a refusal. `failed`
+ * replaces the generic "could not be updated" where the verb is known, such
+ * as a delete (#Q3603).
  */
 export type BulkReport = (
   outcome: BulkOutcome<number | string>,
   done: string,
   skipped?: string,
+  failed?: string,
 ) => void;

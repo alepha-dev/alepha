@@ -276,11 +276,15 @@ test.describe("Feedback", () => {
       const thumb = drawer.locator('img[alt="screenshot.png"]');
       await expect(thumb).toBeVisible();
 
-      // And it opens full size. `target="_blank"` because the drawer may hold
-      // unsaved edits.
-      const link = drawer.locator('a:has(img[alt="screenshot.png"])');
-      await expect(link).toHaveAttribute("target", "_blank");
-      await expect(link).toHaveAttribute("href", /\/api\/files\//);
+      // And it opens full size, in a lightbox over the drawer (#Q3604), so
+      // the drawer's unsaved edits stay where they are.
+      await drawer
+        .getByRole("button", { name: "Open screenshot.png full size" })
+        .click();
+      const lightbox = page.getByRole("dialog").last();
+      await expect(lightbox.locator('img[src*="/api/files/"]')).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(drawer.locator('img[alt="screenshot.png"]')).toBeVisible();
     });
 
     await test.step("a feedback with no attachment shows no section", async () => {

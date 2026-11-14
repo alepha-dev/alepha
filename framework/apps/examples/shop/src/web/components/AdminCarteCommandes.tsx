@@ -1,5 +1,5 @@
 import type { AdminOrderController } from "@alepha/commerce/admin";
-import { AdminDashboardCountCard } from "@alepha/ui/admin";
+import { AdminStatTile } from "@alepha/ui/admin";
 import { useClient } from "alepha/react";
 import { Tr } from "alepha/react/i18n";
 import { Package } from "lucide-react";
@@ -12,7 +12,8 @@ import { Package } from "lucide-react";
 export const AdminCarteCommandes = () => {
   const client = useClient<AdminOrderController>();
   return (
-    <AdminDashboardCountCard
+    <AdminStatTile
+      id="shop-commandes"
       label={<Tr k="admin.orders" />}
       href="/admin/commandes"
       icon={<Package className="size-4" />}

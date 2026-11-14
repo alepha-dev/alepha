@@ -9,7 +9,11 @@ import type { I18n } from "../../../services/I18n.ts";
 import { visibleSettingsTabs } from "./projectSettingsSections.ts";
 
 /**
- * The settings shell: the open section's name over its tabs, and the page.
+ * The settings shell: the open section's tabs, and the page.
+ *
+ * No plate (#Q3607): the breadcrumb and the sidebar's Settings group already
+ * name the section, so a title over the tabs was the leaf drawn twice, the
+ * reasoning that took the Reports plate away (feedback #2095).
  *
  * There is no second nav rail any more (#Q2565). The sections are children of
  * the Settings entry in the project sidebar, which `ProjectView` builds from
@@ -50,23 +54,6 @@ const ProjectSettings = () => {
       tabsTestId="settings-tabs"
       tabs={tabs}
       active={found?.tab.route ?? activeRoute}
-      plate={
-        found ? (
-          // Title and description on one line, the description muted after
-          // it, wrapping below only when the width runs out (#Q3525).
-          <div
-            className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 pt-4 pb-3 md:px-6"
-            data-testid="settings-header"
-          >
-            <h1 className="text-xl font-semibold">
-              {tr(found.section.labelKey)}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {tr(found.section.descriptionKey)}
-            </p>
-          </div>
-        ) : undefined
-      }
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 p-4 md:p-6">
         <NestedView />

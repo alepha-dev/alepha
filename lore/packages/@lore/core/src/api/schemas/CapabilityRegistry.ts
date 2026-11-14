@@ -418,7 +418,10 @@ export class CapabilityRegistry {
         "insights_read",
       ],
       searchKinds: [],
-      activityKinds: ["app", "sigil", "host"],
+      // `monitor` is an uptime transition (#Q3596), shown with the
+      // `uptime` option like the Uptime page itself.
+      activityKinds: ["app", "sigil", "host", "monitor"],
+      activityKindOptions: { monitor: "uptime" },
       dashboardCards: [
         "openErrors",
         "uniqueVisitors",

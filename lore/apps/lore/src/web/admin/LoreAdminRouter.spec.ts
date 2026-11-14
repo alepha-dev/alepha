@@ -1,7 +1,9 @@
+import { AdminRouter, adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { Alepha } from "alepha";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
+import { LoreAdminDashboard } from "./LoreAdminDashboard.tsx";
 import { LoreAdminRouter } from "./LoreAdminRouter.tsx";
 
 /**
@@ -36,5 +38,39 @@ describe("LoreAdminRouter", () => {
       .map(([group]) => group);
 
     expect(groups).toEqual(["Lore", "Identity", "System"]);
+  });
+
+  /**
+   * The Projects tile (#Q3539) joins the options both entry files set, leads
+   * the built-ins, and is gone when `findProjects` is not offered.
+   */
+  it("adds a Projects tile ahead of the built-ins, gated on findProjects", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    alepha.set(adminRouterOptionsAtom, { brand: undefined });
+    alepha.inject(LoreAdminRouter);
+    alepha.inject(LoreAdminDashboard);
+    const admin = alepha.inject(AdminRouter);
+    await alepha.start();
+
+    const cards = (
+      admin.dashboard.options.props as () => {
+        cards: Array<{ id: string; title: string; can?: () => boolean }>;
+      }
+    )().cards;
+    expect(cards.map((card) => card.id)).toEqual([
+      "lore-projects",
+      "users",
+      "connected",
+      "failed-sign-ins",
+    ]);
+    const projects = cards[0]!;
+    expect(projects.title).toBe("Projects");
+
+    alepha.store.set("alepha.server.request.apiLinks", { actions: {} });
+    expect(projects.can!()).toBe(false);
+    alepha.store.set("alepha.server.request.apiLinks", {
+      actions: { findProjects: { path: "/admin/projects" } },
+    });
+    expect(projects.can!()).toBe(true);
   });
 });

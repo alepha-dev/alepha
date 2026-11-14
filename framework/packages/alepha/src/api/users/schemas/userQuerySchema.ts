@@ -22,6 +22,12 @@ export const userQuerySchema = pageQuerySchema.extend({
   enabled: z.boolean().optional(),
   emailVerified: z.boolean().optional(),
   roles: z.array(z.string()).optional(),
+  /**
+   * Only users with a session signed in or refreshed within this many hours.
+   * The same predicate as `getUserStats().connected`, so a list filtered by
+   * it totals what the dashboard's Connected tile says.
+   */
+  activeWithinHours: z.integer().min(1).optional(),
 });
 
 export type UserQuery = Infer<typeof userQuerySchema>;

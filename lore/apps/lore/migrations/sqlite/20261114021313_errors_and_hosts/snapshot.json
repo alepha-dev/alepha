@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "20be7411-3a05-4417-8366-9476170f249d",
-  "prevIds": ["9dc3f0e6-430f-4485-95bb-d63e6e1436fb"],
+  "id": "2253d1e1-9b0d-4f39-b64d-fb02e3631d5e",
+  "prevIds": ["9e194bb3-f328-4316-9b33-7c584c88a280"],
   "ddl": [
     {
       "name": "ai_conversations",
@@ -14232,6 +14232,20 @@
     },
     {
       "table": "sessions",
+      "name": "sessions_last_used_at_idx",
+      "columns": [
+        {
+          "value": "last_used_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "sessions",
       "name": "sessions_refresh_token_idx",
       "columns": [
         {
@@ -16514,6 +16528,8 @@
     "estate_inventories->host_inventories",
     "estate_projects->host_projects",
     "estates->hosts",
+    "blight_ignore_rules->project_error_ignore_rules",
+    "blights->project_errors",
     "analytics_host_stats_raw.estate_id->analytics_host_stats_raw.host_id",
     "analytics_host_stats_rolled.estate_id->analytics_host_stats_rolled.host_id",
     "app_instances.estate_id->app_instances.host_id",

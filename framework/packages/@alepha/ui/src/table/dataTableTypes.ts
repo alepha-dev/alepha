@@ -688,7 +688,9 @@ export interface DataTableFilters<
    * reader's stored filters rather than adding to them: the link's values are
    * the whole filter, so a link (or a preset's values sent as one) opens
    * exactly the rows it names. A URL carrying none leaves the stored filters
-   * as they were. An explicit `seedValues` still outranks the URL.
+   * as they were, unless it carries `?filters=none`, which means "these
+   * filters exactly, none stored": the form a link to the whole, unfiltered
+   * list takes. An explicit `seedValues` still outranks the URL.
    *
    * ⚠️ **One-directional, and it has to stay that way.** The URL seeds the
    * filters; the filters NEVER write back. Lore's `?view=kanban` was removed

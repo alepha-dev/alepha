@@ -10,7 +10,7 @@ import { AlephaError, z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Activity, Trash2 } from "lucide-react";
+import { Activity, Archive, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 
 /**
@@ -45,6 +45,19 @@ export const AdminProjects = () => {
       ],
       control: { clearLabel: "Any activity" },
     },
+    // The dashboard's Projects tile links here with `?archived=exclude`.
+    // Clearing means every project, archived included, as the page always
+    // listed them.
+    archived: {
+      schema: z.string(),
+      label: "Archived",
+      icon: Archive,
+      items: [
+        { value: "exclude", label: "Not archived" },
+        { value: "only", label: "Archived only" },
+      ],
+      control: { clearLabel: "Archived or not" },
+    },
   } satisfies DataTableFilterFields;
 
   const fetcher = useCallback(
@@ -61,6 +74,7 @@ export const AdminProjects = () => {
           sort: params.sort,
           search: params.filters?.search || undefined,
           activity: params.filters?.activity || undefined,
+          archived: params.filters?.archived || undefined,
         },
       });
     },
@@ -136,7 +150,7 @@ export const AdminProjects = () => {
         className="min-h-0 flex-1"
         persistenceKey="lore.admin.projects"
         fetch={fetcher}
-        filters={{ fields: filterFields }}
+        filters={{ fields: filterFields, fromQuery: ["archived"] }}
         bulkActions={[
           {
             label: "Delete selected",

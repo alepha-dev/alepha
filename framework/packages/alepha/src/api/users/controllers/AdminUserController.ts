@@ -7,6 +7,8 @@ import { refusedRealmSchema } from "../schemas/refusedRealmSchema.ts";
 import { updateUserSchema } from "../schemas/updateUserSchema.ts";
 import { userQuerySchema } from "../schemas/userQuerySchema.ts";
 import { userResourceSchema } from "../schemas/userResourceSchema.ts";
+import { userStatsQuerySchema } from "../schemas/userStatsQuerySchema.ts";
+import { userStatsSchema } from "../schemas/userStatsSchema.ts";
 import { UserService } from "../services/UserService.ts";
 
 export class AdminUserController {
@@ -69,6 +71,34 @@ export class AdminUserController {
     handler: ({ query, user }) => {
       const { userRealmName, ...q } = query;
       return this.userService.findUsers(
+        q,
+        this.securityProvider.assertRealmScope(user, userRealmName),
+      );
+    },
+  });
+
+  /**
+   * Counts for the admin dashboard: users, sign-ups in this window and the
+   * one before, and distinct users signed in or refreshed recently. One call
+   * for numbers no list gives at once (a page total counts rows, and the
+   * sessions list counts sessions, not users).
+   */
+  public readonly getUserStats = $action({
+    method: "GET",
+    path: "/metadata/user-stats",
+    group: this.group,
+    use: [$secure({ permissions: ["admin:user:read"] })],
+    description: "Count users, recent sign-ups and recently connected users",
+    schema: {
+      query: userStatsQuerySchema.extend({
+        userRealmName: z.string().optional(),
+        realm: refusedRealmSchema,
+      }),
+      response: userStatsSchema,
+    },
+    handler: ({ query, user }) => {
+      const { userRealmName, ...q } = query;
+      return this.userService.getUserStats(
         q,
         this.securityProvider.assertRealmScope(user, userRealmName),
       );

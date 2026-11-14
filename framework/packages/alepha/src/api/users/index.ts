@@ -92,6 +92,8 @@ export * from "./schemas/updateMyProfileBodySchema.ts";
 export * from "./schemas/updateUserSchema.ts";
 export * from "./schemas/userQuerySchema.ts";
 export * from "./schemas/userResourceSchema.ts";
+export * from "./schemas/userStatsQuerySchema.ts";
+export * from "./schemas/userStatsSchema.ts";
 export * from "./services/CredentialService.ts";
 export * from "./services/IdentityService.ts";
 export * from "./services/MfaService.ts";

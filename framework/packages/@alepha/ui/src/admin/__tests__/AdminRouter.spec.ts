@@ -12,6 +12,7 @@ import { $pageAdmin } from "../$pageAdmin.tsx";
 import { uiFr } from "../../i18n/fr/uiFr.ts";
 import type { NavMeta } from "../../shell/navTreeUtil.ts";
 import { AdminRouter } from "../AdminRouter.tsx";
+import { adminRouterOptionsAtom } from "../AdminRouterOptions.tsx";
 
 /**
  * Reads the permission(s) a page's route gate actually enforces, the same
@@ -176,6 +177,95 @@ describe("AdminRouter", () => {
     // name) would be granted here, which is exactly why the permission alone
     // can never be the gate.
     expect(auditsCan!({ has: () => true })).toBe(false);
+  });
+
+  /**
+   * The three built-in dashboard tiles (#Q3536), each gated on the action it
+   * reads: a tile over a module the server does not offer is not rendered at
+   * all, rather than rendering "n/a".
+   */
+  it("ships three built-in tiles, each gone when its action is not offered", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AdminRouter);
+    await alepha.start();
+    const cards = () =>
+      (
+        router.dashboard.options.props as () => {
+          cards: Array<{ id: string; order?: number; can?: () => boolean }>;
+        }
+      )().cards;
+
+    expect(cards().map((card) => [card.id, card.order])).toEqual([
+      ["users", 1000],
+      ["connected", 1010],
+      ["failed-sign-ins", 1020],
+    ]);
+
+    const visible = () =>
+      cards()
+        .filter((card) => (card.can ? card.can() : true))
+        .map((card) => card.id);
+
+    alepha.store.set("alepha.server.request.apiLinks", { actions: {} });
+    expect(visible()).toEqual([]);
+
+    alepha.store.set("alepha.server.request.apiLinks", {
+      actions: { getUserStats: { path: "/metadata/user-stats" } },
+    });
+    expect(visible()).toEqual(["users", "connected"]);
+
+    alepha.store.set("alepha.server.request.apiLinks", {
+      actions: {
+        getUserStats: { path: "/metadata/user-stats" },
+        findAudits: { path: "/audits" },
+      },
+    });
+    expect(visible()).toEqual(["users", "connected", "failed-sign-ins"]);
+  });
+
+  it("refuses options whose dashboard card reuses an id, when they are set", async () => {
+    // Set before `start` by every app, so this is a startup failure.
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    expect(() =>
+      alepha.set(adminRouterOptionsAtom, {
+        dashboardCards: [{ id: "users", title: "Mine", render: () => null }],
+      }),
+    ).toThrow("share the id 'users'");
+    expect(() =>
+      alepha.set(adminRouterOptionsAtom, {
+        dashboardCards: [
+          { id: "mine", title: "Mine", render: () => null },
+          { id: "mine", title: "Again", render: () => null },
+        ],
+      }),
+    ).toThrow("share the id 'mine'");
+  });
+
+  it("loads no layout, and no error, when the layout action is not offered", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AdminRouter);
+    await alepha.start();
+    alepha.store.set("alepha.server.request.apiLinks", { actions: {} });
+
+    const loader = router.dashboard.options.loader as unknown as () => Promise<
+      Record<string, unknown>
+    >;
+    expect(await loader()).toEqual({});
+  });
+
+  it("names every built-in tile for the picker", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AdminRouter);
+    await alepha.start();
+    const cards = (
+      router.dashboard.options.props as () => {
+        cards: Array<{ id: string; title: string; titleKey?: string }>;
+      }
+    )().cards;
+    for (const card of cards) {
+      expect(card.title.length, card.id).toBeGreaterThan(0);
+      expect(card.titleKey, card.id).toBeDefined();
+    }
   });
 
   it("gates every admin page on an action, not only a permission", async () => {

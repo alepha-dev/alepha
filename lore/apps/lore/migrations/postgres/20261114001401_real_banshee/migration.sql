@@ -1,0 +1,1 @@
+CREATE INDEX "sessions_last_used_at_idx" ON "sessions" ("last_used_at");

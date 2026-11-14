@@ -19,6 +19,8 @@ Application parameter management.
 - Schema validation with migration detection
 - Cross-instance notification via pub/sub
 - Async `.get()` with lazy loading (works in Node and Cloudflare Workers)
+- The admin dashboard's layout (`admin.dashboard.layout`), read by any admin
+  and saved with a version check (`AdminDashboardLayoutController`)
 
 ## API Reference
 

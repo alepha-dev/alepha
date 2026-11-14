@@ -309,7 +309,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Reports",
     section: "A weekly report in your inbox",
     url: "https://alepha.dev/lore/docs/project-reports#a-weekly-report-in-your-inbox",
-    text: "The **Weekly report** preset in [Automations](/lore/docs/work-automations)\nsends Summary's last seven days against the seven before, every Monday at\n08:00 UTC, to the member you pick, as an inbox notification or an email.\n\n- It starts disabled, like every preset.\n- A preset has one recipient, so reaching several members takes one rule each.\n- A recipient opts out by turning off **Automations** in their notification\n  settings: see\n  [Turning messages off](/lore/docs/project-notifications#turning-messages-off).",
+    text: "The **Weekly report** preset in [Automations](/lore/docs/work-automations)\nsends Summary's last seven days against the seven before, every Monday at\n08:00 UTC, to the member you pick, as an inbox notification or an email.\n\n- **Create and enable** turns it on at once, like every preset; **Save as\n  draft** keeps it off until you enable it.\n- A preset has one recipient, so reaching several members takes one rule each.\n- A recipient opts out by turning off **Automations** in their notification\n  settings: see\n  [Turning messages off](/lore/docs/project-notifications#turning-messages-off).",
   },
   {
     guide: "Reports",

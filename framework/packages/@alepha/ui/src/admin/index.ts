@@ -7,6 +7,13 @@
  * or the admin does not hold its permission. `$pageAdmin` adds a page to the same
  * shell. The pages are exported by name too, for an app that routes them itself.
  *
+ * The dashboard at `/admin` is a grid of tiles, each a number that opens its
+ * list filtered to the same number: Users, Connected and Failed sign-ins ship
+ * built in, and an app adds its own with `AdminStatTile` through
+ * `AdminRouterOptions.dashboardCards`. Which tiles show, and in what order, is
+ * one layout per deployment that admins edit from Customize mode, stored as a
+ * parameter by `alepha/api/parameters`.
+ *
  * @module alepha.ui.admin
  */
 
@@ -23,10 +30,45 @@ export {
 } from "./AdminDashboard.tsx";
 export type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
 export {
-  AdminDashboardCountCard,
-  type AdminDashboardCountCardProps,
-} from "./AdminDashboardCountCard.tsx";
+  ADMIN_BUILTIN_DASHBOARD_CARD_IDS,
+  adminDashboardCardIdProblem,
+  type AdminDashboardLayoutEntry,
+  type AdminDashboardLayoutTile,
+  adminDashboardCatalog,
+  adminDashboardLayoutEntries,
+  adminDashboardLayoutOf,
+  resolveAdminDashboardLayout,
+} from "./adminDashboardLayout.ts";
+export {
+  AdminConnectedTile,
+  type AdminConnectedTileProps,
+} from "./AdminConnectedTile.tsx";
+export {
+  type AdminDashboardDayWindow,
+  adminAuditDayRange,
+  adminDashboardDayWindow,
+} from "./adminDashboardWindows.ts";
+export {
+  AdminFailedSignInsTile,
+  type AdminFailedSignInsTileProps,
+} from "./AdminFailedSignInsTile.tsx";
 export { AdminFiles } from "./AdminFiles.tsx";
+export {
+  AdminStatTile,
+  type AdminStatTileDelta,
+  type AdminStatTileLoaded,
+  type AdminStatTileProps,
+  type AdminStatTileResult,
+} from "./AdminStatTile.tsx";
+export {
+  AdminStatTileDeltaChip,
+  type AdminStatTileDeltaChipProps,
+} from "./AdminStatTileDeltaChip.tsx";
+export {
+  type AdminStatTileDeltaChange,
+  adminStatTileDelta,
+  formatAdminStatTileDelta,
+} from "./adminStatTileDelta.ts";
 export { AdminJobDetail, type AdminJobDetailProps } from "./AdminJobDetail.tsx";
 export { AdminJobs } from "./AdminJobs.tsx";
 export { AdminKeys } from "./AdminKeys.tsx";
@@ -51,5 +93,6 @@ export {
 } from "./AdminUserDetail.tsx";
 export { AdminWebhookDetail } from "./AdminWebhookDetail.tsx";
 export { AdminWebhooks } from "./AdminWebhooks.tsx";
+export { AdminUsersTile, type AdminUsersTileProps } from "./AdminUsersTile.tsx";
 export { AdminUsers, type AdminUsersProps } from "./AdminUsers.tsx";
 export { useConfirmedAction } from "./useConfirmedAction.tsx";

@@ -56,7 +56,17 @@ export const shopAdminOptions: AdminRouterOptions = {
    * above `Identity` in the sidebar.
    */
   dashboardCards: [
-    { id: "shop-pieces", render: () => <AdminCartePieces /> },
-    { id: "shop-commandes", render: () => <AdminCarteCommandes /> },
+    {
+      id: "shop-pieces",
+      title: "Products",
+      titleKey: "admin.produits",
+      render: () => <AdminCartePieces />,
+    },
+    {
+      id: "shop-commandes",
+      title: "Orders",
+      titleKey: "admin.orders",
+      render: () => <AdminCarteCommandes />,
+    },
   ],
 };

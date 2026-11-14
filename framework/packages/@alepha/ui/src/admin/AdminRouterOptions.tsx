@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { NavGroup } from "../shell/appShellNav.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+import { adminDashboardCardIdProblem } from "./adminDashboardLayout.ts";
 import type { AdminParametersProps } from "./AdminParameters.tsx";
 import type { AdminUserDetailProps } from "./AdminUserDetail.tsx";
 import type { AdminUsersProps } from "./AdminUsers.tsx";
@@ -90,12 +91,18 @@ export interface AdminRouterOptions {
    * Each carries its own `can` gate, so a card is responsible for saying when
    * it should not render — the dashboard never guesses on a card's behalf.
    *
-   * There is exactly one built-in card (Users, at `order` 1000), so a card
-   * declaring no `order` leads and an application's dashboard is mostly its
-   * own — which is the intended shape. The framework ships the contract, not
-   * the content.
+   * The built-in cards (Users, Connected, Failed sign-ins) sit at `order`
+   * 1000 and up, so a card declaring no `order` leads the dashboard.
    */
   dashboardCards?: AdminDashboardCard[];
+
+  /**
+   * The Failed sign-ins tile turns warning-coloured above this many failures
+   * in its 7 days. A lockout writes two audit rows, so a handful is normal.
+   *
+   * @default 10
+   */
+  failedSignInsAlertThreshold?: number;
 
   /**
    * Route name the shell's "leave admin" affordance pushes.
@@ -161,6 +168,14 @@ export interface AdminRouterOptions {
 export const adminRouterOptionsAtom = $atom({
   name: "alepha.ui.admin.router.options",
   description: "Chrome slots and per-page props for the admin router.",
-  schema: z.custom<AdminRouterOptions>(),
+  // Card ids are checked here, where the application sets its options
+  // (before `start`), so a duplicate fails the app at startup rather than on
+  // the first visit to `/admin`.
+  schema: z.custom<AdminRouterOptions>().superRefine((options, ctx) => {
+    const message = adminDashboardCardIdProblem(options?.dashboardCards ?? []);
+    if (message) {
+      ctx.addIssue({ code: "custom", message });
+    }
+  }),
   default: {} satisfies AdminRouterOptions,
 });
