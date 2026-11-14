@@ -350,6 +350,79 @@ describe("ProjectEpics - the status filter", () => {
   });
 
   /**
+   * A shelve under a filter that leaves shelved epics out takes the row off
+   * at once (#Q3673): it used to stay, chip patched, until the held commit
+   * refetched the list when the Undo toast closed.
+   */
+  describe("shelving under the status filter", () => {
+    const fixture = () => [
+      epicOf(1, "Draft epic", "draft"),
+      epicOf(3, "Started epic", "in_progress"),
+    ];
+
+    const shelveRow = async (name: string) => {
+      const tr = screen.getByRole("link", { name }).closest("tr");
+      fireEvent.click(
+        within(tr!).getByRole("button", { name: "Open row actions" }),
+      );
+      const item = await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+          (it) => it.textContent === "Shelve",
+        );
+        if (!found) throw new Error("no Shelve yet");
+        return found as HTMLElement;
+      });
+      fireEvent.click(item);
+    };
+
+    const pick = async (...labels: RegExp[]) => {
+      await addFilter("Status");
+      for (const label of labels) {
+        fireEvent.click(await screen.findByRole("option", { name: label }));
+      }
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
+    };
+
+    it("takes the row off at once when the filter excludes shelved, and Undo puts it back", async () => {
+      await mount([], fixture());
+      const fake = alepha!.inject(FakeLinkProvider);
+      await pick(/In progress/);
+      // The filtered page has answered: the draft is gone.
+      await waitFor(() => expect(row("#E1 - Draft epic")).toBeNull());
+
+      await shelveRow("#E3 - Started epic");
+
+      // Gone while the toast is still up, and nothing sent yet: the commit
+      // is still held.
+      const undo = await undoIn("#E3 shelved");
+      await waitFor(() => expect(row("#E3 - Started epic")).toBeNull());
+      expect(fake.shelveCalls).toEqual([]);
+
+      fireEvent.click(undo);
+      await waitFor(() => expect(row("#E3 - Started epic")).not.toBeNull());
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(fake.shelveCalls).toEqual([]);
+    });
+
+    it("keeps the row, marked Shelved, when the filter includes shelved", async () => {
+      await mount([], fixture());
+      await pick(/In progress/, /Shelved/);
+      await waitFor(() => expect(row("#E1 - Draft epic")).toBeNull());
+
+      await shelveRow("#E3 - Started epic");
+      await undoIn("#E3 shelved");
+
+      const kept = row("#E3 - Started epic");
+      expect(kept).not.toBeNull();
+      await waitFor(() =>
+        expect(kept!.closest("tr")!.textContent).toContain("Shelved"),
+      );
+    });
+  });
+
+  /**
    * The Release filter (feedback #2102): the Epics list could SHOW which
    * release an epic ships in, and sort by it, but not narrow by it - which
    * is the question anyone planning a release opens this page to ask.
