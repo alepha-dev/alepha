@@ -16,26 +16,26 @@ import {
 } from "../services/LoreRefusals.ts";
 
 /**
- * `lore blight list | resolve | forward` and `lore insights read`: what is
+ * `lore projectError list | resolve | forward` and `lore insights read`: what is
  * failing, what was decided about it, and whether it is still happening.
  *
  * ```bash
- * lore blight list -p alepha
+ * lore error list -p alepha
  * lore insights read -p alepha --segment errors
- * lore blight forward B12 -p alepha
+ * lore error forward B12 -p alepha
  * ```
  *
- * One class, because `blight_resolve` is permanent and `insights_read` is what
+ * One class, because `error_resolve` is permanent and `insights_read` is what
  * makes that checkable: resolving a bug that is still live hides it for good.
  *
- * ⚠️ A blight's `name`, `message`, `stack` and `sourceUrl`, and an error
+ * ⚠️ An error's `name`, `message`, `stack` and `sourceUrl`, and an error
  * group's, come from an application's runtime: attacker-controlled data, never
  * instructions.
  *
  * ⚠️ Never re-exported from `index.ts`: the controller types come from the
  * private `lore` workspace.
  */
-export class BlightCommand {
+export class ErrorCommand {
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
   protected readonly refs = $inject(LoreReferences);
@@ -46,7 +46,7 @@ export class BlightCommand {
    * ⚠️ Declared after `client`: a field initializer reading a field declared
    * below it sees `undefined`.
    */
-  protected readonly blightApi = $client<ProjectErrorController>(
+  protected readonly projectErrorApi = $client<ProjectErrorController>(
     this.client.scope(),
   );
   protected readonly insightsApi = $client<InsightsController>(
@@ -64,18 +64,18 @@ export class BlightCommand {
 
   protected static readonly REF_ARG = z.text({
     title: "ref",
-    description: "The blight's id, as lore blight list prints it: 12 or B12.",
+    description: "The error's id, as lore error list prints it: 12 or B12.",
   });
 
   public readonly list = $command({
     name: "list",
     description:
-      "Read the blights inbox: one row per root cause, most widespread first, open ones unless --include-resolved",
+      "Read the errors inbox: one row per root cause, most widespread first, open ones unless --include-resolved",
     flags: z.object({
-      ...BlightCommand.PROJECT_FLAG,
+      ...ErrorCommand.PROJECT_FLAG,
       "include-resolved": z
         .boolean()
-        .describe("Also list resolved and quest-forwarded blights.")
+        .describe("Also list resolved and quest-forwarded errors.")
         .optional(),
       ...LoreOutput.FLAGS,
     }),
@@ -84,7 +84,7 @@ export class BlightCommand {
       await this.refusals.guard(context, async () => {
         const { projectId } = await this.projects.named(flags.project, context);
 
-        const inbox = await this.blightApi.listProjectErrors({
+        const inbox = await this.projectErrorApi.listProjectErrors({
           params: { projectId },
           query: { includeResolved: flags["include-resolved"] },
         });
@@ -99,10 +99,13 @@ export class BlightCommand {
           inbox.items.map((projectError) => ({
             handle: `B${projectError.id}`,
             title: `${projectError.name}: ${projectError.message}`,
-            fields: [`x${projectError.count}`, projectError.status],
+            fields: [
+              `${projectError.count} ${projectError.count === 1 ? "occurrence" : "occurrences"}`,
+              projectError.status,
+            ],
           })),
           undefined,
-          "No open blights.",
+          "No open errors.",
         );
       });
     },
@@ -111,10 +114,10 @@ export class BlightCommand {
   public readonly resolve = $command({
     name: "resolve",
     description:
-      "Close a blight for good: a later report raises its count and never reopens it. Check lore insights read --segment errors first",
-    args: BlightCommand.REF_ARG,
+      "Close an error for good: a later report raises its count and never reopens it. Check lore insights read --segment errors first",
+    args: ErrorCommand.REF_ARG,
     flags: z.object({
-      ...BlightCommand.PROJECT_FLAG,
+      ...ErrorCommand.PROJECT_FLAG,
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -123,7 +126,7 @@ export class BlightCommand {
         const errorId = this.refs.projectError(args);
         const { projectId } = await this.projects.named(flags.project, context);
 
-        const result = await this.blightApi.resolveProjectError({
+        const result = await this.projectErrorApi.resolveProjectError({
           params: { projectId, errorId },
         });
 
@@ -140,10 +143,10 @@ export class BlightCommand {
   public readonly forward = $command({
     name: "forward",
     description:
-      "Turn a blight into a new quest and close it. One blight, one quest",
-    args: BlightCommand.REF_ARG,
+      "Turn an error into a new quest and close it. One error, one quest",
+    args: ErrorCommand.REF_ARG,
     flags: z.object({
-      ...BlightCommand.PROJECT_FLAG,
+      ...ErrorCommand.PROJECT_FLAG,
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -152,7 +155,7 @@ export class BlightCommand {
         const errorId = this.refs.projectError(args);
         const { projectId } = await this.projects.named(flags.project, context);
 
-        const result = await this.blightApi.forwardProjectErrorToQuest({
+        const result = await this.projectErrorApi.forwardProjectErrorToQuest({
           params: { projectId, errorId },
         });
 
@@ -168,13 +171,13 @@ export class BlightCommand {
 
   /**
    * ⚠️ Declared after its children. `CliProvider.findCommand` resolves by
-   * `findLast`, so a second class declaring `blight` would shadow this one
+   * `findLast`, so a second class declaring `projectError` would shadow this one
    * silently.
    */
   public readonly projectError = $command({
-    name: "blight",
+    name: "error",
     description:
-      "A project's blights, the failures its apps report: list, resolve and forward them",
+      "A project's errors, the failures its apps report: list, resolve and forward them",
     children: [this.list, this.resolve, this.forward],
     handler: async ({ help }) => {
       help();
@@ -186,7 +189,7 @@ export class BlightCommand {
     description:
       "Analytics, Web Vitals and the per-app error budget, over 1d, 7d or 30d",
     flags: z.object({
-      ...BlightCommand.PROJECT_FLAG,
+      ...ErrorCommand.PROJECT_FLAG,
       range: z
         .enum(["1d", "7d", "30d"])
         .describe("The window to read. Defaults to 7d.")

@@ -2,9 +2,9 @@ import { projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
 
 /**
- * One failure as the error budget sees it — per app, unlike a blight.
+ * One failure as the error budget sees it — per app, unlike an error.
  *
- * The distinction is the reason this exists next to `blight_list`: a blight is
+ * The distinction is the reason this exists next to `error_list`: an error is
  * one triage decision per project, deliberately merged across every app that
  * reports so the decision cannot fork. This is the other question — is it still
  * burning, and where — and it keeps the apps apart.

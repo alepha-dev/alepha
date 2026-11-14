@@ -383,7 +383,7 @@ Notable specs in `apps/lore/test` (Vitest, in-memory SQLite). A spec whose subje
 - `capability-gate.spec.ts` / `route-capability-guards.spec.ts` - the capability model across packages: the gate and the route guards
 - `sigil-self-report.spec.ts` — Lore's own in-process self-report path
 - `app-routes.spec.ts` — **regression guard**: boots every router and resolves every route name the app passes the router as a plain string (every `router.path`/`push` call site and every `route: "…"` nav array in `src/`, including `projectSettingsSections.ts`'s — the array that broke once). `router.path()` takes `keyof VirtualRouter<T> | string`, so a deleted or renamed route is never a type error — this is the only thing that turns it into a red test instead of a production throw. Also asserts that **every static root segment in the route table is reserved** in `ProjectSlugService` — the invariant `/:projectSlug` creates
-- `blight-tools.spec.ts` — the MCP triage surface
+- `error-tools.spec.ts` — the MCP triage surface
 - `migration-safety.spec.ts` — every dropped table needs a per-migration `SANCTIONED_DROPS` entry, a table with `CASCADE` or `SET NULL` children (read from the previous snapshot) cannot be dropped at all after `CASCADE_BASELINE`, and a fresh D1-shaped database boots with all migrations applied
 - Shared fixtures live in `test/fixtures/`
 

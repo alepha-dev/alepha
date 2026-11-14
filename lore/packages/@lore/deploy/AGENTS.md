@@ -188,7 +188,7 @@ Read endpoints are member-gated; mutations are owner-only. **Ingest has its own 
 - UI - per instance: `src/web/app/components/project/apps/AppLayout.tsx` (+ `AppDashboard`, `AppAnalytics`, `AppVitals`, `AppErrors`, `AppSettings` and its five `AppSettings*` rows, `useAppInsights` / `AppInsightsControls` - the per-tab fetch and its two toggles); the single Apps nav entry in `project/ProjectView.tsx`; atoms `currentInstancesAtom` / `currentInstanceAtom`
 - UI — feedback module toggle: `src/web/app/components/project/settings/ProjectSettingsFeedbackPage.tsx` (its own settings page now, split out of the Sigils page)
 - UI — triage: `project/blights/ProjectBlights.tsx`
-- MCP: `src/mcp/tools/SigilTools.ts`, `src/mcp/tools/BlightTools.ts`
+- MCP: `src/mcp/tools/SigilTools.ts`, `src/mcp/tools/ProjectErrorTools.ts`
 - E2E: `apps/e2e/web/apps.spec.ts` - create an instance → mint its sigil → ingest as it → triage → walk the tabs → rename → rotate → delete, with ingest driven through Playwright's isolated `request` fixture (the page's `fetch` is patched to attach the session bearer, which would replace the sigil token)
 
 ## ⚠️ The Cloudflare WAF rule on `/sigils/` has a job again — keep it

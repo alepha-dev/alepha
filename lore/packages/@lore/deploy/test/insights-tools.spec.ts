@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { LoreDeployApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/index.ts";
 import { LoreDeployMcp } from "../src/mcp/index.ts";
-import { BlightTools, InsightsTools } from "../src/mcp/index.ts";
+import { ProjectErrorTools, InsightsTools } from "../src/mcp/index.ts";
 import {
   projectErrors,
   sigilErrorGroups,
@@ -22,7 +22,7 @@ import {
 /**
  * The error budget over MCP.
  *
- * These exist for one question `blight_list` structurally cannot answer: is
+ * These exist for one question `error_list` structurally cannot answer: is
  * this failure still happening, and in which app. The inbox merges apps on
  * purpose so a triage decision cannot fork; that merge is
  * exactly what makes it blind to "fixed in staging, still burning in prod".
@@ -51,7 +51,7 @@ const setup = async () => {
   const probe = alepha.inject(Probe);
   const tokens = alepha.inject(SigilTokenService);
   const insightsTools = alepha.inject(InsightsTools);
-  const blightTools = alepha.inject(BlightTools);
+  const projectErrorTools = alepha.inject(ProjectErrorTools);
   const projectApi = alepha.inject(ProjectController);
   const users = alepha.inject(UserService);
   await alepha.start();
@@ -113,14 +113,14 @@ const setup = async () => {
     otherProject,
     call,
     insightsTools,
-    blightTools,
+    projectErrorTools,
     enrol,
     reportError,
   };
 };
 
 describe("Lore MCP — insights", () => {
-  it("should keep apps apart, where the blights inbox merges them", async () => {
+  it("should keep apps apart, where the errors inbox merges them", async () => {
     /*
       The whole reason this tool exists. One fingerprint, two apps:
       the inbox is right to show a single row — the decision must not fork —

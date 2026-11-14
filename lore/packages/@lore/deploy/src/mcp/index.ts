@@ -3,16 +3,16 @@ import { $module } from "alepha";
 
 import { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 import { ArtifactTools } from "./tools/ArtifactTools.ts";
-import { BlightTools } from "./tools/BlightTools.ts";
 import { DeployTools } from "./tools/DeployTools.ts";
 import { EstateTools } from "./tools/EstateTools.ts";
 import { InsightsTools } from "./tools/InsightsTools.ts";
 import { MonitorTools } from "./tools/MonitorTools.ts";
+import { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
 import { SigilTools } from "./tools/SigilTools.ts";
 import { StackTools } from "./tools/StackTools.ts";
 
 /**
- * The MCP tools and resources of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, blights, quality), deployments and estates.
+ * The MCP tools and resources of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and estates.
  *
  * Registered by `apps/lore/src/main.server.ts` beside `LoreDeployApi`.
  *
@@ -22,7 +22,7 @@ export const LoreDeployMcp = $module({
   name: "lore.deploy.mcp",
   imports: [LoreCoreMcp],
   services: [
-    BlightTools,
+    ProjectErrorTools,
     ArtifactTools,
     AppInstanceTools,
     DeployTools,
@@ -41,7 +41,7 @@ export const LoreDeployMcp = $module({
 
 export { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 export { ArtifactTools } from "./tools/ArtifactTools.ts";
-export { BlightTools } from "./tools/BlightTools.ts";
+export { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
 export { DeployTools } from "./tools/DeployTools.ts";
 export { EstateTools } from "./tools/EstateTools.ts";
 export { InsightsTools } from "./tools/InsightsTools.ts";

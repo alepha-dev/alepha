@@ -6,7 +6,7 @@ import type { AgentPromptKind } from "../../../api/schemas/agentPromptKindSchema
 /**
  * The agent prompt kinds and their built-in defaults, as each module
  * registers them (#E75, #Q2624): Work's epic, quest and feedback prompts,
- * Deploy's blight triage.
+ * Deploy's error triage.
  *
  * The default is what a project gets before anyone edits it in Settings >
  * Quests > Agent prompts, and what Reset restores. `project_prompts` holds

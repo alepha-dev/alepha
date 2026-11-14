@@ -971,7 +971,7 @@ describe("MCP Security Integration", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Blights inbox tools live with the project suite now that sigils are gone.
+  // Errors inbox tools live with the project suite now that sigils are gone.
   // ---------------------------------------------------------------------------
 
   // ---------------------------------------------------------------------------

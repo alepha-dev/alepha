@@ -47,7 +47,7 @@ const POSITIONAL = new Set([
   "id",
   "shortId",
   "number",
-  "blight_id",
+  "error_id",
   "monitor_id",
   "key",
   "policy",

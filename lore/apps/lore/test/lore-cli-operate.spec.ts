@@ -27,7 +27,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * The commands that closed `GAPS` in `mcp-cli-parity.spec.ts`, against the real
- * Lore app, over HTTP, with a real API key: feedback, blights, insights,
+ * Lore app, over HTTP, with a real API key: feedback, errors, insights,
  * releases, deployed copies, sigils, artifacts, deploys, stacks, automations
  * and a project merge.
  *
@@ -293,7 +293,7 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     expect(quest.dueAt).toContain("2030-01-02");
   });
 
-  it("triages blights, and reads insights", async () => {
+  it("triages errors, and reads insights", async () => {
     const { project, lore } = await ownProject();
     const rows = ctx.alepha.inject(Rows);
     const now = new Date().toISOString();
@@ -311,17 +311,17 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     const resolved = await seed("one");
     const forwarded = await seed("two");
 
-    const inbox = await lore.run("blight list");
+    const inbox = await lore.run("error list");
     expect(inbox).toContain(`B${resolved.id}`);
     expect(inbox).toContain("boom two");
 
-    await lore.run("blight resolve", [`B${resolved.id}`]);
-    expect(await lore.run("blight list")).not.toContain(`B${resolved.id}`);
-    expect(await lore.run("blight list", ["--include-resolved"])).toContain(
+    await lore.run("error resolve", [`B${resolved.id}`]);
+    expect(await lore.run("error list")).not.toContain(`B${resolved.id}`);
+    expect(await lore.run("error list", ["--include-resolved"])).toContain(
       `B${resolved.id}`,
     );
 
-    const { questShortId } = await lore.json("blight forward", [
+    const { questShortId } = await lore.json("error forward", [
       `B${forwarded.id}`,
     ]);
     expect(await lore.run("quest get", [`Q${questShortId}`])).toContain(

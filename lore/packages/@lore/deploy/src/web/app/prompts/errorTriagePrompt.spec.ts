@@ -4,7 +4,7 @@ import {
 } from "@lore/core/web";
 import { describe, expect, it } from "vitest";
 
-import { blightTriagePromptDefault } from "./blightTriagePrompt.ts";
+import { errorTriagePromptDefault } from "./errorTriagePrompt.ts";
 
 /**
  * Surface-scoped, like the feedback loop: a triage pass has no item, so
@@ -13,23 +13,23 @@ import { blightTriagePromptDefault } from "./blightTriagePrompt.ts";
 const subject: AgentPromptProjectSubject = {
   project: "Alepha",
   slug: "alepha",
-  url: "https://lore.alepha.dev/alepha/blights",
+  url: "https://lore.alepha.dev/alepha/errors",
 };
 
-describe("blightTriagePromptDefault", () => {
-  const prompt = renderPromptTemplate(blightTriagePromptDefault, subject);
+describe("errorTriagePromptDefault", () => {
+  const prompt = renderPromptTemplate(errorTriagePromptDefault, subject);
 
   it("renders with no item subject at all", () => {
     expect(prompt).toContain('project "Alepha"');
-    expect(prompt).toContain("https://lore.alepha.dev/alepha/blights");
+    expect(prompt).toContain("https://lore.alepha.dev/alepha/errors");
     expect(prompt).not.toMatch(/\{\{/);
   });
 
   it("names the four tools rather than gesturing at them", () => {
     for (const tool of [
-      "blight_list",
-      "blight_resolve",
-      "blight_forward",
+      "error_list",
+      "error_resolve",
+      "error_forward",
       "quest_create",
     ]) {
       expect(prompt, tool).toContain(`\`${tool}\``);
@@ -37,7 +37,7 @@ describe("blightTriagePromptDefault", () => {
   });
 
   /**
-   * The half an agent gets wrong. A blight inbox is mostly noise - extension
+   * The half an agent gets wrong. An error inbox is mostly noise - extension
    * errors, aborted requests, bots - so a prompt that only says "triage" files
    * a quest per crash or resolves the one real bug along with the rest.
    */
@@ -58,7 +58,7 @@ describe("blightTriagePromptDefault", () => {
     expect(prompt).toMatch(/when it was last seen/i);
   });
 
-  it("keeps a third outcome, so an undecidable blight is not forced", () => {
+  it("keeps a third outcome, so an undecidable error is not forced", () => {
     expect(prompt).toContain("Leave it open");
   });
 

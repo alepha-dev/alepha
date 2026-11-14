@@ -26,7 +26,7 @@ import { useOwnedEstatesDeletionLine } from "../components/account/useOwnedEstat
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
 import { useHomeEstatesBlocker } from "../components/project/settings/useHomeEstatesBlocker.ts";
-import { blightTriagePromptDefault } from "../prompts/blightTriagePrompt.ts";
+import { errorTriagePromptDefault } from "../prompts/errorTriagePrompt.ts";
 
 /**
  * Deploy's part of the project shell, registered on core's
@@ -279,7 +279,7 @@ export class DeployShell {
     // what tells them apart in a menu.
     this.prompts.register({
       kind: "errorTriage",
-      template: blightTriagePromptDefault,
+      template: errorTriagePromptDefault,
       icon: Bug,
       labelKey: "agentPrompts.triageErrors",
     });

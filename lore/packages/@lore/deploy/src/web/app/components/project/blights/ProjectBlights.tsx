@@ -68,8 +68,8 @@ const ProjectBlights = () => {
   // component ends up rendered.
   const appsEnabled = hasCapability(project, "apps");
   const alepha = useAlepha();
-  const blightApi = useClient<ProjectErrorController>();
-  const canTriage = blightApi.resolveProjectError.can();
+  const projectErrorApi = useClient<ProjectErrorController>();
+  const canTriage = projectErrorApi.resolveProjectError.can();
   const toaster = useToast();
   const dialog = useDialog();
 
@@ -103,7 +103,7 @@ const ProjectBlights = () => {
           destructive: true,
         });
         if (!ok) return;
-        const res = await blightApi.deleteProjectErrors({
+        const res = await projectErrorApi.deleteProjectErrors({
           params: { projectId: project.id },
           body: { ids: selected.map((b) => b.id) },
         });
@@ -116,7 +116,7 @@ const ProjectBlights = () => {
         ctx.refresh();
       },
     },
-    [blightApi, project, dialog, toaster, tr],
+    [projectErrorApi, project, dialog, toaster, tr],
   );
 
   const resolveAction = useAction<
@@ -126,14 +126,14 @@ const ProjectBlights = () => {
     {
       handler: async (_ctx, projectError, refresh) => {
         if (!project) return;
-        await blightApi.resolveProjectError({
+        await projectErrorApi.resolveProjectError({
           params: { projectId: project.id, errorId: projectError.id },
         });
         toaster.success(tr("errors.toast.resolved"));
         refresh();
       },
     },
-    [blightApi, project, toaster, tr],
+    [projectErrorApi, project, toaster, tr],
   );
 
   const forwardAction = useAction<
@@ -143,7 +143,7 @@ const ProjectBlights = () => {
     {
       handler: async (_ctx, projectError, refresh) => {
         if (!project) return;
-        const res = await blightApi.forwardProjectErrorToQuest({
+        const res = await projectErrorApi.forwardProjectErrorToQuest({
           params: { projectId: project.id, errorId: projectError.id },
         });
         toaster.success(
@@ -160,7 +160,7 @@ const ProjectBlights = () => {
         });
       },
     },
-    [blightApi, project, router, toaster, tr],
+    [projectErrorApi, project, router, toaster, tr],
   );
 
   const deleteAction = useAction<
@@ -177,14 +177,14 @@ const ProjectBlights = () => {
           destructive: true,
         });
         if (!ok) return;
-        await blightApi.deleteProjectError({
+        await projectErrorApi.deleteProjectError({
           params: { projectId: project.id, errorId: projectError.id },
         });
         toaster.success(tr("errors.toast.deleted"));
         refresh();
       },
     },
-    [blightApi, project, dialog, toaster, tr],
+    [projectErrorApi, project, dialog, toaster, tr],
   );
 
   // Page-wide: every triage control waits while any verb runs, since `run()`
@@ -276,7 +276,7 @@ const ProjectBlights = () => {
     // `"all"` value used to name.
     const statuses = filters?.status ?? [];
     const openOnly = statuses.length === 1 && statuses[0] === "open";
-    const res = await blightApi.listProjectErrors({
+    const res = await projectErrorApi.listProjectErrors({
       params: { projectId: project.id },
       query: { includeResolved: !openOnly },
     });

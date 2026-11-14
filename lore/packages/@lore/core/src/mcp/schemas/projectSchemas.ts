@@ -154,7 +154,7 @@ export const projectContextResultSchema = z.object({
   ),
   /**
    * The parts of the system a quest belongs to. **Work's**, so absent when
-   * the project has no Work - a quest carries an area, and a blight forwards
+   * the project has no Work - a quest carries an area, and an error forwards
    * into one.
    */
   areas: z

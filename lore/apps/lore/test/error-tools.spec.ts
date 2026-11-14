@@ -1,5 +1,5 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
-import { BlightTools } from "@lore/deploy/mcp";
+import { ProjectErrorTools } from "@lore/deploy/mcp";
 import { projectErrors } from "@lore/deploy/schemas";
 import { QuestTools } from "@lore/work/mcp";
 import { Alepha } from "alepha";
@@ -17,7 +17,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
- * The blights inbox over MCP: triage happens in a conversation, and the
+ * The errors inbox over MCP: triage happens in a conversation, and the
  * alternative is a browser.
  */
 
@@ -39,7 +39,7 @@ const setup = async () => {
   bootLore(alepha, ["api", "mcp"]);
 
   const probe = alepha.inject(Probe);
-  const blightTools = alepha.inject(BlightTools);
+  const projectErrorTools = alepha.inject(ProjectErrorTools);
   const questTools = alepha.inject(QuestTools);
   const projectApi = alepha.inject(ProjectController);
   const users = alepha.inject(UserService);
@@ -97,7 +97,7 @@ const setup = async () => {
   return {
     alepha,
     probe,
-    blightTools,
+    projectErrorTools,
     questTools,
     project,
     otherProject,
@@ -107,15 +107,15 @@ const setup = async () => {
   };
 };
 
-describe("Lore MCP — blights", () => {
+describe("Lore MCP — errors", () => {
   /*
-    The regression these guard: `listBlights` once read the live table while
+    The regression these guard: `listProjectErrors` once read the live table while
     resolve, forward and delete looked rows up in a second, vestigial one. So
-    every triage action answered "Blight not found", for a row the inbox had
+    every triage action answered "Error not found", for a row the inbox had
     just displayed. One table, scoped by `projectId`, is what fixed it.
   */
 
-  const fileBlight = async (
+  const fileProjectError = async (
     probe: any,
     projectId: number,
     over: Record<string, unknown> = {},
@@ -138,13 +138,15 @@ describe("Lore MCP — blights", () => {
     // A schema is what serializes: any field the tool result schema omits is
     // silently dropped on the way out, however well the row is populated. This
     // asserts the whole payload an agent triages from survives the round trip.
-    const { probe, blightTools, project, call } = await setup();
-    await fileBlight(probe, project.id);
+    const { probe, projectErrorTools, project, call } = await setup();
+    await fileProjectError(probe, project.id);
 
-    const res = await call(blightTools.blight_list, { project: project.id });
+    const res = await call(projectErrorTools.error_list, {
+      project: project.id,
+    });
 
     expect(res.openCount).toBe(1);
-    expect(res.projectErrors[0]).toMatchObject({
+    expect(res.errors[0]).toMatchObject({
       fingerprint: "fp-1",
       name: "TypeError",
       message: "Cannot read properties of undefined",
@@ -156,46 +158,49 @@ describe("Lore MCP — blights", () => {
     });
   });
 
-  it("should hide resolved blights unless asked", async () => {
-    const { probe, blightTools, project, call } = await setup();
-    await fileBlight(probe, project.id, { status: "resolved" });
+  it("should hide resolved errors unless asked", async () => {
+    const { probe, projectErrorTools, project, call } = await setup();
+    await fileProjectError(probe, project.id, { status: "resolved" });
 
-    const open = await call(blightTools.blight_list, { project: project.id });
-    expect(open.projectErrors).toHaveLength(0);
+    const open = await call(projectErrorTools.error_list, {
+      project: project.id,
+    });
+    expect(open.errors).toHaveLength(0);
     expect(open.openCount).toBe(0);
 
-    const all = await call(blightTools.blight_list, {
+    const all = await call(projectErrorTools.error_list, {
       project: project.id,
       include_resolved: true,
     });
-    expect(all.projectErrors).toHaveLength(1);
+    expect(all.errors).toHaveLength(1);
   });
 
-  it("should resolve a blight the inbox just listed", async () => {
+  it("should resolve an error the inbox just listed", async () => {
     // The exact case that was broken: list from one table, resolve against
-    // another, "Blight not found".
-    const { probe, blightTools, project, call } = await setup();
-    const filed = await fileBlight(probe, project.id);
+    // another, "Error not found".
+    const { probe, projectErrorTools, project, call } = await setup();
+    const filed = await fileProjectError(probe, project.id);
 
-    const res = await call(blightTools.blight_resolve, {
+    const res = await call(projectErrorTools.error_resolve, {
       project: project.id,
-      blight_id: filed.id,
+      error_id: filed.id,
     });
 
     expect(res.ok).toBe(true);
-    const after = await call(blightTools.blight_list, {
+    const after = await call(projectErrorTools.error_list, {
       project: project.id,
     });
-    expect(after.projectErrors).toHaveLength(0);
+    expect(after.errors).toHaveLength(0);
   });
 
-  it("should forward a blight into a quest and close it", async () => {
-    const { probe, blightTools, questTools, project, call } = await setup();
-    const filed = await fileBlight(probe, project.id);
+  it("should forward an error into a quest and close it", async () => {
+    const { probe, projectErrorTools, questTools, project, call } =
+      await setup();
+    const filed = await fileProjectError(probe, project.id);
 
-    const res = await call(blightTools.blight_forward, {
+    const res = await call(projectErrorTools.error_forward, {
       project: project.id,
-      blight_id: filed.id,
+      error_id: filed.id,
     });
 
     expect(res.questShortId).toBeGreaterThan(0);
@@ -203,25 +208,29 @@ describe("Lore MCP — blights", () => {
     // so the plan freeze (epic #31) can never refuse this path.
     const quest = await call(questTools.quest_get, { id: res.questId });
     expect(quest.epic).toBeUndefined();
-    const after = await call(blightTools.blight_list, {
+    const after = await call(projectErrorTools.error_list, {
       project: project.id,
     });
-    expect(after.projectErrors).toHaveLength(0);
+    expect(after.errors).toHaveLength(0);
   });
 
   it("keeps a hostile stack inside its fence and the source URL a code span (#Q2520)", async () => {
     // Anonymous ingest writes both fields. A plain ``` fence closed on the
     // first ``` in the stack, and everything after it rendered as markdown
     // for every reader of the quest: an image loaded from anywhere.
-    const { probe, blightTools, questTools, project, call } = await setup();
+    const { probe, projectErrorTools, questTools, project, call } =
+      await setup();
     const stack =
       "TypeError\n```\n![t](https://evil.example/t.png)\n```` and more";
     const sourceUrl = "https://x.example/![u](https://evil.example/u.png)`";
-    const filed = await fileBlight(probe, project.id, { stack, sourceUrl });
+    const filed = await fileProjectError(probe, project.id, {
+      stack,
+      sourceUrl,
+    });
 
-    const res = await call(blightTools.blight_forward, {
+    const res = await call(projectErrorTools.error_forward, {
       project: project.id,
-      blight_id: filed.id,
+      error_id: filed.id,
     });
     const quest = await call(questTools.quest_get, { id: res.questId });
     const description: string = quest.description;
@@ -244,27 +253,28 @@ describe("Lore MCP — blights", () => {
     );
   });
 
-  it("should refuse a blight from another project", async () => {
+  it("should refuse an error from another project", async () => {
     // Scoped by a WHERE clause on `projectId` rather than by walking the
     // project's sigils — one less step to get wrong. A real second project,
     // because `projectId` is a foreign key: an invented id fails on insert
     // and proves nothing about the scoping.
-    const { probe, blightTools, project, call, otherProject } = await setup();
-    const filed = await fileBlight(probe, otherProject.id);
+    const { probe, projectErrorTools, project, call, otherProject } =
+      await setup();
+    const filed = await fileProjectError(probe, otherProject.id);
 
     await expect(
-      call(blightTools.blight_resolve, {
+      call(projectErrorTools.error_resolve, {
         project: project.id,
-        blight_id: filed.id,
+        error_id: filed.id,
       }),
     ).rejects.toThrow();
   });
 
-  it("should hand a blight back to the inbox when its quest is deleted", async () => {
+  it("should hand an error back to the inbox when its quest is deleted", async () => {
     /*
-      Forwarding is one-way: `blight_forward` refuses a row that already
+      Forwarding is one-way: `error_forward` refuses a row that already
       carries a `quest:` status. So deleting the quest used to strand the
-      blight — out of the inbox because its status is not `open`, and
+      error — out of the inbox because its status is not `open`, and
       un-forwardable because it looks handled. The failure kept happening with
       nothing left to surface it, and no triage action could reach it.
 
@@ -272,12 +282,13 @@ describe("Lore MCP — blights", () => {
       `sigil-ingest.spec.ts`, "keeps a triage decision"). That rule protects a
       decision from NOISE; deleting the quest is the owner withdrawing it.
     */
-    const { probe, blightTools, questTools, project, call } = await setup();
-    const filed = await fileBlight(probe, project.id);
+    const { probe, projectErrorTools, questTools, project, call } =
+      await setup();
+    const filed = await fileProjectError(probe, project.id);
 
-    const { questShortId } = await call(blightTools.blight_forward, {
+    const { questShortId } = await call(projectErrorTools.error_forward, {
       project: project.id,
-      blight_id: filed.id,
+      error_id: filed.id,
     });
     expect((await probe.projectErrors.findById(filed.id))?.status).toMatch(
       /^quest:/,
@@ -289,31 +300,32 @@ describe("Lore MCP — blights", () => {
     });
 
     expect((await probe.projectErrors.findById(filed.id))?.status).toBe("open");
-    const inbox = await call(blightTools.blight_list, {
+    const inbox = await call(projectErrorTools.error_list, {
       project: project.id,
     });
     expect(inbox.openCount).toBe(1);
   });
 
-  it("should leave a blight alone when the deleted quest is not the one holding it", async () => {
+  it("should leave an error alone when the deleted quest is not the one holding it", async () => {
     /*
-      The guard on the reopen. Two quests, one blight: deleting the quest the
-      blight is NOT pointing at must change nothing, or a tidy-up elsewhere in
+      The guard on the reopen. Two quests, one error: deleting the quest the
+      error is NOT pointing at must change nothing, or a tidy-up elsewhere in
       the project silently reopens triaged rows.
     */
-    const { probe, blightTools, questTools, project, call } = await setup();
-    const filed = await fileBlight(probe, project.id);
+    const { probe, projectErrorTools, questTools, project, call } =
+      await setup();
+    const filed = await fileProjectError(probe, project.id);
 
-    await call(blightTools.blight_forward, {
+    await call(projectErrorTools.error_forward, {
       project: project.id,
-      blight_id: filed.id,
+      error_id: filed.id,
     });
     const held = (await probe.projectErrors.findById(filed.id))?.status;
 
     const unrelated = await call(questTools.quest_create, {
       project: project.id,
       title: "Unrelated",
-      description: "Nothing to do with the blight",
+      description: "Nothing to do with the error",
       area: "misc",
       priority: "low",
     });
@@ -352,47 +364,49 @@ describe("Lore MCP — blights", () => {
     };
 
     it("is whoever holds error:triage, not only the owner", async () => {
-      const { probe, blightTools, project, call, triager } = await withRanks();
-      const resolved = await fileBlight(probe, project.id);
-      const forwarded = await fileBlight(probe, project.id, {
+      const { probe, projectErrorTools, project, call, triager } =
+        await withRanks();
+      const resolved = await fileProjectError(probe, project.id);
+      const forwarded = await fileProjectError(probe, project.id, {
         fingerprint: "fp-2",
       });
 
       const res = await call(
-        blightTools.blight_resolve,
-        { project: project.id, blight_id: resolved.id },
+        projectErrorTools.error_resolve,
+        { project: project.id, error_id: resolved.id },
         triager.id,
       );
       expect(res.ok).toBe(true);
 
       const quest = await call(
-        blightTools.blight_forward,
-        { project: project.id, blight_id: forwarded.id },
+        projectErrorTools.error_forward,
+        { project: project.id, error_id: forwarded.id },
         triager.id,
       );
       expect(quest.questShortId).toBeGreaterThan(0);
     });
 
     it("refuses a rank without it", async () => {
-      const { probe, blightTools, project, call, member } = await withRanks();
-      const filed = await fileBlight(probe, project.id);
+      const { probe, projectErrorTools, project, call, member } =
+        await withRanks();
+      const filed = await fileProjectError(probe, project.id);
 
       for (const tool of [
-        blightTools.blight_resolve,
-        blightTools.blight_forward,
+        projectErrorTools.error_resolve,
+        projectErrorTools.error_forward,
       ]) {
         await expect(
-          call(tool, { project: project.id, blight_id: filed.id }, member.id),
+          call(tool, { project: project.id, error_id: filed.id }, member.id),
         ).rejects.toThrow(/error:triage/);
       }
     });
 
     it("is what the tools tell an agent", async () => {
-      const { blightTools } = await setup();
+      const { projectErrorTools } = await setup();
 
       for (const tool of [
-        blightTools.blight_resolve,
-        blightTools.blight_forward,
+        projectErrorTools.error_resolve,
+        projectErrorTools.error_forward,
       ]) {
         expect(tool.options.description).toContain("Needs `error:triage`");
         expect(tool.options.description).not.toContain("owner only");

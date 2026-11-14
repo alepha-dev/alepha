@@ -4,20 +4,20 @@ import { z } from "alepha";
 import { projectErrorResourceSchema } from "../../api/schemas/projectErrorResourceSchema.ts";
 
 // -----------------------------------------------------------------------------
-// blight_list
+// error_list
 // -----------------------------------------------------------------------------
 
-export const blightListParamsSchema = projectParamsSchema.extend({
+export const projectErrorListParamsSchema = projectParamsSchema.extend({
   include_resolved: z
     .boolean()
     .describe(
-      "Also return resolved and quest-forwarded blights. Default false — open only.",
+      "Also return resolved and quest-forwarded errors. Default false — open only.",
     )
     .optional(),
 });
 
-export const blightListResultSchema = z.object({
-  projectErrors: z.array(projectErrorResourceSchema),
+export const projectErrorListResultSchema = z.object({
+  errors: z.array(projectErrorResourceSchema),
   openCount: z.integer(),
   /**
    * The apps that report here, for reading `sigilId` back to a name.
@@ -30,7 +30,7 @@ export const blightListResultSchema = z.object({
        * stays `label` deliberately: this surface predates the sigil
        * reshape (app + environment + label collapsed into one `name`),
        * and renaming the field would break every existing MCP client
-       * reading `blight_list`. `sigil_list` reports the identical string
+       * reading `error_list`. `sigil_list` reports the identical string
        * as `name` — same value, two field names, one per tool.
        */
       label: z.string(),
@@ -39,24 +39,24 @@ export const blightListResultSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
-// blight_resolve
+// error_resolve
 // -----------------------------------------------------------------------------
 
-export const blightResolveParamsSchema = projectParamsSchema.extend({
-  blight_id: z.integer().describe("The blight id, from `blight_list`."),
+export const projectErrorResolveParamsSchema = projectParamsSchema.extend({
+  error_id: z.integer().describe("The error id, from `error_list`."),
 });
 
-export const blightResolveResultSchema = z.object({ ok: z.boolean() });
+export const projectErrorResolveResultSchema = z.object({ ok: z.boolean() });
 
 // -----------------------------------------------------------------------------
-// blight_forward
+// error_forward
 // -----------------------------------------------------------------------------
 
-export const blightForwardParamsSchema = projectParamsSchema.extend({
-  blight_id: z.integer().describe("The blight id, from `blight_list`."),
+export const projectErrorForwardParamsSchema = projectParamsSchema.extend({
+  error_id: z.integer().describe("The error id, from `error_list`."),
 });
 
-export const blightForwardResultSchema = z.object({
+export const projectErrorForwardResultSchema = z.object({
   questId: z.integer(),
   questShortId: z.integer(),
 });

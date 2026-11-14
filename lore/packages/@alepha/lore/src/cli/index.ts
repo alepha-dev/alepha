@@ -9,10 +9,10 @@ import { AppsCommand } from "./commands/AppsCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
 import { AutomationCommand } from "./commands/AutomationCommand.ts";
-import { BlightCommand } from "./commands/BlightCommand.ts";
 import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
 import { EpicCommand } from "./commands/EpicCommand.ts";
+import { ErrorCommand } from "./commands/ErrorCommand.ts";
 import { EstateCommand } from "./commands/EstateCommand.ts";
 import { FeedbackCommand } from "./commands/FeedbackCommand.ts";
 import { FolioCommand } from "./commands/FolioCommand.ts";
@@ -116,7 +116,7 @@ export const AlephaLoreCli = $module({
     FolioCommand,
     DirectoryCommand,
     FeedbackCommand,
-    BlightCommand,
+    ErrorCommand,
     AutomationCommand,
     QualityCommand,
     AppInstanceCommand,

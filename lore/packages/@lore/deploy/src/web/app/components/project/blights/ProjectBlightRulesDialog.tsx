@@ -32,10 +32,10 @@ export interface ProjectBlightRulesDialogProps {
  */
 const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const blightApi = useClient<ProjectErrorController>();
+  const projectErrorApi = useClient<ProjectErrorController>();
   // The rule list stays readable - it is what the inbox is filtering on - and
   // only the two writes close.
-  const canManage = blightApi.createProjectErrorRule.can();
+  const canManage = projectErrorApi.createProjectErrorRule.can();
   const toaster = useToast();
 
   const [pattern, setPattern] = useState("");
@@ -60,11 +60,11 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
       enabled: props.open,
       keepPreviousData: true,
       handler: () =>
-        blightApi.listProjectErrorRules({
+        projectErrorApi.listProjectErrorRules({
           params: { projectId: props.projectId },
         }),
     },
-    [blightApi, props.projectId],
+    [projectErrorApi, props.projectId],
   );
   const rules = rulesQuery.data?.items ?? [];
   const loading = rulesQuery.loading && !rulesQuery.data;
@@ -74,7 +74,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
       handler: async () => {
         const value = pattern.trim();
         if (!value) return;
-        await blightApi.createProjectErrorRule({
+        await projectErrorApi.createProjectErrorRule({
           params: { projectId: props.projectId },
           body: { pattern: value },
         });
@@ -83,20 +83,20 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
       },
       invalidates: [["blight-rules", props.projectId]],
     },
-    [blightApi, pattern, props.projectId, toaster, tr],
+    [projectErrorApi, pattern, props.projectId, toaster, tr],
   );
 
   const removeAction = useAction<[rule: ProjectErrorRuleResource], void>(
     {
       handler: async (_ctx, rule) => {
-        await blightApi.deleteProjectErrorRule({
+        await projectErrorApi.deleteProjectErrorRule({
           params: { projectId: props.projectId, ruleId: rule.id },
         });
         toaster.success(tr("errors.rules.toast.removed"));
       },
       invalidates: [["blight-rules", props.projectId]],
     },
-    [blightApi, props.projectId, toaster, tr],
+    [projectErrorApi, props.projectId, toaster, tr],
   );
 
   // Page-wide: both writes wait while either runs.

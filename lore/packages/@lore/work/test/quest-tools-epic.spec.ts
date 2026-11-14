@@ -50,7 +50,7 @@ const setup = async () => {
   const owner = await users.createUser({ username: "owner" });
   const OWNER = owner.id;
 
-  // Same identity-injection shim as `blight-tools.spec.ts`: `execute()`
+  // Same identity-injection shim as `error-tools.spec.ts`: `execute()`
   // reads the caller off the request context, not an argument, so the call
   // has to run inside one with the user seeded exactly where `$secure`
   // looks.
@@ -60,7 +60,7 @@ const setup = async () => {
       return fn();
     });
 
-  // mirrors blight-tools.spec.ts's own tool-execute helper
+  // mirrors error-tools.spec.ts's own tool-execute helper
   const call = (tool: any, params: Record<string, unknown>, userId = OWNER) =>
     asUser(userId, () => tool.execute(params));
 

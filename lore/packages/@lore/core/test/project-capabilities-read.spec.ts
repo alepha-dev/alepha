@@ -179,7 +179,7 @@ describe("CapabilityRegistry", () => {
   }) => {
     expect(ctx.registry.ownerOfTool("quest_create")).toBe("work");
     expect(ctx.registry.ownerOfTool("folio_get")).toBe("knowledge");
-    expect(ctx.registry.ownerOfTool("blight_forward")).toBe("apps");
+    expect(ctx.registry.ownerOfTool("error_forward")).toBe("apps");
     expect(ctx.registry.ownerOfTool("feedback_accept")).toBe("support");
     // Core. A project with no capabilities at all is a legal state and still
     // has to be readable.

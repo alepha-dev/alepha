@@ -12,7 +12,7 @@ import { sigilResourceSchema } from "../../api/schemas/sigilResourceSchema.ts";
  *
  * ⚠️ `app` and `env` are the identity now; `name` is a server-written mirror of
  * `"<app>/<env>"` that nothing may set. It is kept because it is what the
- * blights filter and the insights dimension render, and because a tool result
+ * errors filter and the insights dimension render, and because a tool result
  * losing a field is a silent break at the far end.
  */
 const sigilSchema = sigilResourceSchema

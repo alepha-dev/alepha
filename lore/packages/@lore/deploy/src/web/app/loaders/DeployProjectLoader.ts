@@ -16,7 +16,7 @@ export class DeployProjectLoader {
   protected readonly alepha = $inject(Alepha);
   protected readonly loaders = $inject(ProjectLoaderRegistry);
   protected readonly appApi = $client<AppController>();
-  protected readonly blightApi = $client<ProjectErrorController>();
+  protected readonly projectErrorApi = $client<ProjectErrorController>();
 
   constructor() {
     this.loaders.register({
@@ -45,7 +45,7 @@ export class DeployProjectLoader {
           // `ON DELETE SET NULL` and rows survive for `retentionDays`), and
           // `ProjectView` reads this count to keep the inbox entry reachable.
           apps
-            ? this.blightApi
+            ? this.projectErrorApi
                 .countOpenProjectErrors({ params: { projectId } })
                 .then((r) => r.count)
                 .catch(() => 0)

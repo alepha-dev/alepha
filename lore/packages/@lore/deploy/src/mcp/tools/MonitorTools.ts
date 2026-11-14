@@ -23,7 +23,7 @@ import {
  * A **monitor** checks one target on an interval (an http URL, a tcp port, a
  * certificate's expiry) or waits for a push from a job. Failing
  * `confirmations` checks in a row opens an incident and an `UptimeOutage`
- * blight. Before these tools an agent only saw that blight.
+ * error. Before these tools an agent only saw that error.
  *
  * Every tool goes through {@link MonitorController}, so its permissions are
  * the page's: reading needs `app:read`, writing `app:manage` and the Apps
@@ -173,7 +173,7 @@ export class MonitorTools {
   monitor_delete = $tool({
     title: "Delete an uptime monitor",
     description:
-      "Remove a monitor with its checks and incidents, for good. The hourly totals stay, and an `UptimeOutage` blight still open stays to be resolved. To stop checking for a while, `monitor_pause`. Needs `app:manage`.",
+      "Remove a monitor with its checks and incidents, for good. The hourly totals stay, and an `UptimeOutage` error still open stays to be resolved. To stop checking for a while, `monitor_pause`. Needs `app:manage`.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: monitorIdParamsSchema,

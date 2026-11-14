@@ -130,7 +130,7 @@ describe("MCP release tools", () => {
    * A tool is `execute(params)`, and the controllers behind it read the user
    * from the request context rather than from an argument — so the call has
    * to happen inside one, with the user seeded where `$secure` looks. Same
-   * shape as `blight-tools.spec.ts`.
+   * shape as `error-tools.spec.ts`.
    */
   const call = <R>(user: TestUser, fn: () => Promise<R> | R): Promise<R> | R =>
     ctx.alepha.context.run(() => {
