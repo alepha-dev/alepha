@@ -1,4 +1,3 @@
-import { changelog } from "alepha/cli";
 import { defineConfig } from "alepha/cli/config";
 
 import { AlephaCommands } from "./scripts/commands.ts";
@@ -6,101 +5,6 @@ import { PackageDocsCommand } from "./scripts/package-docs.ts";
 
 export default defineConfig({
   plugins: [
-    // The changelog is the release note for everything this repository ships:
-    // the `alepha` modules, its `api/*` sub-modules and every published
-    // `@alepha/*` package. Everything else, the examples and the private
-    // packages, is invisible here without anyone having to remember it.
-    //
-    // `lore` and `bay` were added in 0.29, when Lore and Bay were products
-    // shipped from this repository with their own pages on the site. They
-    // left with their repositories in #E72, and their past entries stay in
-    // CHANGELOG.md.
-    //
-    // This was a denylist until 0.25, and the denylist is why `pulse` and
-    // `shop` reached the notes for a release nobody shipped them in: it only
-    // ever excluded what someone thought to add, and an app born after the
-    // last edit is published by default. An allowlist fails the other way,
-    // which is the one you notice: a missing entry gets reported, a leaked one
-    // does not.
-    //
-    // Scopes match on the segment before `/`, so `api` covers `api/users` and
-    // `react` covers `react/form`.
-    //
-    // A module or a published package born after the last edit is the missing
-    // entry this list fails on: `ai` shipped in 0.34 and reached no release
-    // note until 0.37, and `create-alepha` never had one (#Q3364). `alepha`
-    // itself is listed for a change written against the package as a whole,
-    // and for a scope that spells the module's full path, `alepha/cli`.
-    changelog({
-      types: ["feat", "fix"],
-      scopes: [
-        // the packages a scope may name whole
-        "alepha",
-        "create-alepha",
-        // alepha: modules
-        "actor",
-        "ai",
-        "api",
-        "background",
-        "bucket",
-        "cache",
-        "captcha",
-        "cli",
-        "command",
-        "core",
-        "crypto",
-        "datetime",
-        "email",
-        "inspector",
-        "lock",
-        "logger",
-        "mcp",
-        "orm",
-        "queue",
-        "rate-limit",
-        "react",
-        "redis",
-        "router",
-        "scheduler",
-        "security",
-        "server",
-        "sms",
-        "system",
-        "testing",
-        "topic",
-        "tracing",
-        "vitals",
-        "websocket",
-        // alepha: api sub-modules, also written bare
-        "analytics",
-        "audits",
-        "files",
-        "jobs",
-        "keys",
-        "notifications",
-        "oauth",
-        "parameters",
-        "payments",
-        "subscriptions",
-        "users",
-        "verifications",
-        // published packages
-        "capacitor",
-        "commerce",
-        "desktop",
-        "devtools",
-        "mqtt",
-        "payments-stripe",
-        "protobuf",
-        "sigil",
-        "ui",
-        // surfaces that live inside a module and are named on their own
-        "auth",
-        "cookies",
-        "infra",
-        "platform",
-      ],
-    }),
     // Register repository commands after the built-ins.
     AlephaCommands,
     PackageDocsCommand,

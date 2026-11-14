@@ -35,7 +35,6 @@ describe("RetiredWordsRule", () => {
 
   it("lets history and the frozen wire fixtures say anything", ({ expect }) => {
     for (const file of [
-      "framework/CHANGELOG.md",
       "lore/apps/lore/migrations/sqlite/20261114021313_errors_and_hosts/migration.sql",
       "bay/internal/connector/testdata/wire-v1/welcome.json",
       "lore/packages/@lore/ship/test/fixtures/bay/wire-v1/config.json",

@@ -32,7 +32,6 @@
     "assets",
     "tsconfig.base.json",
     "AGENTS.md",
-    "CHANGELOG.md",
     "docs"
   ],
   "type": "module",

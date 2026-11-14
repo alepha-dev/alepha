@@ -23,11 +23,6 @@ import { DbCommand } from "./commands/db.ts";
 import { DevCommand } from "./commands/dev.ts";
 import { DocsCommand } from "./commands/docs.ts";
 import { GenCommand } from "./commands/gen.ts";
-import {
-  changelogOptions,
-  GitMessageParser,
-  GitProvider,
-} from "./commands/gen/changelog.ts";
 import { ImageCommand } from "./commands/image.ts";
 import { InitCommand } from "./commands/init.ts";
 import { LintCommand } from "./commands/lint.ts";
@@ -78,7 +73,6 @@ import { BuildStaticTask } from "./tasks/BuildStaticTask.ts";
 export * from "./alephaPackageJson.ts";
 export * from "./atoms/appEntryOptions.ts";
 export * from "./atoms/buildOptions.ts";
-export * from "./atoms/changelogOptions.ts";
 export * from "./atoms/checkOptions.ts";
 export * from "./atoms/devOptions.ts";
 export * from "./atoms/desktopOptions.ts";
@@ -92,7 +86,6 @@ export * from "./commands/image.ts";
 export * from "./commands/db.ts";
 export * from "./commands/docs.ts";
 export * from "./commands/dev.ts";
-export * from "./commands/gen/changelog.ts";
 export * from "./commands/gen/openapi.ts";
 export * from "./commands/init.ts";
 export * from "./commands/lint.ts";
@@ -120,7 +113,6 @@ export * from "./schemas/presetSchema.ts";
 export * from "./schemas/infraProviderSchema.ts";
 export * from "./services/AlephaCliUtils.ts";
 export * from "./services/AppMapRenderer.ts";
-export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
 export * from "./services/ArchiveCompressor.ts";
@@ -184,8 +176,6 @@ export const AlephaCliServices = $module({
     ViteUtils,
     ProjectScaffolder,
     AppEntryProvider,
-    GitMessageParser,
-    GitProvider,
     ViteDevServerProvider,
     ViteBuildProvider,
     ArchiveCompressor,
@@ -237,7 +227,7 @@ export const AlephaCliServices = $module({
 export const AlephaCli = $module({
   name: "alepha.cli",
   imports: [AlephaCliServices],
-  atoms: [appEntryOptions, changelogOptions, devOptions, metaOptions],
+  atoms: [appEntryOptions, devOptions, metaOptions],
   services: [
     AlephaCliExtensionProvider,
     // Commands
