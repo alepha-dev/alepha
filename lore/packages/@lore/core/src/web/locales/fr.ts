@@ -911,17 +911,6 @@ export default {
   "project.settings.tab.board": "Tableau",
   "project.settings.tab.prompts": "Invites pour agents",
   "project.settings.tab.automations": "Automatisations",
-  "project.settings.section.general":
-    "Le projet lui-même, et les parties de Lore qu'il utilise.",
-  "project.settings.section.members":
-    "Qui fait partie du projet, et ce que chaque rang peut faire.",
-  "project.settings.section.automations":
-    "Les règles qui agissent sur le projet quand quelque chose se produit.",
-  "project.settings.section.work":
-    "Comment les quêtes sont estimées, étiquetées et affichées sur le tableau.",
-  "project.settings.section.knowledge": "Comment les folios sont affichés.",
-  "project.settings.section.apps":
-    "Ce que les apps remontent, où elles se déploient, et les erreurs ignorées.",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":

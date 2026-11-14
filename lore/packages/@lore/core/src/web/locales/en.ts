@@ -928,17 +928,6 @@ export default {
   "project.settings.tab.board": "Board",
   "project.settings.tab.prompts": "Agent prompts",
   "project.settings.tab.automations": "Automations",
-  "project.settings.section.general":
-    "The project itself, and which parts of Lore it uses.",
-  "project.settings.section.members":
-    "Who is in the project, and what each rank may do.",
-  "project.settings.section.automations":
-    "Rules that act on the project when something happens.",
-  "project.settings.section.work":
-    "How quests are estimated, tagged and shown on the board.",
-  "project.settings.section.knowledge": "How folios are shown.",
-  "project.settings.section.apps":
-    "What apps report, where they deploy, and which errors are ignored.",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
