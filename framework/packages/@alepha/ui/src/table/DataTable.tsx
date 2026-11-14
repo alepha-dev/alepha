@@ -701,15 +701,21 @@ export const DataTable = <
                 collapsed table border model, and because the two lines have to
                 sit INSIDE the header's own height: it is pinned at `top-0`
                 against a scrolling body, so anything painted outside it is
-                painted over. */}
+                painted over.
+
+                The lines sit on the cells, not on the `<thead>`: WebKit paints
+                no `box-shadow` on a table section, so on Safari the header had
+                no bottom line at all. Not `chrome` either, for the same reason,
+                and because `cn` does not know `chrome` is a background: it kept
+                `TableHeader`'s `bg-muted/50` beside it, which won. */}
           <TableHeader
             className={cn(
               // ⚠️ `[&_tr]:border-b-0` or the bottom rule is drawn TWICE: `TableHeader`
-              // gives its rows a `border-b`, and the inset shadow above draws
-              // the same line, so the band closed with 2px where it opens with
+              // gives its rows a `border-b`, and the inset shadow draws the
+              // same line, so the band closed with 2px where it opens with
               // 1px. The inset one wins because it is what survives the sticky
               // header being painted over.
-              "chrome chrome-closed sticky top-0 z-10 [&_tr]:border-b-0",
+              "bg-muted sticky top-0 z-10 [&_th]:shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)] [&_tr]:border-b-0",
               props.chromeClassName,
             )}
           >

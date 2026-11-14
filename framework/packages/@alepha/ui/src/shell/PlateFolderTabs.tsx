@@ -40,7 +40,7 @@ export interface PlateFolderTabsProps {
  * `PlateLayout`'s folder tabs, its default look: drawn like a browser's tabs,
  * the active tab is an outlined tile of the bar below it, flaring into the band at its
  * two bottom corners, so the tab and the bar read as one surface. A resting
- * tab is plain text, lit as a tile on hover, with a short divider between two
+ * tab is plain text, lit as a rounded button on hover, with a short divider between two
  * resting neighbours.
  *
  * The band scrolls sideways when its tabs outrun it, and never vertically:
@@ -122,7 +122,11 @@ export const PlateFolderTabs = (props: PlateFolderTabsProps) => {
           // straight side below the curve. Swapped under rtl, where the
           // start is the right.
           "bg-muted text-foreground border-border before:absolute before:start-[calc(-0.625rem_-_1px)] before:bottom-0 before:size-[calc(0.625rem_+_1px)] before:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--border)_calc(0.625rem_+_0.5px),var(--border)_calc(0.625rem_+_1px),var(--muted)_calc(0.625rem_+_1.5px))] before:content-[''] after:absolute after:end-[calc(-0.625rem_-_1px)] after:bottom-0 after:size-[calc(0.625rem_+_1px)] after:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--border)_calc(0.625rem_+_0.5px),var(--border)_calc(0.625rem_+_1px),var(--muted)_calc(0.625rem_+_1.5px))] after:content-[''] rtl:before:bg-[image:radial-gradient(circle_at_100%_0,transparent_0.625rem,var(--border)_calc(0.625rem_+_0.5px),var(--border)_calc(0.625rem_+_1px),var(--muted)_calc(0.625rem_+_1.5px))] rtl:after:bg-[image:radial-gradient(circle_at_0_0,transparent_0.625rem,var(--border)_calc(0.625rem_+_0.5px),var(--border)_calc(0.625rem_+_1px),var(--muted)_calc(0.625rem_+_1.5px))]"
-        : "text-muted-foreground hover:text-foreground border-transparent hover:bg-[color-mix(in_oklab,var(--muted),transparent_40%)]",
+        : // Hovered, a resting tab lights a rounded button floating inside
+          // it, as a browser's tabs do, rather than a tile like the active
+          // one. `isolate` keeps the button above the band and below the
+          // label.
+          "text-muted-foreground hover:text-foreground isolate border-transparent after:absolute after:inset-x-0.5 after:top-1 after:bottom-1.5 after:-z-10 after:rounded-lg after:transition-colors after:duration-150 after:content-[''] hover:after:bg-[color-mix(in_oklab,var(--muted),transparent_20%)]",
       divided &&
         "before:bg-border before:absolute before:start-0 before:top-[30%] before:h-[40%] before:w-px before:content-[''] hover:before:opacity-0 [:hover+&]:before:opacity-0",
     );

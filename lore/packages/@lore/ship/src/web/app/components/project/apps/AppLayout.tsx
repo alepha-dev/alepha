@@ -1,4 +1,3 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import { PlateLayout, type PlateTab } from "@alepha/ui/shell";
 import {
   capabilityOption,
@@ -16,7 +15,7 @@ import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { appLiveness } from "./appLiveness.ts";
 import AppStatusDot from "./AppStatusDot.tsx";
 import { appTabsFor } from "./appTabs.ts";
-import { appUrl, appUrlLabel } from "./appUrl.ts";
+import { appUrl } from "./appUrl.ts";
 import { APP_INSIGHTS_FILTER_KEYS } from "./useAppInsights.ts";
 
 /**
@@ -218,7 +217,7 @@ const AppLayout = () => {
               rel="noopener noreferrer nofollow"
               className="text-muted-foreground hover:text-foreground ml-3 inline-flex items-center gap-1 text-xs transition-colors"
             >
-              {appUrlLabel(url)}
+              {url.replace(/\/$/, "")}
               <ExternalLink className="size-3" aria-hidden />
             </a>
           )}
@@ -229,34 +228,27 @@ const AppLayout = () => {
             failed to report, it was never asked to.
           */}
           {sigil && (
-            <span className="text-muted-foreground ml-auto text-xs">
+            <span
+              className="text-muted-foreground ml-auto text-xs"
+              title={
+                sigil.lastSeenAt
+                  ? l(sigil.lastSeenAt, { date: "llll" })
+                  : undefined
+              }
+            >
               {sigil.lastSeenAt ? (
                 <>
                   {tr("sigils.lastSeen")}{" "}
                   {/*
-                    Relative, because the question here is "is it alive", and
-                    the dotted underline says the exact time is a hover away.
+                    Relative, because the question here is "is it alive"; the
+                    exact time is the native `title` on the whole phrase.
                     `ClientOnly` because a `fromNow` string differs between the
                     server render and hydration; the server writes the exact
-                    form instead, as `TimeAgo` does. Not `TimeAgo` itself: its
-                    native `title` would stack a second tooltip on this one.
+                    form instead, as `TimeAgo` does.
                   */}
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <span className="text-foreground cursor-help underline decoration-dotted underline-offset-4" />
-                      }
-                    >
-                      <ClientOnly
-                        fallback={l(sigil.lastSeenAt, { date: "lll" })}
-                      >
-                        {l(sigil.lastSeenAt, { date: "fromNow" })}
-                      </ClientOnly>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {l(sigil.lastSeenAt, { date: "llll" })}
-                    </TooltipContent>
-                  </Tooltip>
+                  <ClientOnly fallback={l(sigil.lastSeenAt, { date: "lll" })}>
+                    {l(sigil.lastSeenAt, { date: "fromNow" })}
+                  </ClientOnly>
                 </>
               ) : (
                 tr("sigils.neverSeen")

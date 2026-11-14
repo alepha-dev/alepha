@@ -156,8 +156,9 @@ export const PermissionMatrix = (props: PermissionMatrixProps) => {
             are the same pair `DataTable`'s header wears, and for the same
             reasons: a translucent header lets rows scroll through the labels,
             and a border on a sticky `<thead>` is dropped by the collapsed
-            border model. */}
-        <TableHeader className="chrome chrome-closed sticky top-0 z-10">
+            border model. The lines sit on the cells, as `DataTable`'s do:
+            WebKit paints no `box-shadow` on a `<thead>`. */}
+        <TableHeader className="bg-muted sticky top-0 z-10 [&_th]:shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]">
           <TableRow className="hover:bg-transparent">
             <TableHead className="min-w-56 align-bottom">
               {props.header}
