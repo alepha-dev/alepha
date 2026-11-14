@@ -96,8 +96,13 @@ jobs:
 
       # `gen:docs` then `gen:tree`: the framework's generated reference and
       # the tree of all three products, which everything below reads.
+      # `gen:tree` reads the changelog from the published Lore releases
+      # (#Q3638). A fork's pull request has no secret, and builds the page
+      # from the sample instead.
       - name: Prepare
         run: yarn copy
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
       - name: Lint Site
         run: yarn lint
@@ -155,6 +160,7 @@ jobs:
       - name: Build for workerd
         env:
           DOCS_RELEASE_ROOT: docs/.content/release
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
         run: |
           yarn alepha gen:tree
           yarn alepha build --runtime=workerd
@@ -192,6 +198,7 @@ jobs:
 
       - name: Build for workerd
         env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           PUBLIC_URL: https://latest.alepha.dev
           VITE_DOCS_SITE: latest
         run: |

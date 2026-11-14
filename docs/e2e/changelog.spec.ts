@@ -1,16 +1,25 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * The changelog carries the ten most recent releases, open, with a scope
- * filter over them. Both halves have been wrong before: the page used to carry
- * the whole history, and the releases used to be collapsed.
+ * The changelog carries the most recent published Lore releases (#Q3638),
+ * open, with a scope filter over them.
+ *
+ * ⚠️ Written against no particular release. CI builds the page from the real
+ * history and a build without `LORE_API_KEY` from the sample, so a test that
+ * named a quest or counted ten releases would pass on one and fail on the
+ * other. Each test reads what the page shows and checks how the page treats
+ * it.
  */
 test.describe("Changelog", () => {
-  test("shows the ten most recent releases, open", async ({ page }) => {
+  test("shows the most recent releases, open, ten at most", async ({
+    page,
+  }) => {
     await page.goto("/changelog");
 
     const releases = page.locator("article");
-    await expect(releases).toHaveCount(10);
+    const count = await releases.count();
+    expect(count).toBeGreaterThan(0);
+    expect(count).toBeLessThanOrEqual(10);
 
     // Open, not collapsed: the changes of the newest release are on the page
     // without anything being clicked first.
@@ -19,7 +28,7 @@ test.describe("Changelog", () => {
     // Older releases are reachable rather than dropped.
     await expect(
       page.getByRole("link", { name: "Older releases on GitHub" }),
-    ).toBeVisible();
+    ).toHaveAttribute("href", "https://github.com/alepha-dev/alepha/releases");
   });
 
   test("a scope button filters the timeline and writes the URL", async ({
@@ -29,18 +38,20 @@ test.describe("Changelog", () => {
     const before = await page.locator("article li").count();
 
     await page.getByRole("button", { name: "Bay" }).click();
-
     await expect(page).toHaveURL(/\?scope=bay$/);
     await expect(page.getByRole("button", { name: "Bay" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
 
-    const scopes = page.locator("article li > span:first-child");
-    await expect(scopes.first()).toHaveText("bay");
-    const after = await page.locator("article li").count();
-    expect(after).toBeGreaterThan(0);
-    expect(after).toBeLessThan(before);
+    // Every change left is Bay's, and something was filtered out.
+    const scopes = await page
+      .locator("article li > span:first-child")
+      .allTextContents();
+    for (const scope of scopes) {
+      expect(scope.split("/")[0]).toBe("bay");
+    }
+    expect(scopes.length).toBeLessThan(before);
 
     // All puts it back, and takes the param out of the URL with it.
     await page.getByRole("button", { name: "All" }).click();
@@ -48,22 +59,32 @@ test.describe("Changelog", () => {
     await expect(page.locator("article li")).toHaveCount(before);
   });
 
-  test("?scope= accepts raw scope tokens, and says so when nothing matches", async ({
+  test("?scope= accepts a raw scope token, and says so when nothing matches", async ({
     page,
   }) => {
-    // `orm` and `react` name no group, so this exercises the raw form, and
-    // the extra button that shows a filter the six cannot express.
-    await page.goto("/changelog?scope=orm,react");
-    await expect(
-      page.getByRole("button", { name: "orm,react" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    // Take a real scope off the page rather than naming one, and one no button
+    // names: `cli`, `ui`, `lore` and `bay` are groups, read more widely.
+    await page.goto("/changelog");
+    const groups = new Set(["framework", "cli", "ui", "lore", "bay"]);
+    const token = (
+      await page.locator("article li > span:first-child").allTextContents()
+    )
+      .map((scope) => scope.trim().split("/")[0])
+      .find((namespace) => !groups.has(namespace));
+    expect(token).toBeTruthy();
 
-    const scopes = await page
+    await page.goto(`/changelog?scope=${token}`);
+    // The filter applies after hydration: wait for the button it shows.
+    await expect(page.getByRole("button", { name: token! })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    const shown = await page
       .locator("article li > span:first-child")
       .allTextContents();
-    expect(scopes.length).toBeGreaterThan(0);
-    for (const scope of scopes) {
-      expect(scope).toMatch(/\b(orm|react)\b/);
+    expect(shown.length).toBeGreaterThan(0);
+    for (const each of shown) {
+      expect(each.split("/")).toContain(token!);
     }
 
     await page.goto("/changelog?scope=no-such-scope");
@@ -74,20 +95,18 @@ test.describe("Changelog", () => {
   });
 
   /**
-   * Scopes are normalised in `gen-tree.ts` to the module they name: a commit
-   * scoped `users` is `alepha/api/users`, and reaches the page as `api/users`.
-   * Without it `?scope=api` misses half the module's own history.
+   * A Lore area is shown as the module path it names: `alepha/orm` is `orm`,
+   * `@alepha/ui` is `ui`. With the package prefix left on, every framework
+   * change would fall outside the `cli` and `ui` filters.
    */
-  test("scopes are shown as the module path they name", async ({ page }) => {
-    await page.goto("/changelog?scope=api");
-
+  test("scopes are shown without the package prefix", async ({ page }) => {
+    await page.goto("/changelog");
     const scopes = await page
       .locator("article li > span:first-child")
       .allTextContents();
     expect(scopes.length).toBeGreaterThan(0);
-    expect(scopes).toContain("api/users");
-    // The bare spellings are rewritten, never shown.
-    expect(scopes).not.toContain("users");
-    expect(scopes).not.toContain("api-users");
+    for (const scope of scopes) {
+      expect(scope).not.toMatch(/^@?alepha\//);
+    }
   });
 });

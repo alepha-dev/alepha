@@ -16,7 +16,9 @@ import type {
 export const docs = generated.docs as Array<
   (typeof generated.docs)[number] & { product: DocProduct }
 >;
-export const changelog: ChangelogEntry[] = generated.changelog;
+// The generated literal widens a group's `kind` to `string`; `gen-tree.ts`
+// writes it from `LoreChangelog`, which only ever says "epic" or "area".
+export const changelog = generated.changelog as ChangelogEntry[];
 
 /**
  * The URL prefix a doc set lives under. Framework keeps `/docs`, which is

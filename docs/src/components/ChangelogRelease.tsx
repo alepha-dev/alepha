@@ -1,4 +1,4 @@
-import { IconBug, IconSparkles } from "@tabler/icons-react";
+import { IconFolder, IconStack2 } from "@tabler/icons-react";
 
 import type { ChangelogEntry } from "../config/docs.ts";
 import ChangelogReleaseSection from "./ChangelogReleaseSection.tsx";
@@ -50,28 +50,28 @@ const ChangelogRelease = (props: ChangelogReleaseProps) => {
           </time>
         </div>
 
-        {entry.features.length > 0 && (
+        {/* The Lore release's own grouping (#Q3638): its epics, then the
+            quests of each area that belong to no epic. */}
+        {entry.groups.map((group, index) => (
           <ChangelogReleaseSection
-            title="Features"
-            titleClassName={styles.sectionFeatures}
-            icon={<IconSparkles size={16} />}
-            changes={entry.features}
-            keyPrefix={`${entry.version}-feature`}
+            key={`${group.kind}-${group.name}`}
+            title={group.name}
+            titleClassName={
+              group.kind === "epic" ? styles.sectionEpic : styles.sectionArea
+            }
+            icon={
+              group.kind === "epic" ? (
+                <IconStack2 size={16} />
+              ) : (
+                <IconFolder size={16} />
+              )
+            }
+            changes={group.changes}
+            keyPrefix={`${entry.version}-${index}`}
             expandedItems={props.expandedItems}
             onToggleItem={props.onToggleItem}
           />
-        )}
-        {entry.fixes.length > 0 && (
-          <ChangelogReleaseSection
-            title="Bug Fixes"
-            titleClassName={styles.sectionFixes}
-            icon={<IconBug size={16} />}
-            changes={entry.fixes}
-            keyPrefix={`${entry.version}-fix`}
-            expandedItems={props.expandedItems}
-            onToggleItem={props.onToggleItem}
-          />
-        )}
+        ))}
       </div>
     </article>
   );
