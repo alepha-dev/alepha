@@ -31,6 +31,8 @@ import {
   folios,
 } from "../entities/folios.ts";
 import { knowledgeRelations } from "../relations/knowledgeRelations.ts";
+import { folioColumnInputOptionsSchema } from "../schemas/folioColumnInputOptionsSchema.ts";
+import { folioColumnTypeSchema } from "../schemas/folioColumnTypeSchema.ts";
 import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
 import { folioListQuerySchema } from "../schemas/folioListQuerySchema.ts";
 import {
@@ -50,6 +52,7 @@ import {
 } from "../services/FolioHistoryService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
+import { FolioTableService } from "../services/FolioTableService.ts";
 
 /**
  * The columns of `folio_directories` any ancestor walk needs — the tree
@@ -93,6 +96,7 @@ export class FolioController {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly bestEffort = $inject(BestEffort);
   protected readonly revisionStats = $inject(FolioRevisionStatsService);
+  protected readonly tables = $inject(FolioTableService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly owned = $inject(OwnedResourceProvider);
 
@@ -923,12 +927,67 @@ export class FolioController {
          * Pin the folio on creation. Defaults to false.
          */
         pinned: z.boolean().optional(),
+        /**
+         * `text` (the default) or `table` (#E144). Set here and never
+         * changed. A table keeps `content` empty and cannot be pinned or
+         * encrypted.
+         */
+        type: folios.schema.shape.type.optional(),
+        /**
+         * A table's columns, created with it in the same call. A table
+         * created without any gets one text column named "Name".
+         */
+        columns: z
+          .array(
+            z.object({
+              name: z.string(),
+              type: folioColumnTypeSchema,
+              options: folioColumnInputOptionsSchema.optional(),
+            }),
+          )
+          .max(50)
+          .optional(),
+        /**
+         * Copy the columns and rows of this table folio of the same
+         * project into the new one: how a table is duplicated.
+         */
+        copyTableFrom: z.uuid().optional(),
       }),
       response: folioSavedSchema,
     },
     handler: async ({ body, user }) => {
       const summary = (body.summary ?? "").trim();
-      const content = body.content ?? "";
+      const type = body.type ?? "text";
+      const isTable = type === "table";
+      if (isTable && body.content) {
+        throw new BadRequestError(
+          "A table folio has no Markdown content: create it with columns, then add rows.",
+        );
+      }
+      if (isTable && (body.protected === true || body.pinned === true)) {
+        throw new BadRequestError(
+          "A table folio cannot be encrypted or pinned to context yet.",
+        );
+      }
+      if (!isTable && (body.columns || body.copyTableFrom)) {
+        throw new BadRequestError(
+          'Columns belong to a table folio: pass `type: "table"`.',
+        );
+      }
+      const source = body.copyTableFrom
+        ? await this.folios.findOne({
+            where: {
+              id: { eq: body.copyTableFrom },
+              projectId: { eq: body.projectId },
+            },
+          })
+        : undefined;
+      if (body.copyTableFrom && source?.type !== "table") {
+        throw new BadRequestError(
+          "`copyTableFrom` names no table folio of this project.",
+        );
+      }
+      const content = isTable ? "" : (body.content ?? "");
       const isProtected = body.protected === true;
       const pinned = body.pinned === true;
       const directoryId = await this.resolveDirectoryId(
@@ -958,6 +1017,7 @@ export class FolioController {
           projectId: body.projectId,
           shortId,
           title,
+          type,
           content,
           summary,
           directoryId,
@@ -984,6 +1044,13 @@ export class FolioController {
         throw error;
       }
       const created = folio;
+      // A table's columns (or the table it copies) follow the row: a
+      // failure here leaves a table with no columns, which the grid offers
+      // to fill, and is reported rather than swallowed.
+      if (isTable) {
+        if (source) await this.tables.copyTable(source.id, created.id);
+        else await this.tables.seedColumns(created, body.columns ?? []);
+      }
       // Everything below follows the committed row, and is best effort
       // (#Q2555): a failure is logged as an error, never a 500 that invites
       // a retry creating a second folio.
