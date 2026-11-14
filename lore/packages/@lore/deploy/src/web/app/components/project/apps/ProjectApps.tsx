@@ -31,6 +31,7 @@ import { monitorOfInstance } from "../uptime/instanceMonitors.ts";
 import AppCreateDialog from "./AppCreateDialog.tsx";
 import { appLiveness } from "./appLiveness.ts";
 import AppStatusDot from "./AppStatusDot.tsx";
+import AppUptimeCell from "./AppUptimeCell.tsx";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
 import { useDeleteApps } from "./useDeleteApps.ts";
 
@@ -638,18 +639,8 @@ const ProjectApps = () => {
                         <span className="text-muted-foreground text-xs">-</span>
                       );
                     }
-                    return (
-                      <span className="text-xs whitespace-nowrap tabular-nums">
-                        {monitor.uptimePct === null
-                          ? tr("uptime.notMeasured")
-                          : l(monitor.uptimePct / 100, {
-                              number: {
-                                style: "percent",
-                                maximumFractionDigits: 2,
-                              },
-                            })}
-                      </span>
-                    );
+                    // Beats, percentage and a hover card (#Q3598).
+                    return <AppUptimeCell monitor={monitor} />;
                   },
                 },
               }

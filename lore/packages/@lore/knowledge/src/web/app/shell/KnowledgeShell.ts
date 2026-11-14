@@ -57,7 +57,6 @@ export class KnowledgeShell {
       key: "knowledge",
       order: 40,
       labelKey: "project.settings.nav.remember",
-      descriptionKey: "project.settings.section.knowledge",
       icon: BookOpen,
       capability: "knowledge",
       tabs: [

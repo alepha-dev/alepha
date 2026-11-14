@@ -18,6 +18,11 @@ export interface PreviewableAttachment {
   fileId: string;
   name: string;
   mimeType: string;
+  /**
+   * Where the file is served, when it is not `/api/files/:fileId`: an image
+   * a markdown body links by URL (#Q3604). `fileId` is then only its key.
+   */
+  src?: string;
 }
 
 export interface AttachmentLightboxProps {
@@ -180,7 +185,7 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
               filename. The endpoint serves inline, which is right for the
               preview beside it and useless when you actually want the file. */}
           <a
-            href={`/api/files/${current.fileId}`}
+            href={current.src ?? `/api/files/${current.fileId}`}
             download={current.name}
             className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1.5 text-xs hover:underline"
           >
@@ -205,7 +210,7 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
         <div className="flex min-w-0 items-center justify-center">
           {preview.kind === "image" && (
             <img
-              src={`/api/files/${current.fileId}`}
+              src={current.src ?? `/api/files/${current.fileId}`}
               alt=""
               className="max-h-[70vh] w-auto max-w-full rounded-md object-contain"
             />

@@ -21,6 +21,12 @@ import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
  * A refusal (a copy whose estate still holds a Worker or a database, or that
  * still runs on its Bay) is the server's sentence; in a batch it is reported
  * beside the deletes that went through, never instead of them.
+ *
+ * Each refused copy's sentence is shown, not a count (#Q3603), in a dialog
+ * that offers the way out with its consequence spelled out: delete them
+ * anyway and leave what they run in place (`forget`). Removing a copy from
+ * its machine first stays `lore apps destroy`, its own verb with a typed
+ * confirmation, which the dialog names.
  */
 export const useDeleteApps = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -57,6 +63,42 @@ export const useDeleteApps = () => {
     return lines.join(" ");
   };
 
+  /**
+   * Delete `ids`, drop the ones that went from the list, and say so. Returns
+   * the outcome so the caller can offer the way out for the refusals.
+   */
+  const settle = async (
+    selected: AppInstanceResource[],
+    forget: boolean,
+    listed: AppInstanceResource[],
+  ) => {
+    const outcome = await settleBulk(
+      selected.map((it) => it.id),
+      (id) => {
+        const it = selected.find((row) => row.id === id)!;
+        return appApi.deleteApp({
+          params: { projectId: it.projectId, app: it.app, env: it.env },
+          // ⚠️ `forget` only after the owner read every refusal and chose to
+          // leave what those copies run in place (#Q3603). Never on the
+          // first try: the refusal that names a Worker or a Bay still to
+          // remove is the point, as on the Settings tab.
+          body: forget ? { forget: true } : {},
+        });
+      },
+    );
+    // A new array, not a mutation: the table reads the atom as static
+    // data and re-renders on identity.
+    const remaining = listed.filter((it) => !outcome.done.includes(it.id));
+    setInstances(remaining);
+    reportBulk(
+      outcome,
+      tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
+      undefined,
+      tr("apps.delete.failed", { args: [String(outcome.failed.length)] }),
+    );
+    return { outcome, remaining };
+  };
+
   const removeAction = useAction<[selected: AppInstanceResource[]], boolean>(
     {
       handler: async (_context, selected) => {
@@ -79,27 +121,35 @@ export const useDeleteApps = () => {
         });
         if (!ok) return false;
 
-        const outcome = await settleBulk(
-          selected.map((it) => it.id),
-          (id) => {
-            const it = selected.find((row) => row.id === id)!;
-            return appApi.deleteApp({
-              params: { projectId: it.projectId, app: it.app, env: it.env },
-              // ⚠️ Never `forget`: the refusal that names a Worker or a Bay
-              // still to remove is the point, as on the Settings tab.
-              body: {},
-            });
-          },
+        const { outcome, remaining } = await settle(
+          selected,
+          false,
+          instances ?? [],
         );
-        // A new array, not a mutation: the table reads the atom as static
-        // data and re-renders on identity.
-        setInstances(
-          (instances ?? []).filter((it) => !outcome.done.includes(it.id)),
+        if (outcome.failed.length === 0) return true;
+
+        // Every refusal in the server's own words, then the way out.
+        const refused = outcome.failed.map((failure) =>
+          selected.find((row) => row.id === failure.id)!,
         );
-        reportBulk(
-          outcome,
-          tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
+        const reasons = outcome.failed.map((failure) =>
+          failure.error instanceof Error
+            ? failure.error.message
+            : String(failure.error),
         );
+        const forget = await dialog.confirm({
+          title: tr("apps.delete.refusedTitle", {
+            args: [String(refused.length)],
+          }),
+          description: [...reasons, tr("apps.delete.forgetConsequence")].join(
+            " ",
+          ),
+          confirmLabel: tr("apps.delete.forget"),
+          cancelLabel: tr("apps.delete.keep"),
+          destructive: true,
+        });
+        if (!forget) return true;
+        await settle(refused, true, remaining);
         return true;
       },
     },

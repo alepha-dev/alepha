@@ -142,7 +142,8 @@ The **Weekly report** preset in [Automations](/lore/docs/work-automations)
 sends Summary's last seven days against the seven before, every Monday at
 08:00 UTC, to the member you pick, as an inbox notification or an email.
 
-- It starts disabled, like every preset.
+- **Create and enable** turns it on at once, like every preset; **Save as
+  draft** keeps it off until you enable it.
 - A preset has one recipient, so reaching several members takes one rule each.
 - A recipient opts out by turning off **Automations** in their notification
   settings: see

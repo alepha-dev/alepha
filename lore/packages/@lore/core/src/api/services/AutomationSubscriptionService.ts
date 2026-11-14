@@ -52,23 +52,40 @@ export class AutomationSubscriptionService {
     await this.access.assert(projectId, user, "automation:write");
     const rules = await this.marked(projectId, user, key);
     if (body.subscribed) {
-      if (rules.some((rule) => rule.enabled)) return this.state(rules);
       if (body.values && "recipient" in body.values)
         throw new BadRequestError(
           "setup.recipient: a subscription always notifies its caller",
         );
+      const wanted = body.channels ? [...new Set(body.channels)] : undefined;
+      const live = this.state(rules);
+      // Already on: kept as it is, unless the caller names another set of
+      // channels (#Q3602), which replaces the rules.
+      if (
+        live.subscribed &&
+        (!wanted ||
+          (wanted.length === live.channels?.length &&
+            wanted.every((channel) => live.channels?.includes(channel))))
+      )
+        return live;
       // A marked rule disabled by hand is replaced, not kept beside it.
       await this.remove(projectId, user, rules);
-      await this.presets.create(
-        projectId,
-        user,
-        {
-          key,
-          values: { ...body.values, recipient: user.id },
-          enabled: true,
-        },
-        { subscription: true },
-      );
+      // One rule per channel: a preset notifies on one channel, and two
+      // rules keep each of them an ordinary rule its author can read.
+      for (const channel of wanted ?? [undefined])
+        await this.presets.create(
+          projectId,
+          user,
+          {
+            key,
+            values: {
+              ...body.values,
+              ...(channel ? { channel } : {}),
+              recipient: user.id,
+            },
+            enabled: true,
+          },
+          { subscription: true },
+        );
     } else await this.remove(projectId, user, rules);
     return this.state(await this.marked(projectId, user, key));
   }
@@ -98,13 +115,24 @@ export class AutomationSubscriptionService {
   }
 
   protected state(rules: Automation[]): AutomationSubscription {
-    const rule = rules.find((candidate) => candidate.enabled);
+    const enabled = rules.filter((candidate) => candidate.enabled);
+    const rule = enabled[0];
     if (!rule) return { subscribed: false };
-    const notify = rule.rule.actions.find((action) => action.kind === "notify");
+    const channels = [
+      ...new Set(
+        enabled.flatMap((candidate) =>
+          candidate.rule.actions.flatMap((action) =>
+            action.kind === "notify" && "channel" in action
+              ? [String(action.channel)]
+              : [],
+          ),
+        ),
+      ),
+    ].sort();
     return {
       subscribed: true,
       automationId: rule.id,
-      ...(notify && "channel" in notify ? { channel: notify.channel } : {}),
+      ...(channels.length ? { channel: channels[0], channels } : {}),
     };
   }
 }

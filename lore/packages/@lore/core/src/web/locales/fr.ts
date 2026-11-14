@@ -65,7 +65,7 @@ export default {
   "automation.list.noMatchDescription":
     "Essayez un autre nom ou effacez le filtre d’état.",
   "automation.gallery.description":
-    "Partez d'un modèle. Il est créé désactivé, pour le tester avant de l'activer.",
+    "Partez d'un modèle. Créer et activer le lance tout de suite ; Enregistrer comme brouillon le garde désactivé pour le tester d'abord.",
   "automation.enable": "Activer",
   "automation.disable": "Désactiver",
   "automation.delete": "Supprimer",
@@ -851,6 +851,7 @@ export default {
   "attachments.position": "$1 sur $2",
   "attachments.previewTooLarge":
     "Trop volumineux pour un aperçu. Ouvrez le fichier.",
+  "attachments.zoom": "Ouvrir $1 en taille réelle",
   "attachments.tab.preview": "Aperçu",
   "attachments.tab.code": "Code",
 
@@ -911,17 +912,6 @@ export default {
   "project.settings.tab.board": "Tableau",
   "project.settings.tab.prompts": "Invites pour agents",
   "project.settings.tab.automations": "Automatisations",
-  "project.settings.section.general":
-    "Le projet lui-même, et les parties de Lore qu'il utilise.",
-  "project.settings.section.members":
-    "Qui fait partie du projet, et ce que chaque rang peut faire.",
-  "project.settings.section.automations":
-    "Les règles qui agissent sur le projet quand quelque chose se produit.",
-  "project.settings.section.work":
-    "Comment les quêtes sont estimées, étiquetées et affichées sur le tableau.",
-  "project.settings.section.knowledge": "Comment les folios sont affichés.",
-  "project.settings.section.apps":
-    "Ce que les apps remontent, où elles se déploient, et les erreurs ignorées.",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
@@ -2225,6 +2215,12 @@ export default {
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
   "app.settings.danger": "Zone dangereuse",
   "apps.delete.title": "Supprimer $1 applications ?",
+  "apps.delete.failed": "$1 n’ont pas pu être supprimées.",
+  "apps.delete.refusedTitle": "$1 non supprimées",
+  "apps.delete.forgetConsequence":
+    "Vous pouvez les supprimer quand même : Lore les oublie et laisse en place ce qu’elles font tourner, sur la machine ou dans le compte cloud, et plus rien ne connaîtra leurs noms. Pour les retirer d’abord de leur machine, lancez lore apps destroy, puis supprimez-les.",
+  "apps.delete.forget": "Supprimer et laisser tourner",
+  "apps.delete.keep": "Les garder",
   "apps.delete.confirm": "Supprimer $1 applications",
   "apps.delete.one":
     "Supprime l’enregistrement de $1 dans Lore et son historique de déploiements.",
@@ -3563,6 +3559,7 @@ export default {
   "activity.resource.sigil": "Sigil",
   // "Domaine", the word the rest of the French estate UI already uses.
   "activity.resource.estate": "Domaine",
+  "activity.resource.monitor": "Moniteur",
   "activity.resource.project": "Projet",
   "activity.fields": "a modifié $1",
   "activity.capability.enabled": "a activé $1",
@@ -3789,6 +3786,9 @@ export default {
   "uptime.status.latency": "Lent",
   "uptime.uptime": "Disponibilité",
   "uptime.lastLatency": "Dernière latence",
+  "uptime.cell.state": "État",
+  "uptime.cell.lastIncident": "Dernier incident",
+  "uptime.cell.noIncident": "Aucun enregistré",
   "uptime.latencyValue": "$1 ms",
   "uptime.edit": "Modifier",
   "uptime.pause": "Suspendre",
@@ -3859,13 +3859,14 @@ export default {
   "automation.adoption.replacement": "Règle de remplacement",
   "automation.adoption.create": "Créer ma règle de compatibilité",
   "automation.subscription.on":
-    "Abonné : cliquez pour arrêter les notifications",
+    "Abonné : cliquez pour modifier ou arrêter les notifications",
   "automation.subscription.channel": "Me notifier par",
   "automation.subscription.channel.inbox": "Dans l'app",
   "automation.subscription.channel.email": "E-mail",
   "automation.subscription.rule":
     "Cela crée une automatisation à votre nom, listée dans Automatisations, où vous pouvez la modifier.",
   "automation.subscription.confirm": "S'abonner",
+  "automation.subscription.save": "Enregistrer",
   "automation.subscription.cancel": "Annuler",
   "automation.subscription.offTitle": "Se désabonner ?",
   "automation.subscription.offConfirm": "Se désabonner",

@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -7,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
-  Segmented,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -32,6 +32,8 @@ import { canInProject } from "../../services/projectRank.ts";
 
 /** The channels a subscription notifies on, as the stock presets name them. */
 type Channel = "inbox" | "email";
+
+const CHANNELS: Channel[] = ["inbox", "email"];
 
 export interface AutomationSubscriptionBellProps {
   /** The stock preset the subscription is made from, `feedback-created`. */
@@ -72,7 +74,8 @@ export const AutomationSubscriptionBell = (
   const dialog = useDialog();
   const [project] = useStore(currentProjectAtom);
   const [open, setOpen] = useState(false);
-  const [channel, setChannel] = useState<Channel>("inbox");
+  // Several at once (#Q3602): one marked rule per channel, at least one.
+  const [channels, setChannels] = useState<Channel[]>(["inbox"]);
   const available =
     !!project &&
     hasCapability(project, "work") &&
@@ -97,27 +100,29 @@ export const AutomationSubscriptionBell = (
       handler: async (_ctx, subscribed) => {
         await api.setAutomationSubscription({
           params: { projectId, key: props.presetKey },
-          body: subscribed
-            ? { subscribed, values: { channel } }
-            : { subscribed },
+          body: subscribed ? { subscribed, channels } : { subscribed },
         });
         setOpen(false);
         queries.invalidate(key);
         queries.invalidate(["automations", projectId]);
       },
     },
-    [api, projectId, props.presetKey, channel, queries],
+    [api, projectId, props.presetKey, channels, queries],
   );
   if (!available) return null;
 
   const subscribed = state.data?.subscribed === true;
   const label = subscribed ? tr("automation.subscription.on") : props.label;
-  const toggle = async () => {
-    if (!subscribed) {
-      setChannel("inbox");
-      setOpen(true);
-      return;
-    }
+  // The dialog opens either way: on a live subscription it shows the
+  // channels it has, to change them or to turn it off (#Q3602).
+  const toggle = () => {
+    const live = (state.data?.channels ?? []).filter(
+      (it): it is Channel => it === "inbox" || it === "email",
+    );
+    setChannels(subscribed && live.length ? live : ["inbox"]);
+    setOpen(true);
+  };
+  const unsubscribe = async () => {
     if (
       await dialog.confirm({
         title: tr("automation.subscription.offTitle"),
@@ -128,6 +133,10 @@ export const AutomationSubscriptionBell = (
     )
       await set.run(false);
   };
+  const pick = (value: Channel, checked: boolean) =>
+    setChannels((current) =>
+      CHANNELS.filter((it) => (it === value ? checked : current.includes(it))),
+    );
 
   return (
     <>
@@ -142,7 +151,7 @@ export const AutomationSubscriptionBell = (
               disabled={!state.data || set.loading}
               data-testid={props.testId}
               data-subscribed={subscribed || undefined}
-              onClick={() => void toggle()}
+              onClick={() => toggle()}
             />
           }
         >
@@ -161,41 +170,56 @@ export const AutomationSubscriptionBell = (
             <DialogDescription>{props.description}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-1.5">
-            <Label id="automation-subscription-channel">
+            <span
+              id="automation-subscription-channel"
+              className="text-sm font-medium"
+            >
               {tr("automation.subscription.channel")}
-            </Label>
-            <Segmented
+            </span>
+            <div
+              role="group"
               aria-labelledby="automation-subscription-channel"
-              className="self-start"
-              value={channel}
-              onChange={(value) =>
-                setChannel(value === "email" ? "email" : "inbox")
-              }
-              options={[
-                {
-                  value: "inbox",
-                  label: tr("automation.subscription.channel.inbox"),
-                },
-                {
-                  value: "email",
-                  label: tr("automation.subscription.channel.email"),
-                },
-              ]}
-            />
+              className="flex flex-wrap gap-4"
+            >
+              {CHANNELS.map((value) => (
+                <Label key={value} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={channels.includes(value)}
+                    onCheckedChange={(checked) => pick(value, checked)}
+                  />
+                  {value === "inbox"
+                    ? tr("automation.subscription.channel.inbox")
+                    : tr("automation.subscription.channel.email")}
+                </Label>
+              ))}
+            </div>
             <p className="text-muted-foreground text-sm">
               {tr("automation.subscription.rule")}
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outlined" onClick={() => setOpen(false)}>
-              {tr("automation.subscription.cancel")}
-            </Button>
+            {subscribed ? (
+              <Button
+                variant="outlined"
+                intent="danger"
+                disabled={set.loading}
+                onClick={() => void unsubscribe()}
+              >
+                {tr("automation.subscription.offConfirm")}
+              </Button>
+            ) : (
+              <Button variant="outlined" onClick={() => setOpen(false)}>
+                {tr("automation.subscription.cancel")}
+              </Button>
+            )}
             <Button
               onClick={() => void set.run(true)}
-              disabled={set.loading}
+              disabled={set.loading || channels.length === 0}
               data-testid="automation-subscription-confirm"
             >
-              {tr("automation.subscription.confirm")}
+              {subscribed
+                ? tr("automation.subscription.save")
+                : tr("automation.subscription.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

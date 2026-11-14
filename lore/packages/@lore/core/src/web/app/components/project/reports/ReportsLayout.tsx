@@ -71,15 +71,27 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
       // names an ENTITY - an app's address, a release's tag and progress -
       // carries what the breadcrumb leaf cannot. A plate that names the
       // section is the leaf, drawn twice.
+      //
+      // `scroll={false}`: the filter bar sits between the tabs and the
+      // report's own scroll region (#Q3606), so it stays put while a long
+      // report scrolls, and a bar wrapped onto several lines pushes the
+      // report down rather than covering its first chart.
+      scroll={false}
     >
       <ReportsFilterBar key={search} url={props.query} />
-      <div className="flex flex-col gap-8 p-4">
-        {active?.descriptionKey ? (
-          <p className="text-muted-foreground text-sm">
-            {tr(active.descriptionKey)}
-          </p>
-        ) : null}
-        <NestedView />
+      <div
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scroll region must take focus for the keyboard to scroll it (WCAG 2.1.1), as PlateLayout's own does
+        tabIndex={0}
+        className="focus-visible:ring-ring/50 min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-[3px] focus-visible:ring-inset"
+      >
+        <div className="flex flex-col gap-8 p-4">
+          {active?.descriptionKey ? (
+            <p className="text-muted-foreground text-sm">
+              {tr(active.descriptionKey)}
+            </p>
+          ) : null}
+          <NestedView />
+        </div>
       </div>
     </PlateLayout>
   );

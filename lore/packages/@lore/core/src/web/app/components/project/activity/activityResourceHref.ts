@@ -40,6 +40,9 @@ export const activityResourceHref = (
     // over the list and has no URL of its own.
     case "feedback":
       return `${base}/feedback`;
+    // An uptime transition (#Q3596): its monitor's page, by uuid.
+    case "monitor":
+      return `${base}/uptime/${row.resourceId}`;
     default:
       return undefined;
   }

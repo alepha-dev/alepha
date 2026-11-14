@@ -307,15 +307,18 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
                         one thing on the control not reading as selected when
                         it is.
                       */}
-                      <Icon className="size-3.5 shrink-0" />
+                      <Icon className="size-3 shrink-0" />
                       {tr(`feedback.filter.${value}` as const)}
                     </span>
                   ),
                 };
               })}
-              size="lg"
-              fullWidth
+              // Small and only as wide as its labels (#Q3600): at `lg`, full
+              // width, the three segments overflowed the 380px pane and
+              // pushed the bell against the detail's title.
+              size="sm"
             />
+            <div className="ms-auto shrink-0" />
             <AutomationSubscriptionBell
               presetKey="feedback-created"
               label={tr("feedback.subscription.label")}

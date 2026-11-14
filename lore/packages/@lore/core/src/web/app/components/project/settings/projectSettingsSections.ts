@@ -52,13 +52,6 @@ export interface SettingsSectionDef {
     | "project.settings.nav.plan"
     | "project.settings.nav.remember"
     | "project.settings.nav.ship";
-  descriptionKey:
-    | "project.settings.section.general"
-    | "project.settings.section.members"
-    | "project.settings.section.automations"
-    | "project.settings.section.work"
-    | "project.settings.section.knowledge"
-    | "project.settings.section.apps";
   icon: LucideIcon;
   /**
    * The capability the section belongs to. Listed only while it is on: the
@@ -88,7 +81,6 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
     key: "general",
     order: 10,
     labelKey: "project.settings.nav.general",
-    descriptionKey: "project.settings.section.general",
     icon: Settings2,
     tabs: [
       {
@@ -105,7 +97,6 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
     key: "members",
     order: 20,
     labelKey: "project.settings.nav.members",
-    descriptionKey: "project.settings.section.members",
     icon: Users,
     tabs: [
       {

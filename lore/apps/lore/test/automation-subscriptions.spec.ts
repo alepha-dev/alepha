@@ -110,6 +110,54 @@ describe("Automation subscriptions (#Q3576)", () => {
     expect(await live()).toHaveLength(1);
   });
 
+  it("notifies on in-app and email at once, one marked rule per channel, and changes channels in place (#Q3602)", async ({
+    expect,
+  }) => {
+    const channels = (subscribed: boolean, list: string[]) =>
+      api.setAutomationSubscription.fetch(
+        {
+          params: { projectId: project.id, key },
+          body: { subscribed, channels: list },
+        },
+        { user },
+      );
+
+    const both = (await channels(true, ["inbox", "email"])).data;
+    expect(both).toMatchObject({
+      subscribed: true,
+      channels: ["email", "inbox"],
+    });
+    const rules = await live();
+    expect(rules).toHaveLength(2);
+    expect(rules.every((rule) => rule.enabled && rule.subscription)).toBe(true);
+    expect(
+      rules
+        .map((rule) => (rule.rule.actions[0] as { channel: string }).channel)
+        .sort(),
+    ).toEqual(["email", "inbox"]);
+    // Reopening reads the same channels back.
+    expect((await get()).channels).toEqual(["email", "inbox"]);
+
+    // The same set again changes nothing.
+    await channels(true, ["email", "inbox"]);
+    expect((await live()).map((rule) => rule.id).sort()).toEqual(
+      rules.map((rule) => rule.id).sort(),
+    );
+
+    // Another set replaces the rules.
+    const one = (await channels(true, ["inbox"])).data;
+    expect(one).toMatchObject({ subscribed: true, channels: ["inbox"] });
+    expect(await live()).toHaveLength(1);
+
+    // An empty set is refused: at least one channel.
+    await expect(channels(true, [])).rejects.toThrow();
+
+    // Off removes every marked rule.
+    await channels(true, ["inbox", "email"]);
+    expect(await set(false)).toEqual({ subscribed: false });
+    expect(await live()).toHaveLength(0);
+  });
+
   it("turns off by deleting the rule", async ({ expect }) => {
     await set(true);
     expect(await set(false)).toEqual({ subscribed: false });

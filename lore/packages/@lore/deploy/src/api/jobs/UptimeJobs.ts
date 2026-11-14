@@ -8,6 +8,7 @@ import { $repository } from "alepha/orm";
 import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../entities/monitorHeartbeats.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
+import { UptimeActivityService } from "../services/UptimeActivityService.ts";
 import { UptimeBlightService } from "../services/UptimeBlightService.ts";
 import { UptimeNotificationService } from "../services/UptimeNotificationService.ts";
 import { UptimeProber } from "../services/UptimeProber.ts";
@@ -27,6 +28,7 @@ export class UptimeJobs {
   protected readonly analytics = $inject(DeployAnalytics);
   protected readonly notifications = $inject(UptimeNotificationService);
   protected readonly blights = $inject(UptimeBlightService);
+  protected readonly activity = $inject(UptimeActivityService);
   protected readonly prober = $inject(UptimeProber);
   protected readonly state = $inject(UptimeStateService);
   protected readonly clock = $inject(DateTimeProvider);
@@ -132,6 +134,14 @@ export class UptimeJobs {
     } catch (error) {
       this.log.error(
         `Uptime alert could not be queued for incident ${transition.incident.id}`,
+        error,
+      );
+    }
+    try {
+      await this.activity.handle(transition);
+    } catch (error) {
+      this.log.error(
+        `Uptime activity could not be written for incident ${transition.incident.id}`,
         error,
       );
     }

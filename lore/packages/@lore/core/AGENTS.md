@@ -705,7 +705,8 @@ reminder continuation policies are integrated by their adoption quest.
 `AutomationService` and `AutomationVariableService` own policy for the HTTP actions
 and MCP tools. Client writes carry an expected configuration revision; variable
 writes also carry the immutable variable UUID and version. Clients never supply
-an author or credential. New rules start disabled. A manager can stop or delete
+an author or credential. A rule is created disabled, a draft, unless the create
+asks for `enabled: true` (the web gallery's **Create and enable**, #Q3573). A manager can stop or delete
 another author's rule, but cannot rewrite or enable it.
 
 Authoring and effects reconstruct current account, membership, rank and capability
@@ -735,7 +736,7 @@ and calls the shared application services with the authenticated current caller.
 Strict input schemas reject author or credential injection. CRUD responses use
 the same complete, redacted public DTOs as HTTP. Configuration updates and explicit
 enable changes are separate revisioned calls; managers retain only foreign-rule
-stop and delete controls. Creation stays disabled unless explicitly enabled.
+stop and delete controls. Creation is a draft unless `enabled: true` is passed.
 
 Variable tools expose immutable IDs, versions, bounded pages and a dedicated
 `automation_variable_dependents` read. Set reports affected consumers; delete is
@@ -773,8 +774,9 @@ Every page under `/automations` but the list renders through `AutomationPage`
   never shows an unconfirmed state (a revision conflict included).
 - **New automation** (`AutomationGalleryPage`): the presets this project, rank
   and configured channels allow, as cards. A card opens its inputs in place;
-  **Create automation** saves the rule disabled and navigates to its page, the
-  one place a rule is tested and enabled.
+  **Create and enable** saves the rule enabled in one write (#Q3573) and
+  **Save as draft** saves it disabled; both navigate to its page, where a draft
+  is tested and enabled.
 - **Preset inputs** (`AutomationPresetForm`): a field belongs to the rule unless
   **Share with other automations** is chosen, which reveals the
   only-this-rule / shared / new-shared choice. Explicit binding carries the

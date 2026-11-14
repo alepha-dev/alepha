@@ -94,7 +94,9 @@ const ReportsFilterBar = (props: ReportsFilterBarProps) => {
 
   return (
     <div
-      className="border-border flex flex-wrap items-center gap-2 border-b px-4 py-2"
+      // The tab strip's own surface (`PlateLayout`'s `bg-card/30`), so the bar
+      // reads as chrome rather than as the top of the report (#Q3606).
+      className="border-border bg-card/30 flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2"
       data-testid="reports-filter-bar"
     >
       <Control
