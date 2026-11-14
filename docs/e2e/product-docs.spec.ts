@@ -38,7 +38,7 @@ test.describe("Product doc sets", () => {
       0,
     );
     await expect(explorer.getByText("cli", { exact: true })).toHaveCount(0);
-    await expect(explorer.getByText("work", { exact: true })).toBeVisible();
+    await expect(explorer.getByText("plan", { exact: true })).toBeVisible();
   });
 
   test("the old flat URLs redirect instead of 404ing", async ({ page }) => {
