@@ -41,7 +41,7 @@ import {
   Undo2,
   Wrench,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { EpicController } from "../../../../../api/controllers/EpicController.ts";
 import { compareReleaseTags } from "../../../../../api/releaseOrder.ts";
@@ -122,6 +122,17 @@ const ProjectEpics = () => {
   // The write below moves the epic's quests too (#Q2111), and a row the
   // reader did not name must not move without a word.
   const reportCascade = useReleaseCascadeToast();
+
+  /**
+   * The status filter the table last fetched with (#Q3673). A shelve takes
+   * the row off the page at once when that filter leaves shelved epics out,
+   * rather than patching its chip and waiting for the refetch after the
+   * held commit, which kept it on screen the length of the Undo toast.
+   */
+  const statusFilter = useRef<EpicResource["status"][]>([]);
+  const hidesShelved = () =>
+    statusFilter.current.length > 0 &&
+    !statusFilter.current.includes("shelved");
 
   const [createOpen, setCreateOpen] = useState(false);
   // Bumped after a create, which happens outside the table and so has no
@@ -212,7 +223,10 @@ const ProjectEpics = () => {
           ? tr("epic.undo.shelvedQuests", { args: [String(open)] })
           : undefined,
       undoLabel: tr("board.undo.undo"),
-      apply: () => ctx.optimistic.patch(epic, { ...epic, status: "shelved" }),
+      apply: () =>
+        hidesShelved()
+          ? ctx.optimistic.remove(epic)
+          : ctx.optimistic.patch(epic, { ...epic, status: "shelved" }),
       commit: () => epicApi.shelveEpic({ params: { id: epic.id } }),
       onCommitted: invalidateWork,
     });
@@ -429,9 +443,11 @@ const ProjectEpics = () => {
     });
     if (!confirmed) return;
     ctx.clearSelection();
-    const handles = shelvable.map((epic) =>
-      ctx.optimistic.patch(epic, { ...epic, status: "shelved" }),
-    );
+    const handles = hidesShelved()
+      ? [ctx.optimistic.remove(shelvable)]
+      : shelvable.map((epic) =>
+          ctx.optimistic.patch(epic, { ...epic, status: "shelved" }),
+        );
     void undoable.run({
       message: tr("epic.undo.bulkShelved", { args: [n] }),
       undoLabel: tr("board.undo.undo"),
@@ -536,6 +552,7 @@ const ProjectEpics = () => {
     });
 
     const statuses = filters?.status ?? [];
+    statusFilter.current = statuses;
     const picked = filters?.release ?? [];
     // The selections OR together, and the sentinel is one of them: an epic
     // matches if it is attached to a picked release, or if "No release" is
