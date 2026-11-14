@@ -11,6 +11,7 @@ import { monitors } from "../src/api/entities/monitors.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import { UptimePushService } from "../src/api/services/UptimePushService.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
+import { UptimeTickWatch } from "../src/testing/UptimeTickWatch.ts";
 
 class Repositories extends DeployTestEntities {
   monitors = $repository(monitors);
@@ -37,6 +38,7 @@ describe("Push monitor receipts", () => {
     const repos = alepha.inject(Repositories);
     const clock = alepha.inject(DateTimeProvider);
     clock.pause();
+    UptimeTickWatch.attach(alepha);
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
@@ -85,6 +87,7 @@ describe("Push monitor receipts", () => {
       await expect
         .poll(async () => (await read()).lastCheckedAt)
         .not.toBe(previous);
+      await UptimeTickWatch.settled(ctx.clock);
     }
     expect((await read()).status).toBe("down");
     await expect.poll(() => ctx.repos.incidents.count()).toBe(1);
@@ -119,6 +122,7 @@ describe("Push monitor receipts", () => {
       await expect
         .poll(async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt)
         .not.toBe(previous);
+      await UptimeTickWatch.settled(ctx.clock);
     }
     expect((await ctx.repos.monitors.getById(id)).status).toBe("down");
     const incidents = await ctx.repos.incidents.findMany();
@@ -140,12 +144,14 @@ describe("Push monitor receipts", () => {
     await expect
       .poll(async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt)
       .not.toBe(pushed);
+    await UptimeTickWatch.settled(ctx.clock);
     for (let index = 0; index < 2; index++) {
       const previous = (await ctx.repos.monitors.getById(id)).lastCheckedAt;
       await ctx.clock.travel(1, "minute");
       await expect
         .poll(async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt)
         .not.toBe(previous);
+      await UptimeTickWatch.settled(ctx.clock);
     }
     expect((await ctx.repos.monitors.getById(id)).status).toBe("down");
   });

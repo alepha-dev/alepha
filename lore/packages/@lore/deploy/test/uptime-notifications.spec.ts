@@ -13,6 +13,7 @@ import { UptimeNotificationService } from "../src/api/services/UptimeNotificatio
 import { UptimeProber } from "../src/api/services/UptimeProber.ts";
 import { UptimeStateService } from "../src/api/services/UptimeStateService.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
+import { UptimeTickWatch } from "../src/testing/UptimeTickWatch.ts";
 
 class Repositories extends DeployTestEntities {
   monitors = $repository(monitors);
@@ -59,6 +60,7 @@ describe("Uptime email alerts", () => {
     const repos = alepha.inject(Repositories);
     const clock = alepha.inject(DateTimeProvider);
     clock.pause();
+    UptimeTickWatch.attach(alepha);
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
@@ -103,6 +105,7 @@ describe("Uptime email alerts", () => {
             (await ctx.repos.monitors.getById(monitor.id)).lastCheckedAt,
         )
         .not.toBe(before);
+      await UptimeTickWatch.settled(ctx.clock);
     };
     await advance();
     expect(ctx.mail.records).toHaveLength(0);

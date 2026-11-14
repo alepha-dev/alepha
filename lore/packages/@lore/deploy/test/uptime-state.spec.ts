@@ -15,6 +15,7 @@ import { UptimeErrorService } from "../src/api/services/UptimeErrorService.ts";
 import { UptimeProber } from "../src/api/services/UptimeProber.ts";
 import { UptimeStateService } from "../src/api/services/UptimeStateService.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
+import { UptimeTickWatch } from "../src/testing/UptimeTickWatch.ts";
 
 class Repositories extends DeployTestEntities {
   projectErrors = $repository(projectErrors);
@@ -75,6 +76,7 @@ describe("The uptime tick and state machine", () => {
     const repos = alepha.inject(Repositories);
     const clock = alepha.inject(DateTimeProvider);
     clock.pause();
+    UptimeTickWatch.attach(alepha);
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
@@ -126,6 +128,7 @@ describe("The uptime tick and state machine", () => {
             (await ctx.repos.monitors.getById(monitor.id)).lastCheckedAt,
         )
         .not.toBe(before);
+      await UptimeTickWatch.settled(ctx.clock);
     };
     ctx.prober.plans.set(monitor.id, [
       {
@@ -197,6 +200,7 @@ describe("The uptime tick and state machine", () => {
       await expect
         .poll(async () => (await row()).lastCheckedAt)
         .not.toBe(before);
+      await UptimeTickWatch.settled(ctx.clock);
       return row();
     };
     expect((await advance()).status).toBe("up");

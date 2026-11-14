@@ -14,6 +14,7 @@ import { sigils } from "../src/api/entities/sigils.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import { UptimeProber } from "../src/api/services/UptimeProber.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
+import { UptimeTickWatch } from "../src/testing/UptimeTickWatch.ts";
 
 class Repositories extends DeployTestEntities {
   monitors = $repository(monitors);
@@ -64,6 +65,7 @@ describe("A monitoring-only project", () => {
     const repos = alepha.inject(Repositories);
     const clock = alepha.inject(DateTimeProvider);
     clock.pause();
+    UptimeTickWatch.attach(alepha);
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
@@ -104,6 +106,7 @@ describe("A monitoring-only project", () => {
       await expect
         .poll(async () => (await repos.monitors.getById(id)).lastCheckedAt)
         .not.toBe(before);
+      await UptimeTickWatch.settled(clock);
     };
 
     await advance();

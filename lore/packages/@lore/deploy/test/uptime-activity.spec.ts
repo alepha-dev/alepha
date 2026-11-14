@@ -9,6 +9,7 @@ import { type Monitor, monitors } from "../src/api/entities/monitors.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import { UptimeProber } from "../src/api/services/UptimeProber.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
+import { UptimeTickWatch } from "../src/testing/UptimeTickWatch.ts";
 
 class Repositories extends DeployTestEntities {
   monitors = $repository(monitors);
@@ -54,6 +55,7 @@ describe("Uptime transitions in the project's Activity", () => {
     const repos = alepha.inject(Repositories);
     const clock = alepha.inject(DateTimeProvider);
     clock.pause();
+    UptimeTickWatch.attach(alepha);
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
@@ -78,6 +80,7 @@ describe("Uptime transitions in the project's Activity", () => {
           async () => (await repos.monitors.getById(monitor.id)).lastCheckedAt,
         )
         .not.toBe(before);
+      await UptimeTickWatch.settled(clock);
     };
     const activity = async (query: { type?: string; action?: string } = {}) =>
       (
