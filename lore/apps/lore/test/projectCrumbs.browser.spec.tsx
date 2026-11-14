@@ -11,7 +11,8 @@ import { currentHostAtom, DeployShell } from "@lore/ship/web";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
-import { ReactBrowserRendererProvider, ReactRouter } from "alepha/react/router";
+import * as reactRouter from "alepha/react/router";
+import { ReactRouter } from "alepha/react/router";
 import { afterEach, describe, it } from "vitest";
 
 /**
@@ -35,12 +36,18 @@ class PathRouter extends ReactRouter<any> {
  * Starting the container in jsdom mounts the app into the document, and
  * stopping it does not unmount that root: React work it scheduled would fire
  * after jsdom is torn down ("window is not defined") and fail the run with
- * every test green. This one unmounts on demand.
+ * every test green. This substitute unmounts on demand.
+ *
+ * ⚠️ Untyped on purpose: the renderer is exported by the browser entry of
+ * `alepha/react/router`, which is the one jsdom loads, while the types are
+ * the server entry's, which does not export it.
  */
-class UnmountingRenderer extends ReactBrowserRendererProvider {
+const Renderer = (reactRouter as any).ReactBrowserRendererProvider;
+
+class UnmountingRenderer extends Renderer {
   public unmount(): void {
-    this.root?.unmount();
-    this.root = undefined;
+    (this as any).root?.unmount();
+    (this as any).root = undefined;
   }
 }
 
@@ -49,7 +56,7 @@ describe("the leaf crumb of a detail page", () => {
 
   afterEach(async () => {
     for (const alepha of containers.splice(0)) {
-      alepha.inject(UnmountingRenderer).unmount();
+      (alepha.inject(UnmountingRenderer) as UnmountingRenderer).unmount();
       await alepha.stop();
     }
   });
@@ -59,10 +66,7 @@ describe("the leaf crumb of a detail page", () => {
       .with(AlephaLogger)
       .with(AlephaReactI18n)
       .with({ provide: ReactRouter, use: PathRouter })
-      .with({
-        provide: ReactBrowserRendererProvider,
-        use: UnmountingRenderer,
-      });
+      .with({ provide: Renderer, use: UnmountingRenderer });
     alepha.inject(I18n);
     alepha.inject(WorkShell);
     alepha.inject(DeployShell);
