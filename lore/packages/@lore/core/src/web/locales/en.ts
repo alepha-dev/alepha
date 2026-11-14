@@ -2235,6 +2235,12 @@ export default {
   "app.settings.estate.saved": "Deploy target saved",
   "app.settings.danger": "Danger zone",
   "apps.delete.title": "Delete $1 apps?",
+  "apps.delete.failed": "$1 could not be deleted.",
+  "apps.delete.refusedTitle": "$1 not deleted",
+  "apps.delete.forgetConsequence":
+    "You can delete them anyway: Lore forgets them and leaves what they run in place, on the machine or in the cloud account, and nothing will know their names afterwards. To remove them from their machine first, run lore apps destroy, then delete them.",
+  "apps.delete.forget": "Delete and leave running",
+  "apps.delete.keep": "Keep them",
   "apps.delete.confirm": "Delete $1 apps",
   "apps.delete.one": "Removes Lore’s record of $1 and its deploy history.",
   "apps.delete.many":

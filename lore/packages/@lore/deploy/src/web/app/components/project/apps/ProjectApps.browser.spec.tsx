@@ -12,7 +12,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
@@ -81,6 +81,12 @@ class FakeLinkProvider extends LinkProvider {
   deleted: string[] = [];
 
   /**
+   * Copies `deleteApp` refuses unless `forget` is passed, as the server does
+   * for a copy still running on its Bay (#Q3603).
+   */
+  running: string[] = [];
+
+  /**
    * What `listMonitors` answers, once `releaseMonitors` lets it.
    */
   monitors: unknown[] = [];
@@ -124,10 +130,14 @@ class FakeLinkProvider extends LinkProvider {
                 : key === "deleteApp"
                   ? async (request: {
                       params: { app: string; env: string };
+                      body?: { forget?: boolean };
                     }) => {
-                      this.deleted.push(
-                        `${request.params.app}/${request.params.env}`,
-                      );
+                      const copy = `${request.params.app}/${request.params.env}`;
+                      if (this.running.includes(copy) && !request.body?.forget)
+                        throw new AlephaError(
+                          `${copy} still runs on its Bay. Remove it from the machine first (\`lore apps destroy\`), or pass \`forget\` to delete this copy and leave it running.`,
+                        );
+                      this.deleted.push(copy);
                       return { ok: true };
                     }
                   : async () => ({});
@@ -709,6 +719,58 @@ describe("the Apps list", () => {
           "acme/production",
           "acme/staging",
         ]),
+      );
+    });
+
+    it("shows each refused copy's reason, says deleted, and offers to delete it anyway", async ({
+      expect,
+    }) => {
+      const { alepha, view } = await mount([
+        anInstance("acme", "production"),
+        anInstance("acme", "staging"),
+        anInstance("lore", "production"),
+      ]);
+      const fake = alepha.inject(FakeLinkProvider);
+      fake.running = ["acme/staging"];
+
+      for (const row of [...view.container.querySelectorAll("tbody tr")].filter(
+        (it) => it.textContent?.includes("acme"),
+      ))
+        fireEvent.click(within(row as HTMLElement).getByRole("checkbox"));
+      fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+      fireEvent.click(
+        within(await screen.findByRole("alertdialog")).getByRole("button", {
+          name: "Delete 2 apps",
+        }),
+      );
+
+      // The refusal in the server's own words, not a count.
+      const refused = await screen.findByRole("alertdialog", {
+        name: "1 not deleted",
+      });
+      expect(refused.textContent).toContain(
+        "acme/staging still runs on its Bay.",
+      );
+      expect(refused.textContent).toContain("lore apps destroy");
+      expect(fake.deleted).toEqual(["acme/production"]);
+      expect(document.body.textContent).toContain("1 could not be deleted.");
+      expect(document.body.textContent).not.toContain("could not be updated");
+
+      fireEvent.click(
+        within(refused).getByRole("button", {
+          name: "Delete and leave running",
+        }),
+      );
+      await waitFor(() =>
+        expect(fake.deleted.sort()).toEqual([
+          "acme/production",
+          "acme/staging",
+        ]),
+      );
+      await waitFor(() =>
+        expect(rowText(view).some((text) => text.includes("acme"))).toBe(
+          false,
+        ),
       );
     });
 

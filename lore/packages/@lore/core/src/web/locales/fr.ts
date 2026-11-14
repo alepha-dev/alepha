@@ -2225,6 +2225,12 @@ export default {
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
   "app.settings.danger": "Zone dangereuse",
   "apps.delete.title": "Supprimer $1 applications ?",
+  "apps.delete.failed": "$1 n’ont pas pu être supprimées.",
+  "apps.delete.refusedTitle": "$1 non supprimées",
+  "apps.delete.forgetConsequence":
+    "Vous pouvez les supprimer quand même : Lore les oublie et laisse en place ce qu’elles font tourner, sur la machine ou dans le compte cloud, et plus rien ne connaîtra leurs noms. Pour les retirer d’abord de leur machine, lancez lore apps destroy, puis supprimez-les.",
+  "apps.delete.forget": "Supprimer et laisser tourner",
+  "apps.delete.keep": "Les garder",
   "apps.delete.confirm": "Supprimer $1 applications",
   "apps.delete.one":
     "Supprime l’enregistrement de $1 dans Lore et son historique de déploiements.",
