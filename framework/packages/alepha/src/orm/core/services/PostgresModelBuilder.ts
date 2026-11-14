@@ -38,6 +38,24 @@ import { schema } from "../types/jsonb.ts";
 import { ModelBuilder } from "./ModelBuilder.ts";
 
 export class PostgresModelBuilder extends ModelBuilder {
+  protected static stamp?: string;
+
+  /**
+   * The time an ORM insert stamps on `createdAt` and `updatedAt`, in
+   * milliseconds. One value for the whole synchronous build of a statement,
+   * as `now()` gives one per statement: two clock reads gave a row whose
+   * `createdAt` and `updatedAt` differed by a millisecond.
+   */
+  protected static insertStamp(): string {
+    if (PostgresModelBuilder.stamp === undefined) {
+      PostgresModelBuilder.stamp = new Date().toISOString();
+      queueMicrotask(() => {
+        PostgresModelBuilder.stamp = undefined;
+      });
+    }
+    return PostgresModelBuilder.stamp;
+  }
+
   protected readonly dialect = "postgresql" as const;
 
   protected readonly crypto = $inject(CryptoProvider);
@@ -451,7 +469,7 @@ export class PostgresModelBuilder extends ModelBuilder {
         return pg
           .timestamp(key, { mode: "string", withTimezone: true })
           .defaultNow()
-          .$defaultFn(() => new Date().toISOString());
+          .$defaultFn(() => PostgresModelBuilder.insertStamp());
       }
       return pg.timestamp(key, { mode: "string", withTimezone: true });
     }
