@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -52,7 +53,12 @@ class FakeLinkProvider extends LinkProvider {
 
   protected state() {
     return this.subscribed
-      ? { subscribed: true, automationId: RULE, channel: "email" }
+      ? {
+          subscribed: true,
+          automationId: RULE,
+          channel: "email",
+          channels: ["email", "inbox"],
+        }
       : { subscribed: false };
   }
 }
@@ -117,19 +123,37 @@ describe("AutomationSubscriptionBell", () => {
     expect(server.gets).toBe(1);
   });
 
-  it("turns on through a dialog offering the channel", async ({ expect }) => {
+  it("turns on through a dialog offering in-app, email or both (#Q3602)", async ({
+    expect,
+  }) => {
     const server = await show();
     await waitFor(() => expect(bell().hasAttribute("disabled")).toBe(false));
     expect(bell().getAttribute("aria-pressed")).toBe("false");
 
     fireEvent.click(bell());
     await screen.findByText("A rule will notify you of every new feedback.");
-    fireEvent.click(screen.getByRole("radio", { name: "Email" }));
+    const inApp = screen.getByRole("checkbox", { name: "In-app" });
+    const email = screen.getByRole("checkbox", { name: "Email" });
+    expect(inApp.getAttribute("aria-checked")).toBe("true");
+    expect(email.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(email);
+    // At least one: with none ticked there is nothing to subscribe.
+    fireEvent.click(inApp);
+    fireEvent.click(email);
+    await waitFor(() =>
+      expect(
+        screen
+          .getByTestId("automation-subscription-confirm")
+          .hasAttribute("disabled"),
+      ).toBe(true),
+    );
+    fireEvent.click(inApp);
+    fireEvent.click(email);
     fireEvent.click(screen.getByTestId("automation-subscription-confirm"));
 
     await waitFor(() =>
       expect(server.sets).toEqual([
-        { subscribed: true, values: { channel: "email" } },
+        { subscribed: true, channels: ["inbox", "email"] },
       ]),
     );
     await waitFor(() =>
@@ -137,7 +161,7 @@ describe("AutomationSubscriptionBell", () => {
     );
   });
 
-  it("turns off after a confirmation, and not when it is cancelled", async ({
+  it("reopens on its channels, and turns off after a confirmation, not when it is cancelled", async ({
     expect,
   }) => {
     const server = await show({ subscribed: true });
@@ -145,7 +169,21 @@ describe("AutomationSubscriptionBell", () => {
       expect(bell().getAttribute("aria-pressed")).toBe("true"),
     );
 
+    // Reopening shows the channels the subscription has (#Q3602).
     fireEvent.click(bell());
+    await screen.findByText("A rule will notify you of every new feedback.");
+    expect(
+      screen.getByRole("checkbox", { name: "In-app" }).getAttribute(
+        "aria-checked",
+      ),
+    ).toBe("true");
+    expect(
+      screen.getByRole("checkbox", { name: "Email" }).getAttribute(
+        "aria-checked",
+      ),
+    ).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Unsubscribe" }));
     await screen.findByText("You will no longer be notified of new feedback.");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await waitFor(() =>
@@ -155,9 +193,13 @@ describe("AutomationSubscriptionBell", () => {
     );
     expect(server.sets).toEqual([]);
 
-    fireEvent.click(bell());
-    await screen.findByText("You will no longer be notified of new feedback.");
     fireEvent.click(screen.getByRole("button", { name: "Unsubscribe" }));
+    await screen.findByText("You will no longer be notified of new feedback.");
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Unsubscribe",
+      }),
+    );
     await waitFor(() => expect(server.sets).toEqual([{ subscribed: false }]));
     await waitFor(() =>
       expect(bell().getAttribute("aria-pressed")).toBe("false"),

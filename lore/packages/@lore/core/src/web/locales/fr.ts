@@ -3859,13 +3859,14 @@ export default {
   "automation.adoption.replacement": "Règle de remplacement",
   "automation.adoption.create": "Créer ma règle de compatibilité",
   "automation.subscription.on":
-    "Abonné : cliquez pour arrêter les notifications",
+    "Abonné : cliquez pour modifier ou arrêter les notifications",
   "automation.subscription.channel": "Me notifier par",
   "automation.subscription.channel.inbox": "Dans l'app",
   "automation.subscription.channel.email": "E-mail",
   "automation.subscription.rule":
     "Cela crée une automatisation à votre nom, listée dans Automatisations, où vous pouvez la modifier.",
   "automation.subscription.confirm": "S'abonner",
+  "automation.subscription.save": "Enregistrer",
   "automation.subscription.cancel": "Annuler",
   "automation.subscription.offTitle": "Se désabonner ?",
   "automation.subscription.offConfirm": "Se désabonner",
