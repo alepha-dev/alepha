@@ -20,9 +20,10 @@ export const sessionQuerySchema = pageQuerySchema.extend({
    */
   status: z.enum(["active", "expired"]).optional(),
   /**
-   * Only sessions used within this many hours. `lastUsedAt` is null until a
-   * session is used a second time, and a never-used session is NOT recently
-   * active, so it is excluded rather than kept.
+   * Only sessions used within this many hours. `lastUsedAt` is written when
+   * the session is created (a sign-in) and rewritten on each token refresh,
+   * not on every request. A row whose `lastUsedAt` is null predates the
+   * column and is excluded rather than kept.
    */
   lastUsedWithinHours: z.integer().min(1).optional(),
 });

@@ -40,9 +40,11 @@ export const sessions = $entity({
     resource: z.text({ maxLength: 2048 }).optional(),
     expiresAt: z.datetime(),
     /**
-     * Last time the session was used to refresh an access token.
-     * Used by realm `refreshToken.expirationIdle` to invalidate idle sessions.
-     * `null` on existing rows pre-migration — falls back to `createdAt`.
+     * Last time the session was signed in or used to refresh an access
+     * token: written at creation and on each refresh, not per request.
+     * Used by realm `refreshToken.expirationIdle` to invalidate idle sessions,
+     * and by the admin "connected" count. `null` on existing rows
+     * pre-migration, which falls back to `createdAt`.
      */
     lastUsedAt: z.datetime().optional(),
     ip: z.text().optional(),
@@ -60,7 +62,14 @@ export const sessions = $entity({
       })
       .optional(),
   }),
-  indexes: ["userId", "expiresAt", { column: "refreshToken", unique: true }],
+  indexes: [
+    "userId",
+    "expiresAt",
+    // The admin "connected" count and `findUsers({ activeWithinHours })`
+    // range over it; without the index both scan every session.
+    "lastUsedAt",
+    { column: "refreshToken", unique: true },
+  ],
 });
 
 export type SessionEntity = Infer<typeof sessions.schema>;
