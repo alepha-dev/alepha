@@ -107,6 +107,12 @@ describe("the API key expiry notice", () => {
       // ("canceling statement due to user request", under load).
       await background.flush();
       await time.travel(1, "day");
+      // And after it (#Q3681): travel fires every timer it crosses, a job
+      // poll or a retry included, which starts work of its own. Postgres
+      // cancels a CONNECTION's current statement, not a given one, so a cancel
+      // aimed at that work could still land on this loop's next read when
+      // the pool hands it the same connection.
+      await background.flush();
     }
 
     const notices = await noticesFor(name);
