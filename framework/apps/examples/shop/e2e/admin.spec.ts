@@ -766,3 +766,144 @@ test.describe("the dashboard's tiles", () => {
     }
   });
 });
+
+/**
+ * Customize mode (#Q3538): one layout for every admin, saved with a version
+ * check, so a second admin sees it and a concurrent save gets a notice.
+ */
+test.describe("customizing the dashboard", () => {
+  const SECOND = {
+    email: "second-admin@example.test",
+    password: "second-admin-2026",
+  };
+
+  const titlesOf = async (page: Page) =>
+    (await page.locator('[data-slot="card-title"]').allInnerTexts()).map(
+      (title) => title.trim(),
+    );
+
+  const cellTitles = async (page: Page) =>
+    (
+      await page
+        .locator('[data-slot="dashboard-edit-cell"] > div:first-child span')
+        .allInnerTexts()
+    ).map((title) => title.trim());
+
+  test("hide and reorder, save, reload; a second admin sees it; a concurrent save gets the notice", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    await signInAsAdmin(page);
+
+    // A second admin, made through the admin API by the first.
+    const created = await page.request.post("/api/users", {
+      data: {
+        email: SECOND.email,
+        username: "second-admin",
+        roles: ["admin"],
+        emailVerified: true,
+      },
+    });
+    expect(created.ok()).toBe(true);
+    const { id } = (await created.json()) as { id: string };
+    expect(
+      (
+        await page.request.post(`/api/users/${id}/password`, {
+          data: { password: SECOND.password },
+        })
+      ).ok(),
+    ).toBe(true);
+
+    const second = await browser.newContext({ baseURL, locale: "fr-FR" });
+    const other = await second.newPage();
+    await other.goto("/auth/login");
+    await other.locator('input[name="identifier"]').fill(SECOND.email);
+    await other.locator('input[name="password"]').fill(SECOND.password);
+    await other.getByRole("button", { name: /Sign in|Se connecter/ }).click();
+    await other.waitForURL((url) => !url.pathname.startsWith("/auth/"));
+
+    try {
+      // The first admin hides Commandes and moves Connectés first.
+      await page.goto("/admin");
+      await page.getByRole("button", { name: "Personnaliser" }).click();
+      await expect(
+        page.getByText(
+          "Les modifications s'appliquent à tous les administrateurs.",
+        ),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Retirer Commandes" }).click();
+      for (let i = 0; i < 2; i++) {
+        await page.getByRole("button", { name: "Avancer Connectés" }).click();
+      }
+      expect(await cellTitles(page)).toEqual([
+        "Connectés",
+        "Produits",
+        "Utilisateurs",
+        "Connexions échouées",
+      ]);
+
+      // The second admin opens Customize on the same version, meanwhile.
+      await other.goto("/admin");
+      await other.getByRole("button", { name: "Personnaliser" }).click();
+
+      await page.getByRole("button", { name: "Enregistrer" }).click();
+      await expect(
+        page.getByRole("button", { name: "Personnaliser" }),
+      ).toBeVisible();
+      const expected = [
+        "Connectés",
+        "Produits",
+        "Utilisateurs",
+        "Connexions échouées",
+      ];
+      expect(await titlesOf(page)).toEqual(expected);
+
+      await page.reload();
+      await expect(page.locator('[data-slot="card-title"]')).toHaveCount(4);
+      expect(await titlesOf(page)).toEqual(expected);
+
+      // The second admin's save started from the old version: refused, with
+      // the notice, and the first admin's layout stands.
+      await other.getByRole("button", { name: "Retirer Produits" }).click();
+      await other.getByRole("button", { name: "Enregistrer" }).click();
+      await expect(
+        other.getByText(
+          "Un autre administrateur a enregistré la disposition entre-temps",
+        ),
+      ).toBeVisible();
+      await other
+        .getByRole("button", { name: "Charger sa disposition" })
+        .click();
+      await expect(
+        other.getByRole("button", { name: "Personnaliser" }),
+      ).toBeVisible();
+      await expect(other.locator('[data-slot="card-title"]')).toHaveCount(4);
+      expect(await titlesOf(other)).toEqual(expected);
+
+      // Reset, confirmed: back to the defaults for everyone.
+      await other.getByRole("button", { name: "Personnaliser" }).click();
+      await other
+        .getByRole("button", { name: "Rétablir les tuiles par défaut" })
+        .click();
+      await other
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Rétablir les tuiles par défaut" })
+        .click();
+      await expect(
+        other.getByRole("button", { name: "Personnaliser" }),
+      ).toBeVisible();
+      await page.reload();
+      await expect(page.locator('[data-slot="card-title"]')).toHaveCount(5);
+      expect(await titlesOf(page)).toEqual([
+        "Produits",
+        "Commandes",
+        "Utilisateurs",
+        "Connectés",
+        "Connexions échouées",
+      ]);
+    } finally {
+      await second.close();
+    }
+  });
+});
