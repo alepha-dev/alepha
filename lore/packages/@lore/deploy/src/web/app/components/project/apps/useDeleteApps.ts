@@ -129,8 +129,8 @@ export const useDeleteApps = () => {
         if (outcome.failed.length === 0) return true;
 
         // Every refusal in the server's own words, then the way out.
-        const refused = outcome.failed.map(
-          (failure) => selected.find((row) => row.id === failure.id)!,
+        const refused = outcome.failed.map((failure) =>
+          selected.find((row) => row.id === failure.id)!,
         );
         const reasons = outcome.failed.map((failure) =>
           failure.error instanceof Error

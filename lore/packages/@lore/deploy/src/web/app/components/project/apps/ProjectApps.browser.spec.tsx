@@ -768,9 +768,7 @@ describe("the Apps list", () => {
         ]),
       );
       await waitFor(() =>
-        expect(rowText(view).some((text) => text.includes("acme"))).toBe(
-          false,
-        ),
+        expect(rowText(view).some((text) => text.includes("acme"))).toBe(false),
       );
     });
 
