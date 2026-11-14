@@ -384,7 +384,7 @@ test.describe("Apps", () => {
       await page.waitForLoadState("networkidle");
 
       const master = page.getByRole("switch", {
-        name: "Deploy and watch apps",
+        name: "Ship",
         exact: true,
       });
       await expect(master).toBeVisible({ timeout: 15_000 });

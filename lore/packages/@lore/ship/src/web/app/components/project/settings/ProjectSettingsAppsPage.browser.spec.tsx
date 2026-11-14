@@ -104,9 +104,7 @@ describe("the Apps settings page", () => {
   }) => {
     const { alepha, fake, view } = await mount();
 
-    fireEvent.click(
-      await view.findByRole("switch", { name: "Deploy and watch apps" }),
-    );
+    fireEvent.click(await view.findByRole("switch", { name: "Ship" }));
 
     // ⚠️ `track` rides along, and only because this is the FIRST enable.
     // There is no row to carry options from, and sending `{}` would give Apps
@@ -144,9 +142,7 @@ describe("the Apps settings page", () => {
     // those. A second door onto the same room is what this quest closed.
     const { view } = await mount();
 
-    fireEvent.click(
-      await view.findByRole("switch", { name: "Deploy and watch apps" }),
-    );
+    fireEvent.click(await view.findByRole("switch", { name: "Ship" }));
 
     await waitFor(() =>
       expect(view.container.textContent).toContain("Ignore rules"),
@@ -196,7 +192,7 @@ describe("the Apps settings page", () => {
     // keyed by feature name.
     await waitFor(() =>
       expect(view.container.textContent).toMatch(
-        /instances, analytics, errors, vitals/i,
+        /apps and their deploys, analytics, errors, vitals/i,
       ),
     );
 

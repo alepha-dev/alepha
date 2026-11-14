@@ -47,7 +47,7 @@ describe("lore project capability", () => {
           items: [
             {
               key: "ship",
-              name: "Deploy and watch apps",
+              name: "Ship",
               enabled: true,
               options: [
                 { key: "track", enabled: false },
@@ -76,7 +76,7 @@ describe("lore project capability", () => {
     const { run, printed } = create();
     await run("capabilityList", "");
     const out = printed.join("\n");
-    expect(out).toMatch(/\[x\] ship\s+Deploy and watch apps/);
+    expect(out).toMatch(/\[x\] ship\s+Ship/);
     expect(out).toContain("off track");
     expect(out).toContain("on  deploy");
     expect(out).toMatch(/\[ \] plan/);

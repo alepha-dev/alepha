@@ -92,7 +92,7 @@ test.describe("Project capabilities", () => {
       .first()
       .fill(`Kno${ts}`.slice(0, 20));
     await page.getByRole("button", { name: /^next$/i }).click();
-    await page.getByRole("button", { name: /plan and track work/i }).click();
+    await page.getByRole("button", { name: /^plan\b/i }).click();
     await page.getByRole("button", { name: /create project/i }).click();
     await page.waitForURL(
       (url) =>
@@ -334,9 +334,9 @@ test.describe("Project capabilities", () => {
     // switch flips instantly and proves nothing. Every master is on General >
     // Capabilities since #Q2565, one page for all three.
     const masters = {
-      plan: "Plan and track work",
-      remember: "Write and keep knowledge",
-      ship: "Deploy and watch apps",
+      plan: "Plan",
+      remember: "Remember",
+      ship: "Ship",
     };
     await page.goto(`/${slug}/settings/capabilities`);
     await page.waitForLoadState("networkidle");
@@ -418,9 +418,7 @@ test.describe("Project capabilities", () => {
     const back = page.waitForResponse((res) =>
       res.url().includes("/capabilities/plan"),
     );
-    await page
-      .getByRole("switch", { name: "Plan and track work", exact: true })
-      .click();
+    await page.getByRole("switch", { name: "Plan", exact: true }).click();
     expect((await back).ok()).toBe(true);
 
     await page.goto(`/${slug}/quests`);

@@ -137,7 +137,7 @@ describe("project_context and capabilities", () => {
           priority: "medium",
         }),
       ),
-    ).rejects.toThrow(/Plan and track work.*Turn it on in Settings/s);
+    ).rejects.toThrow(/Plan.*Turn it on in Settings/s);
 
     await ctx.alepha.stop();
   });

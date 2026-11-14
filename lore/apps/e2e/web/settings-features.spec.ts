@@ -81,7 +81,7 @@ test.describe("Project settings — capabilities", () => {
     await page.waitForLoadState("networkidle");
 
     const master = page.getByRole("switch", {
-      name: "Write and keep knowledge",
+      name: "Remember",
     });
     await expect(master).toHaveAttribute("aria-checked", "true");
 
@@ -101,16 +101,14 @@ test.describe("Project settings — capabilities", () => {
     await page.reload();
     await page.waitForLoadState("networkidle");
     await expect(
-      page.getByRole("switch", { name: "Write and keep knowledge" }),
+      page.getByRole("switch", { name: "Remember" }),
     ).toHaveAttribute("aria-checked", "false", { timeout: 10_000 });
 
     // And back. Nothing was deleted, so the folios are where they were.
     const back = page.waitForResponse((res) =>
       res.url().includes("/capabilities/remember"),
     );
-    await page
-      .getByRole("switch", { name: "Write and keep knowledge" })
-      .click();
+    await page.getByRole("switch", { name: "Remember" }).click();
     expect((await back).ok()).toBe(true);
     await expect(sidebarFolios).toBeVisible();
   });

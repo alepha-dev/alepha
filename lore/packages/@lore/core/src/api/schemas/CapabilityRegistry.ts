@@ -171,7 +171,7 @@ export class CapabilityRegistry {
   protected readonly capabilities: CapabilityDescriptor[] = [
     {
       key: "plan",
-      name: "Plan and track work",
+      name: "Plan",
       labelKey: "project.capability.plan.label",
       descriptionKey: "project.capability.plan.description",
       preselectedCapability: true,
@@ -359,7 +359,7 @@ export class CapabilityRegistry {
     },
     {
       key: "remember",
-      name: "Write and keep knowledge",
+      name: "Remember",
       labelKey: "project.capability.remember.label",
       descriptionKey: "project.capability.remember.description",
       preselectedCapability: true,
@@ -405,7 +405,7 @@ export class CapabilityRegistry {
     },
     {
       key: "ship",
-      name: "Deploy and watch apps",
+      name: "Ship",
       labelKey: "project.capability.ship.label",
       descriptionKey: "project.capability.ship.description",
       preselectedCapability: false,

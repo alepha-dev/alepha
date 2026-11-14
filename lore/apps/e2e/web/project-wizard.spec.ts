@@ -96,12 +96,8 @@ test.describe("Project wizard", () => {
 
     // Step 2 - what is this project. Work and Knowledge are preselected,
     // Apps and Support are not, which is what they were before this epic.
-    const workRow = page
-      .getByRole("button", { name: /plan and track work/i })
-      .first();
-    const apps = page
-      .getByRole("button", { name: /deploy and watch apps/i })
-      .first();
+    const workRow = page.getByRole("button", { name: /^plan\b/i }).first();
+    const apps = page.getByRole("button", { name: /^ship\b/i }).first();
     await expect(workRow).toHaveAttribute("aria-pressed", "true");
     await expect(apps).toHaveAttribute("aria-pressed", "false");
 
@@ -157,7 +153,7 @@ test.describe("Project wizard", () => {
     // Knowledge only: turn Work off. Knowledge's one option is a preference
     // adopted later, so it contributes no wizard section - and with nothing
     // to set up, the wizard is two steps.
-    await page.getByRole("button", { name: /plan and track work/i }).click();
+    await page.getByRole("button", { name: /^plan\b/i }).click();
 
     // ⚠️ The button is now the SUBMIT button, on step 2. This is the React 19
     // hazard's exact condition: a variable step count means the ternary flips
@@ -198,10 +194,8 @@ test.describe("Project wizard", () => {
       .fill(`Non${stamp}`.slice(0, 24));
     await page.getByRole("button", { name: /^next$/i }).click();
 
-    await page.getByRole("button", { name: /plan and track work/i }).click();
-    await page
-      .getByRole("button", { name: /write and keep knowledge/i })
-      .click();
+    await page.getByRole("button", { name: /^plan\b/i }).click();
+    await page.getByRole("button", { name: /^remember\b/i }).click();
 
     // At least one is required HERE and nowhere else: a wizard is asking a
     // question and "none" is not an answer to it. Settings has no floor -

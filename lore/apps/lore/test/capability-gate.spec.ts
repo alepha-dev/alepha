@@ -100,7 +100,7 @@ describe("the capability gate", () => {
           },
         }),
       ),
-    ).rejects.toThrow(/Plan and track work.*Turn it on in Settings/s);
+    ).rejects.toThrow(/Plan.*Turn it on in Settings/s);
 
     await ctx.alepha.stop();
   });
@@ -190,7 +190,7 @@ describe("the capability gate", () => {
           body: { projectId: project.id, title: "Nope", content: "" },
         }),
       ),
-    ).rejects.toThrow(/Write and keep knowledge/);
+    ).rejects.toThrow(/Remember/);
 
     await ctx.alepha.stop();
   });
@@ -217,7 +217,7 @@ describe("the capability gate", () => {
           priority: "medium",
         }),
       ),
-    ).rejects.toThrow(/Plan and track work/);
+    ).rejects.toThrow(/Plan/);
 
     await ctx.alepha.stop();
   });
