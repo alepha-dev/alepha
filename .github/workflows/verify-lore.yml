@@ -28,11 +28,9 @@ on:
   pull_request:
     branches:
       - main
-  # By hand, and by Release after it pushes the release commit (#Q2948): a
-  # push made with `GITHUB_TOKEN` triggers no workflow, and a dispatch is the
-  # one event it may. A green dispatch on `main` deploys, like a push, when a
-  # person started it: Release's own dispatch, made with `GITHUB_TOKEN`,
-  # fires no `workflow_run`, so Release dispatches the deploys itself (#Q2953).
+  # By hand. A green dispatch on `main` deploys, like a push, when a person
+  # started it. Release dispatched it too until it went tag-driven (#Q3640):
+  # it pushes no commit any more, so there is nothing new to verify.
   workflow_dispatch:
   # `verify-all.yml`, by hand. A called run is filed under "Verify All", so it
   # never triggers `deploy-lore.yml`.

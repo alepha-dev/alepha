@@ -5,20 +5,32 @@ run-name: Release${{ inputs.dry_run && ' (dry run)' || '' }}
 # `@alepha/lore` with the Lore image, and Bay's binaries, all under one bare
 # `x.y.z` tag and one GitHub release. Lore and Bay take the framework's
 # version: they shipped on their own between #E72 and this, never again.
+#
+# ⚠️ **Tag-driven: a release writes nothing to `main` (#Q3640).** The version
+# is the latest release tag plus the bump, written into the published
+# workspaces on this runner only, and the one thing pushed is the bare tag.
+# `main` is protected (#E150): nothing reaches it except a pull request with
+# its checks green, and the built-in token cannot bypass that. So there is no
+# release commit, no CHANGELOG.md (the Lore release is the changelog), and no
+# dispatch of Verify or the deploys: the commit being tagged already passed
+# Verify and was deployed when it landed on `main`.
+#
+# The `version` fields committed on `main` are therefore NOT the released
+# version and are no longer maintained: they hold the last version released
+# before this, which `alepha init` from a checkout still writes as a usable
+# `^` range. The tag is the version.
 
 permissions:
   contents: write
   id-token: write
   # The Lore image, pushed to ghcr.io/alepha-dev/lore.
   packages: write
-  # The Verify Framework and Verify Lore dispatches after the push.
-  actions: write
 
 # One release at a time, and never cancel one.
 #
 # `cancel-in-progress: true`  -  what `verify-framework.yml` uses, and right there  -  would be
 # actively dangerous here: interrupting the job between `npm publish` and
-# `git push` leaves a published version whose tag exists on no remote, which is
+# the tag push leaves a published version whose tag exists on no remote, which is
 # the exact tear the step order further down is arranged to avoid. Two
 # dispatches a minute apart would also both bump, racing to publish two
 # versions nobody asked for.
@@ -47,12 +59,12 @@ on:
           - major
         default: "minor"
       # Everything up to the first publish, and nothing after it (#Q2948):
-      # the bump, the Lore release check, the changelog, the local commit and
+      # the version, the Lore release check, the release notes, the local
       # tag, every build, Bay's tests and binaries, the Lore image and the
-      # docs build all run; npm, the push, the image push, the GitHub release,
-      # the Lore artifacts and release, and the docs deploy are all skipped.
-      # The run summary lists what would have shipped. The runner is thrown
-      # away, so the local commit and tag go with it.
+      # docs build all run; npm, the tag push, the image push, the GitHub
+      # release, the Lore artifacts and release, and the docs deploy are all
+      # skipped. The run summary lists what would have shipped. The runner is
+      # thrown away, so the local tag goes with it.
       dry_run:
         description: "Dry run: build and check everything, publish nothing"
         required: false
@@ -64,12 +76,13 @@ on:
       # replays the workflow file of the dispatching commit, the broken one,
       # and bumps again onto a tag that already exists.
       #
-      # With a tag here the job checks that tag out, skips the bump, the
-      # changelog, the commit, npm and the push, takes the release notes from
-      # the tag's CHANGELOG.md, and runs every other step as usual. Each of
-      # those is safe to repeat (see the comment above the Lore publish), and
-      # the workflow file is the one on the dispatched branch, so the fix that
-      # unblocks the release is the one that runs.
+      # With a tag here the job checks that tag out, takes its version from
+      # the tag, skips the Lore release check, npm and the tag push, reads the
+      # release notes from the Lore release as Lore holds it, and runs every
+      # other step as usual. Each of those is safe to repeat (see the comment
+      # above the Lore publish), and the workflow file is the one on the
+      # dispatched branch, so the fix that unblocks the release is the one
+      # that runs.
       resume_tag:
         description: "Resume an existing release tag (skips bump, npm and push); version_bump is ignored"
         required: false
@@ -94,10 +107,9 @@ jobs:
         with:
           # Empty on a normal release, which checks out the dispatched branch.
           ref: ${{ inputs.resume_tag }}
-          # Fetch full history for proper versioning
+          # Every tag, to find the latest release, and the history `git
+          # describe` reads.
           fetch-depth: 0
-          # Use a token that can push to protected branches
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
         run: |
@@ -117,6 +129,46 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
+      # The version is the latest release tag plus the bump, never a
+      # `package.json` (#Q3640): those on `main` are not maintained any more.
+      # The latest tag by version order, not by `git describe`, so a tag on a
+      # commit `main` does not contain still counts. A resume takes its tag.
+      - name: Work out the version
+        id: version
+        working-directory: .
+        env:
+          RESUME_TAG: ${{ inputs.resume_tag }}
+          VERSION_BUMP: ${{ inputs.version_bump }}
+        run: |
+          if [ -n "$RESUME_TAG" ]; then
+            VERSION="$RESUME_TAG"
+          else
+            LATEST=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+            if [ -z "$LATEST" ]; then
+              echo "::error::No x.y.z release tag to bump from"
+              exit 1
+            fi
+            IFS=. read -r MAJOR MINOR PATCH <<< "$LATEST"
+            case "$VERSION_BUMP" in
+              major) VERSION="$((MAJOR + 1)).0.0" ;;
+              minor) VERSION="${MAJOR}.$((MINOR + 1)).0" ;;
+              patch) VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+            esac
+            if git rev-parse -q --verify "refs/tags/${VERSION}" > /dev/null; then
+              echo "::error::Tag ${VERSION} already exists"
+              exit 1
+            fi
+            echo "Bumping ${LATEST} (${VERSION_BUMP}) to ${VERSION}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Released version: $VERSION"
+
+      # On the runner only: these edits are never committed (#Q3640). They are
+      # what `npm publish` packs, and what `workspace:*` resolves to inside
+      # each published tarball, so every package names its siblings at this
+      # version. Run on a resume too, because the tag's commit carries no
+      # released version of its own.
+      #
       # `--no-private` here is NOT the registry guard. That is the identical
       # flag on `npm publish` far below, and it is the only thing keeping a
       # private workspace off the registry. Conflating the two cost a release.
@@ -125,49 +177,34 @@ jobs:
       # workspace declares a `version` if and only if it is published. Private
       # workspaces (the docs, the showcase, the examples) never ship as an npm
       # package, so a number in their manifest is decoration, and decoration
-      # drifts. `payments-mollie` and `sigil` sat at 0.20.6 and 0.20.1 while
-      # `alepha` reached 0.26.0. They now carry no version at all.
+      # drifts. `scripts/check-conventions.ts` guards the invariant, so the
+      # next violation surfaces in `yarn v` instead of here, and `yarn
+      # version` fails on a workspace with no version rather than skipping it.
       #
-      # Dropping the flag to bump them anyway is what broke the first 0.27.0
-      # attempt: `--all` also reaches the root workspace and the example apps,
-      # and `yarn version` fails on a workspace with no version rather than
-      # skipping it, so `foreach` aborts on the first one.
-      #
-      # `scripts/check-conventions.ts` guards the invariant, so the next
-      # violation surfaces in `yarn v` instead of here, in a release someone
-      # dispatched by hand.
-      - name: Bump Version
-        if: inputs.resume_tag == ''
-        env:
-          VERSION_BUMP: ${{ inputs.version_bump }}
-        run: |
-          yarn workspaces foreach --no-private --worktree version "${VERSION_BUMP}"
-
-      - name: Get New Version
-        id: version
-        env:
-          RESUME_TAG: ${{ inputs.resume_tag }}
-        run: |
-          VERSION=$(node -p "require('./packages/alepha/package.json').version")
-          if [ -n "$RESUME_TAG" ] && [ "$VERSION" != "$RESUME_TAG" ]; then
-            echo "::error::Tag ${RESUME_TAG} carries version ${VERSION}, not a release commit"
-            exit 1
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Released version: $VERSION"
-
       # Lore and its client take the framework's version, so the one tag names
-      # all three products. `apps/lore` is what /version reports and the image
-      # is tagged with; `@alepha/lore` is the npm package. Bay has no manifest:
-      # its version is stamped into the binary at build time.
-      - name: Align Lore's version
-        if: inputs.resume_tag == ''
-        working-directory: lore
+      # all three products. `apps/lore` is what the image is tagged with;
+      # `@alepha/lore` is the npm package. Bay has no manifest: its version is
+      # stamped into the binary at build time.
+      - name: Set the version on the runner
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          yarn workspaces foreach --no-private --worktree version "${VERSION}"
+          cd ../lore
           yarn workspace @alepha/lore version "${VERSION}"
           yarn workspace lore version "${VERSION}"
+
+      # Local, and before every build: `alepha build` reads the tag on HEAD as
+      # the version it bakes into each bundle and serves on `/version`
+      # (#Q3639), so the Lore image and alepha.dev report the release, not
+      # `git describe`. Pushed only once everything is published, further
+      # down. A resume checked the tag out, so HEAD carries it already.
+      - name: Tag the release locally
+        if: inputs.resume_tag == ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git tag -a "${VERSION}" -m "release: ${VERSION}"
 
       # The gate on what ships (#Q2589). 0.31.0 was published at 47/66, because
       # the only Lore call was the publish at the very end, which never looked
@@ -190,83 +227,51 @@ jobs:
       # The file IS the release body  -  `action-gh-release` reads it through
       # `body_path` further down. It used to be piped into `$GITHUB_OUTPUT`
       # under an `EOF` delimiter, which put a commit message in charge of where
-      # the value ended: one line reading exactly `EOF` truncates the notes, and
-      # everything after it is parsed as more `key=value` output lines.
+      # the value ended.
       #
-      # On a resume the tag's commit already holds the section, so it is read
-      # back out of CHANGELOG.md: the generator would diff the tag against
-      # itself.
+      # The Lore release is the changelog (#E150): its epics, then the quests
+      # of each area that belong to no epic, the same text alepha.dev/changelog
+      # shows. A resume reads it `--frozen`, since its Lore release may already
+      # be published, and drops the title line the frozen form carries.
+      #
+      # ⚠️ A real release needs its Lore release: no notes, no release. A dry
+      # run carries on with a placeholder instead, so the builds below are
+      # still exercised for a version Lore has no release of yet.
       - name: Generate Release Notes
         env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           RESUME_TAG: ${{ inputs.resume_tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
+          set -o pipefail
           if [ -n "$RESUME_TAG" ]; then
-            awk -v head="## [${RESUME_TAG}]" \
-              'index($0, head) == 1 { found = 1; next } /^## \[/ && found { exit } found' \
-              CHANGELOG.md > /tmp/release_notes.txt
-            if [ ! -s /tmp/release_notes.txt ]; then
-              echo "::error::CHANGELOG.md has no section for ${RESUME_TAG}"
+            notes() {
+              yarn lore releases changelog --tag "$VERSION" --frozen \
+                | awk 'NR == 1 && /^# / { next } { print }'
+            }
+          else
+            notes() { yarn lore releases changelog --tag "$VERSION"; }
+          fi
+          if ! notes > /tmp/release_notes.txt || [ ! -s /tmp/release_notes.txt ]; then
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "::warning::No Lore release notes for ${VERSION}: the dry run goes on without them"
+              echo "_No Lore release carries ${VERSION} yet._" > /tmp/release_notes.txt
+            else
+              echo "::error::The Lore release ${VERSION} gave no release notes"
               exit 1
             fi
-          else
-            # Straight to a file, so backticks survive the shell.
-            yarn alepha gen changelog > /tmp/release_notes.txt
           fi
-
-      # Prepend-only, and that is load-bearing rather than incidental: the new
-      # section goes on top and `cat CHANGELOG.md >>` carries every existing one
-      # through byte-for-byte. Nothing here ever regenerates an old section, and
-      # nothing should - the 0.25.0 entries were written from French commit
-      # subjects and translated by hand, and those subjects are in git history
-      # forever. `alepha gen changelog --from=0.24.0 --to=0.25.0` still emits
-      # the French today.
-      #
-      # The direction this cannot protect is the one above it: a French commit
-      # subject written now flows straight into the next section, because that
-      # is exactly what this step is for. `yarn check:conventions` reads
-      # CHANGELOG.md for French and fails the build, so it surfaces in `yarn v`
-      # rather than in the release notes.
-      - name: Update CHANGELOG.md
-        if: inputs.resume_tag == ''
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          DATE=$(date +%Y-%m-%d)
-
-          # Prepend new changelog entry (use cat to preserve backticks in commit hashes)
-          {
-            echo "## [$VERSION] - $DATE"
-            echo ""
-            cat /tmp/release_notes.txt
-            echo ""
-          } > CHANGELOG.tmp
-          cat CHANGELOG.md >> CHANGELOG.tmp
-          mv CHANGELOG.tmp CHANGELOG.md
-
-      # Local only  -  nothing leaves the runner until the artifacts exist.
-      #
-      # The push and the GitHub Release used to sit right here, ahead of the
-      # build. A red `yarn build` then left a tag on `main` and a public release
-      # for a version that never reached npm, and clearing that up meant
-      # deleting a published release by hand. Everything irreversible now waits
-      # until there is something to release.
-      #
-      # It stays ahead of `yarn copy` / `yarn build` so `git add -A` sees the
-      # same tree it always has: the bump and the changelog, no build output.
-      - name: Commit and Tag Release
-        if: inputs.resume_tag == ''
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          git add -A
-          git commit -m "release: ${VERSION}"
-          git tag -a "${VERSION}" -m "release: ${VERSION}"
 
       - name: Clean
         run: yarn clean
 
+      # `yarn copy` runs the docs' `gen:tree`, which builds alepha.dev's
+      # changelog page from the published Lore releases (#Q3638).
       - name: Prepare
         run: yarn copy
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
       # This job installs no Bun (every Verify job does, through
       # `.github/actions/setup`), so no workspace here may build with it. A
@@ -276,19 +281,13 @@ jobs:
       - name: Build
         run: yarn build
 
-      # Files that ship inside the npm tarball but are not tracked in the
-      # package directory. They are listed in `files` and materialised here,
-      # after the release commit, so `git add -A` above never picks them up.
-      #
-      # CHANGELOG.md is the root one, copied in: `packages/alepha` has no
-      # changelog of its own, and the root file is outside the package
-      # directory, so npm pack could never see it. The copy sits after the
-      # "Update CHANGELOG.md" step, so the tarball carries the entry for the
-      # version being released, not the previous one.
+      # A file that ships inside the npm tarball but is not tracked in the
+      # package directory: listed in `files`, materialised here. The tarball
+      # carries no CHANGELOG.md any more (#E150): the release notes are the
+      # Lore release, on alepha.dev/changelog and the GitHub release.
       - name: Copy package docs
         run: |
           cp packages/alepha/assets/agents-template.md packages/alepha/AGENTS.md
-          cp CHANGELOG.md packages/alepha/CHANGELOG.md
 
       # Lore's own build: `@alepha/lore` (its `bin`, sigil and client) for npm,
       # and `apps/lore` for the image below.
@@ -379,42 +378,21 @@ jobs:
 
       # ──────────────────────────────────────────────────────────────────
       #
-      # The push comes after `npm publish` on purpose. Of the two ways this can
-      # tear, a published version whose tag has not been pushed is the mild one
-      #  -  push the tag and it is whole. The other way round leaves a public
-      # release pointing at a version nobody can install, and only deleting it
-      # by hand fixes that.
+      # The tag push comes after `npm publish` on purpose. Of the two ways
+      # this can tear, a published version whose tag has not been pushed is
+      # the mild one  -  push the tag and it is whole. The other way round
+      # leaves a public release pointing at a version nobody can install, and
+      # only deleting it by hand fixes that.
+      #
+      # The tag alone (#Q3640): `main` is protected, and the commit being
+      # tagged is already on it. Nothing is dispatched afterwards either: that
+      # commit passed Verify and was deployed when it landed on `main`.
       # ──────────────────────────────────────────────────────────────────
-      - name: Push Changes and Tags
-        if: inputs.resume_tag == '' && inputs.dry_run != true
-        run: |
-          git push --follow-tags
-
-      # The release commit was pushed with `GITHUB_TOKEN`, and a push made with
-      # it triggers no workflow, so nothing would verify it or deploy it.
-      # `workflow_dispatch` is the one event that token MAY trigger, so this
-      # dispatches all four by name: Verify Framework and Verify Lore on the
-      # release commit, and Deploy Framework (ui, shop) and Deploy Lore at the
-      # released version.
-      #
-      # ⚠️ **The deploys are dispatched here, not left to follow the Verify
-      # runs.** A run started by `GITHUB_TOKEN` fires no `workflow_run`
-      # downstream: on 0.34.0 both Verify runs went green and no deploy
-      # followed (#Q2953). Deploying without waiting is safe for the same
-      # reason Deploy All is: the release commit only bumps versions and
-      # prepends the changelog, over a `main` that Verify already passed.
-      #
-      # Until #Q2948 the Verify runs followed Release through a `workflow_run`
-      # in their own files, which fired on EVERY completed Release, failed and
-      # dry ones included, and redeployed production each time.
-      - name: Verify and deploy the release commit
+      - name: Push the tag
         if: inputs.resume_tag == '' && inputs.dry_run != true
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          for workflow in verify-framework.yml verify-lore.yml deploy-framework.yml deploy-lore.yml; do
-            gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY" --ref main
-          done
+          VERSION: ${{ steps.version.outputs.version }}
+        run: git push origin "refs/tags/${VERSION}"
 
       # One step, not two: the release used to be created before the build and
       # have its assets bolted on afterwards, because that avoided reordering a
@@ -573,7 +551,7 @@ jobs:
             echo "Nothing was published. A real run would have:"
             echo ""
             echo "- published the framework's packages and \`@alepha/lore\` ${VERSION} to npm"
-            echo "- pushed the release commit and the tag \`${VERSION}\`, then dispatched Verify Framework, Verify Lore, Deploy Framework and Deploy Lore on \`main\`"
+            echo "- pushed the tag \`${VERSION}\` on the commit it built, and nothing to \`main\`"
             echo "- copied the attested index (SBOM and provenance) to \`ghcr.io/alepha-dev/lore:${VERSION}\` and \`:latest\`, one digest"
             echo "- created the GitHub release with Bay's binaries"
             echo "- pushed the Lore artifacts, published Lore release ${VERSION} and deployed alepha.dev"
