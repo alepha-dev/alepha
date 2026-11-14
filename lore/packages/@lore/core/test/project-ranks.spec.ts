@@ -469,6 +469,42 @@ describe("Lore's rank resource", () => {
     ).rejects.toThrow("cannot change your own rank");
   });
 
+  it("names the presets in the UI's language, not the browser's Accept-Language", async ({
+    expect,
+  }) => {
+    // #Q3593: an English UI on a fr-FR browser. Lore's UI language is its URL
+    // prefix, which an `/api` call does not carry, so the page sends it.
+    const account = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: account.id, roles: ["user"] };
+    const created = await ctx.projects.createProject(
+      { body: { title: "English UI", capabilities: [{ key: "work" }] } },
+      { user },
+    );
+    const rankApi = ctx.alepha.inject(ProjectRankController);
+    const admin = async (language?: string) =>
+      (
+        await rankApi.getRankPresets(
+          {
+            params: { projectId: created.id },
+            query: language ? { language } : {},
+          },
+          { user },
+        )
+      ).items.find((it) => it.key === "admin")?.name;
+
+    ctx.alepha.store.set("alepha.http.request", {
+      language: "fr-FR",
+    } as never);
+    try {
+      expect(await admin("en")).toBe("Admin");
+      expect(await admin("fr")).toBe("Administrateur");
+      // Accept-Language is only the fallback, for a caller that does not say.
+      expect(await admin()).toBe("Administrateur");
+    } finally {
+      ctx.alepha.store.set("alepha.http.request", undefined as never);
+    }
+  });
+
   it("names a seeded rank in the creator's language", async ({ expect }) => {
     const [admin] = ctx.presets.presetsFor(["work"]);
     expect(await ctx.presets.nameFor(admin, "en")).toBe("Admin");
