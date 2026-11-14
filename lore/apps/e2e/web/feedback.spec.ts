@@ -282,9 +282,7 @@ test.describe("Feedback", () => {
         .getByRole("button", { name: "Open screenshot.png full size" })
         .click();
       const lightbox = page.getByRole("dialog").last();
-      await expect(
-        lightbox.locator('img[src*="/api/files/"]'),
-      ).toBeVisible();
+      await expect(lightbox.locator('img[src*="/api/files/"]')).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(drawer.locator('img[alt="screenshot.png"]')).toBeVisible();
     });
