@@ -100,7 +100,7 @@ entry: **Quests**, **Folios**, **Apps**.
 
 ```bash
 lore project capability list -p acme
-lore project capability enable apps -p acme --option uptime
+lore project capability enable ship -p acme --option uptime
 lore project capability disable support -p acme
 ```
 

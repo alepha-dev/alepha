@@ -434,7 +434,7 @@ export class ArtifactController {
       $ownsProject({
         requires: "artifact:delete",
         param: "projectId",
-        capability: { key: "apps", action: "delete an artifact" },
+        capability: { key: "ship", action: "delete an artifact" },
       }),
     ],
     method: "DELETE",

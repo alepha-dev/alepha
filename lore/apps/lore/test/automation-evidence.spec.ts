@@ -82,7 +82,7 @@ describe("Bounded automation run evidence", () => {
     persistence = alepha.inject(AutomationPersistence);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: {} }, { key: "support" }],
+      capabilities: [{ key: "plan", options: {} }, { key: "support" }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };

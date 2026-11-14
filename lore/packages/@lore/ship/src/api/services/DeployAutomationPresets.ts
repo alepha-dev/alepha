@@ -22,7 +22,7 @@ export class DeployAutomationPresets {
           "Notify one member when a deployment of the chosen app records a failure, in any environment. Raw logs are excluded.",
         source: source.key,
         fields: source.fields,
-        needs: [{ capability: "work" }, ...source.needs],
+        needs: [{ capability: "plan" }, ...source.needs],
         permissions: ["automation:write", "member:read", ...source.permissions],
         slots: {
           app: {

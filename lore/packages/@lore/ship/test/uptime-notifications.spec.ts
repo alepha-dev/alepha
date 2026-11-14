@@ -62,7 +62,7 @@ describe("Uptime email alerts", () => {
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "apps", options: { uptime: true } }],
+      capabilities: [{ key: "ship", options: { uptime: true } }],
     });
     await repos.users.updateById(project.createdBy, {
       email: "original-owner@example.com",

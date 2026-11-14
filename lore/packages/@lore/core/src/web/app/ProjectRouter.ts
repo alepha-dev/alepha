@@ -130,7 +130,7 @@ export class ProjectRouter {
         // ⚠️ `{}` on failure and NOT `undefined`: the built-in defaults are
         // a complete answer, so a failed read is indistinguishable from a
         // project that has customised nothing, and the menus keep working.
-        capabilityOption(project, "work", "agentPrompts")
+        capabilityOption(project, "plan", "agentPrompts")
           ? this.promptApi
               .getProjectPrompts({ params: { projectId: project.id } })
               .then((rows) =>

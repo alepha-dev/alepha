@@ -84,7 +84,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "NoWork", capabilities: [{ key: "knowledge" }] },
+        body: { title: "NoWork", capabilities: [{ key: "remember" }] },
       }),
     );
 
@@ -111,7 +111,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "HasWork", capabilities: [{ key: "work" }] },
+        body: { title: "HasWork", capabilities: [{ key: "plan" }] },
       }),
     );
 
@@ -137,7 +137,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "Hidden", capabilities: [{ key: "work" }] },
+        body: { title: "Hidden", capabilities: [{ key: "plan" }] },
       }),
     );
     await ctx.asUser(ctx.owner.id, () =>
@@ -155,7 +155,7 @@ describe("the capability gate", () => {
     // Turn Work off the way Settings does: the row goes, and nothing else.
     const security = ctx.alepha.inject(ProjectSecurityService);
     const row = await security.capabilities.findOne({
-      where: { projectId: { eq: project.id }, key: { eq: "work" } },
+      where: { projectId: { eq: project.id }, key: { eq: "plan" } },
     });
     await security.capabilities.deleteById(row!.id);
 
@@ -180,7 +180,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "NoKnowledge", capabilities: [{ key: "work" }] },
+        body: { title: "NoKnowledge", capabilities: [{ key: "plan" }] },
       }),
     );
 
@@ -199,7 +199,7 @@ describe("the capability gate", () => {
     const ctx = await setup();
     const project = await ctx.asUser(ctx.owner.id, () =>
       ctx.projectApi.createProject({
-        body: { title: "McpNoWork", capabilities: [{ key: "knowledge" }] },
+        body: { title: "McpNoWork", capabilities: [{ key: "remember" }] },
       }),
     );
 

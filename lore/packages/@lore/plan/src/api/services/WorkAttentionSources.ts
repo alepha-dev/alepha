@@ -35,7 +35,7 @@ export class WorkAttentionSources {
   constructor() {
     this.attention.register({
       key: "quests",
-      needs: { capability: "work" },
+      needs: { capability: "plan" },
       read: (project) => this.questsOf(project),
     });
     this.attention.register({

@@ -194,7 +194,7 @@ describe("the instance's tab set", () => {
     expect,
   }) => {
     // Overview and Settings are the Apps baseline per
-    // `appsCapabilityOptionsSchema`, so they answer to no switch at all.
+    // `shipCapabilityOptionsSchema`, so they answer to no switch at all.
     const baseline = new Set(["app", "appSettings"]);
     for (const tab of APP_TABS) {
       if (baseline.has(tab.route)) {

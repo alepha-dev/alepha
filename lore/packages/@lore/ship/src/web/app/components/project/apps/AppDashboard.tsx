@@ -44,7 +44,7 @@ const AppDashboard = () => {
   const configureHref =
     project &&
     sigilConfigurable(instance) &&
-    capabilityOption(project, "apps", "deploy")
+    capabilityOption(project, "ship", "deploy")
       ? router.path("appSettings", {
           params: {
             projectSlug: project.slug,

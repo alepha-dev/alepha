@@ -45,7 +45,7 @@ const setup = async () => {
     projectApi.createProject({
       body: {
         title: "Reported",
-        capabilities: [{ key: "work" }, { key: "knowledge" }, { key: "apps" }],
+        capabilities: [{ key: "plan" }, { key: "remember" }, { key: "ship" }],
       },
     }),
   );

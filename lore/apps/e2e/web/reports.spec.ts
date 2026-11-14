@@ -262,7 +262,7 @@ test.describe("Reports", () => {
       page,
       `RK${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "knowledge");
+    await setCapability(page, projectId, "remember");
 
     await page.goto(`/${slug}/reports/knowledge`);
 
@@ -319,7 +319,7 @@ test.describe("Reports", () => {
       page,
       `RD${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "apps");
+    await setCapability(page, projectId, "ship");
 
     await page.goto(`/${slug}/reports/delivery`);
 

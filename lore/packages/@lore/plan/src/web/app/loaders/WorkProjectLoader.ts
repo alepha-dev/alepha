@@ -85,7 +85,7 @@ export class WorkProjectLoader {
             // nothing. `undefined` on failure and NOT `[]`, like
             // `currentInstancesAtom`: the badge must read "could not count"
             // rather than "no drafts".
-            capabilityOption(project, "work", "epics")
+            capabilityOption(project, "plan", "epics")
               ? this.epicApi
                   .getEpicRefs({ params: { projectId } })
                   .catch(() => undefined)

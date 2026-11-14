@@ -147,7 +147,7 @@ Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.dev` included.
   epic-review DIALOG existed before this epic. `useAgentPrompt.copy` must
   never grow a fetch.
 - ⚠️ **The prompts are read by the `project` route loader, not by a
-  component**, gated on `capabilityOption(project, "work", "agentPrompts")`,
+  component**, gated on `capabilityOption(project, "plan", "agentPrompts")`,
   beside `currentEpicsAtom` and `currentAreasAtom`. It catches to `{}` and not
   to `undefined`, unlike its neighbours: they distinguish "could not read"
   from "none" because a badge must not say zero when it means unknown, and

@@ -264,7 +264,7 @@ describe("dashboard plan tiles", () => {
       expect,
     }) => {
       const narrow = await createTestProject(alepha, {
-        capabilities: [{ key: "work", options: { releases: true } }],
+        capabilities: [{ key: "plan", options: { releases: true } }],
       });
       await createTestMember(alepha, narrow, narrow.createdBy!);
       await createTestEpic(alepha, narrow, { status: "in_progress" });

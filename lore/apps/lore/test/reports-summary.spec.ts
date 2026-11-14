@@ -37,7 +37,7 @@ describe("ReportsSummaryRegistry", () => {
 
   it("reads only the capabilities a project has", async ({ expect }) => {
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "work" }],
+      capabilities: [{ key: "plan" }],
     });
 
     const lines = await alepha
@@ -45,7 +45,7 @@ describe("ReportsSummaryRegistry", () => {
       .lines(project.id, {});
 
     expect(new Set(lines.map((line) => line.capability))).toEqual(
-      new Set(["work"]),
+      new Set(["plan"]),
     );
   });
 
@@ -54,10 +54,10 @@ describe("ReportsSummaryRegistry", () => {
   }) => {
     const project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work" },
+        { key: "plan" },
         { key: "support" },
-        { key: "knowledge" },
-        { key: "apps" },
+        { key: "remember" },
+        { key: "ship" },
       ],
     });
 
@@ -66,7 +66,7 @@ describe("ReportsSummaryRegistry", () => {
       .lines(project.id, {});
 
     expect(new Set(lines.map((line) => line.capability))).toEqual(
-      new Set(["work", "support", "knowledge", "apps"]),
+      new Set(["plan", "support", "remember", "ship"]),
     );
   });
 
@@ -74,7 +74,7 @@ describe("ReportsSummaryRegistry", () => {
     expect,
   }) => {
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "work" }],
+      capabilities: [{ key: "plan" }],
     });
 
     const lines = await alepha
@@ -96,12 +96,12 @@ describe("ReportsSummaryMarkdown", () => {
       [
         {
           key: "throughput",
-          capability: "work",
+          capability: "plan",
           value: 4,
           previous: 2,
           format: "count",
         },
-        { key: "wip", capability: "work", value: 3, format: "count" },
+        { key: "wip", capability: "plan", value: 3, format: "count" },
       ],
       {
         line: (key) => key.toUpperCase(),

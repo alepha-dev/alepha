@@ -74,14 +74,14 @@ export class FolioAttachmentController {
    * downloading one stays open: the bytes are still there.
    */
   protected ownsProjectForKnowledge = (requires: string | string[]) =>
-    $ownsProject({ requires, param: "projectId", capability: "knowledge" });
+    $ownsProject({ requires, param: "projectId", capability: "remember" });
 
   protected ownsBlobForKnowledge = (requires: string | string[]) =>
     $ownsProject({
       requires,
       repository: () => this.attachments,
       param: "id",
-      capability: "knowledge",
+      capability: "remember",
     });
 
   /**

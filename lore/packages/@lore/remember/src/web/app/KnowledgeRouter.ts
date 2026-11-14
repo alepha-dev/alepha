@@ -116,7 +116,7 @@ export class KnowledgeRouter {
       if (projectId === undefined) {
         throw new NotFoundError("Project not found");
       }
-      if (!hasCapability(project, "knowledge")) {
+      if (!hasCapability(project, "remember")) {
         throw new NotFoundError("Knowledge is not enabled for this project");
       }
       // ⚠️ A permission NAME, and a module-level function rather than

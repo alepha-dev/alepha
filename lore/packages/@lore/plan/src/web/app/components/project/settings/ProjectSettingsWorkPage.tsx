@@ -21,15 +21,15 @@ import ProjectSettingsTagColors from "./ProjectSettingsTagColors.tsx";
  */
 const ProjectSettingsWorkPage = () => {
   const [project] = useStore(currentProjectAtom);
-  const workEnabled = hasCapability(project, "work");
+  const workEnabled = hasCapability(project, "plan");
   const shell = useInject(ProjectShellRegistry);
 
   return (
     <div className="flex flex-col gap-4">
       <ProjectSettingsCapabilitySection
-        capability="work"
+        capability="plan"
         master={false}
-        options={shell.settingsOptions("work")}
+        options={shell.settingsOptions("plan")}
       />
 
       {/* Tag colours belong to quests, not to the board: they render on the

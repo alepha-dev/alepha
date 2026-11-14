@@ -919,42 +919,42 @@ export default {
   "project.settings.data.export.button": "Exporter les quêtes",
   // ── Capabilities ────────────────────────────────────────────────────────
   // See the note in en.ts: `.label` stays a sentence on purpose.
-  "project.capability.work.label": "Planifier et suivre le travail",
-  "project.capability.work.description":
+  "project.capability.plan.label": "Planifier et suivre le travail",
+  "project.capability.plan.description":
     "Quêtes, épopées, versions, un tableau.",
-  "project.capability.work.option.epics.label": "Épopées",
-  "project.capability.work.option.epics.description":
+  "project.capability.plan.option.epics.label": "Épopées",
+  "project.capability.plan.option.epics.description":
     "Des phases, avec un cycle de vie.",
-  "project.capability.work.option.releases.label": "Versions",
-  "project.capability.work.option.releases.description":
+  "project.capability.plan.option.releases.label": "Versions",
+  "project.capability.plan.option.releases.description":
     "Des versions nommées, qui sortent.",
-  "project.capability.work.option.estimate.label": "Estimations",
-  "project.capability.work.option.estimate.description":
+  "project.capability.plan.option.estimate.label": "Estimations",
+  "project.capability.plan.option.estimate.description":
     "Prévoir le temps que devrait prendre une quête.",
-  "project.capability.work.option.chrono.label": "Chronomètre",
-  "project.capability.work.option.chrono.description":
+  "project.capability.plan.option.chrono.label": "Chronomètre",
+  "project.capability.plan.option.chrono.description":
     "Mesurer le temps réellement passé sur une quête.",
-  "project.capability.work.option.reminder.label": "Rappels",
-  "project.capability.work.option.reminder.description":
+  "project.capability.plan.option.reminder.label": "Rappels",
+  "project.capability.plan.option.reminder.description":
     "Relancer qui détient une quête restée silencieuse.",
-  "project.capability.work.option.agentPrompts.label": "Invites pour agents",
-  "project.capability.work.option.agentPrompts.description":
+  "project.capability.plan.option.agentPrompts.label": "Invites pour agents",
+  "project.capability.plan.option.agentPrompts.description":
     "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour votre agent de code ; rien n’est envoyé nulle part.",
-  "project.capability.knowledge.label": "Écrire et conserver le savoir",
-  "project.capability.knowledge.description":
+  "project.capability.remember.label": "Écrire et conserver le savoir",
+  "project.capability.remember.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
-  "project.capability.knowledge.option.agentSummary.label":
+  "project.capability.remember.option.agentSummary.label":
     "Résumés pour les agents",
-  "project.capability.knowledge.option.agentSummary.description":
+  "project.capability.remember.option.agentSummary.description":
     "Afficher le champ résumé sur un folio. Il est écrit et lu via MCP dans tous les cas.",
-  "project.capability.apps.label": "Déployer et surveiller des applications",
-  "project.capability.apps.description":
+  "project.capability.ship.label": "Déployer et surveiller des applications",
+  "project.capability.ship.description":
     "Instances, analytique, erreurs, Web Vitals.",
-  "project.capability.apps.option.track.label": "Surveiller les applications",
-  "project.capability.apps.option.track.description":
+  "project.capability.ship.option.track.label": "Surveiller les applications",
+  "project.capability.ship.option.track.description":
     "Analytique, Web Vitals et erreurs. Chaque application reçoit un sigil.",
-  "project.capability.apps.option.deploy.label": "Déployer les applications",
-  "project.capability.apps.option.deploy.description":
+  "project.capability.ship.option.deploy.label": "Déployer les applications",
+  "project.capability.ship.option.deploy.description":
     "Envoyer un build sur une machine qui vous appartient.",
   "project.capability.support.label": "Recueillir les retours",
   "project.capability.support.description":
@@ -3761,11 +3761,11 @@ export default {
   "uptime.app.none": "Aucun moniteur ne surveille encore cette adresse.",
   "uptime.title": "Disponibilité",
   "uptime.empty": "Aucun moniteur pour le moment.",
-  "project.capability.apps.option.uptime.label": "Superviser les applications",
-  "project.capability.apps.option.uptime.description":
+  "project.capability.ship.option.uptime.label": "Superviser les applications",
+  "project.capability.ship.option.uptime.description":
     "Vérifiez vos adresses à intervalles réguliers et gardez leur historique. Aucun sigil requis.",
-  "project.capability.apps.option.stacks.label": "Stacks",
-  "project.capability.apps.option.stacks.description":
+  "project.capability.ship.option.stacks.label": "Stacks",
+  "project.capability.ship.option.stacks.description":
     "Déployez ensemble des apps et des services depuis un seul compose.yml.",
   "uptime.description":
     "Surveillance des sites, ports, certificats et tâches planifiées.",

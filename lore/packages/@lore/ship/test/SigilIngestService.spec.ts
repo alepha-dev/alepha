@@ -87,7 +87,7 @@ const setup = async (): Promise<TestContext> => {
   // `apps.track` is what `features.sigils` was: the switch above the
   // telemetry surfaces that `gatesFor` reads.
   const project = await createTestProject(alepha, {
-    capabilities: [{ key: "apps", options: { track: true } }],
+    capabilities: [{ key: "ship", options: { track: true } }],
   });
 
   const sigil = await repos.sigils.create({

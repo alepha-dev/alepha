@@ -170,12 +170,12 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
             title,
             capabilities: [
               {
-                key: "work",
+                key: "plan",
                 options: { epics: true, releases: true },
               },
-              { key: "knowledge" },
+              { key: "remember" },
               { key: "support" },
-              { key: "apps", options: { track: true, deploy: true } },
+              { key: "ship", options: { track: true, deploy: true } },
             ],
           },
         },

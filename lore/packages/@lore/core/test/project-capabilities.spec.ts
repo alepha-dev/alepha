@@ -85,8 +85,8 @@ describe("Project capabilities", () => {
         body: {
           title: "Test Project",
           capabilities: [
-            { key: "work", options: { releases: true } },
-            { key: "knowledge" },
+            { key: "plan", options: { releases: true } },
+            { key: "remember" },
           ],
         },
       },
@@ -94,13 +94,13 @@ describe("Project capabilities", () => {
     );
 
     expect(created.data.capabilities.map((it) => it.key).sort()).toEqual([
-      "knowledge",
-      "work",
+      "plan",
+      "remember",
     ]);
     // Options come back complete, defaults filled in, so no client ever has
     // to decide what an absent key means.
     expect(
-      created.data.capabilities.find((it) => it.key === "work")?.options,
+      created.data.capabilities.find((it) => it.key === "plan")?.options,
     ).toStrictEqual({
       epics: false,
       releases: true,
@@ -125,12 +125,12 @@ describe("Project capabilities", () => {
     // means "what the wizard would have made", not "a project with no
     // surfaces and nothing on the way in to say so".
     expect(created.data.capabilities.map((it) => it.key).sort()).toEqual([
-      "knowledge",
-      "work",
+      "plan",
+      "remember",
     ]);
     // Automations are a baseline of Work, not an option (#Q3594).
     expect(
-      created.data.capabilities.find((it) => it.key === "work")?.options,
+      created.data.capabilities.find((it) => it.key === "plan")?.options,
     ).not.toHaveProperty("automations");
   });
 
@@ -165,7 +165,7 @@ describe("Project capabilities", () => {
         {
           body: {
             title: "Typo Project",
-            capabilities: [{ key: "apps", options: { trakc: true } }],
+            capabilities: [{ key: "ship", options: { trakc: true } }],
           },
         },
         { user },
@@ -176,7 +176,7 @@ describe("Project capabilities", () => {
   it("turns one on, and answers the whole project back", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const created = await ctx.projectController.createProject.fetch(
-      { body: { title: "Toggle Project", capabilities: [{ key: "work" }] } },
+      { body: { title: "Toggle Project", capabilities: [{ key: "plan" }] } },
       { user },
     );
 
@@ -191,8 +191,8 @@ describe("Project capabilities", () => {
     // The full resource, so one round-trip refreshes both project atoms.
     expect(updated.data.title).toBe("Toggle Project");
     expect(updated.data.capabilities.map((it) => it.key).sort()).toEqual([
+      "plan",
       "support",
-      "work",
     ]);
   });
 
@@ -202,7 +202,7 @@ describe("Project capabilities", () => {
       {
         body: {
           title: "Off Project",
-          capabilities: [{ key: "work" }, { key: "knowledge" }],
+          capabilities: [{ key: "plan" }, { key: "remember" }],
         },
       },
       { user },
@@ -210,7 +210,7 @@ describe("Project capabilities", () => {
 
     const updated = await ctx.capabilityController.setCapability.fetch(
       {
-        params: { projectId: created.data.id, key: "knowledge" },
+        params: { projectId: created.data.id, key: "remember" },
         body: { enabled: false },
       },
       { user },
@@ -218,7 +218,7 @@ describe("Project capabilities", () => {
 
     // Absence IS disabled. There is no `enabled: false` row for a reader to
     // get the wrong way round.
-    expect(updated.data.capabilities.map((it) => it.key)).toEqual(["work"]);
+    expect(updated.data.capabilities.map((it) => it.key)).toEqual(["plan"]);
   });
 
   it("turns the last one off, and the project still reads", async ({
@@ -226,7 +226,7 @@ describe("Project capabilities", () => {
   }) => {
     const user = await createTestUser(ctx);
     const created = await ctx.projectController.createProject.fetch(
-      { body: { title: "Empty Project", capabilities: [{ key: "work" }] } },
+      { body: { title: "Empty Project", capabilities: [{ key: "plan" }] } },
       { user },
     );
 
@@ -235,7 +235,7 @@ describe("Project capabilities", () => {
     // at-least-one rule, because a wizard is asking a question.
     const updated = await ctx.capabilityController.setCapability.fetch(
       {
-        params: { projectId: created.data.id, key: "work" },
+        params: { projectId: created.data.id, key: "plan" },
         body: { enabled: false },
       },
       { user },
@@ -256,7 +256,7 @@ describe("Project capabilities", () => {
         body: {
           title: "Options Project",
           capabilities: [
-            { key: "work", options: { releases: true, epics: true } },
+            { key: "plan", options: { releases: true, epics: true } },
           ],
         },
       },
@@ -265,7 +265,7 @@ describe("Project capabilities", () => {
 
     const updated = await ctx.capabilityController.setCapability.fetch(
       {
-        params: { projectId: created.data.id, key: "work" },
+        params: { projectId: created.data.id, key: "plan" },
         body: { enabled: true, options: { releases: true } },
       },
       { user },
@@ -273,7 +273,7 @@ describe("Project capabilities", () => {
 
     // Sent whole, the rule `kanbanColumnConfig` and `tagColors` already
     // follow: omitting a key is how it is cleared, and a merge cannot say so.
-    const work = updated.data.capabilities.find((it) => it.key === "work");
+    const work = updated.data.capabilities.find((it) => it.key === "plan");
     expect(work?.options.releases).toBe(true);
     expect(work?.options.epics).toBe(false);
   });
@@ -281,13 +281,13 @@ describe("Project capabilities", () => {
   it("persists a capability across a later read", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const created = await ctx.projectController.createProject.fetch(
-      { body: { title: "Persisted", capabilities: [{ key: "apps" }] } },
+      { body: { title: "Persisted", capabilities: [{ key: "ship" }] } },
       { user },
     );
 
     await ctx.capabilityController.setCapability.fetch(
       {
-        params: { projectId: created.data.id, key: "apps" },
+        params: { projectId: created.data.id, key: "ship" },
         body: { enabled: true, options: { track: true } },
       },
       { user },
@@ -299,7 +299,7 @@ describe("Project capabilities", () => {
       { params: { slug: created.data.slug } },
       { user },
     );
-    const apps = fetched.data.capabilities.find((it) => it.key === "apps");
+    const apps = fetched.data.capabilities.find((it) => it.key === "ship");
     expect(apps?.options).toStrictEqual({
       track: true,
       deploy: false,
@@ -314,7 +314,7 @@ describe("Project capabilities", () => {
     const owner = await createTestUser(ctx);
     const stranger = await createTestUser(ctx);
     const created = await ctx.projectController.createProject.fetch(
-      { body: { title: "Guarded", capabilities: [{ key: "work" }] } },
+      { body: { title: "Guarded", capabilities: [{ key: "plan" }] } },
       { user: owner },
     );
 
@@ -335,12 +335,12 @@ describe("Project capabilities", () => {
     }) => {
       const user = await createTestUser(ctx);
       const created = await ctx.projectController.createProject.fetch(
-        { body: { title: "Listed", capabilities: [{ key: "work" }] } },
+        { body: { title: "Listed", capabilities: [{ key: "plan" }] } },
         { user },
       );
       await ctx.capabilityController.setCapability.fetch(
         {
-          params: { projectId: created.data.id, key: "apps" },
+          params: { projectId: created.data.id, key: "ship" },
           body: { enabled: true, options: { deploy: true } },
         },
         { user },
@@ -354,9 +354,9 @@ describe("Project capabilities", () => {
       ).data;
 
       expect(items.map((it) => it.key)).toEqual(
-        expect.arrayContaining(["work", "knowledge", "apps", "support"]),
+        expect.arrayContaining(["plan", "remember", "ship", "support"]),
       );
-      const apps = items.find((it) => it.key === "apps")!;
+      const apps = items.find((it) => it.key === "ship")!;
       expect(apps.enabled).toBe(true);
       expect(apps.options).toEqual(
         expect.arrayContaining([
@@ -373,7 +373,7 @@ describe("Project capabilities", () => {
       const owner = await createTestUser(ctx);
       const member = await createTestUser(ctx);
       const created = await ctx.projectController.createProject.fetch(
-        { body: { title: "Member list", capabilities: [{ key: "work" }] } },
+        { body: { title: "Member list", capabilities: [{ key: "plan" }] } },
         { user: owner },
       );
       await createTestMemberByProjectId(ctx.alepha, created.data.id, member.id);
@@ -398,7 +398,7 @@ describe("Project capabilities", () => {
       const owner = await createTestUser(ctx);
       const stranger = await createTestUser(ctx);
       const created = await ctx.projectController.createProject.fetch(
-        { body: { title: "Guarded list", capabilities: [{ key: "work" }] } },
+        { body: { title: "Guarded list", capabilities: [{ key: "plan" }] } },
         { user: owner },
       );
       await expect(

@@ -111,7 +111,7 @@ test.describe("Releases", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `RE${t}`.slice(0, 20),
-      { options: { work: ["releases"] } },
+      { options: { plan: ["releases"] } },
     );
 
     // ── The assertion this whole epic exists for ──────────────────────────
@@ -269,7 +269,7 @@ test.describe("Releases", () => {
     const { id: projectId } = await createProjectViaWizard(
       page,
       `RO${t}`.slice(0, 20),
-      { options: { work: ["releases"] } },
+      { options: { plan: ["releases"] } },
     );
 
     // Created OUT of version order on purpose. `number` is a `$sequence`, so
@@ -329,7 +329,7 @@ test.describe("Releases", () => {
     const t = Date.now();
     await registerAndVerify(page, `relnew${t}@example.com`, "RelTest123!");
     const { slug } = await createProjectViaWizard(page, `RN${t}`.slice(0, 20), {
-      options: { work: ["releases"] },
+      options: { plan: ["releases"] },
     });
 
     await page.goto(`/${slug}/releases`);
@@ -405,12 +405,12 @@ test.describe("Releases", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `RC${t}`.slice(0, 20),
-      { options: { work: ["releases"] } },
+      { options: { plan: ["releases"] } },
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { releases: true },
     });
-    await setCapability(page, projectId, "knowledge", { enabled: true });
+    await setCapability(page, projectId, "remember", { enabled: true });
 
     const navOrder = async () =>
       await page
@@ -440,8 +440,8 @@ test.describe("Releases", () => {
       // The quest worried this could leave Record holding one item. It
       // cannot: Reports has no feature gate at all, so Record always carries
       // at least it, and the empty-group `.filter` never fires here.
-      await setCapability(page, projectId, "knowledge", { enabled: false });
-      await setCapability(page, projectId, "work", {
+      await setCapability(page, projectId, "remember", { enabled: false });
+      await setCapability(page, projectId, "plan", {
         options: { epics: false },
       });
       await setCapability(page, projectId, "support", { enabled: false });
@@ -496,7 +496,7 @@ test.describe("Releases", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `RD${t}`.slice(0, 20),
-      { options: { work: ["releases"] } },
+      { options: { plan: ["releases"] } },
     );
 
     // `0.3.0` is created FIRST, out of version order: the default is handed
@@ -688,7 +688,7 @@ test.describe("Releases", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `RT${t}`.slice(0, 20),
-      { options: { work: ["releases"] } },
+      { options: { plan: ["releases"] } },
     );
 
     // Created OUT of version order, and out of text order too: creation gives
@@ -830,7 +830,7 @@ test.describe("Releases", () => {
       const { id: projectId, slug } = await createProjectViaWizard(
         page,
         `RW${t}`.slice(0, 20),
-        { options: { work: ["releases"] } },
+        { options: { plan: ["releases"] } },
       );
 
       const first = await post<Release>(
@@ -910,7 +910,7 @@ test.describe("Releases", () => {
       const { id: projectId, slug } = await createProjectViaWizard(
         page,
         `RX${t}`.slice(0, 20),
-        { options: { work: ["releases"] } },
+        { options: { plan: ["releases"] } },
       );
 
       const doomed = await post<Release>(

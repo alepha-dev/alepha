@@ -20,7 +20,7 @@ export class DeployAttentionSources {
   constructor() {
     this.attention.register({
       key: "errors",
-      needs: { capability: "apps", option: "track" },
+      needs: { capability: "ship", option: "track" },
       read: (project) => this.projectErrorsOf(project),
     });
   }

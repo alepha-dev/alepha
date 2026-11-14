@@ -33,7 +33,7 @@ const AppDashboardUptime = (props: AppDashboardUptimeProps) => {
   const api = useClient<MonitorController>();
   const [adding, setAdding] = useState(false);
   const enabled = Boolean(
-    project && capabilityOption(project, "apps", "uptime"),
+    project && capabilityOption(project, "ship", "uptime"),
   );
   const query = useQuery(
     {

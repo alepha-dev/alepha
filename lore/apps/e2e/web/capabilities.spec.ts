@@ -148,12 +148,12 @@ test.describe("Project capabilities", () => {
     const { id, slug } = await createProjectViaWizard(
       page,
       `App${ts}`.slice(0, 20),
-      { capabilities: ["apps"], options: { apps: ["track"] } },
+      { capabilities: ["ship"], options: { ship: ["track"] } },
     );
     // The wizard's own defaults are Work and Knowledge; this project is Apps
     // alone, so both come back off.
-    await setCapability(page, id, "work", { enabled: false });
-    await setCapability(page, id, "knowledge", { enabled: false });
+    await setCapability(page, id, "plan", { enabled: false });
+    await setCapability(page, id, "remember", { enabled: false });
     await page.reload();
     await page.waitForLoadState("networkidle");
 
@@ -304,7 +304,7 @@ test.describe("Project capabilities", () => {
     const { id, slug } = await createProjectViaWizard(
       page,
       `Off${ts}`.slice(0, 20),
-      { capabilities: ["apps", "support"] },
+      { capabilities: ["ship", "support"] },
     );
 
     // Something in each capability, so "hides, never deletes" has something
@@ -334,9 +334,9 @@ test.describe("Project capabilities", () => {
     // switch flips instantly and proves nothing. Every master is on General >
     // Capabilities since #Q2565, one page for all four.
     const masters = {
-      work: "Plan and track work",
-      knowledge: "Write and keep knowledge",
-      apps: "Deploy and watch apps",
+      plan: "Plan and track work",
+      remember: "Write and keep knowledge",
+      ship: "Deploy and watch apps",
       support: "Collect feedback",
     };
     await page.goto(`/${slug}/settings/capabilities`);

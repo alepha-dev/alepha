@@ -42,7 +42,7 @@ describe("ReportsDigest", () => {
         roles: ["user"],
       });
       return projectApi.createProject({
-        body: { title: "Digest", capabilities: [{ key: "work" }] },
+        body: { title: "Digest", capabilities: [{ key: "plan" }] },
       });
     });
 

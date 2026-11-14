@@ -107,7 +107,7 @@ const ProjectApps = () => {
   // its effect: the list never waits on it.
   const monitorApi = useClient<MonitorController>();
   const uptimeOn = Boolean(
-    project && capabilityOption(project, "apps", "uptime"),
+    project && capabilityOption(project, "ship", "uptime"),
   );
   const monitors = useQuery(
     {

@@ -163,10 +163,10 @@ describe("Automation domain source integration", () => {
       capabilities: [
         { key: "support" },
         {
-          key: "work",
+          key: "plan",
           options: { epics: true, releases: true },
         },
-        { key: "apps", options: { deploy: true } },
+        { key: "ship", options: { deploy: true } },
       ],
     });
     await rows.users.updateById(project.createdBy, { roles: ["user"] });

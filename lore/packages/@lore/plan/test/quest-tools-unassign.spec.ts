@@ -78,7 +78,7 @@ const setup = async () => {
    */
   const remind = async () => {
     const row = await security.capabilities.getOne({
-      where: { projectId: { eq: project.id }, key: { eq: "work" } },
+      where: { projectId: { eq: project.id }, key: { eq: "plan" } },
     });
     row.options = { ...row.options, reminder: true };
     await security.capabilities.save(row);

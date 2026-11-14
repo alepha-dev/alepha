@@ -132,7 +132,7 @@ const createProject = async (
     {
       body: {
         title: `Sigil Test ${projectSeq}`,
-        capabilities: [{ key: "apps" as const, options: { track: true } }],
+        capabilities: [{ key: "ship" as const, options: { track: true } }],
       },
     },
     { user },

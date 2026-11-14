@@ -3,7 +3,7 @@ import { ProjectShellRegistry, currentProjectAtom } from "@lore/core/web";
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 
-import { appsCapabilityOptionsSchema } from "../src/api/schemas/appsCapabilityOptionsSchema.ts";
+import { shipCapabilityOptionsSchema } from "../src/api/schemas/shipCapabilityOptionsSchema.ts";
 import { currentErrorCountAtom } from "../src/web/app/atoms/currentErrorCountAtom.ts";
 import { DeployShell } from "../src/web/app/shell/DeployShell.ts";
 
@@ -13,8 +13,8 @@ describe("Uptime in the project sidebar", () => {
     alepha.inject(DeployShell);
     const shell = alepha.inject(ProjectShellRegistry);
     const project = projectFixture({
-      capabilities: ["apps"],
-      options: { apps: { uptime: true, track: false } },
+      capabilities: ["ship"],
+      options: { ship: { uptime: true, track: false } },
     });
     alepha.store.set(currentProjectAtom, project);
     const context = {
@@ -45,15 +45,15 @@ describe("Uptime in the project sidebar", () => {
       shell
         .offeredNav(
           projectFixture({
-            capabilities: ["apps"],
-            options: { apps: { uptime, track: false } },
+            capabilities: ["ship"],
+            options: { ship: { uptime, track: false } },
           }),
           context,
         )
         .map((entry) => entry.route);
-    expect(appsCapabilityOptionsSchema.parse({}).uptime).toBe(false);
+    expect(shipCapabilityOptionsSchema.parse({}).uptime).toBe(false);
     expect(offered(false)).not.toContain("projectUptime");
     expect(offered(true)).toContain("projectUptime");
-    expect(shell.navOptions("apps")).toContain("uptime");
+    expect(shell.navOptions("ship")).toContain("uptime");
   });
 });

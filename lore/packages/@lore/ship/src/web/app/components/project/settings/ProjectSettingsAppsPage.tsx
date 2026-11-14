@@ -58,7 +58,7 @@ const ProjectSettingsAppsPage = () => {
   const [rulesOpen, setRulesOpen] = useState(false);
   const shell = useInject(ProjectShellRegistry);
 
-  const enabled = hasCapability(project, "apps");
+  const enabled = hasCapability(project, "ship");
 
   if (!project) return null;
 
@@ -71,9 +71,9 @@ const ProjectSettingsAppsPage = () => {
           looking for it looks here. Both switches write the same row.
           `stacks` stays in General only. */}
       <ProjectSettingsCapabilitySection
-        capability="apps"
+        capability="ship"
         master={false}
-        options={[...shell.settingsOptions("apps"), "uptime"]}
+        options={[...shell.settingsOptions("ship"), "uptime"]}
       />
 
       {enabled && <ProjectSettingsCoverageTarget />}

@@ -16,7 +16,7 @@ export class AutomationRouter {
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (
-        !hasCapability(project, "work") ||
+        !hasCapability(project, "plan") ||
         !canInProject(project, "automation:read")
       )
         throw new NotFoundError(
@@ -32,7 +32,7 @@ export class AutomationRouter {
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (
-        !hasCapability(project, "work") ||
+        !hasCapability(project, "plan") ||
         !canInProject(project, "automation:read") ||
         !canInProject(project, "automation:write")
       )
@@ -89,7 +89,7 @@ export class AutomationRouter {
   protected checkRead(): void {
     const project = this.alepha.store.get(currentProjectAtom);
     if (
-      !hasCapability(project, "work") ||
+      !hasCapability(project, "plan") ||
       !canInProject(project, "automation:read")
     )
       throw new NotFoundError(

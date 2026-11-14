@@ -456,7 +456,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     it("is not offered when the project has epics off", async () => {
       const { view } = await mount(
         undefined,
-        projectFixture({ options: { work: { epics: false } } }),
+        projectFixture({ options: { plan: { epics: false } } }),
       );
 
       openAddMenu(view);
@@ -611,7 +611,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     it("is absent when the project has agent prompts off", async () => {
       await mount(
         [questOf(1, "Loose quest")],
-        projectFixture({ options: { work: { agentPrompts: false } } }),
+        projectFixture({ options: { plan: { agentPrompts: false } } }),
       );
 
       const joined = (await openRowMenu())
@@ -696,7 +696,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     it("is absent when the project has agent prompts off", async () => {
       await mount(
         [questOf(1, "Loose quest")],
-        projectFixture({ options: { work: { agentPrompts: false } } }),
+        projectFixture({ options: { plan: { agentPrompts: false } } }),
       );
 
       await screen.findByRole("link", { name: /^#Q1 - / });

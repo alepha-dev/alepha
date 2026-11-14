@@ -132,8 +132,8 @@ test.describe("Project wizard", () => {
     // end by the capability e2e specs.
     const created = await capabilitiesOf(page, projectSlug!);
 
-    expect(created.map((it) => it.key).sort()).toEqual(["knowledge", "work"]);
-    const work = created.find((it) => it.key === "work");
+    expect(created.map((it) => it.key).sort()).toEqual(["plan", "remember"]);
+    const work = created.find((it) => it.key === "plan");
     // The toggle above.
     expect(work?.options.epics).toBe(true);
     // Left off, and off is what a new project gets.
@@ -183,7 +183,7 @@ test.describe("Project wizard", () => {
 
     // Knowledge alone. If the button hazard had fired, the submit would have
     // gone off a step early with the initial draft, and Work would be here.
-    expect(created.map((it) => it.key)).toEqual(["knowledge"]);
+    expect(created.map((it) => it.key)).toEqual(["remember"]);
   });
 
   test("refuses to advance with nothing picked", async ({ page }) => {

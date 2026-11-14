@@ -90,8 +90,8 @@ describe("the reference grammar is one grammar on both sides", () => {
         body: {
           title: `Grammar ${Date.now()}`,
           capabilities: [
-            { key: "work" as const },
-            { key: "knowledge" as const },
+            { key: "plan" as const },
+            { key: "remember" as const },
             { key: "support" as const },
           ],
         },

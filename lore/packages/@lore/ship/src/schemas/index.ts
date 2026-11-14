@@ -46,7 +46,7 @@ export type { StackResource } from "../api/schemas/stackResourceSchema.ts";
 export type { StackRevisionResource } from "../api/schemas/stackRevisionResourceSchema.ts";
 export type { AdminHostResource } from "../api/schemas/adminHostResourceSchema.ts";
 export type { AppInstanceResource } from "../api/schemas/appInstanceResourceSchema.ts";
-export { appsCapabilityOptionsSchema } from "../api/schemas/appsCapabilityOptionsSchema.ts";
+export { shipCapabilityOptionsSchema } from "../api/schemas/shipCapabilityOptionsSchema.ts";
 export {
   CLOUDFLARE_TOKEN_TEMPLATE,
   cloudflareTokenTemplateUrl,

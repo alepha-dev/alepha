@@ -37,7 +37,7 @@ export class WorkFlowDashboardMetrics {
       boards: ["project" as const],
       group: "flow" as const,
       scopeKinds: ["projects" as const],
-      needs: { capability: "work" as const },
+      needs: { capability: "plan" as const },
       requires: "stats:read",
     };
 
@@ -107,7 +107,7 @@ export class WorkFlowDashboardMetrics {
       icon: "kanban",
       presentation: "status",
       filters: boardColumnsFiltersSchema,
-      needs: { capability: "work" },
+      needs: { capability: "plan" },
       link: (_scope, target) =>
         target.projectSlug
           ? {

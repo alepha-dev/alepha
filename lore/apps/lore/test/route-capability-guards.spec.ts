@@ -63,7 +63,7 @@ describe("route guards on a capability", () => {
     const alepha = await bootRouter();
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ capabilities: ["work", "knowledge"] }),
+      projectFixture({ capabilities: ["plan", "remember"] }),
     );
 
     const loader = loaderOf(alepha, "projectApps");
@@ -74,7 +74,7 @@ describe("route guards on a capability", () => {
     const alepha = await bootRouter();
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ capabilities: ["knowledge", "apps"] }),
+      projectFixture({ capabilities: ["remember", "ship"] }),
     );
 
     const loader = loaderOf(alepha, "projectApps");
@@ -89,7 +89,7 @@ describe("route guards on a capability", () => {
     // project does not have.
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ capabilities: ["apps"] }),
+      projectFixture({ capabilities: ["ship"] }),
     );
 
     // `projectQuestsLayout` is the gate of both Quests tabs, List and Board.
@@ -107,7 +107,7 @@ describe("route guards on a capability", () => {
     const alepha = await bootRouter();
     alepha.store.set(
       currentProjectAtom,
-      projectFixture({ capabilities: ["work"] }),
+      projectFixture({ capabilities: ["plan"] }),
     );
 
     // The pair again: the Quests layout's loader fetches nothing, so a guard
@@ -132,8 +132,8 @@ describe("route guards on a capability", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        capabilities: ["work"],
-        options: { work: {} },
+        capabilities: ["plan"],
+        options: { plan: {} },
         permissions: ["project:read"],
       }),
     );
@@ -141,8 +141,8 @@ describe("route guards on a capability", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        capabilities: ["work"],
-        options: { work: {} },
+        capabilities: ["plan"],
+        options: { plan: {} },
         permissions: ["project:read", "automation:read"],
       }),
     );
@@ -156,8 +156,8 @@ describe("route guards on a capability", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        capabilities: ["work"],
-        options: { work: {} },
+        capabilities: ["plan"],
+        options: { plan: {} },
         permissions: ["project:read", "project:delete"],
       }),
     );
@@ -191,8 +191,8 @@ describe("route guards on a capability", () => {
       alepha.store.set(
         currentProjectAtom,
         projectFixture({
-          capabilities: ["work"],
-          options: { work: {} },
+          capabilities: ["plan"],
+          options: { plan: {} },
           permissions,
         }),
       );
@@ -201,8 +201,8 @@ describe("route guards on a capability", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        capabilities: ["work"],
-        options: { work: {} },
+        capabilities: ["plan"],
+        options: { plan: {} },
         permissions: ["project:read", "automation:read", "automation:write"],
       }),
     );

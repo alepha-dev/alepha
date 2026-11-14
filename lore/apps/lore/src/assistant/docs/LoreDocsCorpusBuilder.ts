@@ -30,10 +30,10 @@ export class LoreDocsCorpusBuilder {
    * capability, not rank: a screen a rank cannot reach is still documented.
    */
   protected readonly capabilityOf: Record<string, CapabilityKey> = {
-    work: "work",
-    knowledge: "knowledge",
+    work: "plan",
+    knowledge: "remember",
     support: "support",
-    apps: "apps",
+    apps: "ship",
   };
 
   /**

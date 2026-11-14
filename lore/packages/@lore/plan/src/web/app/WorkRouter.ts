@@ -167,7 +167,7 @@ export class WorkRouter {
     if (!project) {
       throw new NotFoundError("Project not found");
     }
-    if (!hasCapability(project, "work")) {
+    if (!hasCapability(project, "plan")) {
       throw new NotFoundError("Work is not enabled for this project");
     }
     // ⚠️ A permission NAME, and a module-level function rather than

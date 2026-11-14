@@ -74,7 +74,7 @@ export class UptimePushService {
         where: { id: monitor.projectId },
       });
       const capability = await this.capabilities.findOne({
-        where: { projectId: monitor.projectId, key: "apps" },
+        where: { projectId: monitor.projectId, key: "ship" },
       });
       if (!project || capability?.options.uptime !== true)
         throw new NotFoundError("Unknown push token");

@@ -896,7 +896,7 @@ describe("ProjectEpics - the status filter", () => {
       await mount(
         undefined,
         undefined,
-        projectFixture({ options: { work: { agentPrompts: false } } }),
+        projectFixture({ options: { plan: { agentPrompts: false } } }),
       );
 
       const items = (await openRowMenu("#E1 - Draft epic")).map(

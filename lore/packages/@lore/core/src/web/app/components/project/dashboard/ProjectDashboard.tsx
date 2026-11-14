@@ -669,9 +669,9 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
         <ProjectDashboardArchived
           projectSlug={project.slug ?? ""}
           destination={
-            has("knowledge")
+            has("remember")
               ? "projectFolios"
-              : has("work")
+              : has("plan")
                 ? "projectQuests"
                 : undefined
           }

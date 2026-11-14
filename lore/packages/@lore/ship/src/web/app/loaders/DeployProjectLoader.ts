@@ -24,7 +24,7 @@ export class DeployProjectLoader {
       order: 30,
       load: async (project) => {
         const projectId = project.id;
-        const apps = hasCapability(project, "apps");
+        const apps = hasCapability(project, "ship");
         const [instances, openErrors] = await Promise.all([
           // The project's app instances. Member-readable (`listApps` is
           // gated on `project:read`, unlike every mutation) but `.catch`

@@ -20,9 +20,9 @@ const ProjectSettingsKnowledgePage = () => {
 
   return (
     <ProjectSettingsCapabilitySection
-      capability="knowledge"
+      capability="remember"
       master={false}
-      options={shell.settingsOptions("knowledge")}
+      options={shell.settingsOptions("remember")}
     />
   );
 };

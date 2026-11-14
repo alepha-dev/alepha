@@ -472,7 +472,7 @@ const ProjectQuestsTable = () => {
   // so a draft epic's quests are listed although the backlog hides them.
   //
   // Led by the empty choice, "None", for the reason the release list is.
-  const epicsEnabled = capabilityOption(project, "work", "epics");
+  const epicsEnabled = capabilityOption(project, "plan", "epics");
   const epicOptions = [
     {
       value: QUEST_EPIC_NONE,

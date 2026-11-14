@@ -1,10 +1,10 @@
 import { CapabilityRegistry } from "@lore/core/schemas";
 import {
   supportCapabilityOptionsSchema,
-  workCapabilityOptionsSchema,
+  planCapabilityOptionsSchema,
 } from "@lore/plan/schemas";
-import { knowledgeCapabilityOptionsSchema } from "@lore/remember/schemas";
-import { appsCapabilityOptionsSchema } from "@lore/ship/schemas";
+import { rememberCapabilityOptionsSchema } from "@lore/remember/schemas";
+import { shipCapabilityOptionsSchema } from "@lore/ship/schemas";
 import { describe, it } from "vitest";
 
 /**
@@ -17,9 +17,9 @@ import { describe, it } from "vitest";
 describe("capability options schemas", () => {
   const registry = new CapabilityRegistry();
   const owned = {
-    work: workCapabilityOptionsSchema,
-    knowledge: knowledgeCapabilityOptionsSchema,
-    apps: appsCapabilityOptionsSchema,
+    plan: planCapabilityOptionsSchema,
+    remember: rememberCapabilityOptionsSchema,
+    ship: shipCapabilityOptionsSchema,
     support: supportCapabilityOptionsSchema,
   };
 
@@ -37,8 +37,8 @@ describe("capability options schemas", () => {
   it("strips a key the build does not know and keeps the known ones", ({
     expect,
   }) => {
-    expect(registry.optionsOf("work", { epics: true, retired: true })).toEqual(
-      workCapabilityOptionsSchema.parse({ epics: true }),
+    expect(registry.optionsOf("plan", { epics: true, retired: true })).toEqual(
+      planCapabilityOptionsSchema.parse({ epics: true }),
     );
   });
 });

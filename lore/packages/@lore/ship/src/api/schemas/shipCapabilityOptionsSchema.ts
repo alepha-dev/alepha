@@ -35,14 +35,14 @@ import { type Infer, z } from "alepha";
  * wizard: deploying through Lore means deploying into somebody's cloud account,
  * which is a thing to opt into on purpose.
  *
- * See {@link workCapabilityOptionsSchema} for why every option defaults to
+ * See {@link planCapabilityOptionsSchema} for why every option defaults to
  * `false` and why this schema is lax rather than closed.
  */
-export const appsCapabilityOptionsSchema = z.object({
+export const shipCapabilityOptionsSchema = z.object({
   track: z.boolean().default(false),
   deploy: z.boolean().default(false),
   uptime: z.boolean().default(false),
   stacks: z.boolean().default(false),
 });
 
-export type AppsCapabilityOptions = Infer<typeof appsCapabilityOptionsSchema>;
+export type ShipCapabilityOptions = Infer<typeof shipCapabilityOptionsSchema>;

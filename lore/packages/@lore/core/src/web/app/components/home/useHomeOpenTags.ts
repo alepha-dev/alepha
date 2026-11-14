@@ -29,7 +29,7 @@ export const useHomeOpenTags = (
   return (project: ProjectOverviewResource): HomeOpenLink[] => {
     const counts = openCounts.get(project.id);
     const tags: HomeOpenLink[] = [];
-    if (hasCapability(project, "work")) {
+    if (hasCapability(project, "plan")) {
       tags.push({
         kind: "quests",
         route: "projectQuests",
@@ -40,7 +40,7 @@ export const useHomeOpenTags = (
         }),
       });
     }
-    if (capabilityOption(project, "work", "epics")) {
+    if (capabilityOption(project, "plan", "epics")) {
       const count = counts?.epics ?? 0;
       tags.push({
         kind: "epics",
@@ -50,7 +50,7 @@ export const useHomeOpenTags = (
         label: tr("home.table.open.epics", { args: [String(count)] }),
       });
     }
-    if (capabilityOption(project, "apps", "track")) {
+    if (capabilityOption(project, "ship", "track")) {
       const count = counts?.projectErrors ?? 0;
       tags.push({
         kind: "errors",

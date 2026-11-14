@@ -48,7 +48,7 @@ const APP_TAB_ROUTES = new Set([
  *
  * ⚠️ The Apps options go in as a BAG, not as one `tracking` boolean, because
  * each gated tab names the option it answers to. Adding an option to
- * `appsCapabilityOptionsSchema` means adding it here too: a key this call
+ * `shipCapabilityOptionsSchema` means adding it here too: a key this call
  * omits reads as off, which is the safe direction and a silent one.
  *
  * ## Deliberately thin
@@ -81,8 +81,8 @@ const AppLayout = () => {
   const activeRoute = routerState.name ?? "";
   const tabs = instance
     ? appTabsFor(instance, {
-        track: capabilityOption(project, "apps", "track"),
-        deploy: capabilityOption(project, "apps", "deploy"),
+        track: capabilityOption(project, "ship", "track"),
+        deploy: capabilityOption(project, "ship", "deploy"),
       })
     : [];
   const slug = project?.slug;

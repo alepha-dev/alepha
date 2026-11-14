@@ -107,7 +107,7 @@ test.describe("Folio workspace", () => {
     // The field is hidden unless the project opts in (#137) — the summary is
     // written for agents, so for a reader it is chrome. Turning it on is part
     // of this test's setup, not part of what it asserts.
-    await setCapability(page, projectId, "knowledge", {
+    await setCapability(page, projectId, "remember", {
       options: { agentSummary: true },
     });
 

@@ -21,7 +21,7 @@ export class WorkReportsSummary {
 
   constructor() {
     this.summary.register({
-      capability: "work",
+      capability: "plan",
       read: (projectId, query) => this.work(projectId, query),
     });
     this.summary.register({

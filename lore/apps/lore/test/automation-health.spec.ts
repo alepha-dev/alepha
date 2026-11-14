@@ -103,7 +103,7 @@ describe("Automation enable intent and health", () => {
     return enabled ? enable(row.id, true) : row;
   };
   const capability = (
-    key: "support" | "work",
+    key: "support" | "plan",
     enabled: boolean,
     options?: Record<string, boolean>,
   ) =>
@@ -134,7 +134,7 @@ describe("Automation enable intent and health", () => {
     alepha.inject(RestartedHealth);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: {} }, { key: "support" }],
+      capabilities: [{ key: "plan", options: {} }, { key: "support" }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };
@@ -173,18 +173,18 @@ describe("Automation enable intent and health", () => {
     expect,
   }) => {
     const rule = await create();
-    await capability("work", false);
+    await capability("plan", false);
     expect(await persistence.rules.getById(rule.id)).toMatchObject({
       enabled: true,
       health: "broken",
-      reason: "Missing work capability",
+      reason: "Missing plan capability",
     });
     await expect(
       alepha
         .inject(AutomationAuthority)
         .check({ automationId: rule.id, revision: rule.revision }),
-    ).rejects.toThrow("work");
-    await capability("work", true, {});
+    ).rejects.toThrow("plan");
+    await capability("plan", true, {});
     expect((await persistence.rules.getById(rule.id)).health).toBe("active");
   });
   it("repairs missed propagation in bounded pages without repeated transition evidence", async ({

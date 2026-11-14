@@ -218,7 +218,7 @@ describe("dashboard cards and capabilities", () => {
     it("withholds a quest card from a Knowledge-only project", ({ expect }) => {
       const catalog = ctx.alepha.inject(DashboardMetricCatalog);
       const activeQuests = catalog.get("activeQuests");
-      const projects = [aProject(1, [{ key: "knowledge" }])];
+      const projects = [aProject(1, [{ key: "remember" }])];
 
       expect(eligibleProjects(activeQuests, projects)).toEqual([]);
       expect(metricUnavailableKey(activeQuests, projects, [])).toBe(
@@ -230,8 +230,8 @@ describe("dashboard cards and capabilities", () => {
       const catalog = ctx.alepha.inject(DashboardMetricCatalog);
       const activeQuests = catalog.get("activeQuests");
       const projects = [
-        aProject(1, [{ key: "knowledge" }]),
-        aProject(2, [{ key: "work" }]),
+        aProject(1, [{ key: "remember" }]),
+        aProject(2, [{ key: "plan" }]),
       ];
 
       // The `all` card is offered because ONE project can answer it, and the
@@ -251,12 +251,12 @@ describe("dashboard cards and capabilities", () => {
 
       expect(
         eligibleProjects(openErrors, [
-          aProject(1, [{ key: "apps", options: { track: false } }]),
+          aProject(1, [{ key: "ship", options: { track: false } }]),
         ]),
       ).toEqual([]);
       expect(
         eligibleProjects(openErrors, [
-          aProject(1, [{ key: "apps", options: { track: true } }]),
+          aProject(1, [{ key: "ship", options: { track: true } }]),
         ]).map((it) => it.id),
       ).toEqual([1]);
     });
@@ -273,7 +273,7 @@ describe("dashboard cards and capabilities", () => {
     }) => {
       const catalog = ctx.alepha.inject(DashboardMetricCatalog);
       const activeQuests = catalog.get("activeQuests");
-      const knowledgeOnly = [aProject(7, [{ key: "knowledge" }])];
+      const knowledgeOnly = [aProject(7, [{ key: "remember" }])];
 
       expect(
         metricUnavailableKey(activeQuests, knowledgeOnly, [], "project"),
@@ -283,7 +283,7 @@ describe("dashboard cards and capabilities", () => {
       expect(
         metricUnavailableKey(
           activeQuests,
-          [aProject(7, [{ key: "work" }])],
+          [aProject(7, [{ key: "plan" }])],
           [],
           "project",
         ),
@@ -366,14 +366,14 @@ describe("dashboard cards and capabilities", () => {
       );
 
       expect(needs).toMatchObject({
-        activeQuests: { capability: "work" },
-        heldQuests: { capability: "work" },
-        epicProgress: { capability: "work", option: "epics" },
-        releaseProgress: { capability: "work", option: "releases" },
-        tagCompletion: { capability: "work" },
+        activeQuests: { capability: "plan" },
+        heldQuests: { capability: "plan" },
+        epicProgress: { capability: "plan", option: "epics" },
+        releaseProgress: { capability: "plan", option: "releases" },
+        tagCompletion: { capability: "plan" },
         untriagedFeedback: { capability: "support" },
-        openErrors: { capability: "apps", option: "track" },
-        uniqueVisitors: { capability: "apps", option: "track" },
+        openErrors: { capability: "ship", option: "track" },
+        uniqueVisitors: { capability: "ship", option: "track" },
       });
       // Core's own metrics (`needsYou`) gate per SOURCE instead.
       for (const metric of catalog.on("project")) {
@@ -405,8 +405,8 @@ describe("dashboard cards and capabilities", () => {
     it("filters apps by their own project, and by beacon", ({ expect }) => {
       const catalog = ctx.alepha.inject(DashboardMetricCatalog);
       const projects = [
-        aProject(1, [{ key: "apps", options: { track: true } }]),
-        aProject(2, [{ key: "knowledge" }]),
+        aProject(1, [{ key: "ship", options: { track: true } }]),
+        aProject(2, [{ key: "remember" }]),
       ];
       const apps = [
         {
@@ -453,7 +453,7 @@ describe("dashboard cards and capabilities", () => {
     it("counts nothing for a project that turned Work off", async ({
       expect,
     }) => {
-      const { user, project } = await memberOf(ctx, [{ key: "knowledge" }]);
+      const { user, project } = await memberOf(ctx, [{ key: "remember" }]);
       // The quests are still there - disabling HIDES. A card added while Work
       // was on would otherwise keep putting their count on the landing page.
       await createTestQuest(ctx.alepha, project, { title: "one" });
@@ -478,11 +478,11 @@ describe("dashboard cards and capabilities", () => {
     it("counts the projects that still have it, on an all-scoped card", async ({
       expect,
     }) => {
-      const { user, project } = await memberOf(ctx, [{ key: "work" }]);
+      const { user, project } = await memberOf(ctx, [{ key: "plan" }]);
       await createTestQuest(ctx.alepha, project, { title: "counted" });
 
       const other = await createTestProject(ctx.alepha, {
-        capabilities: [{ key: "knowledge" }],
+        capabilities: [{ key: "remember" }],
         createdBy: project.createdBy,
       });
       await createTestMember(ctx.alepha, other, project.createdBy!);
@@ -509,7 +509,7 @@ describe("dashboard cards and capabilities", () => {
       expect,
     }) => {
       const { user, project } = await memberOf(ctx, [
-        { key: "apps", options: { track: false } },
+        { key: "ship", options: { track: false } },
       ]);
       const sigil = await createSigil(ctx, project, ["beacon"]);
       await ctx.repos.uniques.create({

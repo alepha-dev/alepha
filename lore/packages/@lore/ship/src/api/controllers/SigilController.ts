@@ -62,7 +62,7 @@ export class SigilController {
       $ownsProject({
         requires: "sigil:manage",
         param: "projectId",
-        capability: { key: "apps", action: "mint a sigil" },
+        capability: { key: "ship", action: "mint a sigil" },
       }),
     ],
     method: "POST",
@@ -167,7 +167,7 @@ export class SigilController {
       $ownsProject({
         requires: "sigil:manage",
         param: "projectId",
-        capability: { key: "apps", action: "rotate a sigil" },
+        capability: { key: "ship", action: "rotate a sigil" },
       }),
     ],
     method: "POST",
@@ -233,7 +233,7 @@ export class SigilController {
       $ownsProject({
         requires: "sigil:manage",
         param: "projectId",
-        capability: { key: "apps", action: "update a sigil" },
+        capability: { key: "ship", action: "update a sigil" },
       }),
     ],
     method: "PATCH",
@@ -281,7 +281,7 @@ export class SigilController {
       $ownsProject({
         requires: "sigil:manage",
         param: "projectId",
-        capability: { key: "apps", action: "delete a sigil" },
+        capability: { key: "ship", action: "delete a sigil" },
       }),
     ],
     method: "DELETE",

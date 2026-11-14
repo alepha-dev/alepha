@@ -1351,7 +1351,7 @@ describe("artifacts", () => {
         {
           body: {
             title: `Artifacts ${crypto.randomUUID().slice(0, 8)}`,
-            capabilities: [{ key: "apps" }],
+            capabilities: [{ key: "ship" }],
           },
         },
         { user },

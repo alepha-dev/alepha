@@ -54,7 +54,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -100,7 +100,7 @@ test.describe("Quest", () => {
       // refusing to keep it.
       await expect(page.getByText(/~30m/)).toHaveCount(0);
 
-      await setCapability(page, projectId, "work", {
+      await setCapability(page, projectId, "plan", {
         options: { estimate: true },
       });
       await page.reload();
@@ -173,7 +173,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       `CM${t}`.slice(0, 20),
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -301,7 +301,7 @@ test.describe("Quest", () => {
       const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
         page,
         `WV${height}${t}`.slice(0, 20),
-        { options: { work: ["epics", "releases"] } },
+        { options: { plan: ["epics", "releases"] } },
       );
 
       const { id: questId, shortId } = await apiPost<{
@@ -401,12 +401,12 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     // Reminders are an owner toggle, off by default — enable it before
     // exercising the reminder UI.
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { reminder: true },
     });
 
@@ -486,7 +486,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
@@ -612,7 +612,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
@@ -711,7 +711,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
@@ -809,7 +809,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     // A folio to link to via the `[[#F<n>]]` form.
@@ -892,7 +892,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{
@@ -1002,7 +1002,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
@@ -1089,7 +1089,7 @@ test.describe("Quest", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const areaCombobox = page.getByRole("combobox", { name: "Area" });
@@ -1246,7 +1246,7 @@ test.describe("Quest", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     await page.goto(`/${projectSlug}/quests`);
@@ -1300,7 +1300,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
@@ -1489,7 +1489,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
@@ -1603,7 +1603,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     // Inside the sidebar only: the Board tab over the list links to the same
@@ -1745,7 +1745,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -1856,7 +1856,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -1973,7 +1973,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     for (const [index, area] of areas.entries()) {
@@ -2057,7 +2057,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const { shortId } = await apiPost<{ shortId: number }>(
@@ -2135,7 +2135,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     await apiPost(page, "createQuest", {
@@ -2236,7 +2236,7 @@ test.describe("Quest table — the Size column", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `Qs${t}`.slice(0, 20),
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     for (const size of [3, 1, 5]) {
@@ -2319,9 +2319,9 @@ test.describe("Quest — the questline route", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `Ql${t}`.slice(0, 20),
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 
@@ -2433,7 +2433,7 @@ test.describe("quest table columns", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `CO${t}`.slice(0, 20),
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
     await apiPost(page, "createQuest", {
       projectId,

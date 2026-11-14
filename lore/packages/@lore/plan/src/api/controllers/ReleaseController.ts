@@ -151,7 +151,7 @@ export class ReleaseController {
     $ownsProject({
       requires,
       param: "projectId",
-      capability: "work",
+      capability: "plan",
     });
 
   protected ownsReleaseForWork = (requires: string | string[]) =>
@@ -159,7 +159,7 @@ export class ReleaseController {
       requires,
       repository: () => this.releases,
       param: "id",
-      capability: "work",
+      capability: "plan",
     });
 
   /**

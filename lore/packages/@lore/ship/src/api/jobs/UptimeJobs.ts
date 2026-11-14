@@ -45,7 +45,7 @@ export class UptimeJobs {
     handler: async () => {
       const started = this.clock.nowMillis();
       const enabled = await this.capabilities.findMany({
-        where: { key: "apps" },
+        where: { key: "ship" },
       });
       const projects = enabled
         .filter((row) => row.options.uptime === true)

@@ -71,7 +71,7 @@ describe("project_context and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Notes", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Notes", capabilities: [{ key: "remember" }] },
       }),
     );
 
@@ -79,7 +79,7 @@ describe("project_context and capabilities", () => {
       ctx.projectTools.project_context.execute({ project: project.id }),
     );
 
-    expect(context.capabilities.map((it) => it.key)).toEqual(["knowledge"]);
+    expect(context.capabilities.map((it) => it.key)).toEqual(["remember"]);
     // Work's four.
     expect(context.areas).toBeUndefined();
     expect(context.activeQuests).toBeUndefined();
@@ -97,7 +97,7 @@ describe("project_context and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Tracker", capabilities: [{ key: "work" }] },
+        body: { title: "Tracker", capabilities: [{ key: "plan" }] },
       }),
     );
 
@@ -121,7 +121,7 @@ describe("project_context and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "NoWork", capabilities: [{ key: "knowledge" }] },
+        body: { title: "NoWork", capabilities: [{ key: "remember" }] },
       }),
     );
 
@@ -148,7 +148,7 @@ describe("project_context and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Hidden", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Hidden", capabilities: [{ key: "remember" }] },
       }),
     );
     const folio = await ctx.asUser(() =>
@@ -160,7 +160,7 @@ describe("project_context and capabilities", () => {
     // Turn Knowledge off the way Settings does.
     const security = ctx.alepha.inject(ProjectSecurityService);
     const row = await security.capabilities.findOne({
-      where: { projectId: { eq: project.id }, key: { eq: "knowledge" } },
+      where: { projectId: { eq: project.id }, key: { eq: "remember" } },
     });
     await security.capabilities.deleteById(row!.id);
 
@@ -187,7 +187,7 @@ describe("project_context and capabilities", () => {
     const ctx = await setup();
     const project = await ctx.asUser(() =>
       ctx.projectApi.createProject({
-        body: { title: "Notes", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Notes", capabilities: [{ key: "remember" }] },
       }),
     );
     for (let i = 0; i < 5; i++) {

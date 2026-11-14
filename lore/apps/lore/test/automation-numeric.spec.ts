@@ -117,8 +117,8 @@ describe("Automation numeric guards and shared quality metrics", () => {
     time.pause();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: {} },
-        { key: "apps", options: { track: true } },
+        { key: "plan", options: {} },
+        { key: "ship", options: { track: true } },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });

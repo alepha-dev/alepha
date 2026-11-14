@@ -374,7 +374,7 @@ describe("host access by the home project's rank", () => {
     const w = await world();
     await repos.capabilities.deleteMany({
       projectId: { eq: w.project.id },
-      key: { eq: "apps" },
+      key: { eq: "ship" },
     });
 
     await expect(

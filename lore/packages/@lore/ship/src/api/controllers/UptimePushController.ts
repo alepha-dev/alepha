@@ -40,7 +40,7 @@ export class UptimePushController {
         repository: () => this.monitors,
         param: "monitorId",
         requires: "app:manage",
-        capability: { key: "apps", option: "uptime" },
+        capability: { key: "ship", option: "uptime" },
       }),
     ],
     schema: {

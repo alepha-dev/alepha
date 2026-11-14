@@ -27,7 +27,7 @@ export class KnowledgeDashboardMetrics {
       boards: ["project" as const],
       group: "knowledge" as const,
       scopeKinds: ["projects" as const],
-      needs: { capability: "knowledge" as const },
+      needs: { capability: "remember" as const },
       link: toFolios,
     };
 

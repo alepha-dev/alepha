@@ -69,7 +69,7 @@ describe("A monitoring-only project", () => {
     const project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "apps",
+          key: "ship",
           options: { track: false, deploy: false, uptime: true },
         },
       ],

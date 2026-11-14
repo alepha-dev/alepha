@@ -146,7 +146,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   // which is the read rule of the whole capability model. Off is also the
   // right default here - the summary is written for `project_context`, so for
   // a human reading a folio it is chrome between the title and the first line.
-  const summaryVisible = capabilityOption(project, "knowledge", "agentSummary");
+  const summaryVisible = capabilityOption(project, "remember", "agentSummary");
 
   // `props.actions.directoryId` (LIVE — moved by `confirmMove`'s own
   // success), NOT `props.folio?.directoryId`. The latter is the

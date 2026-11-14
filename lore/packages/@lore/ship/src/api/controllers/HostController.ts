@@ -59,7 +59,7 @@ export type {
  * host row, which walks it to its home project by `projectId`, reads the
  * membership and checks the rank: `host:read` to look, `host:update` to
  * change or command it, `host:delete` to delete it. Every write also
- * passes `capability: "apps"`; reads pass none, by Lore's rule that turning a
+ * passes `capability: "ship"`; reads pass none, by Lore's rule that turning a
  * capability off hides and never refuses a read. A non-member gets 403, not
  * the 404 the old owner filter answered: a host id is a UUID, so nothing
  * can be enumerated, and one gate matters more than the hidden 404. A host
@@ -101,7 +101,7 @@ export class HostController {
       param: "hostId",
       requires,
       ...(write
-        ? { capability: { key: "apps" as const, action: "manage a host" } }
+        ? { capability: { key: "ship" as const, action: "manage a host" } }
         : {}),
     });
 

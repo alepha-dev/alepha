@@ -45,7 +45,7 @@ describe("searchDocs", () => {
     const { alepha, signIn } = await bootAssistant({ enabled: "1" });
     const docs = alepha.inject(LoreAiDocsController);
     const workOnly = await createTestProject(alepha, {
-      capabilities: [{ key: "work" }, { key: "knowledge" }],
+      capabilities: [{ key: "plan" }, { key: "remember" }],
     });
     const everything = await createTestProject(alepha);
     const ask = async (projectId: number, q: string, userId: string) => {
@@ -66,7 +66,7 @@ describe("searchDocs", () => {
     expect(narrowed.length).toBeGreaterThan(0);
     for (const section of narrowed) {
       const source = docsCorpus.find((it) => it.url === section.url)!;
-      expect(["apps", "support"]).not.toContain(source.capability);
+      expect(["ship", "support"]).not.toContain(source.capability);
     }
     await alepha.stop();
   });

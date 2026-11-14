@@ -14,4 +14,4 @@ export { folioDirectories } from "../api/entities/folioDirectories.ts";
 export { folioNames } from "../api/entities/folioNames.ts";
 export { folioRevisions } from "../api/entities/folioRevisions.ts";
 export { folios } from "../api/entities/folios.ts";
-export { knowledgeCapabilityOptionsSchema } from "../api/schemas/knowledgeCapabilityOptionsSchema.ts";
+export { rememberCapabilityOptionsSchema } from "../api/schemas/rememberCapabilityOptionsSchema.ts";

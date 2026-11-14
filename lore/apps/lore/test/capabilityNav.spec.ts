@@ -89,7 +89,7 @@ describe("the sidebar, derived from capabilities", () => {
   it("gives a Knowledge-only project one entry beside the core three", ({
     expect,
   }) => {
-    const routes = offered(projectFixture({ capabilities: ["knowledge"] }));
+    const routes = offered(projectFixture({ capabilities: ["remember"] }));
 
     // The shape that was impossible before this epic: quests had no flag at
     // all, so every project had them whether or not it wanted them.
@@ -141,7 +141,7 @@ describe("the sidebar, derived from capabilities", () => {
     // (quest mentions, releases) and `support` (feedback mentions), so it
     // could never have hung off either - which is why this holds whatever is
     // enabled rather than only for a bare project.
-    for (const capabilities of [[], ["work"], ["knowledge"], ["support"]]) {
+    for (const capabilities of [[], ["plan"], ["remember"], ["support"]]) {
       expect(
         offered(projectFixture({ capabilities: capabilities as never })),
       ).not.toContain("projectInbox");
@@ -153,8 +153,8 @@ describe("the sidebar, derived from capabilities", () => {
   }) => {
     const routes = offered(
       projectFixture({
-        capabilities: ["work"],
-        options: { work: { releases: false } },
+        capabilities: ["plan"],
+        options: { plan: { releases: false } },
       }),
     );
 
@@ -164,7 +164,7 @@ describe("the sidebar, derived from capabilities", () => {
   });
 
   it("hides Errors until something collects or filed one", ({ expect }) => {
-    const apps = projectFixture({ capabilities: ["apps"] });
+    const apps = projectFixture({ capabilities: ["ship"] });
 
     // Tracking on and nothing to show: the entry would be a door onto an
     // empty room for every project that never enrolled an app.
@@ -193,8 +193,8 @@ describe("the sidebar, derived from capabilities", () => {
     // rather than being what makes them exist.
     const routes = offered(
       projectFixture({
-        capabilities: ["apps"],
-        options: { apps: { track: false } },
+        capabilities: ["ship"],
+        options: { ship: { track: false } },
       }),
     );
 

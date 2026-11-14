@@ -290,14 +290,14 @@ export class QuestController {
    * endpoint that refuses to read them would make that impossible to verify.
    */
   protected ownsProjectForWork = (requires: string | string[]) =>
-    $ownsProject({ requires, param: "projectId", capability: "work" });
+    $ownsProject({ requires, param: "projectId", capability: "plan" });
 
   protected ownsProjectFromBodyForWork = (requires: string | string[]) =>
     $ownsProject({
       requires,
       param: "projectId",
       from: "body",
-      capability: "work",
+      capability: "plan",
     });
 
   protected ownsQuestForWork = (requires: string | string[]) =>
@@ -305,7 +305,7 @@ export class QuestController {
       requires,
       repository: () => this.quests,
       param: "id",
-      capability: "work",
+      capability: "plan",
     });
 
   /**
@@ -2603,7 +2603,7 @@ export class QuestController {
         body.interval != null &&
         !this.security.capabilityOption(
           await this.security.capabilitiesOf(project.id),
-          "work",
+          "plan",
           "reminder",
         )
       ) {

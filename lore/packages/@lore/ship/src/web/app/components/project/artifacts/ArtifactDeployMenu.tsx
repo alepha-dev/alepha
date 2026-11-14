@@ -73,7 +73,7 @@ const ArtifactDeployMenu = (props: ArtifactDeployMenuProps) => {
   if (
     !project ||
     variant.format !== "archive" ||
-    !capabilityOption(project, "apps", "deploy") ||
+    !capabilityOption(project, "ship", "deploy") ||
     !deployApi.startDeploy.can()
   ) {
     return null;

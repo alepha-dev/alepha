@@ -1,5 +1,5 @@
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
-import type { AppsCapabilityOptions } from "../../../../../api/schemas/appsCapabilityOptionsSchema.ts";
+import type { ShipCapabilityOptions } from "../../../../../api/schemas/shipCapabilityOptionsSchema.ts";
 
 export type AppTabRoute =
   | "app"
@@ -26,7 +26,7 @@ export type AppTabLabelKey =
 /**
  * Which switch inside the Apps capability a gated tab answers to.
  */
-export type AppTabOption = keyof AppsCapabilityOptions;
+export type AppTabOption = keyof ShipCapabilityOptions;
 
 /**
  * A tab, and the two gates it may stand behind.
@@ -46,7 +46,7 @@ export interface UngatedAppTab {
   /**
    * The Apps baseline: always there, whatever the project switched on. True of
    * exactly two - Overview and Settings - and that is the set
-   * `appsCapabilityOptionsSchema` calls the baseline.
+   * `shipCapabilityOptionsSchema` calls the baseline.
    */
   unlockedBy?: undefined;
   option?: undefined;
@@ -206,7 +206,7 @@ const collects = (instance: AppInstanceResource, kind: string): boolean =>
  */
 export const appTabsFor = (
   instance: AppInstanceResource,
-  options?: Partial<AppsCapabilityOptions>,
+  options?: Partial<ShipCapabilityOptions>,
 ): AppTab[] => appTabsFrom(APP_TABS, instance, options);
 
 /**
@@ -221,7 +221,7 @@ export const appTabsFor = (
 export const appTabsFrom = (
   tabs: AppTab[],
   instance: AppInstanceResource,
-  options?: Partial<AppsCapabilityOptions>,
+  options?: Partial<ShipCapabilityOptions>,
 ): AppTab[] =>
   tabs.filter(
     (tab) =>

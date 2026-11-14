@@ -82,16 +82,16 @@ describe("Automation catalogue", () => {
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
+          key: "plan",
           options: {
             epics: true,
             releases: true,
             reminder: true,
           },
         },
-        { key: "knowledge" },
+        { key: "remember" },
         { key: "support" },
-        { key: "apps", options: { track: true, deploy: true } },
+        { key: "ship", options: { track: true, deploy: true } },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
@@ -449,7 +449,7 @@ describe("Automation catalogue", () => {
     expect,
   }) => {
     const disabled = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: { releases: false } }],
+      capabilities: [{ key: "plan", options: { releases: false } }],
     });
     await entities.users.updateById(disabled.createdBy, { roles: ["user"] });
     const result = await catalog.describe(disabled.id, {
@@ -460,7 +460,7 @@ describe("Automation catalogue", () => {
       result.entries.find((entry) => entry.key === "release.published"),
     ).toMatchObject({
       available: false,
-      reason: "Missing work.releases option",
+      reason: "Missing plan.releases option",
     });
     const writes = alepha.inject(CatalogWriteRecorder);
     writes.tables.length = 0;

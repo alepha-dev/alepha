@@ -78,7 +78,7 @@ describe("The uptime tick and state machine", () => {
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "apps", options: { uptime: true } }],
+      capabilities: [{ key: "ship", options: { uptime: true } }],
     });
     const seed = (
       name = "Website",
@@ -240,7 +240,7 @@ describe("The uptime tick and state machine", () => {
     const ctx = await setup();
     for (let index = 0; index < 24; index++) await ctx.seed(`Website ${index}`);
     const disabled = await createTestProject(ctx.alepha, {
-      capabilities: [{ key: "apps", options: { uptime: false } }],
+      capabilities: [{ key: "ship", options: { uptime: false } }],
     });
     const hidden = await ctx.seed("Disabled", 2, disabled.id);
     await ctx.clock.travel(1, "minute");

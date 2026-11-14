@@ -118,7 +118,7 @@ export class AreaController {
     handler: async ({ params, body, user }) => {
       const area = this.owned.get<Area>();
       // Areas belong to Work: a quest carries one, and an error forwards into one.
-      await this.security.assertCapability(area.projectId, "work", {
+      await this.security.assertCapability(area.projectId, "plan", {
         action: "update an area",
       });
 
@@ -159,7 +159,7 @@ export class AreaController {
     handler: async ({ params, body, user }) => {
       const area = this.owned.get<Area>();
       // Areas belong to Work: a quest carries one, and an error forwards into one.
-      await this.security.assertCapability(area.projectId, "work", {
+      await this.security.assertCapability(area.projectId, "plan", {
         action: "rename an area",
       });
 
@@ -193,7 +193,7 @@ export class AreaController {
     },
     handler: async ({ params, body, user }) => {
       // Areas belong to Work: a quest carries one, and an error forwards into one.
-      await this.security.assertCapability(params.projectId, "work", {
+      await this.security.assertCapability(params.projectId, "plan", {
         action: "merge areas",
       });
 
@@ -224,7 +224,7 @@ export class AreaController {
     handler: async ({ params, user }) => {
       const area = this.owned.get<Area>();
       // Areas belong to Work: a quest carries one, and an error forwards into one.
-      await this.security.assertCapability(area.projectId, "work", {
+      await this.security.assertCapability(area.projectId, "plan", {
         action: "delete an area",
       });
 

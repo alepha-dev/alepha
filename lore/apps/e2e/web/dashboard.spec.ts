@@ -561,7 +561,7 @@ test.describe("Project dashboard", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `EP${t}`.slice(0, 20),
-      { options: { work: ["epics", "releases"] } },
+      { options: { plan: ["epics", "releases"] } },
     );
 
     const post = async <T>(path: string, body: unknown): Promise<T> =>

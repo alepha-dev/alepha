@@ -400,7 +400,7 @@ export class ProjectCommand {
         const created = await this.projectApi.createProject({
           body: {
             title: args,
-            capabilities: [{ key: "apps", options: { deploy: true } }],
+            capabilities: [{ key: "ship", options: { deploy: true } }],
           },
         });
         const path = flags["no-link"]
@@ -495,7 +495,7 @@ export class ProjectCommand {
         );
         const params = { projectId };
 
-        const work = enabled.has("work")
+        const work = enabled.has("plan")
           ? {
               areas: await this.areaApi.getAreas({ params }),
               epics: await this.epicApi.getEpics({ params }),
@@ -504,7 +504,7 @@ export class ProjectCommand {
               }),
             }
           : {};
-        const folios = enabled.has("knowledge")
+        const folios = enabled.has("remember")
           ? await this.folioApi.index({
               params,
               query: { limit: flags.limit, pinnedContent: true },

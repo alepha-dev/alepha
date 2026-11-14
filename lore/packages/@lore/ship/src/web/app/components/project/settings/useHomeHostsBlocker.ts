@@ -19,7 +19,7 @@ export const useHomeHostsBlocker = (
   const { tr } = useI18n<I18n, "en">();
   const relevant =
     act === "delete" ||
-    (typeof act === "object" && act.capabilityOff === "apps");
+    (typeof act === "object" && act.capabilityOff === "ship");
 
   const homed = useQuery(
     {

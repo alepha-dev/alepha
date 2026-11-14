@@ -28,7 +28,7 @@ export class DeployReportsSummary {
 
   constructor() {
     this.summary.register({
-      capability: "apps",
+      capability: "ship",
       read: (projectId, query) => this.read(projectId, query),
     });
   }

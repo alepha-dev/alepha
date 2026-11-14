@@ -28,7 +28,7 @@ import { type Infer, z } from "alepha";
  * path is where an unknown key must be loud - `CapabilityRegistry.strictOptionsOf`
  * is the closed variant, and it is the only place a typo can be caught.
  */
-export const workCapabilityOptionsSchema = z.object({
+export const planCapabilityOptionsSchema = z.object({
   epics: z.boolean().default(false),
   releases: z.boolean().default(false),
   estimate: z.boolean().default(false),
@@ -37,4 +37,4 @@ export const workCapabilityOptionsSchema = z.object({
   agentPrompts: z.boolean().default(false),
 });
 
-export type WorkCapabilityOptions = Infer<typeof workCapabilityOptionsSchema>;
+export type PlanCapabilityOptions = Infer<typeof planCapabilityOptionsSchema>;

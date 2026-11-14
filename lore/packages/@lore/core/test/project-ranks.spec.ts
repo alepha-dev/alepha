@@ -143,9 +143,9 @@ describe("Lore's rank resource", () => {
     expect,
   }) => {
     const everything = ctx.presets.presetsFor([
-      "work",
-      "knowledge",
-      "apps",
+      "plan",
+      "remember",
+      "ship",
       "support",
     ]);
     const contributor = everything.find((it) => it.key === "contributor")!;
@@ -155,7 +155,7 @@ describe("Lore's rank resource", () => {
     // Knowledge only: the Work permissions are gone, and so is Support's
     // inbox. A checkbox for a capability the project does not have grants
     // nothing and explains nothing.
-    const knowledgeOnly = ctx.presets.presetsFor(["knowledge"]);
+    const knowledgeOnly = ctx.presets.presetsFor(["remember"]);
     const narrowed = knowledgeOnly.find((it) => it.key === "contributor")!;
     expect(narrowed.permissions).not.toContain("quest:create");
     expect(narrowed.permissions).not.toContain("feedback:read");
@@ -276,7 +276,7 @@ describe("Lore's rank resource", () => {
     const user: UserAccountToken = { id: account.id, roles: ["user"] };
     const created = await ctx.projects.createProject(
       {
-        body: { title: "Knowledge only", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Knowledge only", capabilities: [{ key: "remember" }] },
       },
       { user },
     );
@@ -477,7 +477,7 @@ describe("Lore's rank resource", () => {
     const account = await ctx.repos.users.create({});
     const user: UserAccountToken = { id: account.id, roles: ["user"] };
     const created = await ctx.projects.createProject(
-      { body: { title: "English UI", capabilities: [{ key: "work" }] } },
+      { body: { title: "English UI", capabilities: [{ key: "plan" }] } },
       { user },
     );
     const rankApi = ctx.alepha.inject(ProjectRankController);
@@ -506,7 +506,7 @@ describe("Lore's rank resource", () => {
   });
 
   it("names a seeded rank in the creator's language", async ({ expect }) => {
-    const [admin] = ctx.presets.presetsFor(["work"]);
+    const [admin] = ctx.presets.presetsFor(["plan"]);
     expect(await ctx.presets.nameFor(admin, "en")).toBe("Admin");
     expect(await ctx.presets.nameFor(admin, "fr-FR")).toBe("Administrateur");
     // Anything else falls back to English, like the rest of the app.
@@ -523,7 +523,7 @@ describe("Lore's rank resource", () => {
     // no preset can compute one.
     const created = await ctx.projects.createProject(
       {
-        body: { title: "Knowledge Only", capabilities: [{ key: "knowledge" }] },
+        body: { title: "Knowledge Only", capabilities: [{ key: "remember" }] },
       },
       { user },
     );

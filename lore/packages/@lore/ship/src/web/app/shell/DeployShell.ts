@@ -56,7 +56,7 @@ export class DeployShell {
         "assistant.suggest.apps.silent",
       ],
     });
-    this.shell.registerNav("apps", [
+    this.shell.registerNav("ship", [
       {
         route: "projectUptime",
         permission: "app:read",
@@ -130,7 +130,7 @@ export class DeployShell {
         ],
         available: (ctx) =>
           (ctx.get(currentErrorCountAtom)?.count ?? 0) > 0 ||
-          (capabilityOption(ctx.get(currentProjectAtom), "apps", "track") &&
+          (capabilityOption(ctx.get(currentProjectAtom), "ship", "track") &&
             (ctx.get(currentInstancesAtom) ?? []).some((it) =>
               it.sigil?.kinds.includes("errors"),
             )),
@@ -143,7 +143,7 @@ export class DeployShell {
       order: 50,
       labelKey: "project.settings.nav.ship",
       icon: AppWindow,
-      capability: "apps",
+      capability: "ship",
       tabs: [
         {
           route: "projectSettingsApps",
@@ -174,7 +174,7 @@ export class DeployShell {
       labelKey: "project.menu.create-app",
       icon: AppWindow,
       enabled: (project) =>
-        hasCapability(project, "apps") && canInProject(project, "app:manage"),
+        hasCapability(project, "ship") && canInProject(project, "app:manage"),
       dialog: lazyPart(
         () => import("../components/project/apps/AppCreateMenuDialog.tsx"),
       ),
@@ -304,7 +304,7 @@ export class DeployShell {
       route: "reportsDelivery",
       labelKey: "project.reports.nav.delivery",
       order: 9.8,
-      needs: "apps",
+      needs: "ship",
       filters: ["period", "grain"],
     });
     // Quality is its own tab again (#Q3070), right after Delivery. It shows
@@ -313,7 +313,7 @@ export class DeployShell {
       route: "reportsQuality",
       labelKey: "project.reports.nav.quality",
       order: 9.85,
-      needs: "apps",
+      needs: "ship",
       filters: ["period", "branch"],
     });
   }

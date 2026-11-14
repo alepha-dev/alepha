@@ -80,11 +80,11 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   // Every one of these is an option inside Work: a capability that is off
   // reads its options off, which is the epic's narrow-never-widen rule and
   // means a project without Work shows none of this rather than all of it.
-  const questChronoEnabled = capabilityOption(project, "work", "chrono");
-  const questReminderEnabled = capabilityOption(project, "work", "reminder");
-  const questEstimateEnabled = capabilityOption(project, "work", "estimate");
-  const epicsEnabled = capabilityOption(project, "work", "epics");
-  const releasesEnabled = capabilityOption(project, "work", "releases");
+  const questChronoEnabled = capabilityOption(project, "plan", "chrono");
+  const questReminderEnabled = capabilityOption(project, "plan", "reminder");
+  const questEstimateEnabled = capabilityOption(project, "plan", "estimate");
+  const epicsEnabled = capabilityOption(project, "plan", "epics");
+  const releasesEnabled = capabilityOption(project, "plan", "releases");
 
   // Same rule for the epic: `quests.epicId` is a global id and the row wants
   // the per-project number and title, which only the epic list carries.

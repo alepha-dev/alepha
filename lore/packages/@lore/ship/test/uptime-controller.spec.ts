@@ -47,7 +47,7 @@ describe("Monitor API", () => {
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "apps", options: { uptime: true } }],
+      capabilities: [{ key: "ship", options: { uptime: true } }],
     });
     return {
       alepha,
@@ -248,7 +248,7 @@ describe("Monitor API", () => {
       ),
     ).rejects.toThrow();
     const off = await createTestProject(ctx.alepha, {
-      capabilities: [{ key: "apps", options: { uptime: false } }],
+      capabilities: [{ key: "ship", options: { uptime: false } }],
     });
     await expect(
       ctx.api.createMonitor.fetch(

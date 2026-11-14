@@ -38,10 +38,10 @@ export class KnowledgeShell {
       route: "reportsKnowledge",
       labelKey: "project.reports.nav.knowledge",
       order: 9.7,
-      needs: "knowledge",
+      needs: "remember",
       filters: ["period", "grain"],
     });
-    this.shell.registerNav("knowledge", [
+    this.shell.registerNav("remember", [
       {
         route: "projectFolios",
         permission: "folio:read",
@@ -58,7 +58,7 @@ export class KnowledgeShell {
       order: 40,
       labelKey: "project.settings.nav.remember",
       icon: BookOpen,
-      capability: "knowledge",
+      capability: "remember",
       tabs: [
         {
           route: "projectSettingsKnowledge",
@@ -74,7 +74,7 @@ export class KnowledgeShell {
       labelKey: "project.menu.create-folio",
       icon: BookOpen,
       enabled: (project) =>
-        hasCapability(project, "knowledge") &&
+        hasCapability(project, "remember") &&
         canInProject(project, "folio:write"),
       route: "projectFoliosNew",
     });

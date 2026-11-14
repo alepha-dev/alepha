@@ -79,7 +79,7 @@ export class QuestCommentController {
       requires,
       repository: () => this.quests,
       param: "id",
-      capability: "work",
+      capability: "plan",
     });
 
   protected ownsCommentForWork = (requires: string | string[]) =>
@@ -88,7 +88,7 @@ export class QuestCommentController {
       repository: () => this.comments,
       param: "id",
       hops: [{ column: "questId", repository: () => this.quests }],
-      capability: "work",
+      capability: "plan",
     });
 
   /**

@@ -49,7 +49,7 @@ export class EpicReviewController {
       requires,
       repository: () => this.epics,
       param: "id",
-      capability: "work",
+      capability: "plan",
     });
 
   getEpicReviews = $action({

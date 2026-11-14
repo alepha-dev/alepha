@@ -63,7 +63,7 @@ describe("Automation subscriptions (#Q3576)", () => {
     persistence = alepha.inject(AutomationPersistence);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: {} }, { key: "support" }],
+      capabilities: [{ key: "plan", options: {} }, { key: "support" }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };
@@ -205,7 +205,7 @@ describe("Automation subscriptions (#Q3576)", () => {
   it("is refused when the project has Work off", async ({ expect }) => {
     await entities.capabilities.deleteMany({
       projectId: project.id,
-      key: "work",
+      key: "plan",
     });
     await expect(get()).rejects.toThrow();
     await expect(set(true)).rejects.toThrow();

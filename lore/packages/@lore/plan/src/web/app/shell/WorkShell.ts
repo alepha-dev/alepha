@@ -106,7 +106,7 @@ export class WorkShell {
         "assistant.suggest.feedback.file",
       ],
     });
-    this.shell.registerNav("work", [
+    this.shell.registerNav("plan", [
       {
         route: "projectQuests",
         permission: "quest:read",
@@ -181,7 +181,7 @@ export class WorkShell {
       order: 25,
       labelKey: "project.settings.nav.automations",
       icon: Workflow,
-      capability: "work",
+      capability: "plan",
       tabs: [
         {
           route: "projectAutomations",
@@ -203,7 +203,7 @@ export class WorkShell {
       order: 30,
       labelKey: "project.settings.nav.plan",
       icon: SquareCheckBig,
-      capability: "work",
+      capability: "plan",
       tabs: [
         {
           route: "projectSettingsWork",
@@ -251,7 +251,7 @@ export class WorkShell {
       labelKey: "project.menu.create-quest",
       icon: ScrollText,
       enabled: (project) =>
-        hasCapability(project, "work") && canInProject(project, "quest:create"),
+        hasCapability(project, "plan") && canInProject(project, "quest:create"),
       dialog: lazyPart(
         () => import("../components/project/quest/QuestCreateMenuSheet.tsx"),
       ),
@@ -263,7 +263,7 @@ export class WorkShell {
       labelKey: "project.menu.create-epic",
       icon: Layers,
       enabled: (project) =>
-        capabilityOption(project, "work", "epics") &&
+        capabilityOption(project, "plan", "epics") &&
         canInProject(project, "epic:write"),
       dialog: lazyPart(
         () => import("../components/project/epics/EpicCreateMenuSheet.tsx"),
@@ -279,7 +279,7 @@ export class WorkShell {
       labelKey: "project.menu.create-release",
       icon: Flag,
       enabled: (project) =>
-        capabilityOption(project, "work", "releases") &&
+        capabilityOption(project, "plan", "releases") &&
         canInProject(project, "release:manage"),
       dialog: lazyPart(
         () =>
@@ -533,21 +533,21 @@ export class WorkShell {
       route: "reportsFlow",
       labelKey: "project.reports.nav.flow",
       order: 8,
-      needs: "work",
+      needs: "plan",
       filters: ["period", "grain", "compare", ...workFilters],
     });
     this.reports.register({
       route: "reportsBacklog",
       labelKey: "project.reports.nav.backlog",
       order: 9,
-      needs: "work",
+      needs: "plan",
       filters: ["period", ...workFilters],
     });
     this.reports.register({
       route: "reportsPlanning",
       labelKey: "project.reports.nav.planning",
       order: 9.5,
-      needs: "work",
+      needs: "plan",
       filters: ["period", "grain", "epicId", "releaseId"],
     });
     this.reports.register({
@@ -578,7 +578,7 @@ export class WorkShell {
       labelKey: string,
       useOptions: ReportsFilter["useOptions"],
     ) =>
-      this.reports.registerFilter({ key, labelKey, needs: "work", useOptions });
+      this.reports.registerFilter({ key, labelKey, needs: "plan", useOptions });
     filter("area", "reports.filter.area", useReportAreaOptions);
     filter("epicId", "reports.filter.epic", useReportEpicOptions);
     filter("releaseId", "reports.filter.release", useReportReleaseOptions);

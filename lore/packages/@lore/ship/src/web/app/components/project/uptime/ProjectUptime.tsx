@@ -123,7 +123,7 @@ const ProjectUptime = () => {
   if (!project) return null;
   const canManage =
     canInProject(project, "app:manage") &&
-    capabilityOption(project, "apps", "uptime");
+    capabilityOption(project, "ship", "uptime");
   const busy = mutation.loading;
   // Only once the monitors have loaded: offering every app as unmonitored
   // while the list is still on its way would be a flash of wrong advice.

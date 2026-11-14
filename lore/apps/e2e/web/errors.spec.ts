@@ -43,7 +43,7 @@ test.describe("Errors", () => {
     // relaxed this way - deriving the gate from whether any app currently
     // carries the `projectErrors` kind would turn a transient `listSigils` failure
     // into a 404 on a deep link.
-    await setCapability(page, projectId, "apps", { options: { track: true } });
+    await setCapability(page, projectId, "ship", { options: { track: true } });
 
     await page.goto(`/${projectSlug}/errors`);
     await page.waitForLoadState("networkidle");

@@ -15,7 +15,7 @@ test.describe("Uptime healthchecks", () => {
       "GoodPassw0rd",
     );
     const { slug } = await createProjectViaWizard(page, "Healthchecks", {
-      capabilities: ["apps"],
+      capabilities: ["ship"],
     });
     const nav = page.locator(`a[href="/${slug}/uptime"]`);
     await expect(nav).toHaveCount(0);
@@ -52,10 +52,10 @@ test.describe("Uptime healthchecks", () => {
     const { id, slug } = await createProjectViaWizard(
       page,
       "Healthcheck board",
-      { capabilities: ["apps"], options: { apps: ["uptime"] } },
+      { capabilities: ["ship"], options: { ship: ["uptime"] } },
     );
-    await setCapability(page, id, "work", { enabled: false });
-    await setCapability(page, id, "knowledge", { enabled: false });
+    await setCapability(page, id, "plan", { enabled: false });
+    await setCapability(page, id, "remember", { enabled: false });
     await page.goto(`/${slug}/uptime`);
     await page
       .getByRole("button", { name: "Add monitor", exact: true })
@@ -133,8 +133,8 @@ test.describe("Uptime healthchecks", () => {
       "GoodPassw0rd",
     );
     const { slug } = await createProjectViaWizard(page, "Backup checks", {
-      capabilities: ["apps"],
-      options: { apps: ["uptime"] },
+      capabilities: ["ship"],
+      options: { ship: ["uptime"] },
     });
     await page.goto(`/${slug}/uptime`);
     await page

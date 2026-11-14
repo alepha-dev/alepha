@@ -52,7 +52,7 @@ export class DeployController {
     $ownsProject({
       param: "projectId",
       requires: "deploy:manage",
-      capability: { key: "apps", option: "deploy" },
+      capability: { key: "ship", option: "deploy" },
     });
 
   /**

@@ -29,7 +29,7 @@ export class DeployAppsDashboardMetrics {
       icon: "activity",
       presentation: "status",
       filters: appHealthFiltersSchema,
-      needs: { capability: "apps" },
+      needs: { capability: "ship" },
       link: (_scope, target) =>
         target.projectSlug
           ? {
@@ -48,7 +48,7 @@ export class DeployAppsDashboardMetrics {
       presentation: "chart",
       chartStyle: "bars",
       filters: errorTrendFiltersSchema,
-      needs: { capability: "apps", option: "track" },
+      needs: { capability: "ship", option: "track" },
       link: (_scope, target) =>
         target.projectSlug
           ? {
@@ -66,7 +66,7 @@ export class DeployAppsDashboardMetrics {
       icon: "shield-check",
       presentation: "trend",
       filters: qualityTrendFiltersSchema,
-      needs: { capability: "apps" },
+      needs: { capability: "ship" },
       link: (_scope, target) =>
         target.projectSlug
           ? {

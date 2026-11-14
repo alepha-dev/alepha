@@ -28,7 +28,7 @@ export class AutomationDatabase {
    * (#Q3594). A project without the Work row has none.
    */
   public automationsOn(projectId: number): SQLLike {
-    return sql`EXISTS (SELECT 1 FROM project_capabilities WHERE project_id = ${projectId} AND key = 'work')`;
+    return sql`EXISTS (SELECT 1 FROM project_capabilities WHERE project_id = ${projectId} AND key = 'plan')`;
   }
 
   public timestamp(value: string): string | number {

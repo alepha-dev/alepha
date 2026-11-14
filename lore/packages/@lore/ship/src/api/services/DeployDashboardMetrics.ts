@@ -49,7 +49,7 @@ export class DeployDashboardMetrics {
        * path the option governs, so a project that deploys without watching
        * has no source for this number.
        */
-      needs: { capability: "apps", option: "track" },
+      needs: { capability: "ship", option: "track" },
       link: (_scope, target) =>
         target.projectSlug
           ? {
@@ -87,7 +87,7 @@ export class DeployDashboardMetrics {
       presentation: "trend",
       scopeKinds: ["apps", "projects"],
       filters: uniqueVisitorsFiltersSchema,
-      needs: { capability: "apps", option: "track" },
+      needs: { capability: "ship", option: "track" },
       needsBeacon: true,
       /**
        * The analytics tab 404s when the app's own `kinds` lacks `beacon`

@@ -50,7 +50,7 @@ describe("dashboard knowledge tiles", () => {
     repos = alepha.inject(KnowledgeRepositories);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [{ key: "knowledge" }],
+      capabilities: [{ key: "remember" }],
     });
     await createTestMember(alepha, project, project.createdBy!);
     user = { id: project.createdBy!, roles: ["user"] };

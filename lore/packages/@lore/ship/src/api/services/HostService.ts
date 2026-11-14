@@ -678,9 +678,9 @@ export class HostService {
     }
     const capabilities =
       await this.projectSecurity.capabilitiesOf(targetProjectId);
-    if (!("apps" in capabilities)) {
+    if (!("ship" in capabilities)) {
       throw new BadRequestError(
-        `${target.title} does not have Apps on, so nobody could manage the host there. Turn Apps on first.`,
+        `${target.title} does not have Ship on, so nobody could manage the host there. Turn Ship on first.`,
       );
     }
     const clash = await this.hosts.findOne({

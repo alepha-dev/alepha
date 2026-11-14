@@ -75,7 +75,7 @@ describe("the sigil row's dropped-feedback notice", () => {
 
   const mount = async (options: {
     kinds: string[];
-    capabilities: Array<"work" | "knowledge" | "apps" | "support">;
+    capabilities: Array<"plan" | "remember" | "ship" | "support">;
   }) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
@@ -122,7 +122,7 @@ describe("the sigil row's dropped-feedback notice", () => {
   }) => {
     const view = await mount({
       kinds: ["feedback", "beacon"],
-      capabilities: ["apps"],
+      capabilities: ["ship"],
     });
 
     await waitFor(() =>
@@ -133,7 +133,7 @@ describe("the sigil row's dropped-feedback notice", () => {
   it("says nothing when the project does collect it", async ({ expect }) => {
     const view = await mount({
       kinds: ["feedback"],
-      capabilities: ["apps", "support"],
+      capabilities: ["ship", "support"],
     });
 
     // The whole value of the row is that it appears only when something is
@@ -145,7 +145,7 @@ describe("the sigil row's dropped-feedback notice", () => {
   });
 
   it("says nothing when the app does not send feedback", async ({ expect }) => {
-    const view = await mount({ kinds: ["beacon"], capabilities: ["apps"] });
+    const view = await mount({ kinds: ["beacon"], capabilities: ["ship"] });
 
     await waitFor(() => expect(view.container.textContent).toContain("sg_abc"));
     expect(view.container.textContent).not.toMatch(

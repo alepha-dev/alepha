@@ -207,7 +207,7 @@ const sweep = async (
             : key === "userId"
               ? project.ownerId
               : key === "key" && path.includes("/capabilities/")
-                ? "work"
+                ? "plan"
                 : (PARAM_VALUES[key] ??
                   fake(ctx, paramsShape[key], project.id));
     }

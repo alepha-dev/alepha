@@ -95,7 +95,7 @@ export const stackWorld = async (
   ).data;
   await alepha.inject(ProjectCapabilityController).setCapability.fetch(
     {
-      params: { projectId: project.id, key: "apps" },
+      params: { projectId: project.id, key: "ship" },
       body: {
         enabled: true,
         options: { deploy: true, stacks: options.stacks ?? true },

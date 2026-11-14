@@ -54,7 +54,7 @@ export class BackupController {
     $ownsProject({
       param: "projectId",
       requires: "deploy:manage",
-      capability: { key: "apps", option: "deploy" },
+      capability: { key: "ship", option: "deploy" },
     });
 
   protected readGate = () =>

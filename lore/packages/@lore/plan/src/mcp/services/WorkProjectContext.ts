@@ -52,7 +52,7 @@ export class WorkProjectContext {
     this.registry.register({
       key: "work.areas",
       order: 10,
-      capability: "work",
+      capability: "plan",
       context: async ({ projectId, assignedWork }) => ({
         areas: await this.areas(projectId),
         activeQuests: (await assignedWork).map((quest) => ({
@@ -69,7 +69,7 @@ export class WorkProjectContext {
     this.registry.register({
       key: "work.plan",
       order: 20,
-      capability: "work",
+      capability: "plan",
       context: async ({ projectId }) => {
         // In one step (#Q2636). The epic index is never gated on an epic's
         // STATUS (same as an epic's own view of itself): orientation is

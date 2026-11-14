@@ -422,10 +422,12 @@ export class ProjectSecurityService {
       return;
     }
 
+    // The name for a person, the key for whoever turns it on from the CLI or
+    // MCP (`lore project capability enable plan --option epics`).
     const capability = this.registry.get(key);
     const what = options.option
-      ? `${capability.name} with ${options.option} on`
-      : capability.name;
+      ? `${capability.name} with ${options.option} on (${key}.${options.option})`
+      : `${capability.name} (${key})`;
     const prefix = options.action ? `Cannot ${options.action}: ` : "";
 
     throw new BadRequestError(

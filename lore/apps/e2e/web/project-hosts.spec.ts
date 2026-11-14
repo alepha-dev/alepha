@@ -176,7 +176,7 @@ test.describe("Project hosts", () => {
     const ts = Date.now();
     await registerAndVerify(page, `pe-owner-${ts}@example.com`, "GoodPassw0rd");
     const first = await createProjectViaWizard(page, `Pe1${ts}`.slice(0, 20), {
-      capabilities: ["apps"],
+      capabilities: ["ship"],
     });
     await createHostInProject(page, first.slug, "ovh-team");
 
@@ -235,7 +235,7 @@ test.describe("Project hosts", () => {
 
     // ── The owner moves it to a second project ─────────────────────────────
     const second = await createProjectViaWizard(page, `Pe2${ts}`.slice(0, 20), {
-      capabilities: ["apps"],
+      capabilities: ["ship"],
     });
     await openSettings(page, first.slug, "ovh-team");
     await page.getByTestId("bay-settings-move").click();
@@ -306,10 +306,10 @@ test.describe("Project hosts", () => {
     //    hosts (the Admin preset), Guest a plain Member.
     await registerAndVerify(page, `ow-${ts}@example.com`, "GoodPassw0rd");
     const first = await createProjectViaWizard(page, t1, {
-      capabilities: ["apps"],
+      capabilities: ["ship"],
     });
     const second = await createProjectViaWizard(page, t2, {
-      capabilities: ["apps"],
+      capabilities: ["ship"],
     });
     await createRankFromPreset(page, first.slug, "Admin");
     const builder = await newUserContext(browser, baseURL!, "ow-builder");
@@ -437,7 +437,7 @@ test.describe("Project hosts", () => {
       page,
       "setCapability",
       "PUT",
-      { projectId: first.id, key: "apps" },
+      { projectId: first.id, key: "ship" },
       { enabled: false },
     );
     expect(appsOff.status).toBe(409);
@@ -465,7 +465,7 @@ test.describe("Project hosts", () => {
     // 12. A third project; the admin assigns the host to it from the
     //     admin page, and its members can then manage it.
     const third = await createProjectViaWizard(page, t3, {
-      capabilities: ["apps"],
+      capabilities: ["ship"],
     });
     const adminCtx = await browser.newContext({ baseURL });
     const admin = await adminCtx.newPage();

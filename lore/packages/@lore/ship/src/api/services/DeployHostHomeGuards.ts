@@ -46,7 +46,7 @@ export class DeployHostHomeGuards {
       },
     });
     this.capabilities.register({
-      key: "apps",
+      key: "ship",
       name: "deploy",
       check: async (projectId) => {
         const named = await this.homedIn(projectId);

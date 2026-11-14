@@ -79,10 +79,10 @@ const KEY = "sg_lore_fixed_secret_for_the_test";
  * consults them - it consults these two and the sigil's own `kinds`.
  */
 const allOn: Array<{
-  key: "apps" | "support";
+  key: "ship" | "support";
   options: Record<string, boolean>;
 }> = [
-  { key: "apps", options: { track: true } },
+  { key: "ship", options: { track: true } },
   { key: "support", options: {} },
 ];
 

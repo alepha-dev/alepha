@@ -169,7 +169,7 @@ describe("dashboard needs you", () => {
     expect,
   }) => {
     const { project, user } = await projectOf({
-      capabilities: [{ key: "work" }],
+      capabilities: [{ key: "plan" }],
     });
     await projectError(project, "TypeError");
     await pending(project, "ignored");

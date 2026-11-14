@@ -23,7 +23,7 @@ interface SetCapabilityCall {
 // already had it would assert nothing. A row exists only for an enabled
 // capability, so "off" is the absence of one.
 const aProject = projectFixture({
-  capabilities: ["work", "knowledge", "support"],
+  capabilities: ["plan", "remember", "support"],
 });
 
 /**
@@ -116,7 +116,7 @@ describe("the Apps settings page", () => {
     await waitFor(() =>
       expect(fake.calls).toEqual([
         {
-          params: { projectId: 1, key: "apps" },
+          params: { projectId: 1, key: "ship" },
           body: {
             enabled: true,
             options: {
@@ -133,7 +133,7 @@ describe("the Apps settings page", () => {
       expect(
         alepha.store
           .get(currentProjectAtom)
-          ?.capabilities.some((it) => it.key === "apps"),
+          ?.capabilities.some((it) => it.key === "ship"),
       ).toBe(true),
     );
   });
@@ -165,8 +165,8 @@ describe("the Apps settings page", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        capabilities: ["apps"],
-        options: { apps: { track: false, deploy: false, uptime: true } },
+        capabilities: ["ship"],
+        options: { ship: { track: false, deploy: false, uptime: true } },
       }),
     );
 
@@ -201,7 +201,7 @@ describe("the Apps settings page", () => {
     );
 
     expect(view.container.textContent).not.toContain(
-      "project.capability.apps.description",
+      "project.capability.ship.description",
     );
     // The copy this page carried while its key said `sigils` and every label
     // said Apps. Every clause of it was stale: a sigil is optional now, and it

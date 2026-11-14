@@ -75,7 +75,7 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const questEstimateEnabled = capabilityOption(
     props.project,
-    "work",
+    "plan",
     "estimate",
   );
 
@@ -274,7 +274,7 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   // The `work.releases` option, never the old `projects.features.milestones`
   // (dropped with #E74), which ignored the switch the owner actually moved.
-  const releasesEnabled = capabilityOption(props.project, "work", "releases");
+  const releasesEnabled = capabilityOption(props.project, "plan", "releases");
   const releaseOptions = (releases ?? [])
     .filter((r) => !r.releasedAt || r.id === props.quest?.releaseId)
     .map((r) => ({ value: String(r.id), label: r.tag ?? r.title }));

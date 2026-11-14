@@ -144,7 +144,7 @@ export class QuestFlowService {
    */
   async snapshotAll(day: string): Promise<number> {
     const enabled = await this.capabilities.findMany({
-      where: { key: { eq: "work" } },
+      where: { key: { eq: "plan" } },
       columns: ["projectId"],
     });
     let written = 0;

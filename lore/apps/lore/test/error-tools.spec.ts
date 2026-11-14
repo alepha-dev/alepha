@@ -75,8 +75,8 @@ const setup = async () => {
       body: {
         title: "Test",
         capabilities: [
-          { key: "work" },
-          { key: "apps", options: { track: true } },
+          { key: "plan" },
+          { key: "ship", options: { track: true } },
         ],
       },
     }),
@@ -87,8 +87,8 @@ const setup = async () => {
       body: {
         title: "Elsewhere",
         capabilities: [
-          { key: "work" },
-          { key: "apps", options: { track: true } },
+          { key: "plan" },
+          { key: "ship", options: { track: true } },
         ],
       },
     }),

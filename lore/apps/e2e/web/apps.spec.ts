@@ -387,7 +387,7 @@ test.describe("Apps", () => {
       // everything from here on (creating, the ingest gate, the app and
       // errors route loaders, the sidebar's Apps entry) depends on the Apps
       // capability actually being on, not just the switch looking on.
-      await waitForProjectCapability(page, projectId, "apps", true);
+      await waitForProjectCapability(page, projectId, "ship", true);
 
       // The Apps section's own page rendering at all is worth asserting:
       // removing a route without editing the nav table crashed every

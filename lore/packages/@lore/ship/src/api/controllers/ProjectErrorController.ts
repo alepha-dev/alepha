@@ -153,7 +153,7 @@ export class ProjectErrorController {
       $ownsProject({
         requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "resolve an error" },
+        capability: { key: "ship", action: "resolve an error" },
       }),
     ],
     method: "POST",
@@ -189,7 +189,7 @@ export class ProjectErrorController {
       $ownsProject({
         requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "forward an error" },
+        capability: { key: "ship", action: "forward an error" },
       }),
     ],
     method: "POST",
@@ -206,7 +206,7 @@ export class ProjectErrorController {
       // is the epic's: a capability may read another's state to NARROW what it
       // does, never to widen it. Forwarding creates a quest, so it needs Work
       // as well as Apps; the button hides in the UI and the API refuses here.
-      await this.security.assertCapability(params.projectId, "work", {
+      await this.security.assertCapability(params.projectId, "plan", {
         action: "forward an error into a quest",
       });
       const projectError = await this.loadProjectError(
@@ -303,7 +303,7 @@ export class ProjectErrorController {
       $ownsProject({
         requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "delete an error" },
+        capability: { key: "ship", action: "delete an error" },
       }),
     ],
     method: "DELETE",
@@ -336,7 +336,7 @@ export class ProjectErrorController {
       $ownsProject({
         requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "delete errors" },
+        capability: { key: "ship", action: "delete errors" },
       }),
     ],
     method: "DELETE",
@@ -395,7 +395,7 @@ export class ProjectErrorController {
       $ownsProject({
         requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "create an error rule" },
+        capability: { key: "ship", action: "create an error rule" },
       }),
     ],
     method: "POST",
@@ -429,7 +429,7 @@ export class ProjectErrorController {
       $ownsProject({
         requires: "error:triage",
         param: "projectId",
-        capability: { key: "apps", action: "delete an error rule" },
+        capability: { key: "ship", action: "delete an error rule" },
       }),
     ],
     method: "DELETE",

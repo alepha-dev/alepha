@@ -195,7 +195,7 @@ describe("the Apps list", () => {
           : projectFixture({
               title: "Alepha",
               slug: "alepha",
-              options: { apps: { uptime: false } },
+              options: { ship: { uptime: false } },
             })
         : projectFixture({
             title: "Alepha",

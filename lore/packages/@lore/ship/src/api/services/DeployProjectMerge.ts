@@ -157,11 +157,11 @@ export class DeployProjectMerge {
       const capabilities = await this.projectSecurity.capabilitiesOf(
         context.targetProjectId,
       );
-      if (!("apps" in capabilities)) {
+      if (!("ship" in capabilities)) {
         for (const host of homed) {
           conflicts.push({
             kind: "host",
-            key: `${host.slug} (Apps is off in the target)`,
+            key: `${host.slug} (Ship is off in the target)`,
             sourceId: host.id,
             targetId: context.targetProjectId,
           });

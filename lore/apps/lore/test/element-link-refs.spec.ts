@@ -78,7 +78,7 @@ const createProject = async (
     {
       body: {
         title,
-        capabilities: [{ key: "work" }, { key: "knowledge" }],
+        capabilities: [{ key: "plan" }, { key: "remember" }],
       },
     },
     { user },

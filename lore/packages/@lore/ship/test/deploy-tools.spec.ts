@@ -84,7 +84,7 @@ const setup = async () => {
         title: "Shipyard",
         // ⚠️ `deploy`, not `track`: the write tools take that option, and a
         // project with telemetry on and deploys off must not reach them.
-        capabilities: [{ key: "apps", options: { deploy: true } }],
+        capabilities: [{ key: "ship", options: { deploy: true } }],
       },
     }),
   );

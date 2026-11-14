@@ -118,7 +118,7 @@ describe("ProjectSettingsAgentPrompts", () => {
    */
   it("renders nothing when the project has agent prompts off", async () => {
     const { links } = await mount({
-      project: projectFixture({ options: { work: { agentPrompts: false } } }),
+      project: projectFixture({ options: { plan: { agentPrompts: false } } }),
     });
 
     expect(screen.queryByText("Agent prompts")).toBe(null);

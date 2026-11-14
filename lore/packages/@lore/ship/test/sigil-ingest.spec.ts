@@ -131,12 +131,12 @@ const readVitals = async (analytics: DeployAnalytics, sigilId: string) => {
  * `support`, which the `feedback` kind additionally needs.
  */
 const allOn: CapabilityFixture[] = [
-  { key: "apps", options: { track: true } },
+  { key: "ship", options: { track: true } },
   { key: "support", options: {} },
 ];
 
 interface CapabilityFixture {
-  key: "work" | "knowledge" | "apps" | "support";
+  key: "plan" | "remember" | "ship" | "support";
   options: Record<string, boolean>;
 }
 
@@ -1195,7 +1195,7 @@ describe("sigil ingest", () => {
     // Apps tracking on and nothing else said about telemetry: under the rule
     // that preceded this, three retired project flags each had to be on too.
     const { service, sigil } = await setup({
-      capabilities: [{ key: "apps", options: { track: true } }],
+      capabilities: [{ key: "ship", options: { track: true } }],
     });
 
     const gates = await service.gatesFor({
@@ -1210,7 +1210,7 @@ describe("sigil ingest", () => {
 
   it("still requires the project to collect feedback", async () => {
     const { service, sigil } = await setup({
-      capabilities: [{ key: "apps", options: { track: true } }],
+      capabilities: [{ key: "ship", options: { track: true } }],
     });
 
     const gates = await service.gatesFor({ ...sigil, kinds: ["feedback"] });
@@ -1227,7 +1227,7 @@ describe("sigil ingest", () => {
     // Take Apps away and leave Support: the row is deleted, because absence
     // is how a capability is off.
     const apps = await probe.capabilities.findOne({
-      where: { projectId: { eq: project.id }, key: { eq: "apps" } },
+      where: { projectId: { eq: project.id }, key: { eq: "ship" } },
     });
     await probe.capabilities.deleteById(apps!.id);
 

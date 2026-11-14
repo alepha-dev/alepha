@@ -164,10 +164,10 @@ describe("Shared automation application service and HTTP actions", () => {
     time.pause();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: { releases: true } },
-        { key: "knowledge" },
+        { key: "plan", options: { releases: true } },
+        { key: "remember" },
         { key: "support" },
-        { key: "apps", options: { track: true } },
+        { key: "ship", options: { track: true } },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
@@ -310,7 +310,7 @@ describe("Shared automation application service and HTTP actions", () => {
       ),
     ).rejects.toThrow();
     const other = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: {} }],
+      capabilities: [{ key: "plan", options: {} }],
     });
     await createTestMember(alepha, other, user.id, { rank: "owner" });
     await expect(

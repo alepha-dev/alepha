@@ -252,7 +252,7 @@ describe("Automation configured notifications and durable outbox", () => {
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
+          key: "plan",
           options: { reminder: true, releases: true },
         },
       ],

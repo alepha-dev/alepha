@@ -36,7 +36,7 @@ test.describe("the questline stat bar", () => {
       page,
       `SB${t}`.slice(0, 20),
     );
-    await setCapability(page, projectId, "work", {
+    await setCapability(page, projectId, "plan", {
       options: { epics: true },
     });
 

@@ -23,7 +23,7 @@ export class StackVariableController {
     $ownsProject({
       param: "projectId",
       requires: "deploy:manage",
-      capability: { key: "apps", option: "stacks" },
+      capability: { key: "ship", option: "stacks" },
     });
 
   protected readGate = () =>

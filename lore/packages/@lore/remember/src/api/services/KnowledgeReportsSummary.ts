@@ -16,7 +16,7 @@ export class KnowledgeReportsSummary {
 
   constructor() {
     this.summary.register({
-      capability: "knowledge",
+      capability: "remember",
       read: (projectId, query) => this.read(projectId, query),
     });
   }

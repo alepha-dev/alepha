@@ -55,9 +55,9 @@ const CAPABILITY_ICONS: Record<
   CapabilityKey,
   React.ComponentType<{ className?: string }>
 > = {
-  work: SquareCheckBig,
-  knowledge: BookOpen,
-  apps: AppWindow,
+  plan: SquareCheckBig,
+  remember: BookOpen,
+  ship: AppWindow,
   support: Inbox,
 };
 

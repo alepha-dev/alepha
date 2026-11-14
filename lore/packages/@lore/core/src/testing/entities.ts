@@ -136,7 +136,7 @@ export const createTestProject = async (
     options: Record<string, boolean>;
   }> = [
     {
-      key: "work",
+      key: "plan",
       options: {
         epics: true,
         releases: true,
@@ -145,8 +145,8 @@ export const createTestProject = async (
         reminder: true,
       },
     },
-    { key: "knowledge", options: { agentSummary: true } },
-    { key: "apps", options: { track: true, deploy: false } },
+    { key: "remember", options: { agentSummary: true } },
+    { key: "ship", options: { track: true, deploy: false } },
     { key: "support", options: {} },
   ];
 

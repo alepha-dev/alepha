@@ -330,7 +330,7 @@ describe("ProjectEpicQuests - columns", () => {
     await mount(
       [questOf(12, "Ship the thing", "low")],
       "in_progress",
-      projectFixture({ options: { work: { agentPrompts: false } } }),
+      projectFixture({ options: { plan: { agentPrompts: false } } }),
     );
 
     await screen.findByRole("link", { name: "#Q12 - Ship the thing" });

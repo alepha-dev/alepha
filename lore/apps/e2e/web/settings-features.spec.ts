@@ -26,7 +26,7 @@ test.describe("Project settings — capabilities", () => {
     const { slug } = await createProjectViaWizard(
       page,
       `Camp${ts}`.slice(0, 20),
-      { options: { work: ["releases"] } },
+      { options: { plan: ["releases"] } },
     );
 
     const sidebarReleases = page.locator(`a[href="/${slug}/releases"]`);

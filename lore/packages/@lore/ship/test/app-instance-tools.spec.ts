@@ -65,8 +65,8 @@ const setup = async () => {
       body: {
         title: "Apps MCP",
         capabilities: [
-          { key: "work" },
-          { key: "apps", options: { track: true } },
+          { key: "plan" },
+          { key: "ship", options: { track: true } },
         ],
       },
     }),

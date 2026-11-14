@@ -40,7 +40,7 @@ describe("Push monitor receipts", () => {
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "apps", options: { uptime: true } }],
+      capabilities: [{ key: "ship", options: { uptime: true } }],
     });
     const created = await alepha.inject(UptimePushService).create(project.id, {
       name: "Backup",

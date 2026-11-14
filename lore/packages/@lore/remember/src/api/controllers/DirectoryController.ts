@@ -37,14 +37,14 @@ export class DirectoryController {
    * The same two gates plus the Knowledge capability, for the writes.
    */
   protected ownsProjectForKnowledge = (requires: string | string[]) =>
-    $ownsProject({ requires, param: "projectId", capability: "knowledge" });
+    $ownsProject({ requires, param: "projectId", capability: "remember" });
 
   protected ownsDirectoryForKnowledge = (requires: string | string[]) =>
     $ownsProject({
       requires,
       repository: () => this.directories,
       param: "id",
-      capability: "knowledge",
+      capability: "remember",
     });
 
   /**

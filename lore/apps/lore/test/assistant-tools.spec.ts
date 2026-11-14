@@ -214,7 +214,7 @@ describe("the assistant's read tools", () => {
   }) => {
     const { alepha, signIn } = await boot();
     const workOnly = await createTestProject(alepha, {
-      capabilities: [{ key: "work" }, { key: "knowledge" }],
+      capabilities: [{ key: "plan" }, { key: "remember" }],
     });
     const owner = await signIn(workOnly.createdBy);
     const offered = await alepha.inject(LoreAiToolAccess).offered({

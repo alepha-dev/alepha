@@ -153,9 +153,9 @@ describe("Durable automation primitives on local D1", () => {
       await alepha.start();
       const project = await createTestProject(alepha, {
         capabilities: [
-          { key: "work", options: {} },
+          { key: "plan", options: {} },
           { key: "support" },
-          { key: "knowledge" },
+          { key: "remember" },
         ],
       });
       await entities.users.updateById(project.createdBy, { roles: ["user"] });
@@ -695,7 +695,7 @@ describe("Durable automation primitives on local D1", () => {
       const adoptionProject = await createTestProject(alepha, {
         capabilities: [
           {
-            key: "work",
+            key: "plan",
             options: { reminder: true, releases: true },
           },
         ],

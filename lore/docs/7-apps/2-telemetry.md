@@ -194,7 +194,7 @@ even if it was forwarded, so it can then be forwarded again.
 ## From the command line
 
 ```bash
-lore project capability enable apps --option track   # turn telemetry on
+lore project capability enable ship --option track   # turn telemetry on
 lore sigil create --app web --env production         # the key, shown once
 lore insights read --segment errors                  # is it still failing?
 lore error list

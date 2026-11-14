@@ -52,7 +52,7 @@ describe("automation permissions for a privileged identity", () => {
 
   const setup = async () => {
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: {} }],
+      capabilities: [{ key: "plan", options: {} }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     const account = await entities.users.create({ roles: ["admin"] });

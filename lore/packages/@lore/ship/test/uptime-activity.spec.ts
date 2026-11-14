@@ -57,7 +57,7 @@ describe("Uptime transitions in the project's Activity", () => {
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "apps", options: { uptime: true } }],
+      capabilities: [{ key: "ship", options: { uptime: true } }],
     });
     const user = { id: project.createdBy, roles: ["user"] };
     const prober = alepha.inject(MemoryProber);

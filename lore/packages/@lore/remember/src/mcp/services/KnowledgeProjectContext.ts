@@ -37,7 +37,7 @@ export class KnowledgeProjectContext {
     this.registry.register({
       key: "knowledge.folios",
       order: 30,
-      capability: "knowledge",
+      capability: "remember",
       context: ({ projectId }) => this.folios(projectId),
     });
   }

@@ -90,12 +90,12 @@ describe("Preset setup, explicit bindings and project pickers", () => {
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
+          key: "plan",
           options: { releases: true, epics: true },
         },
-        { key: "knowledge" },
+        { key: "remember" },
         { key: "support" },
-        { key: "apps", options: { track: true, deploy: true } },
+        { key: "ship", options: { track: true, deploy: true } },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });

@@ -253,7 +253,7 @@ export class SigilIngestService {
     // right answer for a sigil whose project is gone.
     const master = this.security.capabilityOption(
       capabilities,
-      "apps",
+      "ship",
       "track",
     );
 

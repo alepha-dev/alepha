@@ -156,14 +156,14 @@ export class EpicController {
    * disabling hides and never deletes.
    */
   protected ownsProjectForWork = (requires: string | string[]) =>
-    $ownsProject({ requires, param: "projectId", capability: "work" });
+    $ownsProject({ requires, param: "projectId", capability: "plan" });
 
   protected ownsEpicForWork = (requires: string | string[]) =>
     $ownsProject({
       requires,
       repository: () => this.epics,
       param: "id",
-      capability: "work",
+      capability: "plan",
     });
 
   /**

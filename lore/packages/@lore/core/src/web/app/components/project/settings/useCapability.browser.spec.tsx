@@ -28,7 +28,7 @@ class FakeLinkProvider extends LinkProvider {
   override client(): any {
     return virtualClientFake({
       setCapability: async () => ({
-        ...projectFixture({ capabilities: ["work", "knowledge"] }),
+        ...projectFixture({ capabilities: ["plan", "remember"] }),
         updatedAt: SAVED_AT,
       }),
     });
@@ -86,7 +86,7 @@ describe("useCapability", () => {
   it("toggling a capability updates the overview row with no error toast", async ({
     expect,
   }) => {
-    const { alepha, result } = await mount(() => useCapabilityToggle("apps"));
+    const { alepha, result } = await mount(() => useCapabilityToggle("ship"));
 
     await act(() => result.current.toggle(false));
     await settle();
@@ -97,17 +97,14 @@ describe("useCapability", () => {
     expect(row?.areaCount).toBe(3);
     expect(row?.openQuestCount).toBe(7);
     expect(row?.owner).toBe(true);
-    expect(row?.capabilities.map((it) => it.key)).toEqual([
-      "work",
-      "knowledge",
-    ]);
+    expect(row?.capabilities.map((it) => it.key)).toEqual(["plan", "remember"]);
   });
 
   it("toggling a capability option updates the overview row with no error toast", async ({
     expect,
   }) => {
     const { alepha, result } = await mount(() =>
-      useCapabilityOption("work", "agentPrompts"),
+      useCapabilityOption("plan", "agentPrompts"),
     );
 
     await act(() => result.current.toggle(false));

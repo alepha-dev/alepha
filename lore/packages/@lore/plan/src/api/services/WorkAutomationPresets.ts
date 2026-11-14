@@ -80,7 +80,7 @@ export class WorkAutomationPresets {
         ...(schedule ? { schedule } : {}),
         fields: entry.fields,
         needs: [
-          { capability: "work" },
+          { capability: "plan" },
           ...entry.needs,
           ...effects.flatMap((effect) => effect.needs),
         ],

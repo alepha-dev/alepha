@@ -119,8 +119,8 @@ describe("the command palette and capabilities", () => {
     expect,
   }) => {
     const { user, project } = await seeded(ctx, [
-      { key: "work" },
-      { key: "knowledge" },
+      { key: "plan" },
+      { key: "remember" },
     ]);
 
     const { hits } = await search(ctx, project, user);
@@ -132,7 +132,7 @@ describe("the command palette and capabilities", () => {
   });
 
   it("returns no quest hit on a Knowledge-only project", async ({ expect }) => {
-    const { user, project } = await seeded(ctx, [{ key: "knowledge" }]);
+    const { user, project } = await seeded(ctx, [{ key: "remember" }]);
 
     const { hits } = await search(ctx, project, user);
     expect(hits.some((it) => it.kind === "quest")).toBe(false);
@@ -147,7 +147,7 @@ describe("the command palette and capabilities", () => {
   it("returns no folio or directory hit on a Work-only project", async ({
     expect,
   }) => {
-    const { user, project } = await seeded(ctx, [{ key: "work" }]);
+    const { user, project } = await seeded(ctx, [{ key: "plan" }]);
 
     const { hits } = await search(ctx, project, user);
     expect(hits.map((it) => it.kind)).toEqual(["quest"]);
@@ -195,13 +195,13 @@ describe("the command palette and capabilities", () => {
     // Like their sidebar entries and their feed rows: an option that is off
     // takes the kind out of the palette, and leaves quests alone.
     const on = await seeded(ctx, [
-      { key: "work", options: { epics: true, releases: true } },
+      { key: "plan", options: { epics: true, releases: true } },
     ]);
     await numbered(on.project);
     expect(await kindsFor(on.project, on.user, "#E1")).toEqual(["epic"]);
     expect(await kindsFor(on.project, on.user, "#R1")).toEqual(["release"]);
 
-    const off = await seeded(ctx, [{ key: "work" }]);
+    const off = await seeded(ctx, [{ key: "plan" }]);
     await numbered(off.project);
     expect(await kindsFor(off.project, off.user, "#E1")).toEqual([]);
     expect(await kindsFor(off.project, off.user, "#R1")).toEqual([]);
@@ -213,12 +213,12 @@ describe("the command palette and capabilities", () => {
   it("finds feedback by number only under the Support capability", async ({
     expect,
   }) => {
-    const without = await seeded(ctx, [{ key: "work" }]);
+    const without = await seeded(ctx, [{ key: "plan" }]);
     await numbered(without.project);
     expect(await kindsFor(without.project, without.user, "#P1")).toEqual([]);
 
     const withSupport = await seeded(ctx, [
-      { key: "work" },
+      { key: "plan" },
       { key: "support" },
     ]);
     await numbered(withSupport.project);
@@ -233,8 +233,8 @@ describe("the command palette and capabilities", () => {
     // ⚠️ Filtered per kind, never added to the action's `requires`: that
     // would cost this member the whole palette, quests and folios included.
     const { user: owner, project } = await seeded(ctx, [
-      { key: "work", options: { epics: true, releases: true } },
-      { key: "knowledge" },
+      { key: "plan", options: { epics: true, releases: true } },
+      { key: "remember" },
       { key: "support" },
     ]);
     await numbered(project);

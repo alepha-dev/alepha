@@ -236,7 +236,7 @@ export class DeployRouter {
       // turn a transient `listApps` failure into a 404 on a deep link, and an
       // inbox with nothing in it costs nothing. The sidebar entry is the one
       // that derives.
-      if (!hasCapability(project, "apps")) {
+      if (!hasCapability(project, "ship")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
       // No fetch here on purpose. The page hands `listProjectErrors` to an
@@ -271,7 +271,7 @@ export class DeployRouter {
     }),
     lazy: () => import("./components/project/uptime/ProjectUptime.tsx"),
     loader: async () => {
-      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps")) {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
     },
@@ -283,7 +283,7 @@ export class DeployRouter {
     schema: { params: z.object({ monitorId: z.uuid() }) },
     lazy: () => import("./components/project/uptime/ProjectMonitor.tsx"),
     loader: async ({ params }) => {
-      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps"))
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship"))
         throw new NotFoundError("Apps are not enabled for this project");
       return { monitorId: params.monitorId };
     },
@@ -302,7 +302,7 @@ export class DeployRouter {
     }),
     lazy: () => import("./components/project/stacks/ProjectStacks.tsx"),
     loader: async () => {
-      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps")) {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
     },
@@ -322,7 +322,7 @@ export class DeployRouter {
     }),
     lazy: () => import("./components/project/stacks/StackEnvironmentPage.tsx"),
     loader: async ({ params }) => {
-      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps")) {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
       return { stackName: params.stack, envName: params.env };
@@ -338,7 +338,7 @@ export class DeployRouter {
     lazy: () => import("./components/project/apps/ProjectApps.tsx"),
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
-      if (!hasCapability(project, "apps")) {
+      if (!hasCapability(project, "ship")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
     },
@@ -406,7 +406,7 @@ export class DeployRouter {
       // exist, hence a 404 and not a 403. The API side answers 400 instead,
       // because a write into a disabled capability is a request the project
       // understands and declines.
-      if (!hasCapability(project, "apps")) {
+      if (!hasCapability(project, "ship")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
 
@@ -482,7 +482,7 @@ export class DeployRouter {
     // return type would be `never` and the children union would refuse it.
     loader: async ({ params }): Promise<void> => {
       const project = this.alepha.store.get(currentProjectAtom);
-      if (!project || !hasCapability(project, "apps")) {
+      if (!project || !hasCapability(project, "ship")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
 

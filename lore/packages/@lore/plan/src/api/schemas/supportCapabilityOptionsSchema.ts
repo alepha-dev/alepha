@@ -13,7 +13,7 @@ import { type Infer, z } from "alepha";
  * want, so the switch is real and worth having - but it does not exist, and
  * adding a feature to fill a slot in a wizard is the wrong order.
  *
- * See {@link workCapabilityOptionsSchema} for why this schema is lax rather
+ * See {@link planCapabilityOptionsSchema} for why this schema is lax rather
  * than closed.
  */
 export const supportCapabilityOptionsSchema = z.object({});

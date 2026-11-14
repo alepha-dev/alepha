@@ -113,7 +113,7 @@ describe("tearing a copy's resources down", () => {
     ).data;
     await alepha.inject(ProjectCapabilityController).setCapability.fetch(
       {
-        params: { projectId: project.id, key: "apps" },
+        params: { projectId: project.id, key: "ship" },
         body: { enabled: true, options: { deploy: true } },
       },
       { user },

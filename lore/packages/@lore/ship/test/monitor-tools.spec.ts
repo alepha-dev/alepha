@@ -55,7 +55,7 @@ describe("monitor MCP tools", () => {
     await alepha.start();
     containers.push(alepha);
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "apps", options: { uptime: true } }],
+      capabilities: [{ key: "ship", options: { uptime: true } }],
     });
     const user = { id: project.createdBy, roles: ["user"] };
     const call = (
@@ -215,7 +215,7 @@ describe("monitor MCP tools", () => {
     ).rejects.toThrow();
 
     const off = await createTestProject(ctx.alepha, {
-      capabilities: [{ key: "apps", options: { uptime: false } }],
+      capabilities: [{ key: "ship", options: { uptime: false } }],
     });
     await expect(
       ctx.call(

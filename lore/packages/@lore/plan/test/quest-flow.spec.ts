@@ -152,7 +152,7 @@ describe("QuestFlowService", () => {
     });
     await repos.capabilities.create({
       projectId: project.id,
-      key: "work",
+      key: "plan",
       options: {},
     });
 

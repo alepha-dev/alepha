@@ -51,7 +51,7 @@ export class WorkDashboardMetrics {
       presentation: "scalar",
       scopeKinds: ["projects", "all"],
       filters: activeQuestsFiltersSchema,
-      needs: { capability: "work" },
+      needs: { capability: "plan" },
       /**
        * ⚠️ Deliberately disagrees with the count. The tile counts
        * `todo + in_progress`, but clicking opens `status=todo` only, because the
@@ -87,7 +87,7 @@ export class WorkDashboardMetrics {
       presentation: "scalar",
       scopeKinds: ["projects"],
       filters: heldQuestsFiltersSchema,
-      needs: { capability: "work" },
+      needs: { capability: "plan" },
       /**
        * ⚠️ `?status=on_hold`, and it only decodes because
        * `boardFiltersSchema.status` is derived from `questStatusSchema`
@@ -127,7 +127,7 @@ export class WorkDashboardMetrics {
        * flat and can only say `work`, which is exactly why `needs` exists:
        * a project that does Work without epics has no epic to point at.
        */
-      needs: { capability: "work", option: "epics" },
+      needs: { capability: "plan", option: "epics" },
       /**
        * ⚠️ `epicNumber`, filled by the resolver from the row the scope
        * proved. `projectEpic` is `/epics/:epicNumber` and the scope stores
@@ -161,7 +161,7 @@ export class WorkDashboardMetrics {
       presentation: "progress",
       scopeKinds: ["release"],
       filters: releaseProgressFiltersSchema,
-      needs: { capability: "work", option: "releases" },
+      needs: { capability: "plan", option: "releases" },
       /**
        * ⚠️ By TAG, not by id. `projectRelease` is `/releases/:releaseTag`
        * because `/alepha/releases/0.28.0` is what the URL is for, and the
@@ -196,7 +196,7 @@ export class WorkDashboardMetrics {
       scopeKinds: ["projects"],
       filters: tagCompletionFiltersSchema,
       filterSources: { tag: "projectTags" },
-      needs: { capability: "work" },
+      needs: { capability: "plan" },
       /**
        * ⚠️ `?tag=` AND `?status=`, both of which the quests page's query
        * schema already takes. The status is `todo,in_progress` - the OPEN half -

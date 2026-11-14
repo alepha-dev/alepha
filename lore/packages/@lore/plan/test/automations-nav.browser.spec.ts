@@ -11,8 +11,8 @@ describe("Automations in the project settings", () => {
     alepha.inject(WorkShell);
     const shell = alepha.inject(ProjectShellRegistry);
     const project = projectFixture({
-      capabilities: ["work"],
-      options: { work: {} },
+      capabilities: ["plan"],
+      options: { plan: {} },
     });
     return { shell, project };
   };
@@ -50,7 +50,7 @@ describe("Automations in the project settings", () => {
     const section = shell
       .settingsSections()
       .find((it) => it.key === "automations");
-    expect(section?.capability).toBe("work");
+    expect(section?.capability).toBe("plan");
     expect(
       visibleSettingsTabs(section!, project).map((tab) => tab.route),
     ).toEqual(["projectAutomations"]);

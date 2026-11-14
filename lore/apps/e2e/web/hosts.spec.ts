@@ -38,7 +38,7 @@ test.describe("Hosts", () => {
     const project = await createProjectViaWizard(
       page,
       `Est${Date.now()}`.slice(0, 20),
-      { capabilities: ["apps"] },
+      { capabilities: ["ship"] },
     );
 
     await page.goto(`/${project.slug}/settings/hosts`);
@@ -145,7 +145,7 @@ test.describe("Hosts", () => {
     const project = await createProjectViaWizard(
       owner.page,
       `Adm${Date.now()}`.slice(0, 20),
-      { capabilities: ["apps"] },
+      { capabilities: ["ship"] },
     );
     await createHostInProject(owner.page, project.slug, "hetzner");
     await owner.ctx.close();

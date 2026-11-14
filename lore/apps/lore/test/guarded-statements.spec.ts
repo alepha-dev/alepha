@@ -124,9 +124,9 @@ const setup = async () => {
       body: {
         title: "Guarded",
         capabilities: [
-          { key: "work", options: { releases: true } },
-          { key: "knowledge" },
-          { key: "apps" },
+          { key: "plan", options: { releases: true } },
+          { key: "remember" },
+          { key: "ship" },
         ],
       },
     },

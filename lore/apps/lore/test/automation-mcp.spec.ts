@@ -192,8 +192,8 @@ describe("Automation MCP transport uses shared application policy", () => {
     project = await createTestProject(alepha, {
       title: "MCP Automations",
       capabilities: [
-        { key: "work", options: { releases: true } },
-        { key: "knowledge" },
+        { key: "plan", options: { releases: true } },
+        { key: "remember" },
       ],
     });
     await entities.users.updateById(project.createdBy, {

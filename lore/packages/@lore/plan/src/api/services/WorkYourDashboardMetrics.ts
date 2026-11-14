@@ -28,7 +28,7 @@ export class WorkYourDashboardMetrics {
     const common = {
       boards: ["project" as const],
       group: "quests" as const,
-      needs: { capability: "work" as const },
+      needs: { capability: "plan" as const },
       link: toQuests,
     };
 
@@ -53,7 +53,7 @@ export class WorkYourDashboardMetrics {
       presentation: "list",
       scopeKinds: ["viewer"],
       filters: remindersDueFiltersSchema,
-      needs: { capability: "work", option: "reminder" },
+      needs: { capability: "plan", option: "reminder" },
     });
     this.catalog.register({
       ...common,

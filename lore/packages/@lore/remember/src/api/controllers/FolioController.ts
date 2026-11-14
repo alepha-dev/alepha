@@ -168,7 +168,7 @@ export class FolioController {
       requires,
       param: "projectId",
       from: "body",
-      capability: "knowledge",
+      capability: "remember",
     });
 
   protected ownsFolioForKnowledge = (requires: string | string[]) =>
@@ -176,7 +176,7 @@ export class FolioController {
       requires,
       repository: () => this.folios,
       param: "id",
-      capability: "knowledge",
+      capability: "remember",
     });
 
   /**

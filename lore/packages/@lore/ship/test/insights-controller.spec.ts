@@ -252,7 +252,7 @@ const createProject = async (
     {
       body: {
         title: `Insights ${projectSeq}`,
-        capabilities: [{ key: "apps", options: { track: true } }],
+        capabilities: [{ key: "ship", options: { track: true } }],
       },
     },
     { user },

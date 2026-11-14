@@ -97,7 +97,7 @@ const enableApps = async (
   await alepha
     .inject(ProjectCapabilityController)
     .setCapability.fetch(
-      { params: { projectId, key: "apps" }, body: { enabled: true } },
+      { params: { projectId, key: "ship" }, body: { enabled: true } },
       { user },
     );
 
@@ -176,7 +176,7 @@ describe("a deployment", () => {
     // does not have it unless it was asked for.
     await alepha.inject(ProjectCapabilityController).setCapability.fetch(
       {
-        params: { projectId: project.id, key: "apps" },
+        params: { projectId: project.id, key: "ship" },
         body: { enabled: true },
       },
       { user },

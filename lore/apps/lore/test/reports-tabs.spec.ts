@@ -45,11 +45,11 @@ describe("reportsTabs", () => {
   });
 
   const names = (
-    capabilities: Array<"work" | "knowledge" | "apps" | "support">,
+    capabilities: Array<"plan" | "remember" | "ship" | "support">,
   ) => registry.tabs(projectFixture({ capabilities })).map((tab) => tab.route);
 
   it("gives a Work project its tabs, plus Team", () => {
-    expect(names(["work"])).toEqual([
+    expect(names(["plan"])).toEqual([
       "reportsSummary",
       "reportsFlow",
       "reportsBacklog",
@@ -68,7 +68,7 @@ describe("reportsTabs", () => {
   it("keeps Delivery and Quality for an Apps-only project", () => {
     // The case that decided Reports is Core rather than Work: this project
     // has no quests at all and still needs to reach what CI pushed.
-    expect(names(["apps"])).toEqual([
+    expect(names(["ship"])).toEqual([
       "reportsSummary",
       "reportsDelivery",
       "reportsQuality",
@@ -77,7 +77,7 @@ describe("reportsTabs", () => {
   });
 
   it("hides Delivery and Quality when Apps is off", () => {
-    expect(names(["work"])).not.toContain("reportsDelivery");
-    expect(names(["work"])).not.toContain("reportsQuality");
+    expect(names(["plan"])).not.toContain("reportsDelivery");
+    expect(names(["plan"])).not.toContain("reportsQuality");
   });
 });

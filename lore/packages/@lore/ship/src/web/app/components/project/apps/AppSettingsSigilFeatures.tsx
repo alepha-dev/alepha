@@ -35,7 +35,7 @@ const AppSettingsSigilFeatures = () => {
     !!project &&
     !!instance &&
     sigilConfigurable(instance) &&
-    capabilityOption(project, "apps", "deploy");
+    capabilityOption(project, "ship", "deploy");
 
   const { data, loading, error } = useQuery(
     {

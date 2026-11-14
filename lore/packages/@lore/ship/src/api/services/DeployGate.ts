@@ -28,7 +28,7 @@ import { HostService } from "./HostService.ts";
  * ## The caller half is one `$ownsProject` call, not a check in here
  *
  * ```ts
- * $ownsProject({ param: "projectId", owner: true, capability: { key: "apps", option: "deploy" } })
+ * $ownsProject({ param: "projectId", owner: true, capability: { key: "ship", option: "deploy" } })
  * ```
  *
  * ⚠️ **One call, so Ranks (#E39) has one place to move to.** `owner: true`

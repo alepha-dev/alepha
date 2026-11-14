@@ -191,7 +191,7 @@ export class ProjectHostController {
       $ownsProject({
         requires: "host:create",
         param: "projectId",
-        capability: { key: "apps", action: "create a host" },
+        capability: { key: "ship", action: "create a host" },
       }),
     ],
     method: "POST",

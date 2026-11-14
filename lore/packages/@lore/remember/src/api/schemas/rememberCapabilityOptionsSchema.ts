@@ -10,13 +10,13 @@ import { type Infer, z } from "alepha";
  * being persisted. That is a preference adopted later, not a decision about
  * what the project is.
  *
- * See {@link workCapabilityOptionsSchema} for why every option defaults to
+ * See {@link planCapabilityOptionsSchema} for why every option defaults to
  * `false` and why this schema is lax rather than closed.
  */
-export const knowledgeCapabilityOptionsSchema = z.object({
+export const rememberCapabilityOptionsSchema = z.object({
   agentSummary: z.boolean().default(false),
 });
 
-export type KnowledgeCapabilityOptions = Infer<
-  typeof knowledgeCapabilityOptionsSchema
+export type RememberCapabilityOptions = Infer<
+  typeof rememberCapabilityOptionsSchema
 >;

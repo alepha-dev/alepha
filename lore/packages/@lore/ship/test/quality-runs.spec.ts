@@ -134,7 +134,7 @@ describe("quality runs", () => {
       {
         body: {
           title: `Quality ${crypto.randomUUID().slice(0, 8)}`,
-          capabilities: apps ? [{ key: "apps" as const }] : [],
+          capabilities: apps ? [{ key: "ship" as const }] : [],
         },
       },
       { user: owner },

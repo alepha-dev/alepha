@@ -142,7 +142,7 @@ describe("the computed project board", () => {
       expect,
     }) => {
       const { project, user } = await projectOf({
-        capabilities: [{ key: "knowledge" }],
+        capabilities: [{ key: "remember" }],
       });
       await createTestQuest(alepha, project);
 
@@ -185,7 +185,7 @@ describe("the computed project board", () => {
       expect(await slots(project, user)).toContainEqual(["apps", "openErrors"]);
 
       await repos.capabilities.updateMany(
-        { projectId: { eq: project.id }, key: { eq: "apps" } },
+        { projectId: { eq: project.id }, key: { eq: "ship" } },
         { options: { track: false } },
       );
 

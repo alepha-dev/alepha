@@ -142,8 +142,8 @@ describe("Numeric automation presets through actual registered metrics", () => {
     await boot();
     project = await createTestProject(alepha, {
       capabilities: [
-        { key: "work", options: {} },
-        { key: "apps", options: { track: true } },
+        { key: "plan", options: {} },
+        { key: "ship", options: { track: true } },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
@@ -174,7 +174,7 @@ describe("Numeric automation presets through actual registered metrics", () => {
       catalog.presets.find((preset) => preset.key === "error-crossing"),
     ).toMatchObject({
       permissions: expect.arrayContaining(["error:read"]),
-      needs: expect.arrayContaining([{ capability: "apps", option: "track" }]),
+      needs: expect.arrayContaining([{ capability: "ship", option: "track" }]),
     });
     const rule = await arm("coverage-regression", { threshold: 5 });
     const next = (await persistence.rules.getById(rule.id)).nextRunAt!;
@@ -269,7 +269,7 @@ describe("Numeric automation presets through actual registered metrics", () => {
     await quality(daysAgo(3), 100);
     await quality(previous, 100, "topic");
     const other = await createTestProject(alepha, {
-      capabilities: [{ key: "apps" }],
+      capabilities: [{ key: "ship" }],
     });
     await quality(previous, 100, "main", other.id);
     const before = await persistence.runs.count();

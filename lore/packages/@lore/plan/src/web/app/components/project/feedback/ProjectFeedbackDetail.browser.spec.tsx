@@ -426,7 +426,7 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
   it("is absent when agent prompts are off", async ({ expect }) => {
     await mount(
       pendingFeedback,
-      projectFixture({ options: { work: { agentPrompts: false } } }),
+      projectFixture({ options: { plan: { agentPrompts: false } } }),
     );
     await waitFor(() => expect(screen.queryByText("Delete")).not.toBeNull());
     expect(trigger()).toBeNull();
@@ -440,7 +440,7 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
   it("is absent when Support is off", async ({ expect }) => {
     await mount(
       pendingFeedback,
-      projectFixture({ capabilities: ["work", "knowledge", "apps"] }),
+      projectFixture({ capabilities: ["plan", "remember", "ship"] }),
     );
     await waitFor(() => expect(screen.queryByText("Delete")).not.toBeNull());
     expect(trigger()).toBeNull();

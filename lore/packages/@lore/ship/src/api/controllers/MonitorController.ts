@@ -59,7 +59,7 @@ export class MonitorController {
       $ownsProject({
         param: "projectId",
         requires: "app:manage",
-        capability: { key: "apps", option: "uptime" },
+        capability: { key: "ship", option: "uptime" },
       }),
     ],
     schema: {
@@ -79,7 +79,7 @@ export class MonitorController {
         repository: () => this.monitors,
         param: "monitorId",
         requires: "app:manage",
-        capability: { key: "apps", option: "uptime" },
+        capability: { key: "ship", option: "uptime" },
       }),
     ],
     schema: {
@@ -99,7 +99,7 @@ export class MonitorController {
         repository: () => this.monitors,
         param: "monitorId",
         requires: "app:manage",
-        capability: { key: "apps", option: "uptime" },
+        capability: { key: "ship", option: "uptime" },
       }),
     ],
     schema: {
@@ -119,7 +119,7 @@ export class MonitorController {
         repository: () => this.monitors,
         param: "monitorId",
         requires: "app:manage",
-        capability: { key: "apps", option: "uptime" },
+        capability: { key: "ship", option: "uptime" },
       }),
     ],
     schema: { params: z.object({ monitorId: z.uuid() }), response: okSchema },

@@ -94,7 +94,7 @@ describe("AutomationSubscriptionBell", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        capabilities: (over.work ?? true) ? ["work"] : [],
+        capabilities: (over.work ?? true) ? ["plan"] : [],
       }),
     );
     render(

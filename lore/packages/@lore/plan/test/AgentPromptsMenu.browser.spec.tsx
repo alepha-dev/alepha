@@ -192,7 +192,7 @@ describe("AgentPromptsMenu", () => {
   it("renders nothing when the project has agent prompts off", async () => {
     await mount(
       [{ kind: "epicReview" }],
-      projectFixture({ options: { work: { agentPrompts: false } } }),
+      projectFixture({ options: { plan: { agentPrompts: false } } }),
     );
     expect(screen.queryByRole("button", { name: /agent prompts/i })).toBe(null);
   });

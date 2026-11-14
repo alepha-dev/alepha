@@ -33,7 +33,7 @@ export class WorkPlanDashboardMetrics {
       icon: "flag",
       presentation: "progress",
       filters: releaseOutlookFiltersSchema,
-      needs: { capability: "work", option: "releases" },
+      needs: { capability: "plan", option: "releases" },
       link: (_scope, target) =>
         target.projectSlug && target.releaseTag
           ? {
@@ -54,7 +54,7 @@ export class WorkPlanDashboardMetrics {
       icon: "package-check",
       presentation: "list",
       filters: releasesToPublishFiltersSchema,
-      needs: { capability: "work", option: "releases" },
+      needs: { capability: "plan", option: "releases" },
       link: (_scope, target) =>
         target.projectSlug
           ? {
@@ -72,7 +72,7 @@ export class WorkPlanDashboardMetrics {
       icon: "layers",
       presentation: "list",
       filters: epicsInFlightFiltersSchema,
-      needs: { capability: "work", option: "epics" },
+      needs: { capability: "plan", option: "epics" },
       link: (_scope, target) =>
         target.projectSlug
           ? {
@@ -90,7 +90,7 @@ export class WorkPlanDashboardMetrics {
       icon: "pencil-ruler",
       presentation: "list",
       filters: draftEpicsFiltersSchema,
-      needs: { capability: "work", option: "epics" },
+      needs: { capability: "plan", option: "epics" },
       link: (_scope, target) =>
         target.projectSlug
           ? {

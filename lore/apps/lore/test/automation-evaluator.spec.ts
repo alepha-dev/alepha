@@ -195,17 +195,17 @@ describe("Pure automation evaluation and durable worker", () => {
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
+          key: "plan",
           options: {
             releases: true,
             epics: true,
             reminder: true,
           },
         },
-        { key: "knowledge" },
+        { key: "remember" },
         { key: "support" },
         {
-          key: "apps",
+          key: "ship",
           options: { track: true, quality: true, deploy: true },
         },
       ],
@@ -737,7 +737,7 @@ describe("Pure automation evaluation and durable worker", () => {
     const quest = await createTestQuest(alepha, project);
     await entities.capabilities.deleteMany({
       projectId: project.id,
-      key: "knowledge",
+      key: "remember",
     });
     const rule = {
       ...stored.rule,

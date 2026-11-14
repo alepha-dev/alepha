@@ -46,7 +46,7 @@ test.describe("agent prompts", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
-      { options: { work: ["epics"] } },
+      { options: { plan: ["epics"] } },
     );
 
     // ⚠️ A direct URL rather than `apiPost`: `createEpic` and the feedback

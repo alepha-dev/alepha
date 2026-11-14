@@ -59,9 +59,9 @@ describe("Automation access", () => {
     expect(
       alepha
         .inject(CapabilityRegistry)
-        .optionsOf("work", { automations: false }),
+        .optionsOf("plan", { automations: false }),
     ).not.toHaveProperty("automations");
-    const presets = alepha.inject(ProjectRankPresets).presetsFor(["work"]);
+    const presets = alepha.inject(ProjectRankPresets).presetsFor(["plan"]);
     expect(
       presets
         .find((p) => p.key === "viewer")
@@ -80,7 +80,7 @@ describe("Automation access", () => {
       ]),
     );
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: {} }],
+      capabilities: [{ key: "plan", options: {} }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     const ranks = alepha.inject(RankService);
@@ -105,7 +105,7 @@ describe("Automation access", () => {
     expect,
   }) => {
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: {} }],
+      capabilities: [{ key: "plan", options: {} }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     await createPresetRanks(alepha, project.id);
@@ -142,7 +142,7 @@ describe("Automation access", () => {
     expect,
   }) => {
     const project = await createTestProject(alepha, {
-      capabilities: [{ key: "work", options: {} }],
+      capabilities: [{ key: "plan", options: {} }],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     await createPresetRanks(alepha, project.id);

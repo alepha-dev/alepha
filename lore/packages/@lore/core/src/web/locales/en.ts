@@ -941,41 +941,41 @@ export default {
   // "Plan and track work". The settings group in the sidebar names each
   // section with the sidebar's own noun instead (Quests, Folios, Apps), so
   // the one-word `.short` keys went with the second nav rail (#Q2565).
-  "project.capability.work.label": "Plan and track work",
-  "project.capability.work.description": "Quests, epics, releases, a board.",
-  "project.capability.work.option.epics.label": "Epics",
-  "project.capability.work.option.epics.description":
+  "project.capability.plan.label": "Plan and track work",
+  "project.capability.plan.description": "Quests, epics, releases, a board.",
+  "project.capability.plan.option.epics.label": "Epics",
+  "project.capability.plan.option.epics.description":
     "Phases, with a workflow.",
-  "project.capability.work.option.releases.label": "Releases",
-  "project.capability.work.option.releases.description":
+  "project.capability.plan.option.releases.label": "Releases",
+  "project.capability.plan.option.releases.description":
     "Named versions that ship.",
-  "project.capability.work.option.estimate.label": "Estimates",
-  "project.capability.work.option.estimate.description":
+  "project.capability.plan.option.estimate.label": "Estimates",
+  "project.capability.plan.option.estimate.description":
     "Plan how long a quest should take.",
-  "project.capability.work.option.chrono.label": "Timer",
-  "project.capability.work.option.chrono.description":
+  "project.capability.plan.option.chrono.label": "Timer",
+  "project.capability.plan.option.chrono.description":
     "Track the time a quest actually took.",
-  "project.capability.work.option.reminder.label": "Reminders",
-  "project.capability.work.option.reminder.description":
+  "project.capability.plan.option.reminder.label": "Reminders",
+  "project.capability.plan.option.reminder.description":
     "Nudge whoever holds a quest that has gone quiet.",
-  "project.capability.work.option.agentPrompts.label": "Agent prompts",
-  "project.capability.work.option.agentPrompts.description":
+  "project.capability.plan.option.agentPrompts.label": "Agent prompts",
+  "project.capability.plan.option.agentPrompts.description":
     "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for your coding agent; nothing is sent anywhere.",
-  "project.capability.knowledge.label": "Write and keep knowledge",
-  "project.capability.knowledge.description":
+  "project.capability.remember.label": "Write and keep knowledge",
+  "project.capability.remember.description":
     "Wiki linked folios, files, revisions.",
-  "project.capability.knowledge.option.agentSummary.label":
+  "project.capability.remember.option.agentSummary.label":
     "Summaries for agents",
-  "project.capability.knowledge.option.agentSummary.description":
+  "project.capability.remember.option.agentSummary.description":
     "Show the summary field on a folio. It is written and read over MCP either way.",
-  "project.capability.apps.label": "Deploy and watch apps",
-  "project.capability.apps.description":
+  "project.capability.ship.label": "Deploy and watch apps",
+  "project.capability.ship.description":
     "Instances, analytics, errors, vitals.",
-  "project.capability.apps.option.track.label": "Track apps",
-  "project.capability.apps.option.track.description":
+  "project.capability.ship.option.track.label": "Track apps",
+  "project.capability.ship.option.track.description":
     "Analytics, vitals and errors. Each app gets a sigil.",
-  "project.capability.apps.option.deploy.label": "Deploy apps",
-  "project.capability.apps.option.deploy.description":
+  "project.capability.ship.option.deploy.label": "Deploy apps",
+  "project.capability.ship.option.deploy.description":
     "Push a build to a machine you own.",
   "project.capability.support.label": "Collect feedback",
   "project.capability.support.description":
@@ -3758,11 +3758,11 @@ export default {
   "uptime.app.none": "No monitor checks this address yet.",
   "uptime.title": "Uptime",
   "uptime.empty": "No monitors yet.",
-  "project.capability.apps.option.uptime.label": "Monitor apps",
-  "project.capability.apps.option.uptime.description":
+  "project.capability.ship.option.uptime.label": "Monitor apps",
+  "project.capability.ship.option.uptime.description":
     "Check your addresses on a schedule and keep their history. No sigil needed.",
-  "project.capability.apps.option.stacks.label": "Stacks",
-  "project.capability.apps.option.stacks.description":
+  "project.capability.ship.option.stacks.label": "Stacks",
+  "project.capability.ship.option.stacks.description":
     "Deploy apps and services together from one compose.yml.",
   "uptime.description": "Website, port, certificate and scheduled job checks.",
   "uptime.recentChecks": "Recent checks",

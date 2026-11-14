@@ -98,8 +98,8 @@ describe("lore host provision", () => {
             id: 7,
             slug: "hello-world",
             capabilities: options.projectApps
-              ? [{ key: "work" }, { key: "apps", options: {} }]
-              : [{ key: "work" }],
+              ? [{ key: "plan" }, { key: "ship", options: {} }]
+              : [{ key: "plan" }],
           };
         },
         createProject: async (request: unknown) => {
@@ -244,7 +244,7 @@ describe("lore host provision", () => {
     const { run, calls, shell } = create({ projectExists: true });
     await expect(
       run("--provider scaleway --name tmp-vps --project hello-world"),
-    ).rejects.toThrow("does not have Apps on");
+    ).rejects.toThrow("does not have Ship on");
     expect(calls).toEqual([]);
     expect(shell.wasCalledMatching(/server create/)).toBe(false);
   });
@@ -263,7 +263,7 @@ describe("lore host provision", () => {
       "It will belong to your existing project hello-world.",
     );
     expect(out).toContain(
-      "lore project capability enable apps --option deploy -p hello-world",
+      "lore project capability enable ship --option deploy -p hello-world",
     );
   });
 });

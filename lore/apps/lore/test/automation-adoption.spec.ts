@@ -196,7 +196,7 @@ describe("Explicit policy adoption and legacy parity", () => {
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
+          key: "plan",
           options: { reminder: true, releases: true },
         },
       ],

@@ -129,7 +129,7 @@ describe("Automation schedules and named selections", () => {
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
+          key: "plan",
           options: { reminder: true, epics: true },
         },
         { key: "support" },

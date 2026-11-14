@@ -74,7 +74,7 @@ const seedAcceptedQuest = async (
     {
       body: {
         title: "Reminder Probe",
-        capabilities: [{ key: "work", options: { reminder: true } }],
+        capabilities: [{ key: "plan", options: { reminder: true } }],
       },
     },
     { user },

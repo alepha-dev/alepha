@@ -93,7 +93,7 @@ describe("a host's home project changes", () => {
   const appsOff = (projectId: number) =>
     repos.capabilities.deleteMany({
       projectId: { eq: projectId },
-      key: { eq: "apps" },
+      key: { eq: "ship" },
     });
 
   describe("moving", () => {
@@ -146,7 +146,7 @@ describe("a host's home project changes", () => {
           { params, body: { projectId: target.id } },
           { user: owner },
         ),
-      ).rejects.toThrow(/Apps/);
+      ).rejects.toThrow(/Ship/);
       expect((await repos.hosts.getById(host.id)).projectId).toBe(home.id);
     });
 
@@ -342,7 +342,7 @@ describe("a host's home project changes", () => {
           { params: { id: host.id }, body: { projectId: project.id } },
           { user: admin },
         ),
-      ).rejects.toThrow(/Apps/);
+      ).rejects.toThrow(/Ship/);
     });
   });
 
@@ -383,7 +383,7 @@ describe("a host's home project changes", () => {
       await expect(
         alepha.inject(ProjectCapabilityController).setCapability(
           {
-            params: { projectId: home.id, key: "apps" },
+            params: { projectId: home.id, key: "ship" },
             body: { enabled: false },
           },
           { user: owner },
@@ -392,7 +392,7 @@ describe("a host's home project changes", () => {
       expect(
         await repos.capabilities.count({
           projectId: { eq: home.id },
-          key: { eq: "apps" },
+          key: { eq: "ship" },
         }),
       ).toBe(1);
     });
@@ -467,7 +467,7 @@ describe("a host's home project changes", () => {
       await repos.hosts.deleteMany({ projectId: { eq: target.id } });
       await appsOff(target.id);
       await expect(merge.merge(source.id, target.id)).rejects.toThrow(
-        /Apps is off/,
+        /Ship is off/,
       );
       const row = await repos.hosts.getById(host.id);
       expect(row.projectId).toBe(source.id);

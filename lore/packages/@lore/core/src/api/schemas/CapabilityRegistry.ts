@@ -163,52 +163,52 @@ export interface CapabilityDescriptor {
 export class CapabilityRegistry {
   protected readonly capabilities: CapabilityDescriptor[] = [
     {
-      key: "work",
+      key: "plan",
       name: "Plan and track work",
-      labelKey: "project.capability.work.label",
-      descriptionKey: "project.capability.work.description",
+      labelKey: "project.capability.plan.label",
+      descriptionKey: "project.capability.plan.description",
       preselectedCapability: true,
       options: [
         {
           key: "epics",
-          labelKey: "project.capability.work.option.epics.label",
-          descriptionKey: "project.capability.work.option.epics.description",
+          labelKey: "project.capability.plan.option.epics.label",
+          descriptionKey: "project.capability.plan.option.epics.description",
           wizard: true,
           preselected: false,
         },
         {
           key: "releases",
-          labelKey: "project.capability.work.option.releases.label",
-          descriptionKey: "project.capability.work.option.releases.description",
+          labelKey: "project.capability.plan.option.releases.label",
+          descriptionKey: "project.capability.plan.option.releases.description",
           wizard: true,
           preselected: false,
         },
         {
           key: "estimate",
-          labelKey: "project.capability.work.option.estimate.label",
-          descriptionKey: "project.capability.work.option.estimate.description",
+          labelKey: "project.capability.plan.option.estimate.label",
+          descriptionKey: "project.capability.plan.option.estimate.description",
           wizard: false,
           preselected: false,
         },
         {
           key: "chrono",
-          labelKey: "project.capability.work.option.chrono.label",
-          descriptionKey: "project.capability.work.option.chrono.description",
+          labelKey: "project.capability.plan.option.chrono.label",
+          descriptionKey: "project.capability.plan.option.chrono.description",
           wizard: false,
           preselected: false,
         },
         {
           key: "reminder",
-          labelKey: "project.capability.work.option.reminder.label",
-          descriptionKey: "project.capability.work.option.reminder.description",
+          labelKey: "project.capability.plan.option.reminder.label",
+          descriptionKey: "project.capability.plan.option.reminder.description",
           wizard: false,
           preselected: false,
         },
         {
           key: "agentPrompts",
-          labelKey: "project.capability.work.option.agentPrompts.label",
+          labelKey: "project.capability.plan.option.agentPrompts.label",
           descriptionKey:
-            "project.capability.work.option.agentPrompts.description",
+            "project.capability.plan.option.agentPrompts.description",
           // The wizard asks what surfaces exist; this asks how you work with
           // them. `wizard: true` here would put Agent prompts beside Board
           // and Epics at project creation, which is not what it is.
@@ -312,17 +312,17 @@ export class CapabilityRegistry {
       permissionGroups: ["quest", "epic", "release", "area", "automation"],
     },
     {
-      key: "knowledge",
+      key: "remember",
       name: "Write and keep knowledge",
-      labelKey: "project.capability.knowledge.label",
-      descriptionKey: "project.capability.knowledge.description",
+      labelKey: "project.capability.remember.label",
+      descriptionKey: "project.capability.remember.description",
       preselectedCapability: true,
       options: [
         {
           key: "agentSummary",
-          labelKey: "project.capability.knowledge.option.agentSummary.label",
+          labelKey: "project.capability.remember.option.agentSummary.label",
           descriptionKey:
-            "project.capability.knowledge.option.agentSummary.description",
+            "project.capability.remember.option.agentSummary.description",
           wizard: false,
           preselected: false,
         },
@@ -358,23 +358,23 @@ export class CapabilityRegistry {
       permissionGroups: ["folio"],
     },
     {
-      key: "apps",
+      key: "ship",
       name: "Deploy and watch apps",
-      labelKey: "project.capability.apps.label",
-      descriptionKey: "project.capability.apps.description",
+      labelKey: "project.capability.ship.label",
+      descriptionKey: "project.capability.ship.description",
       preselectedCapability: false,
       options: [
         {
           key: "track",
-          labelKey: "project.capability.apps.option.track.label",
-          descriptionKey: "project.capability.apps.option.track.description",
+          labelKey: "project.capability.ship.option.track.label",
+          descriptionKey: "project.capability.ship.option.track.description",
           wizard: true,
           preselected: true,
         },
         {
           key: "deploy",
-          labelKey: "project.capability.apps.option.deploy.label",
-          descriptionKey: "project.capability.apps.option.deploy.description",
+          labelKey: "project.capability.ship.option.deploy.label",
+          descriptionKey: "project.capability.ship.option.deploy.description",
           wizard: true,
           // ⚠️ NOT preselected, although the surface is real now. A project
           // that deploys through Lore is deploying into somebody's cloud
@@ -385,8 +385,8 @@ export class CapabilityRegistry {
         },
         {
           key: "uptime",
-          labelKey: "project.capability.apps.option.uptime.label",
-          descriptionKey: "project.capability.apps.option.uptime.description",
+          labelKey: "project.capability.ship.option.uptime.label",
+          descriptionKey: "project.capability.ship.option.uptime.description",
           wizard: true,
           preselected: false,
         },
@@ -394,8 +394,8 @@ export class CapabilityRegistry {
           // Stacks (#E79): off by default, like every other surface of Apps
           // but `track`, and switched beside its sidebar entry.
           key: "stacks",
-          labelKey: "project.capability.apps.option.stacks.label",
-          descriptionKey: "project.capability.apps.option.stacks.description",
+          labelKey: "project.capability.ship.option.stacks.label",
+          descriptionKey: "project.capability.ship.option.stacks.description",
           wizard: true,
           preselected: false,
         },
@@ -485,7 +485,7 @@ export class CapabilityRegistry {
    * Derived from each capability's declared `options`, every one a boolean
    * that reads `false` when absent, rather than imported from the module that
    * owns the capability: core reads no module's code (#E75, #Q2623). Each
-   * module's own options schema (`workCapabilityOptionsSchema`...) types its
+   * module's own options schema (`planCapabilityOptionsSchema`...) types its
    * reads, and `test/capability-options-schemas.spec.ts` holds the two equal.
    */
   protected readonly optionSchemas: Record<CapabilityKey, ZType> =

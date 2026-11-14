@@ -108,7 +108,7 @@ test.describe("deploying through Lore", () => {
     const { slug, id: projectId } = await createProjectViaWizard(
       page,
       `Ship${ts}`.slice(0, 20),
-      { capabilities: ["apps"] },
+      { capabilities: ["ship"] },
     );
 
     const appName = "acme";

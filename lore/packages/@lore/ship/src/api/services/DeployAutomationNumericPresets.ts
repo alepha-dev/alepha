@@ -71,7 +71,7 @@ export class DeployAutomationNumericPresets {
         source,
         schedule,
         fields: entry.fields,
-        needs: [{ capability: "work" }, ...entry.needs],
+        needs: [{ capability: "plan" }, ...entry.needs],
         permissions: ["automation:write", "member:read", ...entry.permissions],
         slots: {
           recipient: { kind: "member", required: true, bindable: true },

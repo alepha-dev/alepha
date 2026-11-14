@@ -85,7 +85,7 @@ const setup = async (): Promise<TestContext> => {
     {
       body: {
         title: "Retention",
-        capabilities: [{ key: "apps", options: { track: true } }],
+        capabilities: [{ key: "ship", options: { track: true } }],
       },
     },
     { user },

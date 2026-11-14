@@ -66,7 +66,7 @@ const ProjectErrors = () => {
   // page's route is already gated on it. Stated anyway rather than passing
   // the item unconditionally, so the menu carries its own gate wherever this
   // component ends up rendered.
-  const appsEnabled = hasCapability(project, "apps");
+  const appsEnabled = hasCapability(project, "ship");
   const alepha = useAlepha();
   const projectErrorApi = useClient<ProjectErrorController>();
   const canTriage = projectErrorApi.resolveProjectError.can();

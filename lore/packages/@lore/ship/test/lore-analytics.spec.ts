@@ -98,7 +98,7 @@ const setup = async (
   // to NARROW another, never to widen it.
   await probe.capabilities.create({
     projectId: project.id,
-    key: "apps",
+    key: "ship",
     options: { track: true },
   });
   await probe.capabilities.create({

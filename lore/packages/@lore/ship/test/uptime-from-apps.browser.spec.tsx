@@ -96,8 +96,8 @@ const boot = async (uptime: boolean) => {
     currentProjectAtom,
     projectFixture({
       slug: "acme",
-      capabilities: ["apps"],
-      options: { apps: { uptime, track: false } },
+      capabilities: ["ship"],
+      options: { ship: { uptime, track: false } },
     }),
   );
   return { alepha, links: alepha.inject(FakeLinkProvider) };

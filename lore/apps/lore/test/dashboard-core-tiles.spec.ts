@@ -113,7 +113,7 @@ describe("dashboard core tiles", () => {
     }) => {
       const repos = await boot();
       const { project, user } = await projectOf({
-        capabilities: [{ key: "work" }],
+        capabilities: [{ key: "plan" }],
       });
       const at = alepha.inject(DateTimeProvider).nowISOString();
       for (const [type, description] of [

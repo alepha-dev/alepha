@@ -110,8 +110,8 @@ test.describe("Computed project board", () => {
         page,
         `PSA${t}`.slice(0, 20),
         {
-          capabilities: ["apps", "support"],
-          options: { work: ["epics", "releases"], apps: ["track"] },
+          capabilities: ["ship", "support"],
+          options: { plan: ["epics", "releases"], ship: ["track"] },
         },
       );
       const release = await send<{ id: number }>(
@@ -138,7 +138,7 @@ test.describe("Computed project board", () => {
     let workProject = { id: 0, slug: "" };
     await test.step("Work without epics or releases: no epic or release tile", async () => {
       workProject = await createProjectViaWizard(page, `PSB${t}`.slice(0, 20));
-      await setCapability(page, workProject.id, "work", {
+      await setCapability(page, workProject.id, "plan", {
         options: { epics: false, releases: false },
       });
       await createQuest(page, workProject.id, `Plain${t}`);
@@ -154,7 +154,7 @@ test.describe("Computed project board", () => {
         page,
         `PSC${t}`.slice(0, 20),
       );
-      await setCapability(page, id, "work", { enabled: false });
+      await setCapability(page, id, "plan", { enabled: false });
       await apiPost(page, "create", {
         title: "Welcome",
         content: "Start here.",
@@ -174,7 +174,7 @@ test.describe("Computed project board", () => {
       const { id, slug } = await createProjectViaWizard(
         page,
         `PSD${t}`.slice(0, 20),
-        { capabilities: ["apps"], options: { apps: ["track"] } },
+        { capabilities: ["ship"], options: { ship: ["track"] } },
       );
       await createQuest(page, id, `Solo${t}`);
 
@@ -202,7 +202,7 @@ test.describe("Computed project board", () => {
     });
 
     await test.step("turning Releases on changes the board on the next visit, writing nothing", async () => {
-      await setCapability(page, workProject.id, "work", {
+      await setCapability(page, workProject.id, "plan", {
         options: { releases: true },
       });
       const release = await send<{ id: number }>(

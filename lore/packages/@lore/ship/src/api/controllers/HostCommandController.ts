@@ -93,7 +93,7 @@ export class HostCommandController {
       ...(write
         ? {
             capability: {
-              key: "apps" as const,
+              key: "ship" as const,
               action: "send a host a command",
             },
           }

@@ -204,10 +204,10 @@ describe("Idempotent automation domain actions through normal controllers", () =
     project = await createTestProject(alepha, {
       capabilities: [
         {
-          key: "work",
+          key: "plan",
           options: { epics: true, releases: true },
         },
-        { key: "knowledge" },
+        { key: "remember" },
       ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });

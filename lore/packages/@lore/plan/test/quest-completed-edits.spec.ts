@@ -109,8 +109,8 @@ describe("editing a completed quest", () => {
           body: {
             title: `Frozen ${Date.now()}`,
             capabilities: [
-              { key: "work" as const },
-              { key: "knowledge" as const },
+              { key: "plan" as const },
+              { key: "remember" as const },
               { key: "support" as const },
             ],
           },

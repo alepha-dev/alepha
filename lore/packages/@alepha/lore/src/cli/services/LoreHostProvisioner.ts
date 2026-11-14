@@ -355,10 +355,10 @@ export class LoreHostProvisioner {
     if (existing?.id) {
       // Said, because an existing project is a different act from a new one
       // (the walk of #Q3169 lent a server to an old project silently).
-      const apps = existing.capabilities?.find((row) => row.key === "apps");
+      const apps = existing.capabilities?.find((row) => row.key === "ship");
       if (!apps) {
         throw this.refusal(
-          `${existing.slug ?? slug} does not have Apps on, so a host could not be managed there. Turn it on first: lore project capability enable apps --option deploy -p ${existing.slug ?? slug}`,
+          `${existing.slug ?? slug} does not have Ship on, so a host could not be managed there. Turn it on first: lore project capability enable ship --option deploy -p ${existing.slug ?? slug}`,
         );
       }
       print(
@@ -367,7 +367,7 @@ export class LoreHostProvisioner {
       const options = (apps.options ?? {}) as Record<string, unknown>;
       if (options.deploy !== true) {
         print(
-          `${existing.slug ?? slug} cannot deploy apps yet: its Apps capability's deploy option is off. Turn it on with: lore project capability enable apps --option deploy -p ${existing.slug ?? slug}`,
+          `${existing.slug ?? slug} cannot deploy apps yet: its Ship capability's deploy option is off. Turn it on with: lore project capability enable ship --option deploy -p ${existing.slug ?? slug}`,
         );
       }
       return { id: existing.id, slug: existing.slug ?? slug, created: false };
@@ -375,7 +375,7 @@ export class LoreHostProvisioner {
     const created = await this.projectApi.createProject({
       body: {
         title: slug,
-        capabilities: [{ key: "apps", options: { deploy: true } }],
+        capabilities: [{ key: "ship", options: { deploy: true } }],
       },
     });
     const createdSlug = created.slug ?? slug;

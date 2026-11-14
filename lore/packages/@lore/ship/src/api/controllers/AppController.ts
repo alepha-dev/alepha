@@ -159,7 +159,7 @@ export class AppController {
       $ownsProject({
         requires: "app:manage",
         param: "projectId",
-        capability: { key: "apps", action: "create an app instance" },
+        capability: { key: "ship", action: "create an app instance" },
       }),
     ],
     method: "POST",
@@ -256,7 +256,7 @@ export class AppController {
       $ownsProject({
         requires: "app:manage",
         param: "projectId",
-        capability: { key: "apps", action: "update an app instance" },
+        capability: { key: "ship", action: "update an app instance" },
       }),
     ],
     method: "PATCH",
@@ -346,7 +346,7 @@ export class AppController {
       $ownsProject({
         requires: "sigil:manage",
         param: "projectId",
-        capability: { key: "apps", action: "mint a sigil" },
+        capability: { key: "ship", action: "mint a sigil" },
       }),
     ],
     method: "POST",
@@ -409,7 +409,7 @@ export class AppController {
       $ownsProject({
         requires: "app:manage",
         param: "projectId",
-        capability: { key: "apps", action: "destroy an app's resources" },
+        capability: { key: "ship", action: "destroy an app's resources" },
       }),
     ],
     method: "POST",
@@ -551,7 +551,7 @@ export class AppController {
       $ownsProject({
         requires: "app:manage",
         param: "projectId",
-        capability: { key: "apps", action: "delete an app instance" },
+        capability: { key: "ship", action: "delete an app instance" },
       }),
     ],
     method: "DELETE",
