@@ -263,6 +263,27 @@ describe("DataTable (static data)", () => {
     expect(screen.queryByText("Gamma")).toBeNull();
   });
 
+  // The header is sticky, so a translucent fill lets the rows scroll through
+  // its labels; and WebKit paints no `box-shadow` on a `<thead>`, so its
+  // bottom line must sit on the cells.
+  it("keeps the sticky header opaque, its bottom line on the cells", async () => {
+    const { container } = await mount(
+      <DataTable<Row> data={[{ id: 1, title: "Alpha" }]} columns={columns} />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+    const classes = container.querySelector("thead")!.className.split(/\s+/);
+    expect(classes).toContain("bg-muted");
+    expect(classes).not.toContain("bg-muted/50");
+    expect(
+      classes.some(
+        (c) =>
+          c.startsWith("[&_th]:shadow-") &&
+          c.includes("inset_0_-1px_0_0_var(--border)"),
+      ),
+    ).toBe(true);
+  });
+
   it("renders the empty state for an empty array", async () => {
     await mount(
       <DataTable<Row>

@@ -72,7 +72,15 @@ export const PlateLayout = (props: PlateLayoutProps) => (
       props.className,
     )}
   >
-    <div className="bg-card/30 border-border shrink-0 border-b">
+    <div
+      className={cn(
+        "bg-card/30 border-border shrink-0",
+        // The folder band draws its own bottom line, which the active tile
+        // covers to open into the body. A border here would run under the
+        // tile too, cutting it off from the body.
+        props.tabsVariant === "underline" && "border-b",
+      )}
+    >
       {props.plate}
       {props.tabsVariant !== "underline" ? (
         <PlateFolderTabs
