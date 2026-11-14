@@ -180,5 +180,11 @@ jobs:
             postgres -c max_locks_per_transaction=1024
           until docker exec postgres pg_isready -U postgres; do sleep 1; done
 
+      # Each of ~580 spec files builds Lore's ~90-table schema, three at a
+      # time on four cores beside the server: a setup hook took past the
+      # default 10 s, a different one each night. A hang detector here, not
+      # a budget; a spec's own explicit timeout still wins.
       - name: Test Project on Postgres
         run: yarn alepha test --dialect postgres
+        env:
+          VITEST_ARGS: --hookTimeout=60000 --testTimeout=60000

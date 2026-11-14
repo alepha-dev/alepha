@@ -126,6 +126,7 @@ describe("The uptime tick and state machine", () => {
         .poll(
           async () =>
             (await ctx.repos.monitors.getById(monitor.id)).lastCheckedAt,
+          UptimeTickWatch.poll,
         )
         .not.toBe(before);
       await UptimeTickWatch.settled(ctx.clock);
@@ -198,7 +199,7 @@ describe("The uptime tick and state machine", () => {
       const before = (await row()).lastCheckedAt;
       await ctx.clock.travel(1, "minute");
       await expect
-        .poll(async () => (await row()).lastCheckedAt)
+        .poll(async () => (await row()).lastCheckedAt, UptimeTickWatch.poll)
         .not.toBe(before);
       await UptimeTickWatch.settled(ctx.clock);
       return row();

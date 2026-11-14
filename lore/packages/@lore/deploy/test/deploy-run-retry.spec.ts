@@ -258,9 +258,7 @@ describe("a deploy whose first read times out", () => {
     expect(runner().calls).toEqual([id]);
     // The job marks its own row once the handler returns, after the
     // deployment row says succeeded: waited for, not read once.
-    await expect
-      .poll(async () => (await executionOf(id))?.status)
-      .toBe("ok");
+    await expect.poll(async () => (await executionOf(id))?.status).toBe("ok");
   });
 
   it("writes the reason to the row at once when the database never answers", async ({

@@ -19,6 +19,13 @@ export class UptimeTickWatch {
     UptimeTickWatch
   >();
 
+  /**
+   * The `expect.poll` options for a wait on the tick's `lastCheckedAt`. The
+   * default second is shorter than one tick on a loaded runner against
+   * Postgres; a hang still fails, ten seconds in.
+   */
+  public static readonly poll = { timeout: 10_000 };
+
   protected readonly running = new Set<string>();
 
   public static attach(alepha: Alepha): UptimeTickWatch {

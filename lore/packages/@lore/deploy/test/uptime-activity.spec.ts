@@ -78,6 +78,7 @@ describe("Uptime transitions in the project's Activity", () => {
       await expect
         .poll(
           async () => (await repos.monitors.getById(monitor.id)).lastCheckedAt,
+          UptimeTickWatch.poll,
         )
         .not.toBe(before);
       await UptimeTickWatch.settled(clock);

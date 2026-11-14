@@ -103,6 +103,7 @@ describe("Uptime email alerts", () => {
         .poll(
           async () =>
             (await ctx.repos.monitors.getById(monitor.id)).lastCheckedAt,
+          UptimeTickWatch.poll,
         )
         .not.toBe(before);
       await UptimeTickWatch.settled(ctx.clock);

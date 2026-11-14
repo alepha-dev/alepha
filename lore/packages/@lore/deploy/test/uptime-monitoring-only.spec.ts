@@ -104,7 +104,10 @@ describe("A monitoring-only project", () => {
       const before = (await repos.monitors.getById(id)).lastCheckedAt;
       await clock.travel(1, "minute");
       await expect
-        .poll(async () => (await repos.monitors.getById(id)).lastCheckedAt)
+        .poll(
+          async () => (await repos.monitors.getById(id)).lastCheckedAt,
+          UptimeTickWatch.poll,
+        )
         .not.toBe(before);
       await UptimeTickWatch.settled(clock);
     };

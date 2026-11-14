@@ -85,7 +85,7 @@ describe("Push monitor receipts", () => {
       const previous = (await read()).lastCheckedAt;
       await ctx.clock.travel(1, "minute");
       await expect
-        .poll(async () => (await read()).lastCheckedAt)
+        .poll(async () => (await read()).lastCheckedAt, UptimeTickWatch.poll)
         .not.toBe(previous);
       await UptimeTickWatch.settled(ctx.clock);
     }
@@ -120,7 +120,10 @@ describe("Push monitor receipts", () => {
       const previous = (await ctx.repos.monitors.getById(id)).lastCheckedAt;
       await ctx.clock.travel(1, "minute");
       await expect
-        .poll(async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt)
+        .poll(
+          async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt,
+          UptimeTickWatch.poll,
+        )
         .not.toBe(previous);
       await UptimeTickWatch.settled(ctx.clock);
     }
@@ -142,14 +145,20 @@ describe("Push monitor receipts", () => {
     const pushed = (await ctx.repos.monitors.getById(id)).lastCheckedAt;
     await ctx.clock.travel(60, "minutes");
     await expect
-      .poll(async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt)
+      .poll(
+        async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt,
+        UptimeTickWatch.poll,
+      )
       .not.toBe(pushed);
     await UptimeTickWatch.settled(ctx.clock);
     for (let index = 0; index < 2; index++) {
       const previous = (await ctx.repos.monitors.getById(id)).lastCheckedAt;
       await ctx.clock.travel(1, "minute");
       await expect
-        .poll(async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt)
+        .poll(
+          async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt,
+          UptimeTickWatch.poll,
+        )
         .not.toBe(previous);
       await UptimeTickWatch.settled(ctx.clock);
     }
