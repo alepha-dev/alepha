@@ -73,6 +73,21 @@ export class ReactBrowserRendererProvider {
    */
   static readonly HYDRATED_ATTRIBUTE = "data-alepha-hydrated";
 
+  /**
+   * A stopped container takes its React tree down with it.
+   *
+   * Left mounted, the root kept React's scheduler working after the container
+   * was gone: a jsdom spec failed on an uncaught `window is not defined` once
+   * the environment was torn down, with every case green.
+   */
+  protected readonly onStop = $hook({
+    on: "stop",
+    handler: () => {
+      this.root?.unmount();
+      this.root = undefined;
+    },
+  });
+
   protected readonly onBrowserRender = $hook({
     on: "react:browser:render:before",
     handler: async ({ hydration, root, element, state }) => {

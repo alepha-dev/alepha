@@ -415,8 +415,10 @@ describe("Explicit policy adoption and legacy parity", () => {
     expect(
       await rows.jobs.count({ jobName: "system.notifications.send" }),
     ).toBe(202);
-    // This joins 202 native enqueues and deliveries; the shared CI runner exceeded 30 seconds.
-  }, 60_000);
+    // This joins 202 native enqueues and deliveries; the shared CI runner
+    // exceeded 30 seconds, and a Nightly runner against Postgres took 41 s
+    // to over 60 s. A hang detector, not a budget.
+  }, 180_000);
   it("progresses beyond fifty due reminders without duplicating history or the interval", async ({
     expect,
   }) => {

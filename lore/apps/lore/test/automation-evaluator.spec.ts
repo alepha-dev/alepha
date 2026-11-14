@@ -587,7 +587,10 @@ describe("Pure automation evaluation and durable worker", () => {
     expect((await persistence.receipts.getById(occurrence.id)).status).toBe(
       "committed",
     );
-  }, 60_000);
+    // ~150 deliveries of sequential round trips: 41 s to over 60 s on a
+    // Nightly runner against Postgres, a few seconds on SQLite. A hang
+    // detector, not a budget.
+  }, 180_000);
   it("does not expose an author's privileged source through a caller's metadata-read permission", async ({
     expect,
   }) => {
