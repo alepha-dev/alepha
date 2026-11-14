@@ -32,8 +32,8 @@ import { createElement } from "react";
 
 import { $pageNav } from "../shell/$pageNav.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
-import { AdminDashboardCountCard } from "./AdminDashboardCountCard.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
+import { AdminStatTile } from "./AdminStatTile.tsx";
 
 /**
  * The whole `/admin` surface, fifteen pages and their shell, mounted and wired.
@@ -292,7 +292,8 @@ export class AdminRouter {
         order: 1000,
         can: () => this.userApi.findUsers.can(),
         render: () =>
-          createElement(AdminDashboardCountCard, {
+          createElement(AdminStatTile, {
+            id: "users",
             // `render` runs inside `AdminDashboard`'s render but not inside a
             // hook-safe position, so the label is an element that looks the
             // key up itself rather than a `tr` call here. Same key as the nav

@@ -22,11 +22,23 @@ export {
   type AdminDashboardProps,
 } from "./AdminDashboard.tsx";
 export type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
-export {
-  AdminDashboardCountCard,
-  type AdminDashboardCountCardProps,
-} from "./AdminDashboardCountCard.tsx";
 export { AdminFiles } from "./AdminFiles.tsx";
+export {
+  AdminStatTile,
+  type AdminStatTileDelta,
+  type AdminStatTileLoaded,
+  type AdminStatTileProps,
+  type AdminStatTileResult,
+} from "./AdminStatTile.tsx";
+export {
+  AdminStatTileDeltaChip,
+  type AdminStatTileDeltaChipProps,
+} from "./AdminStatTileDeltaChip.tsx";
+export {
+  type AdminStatTileDeltaChange,
+  adminStatTileDelta,
+  formatAdminStatTileDelta,
+} from "./adminStatTileDelta.ts";
 export { AdminJobDetail, type AdminJobDetailProps } from "./AdminJobDetail.tsx";
 export { AdminJobs } from "./AdminJobs.tsx";
 export { AdminKeys } from "./AdminKeys.tsx";

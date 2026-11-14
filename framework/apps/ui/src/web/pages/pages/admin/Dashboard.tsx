@@ -1,7 +1,7 @@
 import {
   AdminDashboard,
   type AdminDashboardCard,
-  AdminDashboardCountCard,
+  AdminStatTile,
 } from "@alepha/ui/admin";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
@@ -50,9 +50,10 @@ const Dashboard = () => {
     id,
     order,
     render: () => (
-      <AdminDashboardCountCard
+      <AdminStatTile
+        id={id}
         label={label}
-        description={description}
+        tooltip={description}
         icon={icon}
         href={href}
         load={() => count(action)}
@@ -113,9 +114,10 @@ const Dashboard = () => {
               order: 1040,
               can: () => v.showGated,
               render: () => (
-                <AdminDashboardCountCard
+                <AdminStatTile
+                  id="gated"
                   label="Gated card"
-                  description="Hidden when its `can` returns false"
+                  note="Hidden when its `can` returns false"
                   href="/pages/admin/dashboard"
                   load={async () => 0}
                 />

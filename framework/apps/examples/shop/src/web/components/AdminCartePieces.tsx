@@ -1,5 +1,5 @@
 import type { AdminProductController } from "@alepha/commerce/admin";
-import { AdminDashboardCountCard } from "@alepha/ui/admin";
+import { AdminStatTile } from "@alepha/ui/admin";
 import { useClient } from "alepha/react";
 import { Tr } from "alepha/react/i18n";
 import { Gem } from "lucide-react";
@@ -7,7 +7,7 @@ import { Gem } from "lucide-react";
 /**
  * Dashboard tile: how many pieces the catalogue holds, drafts included.
  *
- * A thin wrapper around the shared count tile rather than a card of its own —
+ * A thin wrapper around the shared stat tile rather than a card of its own —
  * the component exists only because `useClient` is a hook and the card
  * contract's `load` is a plain function, so something has to sit between them.
  *
@@ -18,7 +18,8 @@ import { Gem } from "lucide-react";
 export const AdminCartePieces = () => {
   const client = useClient<AdminProductController>();
   return (
-    <AdminDashboardCountCard
+    <AdminStatTile
+      id="shop-pieces"
       label={<Tr k="admin.produits" />}
       href="/admin/produits"
       icon={<Gem className="size-4" />}
