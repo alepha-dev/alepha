@@ -12,7 +12,7 @@ import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { ReactRouter } from "alepha/react/router";
-import { afterEach, describe, it } from "vitest";
+import { afterAll, afterEach, describe, it } from "vitest";
 
 /**
  * A detail page ends its breadcrumb trail with itself (#Q3408), where three
@@ -32,12 +32,18 @@ class PathRouter extends ReactRouter<any> {
 }
 
 describe("the leaf crumb of a detail page", () => {
-  // Stopped after each case: a container left running kept React's scheduler
-  // busy past the jsdom teardown, and the run failed on an uncaught
-  // `window is not defined` with every case green.
+  // Each container boots the browser router, which renders the app into
+  // jsdom and keeps rendering (lazy route chunks) after its case ends. Left
+  // to run past the file, that work met the jsdom teardown and failed the
+  // run on an uncaught `window is not defined` with every case green. Stop
+  // each container, then let React's queued work finish while `window` is
+  // still there.
   const containers: Alepha[] = [];
   afterEach(async () => {
     for (const alepha of containers.splice(0)) await alepha.stop();
+  });
+  afterAll(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 250));
   });
 
   const setup = async () => {
