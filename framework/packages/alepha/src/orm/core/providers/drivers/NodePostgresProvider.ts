@@ -44,19 +44,14 @@ export class NodePostgresProvider extends PostgresProvider {
   }
 
   /**
-   * The postgres.js client and its drizzle adapter, loaded on the first
-   * connect or migrate, never at boot: Postgres is part of every app, and a
-   * SQLite app must not evaluate a driver it never opens. Loaded once.
-   *
-   * @internal Driver plumbing, outside semver.
-   */
-  /**
    * postgres.js serializes a json or jsonb parameter with `JSON.stringify`,
    * but drizzle's json columns and Alepha's `schema` type hand it a value
    * they already stringified. Encoded twice, every document landed as a JSON
    * string scalar: reads round-tripped, and every JSON operator in SQL
    * (`->>`, `@>`, `jsonb_array_elements`) saw a string. A string goes
    * through as the JSON text it is; anything else is stringified once.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected static jsonPassThrough<T extends postgres.Sql<any>>(client: T): T {
     const serialize = (value: unknown) =>
@@ -71,6 +66,13 @@ export class NodePostgresProvider extends PostgresProvider {
     return client;
   }
 
+  /**
+   * The postgres.js client and its drizzle adapter, loaded on the first
+   * connect or migrate, never at boot: Postgres is part of every app, and a
+   * SQLite app must not evaluate a driver it never opens. Loaded once.
+   *
+   * @internal Driver plumbing, outside semver.
+   */
   protected loadDriver() {
     this.driverModules ??= (async () => {
       const [pg, drizzleModule, migrator] = await Promise.all([
