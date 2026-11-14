@@ -95,7 +95,10 @@ describe("AdminStatTile", () => {
     );
 
     await waitFor(() => expect(figure(view)).toBe("n/a"));
-    expect(view.container.textContent).not.toContain("—");
+    // The dash the old count card printed (U+2014), banned in this repository.
+    expect(view.container.textContent).not.toContain(
+      String.fromCharCode(0x2014),
+    );
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(screen.queryByText("Count unreachable (tile spec)")).toBeNull();
   });

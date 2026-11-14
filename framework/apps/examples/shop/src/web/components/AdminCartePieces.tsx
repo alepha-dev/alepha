@@ -7,7 +7,7 @@ import { Gem } from "lucide-react";
 /**
  * Dashboard tile: how many pieces the catalogue holds, drafts included.
  *
- * A thin wrapper around the shared stat tile rather than a card of its own —
+ * A thin wrapper around the shared stat tile rather than a card of its own:
  * the component exists only because `useClient` is a hook and the card
  * contract's `load` is a plain function, so something has to sit between them.
  *
