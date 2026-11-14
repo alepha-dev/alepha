@@ -63,10 +63,8 @@ describe("DatabaseProvider.atomicBatch", () => {
     await atomic(Alepha.create().with(AlephaOrmTestPostgres));
   });
 
-  it("stays atomic on sqlite with ordinary transactions switched off", async () => {
-    const alepha = Alepha.create({
-      env: { DATABASE_URL: "sqlite://:memory:", DATABASE_TRANSACTIONS: false },
-    });
+  // The switch emulates D1, whose batch is still atomic.
+  const switchedOff = async (alepha: Alepha) => {
     const database = alepha.inject(DatabaseProvider);
     await alepha.start();
     expect(database.supportsTransactions).toBe(false);
@@ -85,5 +83,21 @@ describe("DatabaseProvider.atomicBatch", () => {
     );
     expect(Number(n)).toBe(1);
     await alepha.stop();
+  };
+
+  it("stays atomic on sqlite with ordinary transactions switched off", async () => {
+    await switchedOff(
+      Alepha.create({
+        env: { DATABASE_URL: "sqlite://:memory:", DATABASE_TRANSACTIONS: false },
+      }),
+    );
+  });
+
+  it("stays atomic on postgres with ordinary transactions switched off", async () => {
+    await switchedOff(
+      Alepha.create({ env: { DATABASE_TRANSACTIONS: false } }).with(
+        AlephaOrmTestPostgres,
+      ),
+    );
   });
 });

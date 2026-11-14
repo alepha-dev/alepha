@@ -50,6 +50,23 @@ export class NodePostgresProvider extends PostgresProvider {
    *
    * @internal Driver plumbing, outside semver.
    */
+  /**
+   * postgres.js serializes a json or jsonb parameter with `JSON.stringify`,
+   * but drizzle's json columns and Alepha's `schema` type hand it a value
+   * they already stringified. Encoded twice, every document landed as a JSON
+   * string scalar: reads round-tripped, and every JSON operator in SQL
+   * (`->>`, `@>`, `jsonb_array_elements`) saw a string. A string goes
+   * through as the JSON text it is; anything else is stringified once.
+   */
+  protected static jsonPassThrough<T extends postgres.Sql<any>>(client: T): T {
+    const serialize = (value: unknown) =>
+      typeof value === "string" ? value : JSON.stringify(value);
+    for (const oid of ["114", "3802"]) {
+      client.options.serializers[oid] = serialize;
+    }
+    return client;
+  }
+
   protected loadDriver() {
     this.driverModules ??= (async () => {
       const [pg, drizzleModule, migrator] = await Promise.all([
@@ -57,8 +74,12 @@ export class NodePostgresProvider extends PostgresProvider {
         import("drizzle-orm/postgres-js"),
         import("drizzle-orm/postgres-js/migrator"),
       ]);
+      const factory = (pg.default ?? pg) as typeof postgres;
       return {
-        postgres: (pg.default ?? pg) as typeof postgres,
+        postgres: ((options: postgres.Options<any>) =>
+          NodePostgresProvider.jsonPassThrough(
+            factory(options),
+          )) as unknown as typeof postgres,
         drizzle: drizzleModule.drizzle,
         migrate: migrator.migrate,
       };

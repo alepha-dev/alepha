@@ -614,6 +614,17 @@ export abstract class DatabaseProvider {
       return fn();
     }
 
+    return this.runTransaction(fn, options);
+  }
+
+  /**
+   * Open a driver transaction around `fn`, its marker in a nested context:
+   * the half of {@link transactional} after the join and switch checks.
+   */
+  protected runTransaction<R>(
+    fn: () => Promise<R>,
+    options?: TransactionOptions,
+  ): Promise<R> {
     return this.alepha.context.nest(async () => {
       const afterCommit: Array<() => void | Promise<void>> = [];
       const result = await this.db.transaction(async (tx) => {
@@ -1013,12 +1024,15 @@ export abstract class DatabaseProvider {
   protected async runAtomicBatch(
     statements: SQLLike[],
   ): Promise<Array<Record<string, unknown>[]>> {
-    if (!this.supportsTransactions) {
+    if (!this.supportsTransactions && !this.transactionsSwitchedOff) {
       throw new AlephaError(
         `The ${this.driver} driver has transactions switched off and no native batch: an atomic batch cannot run on it`,
       );
     }
-    return this.transactional(() => this.executeEach(statements));
+    // A real transaction even when a test switched ordinary ones off: that
+    // switch emulates D1, whose batch is still atomic (the SQLite drivers do
+    // the same with their exclusive native transaction).
+    return this.runTransaction(() => this.executeEach(statements));
   }
 
   /**
