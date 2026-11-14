@@ -29,11 +29,11 @@ It still lands through a pull request, on a branch of its own: run only the chec
   - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/2-reference`, `docs/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any that differs from the index. A JSDoc change is a two-part commit: review the pages, stage them, run again.
   - One run per machine across every worktree: a second `yarn v` queues, since both test lanes drive the one postgres on 15432. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
   - Skip it when it has nothing to read: nothing for a `.gitignore` line, `yarn oxfmt <file>` for markdown prose, plus `yarn check:docs` when the file is a guide or a README with code samples.
-- **Pushing the branch** is the real gate: `checks`, `test` (x6), `e2e-apps` and `e2e-cli`, in parallel. There is no full local pipeline. A re-push cancels the previous run.
+- **The pull request's CI run** is the real gate: `checks`, `test` (x6), `e2e-apps` and `e2e-cli`, in parallel, summed up by `gate (framework)`. There is no full local pipeline. A re-push cancels the previous run. A branch with no pull request runs nothing.
 - `yarn clean` removes generated files and `packages/*/node_modules`, including the `dist` a following command may need. `yarn v` never runs it.
 - Also: `yarn w <workspace> <command>` (one workspace), `yarn build` (tsdown), `yarn test` (Vitest), `yarn lint` (oxlint `--fix`, then oxfmt), `yarn typecheck`.
 
-**After a code change: `yarn v`, then push and read the CI run.** Fix a `yarn v` failure before pushing. A green `yarn v` is never reported as "verified". Inside one package, `yarn w <workspace> typecheck` and `yarn w <workspace> test` are cheaper.
+**After a code change: `yarn v`, then push, open the pull request and read its CI run.** Fix a `yarn v` failure before pushing. A green `yarn v` is never reported as "verified". Inside one package, `yarn w <workspace> typecheck` and `yarn w <workspace> test` are cheaper.
 
 ### Workspace checks
 
