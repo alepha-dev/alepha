@@ -77,7 +77,7 @@ Reaching the same end state from a session reused per worker took 2665ms against
 `apps/e2e/web/` is split by feature, not by user journey. One `<feature>.spec.ts` per major surface, each covering happy path + key edge cases:
 
 - `apps.spec.ts` - create a deployed copy → mint its sigil → ingest as it → triage in the inbox → open it from the Apps list → walk its tabs → rename a half → rotate → delete. Renamed from `sigil.spec.ts` with epic #30
-- `blights.spec.ts` - regression guard for the inbox render loop (the ingest path lives in `apps.spec.ts`)
+- `errors.spec.ts` - regression guard for the inbox render loop (the ingest path lives in `apps.spec.ts`)
 - `estates.spec.ts` - an estate's lifecycle in its home project's Settings ▸ Apps ▸ Estates (create with the one-time secret, the console under `/:projectSlug/estates/:estateSlug`, a switch that follows the server's answer, delete through the dialog that says nothing is undeployed; estates have no account page since #E126) and the admin `/admin/estates` list, which shows no credential. No machine connects here: that is #1624 and #1628
 - `quest.spec.ts` — quest lifecycle (open → accept → complete) + reminder UI
 - `attachment-html-preview.spec.ts` - an attached HTML file opens rendered in a sandboxed frame: its own script reports that cookies, storage and the API are out of reach, and the Code tab scrolls on both axes inside the dialog

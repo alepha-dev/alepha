@@ -237,7 +237,7 @@ describe("ProjectSettingsAgentPrompts", () => {
     await waitFor(() => expect(editor("questLoop")).not.toBeNull());
     expect(document.body.textContent).not.toContain("agentPrompts.settings.");
     expect(screen.getByText("Feedback: Triage the inbox")).toBeDefined();
-    expect(screen.getByText("Blights: Triage")).toBeDefined();
+    expect(screen.getByText("Errors: Triage")).toBeDefined();
     expect(screen.getByText("Quests: Work the loose quests")).toBeDefined();
     expect(editor("questLoop")!.value).toBe(questLoopPromptDefault);
   });

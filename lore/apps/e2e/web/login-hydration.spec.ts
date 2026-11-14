@@ -26,7 +26,7 @@ const watchMismatches = (page: Page) => {
 /**
  * The sign-in page is server-rendered (public pages keep real HTML), so it
  * hydrates, and a render that differs between server and browser throws React
- * #418 there. Blight #795 (#Q2642) reported one on `/auth/login` in
+ * #418 there. Error #795 (#Q2642) reported one on `/auth/login` in
  * production; none of the cases below reproduces it, which points at
  * something outside the app rewriting the form before hydration (a password
  * manager extension is the usual suspect on a login page). These hold the

@@ -309,7 +309,7 @@ const ProjectApps = () => {
   return (
     <div
       data-testid="apps-table"
-      // `p-2` and nothing more, matching Epics, Releases and Blights (the
+      // `p-2` and nothing more, matching Epics, Releases and Errors (the
       // frame the TABLE pages share since #Q2266, and only those: the card
       // pages and tabs kept their `p-4`, see #Q2291). The
       // extra `md:pt-10` existed to give the page heading room above the
@@ -601,7 +601,7 @@ const ProjectApps = () => {
             // `lll` outright until feedback #P2174, which is four rows of
             // "Sep 9, 2026 7:00 PM" and a reader subtracting dates by hand to
             // answer the one question this column exists for: is this copy
-            // alive. The Blights table one page over had it right already.
+            // alive. The Errors table one page over had it right already.
             cell: (instance) =>
               instance.sigil?.lastSeenAt ? (
                 <TimeAgo

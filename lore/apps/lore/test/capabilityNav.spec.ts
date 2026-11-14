@@ -7,7 +7,7 @@ import {
   type ProjectShellContext,
 } from "@lore/core/web";
 import {
-  currentBlightCountAtom,
+  currentErrorCountAtom,
   currentInstancesAtom,
   DeployShell,
 } from "@lore/deploy/web";
@@ -163,18 +163,18 @@ describe("the sidebar, derived from capabilities", () => {
     expect(routes).not.toContain("projectReleases");
   });
 
-  it("hides Blights until something collects or filed one", ({ expect }) => {
+  it("hides Errors until something collects or filed one", ({ expect }) => {
     const apps = projectFixture({ capabilities: ["apps"] });
 
     // Tracking on and nothing to show: the entry would be a door onto an
     // empty room for every project that never enrolled an app.
     expect(offered(apps)).not.toContain("projectErrors");
 
-    // A blight OUTLIVES the app that reported it - `blights.sigilId` is
+    // An error OUTLIVES the app that reported it - `projectErrors.sigilId` is
     // `ON DELETE SET NULL` and rows survive for the retention window - so an
     // owner who deleted their only app must not lose the inbox with it.
     expect(
-      offered(apps, contextWith([[currentBlightCountAtom, { count: 3 }]])),
+      offered(apps, contextWith([[currentErrorCountAtom, { count: 3 }]])),
     ).toContain("projectErrors");
     expect(
       offered(
@@ -200,7 +200,7 @@ describe("the sidebar, derived from capabilities", () => {
 
     expect(routes).toContain("projectApps");
     expect(routes).toContain("projectArtifacts");
-    // Blights is telemetry, so it goes with `track`.
+    // Errors is telemetry, so it goes with `track`.
     expect(routes).not.toContain("projectErrors");
   });
 

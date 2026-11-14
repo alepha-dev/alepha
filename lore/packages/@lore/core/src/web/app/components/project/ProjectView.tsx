@@ -90,7 +90,7 @@ const ProjectView = () => {
   // rename Task 9):
   //
   //   Activity  Activity
-  //   Work      Quests, Kanban, Epics, Feedback, Blights
+  //   Work      Quests, Kanban, Epics, Feedback, Errors
   //   Record    Folios, Releases, Reports
   //   Ops       Apps, Artifacts, Uptime
   //   Config    Automations
@@ -101,7 +101,7 @@ const ProjectView = () => {
   // above Settings, rather than among the daily work surfaces (#Q2678).
   //
   // Work is ordered chosen-then-arrived: Quests and Epics are what you put in,
-  // Feedback and Blights turn up on their own and need a verdict. They share
+  // Feedback and Errors turn up on their own and need a verdict. They share
   // one group rather than two, so the separator falls only where the mode
   // changes.
   //

@@ -118,8 +118,8 @@ test.describe("Uptime healthchecks", () => {
       .getByRole("button", { name: "Delete", exact: true })
       .click();
     await expect(row).toHaveCount(0);
-    await page.goto(`/${slug}/blights`);
-    await expect(page.getByText(/No blights\./i)).toBeVisible();
+    await page.goto(`/${slug}/errors`);
+    await expect(page.getByText(/No errors\./i)).toBeVisible();
     await expect(page.getByText(/something went wrong/i)).toHaveCount(0);
   });
 

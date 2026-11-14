@@ -66,7 +66,7 @@ const AutomationGalleryPage = () => {
     "epic-completed": Layers,
     "release-to-folio": Flag,
     "coverage-regression": Gauge,
-    "blight-crossing": Bug,
+    "error-crossing": Bug,
     "deploy-failed": Rocket,
   };
   const title = (preset: AutomationPresetDescriptor) =>

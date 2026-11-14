@@ -4,13 +4,11 @@ import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 
 import { appsCapabilityOptionsSchema } from "../src/api/schemas/appsCapabilityOptionsSchema.ts";
-import { currentBlightCountAtom } from "../src/web/app/atoms/currentBlightCountAtom.ts";
+import { currentErrorCountAtom } from "../src/web/app/atoms/currentErrorCountAtom.ts";
 import { DeployShell } from "../src/web/app/shell/DeployShell.ts";
 
 describe("Uptime in the project sidebar", () => {
-  it("keeps outage blights reachable without a tracking sigil", ({
-    expect,
-  }) => {
+  it("keeps outage errors reachable without a tracking sigil", ({ expect }) => {
     const alepha = Alepha.create();
     alepha.inject(DeployShell);
     const shell = alepha.inject(ProjectShellRegistry);
@@ -27,7 +25,7 @@ describe("Uptime in the project sidebar", () => {
     expect(
       shell.offeredNav(project, context).map((row) => row.route),
     ).not.toContain("projectErrors");
-    alepha.store.set(currentBlightCountAtom, { count: 1 });
+    alepha.store.set(currentErrorCountAtom, { count: 1 });
     expect(
       shell.offeredNav(project, context).map((row) => row.route),
     ).toContain("projectErrors");

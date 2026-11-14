@@ -19,7 +19,7 @@ import type { AppInstanceResource } from "../../../../../api/schemas/appInstance
  *
  * The two halves speak different vocabularies and always have: the reporting
  * package names what it COLLECTS (`views`, `errors`, `vitals`), Lore names what
- * it ACCEPTS (`beacon`, `blights`, `vitals`). Pairing them is the whole reason
+ * it ACCEPTS (`beacon`, `projectErrors`, `vitals`). Pairing them is the whole reason
  * this card exists - the two were previously unrelated strings on unrelated
  * pages, and "this app is sending vitals and the sink is refusing them" was
  * invisible in both directions.

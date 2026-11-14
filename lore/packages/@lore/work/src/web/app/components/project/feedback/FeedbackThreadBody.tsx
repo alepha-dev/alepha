@@ -37,7 +37,7 @@ export interface FeedbackThreadBodyProps {
  *
  * ⚠️ **No markdown for the reporter, and that is the point.** A reporter is
  * an outsider and this body is shown to the project owner, the same reason a
- * blight's fields are never rendered as markdown. Concretely, `MarkdownView`
+ * error's fields are never rendered as markdown. Concretely, `MarkdownView`
  * loads a Markdown image from wherever it points, so a reporter's
  * `![](https://their-server/x.png)` would make the owner's browser call that
  * server on opening the inbox, telling it who read the report and when.

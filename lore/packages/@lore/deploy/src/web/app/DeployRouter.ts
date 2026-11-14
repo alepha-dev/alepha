@@ -49,7 +49,7 @@ export const ANALYTICS_DIMENSIONS = new Set([
 ]);
 
 /**
- * Deploy's pages (#E75): apps and their tabs, artifacts, blights, the Bay console, Reports' Quality tab and the Apps and Estates settings tabs.
+ * Deploy's pages (#E75): apps and their tabs, artifacts, errors, the Bay console, Reports' Quality tab and the Apps and Estates settings tabs.
  * Each page mounts under core with `$pageProject` or `parent:`, so no
  * router names another module's page.
  */
@@ -222,30 +222,30 @@ export class DeployRouter {
 
   projectErrors = $pageProject({
     name: "projectErrors",
-    path: "/blights",
+    path: "/errors",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Blights`,
+      title: `${previous?.title ?? ""} › Errors`,
     }),
-    lazy: () => import("./components/project/blights/ProjectBlights.tsx"),
+    lazy: () => import("./components/project/errors/ProjectErrors.tsx"),
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
       }
       // Gated on the Apps capability, not on whether any app currently
-      // carries the Blights kind. Deriving it from the instance list would
+      // carries the Errors kind. Deriving it from the instance list would
       // turn a transient `listApps` failure into a 404 on a deep link, and an
       // inbox with nothing in it costs nothing. The sidebar entry is the one
       // that derives.
       if (!hasCapability(project, "apps")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
-      // No fetch here on purpose. The page hands `listBlights` to an
+      // No fetch here on purpose. The page hands `listProjectErrors` to an
       // `DataTable`, which owns paging/sort/filters and therefore always
       // issues its own call with its own query — so a copy fetched here was
       // read by nothing and thrown away on every visit. The badge does not
       // need it either: the parent `project` loader already seeds
-      // `currentBlightCountAtom` via `countOpenBlights`, and the table
+      // `currentErrorCountAtom` via `countOpenProjectErrors`, and the table
       // refreshes it a moment later.
       //
       // Nor can the two be merged: `$action` coalesces CONCURRENT calls into
@@ -618,7 +618,7 @@ export class DeployRouter {
   /**
    * Distinct failures still happening in this app.
    *
-   * ⚠️ Gated on **`blights`**, not on Beacon like its neighbours. The rows it
+   * ⚠️ Gated on **`projectErrors`**, not on Beacon like its neighbours. The rows it
    * renders come from `sigil_error_groups`, which `SigilIngestService` writes
    * under the `errors` gate - an app that collects page views and refuses
    * error reports has nothing to put here, and one that does the reverse has
@@ -636,7 +636,7 @@ export class DeployRouter {
     }),
     lazy: () => import("./components/project/apps/AppErrors.client.tsx"),
     loader: async () => {
-      this.assertBlights();
+      this.assertProjectErrors();
     },
   });
 
@@ -746,18 +746,18 @@ export class DeployRouter {
   /**
    * The Errors tab's gate. Separate from `assertBeacon` because the two answer
    * different questions: `beacon` is what fills `sigil_views` / `sigil_vitals`,
-   * `blights` is what fills `sigil_error_groups`, and an app can carry either
+   * `projectErrors` is what fills `sigil_error_groups`, and an app can carry either
    * without the other.
    */
-  protected assertBlights(): void {
+  protected assertProjectErrors(): void {
     const instance = this.alepha.store.get(currentInstanceAtom);
     if (!instance?.sigil?.kinds.includes("errors")) {
-      throw new NotFoundError("Blights are not enabled for this app");
+      throw new NotFoundError("Errors are not enabled for this app");
     }
   }
 
   /**
-   * DORA metrics, blights, errors and uptime (#Q3008). Quality is its own tab,
+   * DORA metrics, errors, errors and uptime (#Q3008). Quality is its own tab,
    * `reportsQuality` below (#Q3070).
    */
   reportsDelivery = $page({

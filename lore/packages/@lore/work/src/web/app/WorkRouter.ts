@@ -314,7 +314,7 @@ export class WorkRouter {
     // No loader: `ProjectEpics` is a DataTable, which owns its own
     // fetch (filters, sort and page are its state, not the route's). A
     // loader here would fetch the list a second time and then have it
-    // discarded on mount. Same arrangement as `projectBlights`.
+    // discarded on mount. Same arrangement as `projectErrors`.
     lazy: () => import("./components/project/epics/ProjectEpics.tsx"),
   });
 

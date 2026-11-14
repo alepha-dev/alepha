@@ -1,5 +1,5 @@
 /**
- * The address a blight's `sourceUrl` may be opened at, or `undefined` when it
+ * The address an error's `sourceUrl` may be opened at, or `undefined` when it
  * must stay text.
  *
  * The value takes three shapes (feedback #P2200): a full page URL from the
@@ -13,7 +13,7 @@
  * `job:lore.deploy.run` parses as a URL too, with the scheme `job:`, which is
  * the other reason a parse alone is not the test.
  */
-export const blightSourceHref = (sourceUrl: string): string | undefined => {
+export const errorSourceHref = (sourceUrl: string): string | undefined => {
   let url: URL;
   try {
     url = new URL(sourceUrl);

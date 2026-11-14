@@ -264,18 +264,18 @@ const ProjectActivityPage = ({
 
   return (
     // No heading, deliberately. The breadcrumb leaf already reads Activity,
-    // and no sibling list page has one: Quests, Epics, Blights and Folios all
+    // and no sibling list page has one: Quests, Epics, Errors and Folios all
     // open straight into their toolbar (feedback #2090). If that pattern is
     // ever revisited the answer is a visually-hidden heading, not this one
     // back.
     // ⚠️ `p-2` flat, with nothing responsive. This page was once the only
     // table page whose padding scaled with the viewport (`p-4 md:p-6`), so
     // above `md` it sat 8px further from the edge than Epics, Releases,
-    // Blights and Apps, which is what made it read as random rather than as a
+    // Errors and Apps, which is what made it read as random rather than as a
     // rule (feedback #2099). The shared value then went from `p-4` to `p-2`
     // with #Q2266: change it everywhere or nowhere.
     // ⚠️ "Everywhere" is the TABLE pages, and only those: Epics, Releases,
-    // Blights, Apps, Artifacts, Inbox, the epic's quests, and the admin
+    // Errors, Apps, Artifacts, Inbox, the epic's quests, and the admin
     // console's lists. #Q2266 took it to every project page and the card
     // pages lost their gutter, which #Q2291 undid. A page whose body is
     // cards, a form or prose stays at `p-4`.

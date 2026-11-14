@@ -355,7 +355,7 @@ test.describe("Apps", () => {
     // What `sigils.name` mirrors, and what `setSigilKinds` looks a credential
     // up by.
     const pair = `${appName}/${envName}`;
-    const blightMessage = `SigilE2E_${t} is not a function`;
+    const projectErrorMessage = `SigilE2E_${t} is not a function`;
     // ⚠️ Unique per run: `(ownerUserId, slug)` is a unique index, and the suite
     // shares a worker's database with nothing but itself only because every
     // fixture here is stamped with `t`.
@@ -385,7 +385,7 @@ test.describe("Apps", () => {
       // The switch's own `checked` state is optimistic (see
       // `waitForProjectCapability`) — wait on the server directly, since
       // everything from here on (creating, the ingest gate, the app and
-      // blights route loaders, the sidebar's Apps entry) depends on the Apps
+      // errors route loaders, the sidebar's Apps entry) depends on the Apps
       // capability actually being on, not just the switch looking on.
       await waitForProjectCapability(page, projectId, "apps", true);
 
@@ -654,7 +654,7 @@ test.describe("Apps", () => {
           // knows. Stamped by `SigilProxyController` in a real app; sent by
           // hand here for the same reason `visitor` and `country` are.
           host: "docs.alepha.dev",
-          ...errorBatch(blightMessage, 3),
+          ...errorBatch(projectErrorMessage, 3),
         },
       });
       expect(res.status()).toBe(204);
@@ -701,7 +701,7 @@ test.describe("Apps", () => {
     });
 
     await test.step("the Errors tab shows the failure, scoped to this app", async () => {
-      // The other side of #1749. The Blights inbox below answers "has anyone
+      // The other side of #1749. The Errors inbox below answers "has anyone
       // triaged this"; this tab answers "is it still happening HERE", which
       // the inbox cannot, because it keys on `(project, fingerprint)`.
       await page.goto(`/${projectSlug}/apps/${appName}/${envName}/errors`);
@@ -709,7 +709,7 @@ test.describe("Apps", () => {
 
       const group = page.getByTestId("app-error-group");
       await expect(group).toHaveCount(1, { timeout: 15_000 });
-      await expect(group).toContainText(blightMessage);
+      await expect(group).toContainText(projectErrorMessage);
       // The occurrence count, which the card this replaced never showed: it
       // rendered `errorGroups.length` and nothing from inside a group.
       await expect(group).toContainText("3");
@@ -731,11 +731,11 @@ test.describe("Apps", () => {
       });
     });
 
-    await test.step("the error lands in the blights inbox", async () => {
-      await page.goto(`/${projectSlug}/blights`);
+    await test.step("the error lands in the errors inbox", async () => {
+      await page.goto(`/${projectSlug}/errors`);
       await page.waitForLoadState("networkidle");
 
-      await expect(page.getByText(blightMessage)).toBeVisible({
+      await expect(page.getByText(projectErrorMessage)).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByText("3", { exact: true }).first()).toBeVisible();
@@ -747,7 +747,7 @@ test.describe("Apps", () => {
           "content-type": "application/json",
           authorization: `Bearer ${token}`,
         },
-        data: errorBatch(blightMessage, 4),
+        data: errorBatch(projectErrorMessage, 4),
       });
       expect(res.status()).toBe(204);
 
@@ -757,7 +757,7 @@ test.describe("Apps", () => {
       // 3 + 4 on one row: the real magnitude of a crash loop, not two rows of
       // one. The fingerprint is derived from name + stack, which both batches
       // share.
-      await expect(page.getByText(blightMessage)).toHaveCount(1);
+      await expect(page.getByText(projectErrorMessage)).toHaveCount(1);
       await expect(page.getByText("7", { exact: true }).first()).toBeVisible({
         timeout: 15_000,
       });
@@ -795,9 +795,9 @@ test.describe("Apps", () => {
         "Analytics",
         "Vitals",
         // #1749: the error budget left the Analytics page (feedback #2080,
-        // "remove Blights Card on Analytics page, it's not the right place")
+        // "remove Errors Card on Analytics page, it's not the right place")
         // and became a tab rather than being deleted, because the per-app
-        // reading is the one thing the project Blights inbox structurally
+        // reading is the one thing the project Errors inbox structurally
         // cannot give - it keys on `(project, fingerprint)` so a triage
         // decision does not fork, which merges every enrolled app into one row.
         "Errors",
@@ -1535,9 +1535,9 @@ test.describe("Apps", () => {
 
       // Rotation is revocation *without* the amnesia — this is the whole
       // reason it exists beside delete.
-      await page.goto(`/${projectSlug}/blights`);
+      await page.goto(`/${projectSlug}/errors`);
       await page.waitForLoadState("networkidle");
-      await expect(page.getByText(blightMessage)).toBeVisible({
+      await expect(page.getByText(projectErrorMessage)).toBeVisible({
         timeout: 15_000,
       });
     });
@@ -1579,22 +1579,22 @@ test.describe("Apps", () => {
       });
       expect(revoked.status()).toBe(401);
 
-      // Blights survive the credential that filed them - `blights.sigilId` is
+      // Errors survive the credential that filed them - `projectErrors.sigilId` is
       // `ON DELETE SET NULL`, because a triage decision is not the sigil's -
       // and the inbox is still reachable from the sidebar. Deriving that entry
       // from the enrolled apps alone would have hidden an inbox that still
       // holds crashes.
-      const blightsEntry = page.getByRole("link", {
-        name: "Blights",
+      const projectErrorsEntry = page.getByRole("link", {
+        name: "Errors",
         exact: true,
       });
-      await expect(blightsEntry).toBeVisible({ timeout: 15_000 });
-      await blightsEntry.click();
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/blights`), {
+      await expect(projectErrorsEntry).toBeVisible({ timeout: 15_000 });
+      await projectErrorsEntry.click();
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/errors`), {
         timeout: 15_000,
       });
       await page.waitForLoadState("networkidle");
-      await expect(page.getByText(blightMessage)).toBeVisible({
+      await expect(page.getByText(projectErrorMessage)).toBeVisible({
         timeout: 15_000,
       });
     });

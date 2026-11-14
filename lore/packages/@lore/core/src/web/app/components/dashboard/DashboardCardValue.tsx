@@ -88,7 +88,7 @@ const DashboardCardValue = (props: DashboardCardValueProps) => {
       )}
       {/* The delta as a direction and a sign, never colour alone. Muted
           rather than red or green: whether more is better depends on the
-          metric (more visitors, more blights), and the arrow says which way
+          metric (more visitors, more errors), and the arrow says which way
           without passing judgement. */}
       {delta !== undefined && props.presentation !== "progress" && (
         <span

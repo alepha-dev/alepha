@@ -56,7 +56,7 @@ export interface CapabilityNavEntry {
   badge?: (context: ProjectShellContext) => number | undefined;
   /**
    * A last say beyond the capability and the option, for an entry that hides
-   * itself on DATA. Only Blights has one.
+   * itself on DATA. Only Errors has one.
    */
   available?: (context: ProjectShellContext) => boolean;
   /**

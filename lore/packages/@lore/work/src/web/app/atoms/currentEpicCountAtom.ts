@@ -4,7 +4,7 @@ import { $atom, z } from "alepha";
  * Number of `draft` epics for the current project.
  *
  * Set by the `project` route loader (one fetch per project navigation,
- * mirrors `currentBlightCountAtom`) and read by the sidebar to show a badge
+ * mirrors `currentErrorCountAtom`) and read by the sidebar to show a badge
  * next to the Epics entry. Reset to `{ count: 0 }` on project leave.
  *
  * The badge exists because `countOpenQuests` applies the backlog gate:

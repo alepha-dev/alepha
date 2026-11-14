@@ -61,7 +61,7 @@ export interface GatedAppTab {
    * A predicate rather than a set of booleans, because the two axes are not
    * the same question: `sigilId` is presence, and `kinds` is what that
    * credential is allowed to collect. `beacon` fills the view and vitals
-   * datasets, `blights` fills the error groups, and an instance can carry
+   * datasets, `projectErrors` fills the error groups, and an instance can carry
    * either without the other.
    */
   unlockedBy: (instance: AppInstanceResource) => boolean;
@@ -108,7 +108,7 @@ export const APP_TABS: AppTab[] = [
     option: "track",
   },
   // Not beacon: this one reads `sigil_error_groups`, which is written under the
-  // `blights` kind. The two are genuinely independent - see the route's note.
+  // `projectErrors` kind. The two are genuinely independent - see the route's note.
   {
     route: "appErrors",
     labelKey: "app.tab.errors",

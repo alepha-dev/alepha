@@ -160,7 +160,7 @@ export class WorkShell {
     this.shell.registerNav("support", [
       {
         // Arrived rather than chosen. Feedback leads because a human wrote
-        // it; a blight is filed by a machine.
+        // it; an error is filed by a machine.
         route: "projectFeedback",
         permission: "feedback:read",
         labelKey: "project.menu.feedback",
@@ -213,7 +213,7 @@ export class WorkShell {
         },
         {
           // Areas moved here from the top of the old rail: a quest carries an
-          // area and a blight forwards into one, so the page serves Work.
+          // area and an error forwards into one, so the page serves Work.
           route: "projectSettingsAreas",
           labelKey: "project.settings.nav.areas",
           alsoOn: ["projectSettingsArea"],

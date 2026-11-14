@@ -4,7 +4,7 @@ import { $atom, z } from "alepha";
  * Number of open (not completed) quests for the current project.
  *
  * Set by the `project` route loader, read by the sidebar. Mirrors
- * `currentBlightCountAtom` and `currentFeedbackCountAtom` — all three count
+ * `currentErrorCountAtom` and `currentFeedbackCountAtom` — all three count
  * work that still needs attention, which is what makes the number worth a
  * glance. Reset to `{ count: 0 }` on project leave.
  *

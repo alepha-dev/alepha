@@ -754,7 +754,7 @@ const ProjectQuestsTable = () => {
             onClick: () => setCreating(true),
           },
         ]}
-        // ⚠️ `toolbar`, not `actions`, like the blights inbox: the menu is a
+        // ⚠️ `toolbar`, not `actions`, like the errors inbox: the menu is a
         // dropdown trigger rather than a button that acts on click. It
         // renders nothing when the project has `agentPrompts` off, and this
         // page's route is already gated on Work, which is where quests live.

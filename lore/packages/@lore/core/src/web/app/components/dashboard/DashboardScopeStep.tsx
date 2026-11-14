@@ -74,7 +74,7 @@ export interface DashboardScopeStepProps {
  * reason the scope is a tagged union rather than a project id: an app list is
  * not implicitly single-project.
  *
- * ⚠️ Apps without a `beacon` capability are offered for blights and withheld
+ * ⚠️ Apps without a `beacon` capability are offered for errors and withheld
  * from visitors. A beacon-less app reports no page views at all and its
  * analytics page 404s, so a visitors card scoped to one would show a
  * permanent zero and link to an error.

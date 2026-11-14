@@ -12,7 +12,7 @@ import FeedbackThreadBody from "./FeedbackThreadBody.tsx";
 /**
  * A feedback thread renders **no markdown**, deliberately: a reporter is an
  * outsider and the body is shown to the project owner, the same reason a
- * blight's fields are never rendered as markdown.
+ * error's fields are never rendered as markdown.
  *
  * These cases pin both halves of that. A resolved mention becomes a link,
  * and everything else - markup included - stays text.

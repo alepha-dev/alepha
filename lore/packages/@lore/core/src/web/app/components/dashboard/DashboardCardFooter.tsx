@@ -18,7 +18,7 @@ export interface DashboardCardFooterProps {
  *
  * The footers are not decoration. "oldest waiting 30 days" is the more
  * actionable half of a feedback count, and "312 occurrences" is what stops a
- * blight count of 4 reading as calm.
+ * error count of 4 reading as calm.
  */
 const DashboardCardFooter = (props: DashboardCardFooterProps) => {
   const { tr, l } = useI18n<I18n, "en">();
@@ -139,7 +139,7 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         { args: [String(open)] },
       );
     }
-    if (props.metric === "openBlights") {
+    if (props.metric === "openErrors") {
       const apps = Number(detail.apps ?? 0);
       return tr(
         apps === 1 ? "dashboard.footer.errors.one" : "dashboard.footer.errors",

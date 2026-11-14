@@ -12,7 +12,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Ban } from "lucide-react";
 import { useState } from "react";
 
-import ProjectBlightRulesDialog from "../blights/ProjectBlightRulesDialog.tsx";
+import ProjectErrorRulesDialog from "../errors/ProjectErrorRulesDialog.tsx";
 import ProjectSettingsCoverageTarget from "./ProjectSettingsCoverageTarget.tsx";
 
 /**
@@ -45,11 +45,11 @@ import ProjectSettingsCoverageTarget from "./ProjectSettingsCoverageTarget.tsx";
  *
  * ## ⚠️ Ignore rules are why this page survives at all
  *
- * `blightIgnoreRules` is project-scoped **on purpose**: one rule mutes a noisy
+ * `projectErrorIgnoreRules` is project-scoped **on purpose**: one rule mutes a noisy
  * error across every app the project owns, so it cannot follow a sigil down to
- * an instance. There is no Blights entry in the settings nav, which is how this
- * control landed here in the first place; blights arrive from apps, so the Apps
- * page is a defensible home. Giving Blights its own settings page is the
+ * an instance. There is no Errors entry in the settings nav, which is how this
+ * control landed here in the first place; errors arrive from apps, so the Apps
+ * page is a defensible home. Giving Errors its own settings page is the
  * cleaner taxonomy and is deliberately not in this epic.
  */
 const ProjectSettingsAppsPage = () => {
@@ -80,7 +80,7 @@ const ProjectSettingsAppsPage = () => {
 
       {enabled && (
         <div className="flex flex-col gap-2">
-          {/* Ignore rules used to be a toolbar action on the Blights inbox.
+          {/* Ignore rules used to be a toolbar action on the Errors inbox.
               They are standing configuration, not triage: the inbox is where
               you decide about one failure that already happened, and a rule
               decides what never lands at all. The move also fixes a
@@ -102,7 +102,7 @@ const ProjectSettingsAppsPage = () => {
             </SettingsRow>
           </SettingsSection>
 
-          <ProjectBlightRulesDialog
+          <ProjectErrorRulesDialog
             open={rulesOpen}
             projectId={project.id}
             onOpenChange={setRulesOpen}

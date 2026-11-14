@@ -70,7 +70,7 @@ describe("the instance's tab set", () => {
   });
 
   it("keeps the per-kind gates inside the sigil's four", ({ expect }) => {
-    // `beacon` fills the view and vitals datasets; `blights` fills the error
+    // `beacon` fills the view and vitals datasets; `projectErrors` fills the error
     // groups. An instance can carry either without the other, and copying one
     // gate from the other tab would get both backwards.
     expect(routes(anInstance(["beacon"]))).not.toContain("appErrors");

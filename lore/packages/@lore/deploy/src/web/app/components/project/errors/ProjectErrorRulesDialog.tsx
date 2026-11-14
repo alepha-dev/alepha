@@ -17,20 +17,20 @@ import { useState } from "react";
 import type { ProjectErrorController } from "../../../../../api/controllers/ProjectErrorController.ts";
 import type { ProjectErrorRuleResource } from "../../../../../api/schemas/projectErrorRuleResourceSchema.ts";
 
-export interface ProjectBlightRulesDialogProps {
+export interface ProjectErrorRulesDialogProps {
   open: boolean;
   projectId: number;
   onOpenChange: (open: boolean) => void;
 }
 
 /**
- * Owner-facing manager for a project's blight ignore rules — the message
+ * Owner-facing manager for a project's error ignore rules — the message
  * substrings that drop matching crashes at ingestion. Lists existing rules,
  * adds a new one, and removes one. Rules are future-only: adding a rule mutes
  * new ingest but leaves rows already captured (clear those with the inbox's
  * mass-delete selection).
  */
-const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
+const ProjectErrorRulesDialog = (props: ProjectErrorRulesDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const projectErrorApi = useClient<ProjectErrorController>();
   // The rule list stays readable - it is what the inbox is filtering on - and
@@ -56,7 +56,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
   // toasted by the root `ActionErrorToaster`.
   const rulesQuery = useQuery(
     {
-      key: ["blight-rules", props.projectId],
+      key: ["error-rules", props.projectId],
       enabled: props.open,
       keepPreviousData: true,
       handler: () =>
@@ -81,7 +81,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
         setPattern("");
         toaster.success(tr("errors.rules.toast.added"));
       },
-      invalidates: [["blight-rules", props.projectId]],
+      invalidates: [["error-rules", props.projectId]],
     },
     [projectErrorApi, pattern, props.projectId, toaster, tr],
   );
@@ -94,7 +94,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
         });
         toaster.success(tr("errors.rules.toast.removed"));
       },
-      invalidates: [["blight-rules", props.projectId]],
+      invalidates: [["error-rules", props.projectId]],
     },
     [projectErrorApi, props.projectId, toaster, tr],
   );
@@ -171,4 +171,4 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
   );
 };
 
-export default ProjectBlightRulesDialog;
+export default ProjectErrorRulesDialog;

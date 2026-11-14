@@ -5,7 +5,7 @@ import type { ProjectResource } from "../../../api/schemas/projectResourceSchema
 /**
  * What each module reads when a project opens, and clears when it closes
  * (#E75, #Q2624): Work's releases, epics, areas, counts and the viewer's open
- * quests, Deploy's deployed copies and open blights.
+ * quests, Deploy's deployed copies and open errors.
  *
  * The `project` page's loader (`ProjectRouter`) is core and reads no module's
  * client. It resolves the project, then runs every registered contribution in

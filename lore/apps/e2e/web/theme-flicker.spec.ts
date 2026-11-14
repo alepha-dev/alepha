@@ -83,7 +83,7 @@ test.describe("theme no-flash", () => {
     expect(klass).toContain("dark");
   });
 
-  // Regression for blight #10596 (React #418 on the SSR'd home page). With
+  // Regression for error #10596 (React #418 on the SSR'd home page). With
   // `mode = "system"` (no cookie) and a dark OS, `useResolvedColorMode` used to
   // resolve "light" on the server (no matchMedia) but "dark" on the client's
   // first render, so the color-mode toggle icon hydrated Sun↔Moon and React

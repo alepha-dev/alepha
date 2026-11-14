@@ -27,7 +27,7 @@ export interface ReportsReliabilityProps {
 /**
  * The Delivery tab's reliability sections (#Q3009).
  *
- * ⚠️ A blight's `name` is attacker-controlled: it is rendered as text here, and
+ * ⚠️ An error's `name` is attacker-controlled: it is rendered as text here, and
  * must never reach a markdown or HTML renderer.
  */
 const ReportsReliability = (props: ReportsReliabilityProps) => {
@@ -39,7 +39,7 @@ const ReportsReliability = (props: ReportsReliabilityProps) => {
   const minutes = (value: number) =>
     value >= 120 ? `${Math.round(value / 60)}h` : `${Math.round(value)}m`;
 
-  const blightConfig = {
+  const projectErrorConfig = {
     opened: {
       label: tr("reports.reliability.series.opened"),
       color: "var(--chart-3)",
@@ -65,10 +65,10 @@ const ReportsReliability = (props: ReportsReliabilityProps) => {
       <ReportsSection
         title={tr("reports.reliability.errors.title")}
         definition={tr("reports.reliability.errors.definition")}
-        csv={{ filename: "blights", rows: reliability.projectErrors }}
+        csv={{ filename: "errors", rows: reliability.projectErrors }}
       >
         <ChartContainer
-          config={blightConfig}
+          config={projectErrorConfig}
           className="aspect-auto h-[220px] w-full"
         >
           <ComposedChart data={reliability.projectErrors}>
@@ -124,7 +124,7 @@ const ReportsReliability = (props: ReportsReliabilityProps) => {
       <ReportsSection
         title={tr("reports.reliability.top.title")}
         definition={tr("reports.reliability.top.definition")}
-        csv={{ filename: "top-blights", rows: reliability.topErrors }}
+        csv={{ filename: "top-errors", rows: reliability.topErrors }}
       >
         {reliability.topErrors.length === 0 ? (
           <p className="text-muted-foreground py-2 text-sm">

@@ -1171,8 +1171,8 @@ export default {
   "reports.summary.line.deploySuccess": "Réussite des déploiements",
   "reports.summary.line.deploySuccess.definition":
     "Déploiements réussis sur déploiements terminés, hors annulés.",
-  "reports.summary.line.openErrors": "Blights ouverts",
-  "reports.summary.line.openErrors.definition": "Blights ouverts aujourd’hui.",
+  "reports.summary.line.openErrors": "Erreurs ouvertes",
+  "reports.summary.line.openErrors.definition": "Erreurs ouvertes aujourd’hui.",
   "reports.summary.line.uptime": "Disponibilité",
   "reports.summary.line.uptime.definition":
     "Temps de surveillance hors incident, sur la période.",
@@ -1461,26 +1461,26 @@ export default {
   "reports.delivery.apps.empty": "Aucun déploiement terminé sur cette période.",
   "reports.delivery.apps.app": "Application",
   "reports.delivery.apps.rollbacks": "Retours arrière",
-  "reports.reliability.errors.title": "Blights",
+  "reports.reliability.errors.title": "Erreurs",
   "reports.reliability.errors.definition":
-    "Nouveaux blights et blights résolus par intervalle, et combien restaient ouverts. Un blight résolu est placé au jour de sa dernière occurrence : rien n’enregistre sa résolution.",
+    "Nouvelles erreurs et erreurs résolues par intervalle, et combien restaient ouvertes. Une erreur résolue est placée au jour de sa dernière occurrence : rien n’enregistre sa résolution.",
   "reports.reliability.series.opened": "Nouveaux",
   "reports.reliability.series.resolved": "Résolus",
   "reports.reliability.series.open": "Ouverts",
-  "reports.reliability.series.occurrences": "Erreurs",
-  "reports.reliability.top.title": "Principaux blights",
+  "reports.reliability.series.occurrences": "Occurrences",
+  "reports.reliability.top.title": "Principales erreurs",
   "reports.reliability.top.definition":
-    "Les blights aux occurrences les plus nombreuses, quelle que soit leur date.",
-  "reports.reliability.top.empty": "Aucun blight signalé.",
+    "Les erreurs aux occurrences les plus nombreuses, quelle que soit leur date.",
+  "reports.reliability.top.empty": "Aucune erreur signalée.",
   "reports.reliability.forwarded": "Transmis à une quête",
   "reports.reliability.forwarded.definition":
-    "Blights transformés en quête, et combien de ces quêtes sont terminées.",
+    "Erreurs transformées en quête, et combien de ces quêtes sont terminées.",
   "reports.reliability.forwarded.hint": "$1 corrigés",
   "reports.reliability.fix": "Délai médian de correction",
   "reports.reliability.fix.definition":
-    "De la première occurrence d’un blight transmis à la fin de sa quête.",
+    "De la première occurrence d’une erreur transmise à la fin de sa quête.",
   "reports.reliability.fix.hint": "p85 $1",
-  "reports.reliability.occurrences.title": "Erreurs",
+  "reports.reliability.occurrences.title": "Occurrences d’erreurs",
   "reports.reliability.occurrences.definition":
     "Occurrences d’erreurs par intervalle, sur les applications du projet. Une ligne pointillée marque un intervalle avec un déploiement réussi.",
   "reports.reliability.uptime.title": "Disponibilité",
@@ -2070,7 +2070,7 @@ export default {
   "app.sigil.analytics": "Pages vues",
   "app.sigil.analytics.desc": "Visites, pages, référents et appareils.",
   "app.sigil.errors": "Erreurs",
-  "app.sigil.errors.desc": "Erreurs client et serveur, regroupées en blights.",
+  "app.sigil.errors.desc": "Erreurs client et serveur, une ligne par cause.",
   "app.sigil.vitals": "Web vitals",
   "app.sigil.vitals.desc":
     "Temps de chargement et d'interaction mesurés sur de vraies visites.",
@@ -2183,8 +2183,8 @@ export default {
   "insights.errors.note":
     "Défaillances distinctes encore actives dans cette app",
   "insights.errors.empty": "Aucune défaillance signalée sur cette période.",
-  "insights.errors.chart.title": "Erreurs dans le temps",
-  "insights.errors.stat.total": "Erreurs sur la période",
+  "insights.errors.chart.title": "Occurrences d’erreurs dans le temps",
+  "insights.errors.stat.total": "Occurrences sur la période",
   "insights.errors.stat.client": "Dans le navigateur",
   "insights.errors.stat.server": "Sur le serveur",
   "insights.errors.origin.client": "Navigateur",
@@ -3299,7 +3299,7 @@ export default {
   "dashboard.metric.appHealth": "Santé des applications",
   "dashboard.metric.appHealth.hint":
     "une pastille par copie : son dernier déploiement, et si elle remonte",
-  "dashboard.metric.errorTrend": "Erreurs",
+  "dashboard.metric.errorTrend": "Occurrences d’erreurs",
   "dashboard.metric.errorTrend.hint":
     "occurrences par jour, déploiements en repères",
   "dashboard.metric.quality.coverage.lines": "Couverture des lignes",

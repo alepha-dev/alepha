@@ -58,7 +58,7 @@ import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
  *
  * `getReleases` returns the project's whole list in one response, so search,
  * filter, sort and paging are all client-side here. Same shape as
- * `ProjectEpics` and `ProjectBlights`.
+ * `ProjectEpics` and `ProjectErrors`.
  *
  * ## Open and released became a FILTER, not two sections
  *

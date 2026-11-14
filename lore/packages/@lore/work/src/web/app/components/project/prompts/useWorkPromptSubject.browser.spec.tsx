@@ -31,7 +31,7 @@ class Routes {
   });
   projectErrors = $page({
     name: "projectErrors",
-    path: "/blights",
+    path: "/errors",
     component: () => null,
   });
   quests = $page({
@@ -74,7 +74,7 @@ describe("useWorkPromptSubject, over useAgentPromptSubject", () => {
       () => ({
         ...useWorkPromptSubject(),
         // A page of another module, through core alone (#E75, #Q2624).
-        forBlightsInbox: useAgentPromptSubject().forPage.bind(
+        forErrorsInbox: useAgentPromptSubject().forPage.bind(
           null,
           "projectErrors",
         ),
@@ -235,12 +235,12 @@ describe("useWorkPromptSubject, over useAgentPromptSubject", () => {
     expect(subject).not.toHaveProperty("title");
   });
 
-  it("builds a blights subject of the same three fields", async () => {
+  it("builds a errors subject of the same three fields", async () => {
     const handle = await handleFor();
-    const subject = handle.forBlightsInbox();
+    const subject = handle.forErrorsInbox();
 
     expect(Object.keys(subject).sort()).toEqual(["project", "slug", "url"]);
-    expect(subject.url).toContain("/blights");
+    expect(subject.url).toContain("/errors");
     expect(subject).not.toHaveProperty("reference");
   });
 

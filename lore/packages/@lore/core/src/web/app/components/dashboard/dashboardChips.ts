@@ -16,7 +16,7 @@ export const DASHBOARD_NO_VALUE = "·";
  * i18n keys rather than strings: the resolver returns numbers and keys and
  * never formatted copy, and this is the browser half of that split. Returns
  * an empty list for a filter set that says nothing worth a chip — an
- * `openBlights` card filtered to `open` is the default reading of the metric,
+ * `openErrors` card filtered to `open` is the default reading of the metric,
  * so a chip saying so would be noise.
  */
 /**
@@ -55,7 +55,7 @@ export const dashboardFilterChipKeys = (
     return filters.status === "pending" ? ["dashboard.filter.untriaged"] : [];
   }
 
-  if (card.metric === "openBlights") {
+  if (card.metric === "openErrors") {
     return filters.status === "all" ? ["dashboard.filter.allStatuses"] : [];
   }
 

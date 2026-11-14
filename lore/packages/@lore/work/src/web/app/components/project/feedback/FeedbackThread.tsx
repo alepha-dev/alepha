@@ -257,7 +257,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
               </div>
               {/* The reporter's words stay plain text, deliberately: a
                   reporter is an outsider and this body is shown to the
-                  project owner, the same reason a blight's fields are never
+                  project owner, the same reason an error's fields are never
                   rendered as markdown. A reply from the team or an agent
                   renders as Markdown (#Q3451). */}
               {comment.body && (

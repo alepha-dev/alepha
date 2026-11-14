@@ -72,7 +72,7 @@ import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
  * `getEpics` returns the project's whole list in one response — an epic is
  * a bounded initiative, so a project has tens of them, not thousands — so
  * search, status filter, sort and paging are all applied client-side here
- * rather than round-tripping. Same shape as `ProjectBlights`, and the
+ * rather than round-tripping. Same shape as `ProjectErrors`, and the
  * reason neither needed a paginated endpoint.
  *
  * Status is a read-only CHIP here, but the row menu carries the one
@@ -520,7 +520,7 @@ const ProjectEpics = () => {
     const all = await epicApi.getEpics({ params: { projectId: project.id } });
 
     // Push the freshest draft count to the sidebar badge, the same way
-    // `ProjectBlights` pushes `openCount`. Free: `getEpics` already returns
+    // `ProjectErrors` pushes `openCount`. Free: `getEpics` already returns
     // the project's whole list, so no second request is needed, and counting
     // `all` rather than `rows` keeps the badge project-wide when the toolbar
     // search has narrowed the table to one row.

@@ -23,7 +23,7 @@ import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
  * ⚠️ **It undeploys nothing.** The copy keeps running wherever it runs; what
  * goes is Lore's row for it, and with it the credential that row holds and
  * everything that credential reported - its analytics tables cascade on
- * `sigilId`. Blights survive (`blights.sigilId` is `ON DELETE SET NULL`): a
+ * `sigilId`. Errors survive (`projectErrors.sigilId` is `ON DELETE SET NULL`): a
  * triage decision outlives the credential that surfaced it.
  *
  * The confirmation names all of that, because the intuitive reading of

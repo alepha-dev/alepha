@@ -31,7 +31,7 @@ class FakeLinkProvider extends LinkProvider {
 class Routes {
   projectErrors = $page({
     name: "projectErrors",
-    path: "/:projectSlug/blights",
+    path: "/:projectSlug/errors",
     component: () => null,
   });
 }
@@ -133,7 +133,7 @@ describe("AppErrors", () => {
       expect(view.queryByTestId("app-errors-chart-empty")).not.toBeNull(),
     );
     // A window with no failures still has to say zero rather than blank.
-    expect(view.container.textContent).toContain("Errors in this window");
+    expect(view.container.textContent).toContain("Occurrences in this window");
   });
 
   it("totals the window from the series, split by origin", async () => {
@@ -197,7 +197,7 @@ describe("AppErrors", () => {
     });
 
     const link = await waitFor(() => {
-      const found = view.container.querySelector('a[href="/alepha/blights"]');
+      const found = view.container.querySelector('a[href="/alepha/errors"]');
       expect(found).not.toBeNull();
       return found as HTMLElement;
     });

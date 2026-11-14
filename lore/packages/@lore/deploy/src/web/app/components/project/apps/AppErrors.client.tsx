@@ -26,13 +26,13 @@ import { useAppInsights } from "./useAppInsights.ts";
  *
  * It was a card on Analytics, added by #1215 when three tiles left the app
  * Dashboard so that page would issue no analytics query at all. The owner
- * asked for it off that page (feedback #2080, "remove Blights Card on
+ * asked for it off that page (feedback #2080, "remove Errors Card on
  * Analytics page, it's not the right place"), and they are right: an error
  * budget is not a traffic number.
  *
  * Deleting it was the other candidate and is what #178 did to the App ▸ Errors
  * tab this restores. #178's reasoning was that at ONE enrolled app the tab
- * duplicated the Blights inbox - and it recorded that "the distinction returns
+ * duplicated the Errors inbox - and it recorded that "the distinction returns
  * at two". It has: the report came from a second app. The inbox keys on
  * `(project, fingerprint)` so a triage decision does not fork, which merges
  * every enrolled app into one row and makes it structurally unable to answer
@@ -47,7 +47,7 @@ import { useAppInsights } from "./useAppInsights.ts";
  * ## Stats, not a list (feedback #2085)
  *
  * The report asked for this tab to be "for stats, not just a list", because
- * the list already lives in the Blights inbox. It leads with the chart, and
+ * the list already lives in the Errors inbox. It leads with the chart, and
  * the chart is fed by the `sigil_errors` analytics dataset rather than by
  * `errorGroups`.
  *
@@ -217,7 +217,7 @@ const AppErrors = () => {
         </Card>
       )}
 
-      {/* Triage stays in the project inbox, deliberately: a blight keys on
+      {/* Triage stays in the project inbox, deliberately: an error keys on
           `(project, fingerprint)` precisely so one decision covers every app
           that hit it. This tab answers "is it still happening here"; it does
           not offer a second place to resolve or ignore.

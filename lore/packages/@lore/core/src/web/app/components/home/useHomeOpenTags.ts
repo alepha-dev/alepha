@@ -10,7 +10,7 @@ import {
 import type { HomeOpenLink } from "./HomeOpenLinks.tsx";
 
 /**
- * The Open buttons of one project: quests, epics, blights and feedback, each
+ * The Open buttons of one project: quests, epics, errors and feedback, each
  * only when the project has that feature on, the same switches that put the
  * entry in its sidebar. A feature that is off has nothing to count, and a "0"
  * for it would read as "all done" instead.
@@ -53,7 +53,7 @@ export const useHomeOpenTags = (
     if (capabilityOption(project, "apps", "track")) {
       const count = counts?.projectErrors ?? 0;
       tags.push({
-        kind: "blights",
+        kind: "errors",
         route: "projectErrors",
         icon: Bug,
         count,

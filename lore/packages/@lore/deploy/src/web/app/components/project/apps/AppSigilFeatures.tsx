@@ -63,6 +63,7 @@ const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
   const form = useForm({
     schema: z.object({
       analytics: z.boolean(),
+      // The `SIGIL_CONFIG` wire key, which keeps its old name: see `sigilConfig.ts`.
       blights: z.boolean(),
       vitals: z.boolean(),
       feedback: z.boolean(),

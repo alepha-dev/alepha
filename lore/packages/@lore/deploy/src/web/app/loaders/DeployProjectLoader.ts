@@ -4,13 +4,13 @@ import { $client } from "alepha/server/links";
 
 import type { AppController } from "../../../api/controllers/AppController.ts";
 import type { ProjectErrorController } from "../../../api/controllers/ProjectErrorController.ts";
-import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
+import { currentErrorCountAtom } from "../atoms/currentErrorCountAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 
 /**
  * What Deploy reads when a project opens, registered on core's
  * `ProjectLoaderRegistry` (#E75, #Q2624): the deployed copies and the open
- * blights count.
+ * errors count.
  */
 export class DeployProjectLoader {
   protected readonly alepha = $inject(Alepha);
@@ -30,7 +30,7 @@ export class DeployProjectLoader {
           // gated on `project:read`, unlike every mutation) but `.catch`
           // keeps a transient failure from taking the whole project down
           // with it. `undefined` on failure, NOT `[]`: the sidebar entry,
-          // Spotlight and the Blights derivation all need to tell "no apps"
+          // Spotlight and the Errors derivation all need to tell "no apps"
           // apart from "could not read the apps": see `currentInstancesAtom`.
           apps
             ? this.appApi
@@ -38,10 +38,10 @@ export class DeployProjectLoader {
                 .then((r) => r.items)
                 .catch(() => undefined)
             : Promise.resolve([]),
-          // Open-blight count for the sidebar badge, under the module's
+          // Open-error count for the sidebar badge, under the module's
           // master switch alone, deliberately *not* narrowed to "some
-          // enrolled app still carries the `blights` kind". A blight
-          // outlives the credential that filed it (`blights.sigilId` is
+          // enrolled app still carries the `projectErrors` kind". An error
+          // outlives the credential that filed it (`projectErrors.sigilId` is
           // `ON DELETE SET NULL` and rows survive for `retentionDays`), and
           // `ProjectView` reads this count to keep the inbox entry reachable.
           apps
@@ -53,14 +53,14 @@ export class DeployProjectLoader {
         ]);
         return () => {
           this.alepha.store.set(currentInstancesAtom, instances);
-          this.alepha.store.set(currentBlightCountAtom, {
+          this.alepha.store.set(currentErrorCountAtom, {
             count: openErrors,
           });
         };
       },
       leave: () => {
         this.alepha.store.set(currentInstancesAtom, undefined);
-        this.alepha.store.set(currentBlightCountAtom, { count: 0 });
+        this.alepha.store.set(currentErrorCountAtom, { count: 0 });
       },
     });
   }

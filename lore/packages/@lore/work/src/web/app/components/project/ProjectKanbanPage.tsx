@@ -17,7 +17,7 @@ import { preloadQuestView } from "./quest/LazyQuestView.tsx";
  * `ProjectQuestsViewSwitcher` was invented to work around after the 2026-08
  * rename took the board's original entry away. With a real route, the
  * `kanbanView` special case in `ProjectView` collapses into the same
- * machinery that already serves Epics, Folios and Blights.
+ * machinery that already serves Epics, Folios and Errors.
  *
  * The board is still fetched here rather than in a route loader. `getBoard`
  * returns a different shape than the `project` layout's quest fetch (it is

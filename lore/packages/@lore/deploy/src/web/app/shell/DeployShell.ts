@@ -18,7 +18,7 @@ import {
 import { $inject } from "alepha";
 import { Activity, AppWindow, Bug, Layers, Package } from "lucide-react";
 
-import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
+import { currentErrorCountAtom } from "../atoms/currentErrorCountAtom.ts";
 import { currentEstateAtom } from "../atoms/currentEstateAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
@@ -30,9 +30,9 @@ import { errorTriagePromptDefault } from "../prompts/errorTriagePrompt.ts";
 
 /**
  * Deploy's part of the project shell, registered on core's
- * `ProjectShellRegistry` (#E75, #Q2624): the Apps, Artifacts and Blights
+ * `ProjectShellRegistry` (#E75, #Q2624): the Apps, Artifacts and Errors
  * entries, the Apps settings section, New app, the instance breadcrumb, the
- * instances in the palette, the Artifacts tab on a release, the blight
+ * instances in the palette, the Artifacts tab on a release, the error
  * triage prompt, the dashboard's app picker, and the Quality tab of Reports.
  */
 export class DeployShell {
@@ -113,7 +113,7 @@ export class DeployShell {
       },
       {
         // Offer an inbox for an app collecting crashes, or for retained
-        // open blights. Uptime outages have no sigil, and removing an app
+        // open errors. Uptime outages have no sigil, and removing an app
         // must not hide the inbox while its failures still need triage.
         route: "projectErrors",
         permission: "error:read",
@@ -126,15 +126,15 @@ export class DeployShell {
         reads: [
           currentProjectAtom,
           currentInstancesAtom,
-          currentBlightCountAtom,
+          currentErrorCountAtom,
         ],
         available: (ctx) =>
-          (ctx.get(currentBlightCountAtom)?.count ?? 0) > 0 ||
+          (ctx.get(currentErrorCountAtom)?.count ?? 0) > 0 ||
           (capabilityOption(ctx.get(currentProjectAtom), "apps", "track") &&
             (ctx.get(currentInstancesAtom) ?? []).some((it) =>
               it.sigil?.kinds.includes("errors"),
             )),
-        badge: (ctx) => ctx.get(currentBlightCountAtom)?.count || undefined,
+        badge: (ctx) => ctx.get(currentErrorCountAtom)?.count || undefined,
       },
     ]);
 

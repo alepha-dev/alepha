@@ -1,19 +1,19 @@
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import BlightSourceCell from "./BlightSourceCell.tsx";
+import ErrorSourceCell from "./ErrorSourceCell.tsx";
 
 /**
- * The blight inbox's Page cell (feedback #P2200). `sourceUrl` takes three
+ * The error inbox's Page cell (feedback #P2200). `sourceUrl` takes three
  * shapes and only a page URL names a place, and it is reporter-controlled
  * telemetry, so the scheme decides and nothing else does.
  */
-describe("BlightSourceCell", () => {
+describe("ErrorSourceCell", () => {
   it("links a full https page URL out, in a new tab, with the outbound icon", ({
     expect,
   }) => {
     const url = "https://lore.alepha.dev/alepha/quests";
-    const ui = render(<BlightSourceCell sourceUrl={url} />);
+    const ui = render(<ErrorSourceCell sourceUrl={url} />);
 
     const link = ui.getByRole("link");
     expect(link.getAttribute("href")).toBe(url);
@@ -26,7 +26,7 @@ describe("BlightSourceCell", () => {
 
   it("links a plain http page URL too", ({ expect }) => {
     const ui = render(
-      <BlightSourceCell sourceUrl="http://localhost:3303/alepha/quests" />,
+      <ErrorSourceCell sourceUrl="http://localhost:3303/alepha/quests" />,
     );
 
     expect(ui.getByRole("link").getAttribute("href")).toBe(
@@ -40,7 +40,7 @@ describe("BlightSourceCell", () => {
     ["a javascript: URL", "javascript:alert(document.cookie)"],
     ["a data: URL", "data:text/html,<script>alert(1)</script>"],
   ])("keeps %s as truncated text with the full value on hover", (_, value) => {
-    const ui = render(<BlightSourceCell sourceUrl={value} />);
+    const ui = render(<ErrorSourceCell sourceUrl={value} />);
 
     expect(ui.queryByRole("link")).toBeNull();
     const text = ui.getByTitle(value);
@@ -49,7 +49,7 @@ describe("BlightSourceCell", () => {
   });
 
   it("shows a placeholder when there is no source", ({ expect }) => {
-    const ui = render(<BlightSourceCell sourceUrl="" />);
+    const ui = render(<ErrorSourceCell sourceUrl="" />);
 
     expect(ui.queryByRole("link")).toBeNull();
     expect(ui.container.textContent).toBe("-");
@@ -62,7 +62,7 @@ describe("BlightSourceCell", () => {
     const ui = render(
       // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- stands in for a table row's click handler
       <div onClick={() => rowClicks++}>
-        <BlightSourceCell sourceUrl="https://lore.alepha.dev/alepha/quests" />
+        <ErrorSourceCell sourceUrl="https://lore.alepha.dev/alepha/quests" />
       </div>,
     );
 

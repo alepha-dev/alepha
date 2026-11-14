@@ -39,14 +39,14 @@ import { useState } from "react";
 import type { ProjectErrorController } from "../../../../../api/controllers/ProjectErrorController.ts";
 import { QUEST_STATUS_PREFIX } from "../../../../../api/schemas/projectErrorQuestStatus.ts";
 import type { ProjectErrorResource } from "../../../../../api/schemas/projectErrorResourceSchema.ts";
-import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
-import BlightSourceCell from "./BlightSourceCell.tsx";
+import { currentErrorCountAtom } from "../../../atoms/currentErrorCountAtom.ts";
+import ErrorSourceCell from "./ErrorSourceCell.tsx";
 import { sigilNameParts } from "./sigilNameParts.ts";
 
 /**
- * Owner-facing Blights inbox, built on {@link DataTable}.
+ * Owner-facing Errors inbox, built on {@link DataTable}.
  *
- * The `listBlights` endpoint returns the full deduplicated list (crashes are
+ * The `listProjectErrors` endpoint returns the full deduplicated list (crashes are
  * folded by root cause, so the row count stays small), so sort + paging are
  * applied client-side here rather than round-tripping the server.
  *
@@ -55,14 +55,14 @@ import { sigilNameParts } from "./sigilNameParts.ts";
  * interpolation (`{value}`) — React escapes it. NEVER MarkdownView /
  * dangerouslySetInnerHTML. See folio #12.
  */
-const ProjectBlights = () => {
+const ProjectErrors = () => {
   const { tr } = useI18n<I18n, "en">();
-  // Untyped on purpose: a forwarded blight opens `projectQuest`, a Work page,
+  // Untyped on purpose: a forwarded error opens `projectQuest`, a Work page,
   // and Deploy's own program registers only Deploy's and core's routers.
   const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
   const promptSubject = useAgentPromptSubject();
-  // Blights live under Apps: there is no capability of their own, and this
+  // Errors live under Apps: there is no capability of their own, and this
   // page's route is already gated on it. Stated anyway rather than passing
   // the item unconditionally, so the menu carries its own gate wherever this
   // component ends up rendered.
@@ -218,8 +218,8 @@ const ProjectBlights = () => {
      *
      * ⚠️ `all` left the ENUM, not just the dropdown. It was a value standing
      * in for the absence of a filter, which the convention expresses as an
-     * empty selection - and while it was a state, `fetchBlights` had to branch
-     * on it as though a blight could BE "all".
+     * empty selection - and while it was a state, `fetchProjectErrors` had to branch
+     * on it as though an error could BE "all".
      *
      * The default is still `["open"]` (`initialValues` below), so the inbox
      * opens on the triage queue rather than on its whole history, and the
@@ -256,7 +256,7 @@ const ProjectBlights = () => {
 
   // Fetch the full list, keep the sidebar badge in sync, then sort + slice
   // client-side into the `Page` shape DataTable consumes.
-  const fetchBlights = async ({
+  const fetchProjectErrors = async ({
     page,
     size,
     sort,
@@ -285,7 +285,7 @@ const ProjectBlights = () => {
     // subscribing here (via useStore) re-rendered this component on every
     // fetch, which (with an inline `fetch` prop) span the table into an
     // infinite refetch loop. `store.set` updates the atom without subscribing.
-    alepha.store.set(currentBlightCountAtom, { count: res.openCount });
+    alepha.store.set(currentErrorCountAtom, { count: res.openCount });
     setSigilOptions(res.sigils);
 
     const stored = filters?.sigilId;
@@ -293,7 +293,7 @@ const ProjectBlights = () => {
     // machine of anyone who used the inbox before feedback #2098 - filters
     // persist per `persistenceKey`, and `reconcilePersistedFilters` reshapes
     // containers rather than values, so it arrives here untouched. Read as
-    // absent: no blight carries it, so the alternative is an empty table
+    // absent: no error carries it, so the alternative is an empty table
     // under a trigger that says "All apps", which is the worst of both.
     const sigilId = stored === "all" ? undefined : stored;
     const resolvedOnly = statuses.length === 1 && statuses[0] === "resolved";
@@ -303,7 +303,7 @@ const ProjectBlights = () => {
     const filtered = sigilId
       ? statusFiltered.filter((b) => b.sigilId === sigilId)
       : statusFiltered;
-    const rows = sortBlights(filtered, sort);
+    const rows = sortProjectErrors(filtered, sort);
     const offset = page * size;
     const content = rows.slice(offset, offset + size);
     return {
@@ -326,7 +326,7 @@ const ProjectBlights = () => {
     <div className="flex min-h-0 flex-1 flex-col p-2">
       <DataTable<ProjectErrorResource, typeof filterFields>
         className="min-h-0 flex-1"
-        persistenceKey={project ? `lor.blights.${project.id}` : "lor.blights"}
+        persistenceKey={project ? `lor.errors.${project.id}` : "lor.errors"}
         defaultSort={{ field: "count", direction: "desc" }}
         emptyMessage={tr("errors.empty")}
         filters={{
@@ -354,8 +354,8 @@ const ProjectBlights = () => {
             }
           />
         }
-        fetch={fetchBlights}
-        // The bulk bar is triage too: a rank that may not resolve one blight
+        fetch={fetchProjectErrors}
+        // The bulk bar is triage too: a rank that may not resolve one error
         // may not delete twenty.
         bulkActions={
           !canTriage
@@ -399,9 +399,9 @@ const ProjectBlights = () => {
           app: {
             label: tr("errors.col.app"),
             className: "max-w-[180px]",
-            // The app that reported the blight most recently, linked to its
+            // The app that reported the error most recently, linked to its
             // page, named "lore/production" the way the filter lists it. A
-            // blight whose sigil was deleted keeps a null `sigilId`.
+            // error whose sigil was deleted keeps a null `sigilId`.
             cell: (b) => {
               const name = sigilOptions.find((s) => s.id === b.sigilId)?.label;
               const parts = name ? sigilNameParts(name) : undefined;
@@ -429,7 +429,7 @@ const ProjectBlights = () => {
             className: "max-w-[260px]",
             // A link out for an http(s) page, text for a route pattern or a
             // job name (feedback #P2200); the scheme check lives in the cell.
-            cell: (b) => <BlightSourceCell sourceUrl={b.sourceUrl} />,
+            cell: (b) => <ErrorSourceCell sourceUrl={b.sourceUrl} />,
           },
           count: {
             label: tr("errors.col.count"),
@@ -530,13 +530,13 @@ const ProjectBlights = () => {
   );
 };
 
-export default ProjectBlights;
+export default ProjectErrors;
 
 /**
- * Client-side sort over the deduped blight list. Supports the two sortable
+ * Client-side sort over the deduped error list. Supports the two sortable
  * columns (`count`, `lastSeenAt`); anything else falls back to count desc.
  */
-const sortBlights = (
+const sortProjectErrors = (
   items: ProjectErrorResource[],
   sort?: string,
 ): ProjectErrorResource[] => {

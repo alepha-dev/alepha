@@ -110,9 +110,9 @@ export default {
   "automation.preset.coverage-regression.title": "Coverage regression",
   "automation.preset.coverage-regression.description":
     "Compare line coverage for the two fully closed UTC days at 00:10 UTC. Alert only when the drop exceeds the threshold in percentage points.",
-  "automation.preset.error-crossing.title": "Open blights cross a threshold",
+  "automation.preset.error-crossing.title": "Open errors cross a threshold",
   "automation.preset.error-crossing.description":
-    "Sample aggregate open blights every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
+    "Sample aggregate open errors every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
   "automation.setup.folio": "Folio",
   "automation.setup.app": "App",
   "automation.preset.release-to-folio.title":
@@ -229,7 +229,7 @@ export default {
   "home.table.momentum.flat": "flat",
   "home.table.open.quests": "$1 open quests",
   "home.table.open.epics": "$1 draft epics",
-  "home.table.open.errors": "$1 open blights",
+  "home.table.open.errors": "$1 open errors",
   "home.table.open.feedback": "$1 pending feedback",
   "auth.register.intent.createProject":
     "Before creating a project, create an account.",
@@ -1190,8 +1190,8 @@ export default {
   "reports.summary.line.deploySuccess": "Deploy success",
   "reports.summary.line.deploySuccess.definition":
     "Succeeded deployments over finished ones. Cancelled ones are left out.",
-  "reports.summary.line.openErrors": "Open blights",
-  "reports.summary.line.openErrors.definition": "Blights open now.",
+  "reports.summary.line.openErrors": "Open errors",
+  "reports.summary.line.openErrors.definition": "Errors open now.",
   "reports.summary.line.uptime": "Uptime",
   "reports.summary.line.uptime.definition":
     "Monitor time outside an incident, over the period.",
@@ -1478,26 +1478,26 @@ export default {
   "reports.delivery.apps.empty": "No deploy finished in this period.",
   "reports.delivery.apps.app": "App",
   "reports.delivery.apps.rollbacks": "Rollbacks",
-  "reports.reliability.errors.title": "Blights",
+  "reports.reliability.errors.title": "Errors",
   "reports.reliability.errors.definition":
-    "New blights and resolved ones per grain, and how many stood open. A resolved blight sits on the day it was last seen: nothing records when it was resolved.",
+    "New errors and resolved ones per grain, and how many stood open. A resolved error sits on the day it was last seen: nothing records when it was resolved.",
   "reports.reliability.series.opened": "New",
   "reports.reliability.series.resolved": "Resolved",
   "reports.reliability.series.open": "Open",
-  "reports.reliability.series.occurrences": "Errors",
-  "reports.reliability.top.title": "Top blights",
+  "reports.reliability.series.occurrences": "Occurrences",
+  "reports.reliability.top.title": "Top errors",
   "reports.reliability.top.definition":
-    "The blights with the most occurrences, whenever they happened.",
-  "reports.reliability.top.empty": "No blight reported.",
+    "The errors with the most occurrences, whenever they happened.",
+  "reports.reliability.top.empty": "No error reported.",
   "reports.reliability.forwarded": "Forwarded to a quest",
   "reports.reliability.forwarded.definition":
-    "Blights turned into a quest, and how many of those quests are done.",
+    "Errors turned into a quest, and how many of those quests are done.",
   "reports.reliability.forwarded.hint": "$1 fixed",
   "reports.reliability.fix": "Median time to fix",
   "reports.reliability.fix.definition":
-    "From a forwarded blight first seen to its quest completed.",
+    "From a forwarded error first seen to its quest completed.",
   "reports.reliability.fix.hint": "p85 $1",
-  "reports.reliability.occurrences.title": "Errors",
+  "reports.reliability.occurrences.title": "Error occurrences",
   "reports.reliability.occurrences.definition":
     "Error occurrences per grain, across the project’s apps. A dashed line marks a grain with a successful deploy.",
   "reports.reliability.uptime.title": "Uptime",
@@ -1948,7 +1948,7 @@ export default {
 
   "project.menu.inbox": "Notifications",
   "project.menu.feedback": "Feedback",
-  "project.menu.errors": "Blights",
+  "project.menu.errors": "Errors",
   "project.menu.apps": "Apps",
 
   "apps.filter.app": "App",
@@ -2082,7 +2082,7 @@ export default {
   "app.sigil.analytics": "Page views",
   "app.sigil.analytics.desc": "Visits, pages, referrers and devices.",
   "app.sigil.errors": "Errors",
-  "app.sigil.errors.desc": "Client and server errors, grouped into blights.",
+  "app.sigil.errors.desc": "Client and server errors, one row per root cause.",
   "app.sigil.vitals": "Web vitals",
   "app.sigil.vitals.desc": "Loading and interaction timings from real visits.",
   "app.sigil.feedback": "Feedback",
@@ -2194,8 +2194,8 @@ export default {
   "insights.errors.title": "Error budget",
   "insights.errors.note": "Distinct failures still happening in this app",
   "insights.errors.empty": "No failures reported in this window.",
-  "insights.errors.chart.title": "Errors over time",
-  "insights.errors.stat.total": "Errors in this window",
+  "insights.errors.chart.title": "Error occurrences over time",
+  "insights.errors.stat.total": "Occurrences in this window",
   "insights.errors.stat.client": "In the browser",
   "insights.errors.stat.server": "On the server",
   "insights.errors.origin.client": "Browser",
@@ -2240,7 +2240,7 @@ export default {
   "apps.delete.many":
     "Removes Lore’s record of these $1 copies and their deploy history.",
   "apps.delete.sigil":
-    "A sigil goes too, with everything it reported: page views, web vitals, unique visitors and the error budget. Blights already filed are kept.",
+    "A sigil goes too, with everything it reported: page views, web vitals, unique visitors and the error budget. Errors already filed are kept.",
   "apps.delete.lastEnv":
     "This is the last environment of $1, which leaves the Apps list with it.",
   "apps.delete.nothingUndeployed":
@@ -2253,7 +2253,7 @@ export default {
   "app.settings.delete.confirmDescription":
     "Removes Lore\u2019s record of this deployed copy. It keeps running wherever it runs; nothing is undeployed.",
   "app.settings.delete.confirmWithSigil":
-    "Removes Lore\u2019s record of this deployed copy, its sigil, and everything that sigil reported: page views, web vitals, unique visitors and its error budget. Blights already filed are kept. Nothing is undeployed: the copy keeps running wherever it runs.",
+    "Removes Lore\u2019s record of this deployed copy, its sigil, and everything that sigil reported: page views, web vitals, unique visitors and its error budget. Errors already filed are kept. Nothing is undeployed: the copy keeps running wherever it runs.",
   "app.settings.delete.confirm": "Delete",
   "app.settings.delete.deleted": "App deleted",
   "app.settings.sigil.feedback.dropped.title": "Feedback is not collected",
@@ -2334,7 +2334,7 @@ export default {
     "Against the window of the same width immediately before this one, measured the same way. The current window ends today, so its last day is still filling.",
   "insights.uniqueVisitors.unfiltered":
     "Not narrowed by $1: visitor counts are kept per app and day, without those dimensions.",
-  "insights.errors.inbox": "Open the Blights inbox",
+  "insights.errors.inbox": "Open the Errors inbox",
   "insights.filter.path": "Page",
   "insights.filter.country": "Country",
   "insights.filter.referrer": "Referrer",
@@ -2369,7 +2369,7 @@ export default {
   "insights.vitals.poor": "Poor",
 
   "errors.empty":
-    "No blights. Crashes captured from your sigils will appear here.",
+    "No errors. Crashes captured from your sigils will appear here.",
   "errors.filter.open": "Open",
   "errors.filter.resolved": "Resolved",
   "errors.filter.all": "All",
@@ -2388,15 +2388,15 @@ export default {
   "errors.action.delete": "Delete",
   "errors.action.deleteSelected": "Delete selected",
   "errors.action.viewStack": "View stack trace",
-  "errors.toast.resolved": "Blight resolved",
-  "errors.toast.forwarded": "Quest $1 created from blight",
-  "errors.toast.deleted": "Blight deleted",
-  "errors.toast.deletedMany": "$1 blights deleted",
-  "errors.deleteConfirm": "Delete this blight permanently?",
-  "errors.deleteSelectedConfirm": "Delete $1 selected blights permanently?",
+  "errors.toast.resolved": "Error resolved",
+  "errors.toast.forwarded": "Quest $1 created from error",
+  "errors.toast.deleted": "Error deleted",
+  "errors.toast.deletedMany": "$1 errors deleted",
+  "errors.deleteConfirm": "Delete this error permanently?",
+  "errors.deleteSelectedConfirm": "Delete $1 selected errors permanently?",
   "errors.rules.title": "Ignore rules",
   "errors.rules.description":
-    "Drop incoming crashes whose message contains one of these substrings (case-insensitive). Rules apply to future ingest only; existing blights stay until you delete them.",
+    "Drop incoming crashes whose message contains one of these substrings (case-insensitive). Rules apply to future ingest only; existing errors stay until you delete them.",
   "errors.rules.settingsDescription":
     "Crashes whose message matches one of these substrings are dropped on arrival, before they ever reach the inbox.",
   "errors.rules.manage": "Manage rules",
@@ -2424,7 +2424,7 @@ export default {
   "sigils.rotate.confirm": "Rotate",
   "sigils.delete.confirmTitle": "Delete $1?",
   "sigils.delete.confirmDescription":
-    "This removes everything this app ever reported (page views, web vitals, unique visitors and its error budget) from the project, along with its token. Raw rows in Analytics Engine stay until they expire, unread. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
+    "This removes everything this app ever reported (page views, web vitals, unique visitors and its error budget) from the project, along with its token. Raw rows in Analytics Engine stay until they expire, unread. Errors already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
   "sigils.delete.confirm": "Delete",
   "sigils.toast.created": "Sigil created",
   "sigils.toast.rotated": "Token rotated",
@@ -2951,7 +2951,7 @@ export default {
   "agentPrompts.review": "Review Epic",
   "agentPrompts.workOnIt": "Work on it",
   "agentPrompts.triageInbox": "Triage the inbox",
-  "agentPrompts.triageErrors": "Triage the blights",
+  "agentPrompts.triageErrors": "Triage the errors",
   "agentPrompts.workLooseQuests": "Work the loose quests",
   "agentPrompts.copied":
     "Prompt for $1 copied. Paste it into your coding agent.",
@@ -2997,9 +2997,9 @@ export default {
   "agentPrompts.settings.feedbackLoop.title": "Feedback: Triage the inbox",
   "agentPrompts.settings.feedbackLoop.description":
     "Offered on the feedback inbox. Accepts, rejects or asks about every pending report until none is left.",
-  "agentPrompts.settings.errorTriage.title": "Blights: Triage",
+  "agentPrompts.settings.errorTriage.title": "Errors: Triage",
   "agentPrompts.settings.errorTriage.description":
-    "Offered on the blights inbox. Files a quest for each real defect and resolves the noise.",
+    "Offered on the errors inbox. Files a quest for each real defect and resolves the noise.",
   "agentPrompts.weeklyStatus": "Write the weekly status",
   "agentPrompts.settings.weeklyStatus.title":
     "Reports: Write the weekly status",
@@ -3285,7 +3285,7 @@ export default {
   "dashboard.more": "$1 more $2",
   "dashboard.source.quests": "quests",
   "dashboard.source.feedback": "feedback items",
-  "dashboard.source.errors": "blights",
+  "dashboard.source.errors": "errors",
   "dashboard.badge.stale": "stale",
   "dashboard.badge.unassigned": "unassigned",
   "dashboard.badge.error": "crash",
@@ -3293,7 +3293,7 @@ export default {
   "dashboard.metric.appHealth": "App health",
   "dashboard.metric.appHealth.hint":
     "one pill per copy: its last deploy, and whether it reports",
-  "dashboard.metric.errorTrend": "Errors",
+  "dashboard.metric.errorTrend": "Error occurrences",
   "dashboard.metric.errorTrend.hint":
     "occurrences per day, deployments as rules",
   "dashboard.metric.quality.coverage.lines": "Line coverage",
@@ -3420,7 +3420,7 @@ export default {
   "dashboard.metric.tagCompletion": "Tag completion",
   "dashboard.metric.tagCompletion.hint":
     "one tag, done over total; a quest with two tags counts in both",
-  "dashboard.metric.openErrors": "Open blights",
+  "dashboard.metric.openErrors": "Open errors",
   "dashboard.metric.openErrors.hint": "project, or a list of apps",
   "dashboard.metric.untriagedFeedback": "Untriaged feedback",
   "dashboard.metric.untriagedFeedback.card": "Feedback",
@@ -3614,9 +3614,9 @@ export default {
   "permission.artifact.read": "See what CI has pushed",
   "permission.artifact.delete": "Delete a build",
   "permission.artifact.push": "Push a build",
-  "permission.group.error": "Blights",
+  "permission.group.error": "Errors",
   "permission.error.read": "Read the crash inbox",
-  "permission.error.triage": "Resolve, ignore and forward blights",
+  "permission.error.triage": "Resolve, ignore and forward errors",
   "permission.group.quality": "Quality",
   "permission.quality.read": "Read coverage and test totals",
   "permission.quality.push": "Record coverage and test totals",
@@ -3908,7 +3908,7 @@ export default {
   "automation.source.quests.remindersDue": "Quest reminders due",
   "automation.source.activeQuests": "Active quests (count)",
   "automation.source.heldQuests": "Held quests (count)",
-  "automation.source.openErrors": "Open blights (count)",
+  "automation.source.openErrors": "Open errors (count)",
   "automation.source.untriagedFeedback": "Untriaged feedback (count)",
   "automation.source.uniqueVisitors": "Unique visitors",
   "automation.source.quality.coverage.lines": "Line coverage (%)",

@@ -195,7 +195,7 @@ describe("SigilBrowserProvider", () => {
     /**
      * #Q2345. A caller that passed `onError` marks its failure `handled`, so
      * no toast shows it. That is the whole of what the flag decides: a quiet
-     * 5xx is still a fault, and still a blight.
+     * 5xx is still a fault, and still an error.
      */
     it("keeps a 5xx its caller handled", async () => {
       const { alepha, provider } = await startedProvider();
@@ -229,7 +229,7 @@ describe("SigilBrowserProvider", () => {
     });
 
     /**
-     * Blight #585, #Q2343: a person submitting the quest form without a
+     * Error #585, #Q2343: a person submitting the quest form without a
      * title filed a crash. `FormModel` hands a schema refusal on as a
      * `FormValidationError`, which carries no status, so `isCrash` kept it.
      */

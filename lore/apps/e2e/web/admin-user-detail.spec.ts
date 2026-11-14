@@ -165,7 +165,7 @@ test.describe("admin user detail", () => {
   /**
    * Navigating AWAY from the page must not fire `getUser` with an empty id.
    *
-   * Blight #358 on `shop-production`, seven hits, and #118 before it on the
+   * Error #358 on `shop-production`, seven hits, and #118 before it on the
    * previous bundle. The reported stack points at `CodecManager.encode` and
    * reads like a response-serialisation failure; it is not. `$action.run()`
    * encodes the REQUEST through the same codec before validating it, so
