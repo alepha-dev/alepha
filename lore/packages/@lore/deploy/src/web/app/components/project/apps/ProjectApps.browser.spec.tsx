@@ -89,6 +89,11 @@ class FakeLinkProvider extends LinkProvider {
     this.releaseMonitors = resolve;
   });
 
+  /**
+   * Every monitor whose detail the hover card asked for (#Q3598).
+   */
+  details: string[] = [];
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return new Proxy(
@@ -101,14 +106,31 @@ class FakeLinkProvider extends LinkProvider {
                   await this.monitorsHeld;
                   return { items: this.monitors };
                 }
-              : key === "deleteApp"
-                ? async (request: { params: { app: string; env: string } }) => {
-                    this.deleted.push(
-                      `${request.params.app}/${request.params.env}`,
-                    );
-                    return { ok: true };
+              : key === "getMonitorDetail"
+                ? async (request: { params: { monitorId: string } }) => {
+                    this.details.push(request.params.monitorId);
+                    return {
+                      incidents: [
+                        {
+                          id: "00000000-0000-4000-8000-0000000000i1",
+                          startedAt: "2026-11-10T08:00:00.000Z",
+                          endedAt: "2026-11-10T08:05:00.000Z",
+                          durationSecs: 300,
+                          cause: "timeout",
+                        },
+                      ],
+                    };
                   }
-                : async () => ({});
+                : key === "deleteApp"
+                  ? async (request: {
+                      params: { app: string; env: string };
+                    }) => {
+                      this.deleted.push(
+                        `${request.params.app}/${request.params.env}`,
+                      );
+                      return { ok: true };
+                    }
+                  : async () => ({});
           fn.can = () => true;
           return fn;
         },
@@ -739,6 +761,7 @@ describe("the Apps list", () => {
           kind: "http",
           target: "https://acme.example.com/",
           uptimePct: 99.5,
+          beats: [],
         },
       ];
       fake.releaseMonitors();
@@ -750,6 +773,58 @@ describe("the Apps list", () => {
       const lore = rowText(view).find((text) => text.includes("lore"))!;
       expect(acme).toContain("99.5%");
       expect(lore).toMatch(/-$/);
+    });
+
+    it("draws the recent checks as a beat bar and tells more on hover, reading the detail only then", async ({
+      expect,
+    }) => {
+      const { alepha } = await mount([watched()]);
+      const fake = alepha.inject(FakeLinkProvider);
+      const beat = (id: number, ok: boolean) => ({
+        id: `00000000-0000-4000-8000-00000000000${id}`,
+        monitorId: "00000000-0000-4000-8000-0000000000m1",
+        at: `2026-11-13T10:0${id}:00.000Z`,
+        ok,
+        latencyMs: 40,
+      });
+      fake.monitors = [
+        {
+          id: "00000000-0000-4000-8000-0000000000m1",
+          kind: "http",
+          target: "https://acme.example.com/",
+          active: true,
+          status: "up",
+          statusSince: "2026-11-13T10:02:00.000Z",
+          lastLatencyMs: 42,
+          uptimePct: 66.67,
+          beats: [beat(1, true), beat(2, false), beat(3, true)],
+        },
+      ];
+      fake.releaseMonitors();
+
+      const cell = await screen.findByTestId("apps-uptime-cell");
+      const bar = cell.querySelector('[aria-label="Recent checks"]')!;
+      expect(bar.children).toHaveLength(3);
+      expect(bar.querySelectorAll(".bg-red-500\\/80")).toHaveLength(1);
+      expect(bar.querySelectorAll(".bg-emerald-500\\/80")).toHaveLength(2);
+      expect(cell.textContent).toContain("66.67%");
+      // Still lazy: nothing is read for the card until it opens.
+      expect(fake.details).toEqual([]);
+
+      fireEvent.mouseEnter(cell);
+      fireEvent.pointerEnter(cell);
+      fireEvent.focus(cell);
+      const incident = await screen.findByTestId(
+        "apps-uptime-last-incident",
+        {},
+        { timeout: 3000 },
+      );
+      await waitFor(() => expect(incident.textContent).toContain("timeout"));
+      expect(fake.details).toEqual(["00000000-0000-4000-8000-0000000000m1"]);
+      const card = incident.closest("dl")!;
+      expect(card.textContent).toContain("24 hours");
+      expect(card.textContent).toContain("Up");
+      expect(card.textContent).toContain("42 ms");
     });
 
     it("is absent, and asks for nothing, with the uptime option off", async ({
