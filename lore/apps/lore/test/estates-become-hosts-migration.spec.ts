@@ -100,6 +100,11 @@ describe("estates become hosts migration", () => {
       dataset: "estate_stats",
       floor: "2026-10-01",
     });
+    insert(db, "parameters", {
+      id: "p1",
+      name: "lore.campaign.limits",
+      content: JSON.stringify({ maxProjectsPerUser: 5, maxCommandsPerEstate: 50 }),
+    });
 
     exec(db, sqlOf(MIGRATION));
     return { db, host };
@@ -153,7 +158,7 @@ describe("estates become hosts migration", () => {
     expect(permissions("api_keys", "k1")).toEqual(["host:read", "host:update"]);
   });
 
-  it("moves audits, notifications and the stats prune floor to the new names", ({
+  it("moves audits, notifications, the stats prune floor and the limits parameter to the new names", ({
     expect,
   }) => {
     const { db } = migrated();
@@ -174,5 +179,8 @@ describe("estates become hosts migration", () => {
     expect(one(db, "SELECT dataset FROM analytics_prune_floors").dataset).toBe(
       "host_stats",
     );
+    expect(
+      JSON.parse(one(db, "SELECT content FROM parameters").content),
+    ).toEqual({ maxProjectsPerUser: 5, maxCommandsPerHost: 50 });
   });
 });

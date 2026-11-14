@@ -88,3 +88,9 @@ WHERE `muted_categories` LIKE '%"estates"%';--> statement-breakpoint
 UPDATE `notification_suppressions` SET `category` = 'hosts' WHERE `category` = 'estates';--> statement-breakpoint
 -- The stats dataset's prune floor, keyed by its name.
 UPDATE `analytics_prune_floors` SET `dataset` = 'host_stats' WHERE `dataset` = 'estate_stats';
+--> statement-breakpoint
+-- An admin's override of the limits parameter names the commands cap per
+-- host: an optional key, so one left behind would be ignored silently.
+UPDATE `parameters`
+SET `content` = REPLACE(`content`, '"maxCommandsPerEstate"', '"maxCommandsPerHost"')
+WHERE `name` = 'lore.campaign.limits' AND `content` LIKE '%"maxCommandsPerEstate"%';
