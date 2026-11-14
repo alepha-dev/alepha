@@ -5,7 +5,7 @@ import type { CapabilityKey } from "../../../api/schemas/capabilityKeySchema.ts"
 /**
  * What stops a project from being deleted, or from losing a capability, said
  * BEFORE the click (#Q3281): each module registers a hook naming what its
- * server guard would refuse on (Deploy: the estates the project is the home
+ * server guard would refuse on (Deploy: the hosts the project is the home
  * of). The danger zone and the capability switch read every line and hold
  * the act back while one is present. The server guard stays the authority.
  *

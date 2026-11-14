@@ -125,7 +125,7 @@ export {
 } from "./app/components/project/capabilityNav.ts";
 export {
   ROUTES_APP,
-  ROUTES_ESTATE,
+  ROUTES_HOST,
   ROUTES_FULL_WIDTH,
   SECTION_HREF_ROUTES,
   SECTION_LABEL_KEYS,

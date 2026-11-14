@@ -19,19 +19,19 @@ export interface StackCardProps {
   projectId: number;
   projectSlug: string;
   stack: StackResource;
-  estates: Array<{ id: string; slug: string }>;
+  hosts: Array<{ id: string; slug: string }>;
 }
 
 /**
  * One stack on the list: its environments (each a link to its page) with the
- * estate and the revision each runs, then the writes that belong to the
+ * host and the revision each runs, then the writes that belong to the
  * stack rather than to one environment, deleting it once it is empty.
  */
 const StackCard = (props: StackCardProps) => {
   const { tr } = useI18n<I18n, "en">();
   const { can } = useRank();
   const slugOf = (id: string | undefined) =>
-    props.estates.find((e) => e.id === id)?.slug;
+    props.hosts.find((e) => e.id === id)?.slug;
   const canWrite = can("deploy:manage");
 
   return (
@@ -48,8 +48,8 @@ const StackCard = (props: StackCardProps) => {
           ) : null}
         </CardTitle>
         <CardDescription>
-          {tr("stacks.estate.default.line", {
-            args: [slugOf(props.stack.estateId) ?? tr("stacks.estate.unset")],
+          {tr("stacks.host.default.line", {
+            args: [slugOf(props.stack.hostId) ?? tr("stacks.host.unset")],
           })}
         </CardDescription>
       </CardHeader>
@@ -65,7 +65,7 @@ const StackCard = (props: StackCardProps) => {
                 <th className="py-1 font-normal">
                   {tr("stacks.col.environment")}
                 </th>
-                <th className="py-1 font-normal">{tr("stacks.col.estate")}</th>
+                <th className="py-1 font-normal">{tr("stacks.col.host")}</th>
                 <th className="py-1 font-normal">
                   {tr("stacks.col.revision")}
                 </th>
@@ -85,9 +85,9 @@ const StackCard = (props: StackCardProps) => {
                     </Link>
                   </td>
                   <td className="py-2">
-                    {slugOf(environment.estateId) ?? (
+                    {slugOf(environment.hostId) ?? (
                       <span className="text-muted-foreground">
-                        {tr("stacks.estate.default")}
+                        {tr("stacks.host.default")}
                       </span>
                     )}
                   </td>

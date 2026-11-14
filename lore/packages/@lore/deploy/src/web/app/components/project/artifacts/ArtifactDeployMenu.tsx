@@ -35,7 +35,7 @@ export interface ArtifactDeployMenuProps {
  * Ship this build: to a copy that can run it, or to a new one.
  *
  * Absent for an image, which only ever has a reference to pull, and without
- * the `apps.deploy` option. A copy with no estate, or an estate that cannot
+ * the `apps.deploy` option. A copy with no host, or a host that cannot
  * run this build, is left out here: the server would refuse it, and offering
  * a refusal is the experience `acceptedRuntimes` exists to prevent.
  */
@@ -81,8 +81,8 @@ const ArtifactDeployMenu = (props: ArtifactDeployMenuProps) => {
 
   const targets = detail.copies.filter(
     (copy) =>
-      copy.estate &&
-      acceptedRuntimes(copy.estate.type).some((runtime) =>
+      copy.host &&
+      acceptedRuntimes(copy.host.type).some((runtime) =>
         variant.runtimes.includes(runtime),
       ),
   );

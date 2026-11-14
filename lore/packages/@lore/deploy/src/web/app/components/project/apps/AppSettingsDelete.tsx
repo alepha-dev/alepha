@@ -46,7 +46,7 @@ const AppSettingsDelete = () => {
 
   // A `useAction` whose handler holds the confirmation (#E59, #Q2329). The
   // button stays disabled through the navigation that follows, since the
-  // handler awaits it. A refusal (a copy whose estate still holds a Worker or
+  // handler awaits it. A refusal (a copy whose host still holds a Worker or
   // a database) is the server's sentence, toasted by the root listener.
   const removeAction = useAction<[], void>(
     {
@@ -69,7 +69,7 @@ const AppSettingsDelete = () => {
             app: instance.app,
             env: instance.env,
           },
-          // ⚠️ Never `forget: true` from here. A copy whose estate still holds
+          // ⚠️ Never `forget: true` from here. A copy whose host still holds
           // a Worker or a database is refused, and the refusal says to destroy
           // those first - which is the whole point of the guard.
           body: {},

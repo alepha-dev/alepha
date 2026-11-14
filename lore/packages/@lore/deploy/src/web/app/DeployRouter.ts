@@ -18,10 +18,10 @@ import { createElement } from "react";
 
 import type { AppController } from "../../api/controllers/AppController.ts";
 import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
-import type { ProjectEstateController } from "../../api/controllers/ProjectEstateController.ts";
+import type { ProjectHostController } from "../../api/controllers/ProjectHostController.ts";
 import type { QualityReportsController } from "../../api/controllers/QualityReportsController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
-import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
+import { currentHostAtom } from "./atoms/currentHostAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
 
@@ -49,7 +49,7 @@ export const ANALYTICS_DIMENSIONS = new Set([
 ]);
 
 /**
- * Deploy's pages (#E75): apps and their tabs, artifacts, errors, the Bay console, Reports' Quality tab and the Apps and Estates settings tabs.
+ * Deploy's pages (#E75): apps and their tabs, artifacts, errors, the Bay console, Reports' Quality tab and the Apps and Hosts settings tabs.
  * Each page mounts under core with `$pageProject` or `parent:`, so no
  * router names another module's page.
  */
@@ -61,31 +61,31 @@ export class DeployRouter {
   reportsUrl = $inject(ReportsUrlQuery);
   reportsTabs = $inject(ReportsTabRegistry);
   appApi = $client<AppController>();
-  lendingApi = $client<ProjectEstateController>();
+  lendingApi = $client<ProjectHostController>();
   router = $inject(ReactRouter);
   /**
-   * The console for one `bay` estate: what is running on the machine, what it
+   * The console for one `bay` host: what is running on the machine, what it
    * costs, and the buttons that act on it.
    *
-   * ⚠️ **Under its home project, at `/:projectSlug/estates/:estateSlug`.**
-   * An estate belongs to a project since #E126, so its console is a project
-   * page, the way an app copy's is, and there is no account page for estates
-   * any more. It was `/account/estates/:estateId`, removed with no redirect
+   * ⚠️ **Under its home project, at `/:projectSlug/hosts/:hostSlug`.**
+   * A host belongs to a project since #E126, so its console is a project
+   * page, the way an app copy's is, and there is no account page for hosts
+   * any more. It was `/account/hosts/:hostId`, removed with no redirect
    * (pre-v1). Every route here carries `nav: { hidden: true }`: the entry
-   * point is the project's Settings ▸ Apps ▸ Estates list.
+   * point is the project's Settings ▸ Apps ▸ Hosts list.
    *
    * The param is the slug: a slug is unique per home project, so the pair
-   * names one estate. A project an estate is only lent to never shows it
+   * names one host. A project a host is only lent to never shows it
    * under its own slug: its rows link to the console under the home, which
    * answers 403 to anyone who is not a member there.
    *
-   * ⚠️ `:estateSlug`, never `:slug` or `:id`: one param name per tree
+   * ⚠️ `:hostSlug`, never `:slug` or `:id`: one param name per tree
    * position, the trap `projectApp` documents.
    */
   bay = $pageProject({
     loading: ProjectPageSkeleton,
     name: "bay",
-    path: "/estates/:estateSlug",
+    path: "/hosts/:hostSlug",
     children: () => [
       this.bayOverview,
       this.bayApps,
@@ -93,12 +93,11 @@ export class DeployRouter {
       this.bayCommands,
       this.baySettings,
     ],
-    schema: { params: z.object({ estateSlug: z.string() }) },
+    schema: { params: z.object({ hostSlug: z.string() }) },
     head: (props, previous) => {
-      const estate = (props as { estate?: { slug?: string } } | undefined)
-        ?.estate;
+      const host = (props as { host?: { slug?: string } } | undefined)?.host;
       return {
-        title: `${previous?.title ?? ""} › ${estate?.slug ?? "Estate"}`,
+        title: `${previous?.title ?? ""} › ${host?.slug ?? "Host"}`,
       };
     },
     lazy: () => import("./components/bay/BayLayout.tsx"),
@@ -107,18 +106,18 @@ export class DeployRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      // The refusal comes from the server: `getHomeEstate` goes through this
+      // The refusal comes from the server: `getHomeHost` goes through this
       // project's gate, which answers 403 to a non-member and 404 to a slug
       // this project is not the home of, so a stranger gets a real refusal
       // for the whole subtree rather than an empty console.
-      const estate = await this.lendingApi.getHomeEstate({
-        params: { projectId: project.id, estateSlug: params.estateSlug },
+      const host = await this.lendingApi.getHomeHost({
+        params: { projectId: project.id, hostSlug: params.hostSlug },
       });
-      this.alepha.store.set(currentEstateAtom, estate);
-      return { estate };
+      this.alepha.store.set(currentHostAtom, host);
+      return { host };
     },
     onLeave: () => {
-      this.alepha.store.set(currentEstateAtom, undefined);
+      this.alepha.store.set(currentHostAtom, undefined);
     },
     errorHandler: (error) => {
       if (isHttpError(error, 404)) {
@@ -154,7 +153,7 @@ export class DeployRouter {
    * `ReactRouter.path` merges the CURRENT route's params with the caller's by
    * NAME, so two trees that mean the same thing by `app` and `env` may share
    * them. A link from here to a project's app page has to pass `projectSlug`
-   * explicitly, because this route holds `estateId` and nothing else - and
+   * explicitly, because this route holds `hostId` and nothing else - and
    * naming these two differently is what breaks, silently, with the value
    * arriving missing.
    */
@@ -523,19 +522,19 @@ export class DeployRouter {
   });
 
   /**
-   * Where the project can deploy: the estates lent to it (epic #20). No
+   * Where the project can deploy: the hosts lent to it (epic #20). No
    * loader, and no feature flag: the page lists what it holds itself, and an
    * empty list is a normal state that says so in words. A tab of the Apps
    * section since #Q2565.
    */
-  projectSettingsEstates = $pageProjectSettings({
-    name: "projectSettingsEstates",
-    path: "/estates",
+  projectSettingsHosts = $pageProjectSettings({
+    name: "projectSettingsHosts",
+    path: "/hosts",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Estates`,
+      title: `${previous?.title ?? ""} › Hosts`,
     }),
     lazy: () =>
-      import("./components/project/settings/ProjectSettingsEstatesPage.tsx"),
+      import("./components/project/settings/ProjectSettingsHostsPage.tsx"),
   });
 
   app = $page({
@@ -666,7 +665,7 @@ export class DeployRouter {
    * What has been deployed here, and what to deploy next.
    *
    * ⚠️ Unguarded in the router. The tab self-hides on
-   * `apps.deploy` plus the copy having an estate, and every write behind it is
+   * `apps.deploy` plus the copy having a host, and every write behind it is
    * refused server-side by #1205's gate; a route guard would only turn a link
    * somebody already holds into a 404 while changing no permission.
    */
@@ -683,7 +682,7 @@ export class DeployRouter {
    * This copy's backups on its Bay machine, and every verb Bay offers on them.
    *
    * ⚠️ Unguarded in the router, like `appDeploy`: the tab self-hides on
-   * `apps.deploy` plus an estate, and `BackupController` refuses every read
+   * `apps.deploy` plus a host, and `BackupController` refuses every read
    * and write server-side.
    */
   appBackups = $page({
@@ -704,7 +703,7 @@ export class DeployRouter {
    * `lore:app-secrets:v1`, opened only by the deploy.
    *
    * ⚠️ Unguarded in the router, like `appDeploy` and unlike the beacon
-   * tabs. The tab self-hides on `apps.deploy` plus the copy having an estate,
+   * tabs. The tab self-hides on `apps.deploy` plus the copy having a host,
    * and the endpoints refuse server-side; a route guard here would only turn a
    * link somebody already holds into a 404 while changing no permission.
    */

@@ -8,7 +8,7 @@ import WebSocket from "ws";
 import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
-  createEstateInProject,
+  createHostInProject,
   createProjectViaWizard,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -22,17 +22,17 @@ import {
  * stored frame, and this is the only place that derivation is exercised
  * through a router, a layout and a table.
  *
- * ## How the estate gets an inventory with no machine
+ * ## How the host gets an inventory with no machine
  *
  * There is no seed endpoint and nothing writes the row directly. The spec
- * plays the machine: it opens `/ws/estates` with the estate secret as a
+ * plays the machine: it opens `/ws/estates` with the host secret as a
  * bearer, says `hello`, waits for the `welcome`, sends **the wire-v1
  * `inventory.json` fixture** - the same bytes `wire_test.go` and
- * `estate-wire-format.spec.ts` both pin - and closes. The frame therefore
- * lands through `EstateSocketController` exactly as Bay's would, and the
- * close leaves the estate OFFLINE, which is the state most of these
+ * `host-wire-format.spec.ts` both pin - and closes. The frame therefore
+ * lands through `HostSocketController` exactly as Bay's would, and the
+ * close leaves the host OFFLINE, which is the state most of these
  * assertions want: a queued command that says it will run when the machine
- * reconnects is only truthful about an offline estate.
+ * reconnects is only truthful about an offline host.
  *
  * `ws` rather than Node's global `WebSocket`: the handshake carries the
  * secret in an `Authorization` header, and the WHATWG API cannot set one.
@@ -40,7 +40,7 @@ import {
  * ## The reconciliation needs both sides
  *
  * The fixture reports four instances and knows nothing about projects. Two
- * app instances are created against this estate before the walk: `lore`,
+ * app instances are created against this host before the walk: `lore`,
  * which the fixture also reports (matched), and `ghost`, which it does not
  * (expected here, not running). The other three reported apps are tracked
  * nowhere, which is the third state. All three are on screen in one run.
@@ -64,7 +64,7 @@ const inventoryFrame = (): Record<string, unknown> =>
  * By name rather than by path for the reason `bay.e2e.spec.ts` does it: the
  * registry the SPA itself reads is the source, so a moved route fails as "no
  * such action" instead of as a 404 to interpret. `apiPost` in `_helpers.ts`
- * only speaks POST, and pointing an instance at an estate is a PATCH.
+ * only speaks POST, and pointing an instance at a host is a PATCH.
  */
 const apiCall = async <T>(
   page: Page,
@@ -95,7 +95,7 @@ const apiCall = async <T>(
 /**
  * Play the machine once: hello, welcome, one inventory, close.
  *
- * Resolved only after the socket has closed, so the estate is offline by the
+ * Resolved only after the socket has closed, so the host is offline by the
  * time the walk starts and the row is already written: `record` runs inside
  * the message handler, and closing before it returned would race the read.
  */
@@ -133,7 +133,7 @@ const pushInventory = async (
       socket.send(JSON.stringify(frame));
       // Closed from this side once the frame is on the wire. The server
       // stamps `disconnectedAt` in `onDisconnect`, which is what leaves the
-      // estate offline with an inventory - the state the console is written
+      // host offline with an inventory - the state the console is written
       // for and the one no other test produces.
       socket.close();
     });
@@ -158,27 +158,27 @@ test.describe("The Bay console", () => {
     );
 
     // ⚠️ Apps asked for explicitly. The wizard's own defaults are Work and
-    // Knowledge, and an estate belongs to a project with Apps on (#E126):
-    // created first, so the estate is created in it, and lent to it in the
+    // Knowledge, and a host belongs to a project with Apps on (#E126):
+    // created first, so the host is created in it, and lent to it in the
     // same step. Creating an app instance is refused without Apps too.
     const project = await createProjectViaWizard(page, "Bay Console", {
       capabilities: ["apps"],
     });
-    const { id: estateId, secret } = await createEstateInProject(
+    const { id: hostId, secret } = await createHostInProject(
       page,
       project.slug,
       "ovh-console",
     );
 
-    // The project's estates list routes a `bay` row to its console, under
-    // the project (#E126): estates have no account page.
+    // The project's hosts list routes a `bay` row to its console, under
+    // the project (#E126): hosts have no account page.
     await page.getByRole("link", { name: "ovh-console", exact: true }).click();
-    await page.waitForURL(`**/${project.slug}/estates/ovh-console`, {
+    await page.waitForURL(`**/${project.slug}/hosts/ovh-console`, {
       timeout: 15_000,
     });
 
-    // Both sides of the reconciliation. The estate was lent to its home
-    // project when it was created there: `AppService.setEstate` refuses a
+    // Both sides of the reconciliation. The host was lent to its home
+    // project when it was created there: `AppService.setHost` refuses a
     // reference the project has no grant for.
     for (const app of ["lore", "ghost"]) {
       await apiCall(
@@ -196,14 +196,14 @@ test.describe("The Bay console", () => {
         "updateApp",
         "PATCH",
         { projectId: project.id, app, env: "production" },
-        { estateId },
+        { hostId },
       );
     }
 
     await pushInventory(baseURL ?? "", secret, inventoryFrame());
 
     // -- Overview -----------------------------------------------------------
-    await page.goto(`/${project.slug}/estates/ovh-console`);
+    await page.goto(`/${project.slug}/hosts/ovh-console`);
     await page.waitForLoadState("networkidle");
 
     // The gauges come from the frame's host block, and the units are the
@@ -224,7 +224,7 @@ test.describe("The Bay console", () => {
     await expect(page.getByText("Bay 0.31.0")).toBeVisible();
     // The socket was closed after the frame, so the machine is gone and the
     // inventory it left is still readable. Both halves matter: an offline
-    // estate showing no inventory would be indistinguishable from one that
+    // host showing no inventory would be indistinguishable from one that
     // never connected.
     // Said twice on this page, by the header badge and by the Connection
     // card, so the count is asserted rather than the first match: one of the
@@ -236,7 +236,7 @@ test.describe("The Bay console", () => {
       .getByTestId("bay-tabs")
       .getByRole("link", { name: "Apps", exact: true })
       .click();
-    await page.waitForURL(`**/${project.slug}/estates/ovh-console/apps`, {
+    await page.waitForURL(`**/${project.slug}/hosts/ovh-console/apps`, {
       timeout: 15_000,
     });
 
@@ -252,7 +252,7 @@ test.describe("The Bay console", () => {
     await expect(page.getByText("Bay Console").first()).toBeVisible();
     // untracked: running here, tracked nowhere. Three of them.
     await expect(page.getByText("not in Lore")).toHaveCount(3);
-    // missing: the state that earns the table. `ghost` points at this estate
+    // missing: the state that earns the table. `ghost` points at this host
     // and the machine did not report it.
     await expect(page.getByText("expected here, not running")).toHaveCount(1);
     await expect(page.getByText("ghost", { exact: true })).toBeVisible();
@@ -302,7 +302,7 @@ test.describe("The Bay console", () => {
     // that link. Any other cell reaches `onRowClick`.
     await page.getByText("r-2026-09-06-1").click();
     await page.waitForURL(
-      `**/${project.slug}/estates/ovh-console/apps/lore/production`,
+      `**/${project.slug}/hosts/ovh-console/apps/lore/production`,
       {
         timeout: 15_000,
       },
@@ -339,7 +339,7 @@ test.describe("The Bay console", () => {
     await page.getByTestId("bay-action-restart").click();
     await queued;
 
-    await page.goto(`/${project.slug}/estates/ovh-console/commands`);
+    await page.goto(`/${project.slug}/hosts/ovh-console/commands`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText("restart", { exact: true })).toBeVisible({
       timeout: 20_000,
@@ -348,12 +348,12 @@ test.describe("The Bay console", () => {
     // for the next hello rather than being refused.
     await expect(page.getByText("pending", { exact: true })).toBeVisible();
 
-    // -- Settings lists the project the estate is lent to (#E68) -------------
+    // -- Settings lists the project the host is lent to (#E68) -------------
     await page
       .getByTestId("bay-tabs")
       .getByRole("link", { name: "Settings", exact: true })
       .click();
-    await page.waitForURL(`**/${project.slug}/estates/ovh-console/settings`, {
+    await page.waitForURL(`**/${project.slug}/hosts/ovh-console/settings`, {
       timeout: 15_000,
     });
     const loan = page

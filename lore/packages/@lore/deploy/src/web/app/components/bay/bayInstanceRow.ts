@@ -1,8 +1,8 @@
 import type {
-  EstateInventoryExpectedApp,
-  EstateInventoryReportedApp,
-  EstateInventoryResource,
-} from "../../../../api/schemas/estateInventoryResourceSchema.ts";
+  HostInventoryExpectedApp,
+  HostInventoryReportedApp,
+  HostInventoryResource,
+} from "../../../../api/schemas/hostInventoryResourceSchema.ts";
 
 /**
  * One row of the Apps table: something the machine reported, or something
@@ -13,8 +13,8 @@ import type {
  * is on it, which is what keeps the table from asking questions of two shapes.
  */
 export type BayInstanceRow =
-  | (EstateInventoryReportedApp & { reported: true })
-  | (EstateInventoryExpectedApp & { reported: false });
+  | (HostInventoryReportedApp & { reported: true })
+  | (HostInventoryExpectedApp & { reported: false });
 
 /**
  * What the process is doing, as one word.
@@ -71,7 +71,7 @@ export const bayProcessState = (row: BayInstanceRow): BayProcessState => {
  * above `high` for its whole life doing exactly that.
  */
 export const bayInstanceRows = (
-  data: EstateInventoryResource | undefined,
+  data: HostInventoryResource | undefined,
 ): BayInstanceRow[] => {
   if (!data) {
     return [];

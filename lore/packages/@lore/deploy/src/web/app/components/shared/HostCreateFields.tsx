@@ -6,16 +6,13 @@ import { Cloud, Fingerprint, KeyRound, Server, Tag } from "lucide-react";
 import { useState } from "react";
 
 import { cloudflareTokenTemplateUrl } from "../../../../api/schemas/cloudflareTokenTemplate.ts";
-import { ESTATE_SLUG_PATTERN } from "../../../../api/schemas/estateSlugSchema.ts";
-import {
-  type EstateCreateDraft,
-  estateDraftSlug,
-} from "./estateCreateDraft.ts";
-import { estateCreateFormSchema } from "./estateCreateFormSchema.ts";
+import { HOST_SLUG_PATTERN } from "../../../../api/schemas/hostSlugSchema.ts";
+import { type HostCreateDraft, hostDraftSlug } from "./hostCreateDraft.ts";
+import { hostCreateFormSchema } from "./hostCreateFormSchema.ts";
 
-export interface EstateCreateFieldsProps {
-  draft: EstateCreateDraft;
-  onChange: (draft: EstateCreateDraft) => void;
+export interface HostCreateFieldsProps {
+  draft: HostCreateDraft;
+  onChange: (draft: HostCreateDraft) => void;
   busy: boolean;
   /**
    * A refusal from the server, rendered beside the field it concerns.
@@ -25,13 +22,13 @@ export interface EstateCreateFieldsProps {
 }
 
 /**
- * The fields a new estate needs, by type.
+ * The fields a new host needs, by type.
  *
- * Used by the create-and-lend path of a project's estates list, and kept a
- * component of its own so any other place that creates an estate asks for
+ * Used by the create-and-lend path of a project's hosts list, and kept a
+ * component of its own so any other place that creates a host asks for
  * the same thing: the same discriminated body to the same service.
  *
- * ⚠️ `bay` is selected by default, which is what keeps `estates.spec.ts` (it
+ * ⚠️ `bay` is selected by default, which is what keeps `hosts.spec.ts` (it
  * fills the slug and submits, nothing else) and the Bay install guide
  * working unchanged.
  *
@@ -51,22 +48,22 @@ export interface EstateCreateFieldsProps {
  * existed floated under its input with nothing tying the two together.
  *
  * ⚠️ **The form is the draft's mirror, not its owner.** The two dialogs hold
- * an `EstateCreateDraft` and derive submit-ability and the request body from
- * it (`estateDraftValid`, `estateDraftBody`), and they reset it on close. So
+ * an `HostCreateDraft` and derive submit-ability and the request body from
+ * it (`hostDraftValid`, `hostDraftBody`), and they reset it on close. So
  * `initialValues` is seeded ONCE, from a `useState` initialiser rather than
  * from `props.draft` directly: seeded from the prop it would re-seed on
  * every keystroke, because the parent's draft changes on every keystroke.
  * Both dialogs unmount their content when they close, which is what puts a
  * fresh empty form behind the next open.
  */
-const EstateCreateFields = (props: EstateCreateFieldsProps) => {
+const HostCreateFields = (props: HostCreateFieldsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const draft = props.draft;
 
-  const normalized = estateDraftSlug(draft);
+  const normalized = hostDraftSlug(draft);
   // Only once something has been typed: an empty field is not yet a mistake.
   const slugError =
-    normalized.length > 0 && !ESTATE_SLUG_PATTERN.test(normalized);
+    normalized.length > 0 && !HOST_SLUG_PATTERN.test(normalized);
   const errorFor = (field: "accountId" | "token") =>
     props.error?.field === field ? props.error.message : undefined;
 
@@ -74,7 +71,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
   const [initialValues] = useState(() => ({ ...props.draft }));
 
   const form = useForm({
-    schema: estateCreateFormSchema,
+    schema: hostCreateFormSchema,
     initialValues,
     // The dialogs own the submit button, and the request body is built from
     // the draft rather than from these values, so the form's own handler is
@@ -98,22 +95,22 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
       <Control
         segmented
         input={form.input.type}
-        label={tr("estates.type.label")}
+        label={tr("hosts.type.label")}
         description={
           draft.type === "bay"
-            ? tr("estates.type.bay.description")
-            : tr("estates.type.cloudflare.description")
+            ? tr("hosts.type.bay.description")
+            : tr("hosts.type.cloudflare.description")
         }
         disabled={props.busy}
         items={[
           {
             value: "bay",
-            label: tr("estates.type.bay"),
+            label: tr("hosts.type.bay"),
             icon: <Server className="size-3.5" />,
           },
           {
             value: "cloudflare",
-            label: tr("estates.type.cloudflare"),
+            label: tr("hosts.type.cloudflare"),
             icon: <Cloud className="size-3.5" />,
           },
         ]}
@@ -121,17 +118,17 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
 
       <Control
         input={form.input.slug}
-        label={tr("estates.add.slug")}
+        label={tr("hosts.add.slug")}
         // The answer to "what is ovh-1": the reader's own name for it,
         // nothing Cloudflare or the machine hands them.
         description={
-          slugError ? tr("estates.add.invalid") : tr("estates.add.slug.hint")
+          slugError ? tr("hosts.add.invalid") : tr("hosts.add.slug.hint")
         }
         icon={Tag}
-        placeholder={tr("estates.add.slugPlaceholder")}
+        placeholder={tr("hosts.add.slugPlaceholder")}
         disabled={props.busy}
         inputProps={{
-          "data-testid": "estate-create-slug",
+          "data-testid": "host-create-slug",
           "aria-invalid": slugError || undefined,
         }}
       />
@@ -141,20 +138,20 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
           <div className="flex flex-col gap-1">
             <Control
               input={form.input.accountId}
-              label={tr("estates.cloudflare.accountId")}
+              label={tr("hosts.cloudflare.accountId")}
               // The hint used to float under the field with nothing tying
               // the two together; a Control puts it where it belongs.
-              description={tr("estates.cloudflare.accountId.hint")}
+              description={tr("hosts.cloudflare.accountId.hint")}
               icon={Fingerprint}
-              placeholder={tr("estates.cloudflare.accountId.placeholder")}
+              placeholder={tr("hosts.cloudflare.accountId.placeholder")}
               disabled={props.busy}
               // Not clearable: an optional text field grows a clear button,
               // and this one is required the moment Cloudflare is picked -
-              // it is optional in the SCHEMA only because a bay estate has
+              // it is optional in the SCHEMA only because a bay host has
               // no such field at all.
               clearable={false}
               inputProps={{
-                "data-testid": "estate-create-account",
+                "data-testid": "host-create-account",
                 "aria-invalid": Boolean(errorFor("accountId")) || undefined,
               }}
             />
@@ -166,7 +163,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
             {errorFor("accountId") && (
               <span
                 className="text-danger-text text-xs"
-                data-testid="estate-create-account-error"
+                data-testid="host-create-account-error"
               >
                 {errorFor("accountId")}
               </span>
@@ -177,9 +174,9 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
             <Control
               password
               input={form.input.token}
-              label={tr("estates.cloudflare.token")}
+              label={tr("hosts.cloudflare.token")}
               icon={KeyRound}
-              placeholder={tr("estates.cloudflare.token.placeholder")}
+              placeholder={tr("hosts.cloudflare.token.placeholder")}
               disabled={props.busy}
               clearable={false}
               // ⚠️ The second half of the protection this file documents,
@@ -190,7 +187,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
               // masking exists to avoid.
               autoComplete="off"
               inputProps={{
-                "data-testid": "estate-create-token",
+                "data-testid": "host-create-token",
                 "aria-invalid": Boolean(errorFor("token")) || undefined,
               }}
             />
@@ -198,7 +195,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
             {errorFor("token") && (
               <span
                 className="text-danger-text text-xs"
-                data-testid="estate-create-token-error"
+                data-testid="host-create-token-error"
               >
                 {errorFor("token")}
               </span>
@@ -212,9 +209,9 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
                 <OutboundLink
                   href={cloudflareTokenTemplateUrl()}
                   className="underline underline-offset-4"
-                  data-testid="estate-create-mint"
+                  data-testid="host-create-mint"
                 >
-                  {tr("estates.cloudflare.mint")}
+                  {tr("hosts.cloudflare.mint")}
                 </OutboundLink>
                 {/* The guide is the onboarding, not a footnote: which
                     template to start from, and the two permissions it
@@ -225,9 +222,9 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
                   // 404'd (feedback #P2142).
                   href={loreDocsUrl("apps-cloudflare-token")}
                   className="underline underline-offset-4"
-                  data-testid="estate-create-guide"
+                  data-testid="host-create-guide"
                 >
-                  {tr("estates.cloudflare.guide")}
+                  {tr("hosts.cloudflare.guide")}
                 </OutboundLink>
               </span>
               {/* ⚠️ Said out loud because the link is NOT scoped:
@@ -235,7 +232,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
                   account id narrows the form has not been tested against a
                   live dashboard. Claiming a scope we have not verified
                   would be worse than the tedium being removed. */}
-              <span>{tr("estates.cloudflare.mint.scope")}</span>
+              <span>{tr("hosts.cloudflare.mint.scope")}</span>
             </span>
           </div>
         </>
@@ -244,7 +241,7 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
       {props.error && !props.error.field && (
         <span
           className="text-danger-text text-xs"
-          data-testid="estate-create-error"
+          data-testid="host-create-error"
         >
           {props.error.message}
         </span>
@@ -253,4 +250,4 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
   );
 };
 
-export default EstateCreateFields;
+export default HostCreateFields;

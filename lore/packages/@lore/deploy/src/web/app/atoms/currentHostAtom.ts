@@ -1,9 +1,9 @@
 import { $atom } from "alepha";
 
-import { ownedEstateResourceSchema } from "../../../api/schemas/ownedEstateResourceSchema.ts";
+import { ownedHostResourceSchema } from "../../../api/schemas/ownedHostResourceSchema.ts";
 
 /**
- * The estate whose console is open, set by the `/:projectSlug/estates/:estateSlug` loader and
+ * The host whose console is open, set by the `/:projectSlug/hosts/:hostSlug` loader and
  * cleared on the way out.
  *
  * An atom rather than loader props because the shell renders the header and
@@ -14,7 +14,7 @@ import { ownedEstateResourceSchema } from "../../../api/schemas/ownedEstateResou
  * The OWNED shape, because the Settings tab detaches the loans it carries and
  * the route is owner-gated anyway.
  */
-export const currentEstateAtom = $atom({
-  name: "lor.bay.estate",
-  schema: ownedEstateResourceSchema.optional(),
+export const currentHostAtom = $atom({
+  name: "lor.bay.host",
+  schema: ownedHostResourceSchema.optional(),
 });

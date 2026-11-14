@@ -22,7 +22,7 @@ export interface AppDeployPickDialogProps {
   projectId: number;
   instance: AppInstanceResource;
   /**
-   * The runtimes this copy's estate runs, from `acceptedRuntimes`, the module
+   * The runtimes this copy's host runs, from `acceptedRuntimes`, the module
    * the server's gate reads too.
    */
   runnable: string[];
@@ -40,15 +40,15 @@ export interface AppDeployPickDialogProps {
  * ## ⚠️ The runtime refusal happens HERE, before the call
  *
  * `artifacts` is unique on `(projectId, app, tag, runtime, format)` and an
- * estate accepts one runtime and no image at all, so a tag with no ARCHIVE
- * variant this estate can run is a deploy that fails at the gate. The button
+ * host accepts one runtime and no image at all, so a tag with no ARCHIVE
+ * variant this host can run is a deploy that fails at the gate. The button
  * is disabled with the reason on it rather than enabled into a refusal - the
  * server still refuses (#1598, and `DeployService.queue` for the format half),
  * and this is the affordance, not the boundary.
  *
- * ## ⚠️ There is no estate picker, and there must not be one
+ * ## ⚠️ There is no host picker, and there must not be one
  *
- * The estate is a property of the copy, chosen on its Settings tab and
+ * The host is a property of the copy, chosen on its Settings tab and
  * resolved server-side (#1205). Only a tag goes on the wire.
  */
 const AppDeployPickDialog = (props: AppDeployPickDialogProps) => {
@@ -69,7 +69,7 @@ const AppDeployPickDialog = (props: AppDeployPickDialogProps) => {
             projectId: props.projectId,
             instanceId: props.instance.id,
           },
-          // ⚠️ A tag and nothing else. No estate on the wire, ever.
+          // ⚠️ A tag and nothing else. No host on the wire, ever.
           body: { tag: group.tag },
         });
         toaster.success(tr("app.deploy.started", { args: [group.tag] }));
@@ -101,7 +101,7 @@ const AppDeployPickDialog = (props: AppDeployPickDialogProps) => {
               // image is `node` - so a tag whose only node variant is an
               // image would light this button up and the server would refuse
               // the click. And every slice, not the primary (#Q2462): a
-              // `node,workerd` archive is deployable to a Cloudflare estate.
+              // `node,workerd` archive is deployable to a Cloudflare host.
               const usable = group.variants.some(
                 (variant) =>
                   variant.format === "archive" &&

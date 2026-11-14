@@ -59,7 +59,7 @@ const AppDashboard = () => {
   // Capabilities card has nothing to render and the identity card's token and
   // last-report rows are blank. It is also the normal state right after
   // creation, and where you land - the first impression of the whole feature.
-  const bare = !instance.sigil && !instance.url && !instance.estateId;
+  const bare = !instance.sigil && !instance.url && !instance.hostId;
 
   return (
     <div className="flex flex-col gap-4 p-4">

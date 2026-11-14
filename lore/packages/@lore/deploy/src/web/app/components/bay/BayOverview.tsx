@@ -5,7 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import { EstateCost } from "../../../../api/schemas/EstateCost.ts";
+import { HostCost } from "../../../../api/schemas/HostCost.ts";
 import BayStacks from "./BayStacks.tsx";
 import BayStatsChart from "./BayStatsChart.client.tsx";
 import BayUsageBar from "./BayUsageBar.tsx";
@@ -17,11 +17,11 @@ import { useBayInventory } from "./useBayInventory.ts";
  * ⚠️ **Liveness and freshness are two different claims**, and the page states
  * them separately. A machine can be connected while its last inventory is
  * half an hour old, and a console that conflates the two lies during exactly
- * the outage it exists for. "Online" comes from the estate row's stamps;
+ * the outage it exists for. "Online" comes from the host row's stamps;
  * "reported N ago" comes from the inventory's `reportedAt`, Lore's clock.
  *
- * ⚠️ **The CPU figure is the estate row's gauge, never the series.** Every
- * measure in `estate_stats` comes back as a sample-corrected sum, and "CPU
+ * ⚠️ **The CPU figure is the host row's gauge, never the series.** Every
+ * measure in `host_stats` comes back as a sample-corrected sum, and "CPU
  * right now" is not a sum.
  *
  * ⚠️ **Three legitimately empty states**, each with its own sentence, because
@@ -33,14 +33,14 @@ import { useBayInventory } from "./useBayInventory.ts";
 const BayOverview = () => {
   const { tr, l } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
-  const { estate, data } = useBayInventory();
+  const { host, data } = useBayInventory();
 
-  if (!estate) {
+  if (!host) {
     return null;
   }
   const inventory = data?.inventory ?? undefined;
-  const host = inventory?.host;
-  const spent = EstateCost.soFar(estate, dt.nowMillis());
+  const machine = inventory?.machine;
+  const spent = HostCost.soFar(host, dt.nowMillis());
 
   return (
     <AccountPage variant="form" className="max-w-5xl gap-4">
@@ -56,7 +56,7 @@ const BayOverview = () => {
                 ? tr("bay.overview.reported", {
                     args: [l(inventory.reportedAt, { date: "fromNow" })],
                   })
-                : estate.connectedAt
+                : host.connectedAt
                   ? tr("bay.overview.noReportYet")
                   : tr("bay.overview.neverConnected")}
             </span>
@@ -65,13 +65,13 @@ const BayOverview = () => {
           <div className="grid gap-4 sm:grid-cols-2">
             <BayUsageBar
               label={tr("bay.overview.memory")}
-              usedBytes={host?.memUsedBytes}
-              totalBytes={host?.memTotalBytes}
+              usedBytes={machine?.memUsedBytes}
+              totalBytes={machine?.memTotalBytes}
             />
             <BayUsageBar
               label={tr("bay.overview.disk")}
-              usedBytes={host?.diskUsedBytes}
-              totalBytes={host?.diskTotalBytes}
+              usedBytes={machine?.diskUsedBytes}
+              totalBytes={machine?.diskTotalBytes}
             />
           </div>
 
@@ -81,31 +81,35 @@ const BayOverview = () => {
               // The row's live gauge, always written on a stats push, and
               // exact. Absent until the first push lands.
               value={
-                estate.cpuPercent === undefined
+                host.cpuPercent === undefined
                   ? undefined
-                  : `${Math.round(estate.cpuPercent)}%`
+                  : `${Math.round(host.cpuPercent)}%`
               }
               empty={tr("bay.overview.notReported")}
             />
             <Fact
               label={tr("bay.overview.cores")}
-              value={host?.cores === undefined ? undefined : String(host.cores)}
+              value={
+                machine?.cores === undefined ? undefined : String(machine.cores)
+              }
               empty={tr("bay.overview.notReported")}
             />
             <Fact
               label={tr("bay.overview.load")}
-              value={host?.load1 === undefined ? undefined : String(host.load1)}
+              value={
+                machine?.load1 === undefined ? undefined : String(machine.load1)
+              }
               empty={tr("bay.overview.notReported")}
             />
             <Fact
               label={tr("bay.overview.uptime")}
               value={
-                host?.uptimeSeconds === undefined
+                machine?.uptimeSeconds === undefined
                   ? undefined
                   : l(
                       dt
                         .of(dt.nowISOString())
-                        .subtract(host.uptimeSeconds, "seconds")
+                        .subtract(machine.uptimeSeconds, "seconds")
                         .toISOString(),
                       { date: "fromNow" },
                     )
@@ -120,8 +124,8 @@ const BayOverview = () => {
         <BayStacks stacks={inventory.stacks} />
       ) : null}
 
-      {estate.providerServerId ? (
-        // A server lore estate provision bought (#Q3168): what it is and
+      {host.providerServerId ? (
+        // A server lore host provision bought (#Q3168): what it is and
         // what it has cost, so a forgotten one is visible.
         <Card data-testid="bay-overview-server">
           <CardContent className="flex flex-col gap-3">
@@ -131,17 +135,17 @@ const BayOverview = () => {
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
               <Fact
                 label={tr("bay.overview.provider")}
-                value={estate.provider}
+                value={host.provider}
                 empty=""
               />
               <Fact
                 label={tr("bay.overview.serverId")}
-                value={estate.providerServerId}
+                value={host.providerServerId}
                 empty=""
               />
               <Fact
                 label={tr("bay.overview.serverType")}
-                value={[estate.providerServerType, estate.providerZone]
+                value={[host.providerServerType, host.providerZone]
                   .filter(Boolean)
                   .join(", ")}
                 empty=""
@@ -149,10 +153,10 @@ const BayOverview = () => {
               <Fact
                 label={tr("bay.overview.hourlyPrice")}
                 value={
-                  estate.hourlyPrice === undefined
+                  host.hourlyPrice === undefined
                     ? undefined
                     : tr("bay.overview.hourlyPriceValue", {
-                        args: [estate.hourlyPrice.toFixed(4)],
+                        args: [host.hourlyPrice.toFixed(4)],
                       })
                 }
                 empty={tr("bay.overview.notReported")}
@@ -171,7 +175,7 @@ const BayOverview = () => {
             </dl>
             <p className="text-muted-foreground text-xs">
               {tr("bay.overview.serverNote", {
-                args: [estate.provider ?? "", estate.slug],
+                args: [host.provider ?? "", host.slug],
               })}
             </p>
           </CardContent>
@@ -187,32 +191,32 @@ const BayOverview = () => {
             <Fact
               label={tr("bay.overview.state")}
               value={String(
-                estate.online ? tr("estates.online") : tr("estates.offline"),
+                host.online ? tr("hosts.online") : tr("hosts.offline"),
               )}
               empty=""
             />
             <Fact
               label={tr("bay.overview.lastSeen")}
               value={
-                estate.lastSeenAt
-                  ? l(estate.lastSeenAt, { date: "lll" })
+                host.lastSeenAt
+                  ? l(host.lastSeenAt, { date: "lll" })
                   : undefined
               }
-              empty={tr("estates.neverSeen")}
+              empty={tr("hosts.neverSeen")}
             />
             <Fact
               label={tr("bay.overview.connectedSince")}
               value={
-                estate.connectedAt
-                  ? l(estate.connectedAt, { date: "lll" })
+                host.connectedAt
+                  ? l(host.connectedAt, { date: "lll" })
                   : undefined
               }
-              empty={tr("estates.neverSeen")}
+              empty={tr("hosts.neverSeen")}
             />
             <Fact
               label={tr("bay.overview.interval")}
               value={tr("bay.overview.intervalValue", {
-                args: [String(estate.statsIntervalSeconds)],
+                args: [String(host.statsIntervalSeconds)],
               })}
               empty=""
             />

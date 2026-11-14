@@ -16,7 +16,7 @@ export interface StackRevisionUploadFormProps {
 /**
  * Uploads a revision: a compose file, or a tar.gz bundle holding one and the
  * files it references. Refused with every reason when it cannot run on the
- * stack's estates; the toaster at the root says why.
+ * stack's hosts; the toaster at the root says why.
  */
 const StackRevisionUploadForm = (props: StackRevisionUploadFormProps) => {
   const { tr } = useI18n<I18n, "en">();

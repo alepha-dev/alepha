@@ -88,7 +88,7 @@ const AppSettingsUrl = () => {
   }
 
   const canManage = can("app:manage");
-  const detected = instance.sigil?.lastSeenHost;
+  const detected = instance.sigil?.lastSeenHostname;
   const changed = draft.trim() !== (instance.url ?? "");
 
   return (

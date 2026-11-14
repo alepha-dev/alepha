@@ -11,14 +11,14 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
-import type { EstateController } from "../../../../api/controllers/EstateController.ts";
-import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
+import type { HostController } from "../../../../api/controllers/HostController.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 
 /**
  * CPU and memory over the last thirty days, one point per day.
  *
  * ⚠️ **The series is off by default.** `collectSeries` starts false, so most
- * estates have no history at all, and an empty grid would read as "this
+ * hosts have no history at all, and an empty grid would read as "this
  * machine did nothing" rather than "nobody is recording". The empty state
  * says which, and links to the switch.
  *
@@ -28,33 +28,33 @@ import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
  * ⚠️ **`estimated` is surfaced, not swallowed.** On Analytics Engine a window
  * is sampled and the numbers are scaled back up; a chart that hides that gets
  * trusted more than it deserves. The division by `samples` stays in
- * `EstateStatsService`, which is why that service exists.
+ * `HostStatsService`, which is why that service exists.
  */
 const BayStatsChart = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
-  const estateApi = useClient<EstateController>();
-  const [estate] = useStore(currentEstateAtom);
+  const hostApi = useClient<HostController>();
+  const [host] = useStore(currentHostAtom);
 
   const { data } = useQuery(
     {
-      enabled: Boolean(estate),
-      key: ["bay-stats", estate?.id],
+      enabled: Boolean(host),
+      key: ["bay-stats", host?.id],
       keepPreviousData: true,
       handler: async () => {
-        if (!estate) {
+        if (!host) {
           return undefined;
         }
-        return await estateApi.getEstateStats({
-          params: { estateId: estate.id },
+        return await hostApi.getHostStats({
+          params: { hostId: host.id },
           query: {},
         });
       },
     },
-    [estate?.id],
+    [host?.id],
   );
 
-  if (!estate) {
+  if (!host) {
     return null;
   }
 
@@ -90,8 +90,8 @@ const BayStatsChart = () => {
               className="text-sm underline-offset-4 hover:underline"
               href={router.path("baySettings", {
                 params: {
-                  projectSlug: estate.project?.slug ?? "",
-                  estateSlug: estate.slug,
+                  projectSlug: host.project?.slug ?? "",
+                  hostSlug: host.slug,
                 },
               })}
             >

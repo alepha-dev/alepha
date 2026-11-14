@@ -1,5 +1,5 @@
 import { DialogProvider } from "@alepha/ui";
-import type { AdminEstateResource } from "@lore/deploy/schemas";
+import type { AdminHostResource } from "@lore/deploy/schemas";
 import {
   cleanup,
   fireEvent,
@@ -17,15 +17,15 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
-import AdminEstateAssignDialog from "./AdminEstateAssignDialog.tsx";
-import { AdminEstates } from "./AdminEstates.tsx";
+import AdminHostAssignDialog from "./AdminHostAssignDialog.tsx";
+import { AdminHosts } from "./AdminHosts.tsx";
 
 /**
- * Answers the admin's estate and project lists, and records what was asked.
+ * Answers the admin's host and project lists, and records what was asked.
  */
 class AdminLinks extends LinkProvider {
   public calls: Array<{ action: string; request: unknown }> = [];
-  public rows: AdminEstateResource[] = [];
+  public rows: AdminHostResource[] = [];
 
   override client(): any {
     return new Proxy(
@@ -35,7 +35,7 @@ class AdminLinks extends LinkProvider {
           Object.assign(
             async (request: unknown) => {
               this.calls.push({ action, request });
-              if (action === "findEstates") {
+              if (action === "findHosts") {
                 return {
                   content: this.rows,
                   page: {
@@ -54,7 +54,7 @@ class AdminLinks extends LinkProvider {
                   page: { number: 0, size: 100, totalElements: 2 },
                 };
               }
-              if (action === "assignEstate") {
+              if (action === "assignHost") {
                 return { project: { id: 9, title: "Shop" }, loans: [] };
               }
               return {};
@@ -66,7 +66,7 @@ class AdminLinks extends LinkProvider {
   }
 }
 
-const HOMELESS: AdminEstateResource = {
+const HOMELESS: AdminHostResource = {
   id: "00000000-0000-4000-8000-0000000000e1",
   slug: "loose",
   type: "bay",
@@ -81,11 +81,11 @@ const HOMELESS: AdminEstateResource = {
 };
 
 /**
- * The admin's estates page (#Q3281): where an estate the migration could not
+ * The admin's hosts page (#Q3281): where a host the migration could not
  * home gets one. Its row says it has no home, who created it and where it is
  * lent, and the assign dialog offers the project of its oldest loan first.
  */
-describe("AdminEstates", () => {
+describe("AdminHosts", () => {
   beforeAll(() => {
     setupJsdomMocks();
   });
@@ -110,7 +110,7 @@ describe("AdminEstates", () => {
     return alepha.inject(LinkProvider) as AdminLinks;
   };
 
-  it("names a homeless estate's creator and its loans, and says it has no home", async ({
+  it("names a homeless host's creator and its loans, and says it has no home", async ({
     expect,
   }) => {
     const links = await boot();
@@ -118,7 +118,7 @@ describe("AdminEstates", () => {
     render(
       <AlephaContext.Provider value={alepha!}>
         <DialogProvider>
-          <AdminEstates />
+          <AdminHosts />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
@@ -129,12 +129,12 @@ describe("AdminEstates", () => {
     expect(screen.getByText("Shop, Blog")).toBeTruthy();
   });
 
-  it("asks the server for the estates with no home when the filter says so", async ({
+  it("asks the server for the hosts with no home when the filter says so", async ({
     expect,
   }) => {
     // The filter as the table restores it: chosen once, persisted.
     window.localStorage.setItem(
-      "lore.admin.estates.filters",
+      "lore.admin.hosts.filters",
       JSON.stringify({ home: ["none"] }),
     );
     const links = await boot();
@@ -142,17 +142,17 @@ describe("AdminEstates", () => {
     render(
       <AlephaContext.Provider value={alepha!}>
         <DialogProvider>
-          <AdminEstates />
+          <AdminHosts />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
 
     await waitFor(() => expect(screen.getByText("loose")).toBeTruthy());
-    const fetched = links.calls.filter((it) => it.action === "findEstates");
+    const fetched = links.calls.filter((it) => it.action === "findHosts");
     expect(
       (fetched.at(-1)!.request as { query: Record<string, unknown> }).query,
     ).toMatchObject({ homeless: true });
-    window.localStorage.removeItem("lore.admin.estates.filters");
+    window.localStorage.removeItem("lore.admin.hosts.filters");
   });
 
   it("preselects the project of the oldest loan, and assigns there", async ({
@@ -162,8 +162,8 @@ describe("AdminEstates", () => {
     let assigned = false;
     render(
       <AlephaContext.Provider value={alepha!}>
-        <AdminEstateAssignDialog
-          estate={HOMELESS}
+        <AdminHostAssignDialog
+          host={HOMELESS}
           onOpenChange={() => {}}
           onAssigned={() => {
             assigned = true;
@@ -172,13 +172,13 @@ describe("AdminEstates", () => {
       </AlephaContext.Provider>,
     );
 
-    const submit = await screen.findByTestId("admin-estate-assign-submit");
+    const submit = await screen.findByTestId("admin-host-assign-submit");
     await waitFor(() =>
       expect((submit as HTMLButtonElement).disabled).toBe(false),
     );
     fireEvent.click(submit);
     await waitFor(() => expect(assigned).toBe(true));
-    const call = links.calls.find((it) => it.action === "assignEstate");
+    const call = links.calls.find((it) => it.action === "assignHost");
     expect(call?.request).toEqual({
       params: { id: HOMELESS.id },
       body: { projectId: 9 },

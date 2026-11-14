@@ -18,7 +18,7 @@ import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
  * ## Two gates, one above the other
  *
  * The project's `apps.deploy` option decides whether this project has the
- * surface at all; the copy's own estate decides whether THIS copy has anywhere
+ * surface at all; the copy's own host decides whether THIS copy has anywhere
  * to send anything. Both tabs need both, and each half is asserted on its own
  * so a pass cannot come from the other one.
  *
@@ -56,14 +56,14 @@ const createInstance = async (
 };
 
 /**
- * Create an estate and lend it to this project in one call, then point the
+ * Create a host and lend it to this project in one call, then point the
  * copy at it.
  *
- * A `bay` estate because it takes nothing but a slug: a cloudflare one needs an
+ * A `bay` host because it takes nothing but a slug: a cloudflare one needs an
  * account id and an API token, and what is under test is the tab appearing,
- * which only reads `estateId`.
+ * which only reads `hostId`.
  */
-const giveAnEstate = async (
+const giveAnHost = async (
   page: Page,
   projectId: number,
   app: string,
@@ -72,14 +72,14 @@ const giveAnEstate = async (
 ): Promise<void> => {
   const ok = await page.evaluate(
     async ({ projectId, app, env, slug }) => {
-      const created = await fetch(`/api/projects/${projectId}/estates/new`, {
+      const created = await fetch(`/api/projects/${projectId}/hosts/new`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ slug }),
       });
       if (!created.ok) return false;
-      const estate = (await created.json()) as { id: string };
+      const host = (await created.json()) as { id: string };
 
       const linked = await fetch(
         `/api/projects/${projectId}/apps/${app}/${env}`,
@@ -87,7 +87,7 @@ const giveAnEstate = async (
           method: "PATCH",
           credentials: "include",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ estateId: estate.id }),
+          body: JSON.stringify({ hostId: host.id }),
         },
       );
       return linked.ok;
@@ -98,7 +98,7 @@ const giveAnEstate = async (
 };
 
 test.describe("deploying through Lore", () => {
-  test("the deploy switch works, and the tabs it gates need an estate too", async ({
+  test("the deploy switch works, and the tabs it gates need a host too", async ({
     page,
   }) => {
     test.setTimeout(180_000);
@@ -133,7 +133,7 @@ test.describe("deploying through Lore", () => {
       await expect(deploy).toHaveAttribute("aria-checked", "true");
     });
 
-    await test.step("a copy with no estate has neither tab", async () => {
+    await test.step("a copy with no host has neither tab", async () => {
       // The lower gate. The project can deploy; this copy has nowhere to send
       // anything, so there is no history to show and nothing to configure.
       await createInstance(page, projectId, appName, envName);
@@ -156,7 +156,7 @@ test.describe("deploying through Lore", () => {
     });
 
     await test.step("both tabs arrive once the copy has one", async () => {
-      await giveAnEstate(page, projectId, appName, envName, `est-${ts}`);
+      await giveAnHost(page, projectId, appName, envName, `est-${ts}`);
       await page.goto(`/${slug}/apps/${appName}/${envName}`);
       await page.waitForLoadState("networkidle");
 

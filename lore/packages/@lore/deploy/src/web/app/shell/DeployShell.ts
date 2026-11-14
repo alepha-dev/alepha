@@ -1,6 +1,6 @@
 import {
   ROUTES_APP,
-  ROUTES_ESTATE,
+  ROUTES_HOST,
   lazyPart,
   AccountDeletionRegistry,
   ProjectBlockerRegistry,
@@ -19,13 +19,13 @@ import { $inject } from "alepha";
 import { Activity, AppWindow, Bug, Layers, Package } from "lucide-react";
 
 import { currentErrorCountAtom } from "../atoms/currentErrorCountAtom.ts";
-import { currentEstateAtom } from "../atoms/currentEstateAtom.ts";
+import { currentHostAtom } from "../atoms/currentHostAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
-import { useOwnedEstatesDeletionLine } from "../components/account/useOwnedEstatesDeletionLine.ts";
+import { useOwnedHostsDeletionLine } from "../components/account/useOwnedHostsDeletionLine.ts";
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
-import { useHomeEstatesBlocker } from "../components/project/settings/useHomeEstatesBlocker.ts";
+import { useHomeHostsBlocker } from "../components/project/settings/useHomeHostsBlocker.ts";
 import { errorTriagePromptDefault } from "../prompts/errorTriagePrompt.ts";
 
 /**
@@ -152,12 +152,12 @@ export class DeployShell {
         },
         {
           // ⚠️ Under Apps since #Q2565. It used to sit outside the capability
-          // pages so a project lent an estate with no sigils would still see
+          // pages so a project lent a host with no sigils would still see
           // it; that was the `track` option, and this section is listed
           // whenever `apps` is on, whatever `track` says. Deploying needs
           // `apps` anyway.
-          route: "projectSettingsEstates",
-          labelKey: "project.settings.nav.estates",
+          route: "projectSettingsHosts",
+          labelKey: "project.settings.nav.hosts",
         },
       ],
     });
@@ -206,21 +206,21 @@ export class DeployShell {
       },
     });
 
-    // An estate's console ends its trail with the estate (#Q3408): "Project >
-    // Estates > ovh", "Estates" climbing back to the project's estates list.
+    // A host's console ends its trail with the host (#Q3408): "Project >
+    // Hosts > ovh", "Hosts" climbing back to the project's hosts list.
     // The console's tabs stay on its plate, not on this bar. It replaced an
-    // "All estates" link in the plate, which said what the crumb already did.
+    // "All hosts" link in the plate, which said what the crumb already did.
     this.shell.registerCrumb({
       order: 15,
-      reads: [currentEstateAtom],
+      reads: [currentHostAtom],
       crumb: (ctx) => {
-        const estate = ctx.get(currentEstateAtom);
-        return ROUTES_ESTATE.includes(ctx.routeName) && estate
+        const host = ctx.get(currentHostAtom);
+        return ROUTES_HOST.includes(ctx.routeName) && host
           ? {
-              label: estate.slug,
+              label: host.slug,
               href: ctx.path("bayOverview", {
                 projectSlug: ctx.projectSlug,
-                estateSlug: estate.slug,
+                hostSlug: host.slug,
               }),
             }
           : undefined;
@@ -288,17 +288,17 @@ export class DeployShell {
 
     // What deleting an account takes with it from this module.
     this.deletion.register({
-      key: "owned-estates",
+      key: "owned-hosts",
       order: 20,
-      useLine: useOwnedEstatesDeletionLine,
+      useLine: useOwnedHostsDeletionLine,
     });
 
-    // A project that is the home of an estate is not deleted and keeps Apps
+    // A project that is the home of a host is not deleted and keeps Apps
     // (#Q3280); the page says so before the click (#Q3281).
     this.blockers.register({
-      key: "home-estates",
+      key: "home-hosts",
       order: 20,
-      useLine: useHomeEstatesBlocker,
+      useLine: useHomeHostsBlocker,
     });
 
     this.reports.register({

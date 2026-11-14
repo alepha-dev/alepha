@@ -11,7 +11,7 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
-import ProjectSettingsEstatesAddDialog from "./ProjectSettingsEstatesAddDialog.tsx";
+import ProjectSettingsHostsAddDialog from "./ProjectSettingsHostsAddDialog.tsx";
 
 /**
  * Answers the two controllers this dialog talks to, and records what was
@@ -43,7 +43,7 @@ class RecordingLinkProvider extends LinkProvider {
 
 // Through the fixture rather than by hand: `projectResourceSchema` gained a
 // required `capabilities` with epic #36, and the atom validates against it, so
-// a literal built here fails to set at all. Estates are Core - a project with
+// a literal built here fails to set at all. Hosts are Core - a project with
 // no capabilities still has the page - and the default set is every one of
 // them, which is what this dialog would see in practice.
 const aProject = projectFixture({ id: 1, title: "Alepha", slug: "alepha" });
@@ -55,15 +55,15 @@ const CF_TOKEN = `cfut_${"a1B2c3D4e5".repeat(4)}0123abcd`;
 /**
  * The create-and-lend half of the same form.
  *
- * The fields are `EstateCreateFields`'s, so what is pinned here is what only
+ * The fields are `HostCreateFields`'s, so what is pinned here is what only
  * this dialog owns: that the type reaches the ONE call
  * that creates and lends, and that the trust sentence names what is really
  * being granted. A Cloudflare account is not "a machine", and the sentence
  * sits above the button that grants it.
  */
-describe("ProjectSettingsEstatesAddDialog", () => {
+describe("ProjectSettingsHostsAddDialog", () => {
   beforeAll(() => {
-    // `Segmented` measures its own thumb, so the estate type control needs a
+    // `Segmented` measures its own thumb, so the host type control needs a
     // ResizeObserver the moment these fields render (#Q2049).
     setupJsdomMocks();
   });
@@ -90,13 +90,13 @@ describe("ProjectSettingsEstatesAddDialog", () => {
     alepha.store.set(currentProjectAtom, aProject);
 
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
-    links.responses = { listMyEstates: { items: [] }, ...responses };
+    links.responses = { listMyHosts: { items: [] }, ...responses };
 
     return {
       links,
       ...render(
         <AlephaContext.Provider value={alepha}>
-          <ProjectSettingsEstatesAddDialog
+          <ProjectSettingsHostsAddDialog
             open
             onOpenChange={() => {}}
             held={[]}
@@ -107,11 +107,9 @@ describe("ProjectSettingsEstatesAddDialog", () => {
     };
   };
 
-  it("creates and lends a cloudflare estate in one call", async ({
-    expect,
-  }) => {
+  it("creates and lends a cloudflare host in one call", async ({ expect }) => {
     const { links, findByRole, findByTestId, getByTestId } = await show({
-      createProjectEstate: {
+      createProjectHost: {
         id: "00000000-0000-4000-8000-000000000001",
         slug: "cf-1",
         type: "cloudflare",
@@ -126,29 +124,29 @@ describe("ProjectSettingsEstatesAddDialog", () => {
 
     // The owner has nothing to lend, so the dialog is already in "new" mode.
     fireEvent.click(await findByRole("radio", { name: "Cloudflare" }));
-    fireEvent.change(getByTestId("estate-create-slug"), {
+    fireEvent.change(getByTestId("host-create-slug"), {
       target: { value: "cf-1" },
     });
-    fireEvent.change(getByTestId("estate-create-account"), {
+    fireEvent.change(getByTestId("host-create-account"), {
       target: { value: CF_ACCOUNT },
     });
-    fireEvent.change(getByTestId("estate-create-token"), {
+    fireEvent.change(getByTestId("host-create-token"), {
       target: { value: CF_TOKEN },
     });
 
     // The trust sentence names an account, not a machine: what is granted is
     // that account's storage and secrets, and the wording is what somebody
     // reads before clicking.
-    const warning = await findByTestId("estate-add-trust");
+    const warning = await findByTestId("host-add-trust");
     expect(warning.textContent).toContain("Cloudflare account");
     expect(warning.textContent).not.toContain("machine");
 
-    fireEvent.click(getByTestId("estate-add-submit"));
+    fireEvent.click(getByTestId("host-add-submit"));
 
     // One call, carrying the discriminated body: create-and-lend stays a
-    // single step for a cloudflare estate too.
+    // single step for a cloudflare host too.
     await waitFor(() =>
-      expect(links.bodies.createProjectEstate).toEqual({
+      expect(links.bodies.createProjectHost).toEqual({
         type: "cloudflare",
         slug: "cf-1",
         accountId: CF_ACCOUNT,
@@ -157,14 +155,14 @@ describe("ProjectSettingsEstatesAddDialog", () => {
     );
   });
 
-  it("keeps saying machine for a bay estate", async ({ expect }) => {
+  it("keeps saying machine for a bay host", async ({ expect }) => {
     const { findByTestId, getByRole } = await show();
 
-    fireEvent.change(await findByTestId("estate-create-slug"), {
+    fireEvent.change(await findByTestId("host-create-slug"), {
       target: { value: "ovh-1" },
     });
 
-    const warning = await findByTestId("estate-add-trust");
+    const warning = await findByTestId("host-add-trust");
     expect(warning.textContent).toContain("machine");
     // Bay is the default, so no type had to be chosen to get here, which is
     // what keeps the existing e2e passing unchanged.

@@ -2,10 +2,10 @@ import { Badge, Card, CardContent } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
-import type { EstateInventoryStack } from "../../../../api/schemas/estateInventoryStackSchema.ts";
+import type { HostInventoryStack } from "../../../../api/schemas/hostInventoryStackSchema.ts";
 
 export interface BayStacksProps {
-  stacks: EstateInventoryStack[];
+  stacks: HostInventoryStack[];
 }
 
 /**

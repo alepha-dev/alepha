@@ -128,15 +128,15 @@ export const APP_TABS: AppTab[] = [
   // deploys through Lore with telemetry off would otherwise lose them with
   // nothing on screen saying why - the trap `AppTab`'s union was made to close.
   //
-  // Both unlock on the copy having an estate, and for the same reason: an
-  // estate is where a deploy goes and where its variables end up, so a copy
+  // Both unlock on the copy having a host, and for the same reason: an
+  // host is where a deploy goes and where its variables end up, so a copy
   // with nowhere to deploy has neither a history nor anything to configure.
   // Choosing one on the Settings tab is what makes the pair appear.
   {
     route: "appDeploy",
     labelKey: "app.tab.deploy",
     unlockedBy: (instance) =>
-      !!instance.estateId || !!instance.stackEnvironmentId,
+      !!instance.hostId || !!instance.stackEnvironmentId,
     option: "deploy",
   },
   // Beside Deploy, and after it: this configures what a deploy ships.
@@ -144,16 +144,16 @@ export const APP_TABS: AppTab[] = [
     route: "appEnvironment",
     labelKey: "app.tab.environment",
     unlockedBy: (instance) =>
-      !!instance.estateId || !!instance.stackEnvironmentId,
+      !!instance.hostId || !!instance.stackEnvironmentId,
     option: "deploy",
   },
-  // After Environment: what a deploy leaves behind. A Bay estate only:
-  // backups are Bay's, so a Cloudflare estate has none, and a stack
+  // After Environment: what a deploy leaves behind. A Bay host only:
+  // backups are Bay's, so a Cloudflare host has none, and a stack
   // environment has no Bay instance.
   {
     route: "appBackups",
     labelKey: "app.tab.backups",
-    unlockedBy: (instance) => instance.estate?.type === "bay",
+    unlockedBy: (instance) => instance.host?.type === "bay",
     option: "deploy",
   },
   { route: "appSettings", labelKey: "app.tab.settings" },
@@ -168,7 +168,7 @@ export const APP_TABS: AppTab[] = [
  * the project's `apps.deploy` option, since it is a deploy setting.
  */
 export const sigilConfigurable = (instance: AppInstanceResource): boolean =>
-  !!instance.sigil && (!!instance.estateId || !!instance.stackEnvironmentId);
+  !!instance.sigil && (!!instance.hostId || !!instance.stackEnvironmentId);
 
 /**
  * Whether this instance's credential is allowed to collect one kind.

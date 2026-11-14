@@ -9,7 +9,7 @@ import { DeployProjectLoader } from "./app/loaders/DeployProjectLoader.ts";
 import { DeployShell } from "./app/shell/DeployShell.ts";
 
 /**
- * The browser-safe half of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and estates: its pages, atoms and
+ * The browser-safe half of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and hosts: its pages, atoms and
  * dictionaries.
  *
  * Registered by BOTH entries, `main.server.ts` and `main.browser.ts`: the
@@ -46,7 +46,7 @@ export const LoreDeployWeb = $module({
 
 export { ANALYTICS_DIMENSIONS, DeployRouter } from "./app/DeployRouter.ts";
 export { currentErrorCountAtom } from "./app/atoms/currentErrorCountAtom.ts";
-export { currentEstateAtom } from "./app/atoms/currentEstateAtom.ts";
+export { currentHostAtom } from "./app/atoms/currentHostAtom.ts";
 export { currentInstancesAtom } from "./app/atoms/currentInstancesAtom.ts";
 export { DeployShell } from "./app/shell/DeployShell.ts";
 

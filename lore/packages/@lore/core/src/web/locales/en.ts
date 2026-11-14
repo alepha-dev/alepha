@@ -610,9 +610,8 @@ export default {
   "artifact.newCopy.title": "New copy from $1",
   "artifact.newCopy.description":
     "A new copy of $1. The build fixes the app, so only its environment is named here.",
-  "artifact.newCopy.estate": "Estate",
-  "artifact.newCopy.noEstate":
-    "No estate lent to this project can run this build.",
+  "artifact.newCopy.host": "Host",
+  "artifact.newCopy.noHost": "No host lent to this project can run this build.",
   "artifact.newCopy.ephemeral": "Ephemeral",
   "artifact.newCopy.ephemeralHint":
     "Its database and bucket go with it when it is destroyed. This cannot be changed later.",
@@ -1022,7 +1021,7 @@ export default {
     "Delete this area? It has no quests, and this cannot be undone.",
   "project.settings.areas.delete.blocked":
     "This area still holds quests. Merge it into another area instead.",
-  "project.settings.nav.estates": "Estates",
+  "project.settings.nav.hosts": "Hosts",
   "project.reports.nav.team": "Team",
   "reports.team.kpi.wip": "In progress",
   "reports.team.kpi.wip.definition":
@@ -1988,7 +1987,7 @@ export default {
   "apps.table.env": "Env",
   "apps.table.address": "Address",
   "apps.table.lastSeen": "Last seen",
-  "apps.table.estate": "Deploys to",
+  "apps.table.host": "Deploys to",
   "apps.table.created": "Created",
   "app.tab.overview": "Overview",
   "app.tab.analytics": "Analytics",
@@ -2004,7 +2003,7 @@ export default {
   "app.deploy.started": "Deploying $1",
   "app.deploy.pick": "What to ship here",
   "app.deploy.wrongRuntime":
-    "This estate runs $1, and no build of this tag was made for it.",
+    "This host runs $1, and no build of this tag was made for it.",
   "app.deploy.loading": "Loading...",
   "app.deploy.error": "Could not read this copy's deploys.",
   "app.deploy.empty": "Nothing has been deployed here yet.",
@@ -2045,9 +2044,9 @@ export default {
   "app.deploy.table.when": "When",
   "app.deploy.table.error": "Error",
   "app.deploy.rollback.started": "Rolling back",
-  "app.deploy.noEstate.description":
-    "This copy has no estate yet, so there is nowhere to deploy it. Choose one on its Settings tab.",
-  "app.deploy.noEstate.action": "Open Settings",
+  "app.deploy.noHost.description":
+    "This copy has no host yet, so there is nowhere to deploy it. Choose one on its Settings tab.",
+  "app.deploy.noHost.action": "Open Settings",
   "app.tab.environment": "Environment",
   "app.environment": "Variables and secrets",
   "app.environment.description":
@@ -2143,7 +2142,7 @@ export default {
   "app.dashboard.deploysTo": "Deploys to",
   "app.dashboard.resourceName": "Resources",
   "app.dashboard.resourceName.hint":
-    "The name its estate knows it by: its Worker, database and bucket on Cloudflare, its instance on a Bay machine. Set on the first deploy, it stays the same when the project is renamed.",
+    "The name its host knows it by: its Worker, database and bucket on Cloudflare, its instance on a Bay machine. Set on the first deploy, it stays the same when the project is renamed.",
   "app.nextSteps.title": "Next steps",
   "app.nextSteps.description":
     "None of these is required. This copy is already tracked; each step below buys one more thing.",
@@ -2154,9 +2153,9 @@ export default {
   "app.nextSteps.url.title": "Pin an address",
   "app.nextSteps.url.description":
     "Where this copy lives, if it is not going to report one itself.",
-  "app.nextSteps.estate.title": "Choose an estate",
-  "app.nextSteps.estate.description":
-    "Where this copy deploys to, out of the estates lent to this project.",
+  "app.nextSteps.host.title": "Choose a host",
+  "app.nextSteps.host.description":
+    "Where this copy deploys to, out of the hosts lent to this project.",
   "app.dashboard.address": "Address",
   // ⚠️ Read by `AppDashboardIdentity` alone. The Apps table renders an empty
   // cell instead - see the note at its address column for why the two sites
@@ -2221,18 +2220,18 @@ export default {
     "Using $1, the address this copy last reported from. Set a URL here to show a different one, or clear the field to go back to the detected address.",
   "app.settings.url.save": "Save",
   "app.settings.url.saved": "Address saved",
-  "app.settings.estate.title": "Estate",
-  "app.settings.estate.description":
+  "app.settings.host.title": "Host",
+  "app.settings.host.description":
     "Where this copy deploys to. Selecting one is a fact about the copy; deploying through it arrives later.",
-  "app.settings.estate.label": "Deploys to",
-  "app.settings.estate.rowDescription":
-    "Only estates lent to this project are offered.",
-  "app.settings.estate.none": "No estate is lent to this project yet.",
-  "app.settings.estate.manage": "Manage estates",
-  "app.settings.estate.clear": "None",
-  "app.settings.estate.member":
-    "This copy is a member of the stack environment $1: it deploys there, to the estate that environment uses, and only its own service is redeployed. The estate is set on the stack's settings.",
-  "app.settings.estate.saved": "Deploy target saved",
+  "app.settings.host.label": "Deploys to",
+  "app.settings.host.rowDescription":
+    "Only hosts lent to this project are offered.",
+  "app.settings.host.none": "No host is lent to this project yet.",
+  "app.settings.host.manage": "Manage hosts",
+  "app.settings.host.clear": "None",
+  "app.settings.host.member":
+    "This copy is a member of the stack environment $1: it deploys there, to the host that environment uses, and only its own service is redeployed. The host is set on the stack's settings.",
+  "app.settings.host.saved": "Deploy target saved",
   "app.settings.danger": "Danger zone",
   "apps.delete.title": "Delete $1 apps?",
   "apps.delete.confirm": "Delete $1 apps",
@@ -2431,21 +2430,21 @@ export default {
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",
 
-  "estates.table.estate": "Estate",
-  "estates.table.origin": "Origin",
-  "estates.table.status": "Status",
-  "estates.table.deploys": "Deploys",
-  "estates.table.lastSeen": "Last seen",
-  "estates.origin.home": "This project",
-  "estates.origin.all": "All origins",
-  "estates.origin.lent": "Lent",
-  "estates.project.title": "Estates",
-  "estates.project.empty":
-    "No estate yet. Until one is added, this project has nowhere to deploy.",
-  "estates.project.add": "Add an estate",
-  "estates.project.notAllowed": "Your rank does not allow adding an estate.",
-  "estates.project.lentBy": "lent by $1",
-  "estates.project.noHome": "no project",
+  "hosts.table.host": "Host",
+  "hosts.table.origin": "Origin",
+  "hosts.table.status": "Status",
+  "hosts.table.deploys": "Deploys",
+  "hosts.table.lastSeen": "Last seen",
+  "hosts.origin.home": "This project",
+  "hosts.origin.all": "All origins",
+  "hosts.origin.lent": "Lent",
+  "hosts.project.title": "Hosts",
+  "hosts.project.empty":
+    "No host yet. Until one is added, this project has nowhere to deploy.",
+  "hosts.project.add": "Add a host",
+  "hosts.project.notAllowed": "Your rank does not allow adding a host.",
+  "hosts.project.lentBy": "lent by $1",
+  "hosts.project.noHome": "no project",
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Apps",
   "bay.nav.commands": "Commands",
@@ -2481,7 +2480,7 @@ export default {
   "bay.overview.costSoFar": "Spent so far",
   "bay.overview.costSoFarValue": "about €$1 (estimate)",
   "bay.overview.serverNote":
-    "Bought by lore estate provision and billed by $1 until you run lore estate delete $2, which terminates it with its IP and its disk.",
+    "Bought by lore host provision and billed by $1 until you run lore host delete $2, which terminates it with its IP and its disk.",
   "bay.overview.connection": "Connection",
   "bay.overview.state": "State",
   "bay.overview.lastSeen": "Last seen",
@@ -2603,15 +2602,15 @@ export default {
   "bay.settings.provisionedBy":
     "Provisioned by $1, whose cloud account holds the server",
   "bay.settings.readOnly":
-    "You can look at this estate: what runs on it, the commands sent to it, its CPU and memory.",
+    "You can look at this host: what runs on it, the commands sent to it, its CPU and memory.",
   "bay.settings.readOnly.how":
-    "Changing it needs estate:update in $1, moving or deleting it estate:delete. The project's owner grants them with a rank.",
+    "Changing it needs host:update in $1, moving or deleting it host:delete. The project's owner grants them with a rank.",
   "bay.move.action": "Move to another project",
   "bay.move.title": "Move $1 to another project",
   "bay.move.project": "Project",
-  "bay.move.none": "There is no other project you can create an estate in.",
+  "bay.move.none": "There is no other project you can create a host in.",
   "bay.move.taken":
-    "That project already has an estate named $1, and a slug never changes.",
+    "That project already has a host named $1, and a slug never changes.",
   "bay.move.keeps":
     "Its slug, its machine, its secret and its commands stay as they are.",
   "bay.move.loans": "Still lent to: $1",
@@ -2619,122 +2618,121 @@ export default {
   "bay.move.toast": "Moved to $1",
   "bay.move.serverElsewhere":
     "The server it runs on stays in the cloud account of whoever provisioned it, who is not a member of the new project.",
-  "estates.home.notLentHere": "Not lent to this project",
-  "estates.home.lentTo": "lent to $1 other project(s)",
-  "estates.home.lend": "Lend to this project",
-  "estates.blocker.delete":
-    "This project is the home of $1. Move these estates to another project or delete them first: other projects may deploy onto them.",
-  "estates.blocker.apps":
+  "hosts.home.notLentHere": "Not lent to this project",
+  "hosts.home.lentTo": "lent to $1 other project(s)",
+  "hosts.home.lend": "Lend to this project",
+  "hosts.blocker.delete":
+    "This project is the home of $1. Move these hosts to another project or delete them first: other projects may deploy onto them.",
+  "hosts.blocker.apps":
     "Apps stays on while this project is the home of $1: move or delete them first.",
   "bay.settings.loans.col.project": "Project",
   "bay.settings.loans.col.lentAt": "Lent",
-  "estates.online": "online",
-  "estates.provisioned": "$1 $2",
-  "estates.overdue": "overdue",
-  "estates.offline": "offline",
-  "estates.deploys.allowed": "deploys allowed",
-  "estates.deploys.statsOnly": "stats only",
-  "estates.neverSeen": "never connected",
-  "estates.add.title": "Add an estate to $1",
-  "estates.add.description":
-    "Pick one of your own estates, or create a new one here.",
-  "estates.add.existing": "Use one of mine",
-  "estates.add.new": "Create a new one",
-  "estates.add.none": "You have no estate left to lend. Create one instead.",
-  "estates.add.slug": "Name",
-  "estates.add.slug.hint":
+  "hosts.online": "online",
+  "hosts.provisioned": "$1 $2",
+  "hosts.overdue": "overdue",
+  "hosts.offline": "offline",
+  "hosts.deploys.allowed": "deploys allowed",
+  "hosts.deploys.statsOnly": "stats only",
+  "hosts.neverSeen": "never connected",
+  "hosts.add.title": "Add a host to $1",
+  "hosts.add.description":
+    "Pick one of your own hosts, or create a new one here.",
+  "hosts.add.existing": "Use one of mine",
+  "hosts.add.new": "Create a new one",
+  "hosts.add.none": "You have no host left to lend. Create one instead.",
+  "hosts.add.slug": "Name",
+  "hosts.add.slug.hint":
     "Your own name for it, used in URLs and commands. Lowercase letters, digits and hyphens.",
-  "estates.add.slugPlaceholder": "ovh-1",
-  "estates.add.invalid": "Lowercase letters, digits and hyphens, like ovh-1.",
-  "estates.add.trust":
+  "hosts.add.slugPlaceholder": "ovh-1",
+  "hosts.add.invalid": "Lowercase letters, digits and hyphens, like ovh-1.",
+  "hosts.add.trust":
     "Everyone who can deploy in $1 will be able to run code on the machine behind $2, with everything that machine holds. Nothing here undeploys, and you can withdraw the loan at any time.",
-  "estates.type.label": "What kind of estate",
-  "estates.type.bay": "Bay",
-  "estates.type.bay.description":
+  "hosts.type.label": "What kind of host",
+  "hosts.type.bay": "Bay",
+  "hosts.type.bay.description":
     "A VPS running the bay connector. Lore mints a secret, shows it once, and the machine dials in with it.",
-  "estates.type.cloudflare": "Cloudflare",
-  "estates.type.cloudflare.description":
-    "An account Lore deploys Workers to over the API. You paste a token you minted at Cloudflare; Lore checks it before the estate exists.",
-  "estates.cloudflare.accountId": "Cloudflare account id",
-  "estates.cloudflare.accountId.placeholder":
-    "0123456789abcdef0123456789abcdef",
-  "estates.cloudflare.accountId.hint":
+  "hosts.type.cloudflare": "Cloudflare",
+  "hosts.type.cloudflare.description":
+    "An account Lore deploys Workers to over the API. You paste a token you minted at Cloudflare; Lore checks it before the host exists.",
+  "hosts.cloudflare.accountId": "Cloudflare account id",
+  "hosts.cloudflare.accountId.placeholder": "0123456789abcdef0123456789abcdef",
+  "hosts.cloudflare.accountId.hint":
     "32 characters, shown on the right of your Cloudflare dashboard's overview page.",
-  "estates.cloudflare.token": "Cloudflare API token",
-  "estates.cloudflare.token.placeholder": "cfut_… or cfat_…",
-  "estates.cloudflare.guide": "Which token, and which permissions",
-  "estates.cloudflare.mint": "Mint one with the right permissions",
-  "estates.cloudflare.mint.scope":
+  "hosts.cloudflare.token": "Cloudflare API token",
+  "hosts.cloudflare.token.placeholder": "cfut_… or cfat_…",
+  "hosts.cloudflare.guide": "Which token, and which permissions",
+  "hosts.cloudflare.mint": "Mint one with the right permissions",
+  "hosts.cloudflare.mint.scope":
     "The form opens with the six permissions filled in. Narrow Account Resources to the one account before you create it.",
-  "estates.cloudflare.checking": "Checking with Cloudflare…",
-  "estates.cloudflare.accountLabel": "account $1",
-  "estates.credential.valid": "credential valid",
-  "estates.credential.invalid": "credential invalid",
-  "estates.credential.checked": "checked $1",
-  "estates.credential.neverChecked": "never checked",
-  "estates.credential.expires": "expires $1",
-  "estates.credential.replace": "Replace token",
-  "estates.credential.replaced": "Token replaced",
-  "estates.credential.check": "Check again",
-  "estates.credential.checkedNow": "Cloudflare accepted this token",
-  "estates.add.trust.cloudflare":
+  "hosts.cloudflare.checking": "Checking with Cloudflare…",
+  "hosts.cloudflare.accountLabel": "account $1",
+  "hosts.credential.valid": "credential valid",
+  "hosts.credential.invalid": "credential invalid",
+  "hosts.credential.checked": "checked $1",
+  "hosts.credential.neverChecked": "never checked",
+  "hosts.credential.expires": "expires $1",
+  "hosts.credential.replace": "Replace token",
+  "hosts.credential.replaced": "Token replaced",
+  "hosts.credential.check": "Check again",
+  "hosts.credential.checkedNow": "Cloudflare accepted this token",
+  "hosts.add.trust.cloudflare":
     "Everyone who can deploy in $1 will be able to run code in the Cloudflare account behind $2, with that account's storage and secrets bound to it. Nothing here undeploys, and you can withdraw the loan at any time.",
-  "account.estates.tokenPrefix": "token $1…",
-  "estates.add.submit": "Lend it to this project",
-  "estates.add.submitNew": "Create and lend",
-  "estates.detach.action": "Detach",
-  "estates.detach.confirmTitle": "Detach $1 from this project?",
-  "estates.detach.confirmDescription":
+  "account.hosts.tokenPrefix": "token $1…",
+  "hosts.add.submit": "Lend it to this project",
+  "hosts.add.submitNew": "Create and lend",
+  "hosts.detach.action": "Detach",
+  "hosts.detach.confirmTitle": "Detach $1 from this project?",
+  "hosts.detach.confirmDescription":
     "The project can no longer deploy through it. Nothing already deployed is touched: the machine keeps running whatever it runs.",
-  "estates.detach.confirm": "Detach",
-  "account.estates.create.cancel": "Cancel",
-  "estates.secret.description":
+  "hosts.detach.confirm": "Detach",
+  "account.hosts.create.cancel": "Cancel",
+  "hosts.secret.description":
     "This is the only time it is shown. Store it somewhere safe before closing this dialog.",
-  "estates.secret.copied": "Copied",
-  "estates.secret.title":
-    "Your estate's secret. It is shown once: run `bay connector set <lore-url> <secret>` on the machine.",
-  "estates.secret.copy": "Copy secret",
-  "estates.secret.done": "Done",
-  "estates.toast.attached": "Estate lent to this project",
-  "estates.toast.created": "Estate created and lent",
-  "estates.toast.detached": "Estate detached",
-  "estates.toast.copied": "Secret copied",
+  "hosts.secret.copied": "Copied",
+  "hosts.secret.title":
+    "Your host's secret. It is shown once: run `bay connector set <lore-url> <secret>` on the machine.",
+  "hosts.secret.copy": "Copy secret",
+  "hosts.secret.done": "Done",
+  "hosts.toast.attached": "Host lent to this project",
+  "hosts.toast.created": "Host created and lent",
+  "hosts.toast.detached": "Host detached",
+  "hosts.toast.copied": "Secret copied",
 
-  "account.estates.secretPrefix": "secret $1…",
-  "account.estates.gauge": "CPU $1% · memory $2%",
-  "account.estates.gauge.none": "no stats yet",
-  "account.estates.switch.deploys": "Allow deploys",
-  "account.estates.switch.deploys.description":
-    "Off means stats only: no project can deploy through this estate, whatever it was lent.",
-  "account.estates.switch.series": "Keep a history of CPU and memory",
-  "account.estates.switch.series.description":
+  "account.hosts.secretPrefix": "secret $1…",
+  "account.hosts.gauge": "CPU $1% · memory $2%",
+  "account.hosts.gauge.none": "no stats yet",
+  "account.hosts.switch.deploys": "Allow deploys",
+  "account.hosts.switch.deploys.description":
+    "Off means stats only: no project can deploy through this host, whatever it was lent.",
+  "account.hosts.switch.series": "Keep a history of CPU and memory",
+  "account.hosts.switch.series.description":
     "The live gauge above is always kept. This also writes each reading to the series the charts read.",
-  "account.estates.interval": "Stats interval",
-  "account.estates.interval.description":
+  "account.hosts.interval": "Stats interval",
+  "account.hosts.interval.description":
     "How often the machine reports its gauge. Reaches it on its next connect.",
-  "account.estates.interval.minutes": "$1 min",
-  "account.estates.interval.hours": "$1 h",
-  "account.estates.loans.none": "Not lent to any project.",
-  "account.estates.loans.label": "Lent to",
-  "account.estates.detach.confirmTitle": "Withdraw $1 from $2?",
-  "account.estates.rotate": "Rotate secret",
-  "account.estates.rotate.confirmTitle": "Rotate the secret of $1?",
-  "account.estates.rotate.confirmDescription":
+  "account.hosts.interval.minutes": "$1 min",
+  "account.hosts.interval.hours": "$1 h",
+  "account.hosts.loans.none": "Not lent to any project.",
+  "account.hosts.loans.label": "Lent to",
+  "account.hosts.detach.confirmTitle": "Withdraw $1 from $2?",
+  "account.hosts.rotate": "Rotate secret",
+  "account.hosts.rotate.confirmTitle": "Rotate the secret of $1?",
+  "account.hosts.rotate.confirmDescription":
     "The current secret stops working the moment you confirm. The machine is refused on its next dial until you run `bay connector set` with the new one, which is shown once.",
-  "account.estates.rotate.confirm": "Rotate",
-  "account.estates.delete": "Delete",
-  "account.estates.delete.confirmTitle": "Delete $1?",
-  "account.estates.delete.confirmDescription":
+  "account.hosts.rotate.confirm": "Rotate",
+  "account.hosts.delete": "Delete",
+  "account.hosts.delete.confirmTitle": "Delete $1?",
+  "account.hosts.delete.confirmDescription":
     "Nothing is undeployed: the machine keeps running whatever it runs, and Lore only loses the ability to inspect, redeploy or roll back through it. A bay secret is revoked. A cloudflare credential is not revoked at Cloudflare; do that there. Every project it is lent to loses it.",
-  "account.estates.delete.confirmProvisioned":
-    "This estate runs on server $1, which lore estate provision bought on $2. Deleting it here does not terminate that server: it keeps running, and billing. To terminate it with its IP and its disk, run lore estate delete $3 --yes instead.",
-  "account.estates.delete.confirm": "Delete",
-  "account.estates.toast.rotated": "Secret rotated",
-  "account.estates.toast.deleted": "Estate deleted",
-  "account.delete.estates.one":
-    "1 estate that belongs to no project is still tied to your account: it will be deleted with it and its secret revoked; $1 project(s) it is lent to lose their deploy destination.",
-  "account.delete.estates.many":
-    "$1 estates that belong to no project are still tied to your account: they will be deleted with it and their secrets revoked; $2 project(s) they are lent to lose a deploy destination.",
+  "account.hosts.delete.confirmProvisioned":
+    "This host runs on server $1, which lore host provision bought on $2. Deleting it here does not terminate that server: it keeps running, and billing. To terminate it with its IP and its disk, run lore host delete $3 --yes instead.",
+  "account.hosts.delete.confirm": "Delete",
+  "account.hosts.toast.rotated": "Secret rotated",
+  "account.hosts.toast.deleted": "Host deleted",
+  "account.delete.hosts.one":
+    "1 host that belongs to no project is still tied to your account: it will be deleted with it and its secret revoked; $1 project(s) it is lent to lose their deploy destination.",
+  "account.delete.hosts.many":
+    "$1 hosts that belong to no project are still tied to your account: they will be deleted with it and their secrets revoked; $2 project(s) they are lent to lose a deploy destination.",
 
   "feedback.list.showMore": "Show more",
   "feedback.list.loadingMore": "Loading…",
@@ -2803,8 +2801,8 @@ export default {
   "account.notifications.category.uptime": "Healthchecks",
   "account.notifications.category.uptime.description":
     "Confirmed outages and recoveries from your uptime monitors.",
-  "account.notifications.category.estates": "Deploy credentials",
-  "account.notifications.category.estates.description":
+  "account.notifications.category.hosts": "Deploy credentials",
+  "account.notifications.category.hosts.description":
     "A deploy credential you own has stopped working.",
   "inbox.empty.description": "Messages addressed to you show up here.",
   "inbox.noMatch": "No match",
@@ -3551,7 +3549,7 @@ export default {
   // now, and the copy is what `activity.resource.app` names. Two kinds
   // reading "App" in one dropdown told the reader nothing.
   "activity.resource.sigil": "Sigil",
-  "activity.resource.estate": "Estate",
+  "activity.resource.host": "Host",
   "activity.resource.project": "Project",
   "activity.fields": "changed $1",
   "activity.capability.enabled": "turned on $1",
@@ -3620,15 +3618,15 @@ export default {
   "permission.group.quality": "Quality",
   "permission.quality.read": "Read coverage and test totals",
   "permission.quality.push": "Record coverage and test totals",
-  "permission.group.estate": "Estates",
-  "permission.estate.read":
-    "See the project's estates and their consoles, and the estates lent to it",
-  "permission.estate.update":
-    "Change an estate of the project: its switches, secret, token, commands and logs",
-  "permission.estate.lend": "Lend an estate to the project, and take it back",
-  "permission.estate.create": "Add an estate to the project",
-  "permission.estate.delete":
-    "Delete an estate of the project, or move it to another",
+  "permission.group.host": "Hosts",
+  "permission.host.read":
+    "See the project's hosts and their consoles, and the hosts lent to it",
+  "permission.host.update":
+    "Change a host of the project: its switches, secret, token, commands and logs",
+  "permission.host.lend": "Lend a host to the project, and take it back",
+  "permission.host.create": "Add a host to the project",
+  "permission.host.delete":
+    "Delete a host of the project, or move it to another",
   "permission.group.feedback": "Feedback",
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",
@@ -3948,16 +3946,16 @@ export default {
     "Apps and services deployed together from one compose.yml, one copy per environment.",
   "stacks.empty": "No stack yet",
   "stacks.empty.description":
-    "A stack runs a compose file's services and this project's apps together on an estate.",
+    "A stack runs a compose file's services and this project's apps together on a host.",
   "stacks.create": "New stack",
   "stacks.create.description":
     "Its name defaults to the project slug. Upload its compose file once it exists.",
   "stacks.create.name": "Name",
-  "stacks.create.estate": "Default estate",
+  "stacks.create.host": "Default host",
   "stacks.create.submit": "Create",
   "stacks.created": "Stack created",
   "stacks.col.environment": "Environment",
-  "stacks.col.estate": "Estate",
+  "stacks.col.host": "Host",
   "stacks.col.revision": "Revision",
   "stacks.col.members": "Apps",
   "stacks.delete": "Delete stack",
@@ -3971,10 +3969,10 @@ export default {
     "No environment yet: add production, staging, or any name.",
   "stacks.environment.name": "Environment",
   "stacks.environment.runs": "Runs revision $1",
-  "stacks.estate.default": "the stack's default",
-  "stacks.estate.default.line":
-    "Deploys to $1 unless an environment names its own estate.",
-  "stacks.estate.unset": "no estate",
+  "stacks.host.default": "the stack's default",
+  "stacks.host.default.line":
+    "Deploys to $1 unless an environment names its own host.",
+  "stacks.host.unset": "no host",
   "stacks.revision.file": "Compose file or bundle",
   "stacks.revision.latest": "revision $1",
   "stacks.revision.none": "never deployed",
@@ -4033,8 +4031,8 @@ export default {
   "stacks.routes.empty": "No route yet.",
   "stacks.routes.labels": "Labels in the compose file",
   "stacks.routes.labels.base": "Resolved against $1.",
-  "stacks.routes.labels.estate":
-    "Resolved against the estate's default domain until this environment sets a base domain.",
+  "stacks.routes.labels.host":
+    "Resolved against the host's default domain until this environment sets a base domain.",
   "stacks.routes.service": "Service",
   "stacks.routes.domain": "Domain",
   "stacks.routes.add": "Add route",
@@ -4065,22 +4063,21 @@ export default {
   "stacks.volumes.unknown": "not reported yet",
   "stacks.volumes.sizes":
     "Sizes are read on the machine, with bay stack volumes: measuring them is too costly for every report.",
-  "stacks.settings.estate": "Estate",
-  "stacks.settings.estate.description":
-    "Where this stack's environments deploy.",
-  "stacks.settings.estate.stack": "Default for $1",
+  "stacks.settings.host": "Host",
+  "stacks.settings.host.description": "Where this stack's environments deploy.",
+  "stacks.settings.host.stack": "Default for $1",
   "stacks.settings.override": "Override for $1",
   "stacks.settings.override.description":
-    "Run this environment on another estate, a cheaper machine for staging for example.",
+    "Run this environment on another host, a cheaper machine for staging for example.",
   "stacks.settings.baseDomain": "Base domain",
   "stacks.settings.baseDomain.description":
-    "What the compose file's route labels resolve against. Empty uses the estate's default.",
+    "What the compose file's route labels resolve against. Empty uses the host's default.",
   "stacks.settings.save": "Save",
   "stacks.settings.saved": "Saved",
   "stacks.settings.danger": "Danger zone",
   "stacks.settings.delete": "Delete environment",
   "stacks.settings.delete.description":
-    "Forgets the environment, its routes and its variables in Lore. Nothing on the estate is touched.",
+    "Forgets the environment, its routes and its variables in Lore. Nothing on the host is touched.",
   "stacks.settings.delete.confirm": "Delete $1?",
   "stacks.settings.deleted": "Environment deleted",
   "bay.stacks.title": "Stacks",
@@ -4099,7 +4096,7 @@ export default {
     "The machine is offline: what follows is its last report, and nothing can be sent until it reconnects.",
   "backup.notReported":
     "The machine has not reported backups for this copy yet.",
-  "backup.status.noEstate":
+  "backup.status.noHost":
     "This copy is not deployed on a machine, so nothing backs it up.",
   "backup.status.notBay":
     "This copy's machine is not a Bay machine; backups are Bay's.",

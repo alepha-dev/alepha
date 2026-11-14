@@ -17,11 +17,11 @@ import { Link, useRouter } from "alepha/react/router";
 import { FolderKanban, RefreshCw, Trash2, Unlink } from "lucide-react";
 import { useState } from "react";
 
-import type { EstateController } from "../../../../api/controllers/EstateController.ts";
-import type { ProjectEstateController } from "../../../../api/controllers/ProjectEstateController.ts";
-import type { EstateLoan } from "../../../../api/schemas/ownedEstateResourceSchema.ts";
-import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
-import EstateSecretDialog from "../estates/EstateSecretDialog.tsx";
+import type { HostController } from "../../../../api/controllers/HostController.ts";
+import type { ProjectHostController } from "../../../../api/controllers/ProjectHostController.ts";
+import type { HostLoan } from "../../../../api/schemas/ownedHostResourceSchema.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
+import HostSecretDialog from "../hosts/HostSecretDialog.tsx";
 import BayMoveDialog from "./BayMoveDialog.tsx";
 import BaySettingsHome from "./BaySettingsHome.tsx";
 import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
@@ -29,13 +29,13 @@ import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
 /**
  * The switches, the lending and the credential, for one machine.
  *
- * This is `EstateDrawer`'s body for a `bay` estate, on a page of its own.
+ * This is `HostDrawer`'s body for a `bay` host, on a page of its own.
  * The wording moves verbatim rather than being rewritten, because two
  * sentences here are load-bearing and were written to prevent a specific
  * misunderstanding.
  *
  * ⚠️ **A drawer is not a permission boundary, and neither is a page.** Every
- * action here is enforced server-side by the rank of the estate's home
+ * action here is enforced server-side by the rank of the host's home
  * project, and refused to anyone the rank does not let act. Moving the UI changes
  * what is drawn and nothing else; do not let the move quietly become a
  * permission change.
@@ -58,13 +58,13 @@ const BaySettings = () => {
   const toaster = useToast();
   const dialog = useDialog();
   const router = useRouter();
-  const api = useClient<EstateController>();
-  const projectEstateApi = useClient<ProjectEstateController>();
-  const [estate, setEstate] = useStore(currentEstateAtom);
+  const api = useClient<HostController>();
+  const projectHostApi = useClient<ProjectHostController>();
+  const [host, setHost] = useStore(currentHostAtom);
   const [freshSecret, setFreshSecret] = useState<string | undefined>();
   const [moving, setMoving] = useState(false);
 
-  // One `useAction` per write, the way `EstateDrawer` sends the same four
+  // One `useAction` per write, the way `HostDrawer` sends the same four
   // (#E59, #Q2329). A refusal is not caught here: the root
   // `ActionErrorToaster` shows the server's message.
   const updateAction = useAction<
@@ -79,105 +79,101 @@ const BaySettings = () => {
   >(
     {
       handler: async (_ctx, body) => {
-        if (!estate) return;
+        if (!host) return;
         // The row is re-read from the server's answer rather than assumed, so
         // a switch that was refused does not stay flipped on screen.
-        const updated = await api.updateEstate({
-          params: { estateId: estate.id },
+        const updated = await api.updateHost({
+          params: { hostId: host.id },
           body,
         });
         // The loans are not on the update's answer, and they did not change.
-        setEstate({ ...updated, projects: estate.projects });
+        setHost({ ...updated, projects: host.projects });
       },
     },
-    [api, estate],
+    [api, host],
   );
 
   const rotateAction = useAction<[], void>(
     {
       handler: async () => {
-        if (!estate) return;
+        if (!host) return;
         const ok = await dialog.confirm({
-          title: tr("account.estates.rotate.confirmTitle", {
-            args: [estate.slug],
+          title: tr("account.hosts.rotate.confirmTitle", {
+            args: [host.slug],
           }),
-          description: tr("account.estates.rotate.confirmDescription"),
-          confirmLabel: tr("account.estates.rotate.confirm"),
+          description: tr("account.hosts.rotate.confirmDescription"),
+          confirmLabel: tr("account.hosts.rotate.confirm"),
           destructive: true,
         });
         if (!ok) return;
-        const minted = await api.rotateEstate({
-          params: { estateId: estate.id },
+        const minted = await api.rotateHost({
+          params: { hostId: host.id },
         });
         const { secret, ...rotated } = minted;
-        setEstate({ ...rotated, projects: estate.projects });
+        setHost({ ...rotated, projects: host.projects });
         setFreshSecret(secret);
-        toaster.success(tr("account.estates.toast.rotated"));
+        toaster.success(tr("account.hosts.toast.rotated"));
       },
     },
-    [api, estate, dialog, toaster, tr],
+    [api, host, dialog, toaster, tr],
   );
 
   const removeAction = useAction<[], void>(
     {
       handler: async () => {
-        if (!estate) return;
+        if (!host) return;
         const ok = await dialog.confirm({
-          title: tr("account.estates.delete.confirmTitle", {
-            args: [estate.slug],
+          title: tr("account.hosts.delete.confirmTitle", {
+            args: [host.slug],
           }),
           // A provisioned server outlives a delete from the page (#Q3167):
           // Lore holds no provider key, only the CLI can terminate it.
-          description: estate.providerServerId
-            ? tr("account.estates.delete.confirmProvisioned", {
-                args: [
-                  estate.providerServerId,
-                  estate.provider ?? "",
-                  estate.slug,
-                ],
+          description: host.providerServerId
+            ? tr("account.hosts.delete.confirmProvisioned", {
+                args: [host.providerServerId, host.provider ?? "", host.slug],
               })
-            : tr("account.estates.delete.confirmDescription"),
-          confirmLabel: tr("account.estates.delete.confirm"),
+            : tr("account.hosts.delete.confirmDescription"),
+          confirmLabel: tr("account.hosts.delete.confirm"),
           destructive: true,
         });
         if (!ok) return;
-        await api.deleteEstate({ params: { estateId: estate.id } });
-        toaster.success(tr("account.estates.toast.deleted"));
-        // The estate this console is about no longer exists, so the console
+        await api.deleteHost({ params: { hostId: host.id } });
+        toaster.success(tr("account.hosts.toast.deleted"));
+        // The host this console is about no longer exists, so the console
         // cannot stay open over it.
-        await router.push("projectSettingsEstates", {
-          params: { projectSlug: estate.project?.slug ?? "" },
+        await router.push("projectSettingsHosts", {
+          params: { projectSlug: host.project?.slug ?? "" },
         });
       },
     },
-    [api, estate, dialog, router, toaster, tr],
+    [api, host, dialog, router, toaster, tr],
   );
 
   const detachAction = useAction<[loan: { id: number; title: string }], void>(
     {
       handler: async (_ctx, loan) => {
-        if (!estate) return;
+        if (!host) return;
         const ok = await dialog.confirm({
-          title: tr("account.estates.detach.confirmTitle", {
-            args: [estate.slug, loan.title],
+          title: tr("account.hosts.detach.confirmTitle", {
+            args: [host.slug, loan.title],
           }),
-          description: tr("estates.detach.confirmDescription"),
-          confirmLabel: tr("estates.detach.confirm"),
+          description: tr("hosts.detach.confirmDescription"),
+          confirmLabel: tr("hosts.detach.confirm"),
           destructive: true,
         });
         if (!ok) return;
-        await projectEstateApi.detachEstate({
-          params: { projectId: loan.id, estateId: estate.id },
+        await projectHostApi.detachHost({
+          params: { projectId: loan.id, hostId: host.id },
         });
-        toaster.success(tr("estates.toast.detached"));
+        toaster.success(tr("hosts.toast.detached"));
         // The loans live on the owned-list resource, which this page does not
         // hold; the list is where they are read, so it is re-read there.
-        await router.push("projectSettingsEstates", {
-          params: { projectSlug: estate.project?.slug ?? "" },
+        await router.push("projectSettingsHosts", {
+          params: { projectSlug: host.project?.slug ?? "" },
         });
       },
     },
-    [projectEstateApi, estate, dialog, router, toaster, tr],
+    [projectHostApi, host, dialog, router, toaster, tr],
   );
 
   // Page-wide: every control waits while any write runs, since `run()` drops
@@ -188,16 +184,16 @@ const BaySettings = () => {
     removeAction.loading ||
     detachAction.loading;
 
-  if (!estate) {
+  if (!host) {
     return null;
   }
 
   // What the reader's rank in the home project lets them do, as the server
   // computed it (#Q3279). The server is the authority; this decides what to
   // draw.
-  const canUpdate = estate.can.includes("estate:update");
-  const canDelete = estate.can.includes("estate:delete");
-  const canLend = estate.can.includes("estate:lend");
+  const canUpdate = host.can.includes("host:update");
+  const canDelete = host.can.includes("host:delete");
+  const canLend = host.can.includes("host:lend");
   const readOnly = !canUpdate && !canDelete;
 
   const update = updateAction.run;
@@ -208,13 +204,13 @@ const BaySettings = () => {
   return (
     <AccountPage variant="form" className="gap-4">
       <BaySettingsHome
-        estate={estate}
+        host={host}
         busy={busy}
         {...(canDelete ? { onMove: () => setMoving(true) } : {})}
       />
       {readOnly && (
         <BaySettingsReadOnly
-          projectTitle={estate.project?.title ?? tr("estates.project.noHome")}
+          projectTitle={host.project?.title ?? tr("hosts.project.noHome")}
         />
       )}
       {canUpdate && (
@@ -222,55 +218,55 @@ const BaySettings = () => {
           <CardContent className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4 text-sm">
               <span className="flex flex-col gap-0.5">
-                <span>{tr("account.estates.switch.deploys")}</span>
+                <span>{tr("account.hosts.switch.deploys")}</span>
                 <span className="text-muted-foreground text-xs">
-                  {tr("account.estates.switch.deploys.description")}
+                  {tr("account.hosts.switch.deploys.description")}
                 </span>
               </span>
               <Switch
-                checked={estate.deployAllowed}
+                checked={host.deployAllowed}
                 disabled={busy}
                 onCheckedChange={(value) =>
                   void update({ deployAllowed: value })
                 }
-                aria-label={tr("account.estates.switch.deploys")}
+                aria-label={tr("account.hosts.switch.deploys")}
                 data-testid="bay-settings-deploys"
               />
             </div>
 
             <div className="flex items-center justify-between gap-4 text-sm">
               <span className="flex flex-col gap-0.5">
-                <span>{tr("account.estates.switch.series")}</span>
+                <span>{tr("account.hosts.switch.series")}</span>
                 <span className="text-muted-foreground text-xs">
-                  {tr("account.estates.switch.series.description")}
+                  {tr("account.hosts.switch.series.description")}
                 </span>
               </span>
               <Switch
-                checked={estate.collectSeries}
+                checked={host.collectSeries}
                 disabled={busy}
                 onCheckedChange={(value) =>
                   void update({ collectSeries: value })
                 }
-                aria-label={tr("account.estates.switch.series")}
+                aria-label={tr("account.hosts.switch.series")}
                 data-testid="bay-settings-series"
               />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
               <span className="flex flex-col gap-0.5">
-                <span>{tr("account.estates.interval")}</span>
+                <span>{tr("account.hosts.interval")}</span>
                 <span className="text-muted-foreground text-xs">
-                  {tr("account.estates.interval.description")}
+                  {tr("account.hosts.interval.description")}
                 </span>
               </span>
               <Segmented
                 size="sm"
                 className="self-start"
-                value={String(estate.statsIntervalSeconds)}
+                value={String(host.statsIntervalSeconds)}
                 disabled={busy}
                 onChange={(value) => {
                   const seconds = Number(value);
-                  if (estate.statsIntervalSeconds !== seconds) {
+                  if (host.statsIntervalSeconds !== seconds) {
                     void update({ statsIntervalSeconds: seconds });
                   }
                 }}
@@ -278,10 +274,10 @@ const BaySettings = () => {
                   value: String(seconds),
                   label:
                     seconds < 3600
-                      ? tr("account.estates.interval.minutes", {
+                      ? tr("account.hosts.interval.minutes", {
                           args: [String(seconds / 60)],
                         })
-                      : tr("account.estates.interval.hours", {
+                      : tr("account.hosts.interval.hours", {
                           args: [String(seconds / 3600)],
                         }),
                 }))}
@@ -292,25 +288,25 @@ const BaySettings = () => {
       )}
 
       {/*
-        The projects this estate is lent to (#E68). A table rather than rows in
+        The projects this host is lent to (#E68). A table rather than rows in
         a card: the list grows with every project that borrows the machine,
         and each row carries the one verb that ends the loan.
       */}
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">
-          {tr("account.estates.loans.label")}
+          {tr("account.hosts.loans.label")}
         </span>
-        <DataTable<EstateLoan>
-          data={estate.projects}
+        <DataTable<HostLoan>
+          data={host.projects}
           rowKey={(loan) => String(loan.id)}
           // A short list inside a column of cards: no column picker, no
-          // refresh (the rows come with the estate), no page-size picker.
+          // refresh (the rows come with the host), no page-size picker.
           hideColumnPicker
           hideActionsMenu
           pageSizes={[]}
           emptyState={{
             icon: FolderKanban,
-            title: tr("account.estates.loans.none"),
+            title: tr("account.hosts.loans.none"),
           }}
           columns={{
             title: {
@@ -320,7 +316,7 @@ const BaySettings = () => {
                 <span data-testid="bay-settings-loan">
                   {loan.slug ? (
                     <Link
-                      href={router.path("projectSettingsEstates", {
+                      href={router.path("projectSettingsHosts", {
                         params: { projectSlug: loan.slug },
                       })}
                       className="truncate underline-offset-4 hover:underline"
@@ -348,7 +344,7 @@ const BaySettings = () => {
             canLend
               ? [
                   {
-                    label: tr("estates.detach.action"),
+                    label: tr("hosts.detach.action"),
                     icon: Unlink,
                     destructive: true,
                     disabled: () => busy,
@@ -378,7 +374,7 @@ const BaySettings = () => {
                   data-testid="bay-settings-rotate"
                 >
                   <RefreshCw className="size-4" />
-                  {tr("account.estates.rotate")}
+                  {tr("account.hosts.rotate")}
                 </Button>
               )}
               {canDelete && (
@@ -391,7 +387,7 @@ const BaySettings = () => {
                   data-testid="bay-settings-delete"
                 >
                   <Trash2 className="size-4" />
-                  {tr("account.estates.delete")}
+                  {tr("account.hosts.delete")}
                 </Button>
               )}
             </div>
@@ -402,24 +398,24 @@ const BaySettings = () => {
       <BayMoveDialog
         open={moving}
         onOpenChange={setMoving}
-        estate={estate}
-        loans={estate.projects}
+        host={host}
+        loans={host.projects}
         onMoved={(moved) => {
-          setEstate({ ...moved, projects: estate.projects });
+          setHost({ ...moved, projects: host.projects });
           // The console lives under the home project, so it follows the
-          // estate there: the old URL now names a project it left.
+          // host there: the old URL now names a project it left.
           if (moved.project?.slug) {
             void router.push("baySettings", {
               params: {
                 projectSlug: moved.project.slug,
-                estateSlug: moved.slug,
+                hostSlug: moved.slug,
               },
             });
           }
         }}
       />
 
-      <EstateSecretDialog
+      <HostSecretDialog
         secret={freshSecret}
         onDismiss={() => setFreshSecret(undefined)}
       />

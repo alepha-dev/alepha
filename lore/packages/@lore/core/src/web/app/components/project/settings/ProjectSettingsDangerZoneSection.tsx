@@ -124,7 +124,7 @@ const ProjectSettingsDangerZoneSection = () => {
   );
 
   // Clickable whatever blocks it (#Q3410): a blocker refuses in a dialog
-  // that names the estates and what to do, rather than as a line of red
+  // that names the hosts and what to do, rather than as a line of red
   // text and a greyed-out button on the settings page.
   const openDelete = async () => {
     if (blocking.length > 0) {

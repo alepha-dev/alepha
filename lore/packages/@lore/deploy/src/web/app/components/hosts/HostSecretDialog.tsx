@@ -11,7 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Check, Clipboard } from "lucide-react";
 import { useState } from "react";
 
-export interface EstateSecretDialogProps {
+export interface HostSecretDialogProps {
   /**
    * The cleartext secret, or `undefined` when there is nothing to show. Its
    * presence IS the open state: there is no separate flag, because a dialog
@@ -23,11 +23,11 @@ export interface EstateSecretDialogProps {
 }
 
 /**
- * The one moment an estate secret exists in a readable form.
+ * The one moment a host secret exists in a readable form.
  *
  * A dialog rather than a card on the page, and this is the whole of feedback
- * #2109. `estates.secretHash` stores a hash, so dismissing this is final: the
- * only way back is `rotateEstate`, which mints a new secret and invalidates
+ * #2109. `hosts.secretHash` stores a hash, so dismissing this is final: the
+ * only way back is `rotateHost`, which mints a new secret and invalidates
  * the one the machine is already using. A panel at the top of a page that
  * re-renders on every switch below it is a credential that can scroll out of
  * view and be gone.
@@ -40,7 +40,7 @@ export interface EstateSecretDialogProps {
  * create dialog's own submit. Creation and rotation both land here, because
  * both mint.
  */
-const EstateSecretDialog = (props: EstateSecretDialogProps) => {
+const HostSecretDialog = (props: HostSecretDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const [copied, setCopied] = useState(false);
@@ -54,7 +54,7 @@ const EstateSecretDialog = (props: EstateSecretDialogProps) => {
     if (!props.secret) return;
     await navigator.clipboard.writeText(props.secret);
     setCopied(true);
-    toaster.success(tr("estates.toast.copied"));
+    toaster.success(tr("hosts.toast.copied"));
   };
 
   return (
@@ -64,13 +64,13 @@ const EstateSecretDialog = (props: EstateSecretDialogProps) => {
         if (!next) dismiss();
       }}
     >
-      <DialogContent data-testid="my-estate-secret-dialog">
+      <DialogContent data-testid="my-host-secret-dialog">
         <DialogHeader>
-          <DialogTitle>{tr("estates.secret.title")}</DialogTitle>
+          <DialogTitle>{tr("hosts.secret.title")}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <span className="text-muted-foreground text-sm">
-            {tr("estates.secret.description")}
+            {tr("hosts.secret.description")}
           </span>
           <code className="bg-muted rounded-md border p-3 font-mono text-xs break-all">
             {props.secret}
@@ -82,9 +82,9 @@ const EstateSecretDialog = (props: EstateSecretDialogProps) => {
               ) : (
                 <Clipboard className="size-4" />
               )}
-              {copied ? tr("estates.secret.copied") : tr("estates.secret.copy")}
+              {copied ? tr("hosts.secret.copied") : tr("hosts.secret.copy")}
             </Button>
-            <Button onClick={dismiss}>{tr("estates.secret.done")}</Button>
+            <Button onClick={dismiss}>{tr("hosts.secret.done")}</Button>
           </div>
         </div>
       </DialogContent>
@@ -92,4 +92,4 @@ const EstateSecretDialog = (props: EstateSecretDialogProps) => {
   );
 };
 
-export default EstateSecretDialog;
+export default HostSecretDialog;

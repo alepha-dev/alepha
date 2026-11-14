@@ -6,25 +6,25 @@ import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { EstateCommandController } from "../../../../api/controllers/EstateCommandController.ts";
-import type { EstateCommandListItem } from "../../../../api/schemas/estateCommandResourceSchema.ts";
-import { ESTATE_COMMAND_KINDS } from "../../../../api/schemas/estateCommandValues.ts";
-import { ESTATE_COMMAND_STATUSES } from "../../../../api/schemas/estateCommandValues.ts";
-import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
+import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
+import type { HostCommandListItem } from "../../../../api/schemas/hostCommandResourceSchema.ts";
+import { HOST_COMMAND_KINDS } from "../../../../api/schemas/hostCommandValues.ts";
+import { HOST_COMMAND_STATUSES } from "../../../../api/schemas/hostCommandValues.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 
 export interface BayCommandsProps {
   /**
-   * Which estate's queue. Passed by the drawer, which still renders this
-   * while it exists; the page reads the open estate from the atom instead.
+   * Which host's queue. Passed by the drawer, which still renders this
+   * while it exists; the page reads the open host from the atom instead.
    */
-  estateId?: string;
+  hostId?: string;
 }
 
 /**
  * What has been asked of this machine, and what became of it.
  *
  * States are the row's own (`pending`, `sent`, `running`, `done`, `failed`),
- * as `EstateCommandService` records them; nothing here asks a socket.
+ * as `HostCommandService` records them; nothing here asks a socket.
  *
  * ⚠️ **A stuck command has to stay visible, and the three ways it sticks are
  * three different sentences.** The interesting failure is not a rejected
@@ -44,24 +44,24 @@ export interface BayCommandsProps {
 const BayCommands = (props: BayCommandsProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const api = useClient<EstateCommandController>();
-  const [openEstate] = useStore(currentEstateAtom);
-  const estateId = props.estateId ?? openEstate?.id;
+  const api = useClient<HostCommandController>();
+  const [openHost] = useStore(currentHostAtom);
+  const hostId = props.hostId ?? openHost?.id;
 
   const { data } = useQuery(
     {
-      enabled: Boolean(estateId),
-      key: ["bay-commands", estateId],
+      enabled: Boolean(hostId),
+      key: ["bay-commands", hostId],
       keepPreviousData: true,
       handler: async () => {
-        if (!estateId) {
+        if (!hostId) {
           return undefined;
         }
         try {
           // The whole retained history in one read, bounded server-side by
           // the same cap the sweep enforces, so the filters can be in memory.
-          return await api.listEstateCommands({
-            params: { estateId },
+          return await api.listHostCommands({
+            params: { hostId },
             query: {},
           });
         } catch (error) {
@@ -70,10 +70,10 @@ const BayCommands = (props: BayCommandsProps) => {
         }
       },
     },
-    [estateId],
+    [hostId],
   );
 
-  if (!estateId) {
+  if (!hostId) {
     return null;
   }
   const items = data?.items ?? [];
@@ -85,12 +85,12 @@ const BayCommands = (props: BayCommandsProps) => {
    */
   const filterFields = {
     kind: {
-      schema: z.enum(ESTATE_COMMAND_KINDS),
+      schema: z.enum(HOST_COMMAND_KINDS),
       label: tr("bay.commands.filter.kind"),
       placeholder: tr("bay.commands.filter.kind"),
     },
     status: {
-      schema: z.enum(ESTATE_COMMAND_STATUSES),
+      schema: z.enum(HOST_COMMAND_STATUSES),
       label: tr("bay.commands.filter.status"),
       placeholder: tr("bay.commands.filter.status"),
     },
@@ -98,7 +98,7 @@ const BayCommands = (props: BayCommandsProps) => {
 
   return (
     <AccountPage variant="table">
-      <DataTable<EstateCommandListItem, typeof filterFields>
+      <DataTable<HostCommandListItem, typeof filterFields>
         className="min-h-0 flex-1"
         data={items}
         emptyState={{
@@ -187,14 +187,14 @@ const BayCommands = (props: BayCommandsProps) => {
                     {command.reason}
                   </span>
                 )}
-                {/* A stored tail needs `estate:update` to read (#Q3279): a
+                {/* A stored tail needs `host:update` to read (#Q3279): a
                     machine runs other projects' copies too. */}
                 {command.kind === "logs" &&
                   command.resultFileId &&
-                  openEstate?.can.includes("estate:update") && (
+                  openHost?.can.includes("host:update") && (
                     <a
                       className="text-xs underline-offset-4 hover:underline"
-                      href={`/api/estates/${estateId}/commands/${command.id}/result`}
+                      href={`/api/hosts/${hostId}/commands/${command.id}/result`}
                       target="_blank"
                       rel="noreferrer"
                     >

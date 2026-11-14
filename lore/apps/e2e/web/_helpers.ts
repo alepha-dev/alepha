@@ -654,22 +654,20 @@ export const createRankFromPreset = async (
 };
 
 /**
- * Create a `bay` estate in a project, from its Settings ▸ Apps ▸ Estates page:
- * estates belong to a project and have no account page (#E126). The estate is
+ * Create a `bay` host in a project, from its Settings ▸ Apps ▸ Hosts page:
+ * hosts belong to a project and have no account page (#E126). The host is
  * homed in that project and lent to it in the same step. Answers its id and
  * the one-time secret, read off the reveal before it is dismissed: the column
  * stores a hash, so this is the only moment the cleartext exists.
  */
-export const createEstateInProject = async (
+export const createHostInProject = async (
   page: Page,
   projectSlug: string,
   slug: string,
 ): Promise<{ id: string; secret: string }> => {
-  await page.goto(`/${projectSlug}/settings/estates`);
+  await page.goto(`/${projectSlug}/settings/hosts`);
   await page.waitForLoadState("networkidle");
-  await page
-    .getByRole("button", { name: "Add an estate", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Add a host", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible({ timeout: 15_000 });
   await dialog
@@ -690,7 +688,7 @@ export const createEstateInProject = async (
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await releasePointerEvents(page);
 
-  const url = await apiPath(page, "listMyEstates");
+  const url = await apiPath(page, "listMyHosts");
   const items = (await page.evaluate(async (url) => {
     const r = await fetch(url, { credentials: "include" });
     if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
@@ -700,7 +698,7 @@ export const createEstateInProject = async (
     (it) => it.slug === slug && it.project?.slug === projectSlug,
   );
   if (!created) {
-    throw new Error(`estate ${projectSlug}/${slug} not listed after create`);
+    throw new Error(`host ${projectSlug}/${slug} not listed after create`);
   }
   return { id: created.id, secret };
 };

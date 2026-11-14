@@ -7,30 +7,30 @@ import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { LentEstateResource } from "../../../../../api/controllers/ProjectEstateController.ts";
-import ProjectSettingsEstateNameCell from "./ProjectSettingsEstateNameCell.tsx";
+import type { LentHostResource } from "../../../../../api/controllers/ProjectHostController.ts";
+import ProjectSettingsHostNameCell from "./ProjectSettingsHostNameCell.tsx";
 
 /**
- * Whether the estate's name is a door (feedback #P2126).
+ * Whether the host's name is a door (feedback #P2126).
  *
  * ⚠️ The two cases are the whole point. The Bay console lives under the
- * estate's HOME project (#E126), which answers **403** to anybody who is not
+ * host's HOME project (#E126), which answers **403** to anybody who is not
  * a member there, so a link on a borrower's row would be worse than the
  * inert text it replaced: it would promise a page they cannot open.
  */
 class Routes {
   bay = $page({
     name: "bay",
-    path: "/:projectSlug/estates/:estateSlug",
+    path: "/:projectSlug/hosts/:hostSlug",
     component: () => null,
   });
 }
 
-const ESTATE_ID = "00000000-0000-4000-8000-0000000000e1";
+const HOST_ID = "00000000-0000-4000-8000-0000000000e1";
 
-const anEstate = (over: Partial<LentEstateResource> = {}) =>
+const anHost = (over: Partial<LentHostResource> = {}) =>
   ({
-    id: ESTATE_ID,
+    id: HOST_ID,
     slug: "ovh-1",
     type: "bay",
     online: true,
@@ -38,12 +38,12 @@ const anEstate = (over: Partial<LentEstateResource> = {}) =>
     acceptedRuntimes: ["node"],
     home: { id: 7, title: "Acme", slug: "acme" },
     isHome: false,
-    can: ["estate:read"],
+    can: ["host:read"],
     lentAt: "2026-09-01T10:00:00.000Z",
     ...over,
-  }) as LentEstateResource;
+  }) as LentHostResource;
 
-describe("ProjectSettingsEstateNameCell", () => {
+describe("ProjectSettingsHostNameCell", () => {
   let alepha: Alepha | undefined;
 
   afterEach(async () => {
@@ -51,7 +51,7 @@ describe("ProjectSettingsEstateNameCell", () => {
     alepha = undefined;
   });
 
-  const mount = async (estate: LentEstateResource) => {
+  const mount = async (host: LentHostResource) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaReact)
@@ -64,12 +64,12 @@ describe("ProjectSettingsEstateNameCell", () => {
 
     return render(
       <AlephaContext.Provider value={alepha}>
-        <ProjectSettingsEstateNameCell
+        <ProjectSettingsHostNameCell
           row={{
-            id: estate.id,
-            slug: estate.slug,
+            id: host.id,
+            slug: host.slug,
             origin: "lent",
-            loan: estate,
+            loan: host,
           }}
           onOpen={() => {}}
         />
@@ -78,16 +78,16 @@ describe("ProjectSettingsEstateNameCell", () => {
   };
 
   it("opens the console from the name, for a member of its home project", async () => {
-    await mount(anEstate());
+    await mount(anHost());
 
     const link = screen.getByRole("link", { name: "ovh-1" });
     // Under the home project, never under the project listing the loan.
-    expect(link.getAttribute("href")).toBe("/acme/estates/ovh-1");
+    expect(link.getAttribute("href")).toBe("/acme/hosts/ovh-1");
   });
 
   it("leaves the name as plain text for a borrower", async () => {
     // The console answers 403 for them, so a link would dead-end.
-    const { container } = await mount(anEstate({ can: [] }));
+    const { container } = await mount(anHost({ can: [] }));
 
     expect(screen.queryByRole("link", { name: "ovh-1" })).toBeNull();
     expect(container.textContent).toContain("ovh-1");

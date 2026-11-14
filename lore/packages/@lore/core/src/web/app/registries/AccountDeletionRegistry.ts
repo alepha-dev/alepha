@@ -3,7 +3,7 @@ import { AlephaError } from "alepha";
 /**
  * What deleting a Lore account costs, line by line, from the module whose
  * rows go with it (#E75, #Q2624): Work's authored quests, Deploy's owned
- * estates. `AccountDeleteWarning` is core and names neither.
+ * hosts. `AccountDeleteWarning` is core and names neither.
  *
  * ## ⚠️ The warnings are frozen once read
  *

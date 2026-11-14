@@ -18,11 +18,11 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import type { OwnedEstateResource } from "../../../../api/schemas/ownedEstateResourceSchema.ts";
-import EstateDrawer from "./EstateDrawer.tsx";
+import type { OwnedHostResource } from "../../../../api/schemas/ownedHostResourceSchema.ts";
+import HostDrawer from "./HostDrawer.tsx";
 
 /**
- * Refuses `rotateEstate`; answers everything else with an empty result.
+ * Refuses `rotateHost`; answers everything else with an empty result.
  */
 class FakeLinkProvider extends LinkProvider {
   rotations = 0;
@@ -33,17 +33,17 @@ class FakeLinkProvider extends LinkProvider {
       Object.assign(fn, { can: () => true });
     return new Proxy({} as Record<string, unknown>, {
       get: (_target, prop: string) =>
-        prop === "rotateEstate"
+        prop === "rotateHost"
           ? action(async () => {
               this.rotations++;
-              throw new Error("Estate is locked for rotation (spec)");
+              throw new Error("Host is locked for rotation (spec)");
             })
           : action(async () => ({ items: [] })),
     });
   }
 }
 
-const ESTATE = {
+const HOST = {
   id: "0199a0f0-0000-7000-8000-00000000e57a",
   type: "bay",
   slug: "home-lab",
@@ -54,20 +54,20 @@ const ESTATE = {
   collectSeries: false,
   statsIntervalSeconds: 900,
   projects: [],
-  // The home project's owner holds every estate permission (#E126).
+  // The home project's owner holds every host permission (#E126).
   project: { id: 7, title: "Acme" },
-  can: ["estate:read", "estate:update", "estate:delete", "estate:lend"],
+  can: ["host:read", "host:update", "host:delete", "host:lend"],
   createdAt: "2026-09-01T10:00:00.000Z",
   updatedAt: "2026-09-01T10:00:00.000Z",
-} as unknown as OwnedEstateResource;
+} as unknown as OwnedHostResource;
 
 /**
- * The estate drawer's writes, on `useAction` (#E59, #Q2325). A refused
+ * The host drawer's writes, on `useAction` (#E59, #Q2325). A refused
  * rotation used to be caught and toasted by a local `fail`; the root listener
  * shows it now, once, and the drawer is not told of a secret that was never
  * minted.
  */
-describe("EstateDrawer", () => {
+describe("HostDrawer", () => {
   let alepha: Alepha | undefined;
 
   beforeAll(() => {
@@ -98,8 +98,8 @@ describe("EstateDrawer", () => {
         <DialogProvider>
           <Toaster visibleToasts={20} />
           <ActionErrorToaster />
-          <EstateDrawer
-            estate={ESTATE}
+          <HostDrawer
+            host={HOST}
             onOpenChange={() => {}}
             onChanged={() => {}}
             onDeleted={() => {}}
@@ -109,19 +109,19 @@ describe("EstateDrawer", () => {
       </AlephaContext.Provider>,
     );
 
-    fireEvent.click(await screen.findByTestId("my-estate-rotate"));
+    fireEvent.click(await screen.findByTestId("my-host-rotate"));
     const dialog = await screen.findByRole("alertdialog");
     expect(fake.rotations).toBe(0);
     fireEvent.click(within(dialog).getByRole("button", { name: "Rotate" }));
 
     await waitFor(() =>
       expect(
-        screen.getAllByText("Estate is locked for rotation (spec)"),
+        screen.getAllByText("Host is locked for rotation (spec)"),
       ).toHaveLength(1),
     );
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(
-      screen.getAllByText("Estate is locked for rotation (spec)"),
+      screen.getAllByText("Host is locked for rotation (spec)"),
     ).toHaveLength(1);
     expect(fake.rotations).toBe(1);
     expect(secrets).toEqual([]);

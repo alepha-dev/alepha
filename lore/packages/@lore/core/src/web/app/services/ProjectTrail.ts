@@ -21,13 +21,13 @@ export interface ProjectTrailCrumb {
 
 /**
  * A project page's trail (#Q3408): the project, its section, a settings
- * page's section, then the leaves the modules contribute (an estate, `#12`,
+ * page's section, then the leaves the modules contribute (a host, `#12`,
  * a release tag, an area's name).
  *
  * The ONE place it is computed. `ProjectView` draws it as the breadcrumb, and
  * `ProjectRouter`'s `$head({ afterPages })` joins the same labels into the
- * document title, so the two cannot drift: the estate console used to read
- * "MCS > Estates > ovh" in the header and "MCS › ovh › Overview" in the tab.
+ * document title, so the two cannot drift: the host console used to read
+ * "MCS > Hosts > ovh" in the header and "MCS › ovh › Overview" in the tab.
  *
  * Reads the store directly, through the atoms the contributions name, so it
  * answers the same from a component and from the head, which runs outside

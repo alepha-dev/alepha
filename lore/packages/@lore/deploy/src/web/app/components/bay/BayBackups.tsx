@@ -4,76 +4,76 @@ import { useI18n } from "alepha/react/i18n";
 import { useMemo } from "react";
 
 import type { BackupController } from "../../../../api/controllers/BackupController.ts";
-import type { EstateCommandController } from "../../../../api/controllers/EstateCommandController.ts";
-import type { EstateInventoryBackup } from "../../../../api/schemas/estateInventoryBackupSchema.ts";
-import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
+import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
+import type { HostInventoryBackup } from "../../../../api/schemas/hostInventoryBackupSchema.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import BackupPanel, { type BackupSource } from "../backup/BackupPanel.tsx";
 
 export interface BayBackupsProps {
   /** The machine name, `<projectSlug>-<app>`, as the inventory reports it. */
   app: string;
   env: string;
-  backup?: EstateInventoryBackup;
+  backup?: HostInventoryBackup;
   /** Re-reads the inventory once a verb has changed what the machine holds. */
   reload: () => void;
 }
 
 /**
- * The same panel as a project's Backups tab, over the estate's own routes: the
+ * The same panel as a project's Backups tab, over the host's own routes: the
  * console is the machine owner's, and it reads every instance the machine
  * runs, lent or not.
  */
 const BayBackups = (props: BayBackupsProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const commandApi = useClient<EstateCommandController>();
+  const commandApi = useClient<HostCommandController>();
   const backupApi = useClient<BackupController>();
-  const [estate] = useStore(currentEstateAtom);
+  const [host] = useStore(currentHostAtom);
 
   const events = useQuery(
     {
-      enabled: Boolean(estate),
-      key: ["estate-events", estate?.id, props.app, props.env],
+      enabled: Boolean(host),
+      key: ["host-events", host?.id, props.app, props.env],
       keepPreviousData: true,
       handler: async () => {
-        if (!estate) return undefined;
-        return await backupApi.listEstateEvents({
-          params: { estateId: estate.id },
+        if (!host) return undefined;
+        return await backupApi.listHostEvents({
+          params: { hostId: host.id },
           query: { app: props.app, env: props.env },
         });
       },
       onError: () => {},
     },
-    [estate?.id, props.app, props.env],
+    [host?.id, props.app, props.env],
   );
 
   const source = useMemo<BackupSource | undefined>(() => {
-    if (!estate) return undefined;
+    if (!host) return undefined;
     const target = { app: props.app, environment: props.env };
     return {
       appLabel: props.app,
       backup: props.backup,
       events: events.data?.items ?? [],
-      online: estate.online,
-      deployAllowed: estate.deployAllowed,
+      online: host.online,
+      deployAllowed: host.deployAllowed,
       // The owner's console; the enqueue refuses anyone else server-side.
       canManage: true,
       canRestoreFrom: true,
       canEditPolicy: true,
       send: (body) =>
-        commandApi.enqueueEstateCommand({
-          params: { estateId: estate.id },
+        commandApi.enqueueHostCommand({
+          params: { hostId: host.id },
           body: { ...body, ...target },
         }),
       poll: async (commandId) => {
-        const listed = await commandApi.listEstateCommands({
-          params: { estateId: estate.id },
+        const listed = await commandApi.listHostCommands({
+          params: { hostId: host.id },
         });
         return listed.items.find((item) => item.id === commandId);
       },
       result: async (commandId) => {
         try {
-          const file = await commandApi.getEstateCommandResult({
-            params: { estateId: estate.id, commandId },
+          const file = await commandApi.getHostCommandResult({
+            params: { hostId: host.id, commandId },
           });
           return JSON.parse(await (file as unknown as Blob).text());
         } catch {
@@ -87,7 +87,7 @@ const BayBackups = (props: BayBackupsProps) => {
     };
   }, [
     commandApi,
-    estate,
+    host,
     events.data,
     events.refetch,
     props.app,

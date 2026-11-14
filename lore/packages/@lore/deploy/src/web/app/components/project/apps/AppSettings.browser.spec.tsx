@@ -100,7 +100,7 @@ const confirmDialog = async () => {
 
 describe("the instance Settings tab", () => {
   // Base UI measures its popup before opening one, and jsdom ships no
-  // ResizeObserver. Needed since the estate row became a `Control`.
+  // ResizeObserver. Needed since the host row became a `Control`.
   beforeAll(() => {
     globalThis.ResizeObserver ??= class {
       observe() {}
@@ -182,7 +182,7 @@ describe("the instance Settings tab", () => {
     fireEvent.keyDown(field, { key: "Enter" });
     await confirmDialog();
 
-    // The estate section reads its own list on mount, so this filters rather
+    // The host section reads its own list on mount, so this filters rather
     // than counting: what matters is the ONE write and its shape.
     const writes = () => links.calls.filter((it) => it.action === "updateApp");
     await waitFor(() => expect(writes()).toHaveLength(1));
@@ -240,11 +240,11 @@ describe("the instance Settings tab", () => {
     expect(writes()[0].body).toEqual({ url: "" });
   });
 
-  it("offers only the estates the project was lent", async ({ expect }) => {
+  it("offers only the hosts the project was lent", async ({ expect }) => {
     // No `view`: the trigger is found by role on `screen`, and the popup it
     // opens is portalled to the body rather than into the container.
     await mount(anInstance(), {
-      listProjectEstates: {
+      listProjectHosts: {
         items: [
           {
             id: "00000000-0000-4000-8000-0000000000e1",
@@ -279,15 +279,15 @@ describe("the instance Settings tab", () => {
     // An empty select would be a control that changes nothing, which is the
     // failure folio #1172 records.
     const { view } = await mount(anInstance(), {
-      listProjectEstates: { items: [] },
+      listProjectHosts: { items: [] },
     });
 
     await waitFor(() =>
-      expect(view.container.textContent).toContain("No estate is lent"),
+      expect(view.container.textContent).toContain("No host is lent"),
     );
     expect(
       view.container.querySelector<HTMLAnchorElement>(
-        'a[href="/alepha/settings/estates"]',
+        'a[href="/alepha/settings/hosts"]',
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: "Deploys to" })).toBeNull();

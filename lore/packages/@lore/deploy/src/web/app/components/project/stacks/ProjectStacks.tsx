@@ -15,12 +15,12 @@ import { useProjectStacks } from "./useProjectStacks.ts";
 /**
  * Every stack of the project and its environments (#Q2696). A stack is a
  * compose file's services and the project's apps, deployed together to an
- * estate, one copy per environment.
+ * host, one copy per environment.
  */
 const ProjectStacks = () => {
   const { tr } = useI18n<I18n, "en">();
   const { can } = useRank();
-  const { project, stacks, estates, loading } = useProjectStacks();
+  const { project, stacks, hosts, loading } = useProjectStacks();
 
   if (!project) {
     return null;
@@ -49,11 +49,11 @@ const ProjectStacks = () => {
           projectId={project.id}
           projectSlug={project.slug ?? String(project.id)}
           stack={stack}
-          estates={estates}
+          hosts={hosts}
         />
       ))}
       {can("deploy:manage") ? (
-        <StackCreateForm projectId={project.id} estates={estates} />
+        <StackCreateForm projectId={project.id} hosts={hosts} />
       ) : null}
     </div>
   );

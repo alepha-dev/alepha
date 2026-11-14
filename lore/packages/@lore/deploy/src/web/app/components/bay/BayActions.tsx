@@ -5,8 +5,8 @@ import { useI18n } from "alepha/react/i18n";
 import { isHttpError } from "alepha/server";
 import { Play, RefreshCw, RotateCw, Save, Square } from "lucide-react";
 
-import type { EstateController } from "../../../../api/controllers/EstateController.ts";
-import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
+import type { HostController } from "../../../../api/controllers/HostController.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import type { BayInstanceRow } from "./bayInstanceRow.ts";
 import { bayProcessState } from "./bayInstanceRow.ts";
 import { useBayCommand } from "./useBayCommand.ts";
@@ -50,20 +50,20 @@ const BayActions = (props: BayActionsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const toaster = useToast();
-  const estateApi = useClient<EstateController>();
-  const { estate, refetch } = useBayInventory();
-  const { command, busy, run } = useBayCommand(estate);
+  const hostApi = useClient<HostController>();
+  const { host, refetch } = useBayInventory();
+  const { command, busy, run } = useBayCommand(host);
   const row = props.row;
 
   const refreshAction = useAction<[], void>(
     {
       handler: async () => {
-        if (!estate) return;
+        if (!host) return;
         try {
-          await estateApi.refreshEstate({ params: { estateId: estate.id } });
+          await hostApi.refreshHost({ params: { hostId: host.id } });
         } catch (error) {
           if (isHttpError(error, 429)) {
-            // Six a minute per estate. A cooldown, not a failure: said in
+            // Six a minute per host. A cooldown, not a failure: said in
             // this page's own words, and not reported as a crash.
             toaster.error(tr("bay.actions.refresh.cooldown"));
             return;
@@ -76,17 +76,17 @@ const BayActions = (props: BayActionsProps) => {
         toaster.success(tr("bay.actions.refresh.asked"));
       },
     },
-    [estateApi, estate, refetch, toaster, tr],
+    [hostApi, host, refetch, toaster, tr],
   );
 
-  // Every verb here is `estate:update` in the home project (#Q3279): a
+  // Every verb here is `host:update` in the home project (#Q3279): a
   // reader who may only look is offered none of them.
-  const [openEstate] = useStore(currentEstateAtom);
-  if (!openEstate?.can.includes("estate:update")) {
+  const [openHost] = useStore(currentHostAtom);
+  if (!openHost?.can.includes("host:update")) {
     return null;
   }
 
-  if (!estate) {
+  if (!host) {
     return null;
   }
 
@@ -189,7 +189,7 @@ const BayActions = (props: BayActionsProps) => {
           size="sm"
           // Refuses offline rather than queueing, so it is disabled and the
           // sentence below says which of the two behaviours this is.
-          disabled={!estate.online || refreshAction.loading}
+          disabled={!host.online || refreshAction.loading}
           onClick={() => void refreshAction.run()}
           data-testid="bay-action-refresh"
         >
@@ -220,7 +220,7 @@ const BayActions = (props: BayActionsProps) => {
         </p>
       )}
 
-      {!estate.online && (
+      {!host.online && (
         <p className="text-muted-foreground text-xs">
           {tr("bay.actions.offline")}
         </p>

@@ -1,19 +1,19 @@
-import type { LentEstateResource } from "../../../../../api/controllers/ProjectEstateController.ts";
-import type { OwnedEstateResource } from "../../../../../api/schemas/ownedEstateResourceSchema.ts";
+import type { LentHostResource } from "../../../../../api/controllers/ProjectHostController.ts";
+import type { OwnedHostResource } from "../../../../../api/schemas/ownedHostResourceSchema.ts";
 
 /**
- * One row of the project's estates table (#Q3409): an estate the project is
+ * One row of the project's hosts table (#Q3409): a host the project is
  * the home of, or one another project lends it.
  *
  * `origin` is the flag the table filters on, a plain field so the static
- * table's own matching reads it. A home estate carries `owned`, and `loan`
+ * table's own matching reads it. A home host carries `owned`, and `loan`
  * too when it is also lent to its home, which is what lets the project
  * deploy onto it; a borrowed one carries `loan` alone.
  */
-export interface ProjectEstateTableRow {
+export interface ProjectHostTableRow {
   id: string;
   slug: string;
   origin: "home" | "lent";
-  owned?: OwnedEstateResource;
-  loan?: LentEstateResource;
+  owned?: OwnedHostResource;
+  loan?: LentHostResource;
 }

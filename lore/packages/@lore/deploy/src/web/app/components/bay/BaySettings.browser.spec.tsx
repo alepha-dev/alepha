@@ -11,8 +11,8 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
-import type { OwnedEstateResource } from "../../../../api/schemas/ownedEstateResourceSchema.ts";
-import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
+import type { OwnedHostResource } from "../../../../api/schemas/ownedHostResourceSchema.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import BaySettings from "./BaySettings.tsx";
 
 class QuietLinks extends LinkProvider {
@@ -30,17 +30,17 @@ class QuietLinks extends LinkProvider {
 class Routes {
   baySettings = $page({
     name: "baySettings",
-    path: "/:projectSlug/estates/:estateSlug/settings",
+    path: "/:projectSlug/hosts/:hostSlug/settings",
     component: () => null,
   });
-  projectSettingsEstates = $page({
-    name: "projectSettingsEstates",
-    path: "/:projectSlug/settings/estates",
+  projectSettingsHosts = $page({
+    name: "projectSettingsHosts",
+    path: "/:projectSlug/settings/hosts",
     component: () => null,
   });
 }
 
-const estate = (can: string[]): OwnedEstateResource =>
+const host = (can: string[]): OwnedHostResource =>
   ({
     id: "00000000-0000-4000-8000-000000000001",
     slug: "ovh-1",
@@ -57,11 +57,11 @@ const estate = (can: string[]): OwnedEstateResource =>
     creator: { id: "00000000-0000-4000-8000-0000000000c1", name: "Builder" },
     can,
     projects: [],
-  }) as OwnedEstateResource;
+  }) as OwnedHostResource;
 
 /**
  * The console's Settings tab by rank (#Q3281): a plain Member of the home
- * project, who holds `estate:read` only, reads a designed read-only page
+ * project, who holds `host:read` only, reads a designed read-only page
  * saying which permission would let them act, and is offered no control.
  */
 describe("BaySettings", () => {
@@ -89,7 +89,7 @@ describe("BaySettings", () => {
     alepha.inject(I18n);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
-    alepha.store.set(currentEstateAtom, estate(can));
+    alepha.store.set(currentHostAtom, host(can));
     return render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
@@ -102,10 +102,10 @@ describe("BaySettings", () => {
   it("gives a reader a read-only page, with nothing to press", async ({
     expect,
   }) => {
-    await show(["estate:read"]);
+    await show(["host:read"]);
 
     expect(screen.getByTestId("bay-settings-readonly").textContent).toContain(
-      "estate:update in Acme",
+      "host:update in Acme",
     );
     expect(screen.getByTestId("bay-settings-home").textContent).toContain(
       "Acme",
@@ -119,17 +119,17 @@ describe("BaySettings", () => {
     expect(screen.queryByTestId("bay-settings-move")).toBeNull();
   });
 
-  it("offers the switches and rotate under estate:update, delete and move under estate:delete", async ({
+  it("offers the switches and rotate under host:update, delete and move under host:delete", async ({
     expect,
   }) => {
-    await show(["estate:read", "estate:update"]);
+    await show(["host:read", "host:update"]);
     expect(screen.queryByTestId("bay-settings-readonly")).toBeNull();
     expect(screen.getByTestId("bay-settings-deploys")).toBeTruthy();
     expect(screen.getByTestId("bay-settings-rotate")).toBeTruthy();
     expect(screen.queryByTestId("bay-settings-delete")).toBeNull();
     expect(screen.queryByTestId("bay-settings-move")).toBeNull();
 
-    await show(["estate:read", "estate:update", "estate:delete"]);
+    await show(["host:read", "host:update", "host:delete"]);
     expect(screen.getByTestId("bay-settings-delete")).toBeTruthy();
     expect(screen.getByTestId("bay-settings-move")).toBeTruthy();
   });

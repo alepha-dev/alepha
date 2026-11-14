@@ -21,14 +21,14 @@ export interface StackSettingsTabProps {
   target: StackTarget;
   stack: StackResource;
   environment: StackEnvironmentResource;
-  estates: Array<{ id: string; slug: string; label?: string }>;
+  hosts: Array<{ id: string; slug: string; label?: string }>;
   projectSlug: string;
 }
 
 /**
  * Where the stack deploys and how this environment is addressed: the stack's
- * default estate, this environment's override, its base domain, and deleting
- * the environment from Lore (nothing on the estate is touched).
+ * default host, this environment's override, its base domain, and deleting
+ * the environment from Lore (nothing on the host is touched).
  */
 const StackSettingsTab = (props: StackSettingsTabProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -40,28 +40,28 @@ const StackSettingsTab = (props: StackSettingsTabProps) => {
   const queries = useQueryClient();
   const canWrite = can("deploy:manage");
   const refresh = () => queries.invalidate(["stacks", props.target.projectId]);
-  const estateItems = props.estates.map((e) => ({
+  const hostItems = props.hosts.map((e) => ({
     value: e.id,
     label: e.label ? `${e.slug} (${e.label})` : e.slug,
   }));
 
   const stackForm = useForm({
-    id: `stack-settings-estate-${props.stack.id}`,
-    schema: z.object({ estateId: z.text() }),
-    initialValues: { estateId: props.stack.estateId ?? NONE },
+    id: `stack-settings-host-${props.stack.id}`,
+    schema: z.object({ hostId: z.text() }),
+    initialValues: { hostId: props.stack.hostId ?? NONE },
     handler: () => {},
     onChange: (_key, value) =>
-      void saveStackEstate.run(value === NONE ? null : String(value)),
+      void saveStackHost.run(value === NONE ? null : String(value)),
   });
-  const saveStackEstate = useAction<[estateId: string | null], boolean>(
+  const saveStackHost = useAction<[hostId: string | null], boolean>(
     {
-      handler: async (_ctx, estateId) => {
+      handler: async (_ctx, hostId) => {
         await api.updateStack({
           params: {
             projectId: props.target.projectId,
             stackId: props.stack.id,
           },
-          body: { estateId },
+          body: { hostId },
         });
         toaster.success(tr("stacks.settings.saved"));
         return true;
@@ -73,18 +73,18 @@ const StackSettingsTab = (props: StackSettingsTabProps) => {
 
   const envForm = useForm({
     id: `stack-settings-override-${props.environment.id}`,
-    schema: z.object({ estateId: z.text() }),
-    initialValues: { estateId: props.environment.estateId ?? NONE },
+    schema: z.object({ hostId: z.text() }),
+    initialValues: { hostId: props.environment.hostId ?? NONE },
     handler: () => {},
     onChange: (_key, value) =>
       void saveOverride.run(value === NONE ? null : String(value)),
   });
-  const saveOverride = useAction<[estateId: string | null], boolean>(
+  const saveOverride = useAction<[hostId: string | null], boolean>(
     {
-      handler: async (_ctx, estateId) => {
+      handler: async (_ctx, hostId) => {
         await api.updateStackEnvironment({
           params: props.target,
-          body: { estateId },
+          body: { hostId },
         });
         toaster.success(tr("stacks.settings.saved"));
         return true;
@@ -134,29 +134,28 @@ const StackSettingsTab = (props: StackSettingsTabProps) => {
     [api, dialog, toaster, tr, router, props.target, props.projectSlug],
   );
 
-  const busy =
-    saveStackEstate.loading || saveOverride.loading || remove.loading;
+  const busy = saveStackHost.loading || saveOverride.loading || remove.loading;
 
   return (
     <div className="flex flex-col gap-4" data-testid="stack-settings">
       <SettingsSection
-        title={tr("stacks.settings.estate")}
-        description={tr("stacks.settings.estate.description")}
+        title={tr("stacks.settings.host")}
+        description={tr("stacks.settings.host.description")}
       >
         <SettingsRow
-          label={tr("stacks.settings.estate.stack", {
+          label={tr("stacks.settings.host.stack", {
             args: [props.stack.name],
           })}
         >
           <Control
             select
-            input={stackForm.input.estateId}
+            input={stackForm.input.hostId}
             label=""
             disabled={!canWrite || busy}
             triggerClassName="w-full sm:w-72"
             items={[
-              { value: NONE, label: tr("stacks.estate.unset") },
-              ...estateItems,
+              { value: NONE, label: tr("stacks.host.unset") },
+              ...hostItems,
             ]}
           />
         </SettingsRow>
@@ -168,13 +167,13 @@ const StackSettingsTab = (props: StackSettingsTabProps) => {
         >
           <Control
             select
-            input={envForm.input.estateId}
+            input={envForm.input.hostId}
             label=""
             disabled={!canWrite || busy}
             triggerClassName="w-full sm:w-72"
             items={[
-              { value: NONE, label: tr("stacks.estate.default") },
-              ...estateItems,
+              { value: NONE, label: tr("stacks.host.default") },
+              ...hostItems,
             ]}
           />
         </SettingsRow>

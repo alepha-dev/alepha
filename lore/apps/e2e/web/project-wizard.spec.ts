@@ -245,7 +245,7 @@ test.describe("Project wizard", () => {
     await expect(next).toBeDisabled();
 
     // A name the router owns is refused the same way, for its own reason.
-    await name.fill("estates");
+    await name.fill("hosts");
     await expect(
       page.getByText("That name is reserved. Pick another one."),
     ).toBeVisible({ timeout: 15_000 });

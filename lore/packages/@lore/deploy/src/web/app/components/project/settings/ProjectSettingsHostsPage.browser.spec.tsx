@@ -12,7 +12,7 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
-import ProjectSettingsEstatesPage from "./ProjectSettingsEstatesPage.tsx";
+import ProjectSettingsHostsPage from "./ProjectSettingsHostsPage.tsx";
 
 const HOME_ID = "00000000-0000-4000-8000-0000000000a1";
 const BORROWED_ID = "00000000-0000-4000-8000-0000000000b1";
@@ -28,7 +28,7 @@ const lent = (id: string, slug: string, isHome: boolean) => ({
   acceptedRuntimes: ["node"],
   home: isHome ? { id: 7, title: "Acme" } : { id: 8, title: "Infra" },
   isHome,
-  can: isHome ? ["estate:read"] : [],
+  can: isHome ? ["host:read"] : [],
   lentAt: "2026-09-01T10:00:00.000Z",
 });
 
@@ -45,11 +45,11 @@ const homed = (id: string, slug: string) => ({
   createdAt: "2026-09-01T10:00:00.000Z",
   updatedAt: "2026-09-01T10:00:00.000Z",
   project: { id: 7, title: "Acme" },
-  can: ["estate:read"],
+  can: ["host:read"],
   projects: [],
 });
 
-class EstateLinks extends LinkProvider {
+class HostLinks extends LinkProvider {
   override client(): any {
     return new Proxy(
       {},
@@ -57,7 +57,7 @@ class EstateLinks extends LinkProvider {
         get: (_target, action: string) =>
           Object.assign(
             async () => {
-              if (action === "listProjectEstates") {
+              if (action === "listProjectHosts") {
                 return {
                   items: [
                     lent(HOME_ID, "ovh-home", true),
@@ -65,7 +65,7 @@ class EstateLinks extends LinkProvider {
                   ],
                 };
               }
-              if (action === "listHomeEstates") {
+              if (action === "listHomeHosts") {
                 return {
                   items: [
                     homed(HOME_ID, "ovh-home"),
@@ -85,17 +85,17 @@ class EstateLinks extends LinkProvider {
 class Routes {
   bay = $page({
     name: "bay",
-    path: "/:projectSlug/estates/:estateSlug",
+    path: "/:projectSlug/hosts/:hostSlug",
     component: () => null,
   });
 }
 
 /**
- * The project's Estates tab (#Q3281), one table since #Q3409: the estates
+ * The project's Hosts tab (#Q3281), one table since #Q3409: the hosts
  * this project is the home of and the ones it borrows share it, told apart by
- * the Origin column, and a home estate never reads as lent.
+ * the Origin column, and a home host never reads as lent.
  */
-describe("ProjectSettingsEstatesPage", () => {
+describe("ProjectSettingsHostsPage", () => {
   beforeAll(() => {
     setupJsdomMocks();
   });
@@ -107,14 +107,14 @@ describe("ProjectSettingsEstatesPage", () => {
     alepha = undefined;
   });
 
-  it("separates the estates the project is the home of from those it borrows", async ({
+  it("separates the hosts the project is the home of from those it borrows", async ({
     expect,
   }) => {
     cleanup();
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
-      .with({ provide: LinkProvider, use: EstateLinks })
+      .with({ provide: LinkProvider, use: HostLinks })
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
@@ -129,21 +129,21 @@ describe("ProjectSettingsEstatesPage", () => {
     render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
-          <ProjectSettingsEstatesPage />
+          <ProjectSettingsHostsPage />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
 
     await waitFor(() =>
-      expect(screen.getAllByTestId("home-estate-row")).toHaveLength(2),
+      expect(screen.getAllByTestId("home-host-row")).toHaveLength(2),
     );
-    // One table, three rows: two home estates, one borrowed.
+    // One table, three rows: two home hosts, one borrowed.
     const rows = [...document.querySelectorAll("tbody tr")];
     expect(rows).toHaveLength(3);
     const text = (slug: string) =>
       rows.find((row) => row.textContent?.includes(slug))?.textContent ?? "";
 
-    // A home estate is "This project", lent to its home or not.
+    // A home host is "This project", lent to its home or not.
     expect(text("ovh-home")).toContain("This project");
     expect(text("ovh-home")).not.toContain("Lent");
     // Only the one its home does not lend to itself says so, since the
@@ -151,12 +151,12 @@ describe("ProjectSettingsEstatesPage", () => {
     expect(text("spare")).toContain("Not lent to this project");
     expect(text("ovh-home")).not.toContain("Not lent to this project");
     // The borrowed one is flagged Lent and names its home project.
-    expect(screen.getAllByTestId("estate-row")).toHaveLength(1);
+    expect(screen.getAllByTestId("host-row")).toHaveLength(1);
     expect(text("ovh-infra")).toContain("Lent");
     expect(text("ovh-infra")).toContain("lent by Infra");
 
-    // Add an estate is the table's toolbar action, and Origin a filter.
-    expect(screen.getByRole("button", { name: "Add an estate" })).toBeTruthy();
+    // Add a host is the table's toolbar action, and Origin a filter.
+    expect(screen.getByRole("button", { name: "Add a host" })).toBeTruthy();
     expect(screen.getAllByText("Origin").length).toBeGreaterThan(0);
   });
 });

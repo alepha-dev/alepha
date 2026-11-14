@@ -12,9 +12,9 @@ import {
   sigilConfigurable,
 } from "./appTabs.ts";
 
-const aBayEstate = () => ({
-  estateId: "00000000-0000-4000-8000-0000000000e1",
-  estate: {
+const aBayHost = () => ({
+  hostId: "00000000-0000-4000-8000-0000000000e1",
+  host: {
     id: "00000000-0000-4000-8000-0000000000e1",
     slug: "ovh",
     type: "bay" as const,
@@ -86,14 +86,14 @@ describe("the instance's tab set", () => {
     expect(routes(anInstance([]))).toEqual(["app", "appSettings"]);
   });
 
-  it("adds Deploy and Environment for an estate, and only for an estate", ({
+  it("adds Deploy and Environment for a host, and only for a host", ({
     expect,
   }) => {
-    // Both unlock on the same predicate and for the same reason: an estate is
+    // Both unlock on the same predicate and for the same reason: a host is
     // where a deploy goes and where its variables end up, so a copy with
     // nowhere to deploy has neither a history nor anything to configure.
     // Choosing one on the Settings tab is what makes the pair appear.
-    expect(routes(anInstance(undefined, aBayEstate()))).toEqual([
+    expect(routes(anInstance(undefined, aBayHost()))).toEqual([
       "app",
       "appDeploy",
       "appEnvironment",
@@ -104,9 +104,7 @@ describe("the instance's tab set", () => {
     expect(routes(anInstance())).not.toContain("appEnvironment");
   });
 
-  it("adds Backups for an estate, never for a stack environment", ({
-    expect,
-  }) => {
+  it("adds Backups for a host, never for a stack environment", ({ expect }) => {
     // Backups are Bay's: a copy deployed through a stack has Deploy and
     // Environment, and no Bay instance to back up.
     const stacked = routes(
@@ -116,13 +114,13 @@ describe("the instance's tab set", () => {
     expect(stacked).not.toContain("appBackups");
   });
 
-  it("adds Backups for a Bay estate only", ({ expect }) => {
-    // Backups are Bay's: a Cloudflare estate has nothing to back up.
-    expect(routes(anInstance(undefined, aBayEstate()))).toContain("appBackups");
+  it("adds Backups for a Bay host only", ({ expect }) => {
+    // Backups are Bay's: a Cloudflare host has nothing to back up.
+    expect(routes(anInstance(undefined, aBayHost()))).toContain("appBackups");
     const cloudflare = routes(
       anInstance(undefined, {
-        estateId: aBayEstate().estateId,
-        estate: { ...aBayEstate().estate, type: "cloudflare" },
+        hostId: aBayHost().hostId,
+        host: { ...aBayHost().host, type: "cloudflare" },
       }),
     );
     expect(cloudflare).toContain("appDeploy");
@@ -137,13 +135,11 @@ describe("the instance's tab set", () => {
     expect(sigilConfigurable(anInstance(["beacon"]))).toBe(false);
     // Somewhere to deploy with no sigil collects nothing.
     expect(
-      sigilConfigurable(
-        anInstance(undefined, { estateId: crypto.randomUUID() }),
-      ),
+      sigilConfigurable(anInstance(undefined, { hostId: crypto.randomUUID() })),
     ).toBe(false);
     expect(
       sigilConfigurable(
-        anInstance(["beacon"], { estateId: crypto.randomUUID() }),
+        anInstance(["beacon"], { hostId: crypto.randomUUID() }),
       ),
     ).toBe(true);
     expect(
@@ -225,9 +221,9 @@ describe("the instance's tab set", () => {
       expect(APP_TABS.find((it) => it.route === route)?.option).toBe("deploy");
     }
 
-    const withEstate = anInstance(undefined, aBayEstate());
+    const withHost = anInstance(undefined, aBayHost());
     const routesOf = (options: { track: boolean; deploy: boolean }) =>
-      appTabsFor(withEstate, options).map((it) => it.route);
+      appTabsFor(withHost, options).map((it) => it.route);
 
     expect(routesOf({ track: false, deploy: true })).toEqual([
       "app",

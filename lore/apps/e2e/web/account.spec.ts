@@ -56,10 +56,10 @@ test.describe("Account dialog", () => {
       ).toBeVisible();
     }
     await expect(nav.locator("a")).toHaveCount(0);
-    // Estates belong to a project since #E126: the account has no section
+    // Hosts belong to a project since #E126: the account has no section
     // for them.
     await expect(
-      nav.getByRole("button", { name: "Estates", exact: true }),
+      nav.getByRole("button", { name: "Hosts", exact: true }),
     ).toHaveCount(0);
 
     // One section current at a time, switched without moving the URL.

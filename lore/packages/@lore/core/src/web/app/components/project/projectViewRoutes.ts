@@ -48,11 +48,11 @@ export const ROUTES_APP = new Set([
  * under `projectSettings` is missing from the label table this feeds.
  */
 /**
- * An estate's console and its tabs, a page of its home project since #E126
- * (`DeployRouter.bay`). They read "Estates" in the crumb and climb back to
- * the project's estates list, where every estate of the project is.
+ * A host's console and its tabs, a page of its home project since #E126
+ * (`DeployRouter.bay`). They read "Hosts" in the crumb and climb back to
+ * the project's hosts list, where every host of the project is.
  */
-export const ROUTES_ESTATE = [
+export const ROUTES_HOST = [
   "bay",
   "bayOverview",
   "bayApps",
@@ -74,7 +74,7 @@ const ROUTES_SETTINGS = [
   "projectSettingsPrompts",
   "projectSettingsKnowledge",
   "projectSettingsApps",
-  "projectSettingsEstates",
+  "projectSettingsHosts",
 ];
 
 export const ROUTES_FULL_WIDTH = new Set([
@@ -84,8 +84,8 @@ export const ROUTES_FULL_WIDTH = new Set([
   // the space they are given.
   "projectStacks",
   "projectStackEnvironment",
-  // An estate's console (#E126): a plate over route tabs, as an app's is.
-  ...ROUTES_ESTATE,
+  // A host's console (#E126): a plate over route tabs, as an app's is.
+  ...ROUTES_HOST,
   // The project's landing page since #Q2104. Full width because it is a grid
   // that lays its own columns out from the space it is given (`auto-fill` over
   // a container query), and a centred 1024px column would both cap the tiles
@@ -189,7 +189,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectStacks"
   | "projectReleases"
   | "projectAutomations"
-  | "projectSettingsEstates"
+  | "projectSettingsHosts"
 > = {
   projectFolios: "projectFolios",
   projectFoliosNew: "projectFolios",
@@ -221,7 +221,7 @@ export const SECTION_HREF_ROUTES: Record<
   appEnvironment: "projectApps",
   appSettings: "projectApps",
   ...Object.fromEntries(
-    ROUTES_ESTATE.map((route) => [route, "projectSettingsEstates" as const]),
+    ROUTES_HOST.map((route) => [route, "projectSettingsHosts" as const]),
   ),
 };
 
@@ -301,6 +301,6 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
     ROUTES_SETTINGS.map((route) => [route, "project.menu.settings"]),
   ),
   ...Object.fromEntries(
-    ROUTES_ESTATE.map((route) => [route, "estates.project.title"]),
+    ROUTES_HOST.map((route) => [route, "hosts.project.title"]),
   ),
 };

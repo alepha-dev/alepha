@@ -21,7 +21,7 @@ import { useBayInventory } from "./useBayInventory.ts";
  * ## The reconciliation is the feature
  *
  * The machine reports `(app, env)` and knows nothing about projects. Held
- * against the instances pointing at this estate, three states fall out, and
+ * against the instances pointing at this host, three states fall out, and
  * the third is what earns the table: an instance Lore tracks that the machine
  * did not report is a failed deploy or a removed unit, and nothing else in the
  * product notices it.
@@ -45,9 +45,9 @@ import { useBayInventory } from "./useBayInventory.ts";
 const BayApps = () => {
   const { tr, l } = useI18n<I18n, "en">();
   const router = useRouter();
-  const { estate, data } = useBayInventory();
+  const { host, data } = useBayInventory();
 
-  if (!estate) {
+  if (!host) {
     return null;
   }
   const rows = bayInstanceRows(data);
@@ -81,7 +81,7 @@ const BayApps = () => {
                     // ⚠️ `projectSlug` is passed EXPLICITLY. The router merges
                     // the current route's params by name, and this route holds
                     // the HOME project's `projectSlug`: a copy on the machine
-                    // may belong to a project the estate is lent to.
+                    // may belong to a project the host is lent to.
                     <a
                       className="truncate font-medium underline-offset-4 hover:underline"
                       href={
@@ -269,8 +269,8 @@ const BayApps = () => {
         onRowClick={(row) =>
           void router.push("bayApp", {
             params: {
-              projectSlug: estate.project?.slug ?? "",
-              estateSlug: estate.slug,
+              projectSlug: host.project?.slug ?? "",
+              hostSlug: host.slug,
               app: row.app,
               env: row.env,
             },

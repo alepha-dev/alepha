@@ -21,13 +21,13 @@ import AppDeployRuns from "./AppDeployRuns.tsx";
  * The Deploy tab: the history of what has run here, full height, with
  * "Deploy new artifact" over it.
  *
- * ## ⚠️ There is no estate picker, and there must not be one
+ * ## ⚠️ There is no host picker, and there must not be one
  *
- * The estate is a property of the copy, chosen once on its Settings tab and
+ * The host is a property of the copy, chosen once on its Settings tab and
  * resolved server-side at deploy time (#1205). A picker here would be a second
  * place to choose it, and the one thing epics #22 and #30 both insist on is
- * that the client never names an estate. So the empty state is "this copy has
- * no estate yet", pointing at that Settings row - not at a connect flow.
+ * that the client never names a host. So the empty state is "this copy has
+ * no host yet", pointing at that Settings row - not at a connect flow.
  *
  * Owns no padding: the history is a `DataTable` that fills the plate, which
  * is why `AppLayout` gives this tab no scroll region of its own.
@@ -46,15 +46,15 @@ const AppDeploy = () => {
   }
 
   // A stack member deploys through its stack environment, which holds the
-  // estate (#Q2695).
-  if (!instance.estateId && !instance.stackEnvironmentId) {
+  // host (#Q2695).
+  if (!instance.hostId && !instance.stackEnvironmentId) {
     return (
       <div className="flex flex-col gap-4 p-4">
-        <Card data-testid="app-deploy-no-estate">
+        <Card data-testid="app-deploy-no-host">
           <CardHeader>
             <CardTitle className="text-base">{tr("app.deploy")}</CardTitle>
             <CardDescription>
-              {tr("app.deploy.noEstate.description")}
+              {tr("app.deploy.noHost.description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -70,7 +70,7 @@ const AppDeploy = () => {
                 })
               }
             >
-              {tr("app.deploy.noEstate.action")}
+              {tr("app.deploy.noHost.action")}
             </Button>
           </CardContent>
         </Card>
@@ -97,11 +97,11 @@ const AppDeploy = () => {
           onOpenChange={setPicking}
           projectId={project.id}
           instance={instance}
-          // Derived from the estate's TYPE through the module the server reads
+          // Derived from the host's TYPE through the module the server reads
           // too, so the button and the gate cannot disagree about what this
           // copy can run.
           runnable={acceptedRuntimes(
-            instance.estate?.type ?? (instance.stack ? "bay" : "cloudflare"),
+            instance.host?.type ?? (instance.stack ? "bay" : "cloudflare"),
           )}
         />
       ) : null}

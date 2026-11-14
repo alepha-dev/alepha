@@ -19,7 +19,7 @@ export interface ArtifactRuntimeBadgesProps {
  *
  * ⚠️ A runtime is named by its runtime (#Q2463): `workerd`, never
  * `cloudflare`. The owner reversed the old label on 2026-09-22. `cloudflare`
- * is an estate TYPE, which is infrastructure, and it keeps its name there.
+ * is a host TYPE, which is infrastructure, and it keeps its name there.
  *
  * One component for the project Artifacts table, an app's Deploy tab and a
  * release's Artifacts tab, so a runtime is drawn the same way everywhere.

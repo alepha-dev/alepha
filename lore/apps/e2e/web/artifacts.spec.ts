@@ -136,7 +136,7 @@ test("opens a build from the table and reads what it declares", async ({
  * The docs link under an empty artifact list follows its frame (#Q3266):
  * centred under the centred sentence on the project page. It sat hard left,
  * which only a real layout can show. The other frame, an app's card, now
- * lives in the Deploy tab's "Deploy new artifact" dialog, behind an estate
+ * lives in the Deploy tab's "Deploy new artifact" dialog, behind a host
  * this case does not set up (#Q3544).
  */
 test("places the empty state's docs link where its sentence is", async ({

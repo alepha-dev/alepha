@@ -127,18 +127,18 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
         </span>
         <span>{l(instance.createdAt, { date: "lll" })}</span>
 
-        {/* The whole visible effect of an estate in v3: Deploy and Environment
+        {/* The whole visible effect of a host in v3: Deploy and Environment
             are epic #1's. Present only when one is attached, because a row
             reading "none" would be a control that changes nothing. */}
-        {instance.estate && (
+        {instance.host && (
           <>
             <span className="text-muted-foreground">
               {tr("app.dashboard.deploysTo")}
             </span>
             <span className="flex flex-wrap items-center gap-2">
-              <span>{instance.estate.label ?? instance.estate.slug}</span>
+              <span>{instance.host.label ?? instance.host.slug}</span>
               <span className="bg-muted text-muted-foreground rounded px-1 text-[10px] tracking-wide uppercase">
-                {instance.estate.type}
+                {instance.host.type}
               </span>
             </span>
           </>
@@ -146,7 +146,7 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
 
         {instance.deployed && <AppDashboardRunning instance={instance} />}
 
-        {/* The name the estate knows this copy by, once a deploy has fixed
+        {/* The name the host knows this copy by, once a deploy has fixed
             it. Worth a row because it can differ from what the page shows: a
             renamed project keeps its copies' names, so `project1-…` under
             `project2` is expected, not stale. */}

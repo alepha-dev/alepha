@@ -9,7 +9,7 @@ import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
   confirmDialog,
-  createEstateInProject,
+  createHostInProject,
   createProjectViaWizard,
   createRankFromPreset,
   newUserContext,
@@ -20,17 +20,17 @@ import {
 } from "./_helpers.ts";
 
 /**
- * Estates belong to a project, managed by rank (epic #E126, #Q3281).
+ * Hosts belong to a project, managed by rank (epic #E126, #Q3281).
  *
  * In the browser, on built artefacts: a plain Member of the home project
  * reads the console and is offered nothing to change, a member on the Admin
- * preset (which carries `estate:update`, `estate:create`, `estate:delete`)
- * rotates, the owner moves the estate to another project from Settings, and
- * the instance admin assigns it back from `/admin/estates`.
+ * preset (which carries `host:update`, `host:create`, `host:delete`)
+ * rotates, the owner moves the host to another project from Settings, and
+ * the instance admin assigns it back from `/admin/hosts`.
  *
- * ⚠️ No suite can make an estate with no home (only the migration does), so
+ * ⚠️ No suite can make a host with no home (only the migration does), so
  * the admin assigns one that has a home; the homeless row is a browser spec
- * (`AdminEstates.browser.spec.tsx`) and a server spec (`estate-move.spec.ts`).
+ * (`AdminHosts.browser.spec.tsx`) and a server spec (`host-move.spec.ts`).
  */
 
 const inviteWithRank = async (
@@ -152,21 +152,21 @@ const pushInventory = async (baseURL: string, secret: string) => {
 };
 
 /**
- * The console's Settings tab, under the estate's home project (#E126).
+ * The console's Settings tab, under the host's home project (#E126).
  */
 const openSettings = async (
   page: Page,
   projectSlug: string,
-  estateSlug: string,
+  hostSlug: string,
 ): Promise<void> => {
-  await page.goto(`/${projectSlug}/estates/${estateSlug}/settings`);
+  await page.goto(`/${projectSlug}/hosts/${hostSlug}/settings`);
   await page.waitForLoadState("networkidle");
   await expect(page.getByTestId("bay-settings-home")).toBeVisible({
     timeout: 15_000,
   });
 };
 
-test.describe("Project estates", () => {
+test.describe("Project hosts", () => {
   test("a member looks, a manager rotates, the owner moves it, the admin assigns it", async ({
     page,
     browser,
@@ -178,9 +178,9 @@ test.describe("Project estates", () => {
     const first = await createProjectViaWizard(page, `Pe1${ts}`.slice(0, 20), {
       capabilities: ["apps"],
     });
-    await createEstateInProject(page, first.slug, "ovh-team");
+    await createHostInProject(page, first.slug, "ovh-team");
 
-    // The Admin preset carries the three estate permissions since #E126.
+    // The Admin preset carries the three host permissions since #E126.
     await createRankFromPreset(page, first.slug, "Admin");
     const reader = await newUserContext(browser, baseURL!, "pe-reader");
     const manager = await newUserContext(browser, baseURL!, "pe-manager");
@@ -192,13 +192,13 @@ test.describe("Project estates", () => {
       await accept(manager.page, title);
 
       // ── A plain Member: the console, read-only ──────────────────────────
-      // The project's estates list shows it to every member, and offers a
+      // The project's hosts list shows it to every member, and offers a
       // plain Member no lending.
-      await reader.page.goto(`/${first.slug}/settings/estates`);
+      await reader.page.goto(`/${first.slug}/settings/hosts`);
       await reader.page.waitForLoadState("networkidle");
       await expect(
         reader.page
-          .getByTestId("home-estate-row")
+          .getByTestId("home-host-row")
           .filter({ hasText: "ovh-team" }),
       ).toBeVisible({ timeout: 15_000 });
       await expect(
@@ -223,7 +223,7 @@ test.describe("Project estates", () => {
       await manager.page.getByTestId("bay-settings-rotate").click();
       await confirmDialog(manager.page, "Rotate");
       await expect(
-        manager.page.getByTestId("my-estate-secret-dialog"),
+        manager.page.getByTestId("my-host-secret-dialog"),
       ).toBeVisible({ timeout: 15_000 });
       await manager.page
         .getByRole("button", { name: "Done", exact: true })
@@ -247,15 +247,15 @@ test.describe("Project estates", () => {
       `Pe2${ts}`.slice(0, 20),
       { timeout: 15_000 },
     );
-    // The console follows the estate to its new home: the old URL names a
+    // The console follows the host to its new home: the old URL names a
     // project it left.
-    await page.waitForURL(`**/${second.slug}/estates/ovh-team/settings`, {
+    await page.waitForURL(`**/${second.slug}/hosts/ovh-team/settings`, {
       timeout: 15_000,
     });
-    await page.goto(`/${second.slug}/settings/estates`);
+    await page.goto(`/${second.slug}/settings/hosts`);
     await page.waitForLoadState("networkidle");
     await expect(
-      page.getByTestId("home-estate-row").filter({ hasText: "ovh-team" }),
+      page.getByTestId("home-host-row").filter({ hasText: "ovh-team" }),
     ).toBeVisible({ timeout: 15_000 });
 
     // ── The admin assigns it back to the first ─────────────────────────────
@@ -263,7 +263,7 @@ test.describe("Project estates", () => {
     const admin = await adminCtx.newPage();
     try {
       await signInAsAdmin(admin);
-      await admin.goto("/admin/estates");
+      await admin.goto("/admin/hosts");
       await admin.waitForLoadState("networkidle");
       const row = admin.locator("tbody tr", {
         has: admin.getByText("ovh-team", { exact: true }),
@@ -271,12 +271,12 @@ test.describe("Project estates", () => {
       await expect(row).toBeVisible({ timeout: 15_000 });
       await row.getByRole("button", { name: /actions/i }).click();
       await admin.getByRole("menuitem", { name: "Assign to project" }).click();
-      await admin.getByTestId("admin-estate-assign-project").click();
+      await admin.getByTestId("admin-host-assign-project").click();
       await admin
         .getByRole("option", { name: new RegExp(`^Pe1${ts}`.slice(0, 20)) })
         .click();
       await releasePointerEvents(admin);
-      await admin.getByTestId("admin-estate-assign-submit").click();
+      await admin.getByTestId("admin-host-assign-submit").click();
       await expect(row).toContainText(`Pe1${ts}`.slice(0, 20), {
         timeout: 15_000,
       });
@@ -286,12 +286,12 @@ test.describe("Project estates", () => {
   });
 
   /**
-   * The sentence the epic exists for (#Q3284): an estate a member created
+   * The sentence the epic exists for (#Q3284): a host a member created
    * outlives that member, is managed by the project's owner who created
    * nothing, is lent and moved with its loans, keeps its project from being
    * deleted, and is assigned by the instance admin.
    */
-  test("an estate outlives its creator, managed by rank", async ({
+  test("a host outlives its creator, managed by rank", async ({
     page,
     browser,
     baseURL,
@@ -303,7 +303,7 @@ test.describe("Project estates", () => {
     const t3 = `Ow3${ts}`.slice(0, 20);
 
     // 1. Owner, two projects with Apps; Builder on a rank that manages
-    //    estates (the Admin preset), Guest a plain Member.
+    //    hosts (the Admin preset), Guest a plain Member.
     await registerAndVerify(page, `ow-${ts}@example.com`, "GoodPassw0rd");
     const first = await createProjectViaWizard(page, t1, {
       capabilities: ["apps"],
@@ -320,9 +320,9 @@ test.describe("Project estates", () => {
     await inviteWithRank(page, first.slug, guest.email, /^member$/i);
     await accept(guest.page, t1);
 
-    // 2. Builder adds a Bay estate in the first project; a machine connects
+    // 2. Builder adds a Bay host in the first project; a machine connects
     //    and reports its inventory.
-    const { id: estateId, secret } = await createEstateInProject(
+    const { id: hostId, secret } = await createHostInProject(
       builder.page,
       first.slug,
       "ow-vps",
@@ -336,7 +336,7 @@ test.describe("Project estates", () => {
     );
     await page.getByTestId("bay-settings-rotate").click();
     await confirmDialog(page, "Rotate");
-    await expect(page.getByTestId("my-estate-secret-dialog")).toBeVisible({
+    await expect(page.getByTestId("my-host-secret-dialog")).toBeVisible({
       timeout: 15_000,
     });
     await page.getByRole("button", { name: "Done", exact: true }).click();
@@ -344,18 +344,18 @@ test.describe("Project estates", () => {
 
     // 4. Guest reads the console, and is refused a rotation naming the rank
     //    and the permission.
-    expect(
-      (await call(guest.page, "getEstate", "GET", { estateId })).status,
-    ).toBe(200);
-    const refused = await call(guest.page, "rotateEstate", "POST", {
-      estateId,
+    expect((await call(guest.page, "getHost", "GET", { hostId })).status).toBe(
+      200,
+    );
+    const refused = await call(guest.page, "rotateHost", "POST", {
+      hostId,
     });
     expect(refused.status).toBe(403);
-    expect(JSON.stringify(refused.body)).toMatch(/estate:update/);
+    expect(JSON.stringify(refused.body)).toMatch(/host:update/);
 
-    // 5. Somebody in neither project is refused on the estate's id.
+    // 5. Somebody in neither project is refused on the host's id.
     expect(
-      (await call(stranger.page, "getEstate", "GET", { estateId })).status,
+      (await call(stranger.page, "getHost", "GET", { hostId })).status,
     ).toBe(403);
     await stranger.ctx.close();
 
@@ -365,10 +365,10 @@ test.describe("Project estates", () => {
       (
         await call(
           builder.page,
-          "attachEstate",
+          "attachHost",
           "POST",
           { projectId: second.id },
-          { estateId },
+          { hostId },
         )
       ).status,
     ).toBe(403);
@@ -376,15 +376,15 @@ test.describe("Project estates", () => {
       (
         await call(
           page,
-          "attachEstate",
+          "attachHost",
           "POST",
           { projectId: second.id },
-          { estateId },
+          { hostId },
         )
       ).status,
     ).toBe(200);
 
-    // 7. Owner removes Builder from the project: the estate stays, still lent.
+    // 7. Owner removes Builder from the project: the host stays, still lent.
     const members = await call(page, "getOrganizationMembers", "GET", {
       organizationId: first.organizationId,
     });
@@ -400,13 +400,13 @@ test.describe("Project estates", () => {
         })
       ).status,
     ).toBeLessThan(300);
-    const stillThere = await call(page, "getEstate", "GET", { estateId });
+    const stillThere = await call(page, "getHost", "GET", { hostId });
     expect(stillThere.status).toBe(200);
     expect(
       (stillThere.body.projects as Array<{ id: number }>).map((p) => p.id),
     ).toEqual(expect.arrayContaining([first.id, second.id]));
 
-    // 8. Builder deletes their account: the estate and its loans survive.
+    // 8. Builder deletes their account: the host and its loans survive.
     const deleted = await call(
       builder.page,
       "deleteMyAccount",
@@ -419,7 +419,7 @@ test.describe("Project estates", () => {
     );
     expect(deleted.status).toBeLessThan(300);
     await builder.ctx.close();
-    const survived = await call(page, "getEstate", "GET", { estateId });
+    const survived = await call(page, "getHost", "GET", { hostId });
     expect(survived.status).toBe(200);
     expect(survived.body.projects).toHaveLength(2);
 
@@ -446,13 +446,13 @@ test.describe("Project estates", () => {
     //     unchanged.
     const moved = await call(
       page,
-      "moveEstate",
+      "moveHost",
       "POST",
-      { estateId },
+      { hostId },
       { projectId: second.id },
     );
     expect(moved.status).toBe(200);
-    expect(moved.body.estate.slug).toBe("ow-vps");
+    expect(moved.body.host.slug).toBe("ow-vps");
     expect(
       (moved.body.loans as Array<{ id: number }>).map((loan) => loan.id),
     ).toEqual([first.id, second.id]);
@@ -462,7 +462,7 @@ test.describe("Project estates", () => {
       (await call(page, "deleteProjectById", "POST", { id: first.id })).status,
     ).toBe(200);
 
-    // 12. A third project; the admin assigns the estate to it from the
+    // 12. A third project; the admin assigns the host to it from the
     //     admin page, and its members can then manage it.
     const third = await createProjectViaWizard(page, t3, {
       capabilities: ["apps"],
@@ -471,7 +471,7 @@ test.describe("Project estates", () => {
     const admin = await adminCtx.newPage();
     try {
       await signInAsAdmin(admin);
-      await admin.goto("/admin/estates");
+      await admin.goto("/admin/hosts");
       await admin.waitForLoadState("networkidle");
       const row = admin.locator("tbody tr", {
         has: admin.getByText("ow-vps", { exact: true }),
@@ -479,18 +479,18 @@ test.describe("Project estates", () => {
       await expect(row).toBeVisible({ timeout: 15_000 });
       await row.getByRole("button", { name: /actions/i }).click();
       await admin.getByRole("menuitem", { name: "Assign to project" }).click();
-      await admin.getByTestId("admin-estate-assign-project").click();
+      await admin.getByTestId("admin-host-assign-project").click();
       await admin.getByRole("option", { name: new RegExp(`^${t3}`) }).click();
       await releasePointerEvents(admin);
-      await admin.getByTestId("admin-estate-assign-submit").click();
+      await admin.getByTestId("admin-host-assign-submit").click();
       await expect(row).toContainText(t3, { timeout: 15_000 });
     } finally {
       await adminCtx.close();
     }
-    const managed = await call(page, "getEstate", "GET", { estateId });
+    const managed = await call(page, "getHost", "GET", { hostId });
     expect(managed.body.project.id).toBe(third.id);
     expect(managed.body.can).toEqual(
-      expect.arrayContaining(["estate:update", "estate:delete"]),
+      expect.arrayContaining(["host:update", "host:delete"]),
     );
     await guest.ctx.close();
   });

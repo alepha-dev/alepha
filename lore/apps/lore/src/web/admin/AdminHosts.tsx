@@ -5,8 +5,8 @@ import {
   type DataTableFilterFields,
   type DataTableFilterValues,
 } from "@alepha/ui/table";
-import type { AdminEstateController } from "@lore/deploy/api";
-import type { AdminEstateResource } from "@lore/deploy/schemas";
+import type { AdminHostController } from "@lore/deploy/api";
+import type { AdminHostResource } from "@lore/deploy/schemas";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -14,31 +14,31 @@ import { Link } from "alepha/react/router";
 import { FolderInput, Home, Trash2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
-import AdminEstateAssignDialog from "./AdminEstateAssignDialog.tsx";
+import AdminHostAssignDialog from "./AdminHostAssignDialog.tsx";
 
 /**
- * Instance-wide estates list, mounted into the shared admin shell by
+ * Instance-wide hosts list, mounted into the shared admin shell by
  * `LoreAdminRouter` (#1838).
  *
- * The backstop for an estate whose owner is gone or unresponsive. An admin
- * sees every estate and can delete one; an admin can never read a
+ * The backstop for a host whose owner is gone or unresponsive. An admin
+ * sees every host and can delete one; an admin can never read a
  * credential, and this page has no column for one. The delete confirmation
  * says what deleting does not do, for the same reason the owner's does:
  * nothing is undeployed, and a `cloudflare` credential is not revoked at
  * Cloudflare.
  */
-export const AdminEstates = () => {
-  const client = useClient<AdminEstateController>();
+export const AdminHosts = () => {
+  const client = useClient<AdminHostController>();
   const { l } = useI18n();
 
   // Literal English, like the rest of the Lore admin: it is untranslated.
   const filterFields = {
     search: {
       preset: "search",
-      placeholder: "Search estates…",
-      control: { inputProps: { "aria-label": "Search estates by slug" } },
+      placeholder: "Search hosts…",
+      control: { inputProps: { "aria-label": "Search hosts by slug" } },
     },
-    // The estates the migration could not place (#E126): the ones to assign.
+    // The hosts the migration could not place (#E126): the ones to assign.
     home: {
       schema: z.array(z.string()),
       label: "Home",
@@ -47,7 +47,7 @@ export const AdminEstates = () => {
       control: { clearLabel: "Any home" },
     },
   } satisfies DataTableFilterFields;
-  const [assigning, setAssigning] = useState<AdminEstateResource>();
+  const [assigning, setAssigning] = useState<AdminHostResource>();
   const refreshRef = useRef<() => void>(() => {});
 
   const fetcher = useCallback(
@@ -57,7 +57,7 @@ export const AdminEstates = () => {
       sort?: string;
       filters?: DataTableFilterValues<typeof filterFields>;
     }) => {
-      return client.findEstates({
+      return client.findHosts({
         query: {
           page: params.page,
           size: params.size,
@@ -70,62 +70,62 @@ export const AdminEstates = () => {
     [client],
   );
 
-  const deleteEstate = useConfirmedAction<[AdminEstateResource, () => void]>(
+  const deleteHost = useConfirmedAction<[AdminHostResource, () => void]>(
     {
-      confirm: (estate) => ({
-        title: "Delete estate",
-        description: `Delete "${estate.slug}"? Its secret stops working and every project it is lent to loses it. Nothing is undeployed: the machine keeps running whatever it runs. A cloudflare credential is not revoked at Cloudflare. This cannot be undone.`,
+      confirm: (host) => ({
+        title: "Delete host",
+        description: `Delete "${host.slug}"? Its secret stops working and every project it is lent to loses it. Nothing is undeployed: the machine keeps running whatever it runs. A cloudflare credential is not revoked at Cloudflare. This cannot be undone.`,
         confirmLabel: "Delete",
         destructive: true,
       }),
-      handler: async (estate, refresh) => {
-        await client.adminDeleteEstate({ params: { id: estate.id } });
+      handler: async (host, refresh) => {
+        await client.adminDeleteHost({ params: { id: host.id } });
         refresh();
       },
-      success: (estate) => `Deleted "${estate.slug}"`,
+      success: (host) => `Deleted "${host.slug}"`,
     },
     [client],
   );
 
   return (
     <AdminPage>
-      <DataTable<AdminEstateResource, typeof filterFields>
+      <DataTable<AdminHostResource, typeof filterFields>
         className="min-h-0 flex-1"
-        persistenceKey="lore.admin.estates"
+        persistenceKey="lore.admin.hosts"
         fetch={fetcher}
         filters={{ fields: filterFields }}
-        rowActions={(estate) => [
+        rowActions={(host) => [
           {
             label: "Assign to project",
             icon: FolderInput,
             onClick: (
-              _estate: AdminEstateResource,
+              _host: AdminHostResource,
               { refresh }: { refresh: () => void },
             ) => {
               refreshRef.current = refresh;
-              setAssigning(estate);
+              setAssigning(host);
             },
           },
           {
-            label: "Delete estate",
+            label: "Delete host",
             icon: Trash2,
             destructive: true,
             onClick: (
-              _estate: AdminEstateResource,
+              _host: AdminHostResource,
               { refresh }: { refresh: () => void },
-            ) => deleteEstate.run(estate, refresh),
+            ) => deleteHost.run(host, refresh),
           },
         ]}
         columns={{
           slug: {
             label: "Slug",
             sortable: true,
-            cell: (estate) => (
+            cell: (host) => (
               <span className="flex items-center gap-2">
-                <span className="font-medium">{estate.slug}</span>
-                {estate.label && (
+                <span className="font-medium">{host.slug}</span>
+                {host.label && (
                   <span className="text-muted-foreground text-xs">
-                    {estate.label}
+                    {host.label}
                   </span>
                 )}
               </span>
@@ -133,13 +133,13 @@ export const AdminEstates = () => {
           },
           type: {
             label: "Type",
-            cell: (estate) => <Badge variant="outline">{estate.type}</Badge>,
+            cell: (host) => <Badge variant="outline">{host.type}</Badge>,
           },
           project: {
             label: "Project",
-            cell: (estate) =>
-              estate.project ? (
-                <span>{estate.project.title}</span>
+            cell: (host) =>
+              host.project ? (
+                <span>{host.project.title}</span>
               ) : (
                 <Badge variant="destructive">No home</Badge>
               ),
@@ -150,13 +150,13 @@ export const AdminEstates = () => {
              * A real `<a href>` rather than a click handler, so the row keeps
              * cmd-click and "copy link address", like the projects table.
              */
-            cell: (estate) =>
-              estate.creator ? (
+            cell: (host) =>
+              host.creator ? (
                 <Link
-                  href={`/admin/users/${estate.creator.id}`}
+                  href={`/admin/users/${host.creator.id}`}
                   className="hover:text-foreground underline-offset-4 hover:underline"
                 >
-                  {estate.creator.name}
+                  {host.creator.name}
                 </Link>
               ) : (
                 <span className="text-muted-foreground text-xs">unknown</span>
@@ -164,50 +164,50 @@ export const AdminEstates = () => {
           },
           online: {
             label: "State",
-            cell: (estate) => (
+            cell: (host) => (
               <span className="flex items-center gap-1">
                 {/* A cloudflare account never connects, so `online` says
                     nothing about one. Whether its credential still works
                     does (#1630). */}
-                {estate.type === "cloudflare" ? (
+                {host.type === "cloudflare" ? (
                   <Badge
                     variant={
-                      estate.credentialStatus === "valid"
+                      host.credentialStatus === "valid"
                         ? "default"
                         : "destructive"
                     }
                   >
-                    {estate.credentialStatus === "valid"
+                    {host.credentialStatus === "valid"
                       ? "credential valid"
                       : "credential invalid"}
                   </Badge>
                 ) : (
-                  <Badge variant={estate.online ? "default" : "outline"}>
-                    {estate.online ? "online" : "offline"}
+                  <Badge variant={host.online ? "default" : "outline"}>
+                    {host.online ? "online" : "offline"}
                   </Badge>
                 )}
                 <Badge variant="secondary">
-                  {estate.deployAllowed ? "deploys" : "stats only"}
+                  {host.deployAllowed ? "deploys" : "stats only"}
                 </Badge>
               </span>
             ),
           },
           loans: {
             label: "Lent to",
-            cell: (estate) => (
+            cell: (host) => (
               <span className="text-xs">
-                {estate.loans.length
-                  ? estate.loans.map((project) => project.title).join(", ")
+                {host.loans.length
+                  ? host.loans.map((project) => project.title).join(", ")
                   : "none"}
               </span>
             ),
           },
           lastSeenAt: {
             label: "Last seen",
-            cell: (estate) => (
+            cell: (host) => (
               <span className="text-muted-foreground text-xs">
-                {estate.lastSeenAt
-                  ? l(estate.lastSeenAt, { date: "lll" })
+                {host.lastSeenAt
+                  ? l(host.lastSeenAt, { date: "lll" })
                   : "never"}
               </span>
             ),
@@ -215,17 +215,17 @@ export const AdminEstates = () => {
           createdAt: {
             label: "Created",
             sortable: true,
-            cell: (estate) => (
+            cell: (host) => (
               <span className="text-muted-foreground text-xs">
-                {l(estate.createdAt, { date: "ll" })}
+                {l(host.createdAt, { date: "ll" })}
               </span>
             ),
           },
         }}
       />
-      <AdminEstateAssignDialog
+      <AdminHostAssignDialog
         key={assigning?.id ?? "none"}
-        estate={assigning}
+        host={assigning}
         onOpenChange={(open) => {
           if (!open) setAssigning(undefined);
         }}
@@ -235,4 +235,4 @@ export const AdminEstates = () => {
   );
 };
 
-export default AdminEstates;
+export default AdminHosts;

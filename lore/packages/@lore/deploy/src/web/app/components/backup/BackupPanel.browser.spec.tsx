@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import BackupPanel, { type BackupSource } from "./BackupPanel.tsx";
 
 /**
- * Restoring from another instance's backups (`from`) is the estate owner's
+ * Restoring from another instance's backups (`from`) is the host owner's
  * alone: the project route refuses it whatever is sent, so its Backups tab
  * must not offer the field.
  */
@@ -59,7 +59,7 @@ describe("BackupPanel", () => {
     expect(screen.queryByTestId("backup-policy-draft")).toBeNull();
   });
 
-  it("offers both on the estate owner's console", async () => {
+  it("offers both on the host owner's console", async () => {
     await mount(true);
     expect(screen.getByTestId("backup-restore-from")).toBeTruthy();
     expect(screen.getByTestId("backup-policy-draft")).toBeTruthy();

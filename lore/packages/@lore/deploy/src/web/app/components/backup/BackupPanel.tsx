@@ -23,11 +23,11 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import type { EstateEvent } from "../../../../api/entities/estateEvents.ts";
-import type { EstateBackupCommandBody } from "../../../../api/schemas/estateBackupCommandSchema.ts";
-import type { EstateBackupsListResult } from "../../../../api/schemas/estateBackupResultSchemas.ts";
-import type { EstateCommandResource } from "../../../../api/schemas/estateCommandResourceSchema.ts";
-import type { EstateInventoryBackup } from "../../../../api/schemas/estateInventoryBackupSchema.ts";
+import type { HostEvent } from "../../../../api/entities/hostEvents.ts";
+import type { HostBackupCommandBody } from "../../../../api/schemas/hostBackupCommandSchema.ts";
+import type { HostBackupsListResult } from "../../../../api/schemas/hostBackupResultSchemas.ts";
+import type { HostCommandResource } from "../../../../api/schemas/hostCommandResourceSchema.ts";
+import type { HostInventoryBackup } from "../../../../api/schemas/hostInventoryBackupSchema.ts";
 
 type Tr = ReturnType<typeof useI18n<I18n, "en">>["tr"];
 type TrKey = Parameters<Tr>[0];
@@ -43,30 +43,30 @@ type TrKey = Parameters<Tr>[0];
 export interface BackupSource {
   /** The machine name, typed back to confirm a restore. */
   appLabel: string;
-  backup?: EstateInventoryBackup;
+  backup?: HostInventoryBackup;
   /**
    * What to say in place of the backup facts while `backup` is absent, when
    * the caller knows more than "not reported": why this copy is missing from
    * the machine's report.
    */
   notice?: string;
-  events: EstateEvent[];
+  events: HostEvent[];
   online: boolean;
   deployAllowed: boolean;
   canManage: boolean;
   /**
    * Whether a restore may name another instance's backups (`from`). Only the
-   * estate owner's route accepts it, so the project's Backups tab hides the
+   * host owner's route accepts it, so the project's Backups tab hides the
    * field rather than offer one the server always refuses.
    */
   canRestoreFrom: boolean;
   /**
    * Whether the operator policy may be edited. It is Bay's operator layer,
-   * the estate owner's alone: a project declares its policy at deploy.
+   * the host owner's alone: a project declares its policy at deploy.
    */
   canEditPolicy: boolean;
-  send: (body: EstateBackupCommandBody) => Promise<EstateCommandResource>;
-  poll: (id: string) => Promise<EstateCommandResource | undefined>;
+  send: (body: HostBackupCommandBody) => Promise<HostCommandResource>;
+  poll: (id: string) => Promise<HostCommandResource | undefined>;
   /** The uploaded result, parsed; `undefined` while there is none yet. */
   result: (id: string) => Promise<unknown>;
   reload: () => void;
@@ -77,15 +77,15 @@ export interface BackupPanelProps {
 }
 
 interface Outcome {
-  kind: EstateBackupCommandBody["kind"];
-  command: EstateCommandResource;
+  kind: HostBackupCommandBody["kind"];
+  command: HostCommandResource;
   result?: unknown;
 }
 
 const BackupPanel = ({ source }: BackupPanelProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const [outcome, setOutcome] = useState<Outcome | undefined>();
-  const [listed, setListed] = useState<EstateBackupsListResult | undefined>();
+  const [listed, setListed] = useState<HostBackupsListResult | undefined>();
   const [tag, setTag] = useState("");
   const [policyDraft, setPolicyDraft] = useState("");
   const [policyError, setPolicyError] = useState<string | undefined>();
@@ -107,7 +107,7 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
   };
   const pointId = JSON.stringify(point);
 
-  const action = useAction<[EstateBackupCommandBody], Outcome | undefined>(
+  const action = useAction<[HostBackupCommandBody], Outcome | undefined>(
     {
       handler: async ({ signal }, body) => {
         setOutcome(undefined);
@@ -142,7 +142,7 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
         const done = { kind: body.kind, command, result };
         setOutcome(done);
         if (body.kind === "backups-list" && result) {
-          setListed(result as EstateBackupsListResult);
+          setListed(result as HostBackupsListResult);
         }
         if (body.kind === "restore" && body.dryRun) {
           setDryRunFor(command.status === "done" ? pointId : undefined);
@@ -159,7 +159,7 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
   );
 
   const busy = action.loading;
-  const run = (body: EstateBackupCommandBody) => void action.run(body);
+  const run = (body: HostBackupCommandBody) => void action.run(body);
   const backup = source.backup;
   const writable = source.canManage && source.online;
   const confirmed = restoreConfirm.trim() === source.appLabel;
@@ -767,7 +767,7 @@ const eventVariant = (kind: string) =>
       : "secondary";
 
 /** The one line worth showing from an event's data, Bay's words verbatim. */
-export const eventSummary = (event: Pick<EstateEvent, "data">) => {
+export const eventSummary = (event: Pick<HostEvent, "data">) => {
   const data = event.data ?? {};
   for (const name of ["error", "message", "reason", "key", "policy"]) {
     const value = data[name];
@@ -790,7 +790,7 @@ const STATE_LABELS: Record<string, TrKey> = {
   "restore-pending": "backup.state.restorePending",
 };
 
-const RESULT_KINDS = new Set<EstateBackupCommandBody["kind"]>([
+const RESULT_KINDS = new Set<HostBackupCommandBody["kind"]>([
   "backups-list",
   "backup-verify",
   "target-probe",

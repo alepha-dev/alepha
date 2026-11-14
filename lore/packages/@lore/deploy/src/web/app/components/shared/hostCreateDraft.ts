@@ -1,6 +1,6 @@
 import { CLOUDFLARE_ACCOUNT_ID_PATTERN } from "../../../../api/schemas/cloudflareCredentialSchema.ts";
-import type { CreateEstateBody } from "../../../../api/schemas/createEstateBodySchema.ts";
-import { ESTATE_SLUG_PATTERN } from "../../../../api/schemas/estateSlugSchema.ts";
+import type { CreateHostBody } from "../../../../api/schemas/createHostBodySchema.ts";
+import { HOST_SLUG_PATTERN } from "../../../../api/schemas/hostSlugSchema.ts";
 
 /**
  * What both create dialogs hold while somebody is filling them in.
@@ -13,14 +13,14 @@ import { ESTATE_SLUG_PATTERN } from "../../../../api/schemas/estateSlugSchema.ts
  * The token lives here for the length of the dialog and nowhere else: it is
  * cleared on close, never put in a toast, and never sent back by any read.
  */
-export interface EstateCreateDraft {
+export interface HostCreateDraft {
   type: "bay" | "cloudflare";
   slug: string;
   accountId: string;
   token: string;
 }
 
-export const emptyEstateDraft = (): EstateCreateDraft => ({
+export const emptyHostDraft = (): HostCreateDraft => ({
   type: "bay",
   slug: "",
   accountId: "",
@@ -32,7 +32,7 @@ export const emptyEstateDraft = (): EstateCreateDraft => ({
  * server does: `OVH-1` is accepted as input and becomes `ovh-1`, rather than
  * being refused for a case nobody meant as a distinction.
  */
-export const estateDraftSlug = (draft: EstateCreateDraft): string =>
+export const hostDraftSlug = (draft: HostCreateDraft): string =>
   draft.slug.trim().toLowerCase();
 
 /**
@@ -43,8 +43,8 @@ export const estateDraftSlug = (draft: EstateCreateDraft): string =>
  * and a pattern here would refuse a valid token before any probe could say
  * otherwise.
  */
-export const estateDraftValid = (draft: EstateCreateDraft): boolean => {
-  if (!ESTATE_SLUG_PATTERN.test(estateDraftSlug(draft))) {
+export const hostDraftValid = (draft: HostCreateDraft): boolean => {
+  if (!HOST_SLUG_PATTERN.test(hostDraftSlug(draft))) {
     return false;
   }
   if (draft.type === "bay") {
@@ -59,31 +59,31 @@ export const estateDraftValid = (draft: EstateCreateDraft): boolean => {
 /**
  * The draft as the discriminated body the two create endpoints take.
  */
-export const estateDraftBody = (draft: EstateCreateDraft): CreateEstateBody =>
+export const hostDraftBody = (draft: HostCreateDraft): CreateHostBody =>
   draft.type === "cloudflare"
     ? {
         type: "cloudflare",
-        slug: estateDraftSlug(draft),
+        slug: hostDraftSlug(draft),
         accountId: draft.accountId.trim(),
         token: draft.token.trim(),
       }
-    : { slug: estateDraftSlug(draft) };
+    : { slug: hostDraftSlug(draft) };
 
 /**
  * Which field a server refusal belongs beside.
  *
- * `EstateService.assertCredential` puts it on the error's `data`, which
+ * `HostService.assertCredential` puts it on the error's `data`, which
  * survives the round trip (`HttpError.toJSON`, read back through
  * `errorSchema`). An error without one renders above the buttons: a wrong
  * account id and a missing permission are not fixed in the same field, and
  * guessing which is worse than saying nothing.
  */
-export const estateErrorField = (
+export const hostErrorField = (
   error: unknown,
 ): "accountId" | "token" | undefined => {
   const field = (error as { data?: { field?: unknown } })?.data?.field;
   return field === "accountId" || field === "token" ? field : undefined;
 };
 
-export const estateErrorMessage = (error: unknown): string =>
+export const hostErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);

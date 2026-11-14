@@ -6,7 +6,7 @@ import {
   ProjectShellRegistry,
   ProjectTrail,
 } from "@lore/core/web";
-import { currentEstateAtom, DeployShell } from "@lore/deploy/web";
+import { currentHostAtom, DeployShell } from "@lore/deploy/web";
 import { currentAreaAtom, WorkShell } from "@lore/work/web";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
@@ -16,8 +16,8 @@ import { describe, it } from "vitest";
 
 /**
  * A detail page ends its breadcrumb trail with itself (#Q3408), where three
- * of them used to carry a back link in their body instead: an estate's
- * console ("All estates"), an area's settings page ("Back to areas") and
+ * of them used to carry a back link in their body instead: a host's
+ * console ("All hosts"), an area's settings page ("Back to areas") and
  * the automation gallery ("Back to automations"). The trail above them
  * (Project > section) comes from `ProjectView`; these are the leaves the
  * modules contribute, read the way `ProjectView` reads them.
@@ -67,11 +67,11 @@ describe("the leaf crumb of a detail page", () => {
     return { alepha, leaves };
   };
 
-  it("an estate's console ends with the estate, on every tab", async ({
+  it("a host's console ends with the host, on every tab", async ({
     expect,
   }) => {
     const { alepha, leaves } = await setup();
-    alepha.store.set(currentEstateAtom, {
+    alepha.store.set(currentHostAtom, {
       id: "00000000-0000-4000-8000-0000000000a1",
       slug: "ovh",
       type: "bay",
@@ -84,12 +84,12 @@ describe("the leaf crumb of a detail page", () => {
       createdAt: "2026-09-01T10:00:00.000Z",
       updatedAt: "2026-09-01T10:00:00.000Z",
       project: { id: 7, title: "MCS", slug: "mcs" },
-      can: ["estate:read"],
+      can: ["host:read"],
       projects: [],
     } as any);
 
     for (const route of ["bayOverview", "bayApps", "baySettings"]) {
-      const crumbs = leaves(route, { estateSlug: "ovh" });
+      const crumbs = leaves(route, { hostSlug: "ovh" });
       expect(crumbs).toHaveLength(1);
       expect(crumbs[0]?.label).toBe("ovh");
       expect(crumbs[0]?.href).toContain("bayOverview");

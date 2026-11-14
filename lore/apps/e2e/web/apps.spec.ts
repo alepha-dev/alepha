@@ -99,7 +99,7 @@ const appRows = (page: Page, text: string) =>
  * ⚠️ **`cache: "no-store"`, and it is load-bearing.** Without it the browser
  * serves a poll from its own HTTP cache, so the loop settles on the state
  * BEFORE the write it is waiting for and the next step races it. That cost an
- * hour on the estate step below, where a cleared deploy target read as cleared
+ * hour on the host step below, where a cleared deploy target read as cleared
  * and the server refused the detach anyway.
  */
 const waitForInstance = async (
@@ -359,7 +359,7 @@ test.describe("Apps", () => {
     // ⚠️ Unique per run: `(ownerUserId, slug)` is a unique index, and the suite
     // shares a worker's database with nothing but itself only because every
     // fixture here is stamped with `t`.
-    const estateSlug = `ovh-${t}`.slice(0, 20);
+    const hostSlug = `ovh-${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, "SigilTest123!");
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
@@ -1599,32 +1599,32 @@ test.describe("Apps", () => {
       });
     });
 
-    await test.step("an estate cannot be detached while a copy deploys to it", async () => {
-      // ⚠️ The only path that drives `EstateService.assertUnreferenced`. It was
-      // a seam doing nothing until #1767 filled it, and without the estate
+    await test.step("a host cannot be detached while a copy deploys to it", async () => {
+      // ⚠️ The only path that drives `HostService.assertUnreferenced`. It was
+      // a seam doing nothing until #1767 filled it, and without the host
       // select on the instance's Settings tab there would be no user path to
       // reach either refusal.
-      await page.goto(`/${projectSlug}/settings/estates`);
+      await page.goto(`/${projectSlug}/settings/hosts`);
       await page.waitForLoadState("networkidle");
 
       await page
-        .getByRole("button", { name: "Add an estate", exact: true })
+        .getByRole("button", { name: "Add a host", exact: true })
         .click();
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 15_000 });
-      // The caller owns no estate yet, so the dialog opens on "create a new
+      // The caller owns no host yet, so the dialog opens on "create a new
       // one" - clicked explicitly rather than relied on, since the mode it
       // lands in depends on what the account happens to hold.
       await dialog
         .getByRole("button", { name: "Create a new one", exact: true })
         .click();
-      // ⚠️ "Name", not "Estate slug": the field is a labelled `Control` now
+      // ⚠️ "Name", not "Host slug": the field is a labelled `Control` now
       // and its accessible name is that label (#Q2049). The old name was an
       // `aria-label` on a bare input carrying a placeholder, which is the
       // arrangement feedback #P2143 was about.
       await dialog
         .getByRole("textbox", { name: "Name", exact: true })
-        .fill(estateSlug);
+        .fill(hostSlug);
       await dialog
         .getByRole("button", { name: "Create and lend", exact: true })
         .click();
@@ -1634,7 +1634,7 @@ test.describe("Apps", () => {
       // finishes the flow.
       await page.getByRole("button", { name: "Done", exact: true }).click();
       await releasePointerEvents(page);
-      await expect(page.getByText(estateSlug).first()).toBeVisible({
+      await expect(page.getByText(hostSlug).first()).toBeVisible({
         timeout: 15_000,
       });
 
@@ -1649,7 +1649,7 @@ test.describe("Apps", () => {
       const select = page.getByRole("combobox", { name: "Deploys to" });
       await expect(select).toBeVisible({ timeout: 15_000 });
       await select.click();
-      await page.getByRole("option", { name: estateSlug }).click();
+      await page.getByRole("option", { name: hostSlug }).click();
       await releasePointerEvents(page);
       await expect(page.getByText(/Deploy target saved/i)).toBeVisible({
         timeout: 15_000,
@@ -1659,16 +1659,16 @@ test.describe("Apps", () => {
       // action is to open it and repoint it.
       const detached = await page.evaluate(
         async ({ projectId }) => {
-          const list = await fetch(`/api/projects/${projectId}/estates`, {
+          const list = await fetch(`/api/projects/${projectId}/hosts`, {
             cache: "no-store",
             credentials: "include",
           });
           const body = (await list.json()) as { items: { id: string }[] };
-          const estate = body.items[0];
-          const r = await fetch(
-            `/api/projects/${projectId}/estates/${estate.id}`,
-            { method: "DELETE", credentials: "include" },
-          );
+          const host = body.items[0];
+          const r = await fetch(`/api/projects/${projectId}/hosts/${host.id}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
           return { status: r.status, body: await r.text() };
         },
         { projectId },
@@ -1699,12 +1699,12 @@ test.describe("Apps", () => {
                   items: {
                     app: string;
                     env: string;
-                    estateId?: string | null;
+                    hostId?: string | null;
                   }[];
                 };
                 return (
                   body.items.find((it) => it.app === app && it.env === env)
-                    ?.estateId ?? null
+                    ?.hostId ?? null
                 );
               },
               { projectId, app: appName, env: envName },
@@ -1715,16 +1715,16 @@ test.describe("Apps", () => {
 
       const again = await page.evaluate(
         async ({ projectId }) => {
-          const list = await fetch(`/api/projects/${projectId}/estates`, {
+          const list = await fetch(`/api/projects/${projectId}/hosts`, {
             cache: "no-store",
             credentials: "include",
           });
           const body = (await list.json()) as { items: { id: string }[] };
-          const estate = body.items[0];
-          const r = await fetch(
-            `/api/projects/${projectId}/estates/${estate.id}`,
-            { method: "DELETE", credentials: "include" },
-          );
+          const host = body.items[0];
+          const r = await fetch(`/api/projects/${projectId}/hosts/${host.id}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
           return r.status;
         },
         { projectId },

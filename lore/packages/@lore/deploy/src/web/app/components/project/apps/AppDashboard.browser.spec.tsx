@@ -274,16 +274,16 @@ describe("AppDashboard", () => {
   });
 
   /**
-   * The whole visible effect of an estate in v3. Present only when one is
+   * The whole visible effect of a host in v3. Present only when one is
    * attached: a row reading "none" would be a control that changes nothing.
    */
-  it("names the estate it deploys to, when it has one", async ({ expect }) => {
-    const withEstate = await show(
+  it("names the host it deploys to, when it has one", async ({ expect }) => {
+    const withHost = await show(
       instanceOf(
         {},
         {
-          estateId: "00000000-0000-4000-8000-0000000000e1",
-          estate: {
+          hostId: "00000000-0000-4000-8000-0000000000e1",
+          host: {
             id: "00000000-0000-4000-8000-0000000000e1",
             slug: "ovh-1",
             type: "bay",
@@ -291,8 +291,8 @@ describe("AppDashboard", () => {
         },
       ),
     );
-    expect(withEstate.getByText("Deploys to")).toBeTruthy();
-    expect(withEstate.getByText("ovh-1")).toBeTruthy();
+    expect(withHost.getByText("Deploys to")).toBeTruthy();
+    expect(withHost.getByText("ovh-1")).toBeTruthy();
 
     const without = await show(instanceOf());
     expect(without.queryByText("Deploys to")).toBeNull();
@@ -311,7 +311,7 @@ describe("AppDashboard", () => {
     expect(unknown.getByText("None")).toBeTruthy();
 
     const detected = await show(
-      instanceOf({ lastSeenHost: "docs.alepha.dev" }),
+      instanceOf({ lastSeenHostname: "docs.alepha.dev" }),
     );
     expect(detected.getByText("docs.alepha.dev")).toBeTruthy();
 
@@ -321,7 +321,7 @@ describe("AppDashboard", () => {
     // the credential.
     const pinned = await show(
       instanceOf(
-        { lastSeenHost: "docs.alepha.dev" },
+        { lastSeenHostname: "docs.alepha.dev" },
         { url: "https://alepha.dev/docs" },
       ),
     );

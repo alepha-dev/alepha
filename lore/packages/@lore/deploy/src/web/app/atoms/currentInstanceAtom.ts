@@ -10,7 +10,7 @@ import { appInstanceResourceSchema } from "../../../api/schemas/appInstanceResou
  * three separate router layers: `NestedView` renders a child element it was
  * handed, so a layout cannot pass props down to the tab it is rendering.
  *
- * It carries the instance's unlocks with it (`sigil`, `estate`), which is what
+ * It carries the instance's unlocks with it (`sigil`, `host`), which is what
  * lets the tab bar decide its own tab set without a second request.
  */
 export const currentInstanceAtom = $atom({

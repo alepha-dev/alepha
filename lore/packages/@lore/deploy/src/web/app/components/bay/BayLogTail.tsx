@@ -5,9 +5,9 @@ import { useI18n } from "alepha/react/i18n";
 import { ScrollText } from "lucide-react";
 import { useState } from "react";
 
-import type { EstateCommandController } from "../../../../api/controllers/EstateCommandController.ts";
-import type { EstateCommandResult } from "../../../../api/schemas/estateCommandResultSchema.ts";
-import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
+import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
+import type { HostCommandResult } from "../../../../api/schemas/hostCommandResultSchema.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 
 export interface BayLogTailProps {
   app: string;
@@ -40,10 +40,10 @@ export interface BayLogTailProps {
  */
 const BayLogTail = (props: BayLogTailProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const commandApi = useClient<EstateCommandController>();
-  const [estate] = useStore(currentEstateAtom);
+  const commandApi = useClient<HostCommandController>();
+  const [host] = useStore(currentHostAtom);
 
-  const [result, setResult] = useState<EstateCommandResult | undefined>();
+  const [result, setResult] = useState<HostCommandResult | undefined>();
   const [note, setNote] = useState<string | undefined>();
 
   // A `useAction` (#E59, #Q2329): a refused enqueue is the server's sentence,
@@ -52,11 +52,11 @@ const BayLogTail = (props: BayLogTailProps) => {
   const fetchAction = useAction<[], void>(
     {
       handler: async ({ signal }) => {
-        if (!estate) return;
+        if (!host) return;
         setResult(undefined);
         setNote(undefined);
-        const command = await commandApi.enqueueEstateCommand({
-          params: { estateId: estate.id },
+        const command = await commandApi.enqueueHostCommand({
+          params: { hostId: host.id },
           body: {
             kind: "logs",
             app: props.app,
@@ -74,8 +74,8 @@ const BayLogTail = (props: BayLogTailProps) => {
           await new Promise((resolve) => setTimeout(resolve, POLL_MS));
           if (signal.aborted) return;
           try {
-            const file = await commandApi.getEstateCommandResult({
-              params: { estateId: estate.id, commandId: command.id },
+            const file = await commandApi.getHostCommandResult({
+              params: { hostId: host.id, commandId: command.id },
             });
             setResult(JSON.parse(await (file as unknown as Blob).text()));
             return;
@@ -88,11 +88,11 @@ const BayLogTail = (props: BayLogTailProps) => {
         setNote(tr("bay.logs.timeout"));
       },
     },
-    [commandApi, estate, props.app, props.env, tr],
+    [commandApi, host, props.app, props.env, tr],
   );
   const busy = fetchAction.loading;
 
-  if (!estate) {
+  if (!host) {
     return null;
   }
 
@@ -107,8 +107,8 @@ const BayLogTail = (props: BayLogTailProps) => {
             size="sm"
             // Said before the click rather than refused after it. The enqueue
             // refuses too, server-side, which is what actually holds.
-            disabled={busy || !estate.online}
-            title={estate.online ? undefined : tr("bay.logs.offline")}
+            disabled={busy || !host.online}
+            title={host.online ? undefined : tr("bay.logs.offline")}
             onClick={() => void fetchAction.run()}
             data-testid="bay-logs-fetch"
           >
@@ -117,7 +117,7 @@ const BayLogTail = (props: BayLogTailProps) => {
           </Button>
         </div>
 
-        {!estate.online && (
+        {!host.online && (
           <p className="text-muted-foreground text-xs">
             {tr("bay.logs.offline")}
           </p>

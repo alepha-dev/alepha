@@ -65,7 +65,7 @@ import { useDeleteApps } from "./useDeleteApps.ts";
  *
  * `instance.version` is the tag of that copy's newest SUCCEEDED deployment,
  * filled by `AppController.toResources` from the `deployments` table in the
- * same batched read as the sigil and the estate. v3 shipped three columns
+ * same batched read as the sigil and the host. v3 shipped three columns
  * because nothing knew the answer; epic #1's table is what made it knowable.
  *
  * ⚠️ **Never the newest artifact tag.** That is per app rather than per copy,
@@ -654,14 +654,14 @@ const ProjectApps = () => {
                 },
               }
             : {}),
-          estate: {
-            label: tr("apps.table.estate"),
+          host: {
+            label: tr("apps.table.host"),
             sortable: true,
             defaultHidden: true,
-            sortValue: (instance) => instance.estate?.slug,
+            sortValue: (instance) => instance.host?.slug,
             cell: (instance) => (
               <span className="text-muted-foreground truncate text-xs">
-                {instance.estate?.slug ?? ""}
+                {instance.host?.slug ?? ""}
               </span>
             ),
           },

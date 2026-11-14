@@ -18,15 +18,15 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 
-import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 
 /**
- * The console for one `bay` estate, a page of its home project (#E126): a
+ * The console for one `bay` host, a page of its home project (#E126): a
  * header saying which machine this is and whether it is connected, a bar of
  * tabs, and the tab under them.
  *
- * The way back is the link to the project's Settings ▸ Apps ▸ Estates list,
- * where every estate of the project is. The tabs are
+ * The way back is the link to the project's Settings ▸ Apps ▸ Hosts list,
+ * where every host of the project is. The tabs are
  * `PlateLayout`'s bar of LINKS, one route each, never a tablist: a tab is its
  * own URL, so middle-click, copy-link and the back button all work. Each tab
  * picks its own frame (`AccountPage`): Apps and Commands are tables that
@@ -41,12 +41,12 @@ const BayLayout = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
   const routerState = useRouterState();
-  const [estate] = useStore(currentEstateAtom);
-  const estateSlug = estate?.slug;
+  const [host] = useStore(currentHostAtom);
+  const hostSlug = host?.slug;
   // ⚠️ Passed explicitly on every link: the console is a page of its HOME
   // project, and a link that leaves `projectSlug` to the router renders the
   // literal `:projectSlug` from a page that does not carry it.
-  const projectSlug = estate?.project?.slug ?? "";
+  const projectSlug = host?.project?.slug ?? "";
   // The instance page lives under Apps, so that tab stays lit while one is
   // open.
   const active =
@@ -54,25 +54,25 @@ const BayLayout = () => {
 
   /*
     Resolved hrefs: this subtree is parameterised
-    (`/:projectSlug/estates/:estateSlug/...`), and a route PATTERN handed to a link
+    (`/:projectSlug/hosts/:hostSlug/...`), and a route PATTERN handed to a link
     renders perfectly while going nowhere.
   */
   const tabs = useMemo(
     () =>
-      estateSlug
+      hostSlug
         ? TABS.map((tab) => ({
             key: tab.route,
             label: tr(tab.labelKey),
             icon: tab.icon,
             href: router.path(tab.route, {
-              params: { projectSlug, estateSlug },
+              params: { projectSlug, hostSlug },
             }),
           }))
         : [],
-    [projectSlug, estateSlug, router, tr],
+    [projectSlug, hostSlug, router, tr],
   );
 
-  if (!estate) {
+  if (!host) {
     return null;
   }
 
@@ -89,32 +89,32 @@ const BayLayout = () => {
       plate={
         <div className="flex flex-col gap-2 px-4 pt-3 pb-3 md:px-6">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-semibold">{estate.slug}</h1>
-            {estate.label && (
+            <h1 className="text-xl font-semibold">{host.slug}</h1>
+            {host.label && (
               <span className="text-muted-foreground text-sm">
-                {estate.label}
+                {host.label}
               </span>
             )}
-            <Badge variant={estate.online ? "default" : "outline"}>
-              {estate.online ? tr("estates.online") : tr("estates.offline")}
+            <Badge variant={host.online ? "default" : "outline"}>
+              {host.online ? tr("hosts.online") : tr("hosts.offline")}
             </Badge>
-            {/* The home project, whose members manage the estate (#E126). */}
-            {estate.project && (
+            {/* The home project, whose members manage the host (#E126). */}
+            {host.project && (
               <span
                 className="text-muted-foreground text-sm"
                 data-testid="bay-home"
               >
-                {estate.project.slug ? (
+                {host.project.slug ? (
                   <Link
-                    href={router.path("projectSettingsEstates", {
-                      params: { projectSlug: estate.project.slug },
+                    href={router.path("projectSettingsHosts", {
+                      params: { projectSlug: host.project.slug },
                     })}
                     className="hover:text-foreground underline-offset-4 hover:underline"
                   >
-                    {tr("bay.home", { args: [estate.project.title] })}
+                    {tr("bay.home", { args: [host.project.title] })}
                   </Link>
                 ) : (
-                  tr("bay.home", { args: [estate.project.title] })
+                  tr("bay.home", { args: [host.project.title] })
                 )}
               </span>
             )}

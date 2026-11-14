@@ -3,26 +3,26 @@ import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowRightLeft } from "lucide-react";
 
-import type { EstateResource } from "../../../../api/schemas/estateResourceSchema.ts";
+import type { HostResource } from "../../../../api/schemas/hostResourceSchema.ts";
 
 export interface BaySettingsHomeProps {
-  estate: EstateResource;
+  host: HostResource;
   /**
    * Offered only to a reader whose rank lets them move it away: the move
-   * takes `estate:delete` here.
+   * takes `host:delete` here.
    */
   onMove?: () => void;
   busy: boolean;
 }
 
 /**
- * Whose estate this is (#E126): its home project, whose members manage it,
+ * Whose host this is (#E126): its home project, whose members manage it,
  * and who added it. A provisioned server lives in that person's cloud
  * account, which is why they are named here.
  */
 const BaySettingsHome = (props: BaySettingsHomeProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const estate = props.estate;
+  const host = props.host;
 
   return (
     <Card>
@@ -30,19 +30,19 @@ const BaySettingsHome = (props: BaySettingsHomeProps) => {
         <div className="flex flex-col gap-0.5 text-sm">
           <span data-testid="bay-settings-home">
             {tr("bay.settings.home", {
-              args: [estate.project?.title ?? tr("estates.project.noHome")],
+              args: [host.project?.title ?? tr("hosts.project.noHome")],
             })}
           </span>
-          {estate.creator && (
+          {host.creator && (
             <span
               className="text-muted-foreground text-xs"
               data-testid="bay-settings-creator"
             >
-              {estate.provider
+              {host.provider
                 ? tr("bay.settings.provisionedBy", {
-                    args: [estate.creator.name],
+                    args: [host.creator.name],
                   })
-                : tr("bay.settings.addedBy", { args: [estate.creator.name] })}
+                : tr("bay.settings.addedBy", { args: [host.creator.name] })}
             </span>
           )}
         </div>

@@ -12,14 +12,14 @@ import { AccountDeletionRegistry } from "../../registries/AccountDeletionRegistr
  * know the rest, and each registers its own line on `AccountDeletionRegistry`
  * (#E75, #Q2624). `quests.createdBy` is `onDelete: "cascade"`, which means every quest this
  * account authored goes with it (**including quests inside projects
- * belonging to other people**), and that `estates.ownerUserId` cascades
- * too: an estate with no home project is still anchored on the account of
+ * belonging to other people**), and that `hosts.ownerUserId` cascades
+ * too: a host with no home project is still anchored on the account of
  * whoever created it, so it is deleted with it, its secret revoked, and
  * every project it was lent to loses a deploy destination (#1838, #E126). An
- * estate with a home outlives the account.
+ * host with a home outlives the account.
  *
  * `UserDeletionHook` deliberately does not refuse on either (refusing would
- * make deletion impossible for any active collaborator, and an estate
+ * make deletion impossible for any active collaborator, and a host
  * deletion must not be blockable by other people's projects), so saying the
  * numbers out loud, before the click, is the only thing between the person
  * and a surprise they cannot undo.

@@ -5,7 +5,7 @@ import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 
-import { currentEstateAtom } from "../../atoms/currentEstateAtom.ts";
+import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import BayActions from "./BayActions.tsx";
 import BayBackups from "./BayBackups.tsx";
 import { bayInstanceRows, bayProcessState } from "./bayInstanceRow.ts";
@@ -42,11 +42,11 @@ const BayInstance = () => {
   const { tr, l } = useI18n<I18n, "en">();
   const router = useRouter();
   const routerState = useRouterState();
-  const { estate, data, refetch } = useBayInventory();
-  const [openEstate] = useStore(currentEstateAtom);
+  const { host, data, refetch } = useBayInventory();
+  const [openHost] = useStore(currentHostAtom);
   // Asking for a tail, reading one, and the backup verbs all need
-  // `estate:update` in the home project (#Q3279).
-  const canTail = openEstate?.can.includes("estate:update") ?? false;
+  // `host:update` in the home project (#Q3279).
+  const canTail = openHost?.can.includes("host:update") ?? false;
 
   const app = String(routerState.params?.app ?? "");
   const env = String(routerState.params?.env ?? "");
@@ -54,7 +54,7 @@ const BayInstance = () => {
     (candidate) => candidate.app === app && candidate.env === env,
   );
 
-  if (!estate) {
+  if (!host) {
     return null;
   }
 
@@ -270,7 +270,7 @@ const BayInstance = () => {
         />
       )}
 
-      {/* Asking for a tail and reading one need `estate:update` (#Q3279). */}
+      {/* Asking for a tail and reading one need `host:update` (#Q3279). */}
       {canTail && <BayLogTail app={app} env={env} />}
     </AccountPage>
   );

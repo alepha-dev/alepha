@@ -17,7 +17,7 @@ import ArtifactNewCopyDialog from "./ArtifactNewCopyDialog.tsx";
 const aProject = projectFixture({ title: "Alepha", slug: "alepha" });
 
 const INSTANCE_ID = "00000000-0000-4000-8000-000000000001";
-const ESTATE_ID = "00000000-0000-4000-8000-000000000002";
+const HOST_ID = "00000000-0000-4000-8000-000000000002";
 
 const variant: ArtifactResource = {
   id: "00000000-0000-4000-8000-000000000003",
@@ -41,14 +41,14 @@ const detail: ArtifactDetail = {
   deployments: [],
 };
 
-const estate = (id: string, slug: string, accepted: string) => ({
+const host = (id: string, slug: string, accepted: string) => ({
   id,
   slug,
   type: accepted === "workerd" ? "cloudflare" : "bay",
   online: true,
   deployAllowed: true,
   acceptedRuntimes: [accepted],
-  owner: { id: ESTATE_ID, name: "owner" },
+  owner: { id: HOST_ID, name: "owner" },
 });
 
 /**
@@ -94,10 +94,10 @@ describe("ArtifactNewCopyDialog", () => {
 
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = {
-      listProjectEstates: {
+      listProjectHosts: {
         items: [
-          estate(ESTATE_ID, "cf-feunard", "workerd"),
-          estate("00000000-0000-4000-8000-000000000004", "ovh", "node"),
+          host(HOST_ID, "cf-feunard", "workerd"),
+          host("00000000-0000-4000-8000-000000000004", "ovh", "node"),
         ],
       },
       createApp: {
@@ -128,13 +128,13 @@ describe("ArtifactNewCopyDialog", () => {
     return { links, created };
   };
 
-  const openEstates = async () => {
+  const openHosts = async () => {
     await waitFor(() => {
       const trigger = document.querySelector("button[role=combobox]");
-      if (!trigger) throw new Error("no estate picker yet");
+      if (!trigger) throw new Error("no host picker yet");
       fireEvent.click(trigger);
       if (!document.querySelector("[role=option]")) {
-        throw new Error("the estate list did not open");
+        throw new Error("the host list did not open");
       }
     });
   };
@@ -144,7 +144,7 @@ describe("ArtifactNewCopyDialog", () => {
       "[data-testid=artifact-new-copy] input[type=text], [data-testid=artifact-new-copy] input:not([type])",
     );
     fireEvent.change(env as HTMLInputElement, { target: { value: "Staging" } });
-    await openEstates();
+    await openHosts();
     fireEvent.click(
       [...document.querySelectorAll("[role=option]")].find((it) =>
         it.textContent?.includes("cf-feunard"),
@@ -157,10 +157,10 @@ describe("ArtifactNewCopyDialog", () => {
       document.querySelector("[data-testid=artifact-new-copy]") as Element,
     );
 
-  it("offers only the estates that can run this build", async ({ expect }) => {
+  it("offers only the hosts that can run this build", async ({ expect }) => {
     await mount();
 
-    await openEstates();
+    await openHosts();
 
     const options = [...document.querySelectorAll("[role=option]")].map(
       (it) => it.textContent,
@@ -169,7 +169,7 @@ describe("ArtifactNewCopyDialog", () => {
     expect(options).not.toContain("ovh");
   });
 
-  it("creates the copy under the build's app, then its estate, then deploys", async ({
+  it("creates the copy under the build's app, then its host, then deploys", async ({
     expect,
   }) => {
     const { links, created } = await mount();
@@ -178,7 +178,7 @@ describe("ArtifactNewCopyDialog", () => {
     submit();
 
     await waitFor(() => expect(created).toEqual([["staging", true]]));
-    expect(links.calls.filter((it) => it !== "listProjectEstates")).toEqual([
+    expect(links.calls.filter((it) => it !== "listProjectHosts")).toEqual([
       "createApp",
       "updateApp",
       "startDeploy",
@@ -187,7 +187,7 @@ describe("ArtifactNewCopyDialog", () => {
       app: "docs",
       env: "staging",
     });
-    expect(links.bodies.updateApp).toEqual({ estateId: ESTATE_ID });
+    expect(links.bodies.updateApp).toEqual({ hostId: HOST_ID });
     expect(links.bodies.startDeploy).toEqual({ tag: "1.0.0" });
   });
 

@@ -1,8 +1,8 @@
 import { useAction, useClient } from "alepha/react";
 import { useState } from "react";
 
-import type { EstateCommandController } from "../../../../api/controllers/EstateCommandController.ts";
-import type { EstateCommandResource } from "../../../../api/schemas/estateCommandResourceSchema.ts";
+import type { HostCommandController } from "../../../../api/controllers/HostCommandController.ts";
+import type { HostCommandResource } from "../../../../api/schemas/hostCommandResourceSchema.ts";
 
 /**
  * What this console may ask for: one instance, named by its pair.
@@ -40,22 +40,22 @@ export interface BayCommandBody {
  * machine for the verbs that refuse) is the server's sentence, shown as it is
  * by the root `ActionErrorToaster`.
  */
-export const useBayCommand = (estate: { id: string } | undefined) => {
-  const commandApi = useClient<EstateCommandController>();
-  const [command, setCommand] = useState<EstateCommandResource | undefined>();
+export const useBayCommand = (host: { id: string } | undefined) => {
+  const commandApi = useClient<HostCommandController>();
+  const [command, setCommand] = useState<HostCommandResource | undefined>();
 
   const action = useAction<
     [body: BayCommandBody],
-    EstateCommandResource | undefined
+    HostCommandResource | undefined
   >(
     {
       handler: async ({ signal }, body) => {
-        if (!estate) {
+        if (!host) {
           return undefined;
         }
         setCommand(undefined);
-        let current = await commandApi.enqueueEstateCommand({
-          params: { estateId: estate.id },
+        let current = await commandApi.enqueueHostCommand({
+          params: { hostId: host.id },
           body,
         });
         setCommand(current);
@@ -71,8 +71,8 @@ export const useBayCommand = (estate: { id: string } | undefined) => {
           if (signal.aborted) {
             return current;
           }
-          const listed = await commandApi.listEstateCommands({
-            params: { estateId: estate.id },
+          const listed = await commandApi.listHostCommands({
+            params: { hostId: host.id },
           });
           const found = listed.items.find((item) => item.id === current.id);
           if (found) {
@@ -83,7 +83,7 @@ export const useBayCommand = (estate: { id: string } | undefined) => {
         return current;
       },
     },
-    [commandApi, estate],
+    [commandApi, host],
   );
 
   return {

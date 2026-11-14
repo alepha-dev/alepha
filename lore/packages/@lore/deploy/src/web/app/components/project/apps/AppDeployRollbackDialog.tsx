@@ -36,7 +36,7 @@ export interface AppDeployRollbackDialogProps {
  *
  * The server decides the path (`planDeploymentRollback`): **fast**, pointing a
  * new Cloudflare deployment at the version that run uploaded, or **artifact**,
- * redeploying the stored build when the version is gone or the estate keeps
+ * redeploying the stored build when the version is gone or the host keeps
  * none. It says why when the fast one is unavailable, so this renders the
  * plan rather than guessing at it, and the confirm button stays disabled until
  * the plan has answered. A plan the server refuses is shown, and nothing can

@@ -65,11 +65,11 @@ const AppDashboardNextSteps = () => {
       done: Boolean(instance.url),
     },
     {
-      key: "estate",
+      key: "host",
       icon: Server,
-      title: tr("app.nextSteps.estate.title"),
-      description: tr("app.nextSteps.estate.description"),
-      done: Boolean(instance.estateId),
+      title: tr("app.nextSteps.host.title"),
+      description: tr("app.nextSteps.host.description"),
+      done: Boolean(instance.hostId),
     },
   ];
 

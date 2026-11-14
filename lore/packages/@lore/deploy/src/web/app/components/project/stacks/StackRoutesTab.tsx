@@ -128,7 +128,7 @@ const StackRoutesTab = (props: StackRoutesTabProps) => {
             <CardDescription>
               {base
                 ? tr("stacks.routes.labels.base", { args: [base] })
-                : tr("stacks.routes.labels.estate")}
+                : tr("stacks.routes.labels.host")}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-1 text-sm">

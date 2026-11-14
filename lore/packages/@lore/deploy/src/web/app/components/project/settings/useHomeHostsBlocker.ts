@@ -2,20 +2,20 @@ import type { ProjectBlockedAct, I18n } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { ProjectEstateController } from "../../../../../api/controllers/ProjectEstateController.ts";
+import type { ProjectHostController } from "../../../../../api/controllers/ProjectHostController.ts";
 
 /**
- * Deploy's line on core's `ProjectBlockerRegistry` (#Q3281): the estates a
+ * Deploy's line on core's `ProjectBlockerRegistry` (#Q3281): the hosts a
  * project is the home of block deleting it and turning Apps off, which the
- * server refuses (`DeployEstateHomeGuards`). Named here before the click,
- * from `listHomeEstates`. Quiet while loading and on a failure: the server
+ * server refuses (`DeployHostHomeGuards`). Named here before the click,
+ * from `listHomeHosts`. Quiet while loading and on a failure: the server
  * guard is the authority, this only says it first.
  */
-export const useHomeEstatesBlocker = (
+export const useHomeHostsBlocker = (
   projectId: number,
   act: ProjectBlockedAct,
 ): string | undefined => {
-  const api = useClient<ProjectEstateController>();
+  const api = useClient<ProjectHostController>();
   const { tr } = useI18n<I18n, "en">();
   const relevant =
     act === "delete" ||
@@ -24,16 +24,16 @@ export const useHomeEstatesBlocker = (
   const homed = useQuery(
     {
       enabled: relevant && projectId > 0,
-      key: ["project-home-estates", projectId],
-      handler: () => api.listHomeEstates({ params: { projectId } }),
+      key: ["project-home-hosts", projectId],
+      handler: () => api.listHomeHosts({ params: { projectId } }),
       onError: () => {},
     },
     [api, projectId, relevant],
   ).data?.items;
 
   if (!relevant || !homed?.length) return undefined;
-  const slugs = homed.map((estate) => estate.slug).join(", ");
+  const slugs = homed.map((host) => host.slug).join(", ");
   return act === "delete"
-    ? tr("estates.blocker.delete", { args: [slugs] })
-    : tr("estates.blocker.apps", { args: [slugs] });
+    ? tr("hosts.blocker.delete", { args: [slugs] })
+    : tr("hosts.blocker.apps", { args: [slugs] });
 };

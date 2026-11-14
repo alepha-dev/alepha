@@ -18,11 +18,11 @@ import type { StackController } from "../../../../../api/controllers/StackContro
 
 export interface StackCreateFormProps {
   projectId: number;
-  estates: Array<{ id: string; slug: string; label?: string }>;
+  hosts: Array<{ id: string; slug: string; label?: string }>;
 }
 
 /**
- * A new stack: its name (the project slug when empty) and its default estate.
+ * A new stack: its name (the project slug when empty) and its default host.
  */
 const StackCreateForm = (props: StackCreateFormProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -34,15 +34,15 @@ const StackCreateForm = (props: StackCreateFormProps) => {
     id: "stack-create",
     schema: z.object({
       name: z.string().max(64).optional(),
-      estateId: z.string().optional(),
+      hostId: z.string().optional(),
     }),
-    initialValues: { name: "", estateId: "" },
+    initialValues: { name: "", hostId: "" },
     handler: async (input) => {
       await stackApi.createStack({
         params: { projectId: props.projectId },
         body: {
           ...(input.name?.trim() ? { name: input.name.trim() } : {}),
-          ...(input.estateId ? { estateId: input.estateId } : {}),
+          ...(input.hostId ? { hostId: input.hostId } : {}),
         },
       });
       queries.invalidate(["stacks", props.projectId]);
@@ -69,16 +69,14 @@ const StackCreateForm = (props: StackCreateFormProps) => {
           <div className="flex-1" data-testid="stack-create-name">
             <Control input={form.input.name} label={tr("stacks.create.name")} />
           </div>
-          <div className="flex-1" data-testid="stack-create-estate">
+          <div className="flex-1" data-testid="stack-create-host">
             <Control
               select
-              input={form.input.estateId}
-              label={tr("stacks.create.estate")}
-              items={props.estates.map((estate) => ({
-                value: estate.id,
-                label: estate.label
-                  ? `${estate.slug} (${estate.label})`
-                  : estate.slug,
+              input={form.input.hostId}
+              label={tr("stacks.create.host")}
+              items={props.hosts.map((host) => ({
+                value: host.id,
+                label: host.label ? `${host.slug} (${host.label})` : host.slug,
               }))}
             />
           </div>

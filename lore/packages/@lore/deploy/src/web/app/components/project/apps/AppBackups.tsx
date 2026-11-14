@@ -13,7 +13,7 @@ import BackupPanel, { type BackupSource } from "../../backup/BackupPanel.tsx";
  * every verb Bay offers on them.
  *
  * ⚠️ Everything goes through the project-scoped `BackupController`, never the
- * estate's own routes: a project member who may deploy here has no business
+ * host's own routes: a project member who may deploy here has no business
  * reading the rest of a lent machine.
  *
  * ⚠️ A copy the machine's inventory does not list still gets the panel and
@@ -54,7 +54,7 @@ const AppBackups = () => {
   const source = useMemo<BackupSource | undefined>(() => {
     if (
       !scope ||
-      !data?.estate ||
+      !data?.host ||
       (data.status !== "reported" && data.status !== "not-reported")
     ) {
       return undefined;
@@ -75,8 +75,8 @@ const AppBackups = () => {
               })
             : tr("backup.status.noInventory"),
       events: data.events,
-      online: data.estate.online,
-      deployAllowed: data.estate.deployAllowed,
+      online: data.host.online,
+      deployAllowed: data.host.deployAllowed,
       canManage: can("deploy:manage"),
       canRestoreFrom: false,
       canEditPolicy: false,
@@ -134,7 +134,7 @@ const AppBackups = () => {
 export default AppBackups;
 
 const STATUS_TEXT = {
-  "no-estate": "backup.status.noEstate",
+  "no-host": "backup.status.noHost",
   "not-bay": "backup.status.notBay",
   "not-lent": "backup.status.notLent",
   "not-deployed": "backup.status.notDeployed",

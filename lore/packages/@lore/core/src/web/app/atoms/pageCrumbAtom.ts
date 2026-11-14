@@ -8,7 +8,7 @@ import { $atom, z } from "alepha";
  * `routeName` is the page open. Keyed by route rather than cleared on time,
  * so a leaf left by the page before never reaches the next one's trail. A
  * page whose leaf its loader already knows hands it up through its own atom
- * and a crumb contribution instead, as the estate and the area do.
+ * and a crumb contribution instead, as the host and the area do.
  */
 export const pageCrumbAtom = $atom({
   name: "lor.page.crumb",

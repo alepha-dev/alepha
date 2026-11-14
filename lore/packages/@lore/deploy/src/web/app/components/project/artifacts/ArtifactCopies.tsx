@@ -69,9 +69,7 @@ const ArtifactCopies = (props: ArtifactCopiesProps) => {
                 </Badge>
               )}
               <span className="text-muted-foreground ml-auto flex flex-wrap items-center gap-x-3 text-xs">
-                {copy.estate && (
-                  <span>{copy.estate.label ?? copy.estate.slug}</span>
-                )}
+                {copy.host && <span>{copy.host.label ?? copy.host.slug}</span>}
                 {copy.deployed ? (
                   <span title={copy.deployed.sha256}>
                     {tr("artifact.copies.on", {

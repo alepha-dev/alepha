@@ -18,7 +18,7 @@ import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
  * environments (there is no apps table), so deleting an app's last one takes
  * the app off the list, and the confirm names those apps.
  *
- * A refusal (a copy whose estate still holds a Worker or a database, or that
+ * A refusal (a copy whose host still holds a Worker or a database, or that
  * still runs on its Bay) is the server's sentence; in a batch it is reported
  * beside the deletes that went through, never instead of them.
  */

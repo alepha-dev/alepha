@@ -2,27 +2,27 @@ import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 
-import type { ProjectEstateTableRow } from "./projectEstateTableRow.ts";
+import type { ProjectHostTableRow } from "./projectHostTableRow.ts";
 
-export interface ProjectSettingsEstateNameCellProps {
-  row: ProjectEstateTableRow;
+export interface ProjectSettingsHostNameCellProps {
+  row: ProjectHostTableRow;
   /**
-   * Opens a home `cloudflare` estate's drawer: it has no console page.
+   * Opens a home `cloudflare` host's drawer: it has no console page.
    */
-  onOpen: (row: ProjectEstateTableRow) => void;
+  onOpen: (row: ProjectHostTableRow) => void;
 }
 
 /**
- * The estate's name, and where it leads (feedback #P2126).
+ * The host's name, and where it leads (feedback #P2126).
  *
- * A `bay` estate opens its console, a page under its HOME project (#E126).
+ * A `bay` host opens its console, a page under its HOME project (#E126).
  * That project answers 403 to anybody who is not a member there, so a
- * borrowed estate is a link only when `can` says the reader may read it:
+ * borrowed host is a link only when `can` says the reader may read it:
  * otherwise a link would promise a page they cannot open. A home
- * `cloudflare` estate opens its drawer; a borrowed one is plain text.
+ * `cloudflare` host opens its drawer; a borrowed one is plain text.
  */
-const ProjectSettingsEstateNameCell = (
-  props: ProjectSettingsEstateNameCellProps,
+const ProjectSettingsHostNameCell = (
+  props: ProjectSettingsHostNameCellProps,
 ) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
@@ -32,7 +32,7 @@ const ProjectSettingsEstateNameCell = (
   const homeSlug =
     props.row.origin === "home"
       ? owned?.project?.slug
-      : loan?.can.includes("estate:read")
+      : loan?.can.includes("host:read")
         ? loan.home?.slug
         : undefined;
 
@@ -43,7 +43,7 @@ const ProjectSettingsEstateNameCell = (
       // `:projectSlug` and goes nowhere.
       <Link
         href={router.path("bay", {
-          params: { projectSlug: homeSlug, estateSlug: props.row.slug },
+          params: { projectSlug: homeSlug, hostSlug: props.row.slug },
         })}
         className="truncate hover:underline"
         onClick={(event) => event.stopPropagation()}
@@ -55,7 +55,7 @@ const ProjectSettingsEstateNameCell = (
         type="button"
         className="truncate hover:underline"
         onClick={() => props.onOpen(props.row)}
-        data-testid="home-estate-open"
+        data-testid="home-host-open"
       >
         {props.row.slug}
       </button>
@@ -63,8 +63,8 @@ const ProjectSettingsEstateNameCell = (
       <span className="truncate">{props.row.slug}</span>
     );
 
-  // Who else deploys onto a home estate: its home project counts only when
-  // the estate is lent to it.
+  // Who else deploys onto a home host: its home project counts only when
+  // the host is lent to it.
   const elsewhere = owned
     ? owned.projects.length - (props.row.loan ? 1 : 0)
     : 0;
@@ -72,9 +72,7 @@ const ProjectSettingsEstateNameCell = (
   return (
     <div
       className="flex min-w-0 flex-col gap-0.5"
-      data-testid={
-        props.row.origin === "home" ? "home-estate-row" : "estate-row"
-      }
+      data-testid={props.row.origin === "home" ? "home-host-row" : "host-row"}
     >
       <span className="flex items-center gap-2 text-sm font-medium">
         {name}
@@ -86,11 +84,11 @@ const ProjectSettingsEstateNameCell = (
       </span>
       {elsewhere > 0 && (
         <span className="text-muted-foreground text-xs">
-          {tr("estates.home.lentTo", { args: [String(elsewhere)] })}
+          {tr("hosts.home.lentTo", { args: [String(elsewhere)] })}
         </span>
       )}
     </div>
   );
 };
 
-export default ProjectSettingsEstateNameCell;
+export default ProjectSettingsHostNameCell;

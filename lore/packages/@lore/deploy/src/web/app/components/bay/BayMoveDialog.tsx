@@ -13,54 +13,54 @@ import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
-import type { EstateController } from "../../../../api/controllers/EstateController.ts";
-import type { ProjectEstateController } from "../../../../api/controllers/ProjectEstateController.ts";
-import type { EstateResource } from "../../../../api/schemas/estateResourceSchema.ts";
-import type { EstateLoan } from "../../../../api/schemas/ownedEstateResourceSchema.ts";
-import { estateMoveFormSchema } from "../shared/estateMoveFormSchema.ts";
+import type { HostController } from "../../../../api/controllers/HostController.ts";
+import type { ProjectHostController } from "../../../../api/controllers/ProjectHostController.ts";
+import type { HostResource } from "../../../../api/schemas/hostResourceSchema.ts";
+import type { HostLoan } from "../../../../api/schemas/ownedHostResourceSchema.ts";
+import { hostMoveFormSchema } from "../shared/hostMoveFormSchema.ts";
 
 export interface BayMoveDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  estate: EstateResource;
-  loans: EstateLoan[];
+  host: HostResource;
+  loans: HostLoan[];
   /**
-   * Called with the moved estate once the server accepted.
+   * Called with the moved host once the server accepted.
    */
-  onMoved: (estate: EstateResource) => void;
+  onMoved: (host: HostResource) => void;
 }
 
 /**
- * Move an estate to another project (#Q3280, #Q3281): a project picker
- * listing the projects the caller may create an estate in, the loans that
+ * Move a host to another project (#Q3280, #Q3281): a project picker
+ * listing the projects the caller may create a host in, the loans that
  * stay, and a slug the target already holds refused before submit. The
  * server is the authority on every one of those: this only says it first.
  */
 const BayMoveDialog = (props: BayMoveDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const estates = useClient<EstateController>();
-  const lending = useClient<ProjectEstateController>();
+  const hosts = useClient<HostController>();
+  const lending = useClient<ProjectHostController>();
 
   const choices = (
     useQuery(
       {
         enabled: props.open,
-        handler: () => estates.listEstateHomeChoices(),
+        handler: () => hosts.listHostHomeChoices(),
       },
-      [estates, props.open],
+      [hosts, props.open],
     ).data?.items ?? []
-  ).filter((project) => project.id !== props.estate.project?.id);
+  ).filter((project) => project.id !== props.host.project?.id);
 
   const form = useForm({
-    schema: estateMoveFormSchema,
+    schema: hostMoveFormSchema,
     initialValues: { projectId: "" },
     handler: () => undefined,
   });
   const values = useFormValues(form);
   const targetId = Number(values.projectId) || undefined;
 
-  // The estates the target is already the home of, to refuse a slug before
+  // The hosts the target is already the home of, to refuse a slug before
   // the click rather than after it.
   const taken = useQuery(
     {
@@ -68,34 +68,32 @@ const BayMoveDialog = (props: BayMoveDialogProps) => {
       handler: () =>
         targetId === undefined
           ? Promise.resolve({ items: [] })
-          : lending.listHomeEstates({ params: { projectId: targetId } }),
+          : lending.listHomeHosts({ params: { projectId: targetId } }),
       onError: () => {},
     },
     [lending, props.open, targetId],
   ).data?.items;
-  const collides = (taken ?? []).some(
-    (estate) => estate.slug === props.estate.slug,
-  );
+  const collides = (taken ?? []).some((host) => host.slug === props.host.slug);
 
   const move = useAction<[], void>(
     {
       handler: async () => {
         if (targetId === undefined || collides) return;
-        const result = await estates.moveEstate({
-          params: { estateId: props.estate.id },
+        const result = await hosts.moveHost({
+          params: { hostId: props.host.id },
           body: { projectId: targetId },
         });
         toaster.success(
-          tr("bay.move.toast", { args: [result.estate.project?.title ?? ""] }),
+          tr("bay.move.toast", { args: [result.host.project?.title ?? ""] }),
         );
         if (result.serverElsewhere) {
           toaster.warning(tr("bay.move.serverElsewhere"));
         }
-        props.onMoved(result.estate);
+        props.onMoved(result.host);
         props.onOpenChange(false);
       },
     },
-    [estates, targetId, collides, props.estate.id],
+    [hosts, targetId, collides, props.host.id],
   );
 
   return (
@@ -109,7 +107,7 @@ const BayMoveDialog = (props: BayMoveDialogProps) => {
       <DialogContent className="sm:max-w-lg" data-testid="bay-move-dialog">
         <DialogHeader>
           <DialogTitle>
-            {tr("bay.move.title", { args: [props.estate.slug] })}
+            {tr("bay.move.title", { args: [props.host.slug] })}
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
@@ -135,7 +133,7 @@ const BayMoveDialog = (props: BayMoveDialogProps) => {
               className="text-destructive text-sm"
               data-testid="bay-move-taken"
             >
-              {tr("bay.move.taken", { args: [props.estate.slug] })}
+              {tr("bay.move.taken", { args: [props.host.slug] })}
             </p>
           )}
           <div className="text-muted-foreground flex flex-col gap-1 text-xs">
@@ -157,7 +155,7 @@ const BayMoveDialog = (props: BayMoveDialogProps) => {
             disabled={move.loading}
             onClick={() => props.onOpenChange(false)}
           >
-            {tr("account.estates.create.cancel")}
+            {tr("account.hosts.create.cancel")}
           </Button>
           <Button
             type="button"

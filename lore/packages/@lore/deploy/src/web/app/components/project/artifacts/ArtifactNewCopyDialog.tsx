@@ -20,7 +20,7 @@ import { useState } from "react";
 
 import type { AppController } from "../../../../../api/controllers/AppController.ts";
 import type { DeployController } from "../../../../../api/controllers/DeployController.ts";
-import type { ProjectEstateController } from "../../../../../api/controllers/ProjectEstateController.ts";
+import type { ProjectHostController } from "../../../../../api/controllers/ProjectHostController.ts";
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
 import type { ArtifactDetail } from "../../../../../api/schemas/artifactDetailSchema.ts";
 import type { ArtifactResource } from "../../../../../api/schemas/artifactResourceSchema.ts";
@@ -39,7 +39,7 @@ export interface ArtifactNewCopyDialogProps {
 }
 
 /**
- * A copy of this build's app, on an estate that can run it.
+ * A copy of this build's app, on a host that can run it.
  *
  * ## The app is not a field
  *
@@ -52,7 +52,7 @@ export interface ArtifactNewCopyDialogProps {
  *
  * ## ⚠️ Three calls, and D1 has no transaction
  *
- * Create, point at the estate, deploy. A refused deploy leaves the copy
+ * Create, point at the host, deploy. A refused deploy leaves the copy
  * standing, which is the right half: the secrets it needs are set on that
  * copy, so the reader lands on it with the refusal rather than back here with
  * nothing to fix. A failure before that stays in the dialog, on values still
@@ -63,7 +63,7 @@ const ArtifactNewCopyDialog = (props: ArtifactNewCopyDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const appApi = useClient<AppController>();
   const deployApi = useClient<DeployController>();
-  const estateApi = useClient<ProjectEstateController>();
+  const hostApi = useClient<ProjectHostController>();
   const [project] = useStore(currentProjectAtom);
   const [instances, setInstances] = useStore(currentInstancesAtom);
 
@@ -74,10 +74,10 @@ const ArtifactNewCopyDialog = (props: ArtifactNewCopyDialogProps) => {
   const { data } = useQuery(
     {
       enabled: Boolean(project) && props.open,
-      key: ["project-estates", project?.id],
+      key: ["project-hosts", project?.id],
       handler: async () => {
         if (!project) return undefined;
-        return await estateApi.listProjectEstates({
+        return await hostApi.listProjectHosts({
           params: { projectId: project.id },
         });
       },
@@ -85,19 +85,17 @@ const ArtifactNewCopyDialog = (props: ArtifactNewCopyDialogProps) => {
     [project?.id, props.open],
   );
 
-  const estates = (data?.items ?? []).filter((estate) =>
-    estate.acceptedRuntimes.some((runtime) =>
-      variant.runtimes.includes(runtime),
-    ),
+  const hosts = (data?.items ?? []).filter((host) =>
+    host.acceptedRuntimes.some((runtime) => variant.runtimes.includes(runtime)),
   );
 
   const form = useForm({
     id: "artifact-new-copy",
     schema: z.object({
       env: z.string().min(1).max(APP_NAME_MAX_LENGTH),
-      estateId: z.string().min(1),
+      hostId: z.string().min(1),
     }),
-    initialValues: { env: "", estateId: "" },
+    initialValues: { env: "", hostId: "" },
     handler: async (input) => {
       if (!project) return;
       const env = input.env.trim().toLowerCase();
@@ -112,7 +110,7 @@ const ArtifactNewCopyDialog = (props: ArtifactNewCopyDialogProps) => {
         setInstances([...(instances ?? []), created]);
         await appApi.updateApp({
           params: { projectId: project.id, app: detail.app, env },
-          body: { estateId: input.estateId },
+          body: { hostId: input.hostId },
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -171,16 +169,14 @@ const ArtifactNewCopyDialog = (props: ArtifactNewCopyDialogProps) => {
           <Control input={form.input.env} label={tr("apps.create.env")} />
           <Control
             select
-            input={form.input.estateId}
-            label={tr("artifact.newCopy.estate")}
+            input={form.input.hostId}
+            label={tr("artifact.newCopy.host")}
             description={
-              estates.length ? undefined : tr("artifact.newCopy.noEstate")
+              hosts.length ? undefined : tr("artifact.newCopy.noHost")
             }
-            items={estates.map((estate) => ({
-              value: estate.id,
-              label: estate.label
-                ? `${estate.slug} (${estate.label})`
-                : estate.slug,
+            items={hosts.map((host) => ({
+              value: host.id,
+              label: host.label ? `${host.slug} (${host.label})` : host.slug,
             }))}
           />
 
@@ -228,7 +224,7 @@ const ArtifactNewCopyDialog = (props: ArtifactNewCopyDialogProps) => {
             >
               {tr("common.cancel")}
             </Button>
-            <Button type="submit" disabled={submitting || !estates.length}>
+            <Button type="submit" disabled={submitting || !hosts.length}>
               {tr("artifact.newCopy.submit")}
             </Button>
           </DialogFooter>

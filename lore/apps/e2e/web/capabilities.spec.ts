@@ -405,7 +405,7 @@ test.describe("Project capabilities", () => {
         always,
       ).toBeVisible({ timeout: 10_000 });
     }
-    for (const gone of ["work", "knowledge", "apps", "areas", "estates"]) {
+    for (const gone of ["work", "knowledge", "apps", "areas", "hosts"]) {
       await expect(
         page.locator(`a[href="/${slug}/settings/${gone}"]`),
         gone,

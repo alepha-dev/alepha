@@ -14,7 +14,7 @@ export interface StackEnvironmentAddFormProps {
 }
 
 /**
- * A new environment of a stack, deploying to the stack's default estate until
+ * A new environment of a stack, deploying to the stack's default host until
  * its Settings say otherwise.
  */
 const StackEnvironmentAddForm = (props: StackEnvironmentAddFormProps) => {

@@ -84,7 +84,7 @@ export class CoreWebBoot {
 
   /**
    * Every project page's title is its breadcrumb trail (#Q3408): "MCS ›
-   * Estates › ovh", the labels `ProjectView` draws, joined. One rule for the
+   * Hosts › ovh", the labels `ProjectView` draws, joined. One rule for the
    * whole subtree, computed by `ProjectTrail` after every page head has
    * merged, so a page's own `head.title` under this route no longer decides
    * the tab. Pages outside a project, and an error layer, keep their own.

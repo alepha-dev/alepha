@@ -37,7 +37,7 @@ const INSTANCE = {
   updatedAt: "2026-08-01T10:00:00.000Z",
 } as AppInstanceResource;
 
-const ESTATE = {
+const HOST = {
   id: "00000000-0000-4000-8000-000000000020",
   slug: "acme-vps",
   online: true,
@@ -82,7 +82,7 @@ describe("AppBackups", () => {
   it("offers the verbs when the machine has sent no inventory yet", async () => {
     await show({
       status: "not-reported",
-      estate: ESTATE,
+      host: HOST,
       machineApp: "acme-shop",
     });
 
@@ -97,7 +97,7 @@ describe("AppBackups", () => {
   it("names the copy it looked for when an inventory does not list it", async () => {
     await show({
       status: "not-reported",
-      estate: ESTATE,
+      host: HOST,
       machineApp: "acme-shop",
       reportedAt: "2026-08-01T10:00:00.000Z",
     });
@@ -110,13 +110,13 @@ describe("AppBackups", () => {
 
   it("keeps a message and no button where there is no machine to ask", async () => {
     const cases = {
-      "no-estate": "not deployed on a machine",
+      "no-host": "not deployed on a machine",
       "not-bay": "not a Bay machine",
       "not-lent": "no longer lent",
       "not-deployed": "has not been deployed yet",
     };
     for (const [status, words] of Object.entries(cases)) {
-      await show({ status, estate: ESTATE });
+      await show({ status, host: HOST });
 
       expect(screen.queryByTestId("backup-panel")).toBeNull();
       expect(screen.queryByTestId("backup-now")).toBeNull();

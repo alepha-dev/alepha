@@ -518,9 +518,9 @@ export default {
   "artifact.newCopy.title": "Nouvelle copie depuis $1",
   "artifact.newCopy.description":
     "Une nouvelle copie de $1. Le build fixe l'app : seul son environnement est à nommer ici.",
-  "artifact.newCopy.estate": "Estate",
-  "artifact.newCopy.noEstate":
-    "Aucun estate prêté à ce projet ne peut exécuter ce build.",
+  "artifact.newCopy.host": "Hôte",
+  "artifact.newCopy.noHost":
+    "Aucun hôte prêté à ce projet ne peut exécuter ce build.",
   "artifact.newCopy.ephemeral": "Éphémère",
   "artifact.newCopy.ephemeralHint":
     "Sa base de données et son bucket partent avec elle à sa destruction. Ce choix est définitif.",
@@ -1000,7 +1000,7 @@ export default {
     "Supprimer ce domaine ? Il ne contient aucune quête, et cette action est irréversible.",
   "project.settings.areas.delete.blocked":
     "Ce domaine contient encore des quêtes. Fusionnez-le vers un autre domaine.",
-  "project.settings.nav.estates": "Domaines",
+  "project.settings.nav.hosts": "Hôtes",
   "project.reports.nav.team": "Équipe",
   "reports.team.kpi.wip": "En cours",
   "reports.team.kpi.wip.definition":
@@ -1972,7 +1972,7 @@ export default {
   "apps.table.env": "Env",
   "apps.table.address": "Adresse",
   "apps.table.lastSeen": "Vue pour la dernière fois",
-  "apps.table.estate": "Déploie sur",
+  "apps.table.host": "Déploie sur",
   "apps.table.created": "Créée",
   "app.tab.overview": "Aperçu",
   "app.tab.analytics": "Audience",
@@ -1988,7 +1988,7 @@ export default {
   "app.deploy.started": "Déploiement de $1",
   "app.deploy.pick": "Ce qui peut être déployé ici",
   "app.deploy.wrongRuntime":
-    "Ce domaine exécute $1, et aucun build de ce tag n\u2019a été produit pour lui.",
+    "Cet hôte exécute $1, et aucun build de ce tag n\u2019a été produit pour lui.",
   "app.deploy.imageOnly":
     "Ce tag n\u2019existe que sous forme d\u2019image de conteneur, et Lore déploie des builds empaquetés.",
   "app.deploy.loading": "Chargement...",
@@ -2032,9 +2032,9 @@ export default {
   "app.deploy.table.when": "Date",
   "app.deploy.table.error": "Erreur",
   "app.deploy.rollback.started": "Retour en arrière lancé",
-  "app.deploy.noEstate.description":
-    "Cette copie n\u2019a pas encore de domaine, donc il n\u2019y a nulle part où la déployer. Choisissez-en un dans son onglet Paramètres.",
-  "app.deploy.noEstate.action": "Ouvrir les paramètres",
+  "app.deploy.noHost.description":
+    "Cette copie n\u2019a pas encore d'hôte, donc il n\u2019y a nulle part où la déployer. Choisissez-en un dans son onglet Paramètres.",
+  "app.deploy.noHost.action": "Ouvrir les paramètres",
   "app.tab.environment": "Environnement",
   "app.environment": "Variables et secrets",
   "app.environment.description":
@@ -2132,7 +2132,7 @@ export default {
   "app.dashboard.deploysTo": "Déploie vers",
   "app.dashboard.resourceName": "Ressources",
   "app.dashboard.resourceName.hint":
-    "Le nom sous lequel son domaine le connaît : son Worker, sa base et son bucket sur Cloudflare, son instance sur une machine Bay. Fixé au premier déploiement, il reste le même si le projet est renommé.",
+    "Le nom sous lequel son hôte le connaît : son Worker, sa base et son bucket sur Cloudflare, son instance sur une machine Bay. Fixé au premier déploiement, il reste le même si le projet est renommé.",
   "app.nextSteps.title": "Prochaines étapes",
   "app.nextSteps.description":
     "Aucune n\u2019est obligatoire. Cette copie est déjà suivie ; chaque étape ci-dessous apporte une chose de plus.",
@@ -2143,9 +2143,9 @@ export default {
   "app.nextSteps.url.title": "Saisir une adresse",
   "app.nextSteps.url.description":
     "L\u2019adresse de cette copie, si elle ne va pas en remonter une elle-même.",
-  "app.nextSteps.estate.title": "Choisir un domaine",
-  "app.nextSteps.estate.description":
-    "Où cette copie est déployée, parmi les domaines prêtés à ce projet.",
+  "app.nextSteps.host.title": "Choisir un hôte",
+  "app.nextSteps.host.description":
+    "Où cette copie est déployée, parmi les hôtes prêtés à ce projet.",
   "app.dashboard.address": "Adresse",
   "app.dashboard.address.unknown": "Aucune",
   "app.dashboard.address.pinned": "Fixée dans les Paramètres",
@@ -2210,19 +2210,19 @@ export default {
     "Utilise $1, l\u2019adresse depuis laquelle cette copie a remonté ses dernières données. Saisissez une URL pour en afficher une autre, ou videz le champ pour revenir à l\u2019adresse détectée.",
   "app.settings.url.save": "Enregistrer",
   "app.settings.url.saved": "Adresse enregistrée",
-  "app.settings.estate.title": "Domaine",
-  "app.settings.estate.description":
+  "app.settings.host.title": "Hôte",
+  "app.settings.host.description":
     "Où cette copie est déployée. Le choisir est un fait à propos de la copie ; y déployer viendra plus tard.",
-  "app.settings.estate.label": "Déploie vers",
-  "app.settings.estate.rowDescription":
-    "Seuls les domaines prêtés à ce projet sont proposés.",
-  "app.settings.estate.none":
-    "Aucun domaine n\u2019est prêté à ce projet pour l\u2019instant.",
-  "app.settings.estate.manage": "Gérer les domaines",
-  "app.settings.estate.clear": "Aucun",
-  "app.settings.estate.member":
-    "Cette copie fait partie de l'environnement de stack $1 : elle s'y déploie, sur le domaine qu'utilise cet environnement, et seul son propre service est redéployé. Le domaine se règle dans les paramètres de la stack.",
-  "app.settings.estate.saved": "Cible de déploiement enregistrée",
+  "app.settings.host.label": "Déploie vers",
+  "app.settings.host.rowDescription":
+    "Seuls les hôtes prêtés à ce projet sont proposés.",
+  "app.settings.host.none":
+    "Aucun hôte n\u2019est prêté à ce projet pour l\u2019instant.",
+  "app.settings.host.manage": "Gérer les hôtes",
+  "app.settings.host.clear": "Aucun",
+  "app.settings.host.member":
+    "Cette copie fait partie de l'environnement de stack $1 : elle s'y déploie, sur l'hôte qu'utilise cet environnement, et seul son propre service est redéployé. L'hôte se règle dans les paramètres de la stack.",
+  "app.settings.host.saved": "Cible de déploiement enregistrée",
   "app.settings.danger": "Zone dangereuse",
   "apps.delete.title": "Supprimer $1 applications ?",
   "apps.delete.confirm": "Supprimer $1 applications",
@@ -2427,22 +2427,21 @@ export default {
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
 
-  "estates.table.estate": "Domaine",
-  "estates.table.origin": "Origine",
-  "estates.table.status": "Statut",
-  "estates.table.deploys": "Déploiements",
-  "estates.table.lastSeen": "Vu",
-  "estates.origin.home": "Ce projet",
-  "estates.origin.all": "Toutes les origines",
-  "estates.origin.lent": "Prêté",
-  "estates.project.title": "Domaines",
-  "estates.project.empty":
-    "Aucun domaine pour l'instant. Tant qu'aucun n'est ajouté, ce projet n'a nulle part où déployer.",
-  "estates.project.add": "Ajouter un domaine",
-  "estates.project.notAllowed":
-    "Votre rang ne permet pas d'ajouter un domaine.",
-  "estates.project.lentBy": "prêté par $1",
-  "estates.project.noHome": "aucun projet",
+  "hosts.table.host": "Hôte",
+  "hosts.table.origin": "Origine",
+  "hosts.table.status": "Statut",
+  "hosts.table.deploys": "Déploiements",
+  "hosts.table.lastSeen": "Vu",
+  "hosts.origin.home": "Ce projet",
+  "hosts.origin.all": "Toutes les origines",
+  "hosts.origin.lent": "Prêté",
+  "hosts.project.title": "Hôtes",
+  "hosts.project.empty":
+    "Aucun hôte pour l'instant. Tant qu'aucun n'est ajouté, ce projet n'a nulle part où déployer.",
+  "hosts.project.add": "Ajouter un hôte",
+  "hosts.project.notAllowed": "Votre rang ne permet pas d'ajouter un hôte.",
+  "hosts.project.lentBy": "prêté par $1",
+  "hosts.project.noHome": "aucun projet",
   "bay.nav.overview": "Vue d'ensemble",
   "bay.nav.apps": "Applications",
   "bay.nav.commands": "Commandes",
@@ -2478,7 +2477,7 @@ export default {
   "bay.overview.costSoFar": "Dépensé jusqu'ici",
   "bay.overview.costSoFarValue": "environ $1 € (estimation)",
   "bay.overview.serverNote":
-    "Acheté par lore estate provision et facturé par $1 jusqu'à ce que vous lanciez lore estate delete $2, qui le détruit avec son IP et son disque.",
+    "Acheté par lore host provision et facturé par $1 jusqu'à ce que vous lanciez lore host delete $2, qui le détruit avec son IP et son disque.",
   "bay.overview.connection": "Connexion",
   "bay.overview.state": "État",
   "bay.overview.lastSeen": "Vue",
@@ -2603,15 +2602,15 @@ export default {
   "bay.settings.provisionedBy":
     "Provisionné par $1, dont le compte cloud détient le serveur",
   "bay.settings.readOnly":
-    "Vous pouvez consulter ce domaine : ce qui y tourne, les commandes envoyées, son CPU et sa mémoire.",
+    "Vous pouvez consulter cet hôte : ce qui y tourne, les commandes envoyées, son CPU et sa mémoire.",
   "bay.settings.readOnly.how":
-    "Le modifier demande estate:update dans $1, le déplacer ou le supprimer estate:delete. Le propriétaire du projet les accorde par un rang.",
+    "Le modifier demande host:update dans $1, le déplacer ou le supprimer host:delete. Le propriétaire du projet les accorde par un rang.",
   "bay.move.action": "Déplacer vers un autre projet",
   "bay.move.title": "Déplacer $1 vers un autre projet",
   "bay.move.project": "Projet",
-  "bay.move.none": "Aucun autre projet où vous pouvez créer un domaine.",
+  "bay.move.none": "Aucun autre projet où vous pouvez créer un hôte.",
   "bay.move.taken":
-    "Ce projet a déjà un domaine nommé $1, et un slug ne change jamais.",
+    "Ce projet a déjà un hôte nommé $1, et un slug ne change jamais.",
   "bay.move.keeps":
     "Son slug, sa machine, son secret et ses commandes restent tels quels.",
   "bay.move.loans": "Toujours prêté à : $1",
@@ -2619,123 +2618,121 @@ export default {
   "bay.move.toast": "Déplacé vers $1",
   "bay.move.serverElsewhere":
     "Le serveur reste dans le compte cloud de la personne qui l'a provisionné, qui n'est pas membre du nouveau projet.",
-  "estates.home.notLentHere": "Pas prêté à ce projet",
-  "estates.home.lentTo": "prêté à $1 autre(s) projet(s)",
-  "estates.home.lend": "Prêter à ce projet",
-  "estates.blocker.delete":
-    "Ce projet est le propriétaire de $1. Déplacez ces domaines vers un autre projet ou supprimez-les d'abord : d'autres projets peuvent y déployer.",
-  "estates.blocker.apps":
+  "hosts.home.notLentHere": "Pas prêté à ce projet",
+  "hosts.home.lentTo": "prêté à $1 autre(s) projet(s)",
+  "hosts.home.lend": "Prêter à ce projet",
+  "hosts.blocker.delete":
+    "Ce projet est le propriétaire de $1. Déplacez ces hôtes vers un autre projet ou supprimez-les d'abord : d'autres projets peuvent y déployer.",
+  "hosts.blocker.apps":
     "Apps reste activé tant que ce projet est le propriétaire de $1 : déplacez-les ou supprimez-les d'abord.",
   "bay.settings.loans.col.project": "Projet",
   "bay.settings.loans.col.lentAt": "Prêté",
-  "estates.online": "en ligne",
-  "estates.provisioned": "$1 $2",
-  "estates.overdue": "expiré",
-  "estates.offline": "hors ligne",
-  "estates.deploys.allowed": "déploiements autorisés",
-  "estates.deploys.statsOnly": "statistiques seulement",
-  "estates.neverSeen": "jamais connecté",
-  "estates.add.title": "Ajouter un domaine à $1",
-  "estates.add.description":
-    "Choisissez un de vos domaines, ou créez-en un ici.",
-  "estates.add.existing": "Un des miens",
-  "estates.add.new": "En créer un nouveau",
-  "estates.add.none": "Vous n'avez plus de domaine à prêter. Créez-en un.",
-  "estates.add.slug": "Nom",
-  "estates.add.slug.hint":
-    "Votre propre nom pour ce domaine, utilisé dans les URL et les commandes. Minuscules, chiffres et tirets.",
-  "estates.add.slugPlaceholder": "ovh-1",
-  "estates.add.invalid": "Lettres minuscules, chiffres et tirets, comme ovh-1.",
-  "estates.add.trust":
+  "hosts.online": "en ligne",
+  "hosts.provisioned": "$1 $2",
+  "hosts.overdue": "expiré",
+  "hosts.offline": "hors ligne",
+  "hosts.deploys.allowed": "déploiements autorisés",
+  "hosts.deploys.statsOnly": "statistiques seulement",
+  "hosts.neverSeen": "jamais connecté",
+  "hosts.add.title": "Ajouter un hôte à $1",
+  "hosts.add.description": "Choisissez un de vos hôtes, ou créez-en un ici.",
+  "hosts.add.existing": "Un des miens",
+  "hosts.add.new": "En créer un nouveau",
+  "hosts.add.none": "Vous n'avez plus d'hôte à prêter. Créez-en un.",
+  "hosts.add.slug": "Nom",
+  "hosts.add.slug.hint":
+    "Votre propre nom pour cet hôte, utilisé dans les URL et les commandes. Minuscules, chiffres et tirets.",
+  "hosts.add.slugPlaceholder": "ovh-1",
+  "hosts.add.invalid": "Lettres minuscules, chiffres et tirets, comme ovh-1.",
+  "hosts.add.trust":
     "Toute personne pouvant déployer dans $1 pourra exécuter du code sur la machine derrière $2, avec tout ce que cette machine contient. Rien n'est retiré du déploiement ici, et vous pouvez reprendre le prêt à tout moment.",
-  "estates.type.label": "Quel type de domaine",
-  "estates.type.bay": "Bay",
-  "estates.type.bay.description":
+  "hosts.type.label": "Quel type d'hôte",
+  "hosts.type.bay": "Bay",
+  "hosts.type.bay.description":
     "Un VPS qui exécute le connecteur bay. Lore génère un secret, l'affiche une fois, et la machine s'y connecte avec.",
-  "estates.type.cloudflare": "Cloudflare",
-  "estates.type.cloudflare.description":
-    "Un compte où Lore déploie des Workers via l'API. Vous collez un jeton créé chez Cloudflare ; Lore le vérifie avant que le domaine existe.",
-  "estates.cloudflare.accountId": "Identifiant de compte Cloudflare",
-  "estates.cloudflare.accountId.placeholder":
-    "0123456789abcdef0123456789abcdef",
-  "estates.cloudflare.accountId.hint":
+  "hosts.type.cloudflare": "Cloudflare",
+  "hosts.type.cloudflare.description":
+    "Un compte où Lore déploie des Workers via l'API. Vous collez un jeton créé chez Cloudflare ; Lore le vérifie avant que l'hôte existe.",
+  "hosts.cloudflare.accountId": "Identifiant de compte Cloudflare",
+  "hosts.cloudflare.accountId.placeholder": "0123456789abcdef0123456789abcdef",
+  "hosts.cloudflare.accountId.hint":
     "32 caractères, affichés à droite de la page d'aperçu de votre tableau de bord Cloudflare.",
-  "estates.cloudflare.token": "Jeton d'API Cloudflare",
-  "estates.cloudflare.token.placeholder": "cfut_… ou cfat_…",
-  "estates.cloudflare.guide": "Quel jeton, et quelles permissions",
-  "estates.cloudflare.mint": "En créer un avec les bonnes permissions",
-  "estates.cloudflare.mint.scope":
+  "hosts.cloudflare.token": "Jeton d'API Cloudflare",
+  "hosts.cloudflare.token.placeholder": "cfut_… ou cfat_…",
+  "hosts.cloudflare.guide": "Quel jeton, et quelles permissions",
+  "hosts.cloudflare.mint": "En créer un avec les bonnes permissions",
+  "hosts.cloudflare.mint.scope":
     "Le formulaire s'ouvre avec les six permissions déjà renseignées. Restreignez Account Resources à un seul compte avant de le créer.",
-  "estates.cloudflare.checking": "Vérification chez Cloudflare…",
-  "estates.cloudflare.accountLabel": "compte $1",
-  "estates.credential.valid": "identifiant valide",
-  "estates.credential.invalid": "identifiant invalide",
-  "estates.credential.checked": "vérifié $1",
-  "estates.credential.neverChecked": "jamais vérifié",
-  "estates.credential.expires": "expire $1",
-  "estates.credential.replace": "Remplacer le jeton",
-  "estates.credential.replaced": "Jeton remplacé",
-  "estates.credential.check": "Vérifier maintenant",
-  "estates.credential.checkedNow": "Cloudflare a accepté ce jeton",
-  "estates.add.trust.cloudflare":
+  "hosts.cloudflare.checking": "Vérification chez Cloudflare…",
+  "hosts.cloudflare.accountLabel": "compte $1",
+  "hosts.credential.valid": "identifiant valide",
+  "hosts.credential.invalid": "identifiant invalide",
+  "hosts.credential.checked": "vérifié $1",
+  "hosts.credential.neverChecked": "jamais vérifié",
+  "hosts.credential.expires": "expire $1",
+  "hosts.credential.replace": "Remplacer le jeton",
+  "hosts.credential.replaced": "Jeton remplacé",
+  "hosts.credential.check": "Vérifier maintenant",
+  "hosts.credential.checkedNow": "Cloudflare a accepté ce jeton",
+  "hosts.add.trust.cloudflare":
     "Toute personne pouvant déployer dans $1 pourra exécuter du code dans le compte Cloudflare derrière $2, avec le stockage et les secrets de ce compte. Rien n'est retiré du déploiement ici, et vous pouvez reprendre le prêt à tout moment.",
-  "account.estates.tokenPrefix": "jeton $1…",
-  "estates.add.submit": "Le prêter à ce projet",
-  "estates.add.submitNew": "Créer et prêter",
-  "estates.detach.action": "Retirer",
-  "estates.detach.confirmTitle": "Retirer $1 de ce projet ?",
-  "estates.detach.confirmDescription":
-    "Le projet ne pourra plus déployer par ce domaine. Rien de déjà déployé n'est touché : la machine continue de faire tourner ce qu'elle fait tourner.",
-  "estates.detach.confirm": "Retirer",
-  "account.estates.create.cancel": "Annuler",
-  "estates.secret.description":
+  "account.hosts.tokenPrefix": "jeton $1…",
+  "hosts.add.submit": "Le prêter à ce projet",
+  "hosts.add.submitNew": "Créer et prêter",
+  "hosts.detach.action": "Retirer",
+  "hosts.detach.confirmTitle": "Retirer $1 de ce projet ?",
+  "hosts.detach.confirmDescription":
+    "Le projet ne pourra plus déployer par cet hôte. Rien de déjà déployé n'est touché : la machine continue de faire tourner ce qu'elle fait tourner.",
+  "hosts.detach.confirm": "Retirer",
+  "account.hosts.create.cancel": "Annuler",
+  "hosts.secret.description":
     "C'est la seule fois où il est affiché. Conservez-le en lieu sûr avant de fermer cette fenêtre.",
-  "estates.secret.copied": "Copié",
-  "estates.secret.title":
-    "Le secret de votre domaine. Il n'est affiché qu'une fois : lancez `bay connector set <url-lore> <secret>` sur la machine.",
-  "estates.secret.copy": "Copier le secret",
-  "estates.secret.done": "Terminé",
-  "estates.toast.attached": "Domaine prêté à ce projet",
-  "estates.toast.created": "Domaine créé et prêté",
-  "estates.toast.detached": "Domaine retiré",
-  "estates.toast.copied": "Secret copié",
+  "hosts.secret.copied": "Copié",
+  "hosts.secret.title":
+    "Le secret de votre hôte. Il n'est affiché qu'une fois : lancez `bay connector set <url-lore> <secret>` sur la machine.",
+  "hosts.secret.copy": "Copier le secret",
+  "hosts.secret.done": "Terminé",
+  "hosts.toast.attached": "Hôte prêté à ce projet",
+  "hosts.toast.created": "Hôte créé et prêté",
+  "hosts.toast.detached": "Hôte retiré",
+  "hosts.toast.copied": "Secret copié",
 
-  "account.estates.secretPrefix": "secret $1…",
-  "account.estates.gauge": "CPU $1 % · mémoire $2 %",
-  "account.estates.gauge.none": "pas encore de statistiques",
-  "account.estates.switch.deploys": "Autoriser les déploiements",
-  "account.estates.switch.deploys.description":
-    "Désactivé signifie statistiques seules : aucun projet ne peut déployer via ce domaine, quel que soit le prêt.",
-  "account.estates.switch.series":
+  "account.hosts.secretPrefix": "secret $1…",
+  "account.hosts.gauge": "CPU $1 % · mémoire $2 %",
+  "account.hosts.gauge.none": "pas encore de statistiques",
+  "account.hosts.switch.deploys": "Autoriser les déploiements",
+  "account.hosts.switch.deploys.description":
+    "Désactivé signifie statistiques seules : aucun projet ne peut déployer via cet hôte, quel que soit le prêt.",
+  "account.hosts.switch.series":
     "Conserver un historique du CPU et de la mémoire",
-  "account.estates.switch.series.description":
+  "account.hosts.switch.series.description":
     "La jauge en direct ci-dessus est toujours conservée. Ceci écrit aussi chaque relevé dans la série que lisent les graphiques.",
-  "account.estates.interval": "Intervalle des statistiques",
-  "account.estates.interval.description":
+  "account.hosts.interval": "Intervalle des statistiques",
+  "account.hosts.interval.description":
     "La fréquence à laquelle la machine rapporte sa jauge. Prise en compte à sa prochaine connexion.",
-  "account.estates.interval.minutes": "$1 min",
-  "account.estates.interval.hours": "$1 h",
-  "account.estates.loans.none": "Prêté à aucun projet.",
-  "account.estates.loans.label": "Prêté à",
-  "account.estates.detach.confirmTitle": "Retirer $1 de $2 ?",
-  "account.estates.rotate": "Changer le secret",
-  "account.estates.rotate.confirmTitle": "Changer le secret de $1 ?",
-  "account.estates.rotate.confirmDescription":
+  "account.hosts.interval.minutes": "$1 min",
+  "account.hosts.interval.hours": "$1 h",
+  "account.hosts.loans.none": "Prêté à aucun projet.",
+  "account.hosts.loans.label": "Prêté à",
+  "account.hosts.detach.confirmTitle": "Retirer $1 de $2 ?",
+  "account.hosts.rotate": "Changer le secret",
+  "account.hosts.rotate.confirmTitle": "Changer le secret de $1 ?",
+  "account.hosts.rotate.confirmDescription":
     "Le secret actuel cesse de fonctionner dès que vous confirmez. La machine est refusée à sa prochaine connexion tant que vous n'avez pas lancé `bay connector set` avec le nouveau, affiché une seule fois.",
-  "account.estates.rotate.confirm": "Changer",
-  "account.estates.delete": "Supprimer",
-  "account.estates.delete.confirmTitle": "Supprimer $1 ?",
-  "account.estates.delete.confirmDescription":
-    "Rien n'est dédéployé : la machine continue d'exécuter ce qu'elle exécute, et Lore perd seulement la possibilité d'inspecter, redéployer ou revenir en arrière via ce domaine. Un secret bay est révoqué. Un identifiant cloudflare n'est pas révoqué chez Cloudflare ; faites-le là-bas. Chaque projet auquel il est prêté le perd.",
-  "account.estates.delete.confirmProvisioned":
-    "Ce domaine tourne sur le serveur $1, acheté par lore estate provision chez $2. Le supprimer ici ne détruit pas ce serveur : il continue de tourner, et d'être facturé. Pour le détruire avec son IP et son disque, lancez plutôt lore estate delete $3 --yes.",
-  "account.estates.delete.confirm": "Supprimer",
-  "account.estates.toast.rotated": "Secret changé",
-  "account.estates.toast.deleted": "Domaine supprimé",
-  "account.delete.estates.one":
-    "1 domaine qui n'appartient à aucun projet est encore rattaché à votre compte : il sera supprimé avec lui et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
-  "account.delete.estates.many":
-    "$1 domaines qui n'appartiennent à aucun projet sont encore rattachés à votre compte : ils seront supprimés avec lui et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
+  "account.hosts.rotate.confirm": "Changer",
+  "account.hosts.delete": "Supprimer",
+  "account.hosts.delete.confirmTitle": "Supprimer $1 ?",
+  "account.hosts.delete.confirmDescription":
+    "Rien n'est dédéployé : la machine continue d'exécuter ce qu'elle exécute, et Lore perd seulement la possibilité d'inspecter, redéployer ou revenir en arrière via cet hôte. Un secret bay est révoqué. Un identifiant cloudflare n'est pas révoqué chez Cloudflare ; faites-le là-bas. Chaque projet auquel il est prêté le perd.",
+  "account.hosts.delete.confirmProvisioned":
+    "Cet hôte tourne sur le serveur $1, acheté par lore host provision chez $2. Le supprimer ici ne détruit pas ce serveur : il continue de tourner, et d'être facturé. Pour le détruire avec son IP et son disque, lancez plutôt lore host delete $3 --yes.",
+  "account.hosts.delete.confirm": "Supprimer",
+  "account.hosts.toast.rotated": "Secret changé",
+  "account.hosts.toast.deleted": "Hôte supprimé",
+  "account.delete.hosts.one":
+    "1 hôte qui n'appartient à aucun projet est encore rattaché à votre compte : il sera supprimé avec lui et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
+  "account.delete.hosts.many":
+    "$1 hôtes qui n'appartiennent à aucun projet sont encore rattachés à votre compte : ils seront supprimés avec lui et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
 
   "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",
@@ -2804,8 +2801,8 @@ export default {
   "account.notifications.category.uptime": "Contrôles de santé",
   "account.notifications.category.uptime.description":
     "Incidents confirmés et rétablissements de vos moniteurs de disponibilité.",
-  "account.notifications.category.estates": "Identifiants de déploiement",
-  "account.notifications.category.estates.description":
+  "account.notifications.category.hosts": "Identifiants de déploiement",
+  "account.notifications.category.hosts.description":
     "Un identifiant de déploiement que vous possédez a cessé de fonctionner.",
   "inbox.empty.description":
     "Les messages qui vous sont adressés apparaissent ici.",
@@ -3551,8 +3548,8 @@ export default {
   "activity.resource.member": "Membre",
   "activity.resource.app": "Application",
   "activity.resource.sigil": "Sigil",
-  // "Domaine", the word the rest of the French estate UI already uses.
-  "activity.resource.estate": "Domaine",
+  // "Hôte", the word the rest of the French host UI uses.
+  "activity.resource.host": "Hôte",
   "activity.resource.project": "Projet",
   "activity.fields": "a modifié $1",
   "activity.capability.enabled": "a activé $1",
@@ -3623,14 +3620,14 @@ export default {
   "permission.group.quality": "Qualité",
   "permission.quality.read": "Lire la couverture et les totaux de tests",
   "permission.quality.push": "Enregistrer la couverture et les totaux de tests",
-  "permission.group.estate": "Hébergements",
-  "permission.estate.read":
+  "permission.group.host": "Hébergements",
+  "permission.host.read":
     "Voir les hébergements du projet et leur console, et ceux qui lui sont prêtés",
-  "permission.estate.update":
+  "permission.host.update":
     "Modifier un hébergement du projet : ses réglages, son secret, son jeton, ses commandes et ses journaux",
-  "permission.estate.lend": "Prêter un hébergement au projet, et le reprendre",
-  "permission.estate.create": "Ajouter un hébergement au projet",
-  "permission.estate.delete":
+  "permission.host.lend": "Prêter un hébergement au projet, et le reprendre",
+  "permission.host.create": "Ajouter un hébergement au projet",
+  "permission.host.delete":
     "Supprimer un hébergement du projet, ou le déplacer vers un autre",
   "permission.group.feedback": "Retours",
   "permission.feedback.read": "Lire la boîte des retours",
@@ -3962,16 +3959,16 @@ export default {
     "Des applications et des services déployés ensemble depuis un compose.yml, une copie par environnement.",
   "stacks.empty": "Aucune stack",
   "stacks.empty.description":
-    "Une stack exécute ensemble les services d'un fichier compose et les applications de ce projet sur un domaine.",
+    "Une stack exécute ensemble les services d'un fichier compose et les applications de ce projet sur un hôte.",
   "stacks.create": "Nouvelle stack",
   "stacks.create.description":
     "Son nom est par défaut le slug du projet. Envoyez son fichier compose une fois créée.",
   "stacks.create.name": "Nom",
-  "stacks.create.estate": "Domaine par défaut",
+  "stacks.create.host": "Hôte par défaut",
   "stacks.create.submit": "Créer",
   "stacks.created": "Stack créée",
   "stacks.col.environment": "Environnement",
-  "stacks.col.estate": "Domaine",
+  "stacks.col.host": "Hôte",
   "stacks.col.revision": "Révision",
   "stacks.col.members": "Applications",
   "stacks.delete": "Supprimer la stack",
@@ -3985,10 +3982,10 @@ export default {
     "Aucun environnement : ajoutez production, staging ou n'importe quel nom.",
   "stacks.environment.name": "Environnement",
   "stacks.environment.runs": "Exécute la révision $1",
-  "stacks.estate.default": "celui de la stack",
-  "stacks.estate.default.line":
-    "Se déploie sur $1, sauf si un environnement nomme son propre domaine.",
-  "stacks.estate.unset": "aucun domaine",
+  "stacks.host.default": "celui de la stack",
+  "stacks.host.default.line":
+    "Se déploie sur $1, sauf si un environnement nomme son propre hôte.",
+  "stacks.host.unset": "aucun hôte",
   "stacks.revision.file": "Fichier compose ou archive",
   "stacks.revision.latest": "révision $1",
   "stacks.revision.none": "jamais déployée",
@@ -4048,8 +4045,8 @@ export default {
   "stacks.routes.empty": "Aucune route.",
   "stacks.routes.labels": "Étiquettes du fichier compose",
   "stacks.routes.labels.base": "Résolues par rapport à $1.",
-  "stacks.routes.labels.estate":
-    "Résolues par rapport au domaine par défaut du domaine de déploiement, tant que cet environnement ne fixe pas de domaine de base.",
+  "stacks.routes.labels.host":
+    "Résolues par rapport au domaine par défaut de l'hôte de déploiement, tant que cet environnement ne fixe pas de domaine de base.",
   "stacks.routes.service": "Service",
   "stacks.routes.domain": "Domaine",
   "stacks.routes.add": "Ajouter une route",
@@ -4080,22 +4077,22 @@ export default {
   "stacks.volumes.unknown": "pas encore communiqué",
   "stacks.volumes.sizes":
     "Les tailles se lisent sur la machine, avec bay stack volumes : les mesurer coûte trop cher pour chaque rapport.",
-  "stacks.settings.estate": "Domaine",
-  "stacks.settings.estate.description":
+  "stacks.settings.host": "Hôte",
+  "stacks.settings.host.description":
     "Où se déploient les environnements de cette stack.",
-  "stacks.settings.estate.stack": "Par défaut pour $1",
+  "stacks.settings.host.stack": "Par défaut pour $1",
   "stacks.settings.override": "Remplacement pour $1",
   "stacks.settings.override.description":
-    "Exécuter cet environnement sur un autre domaine, une machine moins chère pour staging par exemple.",
+    "Exécuter cet environnement sur un autre hôte, une machine moins chère pour staging par exemple.",
   "stacks.settings.baseDomain": "Domaine de base",
   "stacks.settings.baseDomain.description":
-    "Ce par rapport à quoi se résolvent les étiquettes de route du fichier compose. Vide, celui du domaine de déploiement.",
+    "Ce par rapport à quoi se résolvent les étiquettes de route du fichier compose. Vide, celui de l'hôte de déploiement.",
   "stacks.settings.save": "Enregistrer",
   "stacks.settings.saved": "Enregistré",
   "stacks.settings.danger": "Zone dangereuse",
   "stacks.settings.delete": "Supprimer l'environnement",
   "stacks.settings.delete.description":
-    "Oublie l'environnement, ses routes et ses variables dans Lore. Rien n'est touché sur le domaine.",
+    "Oublie l'environnement, ses routes et ses variables dans Lore. Rien n'est touché sur l'hôte.",
   "stacks.settings.delete.confirm": "Supprimer $1 ?",
   "stacks.settings.deleted": "Environnement supprimé",
   "bay.stacks.title": "Stacks",
@@ -4114,7 +4111,7 @@ export default {
     "La machine est hors ligne : voici son dernier rapport, et rien ne peut être envoyé avant sa reconnexion.",
   "backup.notReported":
     "La machine n'a pas encore rapporté de sauvegardes pour cette copie.",
-  "backup.status.noEstate":
+  "backup.status.noHost":
     "Cette copie n'est déployée sur aucune machine, rien ne la sauvegarde.",
   "backup.status.notBay":
     "La machine de cette copie n'est pas une machine Bay ; les sauvegardes sont celles de Bay.",

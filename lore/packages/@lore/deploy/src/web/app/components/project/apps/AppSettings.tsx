@@ -6,7 +6,7 @@ import { useI18n } from "alepha/react/i18n";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppSettingsDelete from "./AppSettingsDelete.tsx";
-import AppSettingsEstate from "./AppSettingsEstate.tsx";
+import AppSettingsHost from "./AppSettingsHost.tsx";
 import AppSettingsRename from "./AppSettingsRename.tsx";
 import AppSettingsSigil from "./AppSettingsSigil.tsx";
 import AppSettingsSigilFeatures from "./AppSettingsSigilFeatures.tsx";
@@ -76,7 +76,7 @@ const AppSettings = () => {
 
       <AppSettingsSigilFeatures />
 
-      <AppSettingsEstate />
+      <AppSettingsHost />
 
       <AppSettingsDelete />
     </PageOutline>

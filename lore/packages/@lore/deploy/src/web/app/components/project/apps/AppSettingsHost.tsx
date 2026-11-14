@@ -10,59 +10,59 @@ import { Link } from "alepha/react/router";
 import { useState } from "react";
 
 import type { AppController } from "../../../../../api/controllers/AppController.ts";
-import type { ProjectEstateController } from "../../../../../api/controllers/ProjectEstateController.ts";
+import type { ProjectHostController } from "../../../../../api/controllers/ProjectHostController.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 
 /**
- * The value the select carries for "no estate".
+ * The value the select carries for "no host".
  *
  * Not the empty string: Base UI reads that as "nothing selected" and shows the
  * placeholder instead of the row, so the option would be unpickable once an
- * estate had been chosen.
+ * host had been chosen.
  */
 const CLEARED = "__none__";
 
 /**
  * The one field this row is. Required, so `Control` does not make it
  * deselectable: clearing has its own row in the list, and a re-press of the
- * chosen estate must not silently post `null`.
+ * chosen host must not silently post `null`.
  */
-const estateFieldSchema = z.object({ estateId: z.text() });
+const hostFieldSchema = z.object({ hostId: z.text() });
 
 /**
  * Where this deployed copy deploys to.
  *
- * **The estate is per instance, never per app**, which is the case the whole
+ * **The host is per instance, never per app**, which is the case the whole
  * level exists for: `docs` deploys to Cloudflare and `bay` runs on the OVH VPS,
  * and both are "production", so one row per environment could not serve both.
  *
  * ## Why it ships before there is anything to deploy
  *
  * There is no Deploy tab in v3 - that is epic #1's - and this row is still
- * worth having. An estate is a FACT about the instance whether or not a deploy
- * exists yet, and without the row `AppService.setEstate`'s lending check and
- * `EstateService.assertUnreferenced`'s two refusals would be live code that no
+ * worth having. A host is a FACT about the instance whether or not a deploy
+ * exists yet, and without the row `AppService.setHost`'s lending check and
+ * `HostService.assertUnreferenced`'s two refusals would be live code that no
  * user path can reach and no e2e can drive.
  *
  * ## The list is what the project was LENT
  *
- * `listProjectEstates` is the same read the project's own Estates settings page
+ * `listProjectHosts` is the same read the project's own Hosts settings page
  * does. The select never offers anything else, and the server validates against
- * `estate_projects` regardless: an estate belongs to its home project and is lent to a
- * project, so resolving an id against `estates` directly would let a project
+ * `host_projects` regardless: a host belongs to its home project and is lent to a
+ * project, so resolving an id against `hosts` directly would let a project
  * point at somebody else's cloud account.
  *
  * With nothing lent, the row says so in words and links to the page that lends
  * one, the way that page's own empty state does. Offering an empty select would
  * be a control that changes nothing.
  */
-const AppSettingsEstate = () => {
+const AppSettingsHost = () => {
   const { tr } = useI18n<I18n, "en">();
   const { can } = useRank();
   const toaster = useToast();
   const appApi = useClient<AppController>();
-  const estateApi = useClient<ProjectEstateController>();
+  const hostApi = useClient<ProjectHostController>();
 
   const [project] = useStore(currentProjectAtom);
   const [instance, setInstance] = useStore(currentInstanceAtom);
@@ -70,12 +70,12 @@ const AppSettingsEstate = () => {
   const [busy, setBusy] = useState(false);
 
   const form = useForm({
-    schema: estateFieldSchema,
+    schema: hostFieldSchema,
     // ⚠️ Re-seeded from the ATOM, which `select` writes on a successful save:
-    // the field follows the server, and a refusal leaves it showing the estate
+    // the field follows the server, and a refusal leaves it showing the host
     // this instance actually points at.
-    initialValues: { estateId: instance?.estateId ?? CLEARED },
-    // Saves on change - "which estate" is one choice with nothing else to
+    initialValues: { hostId: instance?.hostId ?? CLEARED },
+    // Saves on change - "which host" is one choice with nothing else to
     // submit beside it - so the form's own submit is never reached.
     handler: () => {},
     onChange: (_key, value) =>
@@ -85,10 +85,10 @@ const AppSettingsEstate = () => {
   const { data } = useQuery(
     {
       enabled: Boolean(project),
-      key: ["project-estates", project?.id],
+      key: ["project-hosts", project?.id],
       handler: async () => {
         if (!project) return undefined;
-        return await estateApi.listProjectEstates({
+        return await hostApi.listProjectHosts({
           params: { projectId: project.id },
         });
       },
@@ -100,23 +100,23 @@ const AppSettingsEstate = () => {
     return null;
   }
 
-  // A member of a stack takes its estate from the stack environment, never
+  // A member of a stack takes its host from the stack environment, never
   // from this row (#Q2695): saying so is the whole row, since a picker here
   // would be a second place to choose it that nothing reads.
   if (instance.stack) {
     return (
       <SettingsSection
-        id="estate"
-        title={tr("app.settings.estate.title")}
-        description={tr("app.settings.estate.description")}
+        id="host"
+        title={tr("app.settings.host.title")}
+        description={tr("app.settings.host.description")}
       >
         <SettingsRow
-          label={tr("app.settings.estate.label")}
-          description={tr("app.settings.estate.member", {
+          label={tr("app.settings.host.label")}
+          description={tr("app.settings.host.member", {
             args: [`${instance.stack.name}/${instance.stack.env}`],
           })}
         >
-          <span data-testid="app-settings-estate-member" className="text-sm">
+          <span data-testid="app-settings-host-member" className="text-sm">
             {`${instance.stack.name}/${instance.stack.env}`}
           </span>
         </SettingsRow>
@@ -124,13 +124,13 @@ const AppSettingsEstate = () => {
     );
   }
 
-  const isOwner = can("estate:lend");
-  const estates = data?.items ?? [];
+  const isOwner = can("host:lend");
+  const hosts = data?.items ?? [];
 
-  const select = async (estateId: string | undefined) => {
+  const select = async (hostId: string | undefined) => {
     // ⚠️ Also the re-entrancy guard for the restore below: putting the field
     // back calls this again, and this line ends it.
-    if ((estateId ?? CLEARED) === (instance.estateId ?? CLEARED)) return;
+    if ((hostId ?? CLEARED) === (instance.hostId ?? CLEARED)) return;
     setBusy(true);
     try {
       const updated = await appApi.updateApp({
@@ -140,19 +140,19 @@ const AppSettingsEstate = () => {
           env: instance.env,
         },
         // `null` clears it, which is a real operation: an instance that was
-        // pointed at the wrong estate has to be able to stop pointing anywhere.
-        body: { estateId: estateId ?? null },
+        // pointed at the wrong host has to be able to stop pointing anywhere.
+        body: { hostId: hostId ?? null },
       });
       setInstance(updated);
       setInstances(
         (instances ?? []).map((it) => (it.id === updated.id ? updated : it)),
       );
-      toaster.success(tr("app.settings.estate.saved"));
+      toaster.success(tr("app.settings.host.saved"));
     } catch (error) {
       // Back to what the instance still points at: nothing re-seeds the field
-      // on a refusal, so it would otherwise keep showing an estate this copy
+      // on a refusal, so it would otherwise keep showing a host this copy
       // does not deploy to.
-      form.input.estateId.set(instance.estateId ?? CLEARED);
+      form.input.hostId.set(instance.hostId ?? CLEARED);
       toaster.error(error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
@@ -161,49 +161,47 @@ const AppSettingsEstate = () => {
 
   return (
     <SettingsSection
-      id="estate"
-      title={tr("app.settings.estate.title")}
-      description={tr("app.settings.estate.description")}
+      id="host"
+      title={tr("app.settings.host.title")}
+      description={tr("app.settings.host.description")}
     >
       <SettingsRow
-        label={tr("app.settings.estate.label")}
+        label={tr("app.settings.host.label")}
         description={
-          estates.length === 0
-            ? tr("app.settings.estate.none")
-            : tr("app.settings.estate.rowDescription")
+          hosts.length === 0
+            ? tr("app.settings.host.none")
+            : tr("app.settings.host.rowDescription")
         }
       >
-        {estates.length === 0 ? (
+        {hosts.length === 0 ? (
           <Link
             className="text-primary text-sm underline-offset-4 hover:underline"
-            href={`/${project.slug}/settings/estates`}
+            href={`/${project.slug}/settings/hosts`}
           >
-            {tr("app.settings.estate.manage")}
+            {tr("app.settings.host.manage")}
           </Link>
         ) : (
           <Control
             select
-            input={form.input.estateId}
+            input={form.input.hostId}
             label=""
             disabled={!isOwner || busy}
             triggerClassName="w-full sm:w-72"
             inputProps={{
-              "aria-label": tr("app.settings.estate.label"),
+              "aria-label": tr("app.settings.host.label"),
             }}
             items={[
               // Clearing is a real operation: an instance pointed at the
-              // wrong estate has to be able to stop pointing anywhere. A
+              // wrong host has to be able to stop pointing anywhere. A
               // sentinel rather than `""`, which Base UI reads as "no value"
               // and renders as the placeholder.
               {
                 value: CLEARED,
-                label: tr("app.settings.estate.clear"),
+                label: tr("app.settings.host.clear"),
               },
-              ...estates.map((estate) => ({
-                value: estate.id,
-                label: estate.label
-                  ? `${estate.slug} (${estate.label})`
-                  : estate.slug,
+              ...hosts.map((host) => ({
+                value: host.id,
+                label: host.label ? `${host.slug} (${host.label})` : host.slug,
               })),
             ]}
           />
@@ -213,4 +211,4 @@ const AppSettingsEstate = () => {
   );
 };
 
-export default AppSettingsEstate;
+export default AppSettingsHost;

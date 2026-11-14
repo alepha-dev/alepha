@@ -4,7 +4,7 @@ import type { AppInstanceResource } from "../../../../../api/schemas/appInstance
  * Where an app lives, as a link, or `undefined` when nobody knows yet.
  *
  * Two sources, one answer, and since Apps v3 they sit on two rows. `url` is
- * what an operator pinned, on the instance; `lastSeenHost` is where the app
+ * what an operator pinned, on the instance; `lastSeenHostname` is where the app
  * itself reported from, on the sigil that instance holds. An instance with no
  * sigil has no detected half at all, which is a normal state rather than a
  * missing one: nothing has reported yet.
@@ -24,7 +24,7 @@ export const appUrl = (instance: AppInstanceResource): string | undefined => {
   if (instance.url) {
     return instance.url;
   }
-  const host = instance.sigil?.lastSeenHost;
+  const host = instance.sigil?.lastSeenHostname;
   return host ? `https://${host}` : undefined;
 };
 

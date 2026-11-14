@@ -21,7 +21,7 @@ import {
  *
  * The kinds that have a sidebar entry take that entry's icon (`capabilityNav`),
  * so the filter and the sidebar name a kind with the same glyph. The rest take
- * the icon the admin area gives them (`Server` for an estate), or one of their
+ * the icon the admin area gives them (`Server` for a host), or one of their
  * own.
  *
  * `Circle` for a kind with no entry here, for the reason
@@ -41,7 +41,7 @@ const ACTIVITY_RESOURCE_ICONS: Record<string, LucideIcon> = {
   member: User,
   app: AppWindow,
   sigil: KeyRound,
-  estate: Server,
+  host: Server,
   project: FolderKanban,
   error: Bug,
   artifact: Package,

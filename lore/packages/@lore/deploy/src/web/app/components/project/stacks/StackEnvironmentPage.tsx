@@ -25,7 +25,7 @@ export interface StackEnvironmentPageProps {
  */
 const StackEnvironmentPage = (props: StackEnvironmentPageProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const { project, stacks, estates, loading } = useProjectStacks();
+  const { project, stacks, hosts, loading } = useProjectStacks();
   const [tab, setTab] = useState("services");
 
   const stack = stacks.find((s) => s.name === props.stackName);
@@ -93,7 +93,7 @@ const StackEnvironmentPage = (props: StackEnvironmentPageProps) => {
           target={target}
           stack={stack}
           environment={environment}
-          estates={estates}
+          hosts={hosts}
           projectSlug={project.slug ?? ""}
         />
       ),
