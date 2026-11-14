@@ -75,5 +75,9 @@ export {
   type FormFieldRequiredMarkerProviderProps,
   useFormFieldRequiredMarker,
 } from "./FormFieldRequiredMarkerProvider.tsx";
+export {
+  DEFAULT_EMAIL_DOMAINS,
+  emailDomainCompletion,
+} from "./emailDomainCompletion.ts";
 export { spanClass, widthFor } from "./grid.tsx";
 export { resizeImage, type ResizeImageOptions } from "./resizeImage.ts";

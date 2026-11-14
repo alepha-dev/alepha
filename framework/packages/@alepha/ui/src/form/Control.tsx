@@ -37,6 +37,7 @@ import {
   type SelectOption,
 } from "./ControlSelect.tsx";
 import { ControlUpload, type ControlUploadProps } from "./ControlUpload.tsx";
+import { emailDomainCompletion } from "./emailDomainCompletion.ts";
 import { FormField, formFieldAriaProps } from "./FormField.tsx";
 import { useFormFieldAutoSave } from "./FormFieldAutoSaveProvider.tsx";
 import { useFormFieldLayout } from "./FormFieldLayoutProvider.tsx";
@@ -67,6 +68,12 @@ export interface ControlProps {
    * Force a masked password input.
    */
   password?: boolean;
+  /**
+   * Domains an email field suggests after `@`, shown in grey and accepted
+   * with Tab, → or a tap: `jane@g` offers `gmail.com`. Defaults to
+   * `DEFAULT_EMAIL_DOMAINS`; `false` turns the suggestion off.
+   */
+  emailDomains?: readonly string[] | false;
   /**
    * Force a `<Switch>` (boolean toggle).
    */
@@ -379,6 +386,10 @@ export const Control = (props: ControlProps) => {
   const autoSaveEnabled = useFormFieldAutoSave();
   const rowLayout = useFormFieldLayout() === "row";
   const [value, setValue] = useFieldValue(props.input);
+  // The email domain suggestion shows only while the field has focus, and
+  // Escape hides it until the value changes.
+  const [focused, setFocused] = useState(false);
+  const [dismissedAt, setDismissedAt] = useState<string>();
 
   // Function-form `$control` reads other fields → re-render on any
   // change. Infer `$control` (object) does not need this subscription.
@@ -821,6 +832,25 @@ export const Control = (props: ControlProps) => {
   const showTrailing = !showSave && !showClear && merged.trailing != null;
   const reserveGutter = showSave || showTrailing;
 
+  const text = String(value ?? "");
+  // An email by schema, or by hint: a sign-in identifier is a plain string
+  // whose `autoComplete` says `email`, or `username` when it also takes an
+  // email. Nothing is suggested before an `@`, so a username is untouched.
+  const autoCompleteTokens = (autoComplete ?? "").split(/\s+/);
+  const takesEmail =
+    htmlType === "email" ||
+    autoCompleteTokens.includes("email") ||
+    autoCompleteTokens.includes("username");
+  const completion =
+    takesEmail &&
+    focused &&
+    !merged.disabled &&
+    merged.emailDomains !== false &&
+    dismissedAt !== text
+      ? emailDomainCompletion(text, merged.emailDomains)
+      : "";
+  const acceptCompletion = () => setValue(text + completion);
+
   return wrapWithSlots(
     merged,
     <FormField
@@ -876,9 +906,37 @@ export const Control = (props: ControlProps) => {
             showClear && "focus:pe-9",
           )}
           onChange={(e) => setValue(e.target.value)}
+          onFocus={(e) => {
+            merged.inputProps?.onFocus?.(e);
+            setFocused(true);
+          }}
+          onBlur={(e) => {
+            merged.inputProps?.onBlur?.(e);
+            setFocused(false);
+          }}
           onKeyDown={(e) => {
             merged.inputProps?.onKeyDown?.(e);
-            if (e.defaultPrevented || e.key !== "Enter") return;
+            if (e.defaultPrevented) return;
+            if (completion) {
+              // `selectionStart` is null on `type="email"`: no caret to
+              // check there, so → accepts wherever the caret is.
+              const { selectionStart } = e.currentTarget;
+              const atEnd =
+                selectionStart == null || selectionStart === text.length;
+              if (
+                (e.key === "Tab" && !e.shiftKey) ||
+                (e.key === "ArrowRight" && atEnd)
+              ) {
+                e.preventDefault();
+                acceptCompletion();
+                return;
+              }
+              if (e.key === "Escape") {
+                setDismissedAt(text);
+                return;
+              }
+            }
+            if (e.key !== "Enter") return;
             // The commit the auto-save effect deliberately withholds from a
             // text field on every keystroke. Its comment offers "Enter or the
             // inline tick button" as the two ways to commit - and only the
@@ -897,6 +955,33 @@ export const Control = (props: ControlProps) => {
             void props.input.form.submit();
           }}
         />
+        {completion && (
+          // The typed text again, invisible, so the grey rest of the domain
+          // lands right after the caret. Same border, padding and font as
+          // `<Input>`.
+          <div
+            aria-hidden
+            data-slot="control-email-suggestion"
+            className={cn(
+              "pointer-events-none absolute inset-0 flex items-center overflow-hidden rounded-lg border border-transparent px-2.5 py-1 text-base whitespace-pre md:text-sm",
+              Icon && "ps-9",
+              (reserveGutter || showClear) && "pe-9",
+            )}
+          >
+            <span className="invisible">{text}</span>
+            {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- a pointer shortcut in an aria-hidden overlay; the keyboard accepts with Tab or → */}
+            <span
+              className="text-muted-foreground pointer-events-auto cursor-pointer"
+              // `mousedown`, not `click`: the input keeps its focus.
+              onMouseDown={(e) => {
+                e.preventDefault();
+                acceptCompletion();
+              }}
+            >
+              {completion}
+            </span>
+          </div>
+        )}
         {showSave && (
           <button
             type="button"
