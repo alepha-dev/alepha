@@ -10,7 +10,7 @@
 # What it proves, in order of how badly it would hurt to get wrong:
 #
 #   1. The image boots with only a port and a volume, and `/version` answers
-#      the framework version.
+#      the version its build resolved from git.
 #   2. The first account through the real HTTP surface lands `admin`, and the
 #      second does NOT. The image ships with registration open, so the bug to
 #      catch is an instance that hands admin to everyone.
@@ -144,7 +144,16 @@ echo "── image: ${IMAGE}"
 start "$FIRST" "$VOLUME_MAIN"
 wait_for_version "$FIRST"
 
-EXPECTED_VERSION="$(python3 -c 'import json;print(json.load(open("apps/lore/package.json"))["version"])')"
+# What `alepha build` resolved for this checkout (#Q3639), by the same chain:
+# the release tag on HEAD, else `git describe` against release-shaped tags,
+# else "latest" (a shallow checkout has no tag to describe from). Not
+# `package.json`: since releases went tag-driven, its version on `main` is not
+# the one any build reports.
+EXPECTED_VERSION="$(git tag --points-at HEAD 2>/dev/null | head -n 1)"
+[ -n "$EXPECTED_VERSION" ] ||
+  EXPECTED_VERSION="$(git describe --tags --match "[0-9]*.[0-9]*.[0-9]*" --match "v[0-9]*.[0-9]*.[0-9]*" 2>/dev/null || true)"
+EXPECTED_VERSION="${EXPECTED_VERSION#v}"
+[ -n "$EXPECTED_VERSION" ] || EXPECTED_VERSION="latest"
 VERSION="$(curl -fsS "${BASE}/version" | json_field version)"
 [ "$VERSION" = "$EXPECTED_VERSION" ] ||
   fail "/version reported '${VERSION}', expected '${EXPECTED_VERSION}'"
