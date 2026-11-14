@@ -2921,6 +2921,16 @@ export default {
   "admin.sessions.revoked": "Session révoquée",
   "admin.sessions.bulkRevokeTitle": "Révoquer les sessions",
 
+  // Admin → Dashboard: Lore's Projects tile.
+  "admin.projectsTile.title": "Projets",
+  "admin.projectsTile.description":
+    "Projets de cette instance, archivés exclus, avec les créations comparées à la semaine précédente.",
+  "admin.projectsTile.tooltip":
+    "Tous les projets de cette instance, projets archivés exclus.",
+  "admin.projectsTile.note": "Créés en 7 jours : $1",
+  "admin.projectsTile.delta":
+    "Projets créés, 7 derniers jours par rapport aux 7 précédents (archivés compris)",
+
   // Admin → Parameters: the tree's group labels, keyed by `$parameter` path.
   // Labels only: the stored names keep their old words (see en.ts).
   "parameters.lore.campaign": "Projets",

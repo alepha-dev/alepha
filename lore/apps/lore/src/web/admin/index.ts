@@ -1,6 +1,7 @@
 import { AdminRouter } from "@alepha/ui/admin";
 import { $module } from "alepha";
 
+import { LoreAdminDashboard } from "./LoreAdminDashboard.tsx";
 import { LoreAdminRouter } from "./LoreAdminRouter.tsx";
 
 export const LoreWebAdmin = $module({
@@ -11,5 +12,5 @@ export const LoreWebAdmin = $module({
    * should say what it mounts, rather than leaving `/admin` to appear as a
    * side effect of a page declaration two files away.
    */
-  services: [AdminRouter, LoreAdminRouter],
+  services: [AdminRouter, LoreAdminRouter, LoreAdminDashboard],
 });

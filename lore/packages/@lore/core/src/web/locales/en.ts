@@ -2919,6 +2919,16 @@ export default {
   "admin.sessions.revoked": "Session revoked",
   "admin.sessions.bulkRevokeTitle": "Revoke sessions",
 
+  // Admin → Dashboard: Lore's Projects tile.
+  "admin.projectsTile.title": "Projects",
+  "admin.projectsTile.description":
+    "Projects on this instance, archived excluded, with creations against the week before.",
+  "admin.projectsTile.tooltip":
+    "Every project on this instance, archived projects excluded.",
+  "admin.projectsTile.note": "Created in 7 days: $1",
+  "admin.projectsTile.delta":
+    "Projects created, last 7 days vs the 7 before (archived included)",
+
   // Admin → Parameters: the tree's group labels, keyed by `$parameter` path.
   // Labels only: the stored names (`lore.campaign.limits`,
   // `lore.deploy.limits`) keep their old words, since renaming one orphans

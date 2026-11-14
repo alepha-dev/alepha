@@ -64,6 +64,21 @@ export class AdminProjectController {
          * from a persisted filter bar falls back to "all" instead of throwing.
          */
         activity: z.string().optional(),
+        /**
+         * `"exclude"` = live projects only, `"only"` = archived ones only.
+         * Absent means every project, archived included, as the page has
+         * always listed them; anything else is no filter, like `activity`.
+         */
+        archived: z.string().optional(),
+        /**
+         * Created at or after this instant (inclusive).
+         */
+        createdFrom: z.datetime().optional(),
+        /**
+         * Created before this instant (exclusive), so two adjacent windows
+         * never count a project twice.
+         */
+        createdTo: z.datetime().optional(),
       }),
       response: db.page(adminProjectResourceSchema),
     },
@@ -88,6 +103,19 @@ export class AdminProjectController {
           .toISOString();
         where.updatedAt =
           query.activity === "active" ? { gte: cutoff } : { lt: cutoff };
+      }
+
+      if (query.archived === "exclude") {
+        where.archivedAt = { isNull: true };
+      } else if (query.archived === "only") {
+        where.archivedAt = { isNotNull: true };
+      }
+
+      if (query.createdFrom || query.createdTo) {
+        where.createdAt = {
+          ...(query.createdFrom ? { gte: query.createdFrom } : {}),
+          ...(query.createdTo ? { lt: query.createdTo } : {}),
+        };
       }
 
       query.sort ??= "-createdAt";
