@@ -451,6 +451,120 @@ account menu. Do not adopt its layout into your own layout's `children`: it
 mounts its own `Toaster`, so every toast would show twice. Configure it
 through `adminRouterOptionsAtom` instead.
 
+#### The admin dashboard
+
+`/admin` itself is a dashboard: a grid of tiles, each a number that opens the
+list it counts, **filtered to the same number**. Three ship with
+`AdminRouter`, each shown only when the server registers the action it reads:
+
+| Tile            | What it counts                                                                                                                                  | Opens                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Users           | every account in the admin's realm; the chip compares sign-ups over the last 7 whole UTC days with the 7 before                                 | the Users list, with no stored filter applied             |
+| Connected       | distinct users who signed in or refreshed a session in the last 24 hours (API keys not included; it lags by up to an access token's lifetime)   | the Users list filtered to "last active: 24 h"            |
+| Failed sign-ins | `auth` and `security` audits that failed, over the last 7 whole UTC days, against the 7 before; warning-coloured above a threshold (default 10) | the audit log filtered to those types, failed, those days |
+
+Windows are whole UTC days because the audit log filters by day, and a tile
+must total what its list shows. Change the alert threshold with
+`failedSignInsAlertThreshold` in `adminRouterOptionsAtom`.
+
+A link that carries no filter, like the Users tile's, would still get the
+filters the admin stored on that list last time. `DataTable` reads a reserved
+`?filters=none` for that case: with `filters.fromQuery` set, the list opens
+with exactly the filters the link carries and none of the stored ones.
+
+##### Adding a tile
+
+An application's tiles go in `dashboardCards`. `AdminStatTile` draws the
+built-in look: icon, label, an info tooltip saying what is counted, the
+number, a note, a delta chip and a warning tone, the whole card one link.
+
+```tsx
+import { AdminStatTile, type AdminRouterOptions } from "@alepha/ui/admin";
+import { useClient } from "alepha/react";
+import { Package } from "lucide-react";
+
+import type { OrderController } from "../api/OrderController.ts";
+
+const OrdersTile = () => {
+  const orders = useClient<OrderController>();
+  return (
+    <AdminStatTile
+      id="orders"
+      label="Open orders"
+      icon={<Package className="size-4" />}
+      tooltip="Orders paid and not shipped yet."
+      note={(loaded) => `${loaded.previous ?? 0} the week before`}
+      href="/admin/orders?status=open"
+      alert={(value) => value > 50}
+      load={async () => ({
+        value: await orders.countOrders({ query: { status: "open" } }),
+        previous: await orders.countOrders({
+          query: { status: "open", weeksAgo: 1 },
+        }),
+      })}
+    />
+  );
+};
+
+export const myAdminOptions: AdminRouterOptions = {
+  dashboardCards: [
+    {
+      id: "orders",
+      title: "Open orders",
+      titleKey: "admin.orders.tile",
+      description: "Orders paid and not shipped yet.",
+      render: () => <OrdersTile />,
+    },
+  ],
+};
+```
+
+A card's fields:
+
+- `id`, unique across the built-in cards (`users`, `connected`,
+  `failed-sign-ins`) and yours: setting options that reuse one throws, at
+  startup since every app sets its options before `start`;
+- `title` (required) and `description`, the tile's name and one line in the
+  Customize picker; `titleKey` and `descriptionKey` translate them;
+- `order`, ascending: the built-ins sit at 1000 and up, so a card with no
+  `order` leads;
+- `can`, gated on the **action** the tile reads
+  (`() => this.api.countOrders.can()`), never on a permission name, so the
+  tile disappears with its module;
+- `defaultEnabled` (default `true`): whether the tile shows while the stored
+  layout does not name it;
+- `render`, which owns the whole tile.
+
+`AdminStatTile`'s `load` returns the number, `{ value, previous }` for a chip
+comparing the number with its previous value, or `{ value, delta: { current,
+previous, label } }` for a chip comparing another number (the Users tile shows
+the total and compares sign-ups; `label` is the chip's tooltip). A failure
+renders "n/a" with the error in a tooltip, never a toast.
+
+##### The layout, and Customize
+
+Which tiles show, and in what order, is **one layout for the whole
+deployment**: every admin sees the same dashboard. It is a parameter,
+`admin.dashboard.layout`, served by the parameters module (`alepha/api/parameters`),
+so it has the history and author of any parameter on the Parameters page.
+Any admin reads it; an admin who may write parameters
+(`admin:parameter:create`) sees a **Customize** button, which lists every
+tile: hide one, add it back from the "Add a tile" picker, reorder by drag or
+with the arrow buttons, then **Save**, **Cancel**, or **Reset to defaults**
+(confirmed). A tile an admin cannot see is listed as unavailable and keeps its
+place, so one admin's missing permission never drops another's tile.
+
+A save carries the version it started from. When another admin saved in
+between, it is refused (409) and the page says so and offers to load their
+layout, rather than overwriting it.
+
+The layout is read by the page's loader, so the first render is the final
+grid. A tile the layout does not name yet (a new release's, or one an app just
+added) is appended when it is `defaultEnabled`; an id the layout names that no
+longer exists is dropped. Without the parameters module, or for an admin who
+cannot read the layout, the code defaults apply: every `defaultEnabled` tile,
+in `order`, and no Customize button.
+
 The account is not a route: `AccountDialog` declares a settings dialog (see
 below) named `account`, with five sections. The user menu opens it, and a
 link made outside the app opens it with `?account=<section>`, as in
