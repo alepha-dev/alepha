@@ -70,6 +70,21 @@ func (a *acceptanceServer) get(host, path string) (int, string) {
 	return res.StatusCode, string(body)
 }
 
+// getUntil asks like get until the answer is a 200 or within is spent, and
+// returns the last answer. For an app whose container is up before the app
+// itself is (#Q3685): Umami answered 500 while its database setup still ran,
+// and one read turned that boot into a failed test.
+func (a *acceptanceServer) getUntil(host, path string, within time.Duration) (int, string) {
+	deadline := time.Now().Add(within)
+	for {
+		status, body := a.get(host, path)
+		if status == http.StatusOK || time.Now().After(deadline) {
+			return status, body
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
 // bundleOf packs a testdata directory as a stack bundle.
 func bundleOf(t *testing.T, dir string) string {
 	t.Helper()
@@ -131,7 +146,7 @@ func TestUmamiTwoEnvironmentsDaemon(t *testing.T) {
 			if rec.Code != 200 {
 				t.Fatalf("%s: %d %s", env, rec.Code, rec.Body.String())
 			}
-			if status, body := a.get(domain, "/api/heartbeat"); status != 200 {
+			if status, body := a.getUntil(domain, "/api/heartbeat", 60*time.Second); status != 200 {
 				t.Fatalf("%s: %d %.120s", domain, status, body)
 			}
 		}
