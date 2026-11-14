@@ -48,6 +48,8 @@ const Dashboard = () => {
     order: number,
   ): AdminDashboardCard => ({
     id,
+    title: label,
+    description,
     order,
     render: () => (
       <AdminStatTile
@@ -111,6 +113,7 @@ const Dashboard = () => {
             ),
             {
               id: "gated",
+              title: "Gated card",
               order: 1040,
               can: () => v.showGated,
               render: () => (

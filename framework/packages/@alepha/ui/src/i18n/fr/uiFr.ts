@@ -481,18 +481,24 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.audits.actorAll": "Tous les auteurs",
   "admin.audits.dateAll": "Toute date",
   "admin.dashboard.connected": "Connectés",
+  "admin.dashboard.connectedDescription":
+    "Utilisateurs distincts connectés ou rafraîchis en 24 heures.",
   "admin.dashboard.connectedNote":
     "Connexion ou session rafraîchie dans les dernières 24 heures.",
   "admin.dashboard.connectedTooltip":
     "Utilisateurs distincts qui se sont connectés ou ont rafraîchi une session dans les dernières 24 heures, clés d'API non comprises.",
   "admin.dashboard.deltaNew": "nouveau",
   "admin.dashboard.failedSignIns": "Connexions échouées",
+  "admin.dashboard.failedSignInsDescription":
+    "Audits de connexion et de sécurité en échec sur 7 jours.",
   "admin.dashboard.failedSignInsDelta":
     "7 derniers jours par rapport aux 7 précédents",
   "admin.dashboard.failedSignInsNote": "7 derniers jours, UTC.",
   "admin.dashboard.failedSignInsTooltip":
     "Audits de connexion et de sécurité en échec (mot de passe ou code erroné, tentative bloquée ou limitée), sur les 7 derniers jours en UTC. Un verrouillage en écrit deux.",
   "admin.dashboard.unavailable": "n.d.",
+  "admin.dashboard.usersDescription":
+    "Tous les comptes, avec les inscriptions comparées à la semaine précédente.",
   "admin.dashboard.usersDelta":
     "Inscriptions, 7 derniers jours par rapport aux 7 précédents",
   "admin.dashboard.usersSignups": {

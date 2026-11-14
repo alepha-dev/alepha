@@ -9,15 +9,32 @@ import {
   EmptyTitle,
 } from "../core/Empty.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+import {
+  type AdminDashboardLayoutTile,
+  resolveAdminDashboardLayout,
+} from "./adminDashboardLayout.ts";
 import { AdminPage } from "./AdminPage.tsx";
 
 export interface AdminDashboardProps {
   /**
-   * Built-in cards followed by the application's, already concatenated by
-   * `AdminRouter`. Ordering and gating happen here rather than there so the
-   * two sets obey exactly one rule.
+   * The catalog: built-in cards followed by the application's, already
+   * concatenated by `AdminRouter`. Ordering and gating happen here rather
+   * than there so the two sets obey exactly one rule.
    */
   cards?: AdminDashboardCard[];
+
+  /**
+   * The deployment's stored layout, loaded by the page's loader before the
+   * first render so the grid never reflows. Absent or empty means the code
+   * defaults.
+   */
+  layout?: { tiles: AdminDashboardLayoutTile[] };
+
+  /**
+   * The stored layout's version, which a save sends back. Absent when the
+   * layout API is not registered or not readable.
+   */
+  layoutVersion?: number;
 }
 
 /**
@@ -29,9 +46,10 @@ export interface AdminDashboardProps {
  * nav entry whose backend never shipped.
  */
 const AdminDashboard = (props: AdminDashboardProps) => {
-  const cards = (props.cards ?? [])
-    .filter((card) => (card.can ? card.can() : true))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const cards = resolveAdminDashboardLayout(
+    props.cards ?? [],
+    props.layout?.tiles,
+  );
 
   return (
     // `p-6`, not the shell's `p-2`. That 8px frame is for the table pages,

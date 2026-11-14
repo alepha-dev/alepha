@@ -1,4 +1,4 @@
-import { $inject, $store, z } from "alepha";
+import { $hook, $inject, $store, z } from "alepha";
 import type { AdminAnalyticsController } from "alepha/api/analytics";
 import type { AdminAuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
@@ -35,7 +35,9 @@ import { createElement } from "react";
 
 import { $pageNav } from "../shell/$pageNav.tsx";
 import { AdminConnectedTile } from "./AdminConnectedTile.tsx";
+import type { AdminDashboardProps } from "./AdminDashboard.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
+import { adminDashboardCatalog } from "./adminDashboardLayout.ts";
 import { AdminFailedSignInsTile } from "./AdminFailedSignInsTile.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
 import { AdminUsersTile } from "./AdminUsersTile.tsx";
@@ -278,8 +280,53 @@ export class AdminRouter {
       order: 0,
     },
     lazy: () => import("./AdminDashboard.tsx"),
-    props: () => ({ cards: this.dashboardCards() }),
+    props: (): Partial<AdminDashboardProps> => ({
+      cards: this.dashboardCatalog(),
+    }),
+    // The stored layout, before the first render: the server renders the
+    // final grid, and the browser never moves tiles after mount.
+    loader: () => this.loadDashboardLayout(),
   });
+
+  /**
+   * A duplicate card id fails the app at startup, not on the first visit to
+   * `/admin`: the options are set before `start`, so this is the earliest
+   * moment the whole catalog exists.
+   */
+  protected readonly checkDashboardCatalog = $hook({
+    on: "start",
+    handler: () => {
+      this.dashboardCatalog();
+    },
+  });
+
+  /**
+   * The catalog, in code order, ids checked unique.
+   */
+  protected dashboardCatalog(): AdminDashboardCard[] {
+    return adminDashboardCatalog(this.dashboardCards());
+  }
+
+  /**
+   * The deployment's layout and its version, or nothing.
+   *
+   * Nothing (the code defaults) when the parameters module is absent or this
+   * admin may not read the layout, and when the read fails: a dashboard
+   * still renders, in its default order, rather than an error page.
+   */
+  protected async loadDashboardLayout(): Promise<
+    Pick<AdminDashboardProps, "layout" | "layoutVersion">
+  > {
+    if (!this.layoutApi.getAdminDashboardLayout.can()) {
+      return {};
+    }
+    try {
+      const read = await this.layoutApi.getAdminDashboardLayout();
+      return { layout: read.layout, layoutVersion: read.version };
+    } catch {
+      return {};
+    }
+  }
 
   /**
    * The built-in tiles, then the application's.
@@ -302,18 +349,30 @@ export class AdminRouter {
     return [
       {
         id: "users",
+        title: "Users",
+        titleKey: "admin.nav.users",
+        description: "Every account, with sign-ups against the week before.",
+        descriptionKey: "admin.dashboard.usersDescription",
         order: 1000,
         can: () => this.userApi.getUserStats.can(),
         render: () => createElement(AdminUsersTile, { id: "users" }),
       },
       {
         id: "connected",
+        title: "Connected",
+        titleKey: "admin.dashboard.connected",
+        description: "Distinct users signed in or refreshed in 24 hours.",
+        descriptionKey: "admin.dashboard.connectedDescription",
         order: 1010,
         can: () => this.userApi.getUserStats.can(),
         render: () => createElement(AdminConnectedTile, { id: "connected" }),
       },
       {
         id: "failed-sign-ins",
+        title: "Failed sign-ins",
+        titleKey: "admin.dashboard.failedSignIns",
+        description: "Failed sign-in and security audits over 7 days.",
+        descriptionKey: "admin.dashboard.failedSignInsDescription",
         order: 1020,
         can: () => this.auditApi.findAudits.can(),
         render: () =>

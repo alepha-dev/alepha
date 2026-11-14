@@ -13,9 +13,18 @@ import type { ReactNode } from "react";
  * whether or not any controller backs it, so a permission check would leave a
  * card standing over a dead API.
  *
- * The card carries no title of its own: `render` owns its whole surface,
- * because a stat tile, a chart and a table of recent rows have nothing useful
- * in common above the card boundary.
+ * `render` owns the tile's whole surface, because a stat tile, a chart and a
+ * table of recent rows have nothing useful in common above the card boundary.
+ * `title` and `description` are not drawn on the tile: they name it in the
+ * Customize picker, where an admin chooses which tiles show.
+ *
+ * ### Catalog and layout
+ *
+ * The built-in cards and `AdminRouterOptions.dashboardCards` together are the
+ * catalog; ids are unique across it (a duplicate throws at startup). The
+ * deployment's stored layout says which show and in what order; a card it
+ * does not name yet shows when `defaultEnabled`, so a new release's tile
+ * appears without anyone editing the layout.
  */
 export interface AdminDashboardCard {
   /**
@@ -23,6 +32,37 @@ export interface AdminDashboardCard {
    * cards and the application's own.
    */
   id: string;
+
+  /**
+   * The tile's name in the Customize picker, in English: the fallback when
+   * `titleKey` is absent or has no translation. Required, so a tile is never
+   * a nameless row in the picker.
+   */
+  title: string;
+
+  /**
+   * Catalogue key for {@link title}, resolved when the picker renders and
+   * never stored in the layout.
+   */
+  titleKey?: string;
+
+  /**
+   * One line under the title in the picker: what the tile shows.
+   */
+  description?: string;
+
+  /**
+   * Catalogue key for {@link description}, resolved like `titleKey`.
+   */
+  descriptionKey?: string;
+
+  /**
+   * Whether the tile shows while the stored layout does not name it: with no
+   * layout saved, and when a release adds it to a deployment that has one.
+   *
+   * @default true
+   */
+  defaultEnabled?: boolean;
 
   /**
    * Sort position, ascending. The built-ins take 1000 and up, the same

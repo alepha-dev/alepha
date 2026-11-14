@@ -23,6 +23,14 @@ export {
 } from "./AdminDashboard.tsx";
 export type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
 export {
+  type AdminDashboardLayoutEntry,
+  type AdminDashboardLayoutTile,
+  adminDashboardCatalog,
+  adminDashboardLayoutEntries,
+  adminDashboardLayoutOf,
+  resolveAdminDashboardLayout,
+} from "./adminDashboardLayout.ts";
+export {
   AdminConnectedTile,
   type AdminConnectedTileProps,
 } from "./AdminConnectedTile.tsx";

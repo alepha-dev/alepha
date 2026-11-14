@@ -710,4 +710,59 @@ test.describe("the dashboard's tiles", () => {
       await expectListTotal(page, value);
     }
   });
+
+  /**
+   * The stored layout is read by the page's loader (#Q3537), on the server,
+   * and shipped with the page: the first render is already the final grid,
+   * and the browser never fetches the layout after mount, so no tile moves.
+   * (The admin shell is client-rendered, being behind a guard, but its
+   * loaders still run on the server.)
+   */
+  test("the first render is the stored layout, with no fetch after mount", async ({
+    page,
+  }) => {
+    await signInAsAdmin(page);
+    const read = await page.request.get("/api/dashboard/layout");
+    expect(read.ok()).toBe(true);
+    const { version } = (await read.json()) as { version: number };
+    const save = (tiles: Array<{ id: string; enabled: boolean }>, at: number) =>
+      page.request.put("/api/dashboard/layout", {
+        data: { layout: { tiles }, expectedVersion: at },
+      });
+
+    const saved = await save(
+      [
+        { id: "failed-sign-ins", enabled: true },
+        { id: "users", enabled: true },
+        { id: "shop-pieces", enabled: false },
+      ],
+      version,
+    );
+    expect(saved.ok()).toBe(true);
+
+    try {
+      const layoutReads: string[] = [];
+      page.on("request", (request) => {
+        if (request.url().includes("/api/dashboard/layout")) {
+          layoutReads.push(request.url());
+        }
+      });
+      await page.goto("/admin");
+      await expect(page.locator('[data-slot="card-title"]')).toHaveCount(4);
+      const titles = await page
+        .locator('[data-slot="card-title"]')
+        .allInnerTexts();
+      // The layout's two, then the tiles it does not name, in code order.
+      expect(titles.map((title) => title.trim())).toEqual([
+        "Connexions échouées",
+        "Utilisateurs",
+        "Commandes",
+        "Connectés",
+      ]);
+      expect(layoutReads).toEqual([]);
+    } finally {
+      // Back to the code defaults for the specs that follow.
+      expect((await save([], version + 1)).ok()).toBe(true);
+    }
+  });
 });

@@ -36,7 +36,7 @@ const SRC = join(import.meta.dirname, "..", "..", "..", "..", "src");
  */
 const KEY_PATTERNS = [
   /\btr\(\s*(?:`([a-zA-Z][\w.]*)`|"([a-zA-Z][\w.]*)")/g,
-  /\b(?:labelKey|groupKey|titleKey):\s*"([a-zA-Z][\w.]*)"/g,
+  /\b(?:labelKey|groupKey|titleKey|descriptionKey):\s*"([a-zA-Z][\w.]*)"/g,
 ];
 
 const collectKeys = (dir: string, found = new Set<string>()): Set<string> => {

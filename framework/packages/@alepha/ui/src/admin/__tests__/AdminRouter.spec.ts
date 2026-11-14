@@ -12,6 +12,7 @@ import { $pageAdmin } from "../$pageAdmin.tsx";
 import { uiFr } from "../../i18n/fr/uiFr.ts";
 import type { NavMeta } from "../../shell/navTreeUtil.ts";
 import { AdminRouter } from "../AdminRouter.tsx";
+import { adminRouterOptionsAtom } from "../AdminRouterOptions.tsx";
 
 /**
  * Reads the permission(s) a page's route gate actually enforces, the same
@@ -220,6 +221,42 @@ describe("AdminRouter", () => {
       },
     });
     expect(visible()).toEqual(["users", "connected", "failed-sign-ins"]);
+  });
+
+  it("refuses to start with two dashboard cards sharing an id", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    alepha.set(adminRouterOptionsAtom, {
+      dashboardCards: [{ id: "users", title: "Mine", render: () => null }],
+    });
+    alepha.inject(AdminRouter);
+    await expect(alepha.start()).rejects.toThrow("share the id 'users'");
+  });
+
+  it("loads no layout, and no error, when the layout action is not offered", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AdminRouter);
+    await alepha.start();
+    alepha.store.set("alepha.server.request.apiLinks", { actions: {} });
+
+    const loader = router.dashboard.options.loader as unknown as () => Promise<
+      Record<string, unknown>
+    >;
+    expect(await loader()).toEqual({});
+  });
+
+  it("names every built-in tile for the picker", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AdminRouter);
+    await alepha.start();
+    const cards = (
+      router.dashboard.options.props as () => {
+        cards: Array<{ id: string; title: string; titleKey?: string }>;
+      }
+    )().cards;
+    for (const card of cards) {
+      expect(card.title.length, card.id).toBeGreaterThan(0);
+      expect(card.titleKey, card.id).toBeDefined();
+    }
   });
 
   it("gates every admin page on an action, not only a permission", async () => {
