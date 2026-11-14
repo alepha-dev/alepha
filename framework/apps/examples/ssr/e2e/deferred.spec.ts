@@ -81,8 +81,20 @@ test.describe("Deferred loader data", () => {
     await page.goto("/deferred?ms=0");
 
     await expect(page.locator("#value")).toHaveText("Deferred value");
-    await page.getByRole("button").click();
-    await expect(page.getByRole("button")).toHaveText("Clicked 1");
+    // Clicked until it counts, as in the test above (#Q3682): the value is in
+    // the server's HTML, but `alepha dev` hydrates at the end of the
+    // document, after `load`, and a click before that met a button with no
+    // handler ("Clicked 0").
+    const button = page.getByRole("button");
+    await expect
+      .poll(async () => {
+        await button.click();
+        return button.textContent();
+      })
+      .not.toBe("Clicked 0");
+    const clicks = await button.textContent();
+    await button.click();
+    await expect(button).not.toHaveText(clicks as string);
   });
 
   test("a client navigation renders the page and suspends", async ({
