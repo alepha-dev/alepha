@@ -20,6 +20,11 @@ import { DefaultReleaseService } from "../src/api/services/DefaultReleaseService
 import { releases } from "../src/schemas/index.ts";
 
 /**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
+/**
  * Direct row access, so a release can be published WITHOUT going through
  * `publishRelease` - which clears `defaultSince` and would therefore hide the
  * very case the open-default guard exists for. The window is small and real:
@@ -328,7 +333,8 @@ describe("ReleaseController: the default release", () => {
    * there: SQLite stored it as TEXT, which reads back as the same date and
    * sorts ahead of every integer.
    */
-  it("stores the swapped defaultSince as an integer on SQLite", async ({
+  // SQLite only on purpose: it reads SQLite's typeof().
+  it.skipIf(onPostgres)("stores the swapped defaultSince as an integer on SQLite", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);

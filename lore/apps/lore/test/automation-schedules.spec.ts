@@ -27,6 +27,11 @@ import {
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
 /**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
+/**
  * Moves a rule's schedule cursor between the sweep's page read and its
  * reservation: the guard of that one reservation no longer holds.
  */
@@ -402,7 +407,8 @@ describe("Automation schedules and named selections", () => {
     });
     expect(digest.contexts[0].collection?.truncated).toBe(true);
   });
-  it("indexes both due scheduling and unfinished occurrence checks", async ({
+  // SQLite only on purpose: it reads SQLite's EXPLAIN QUERY PLAN.
+  it.skipIf(onPostgres)("indexes both due scheduling and unfinished occurrence checks", async ({
     expect,
   }) => {
     const plan = await alepha
@@ -415,7 +421,8 @@ describe("Automation schedules and named selections", () => {
       "automation_receipts_rule_state_idx",
     );
   });
-  it("uses the reminder due index to filter before its stable cap", async ({
+  // SQLite only on purpose: it reads SQLite's EXPLAIN QUERY PLAN.
+  it.skipIf(onPostgres)("uses the reminder due index to filter before its stable cap", async ({
     expect,
   }) => {
     const plan = await alepha
@@ -546,7 +553,7 @@ describe("Automation schedules and named selections", () => {
     expect(
       await alepha
         .inject(DatabaseProvider)
-        .execute("SELECT COUNT(*) AS n FROM reminder_test_effect"),
+        .execute("SELECT CAST(COUNT(*) AS INTEGER) AS n FROM reminder_test_effect"),
     ).toEqual([{ n: 0 }]);
     const receipt = await alepha
       .inject(AutomationClaims)

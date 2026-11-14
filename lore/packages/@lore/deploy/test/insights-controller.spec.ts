@@ -2955,8 +2955,12 @@ describe("InsightsController", () => {
         const bound = chunk.queryChunks.length - literals.length;
 
         expect(bound).toBe(1);
+        // One parameter on both dialects, unpacked by each one's JSON
+        // function.
         expect(literals.flatMap((part) => part.value).join("")).toContain(
-          "json_each",
+          process.env.DATABASE_TEST_DIALECT === "postgres"
+            ? "jsonb_array_elements_text"
+            : "json_each",
         );
       }
     });

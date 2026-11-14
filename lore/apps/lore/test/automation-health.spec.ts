@@ -32,6 +32,11 @@ import {
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
 
+/**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
 class HealthCatalog extends AutomationCatalog {
   public omitted?: string;
   public override entries() {
@@ -473,7 +478,8 @@ describe("Automation enable intent and health", () => {
     expect(await persistence.rules.getById(rule.id)).toEqual(before);
     expect(await persistence.runs.count({ projectId: project.id })).toBe(count);
   });
-  it("binds health and its transition evidence atomically and ignores stale validation", async ({
+  // SQLite only on purpose: its refusal is a SQLite trigger.
+  it.skipIf(onPostgres)("binds health and its transition evidence atomically and ignores stale validation", async ({
     expect,
   }) => {
     const rule = await create();

@@ -16,6 +16,11 @@ import { QuestController, OpenQuestScope } from "../src/api/index.ts";
 import { LoreWorkApi } from "../src/api/index.ts";
 
 /**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
+/**
  * That `quests_open_idx` is the index the open-quest count actually uses.
  *
  * An unused partial index announces nothing: it is dead weight that costs an
@@ -42,7 +47,8 @@ import { LoreWorkApi } from "../src/api/index.ts";
  * real shapes in production and each is asserted.
  */
 describe("The open-quest count's index", () => {
-  it("is served by the covering partial index, gated and ungated", async ({
+  // SQLite only on purpose: it reads EXPLAIN QUERY PLAN.
+  it.skipIf(onPostgres)("is served by the covering partial index, gated and ungated", async ({
     expect,
   }) => {
     const alepha = Alepha.create({

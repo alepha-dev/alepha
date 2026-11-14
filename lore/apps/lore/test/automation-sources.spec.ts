@@ -42,6 +42,11 @@ import {
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
+/**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
 class SourceRows extends TestEntityRepositories {
   instances = $repository(appInstances);
   deployments = $repository(deployments);
@@ -98,7 +103,8 @@ class SourceProbe {
   });
 }
 
-describe("Automation domain source integration", () => {
+// SQLite only on purpose: its setup substitutes NodeSqliteProvider, the D1 emulation.
+describe.skipIf(onPostgres)("Automation domain source integration", () => {
   let alepha: Alepha;
   let rows: SourceRows;
   let persistence: AutomationPersistence;

@@ -13,6 +13,11 @@ import {
 import { EpicWorkflowService } from "./EpicWorkflowService.ts";
 
 /**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
+/**
  * Every rule in every status, against real rows.
  *
  * The service is the single place the workflow's refusals are written, so
@@ -702,7 +707,8 @@ describe("EpicWorkflowService on a shelved epic (#E78)", () => {
   });
 });
 
-describe("EpicWorkflowService without transactions", () => {
+// SQLite only on purpose: it substitutes NodeSqliteProvider, the D1 emulation.
+describe.skipIf(onPostgres)("EpicWorkflowService without transactions", () => {
   const setupD1 = async () => {
     const alepha = Alepha.create({
       env: {

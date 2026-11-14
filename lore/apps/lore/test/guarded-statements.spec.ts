@@ -24,6 +24,11 @@ import { afterEach, describe, it } from "vitest";
 import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
+/**
  * Lands a second request after the first one's read of `table`, once:
  * the D1 interleaving, made deterministic.
  */
@@ -144,7 +149,8 @@ const setup = async () => {
   };
 };
 
-describe("guarded statements without transactions (#Q2550)", () => {
+// SQLite only on purpose: its setup substitutes NodeSqliteProvider, the D1 emulation.
+describe.skipIf(onPostgres)("guarded statements without transactions (#Q2550)", () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
 
   afterEach(async () => {

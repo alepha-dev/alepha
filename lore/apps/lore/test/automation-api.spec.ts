@@ -39,6 +39,11 @@ import {
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
+/**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
 class ApiConfigurationRace extends AutomationConfigurationWrites {
   public before?: () => Promise<void>;
   public override async commit(
@@ -946,7 +951,8 @@ describe("Shared automation application service and HTTP actions", () => {
       }),
     ).rejects.toThrow("identity or version");
   });
-  it("rolls configuration and transition evidence back when their audit cannot be recorded", async ({
+  // SQLite only on purpose: its refusal is a SQLite trigger.
+  it.skipIf(onPostgres)("rolls configuration and transition evidence back when their audit cannot be recorded", async ({
     expect,
   }) => {
     const database = alepha.inject(AutomationDatabase);

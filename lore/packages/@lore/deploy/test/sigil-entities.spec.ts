@@ -6,6 +6,11 @@ import { describe, it } from "vitest";
 
 import { projectErrors, sigils } from "../src/schemas/index.ts";
 
+/**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
 describe("sigil entities", () => {
   it("identifies a sigil by name within a project", async ({ expect }) => {
     // `sigils` carries FKs to `projects` and `users`; the model builder
@@ -71,7 +76,8 @@ describe("sigil entities", () => {
     expect(elsewhere.name).toBe("lore");
   });
 
-  it("declares a real foreign key from errors.sigilId to sigils.id", async ({
+  // SQLite only on purpose: PRAGMA foreign_key_list is SQLite's catalog.
+  it.skipIf(onPostgres)("declares a real foreign key from errors.sigilId to sigils.id", async ({
     expect,
   }) => {
     // Regression guard: `.optional()` chained *after* `db.ref(...)` returns a

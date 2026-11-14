@@ -132,10 +132,14 @@ describe("Push monitor receipts", () => {
     const id = ctx.created.monitor.id;
     await ctx.repos.monitors.updateById(id, { intervalSecs: 3600 });
     expect((await ctx.push(ctx.created.token)).status).toBe(204);
+    // The push stamps `lastCheckedAt` itself, so waiting for it to be defined
+    // waited for nothing: wait for the hour's tick to replace it, or that
+    // tick still holds its lock when the next minute fires.
+    const pushed = (await ctx.repos.monitors.getById(id)).lastCheckedAt;
     await ctx.clock.travel(60, "minutes");
     await expect
       .poll(async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt)
-      .toBeDefined();
+      .not.toBe(pushed);
     for (let index = 0; index < 2; index++) {
       const previous = (await ctx.repos.monitors.getById(id)).lastCheckedAt;
       await ctx.clock.travel(1, "minute");

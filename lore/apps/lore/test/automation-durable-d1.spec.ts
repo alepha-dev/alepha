@@ -43,6 +43,11 @@ import {
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
+/**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
 class FixtureD1Provider extends AutomationD1Provider {
   public schemaStatements: string[] = [];
   public override async migrate(): Promise<void> {
@@ -55,7 +60,8 @@ class UndispatchedNotificationOutbox extends AutomationNotificationOutbox {
   public override async dispatch(_id: string): Promise<void> {}
 }
 
-describe("Durable automation primitives on local D1", () => {
+// SQLite only on purpose: it runs on a local D1.
+describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
   let schemaStatements: string[];
   let directory: string | undefined;
   let proxy:

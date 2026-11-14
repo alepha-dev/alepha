@@ -191,7 +191,7 @@ describe("Durable automation dispatch", () => {
     });
     expect(
       await provider.execute(
-        "SELECT COUNT(*) AS n FROM automation_test_source",
+        "SELECT CAST(COUNT(*) AS INTEGER) AS n FROM automation_test_source",
       ),
     ).toEqual([{ n: 1 }]);
     expect(await persistence.events.count()).toBe(1);
@@ -215,7 +215,7 @@ describe("Durable automation dispatch", () => {
     ).rejects.toThrow("Atomic automation batch failed");
     expect(
       await provider.execute(
-        "SELECT COUNT(*) AS n FROM automation_test_source",
+        "SELECT CAST(COUNT(*) AS INTEGER) AS n FROM automation_test_source",
       ),
     ).toEqual([{ n: 0 }]);
     expect(await persistence.receipts.count({ kind: "guard" })).toBe(0);
@@ -467,7 +467,7 @@ describe("Durable automation dispatch", () => {
     ).rejects.toThrow("Atomic automation batch failed");
     expect(
       await provider.execute(
-        "SELECT COUNT(*) AS n FROM automation_test_effects",
+        "SELECT CAST(COUNT(*) AS INTEGER) AS n FROM automation_test_effects",
       ),
     ).toEqual([{ n: 0 }]);
     const committed = await claims.atomicEffect(
@@ -522,7 +522,7 @@ describe("Durable automation dispatch", () => {
     });
     expect(
       await provider.execute(
-        "SELECT COUNT(*) AS n FROM automation_test_effects",
+        "SELECT CAST(COUNT(*) AS INTEGER) AS n FROM automation_test_effects",
       ),
     ).toEqual([{ n: 0 }]);
   });
@@ -727,7 +727,7 @@ describe("Durable automation dispatch", () => {
     expect(sizes).toEqual([100, 100, 10]);
     expect(
       await provider.execute(
-        "SELECT COUNT(*) AS n, SUM(hits) AS hits FROM automation_test_effects",
+        "SELECT CAST(COUNT(*) AS INTEGER) AS n, CAST(SUM(hits) AS INTEGER) AS hits FROM automation_test_effects",
       ),
     ).toEqual([{ n: 210, hits: 210 }]);
     expect(

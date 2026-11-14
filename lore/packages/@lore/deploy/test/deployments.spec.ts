@@ -1712,8 +1712,10 @@ describe("the deploy limits", () => {
     });
 
     const first = service.run({ id: "d-1" } as never);
-    // Let the first take the slot before the second asks for it.
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    // Let the first take the slot before the second asks for it: it holds
+    // the slot once it reaches the gate. A fixed 5 ms was too short against
+    // a real Postgres.
+    await expect.poll(() => gated).toBe(1);
 
     await expect(service.run({ id: "d-2" } as never)).resolves.toBe("busy");
     // Nothing was touched for the one turned away: not even the gate.

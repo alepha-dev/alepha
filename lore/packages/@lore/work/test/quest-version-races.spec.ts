@@ -14,6 +14,11 @@ import { LoreWorkApi } from "../src/api/index.ts";
 import { WorkTestEntities } from "../src/testing/index.ts";
 
 /**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
+/**
  * Lands a second request between the first one's gate read and its write:
  * the D1 interleaving, made deterministic. Armed with the request to run; it
  * fires on the next read of a quest row, once.
@@ -117,7 +122,8 @@ const acceptedQuest = async (ctx: TestContext) => {
   return { user, id: quest.data.id };
 };
 
-describe("quests.version (#Q2546)", () => {
+// SQLite only on purpose: its setup substitutes NodeSqliteProvider, the D1 emulation.
+describe.skipIf(onPostgres)("quests.version (#Q2546)", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {

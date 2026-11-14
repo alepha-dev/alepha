@@ -33,6 +33,11 @@ import {
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
+/**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
 class AdjustableQuestLimits extends ProjectLimits {
   public cap?: number;
   public override async maxQuestsPerProject() {
@@ -549,7 +554,8 @@ describe("Idempotent automation domain actions through normal controllers", () =
     );
     expect(await nativeAudits(opened.rule.id)).toHaveLength(1);
   });
-  it("rolls content, revision and receipt back if the required native audit cannot be written", async ({
+  // SQLite only on purpose: its refusal is a SQLite trigger.
+  it.skipIf(onPostgres)("rolls content, revision and receipt back if the required native audit cannot be written", async ({
     expect,
   }) => {
     const folio = await createFolio();

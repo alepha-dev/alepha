@@ -22,6 +22,11 @@ import {
 } from "./fixtures/entities.ts";
 
 /**
+ * `alepha test --dialect postgres` moves this suite onto Postgres.
+ */
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
+/**
  * The deploy and project-level tables of a project merge, and the sweep
  * that keeps every project-scoped table accounted for (#E94, #Q2782,
  * folio #F1401).
@@ -92,7 +97,8 @@ describe("ProjectMergeService across every module", () => {
     await ctx.alepha.stop();
   });
 
-  it("accounts for every table with a project_id, moved or left on purpose", async ({
+  // SQLite only on purpose: it lists tables from sqlite_master.
+  it.skipIf(onPostgres)("accounts for every table with a project_id, moved or left on purpose", async ({
     expect,
   }) => {
     const tables = await ctx.database.execute(
