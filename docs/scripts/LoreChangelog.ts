@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 
 import type {
@@ -74,7 +75,7 @@ export class LoreChangelog {
         headers: { authorization: `Bearer ${key}` },
       });
       if (!response.ok) {
-        throw new Error(
+        throw new AlephaError(
           `Lore answered ${response.status} to GET /api${path}: the changelog cannot be built`,
         );
       }
