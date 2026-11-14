@@ -214,7 +214,10 @@ describe("DataTable (presets)", () => {
 
     await waitFor(() => expect(seen.length).toBeGreaterThan(0));
     expect(seen[0]?.area).toEqual(["web"]);
-    expect(screen.queryByText("Alpha")).toBeTruthy();
+    // Awaited, not read once: `seen` fills when the handler is CALLED, and the
+    // row renders only once its promise settles. A one-shot read raced that
+    // render and failed on a slow runner (#Q3678).
+    expect(await screen.findByText("Alpha")).toBeTruthy();
   });
 });
 
