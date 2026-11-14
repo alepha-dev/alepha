@@ -65,7 +65,7 @@ export default {
   "automation.list.noMatchDescription":
     "Essayez un autre nom ou effacez le filtre d’état.",
   "automation.gallery.description":
-    "Partez d'un modèle. Il est créé désactivé, pour le tester avant de l'activer.",
+    "Partez d'un modèle. Créer et activer le lance tout de suite ; Enregistrer comme brouillon le garde désactivé pour le tester d'abord.",
   "automation.enable": "Activer",
   "automation.disable": "Désactiver",
   "automation.delete": "Supprimer",

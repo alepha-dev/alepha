@@ -60,7 +60,7 @@ export default {
   "automation.list.noMatchDescription":
     "Try another name or clear the state filter.",
   "automation.gallery.description":
-    "Start from a preset. It is created disabled, so you can test it before turning it on.",
+    "Start from a preset. Create and enable runs it right away; Save as draft keeps it off so you can test it first.",
   "automation.enable": "Enable",
   "automation.disable": "Disable",
   "automation.delete": "Delete",
