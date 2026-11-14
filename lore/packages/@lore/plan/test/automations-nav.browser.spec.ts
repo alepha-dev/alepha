@@ -42,7 +42,7 @@ describe("Automations in the project settings", () => {
     ).toEqual(["projectAutomations"]);
   });
 
-  it("is listed whatever the Work options say: automations are a baseline of Work", ({
+  it("is listed whatever the Work options say: automations are a baseline of Plan", ({
     expect,
   }) => {
     // #Q3594: no `automations` option gates the tab any more.

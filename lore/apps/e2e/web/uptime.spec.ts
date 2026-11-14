@@ -40,7 +40,7 @@ test.describe("Uptime healthchecks", () => {
     expect((await disabled).ok()).toBe(true);
     await expect(nav).toHaveCount(0);
   });
-  test("an Apps-only project creates, edits, pauses and deletes a monitor without a sigil", async ({
+  test("a Ship-only project creates, edits, pauses and deletes a monitor without a sigil", async ({
     page,
     baseURL,
   }) => {

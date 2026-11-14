@@ -9,7 +9,7 @@ import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
  *
  * ## What this file is actually guarding
  *
- * Epic #36 defined `apps.deploy`, backfilled it `false` everywhere and
+ * Epic #36 defined `ship.deploy`, backfilled it `false` everywhere and
  * rendered it **disabled with a Soon badge**. Epic #1 built what it gates and
  * removed the badge. A switch that is present but inert looks exactly like a
  * switch that works until somebody clicks it, so the first step here asserts
@@ -17,7 +17,7 @@ import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
  *
  * ## Two gates, one above the other
  *
- * The project's `apps.deploy` option decides whether this project has the
+ * The project's `ship.deploy` option decides whether this project has the
  * surface at all; the copy's own host decides whether THIS copy has anywhere
  * to send anything. Both tabs need both, and each half is asserted on its own
  * so a pass cannot come from the other one.

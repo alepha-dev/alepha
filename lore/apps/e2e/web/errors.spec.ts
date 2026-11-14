@@ -38,7 +38,7 @@ test.describe("Errors", () => {
       projectTitle,
     );
 
-    // `projectErrors` rides the Apps capability, not a errors switch of its
+    // `projectErrors` rides the Ship capability, not a errors switch of its
     // own: errors only ever arrive from an enrolled app. Deliberately
     // relaxed this way - deriving the gate from whether any app currently
     // carries the `projectErrors` kind would turn a transient `listSigils` failure

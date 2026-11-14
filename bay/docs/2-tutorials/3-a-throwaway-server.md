@@ -59,7 +59,7 @@ project to work in:
 
 ```bash
 lore project create scratch
-lore project capability enable apps --option stacks
+lore project capability enable ship --option stacks
 ```
 
 `capability enable` keeps the options already on (Deploy apps) and adds the

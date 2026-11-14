@@ -289,7 +289,7 @@ describe("Lore's rank resource", () => {
     ]);
 
     // The endpoint exists because neither the module nor the browser can work
-    // this out: a Contributor of a Knowledge-only project carries folio
+    // this out: a Contributor of a Remember-only project carries folio
     // writes and no quest permission at all.
     const contributor = items.find((it) => it.key === "contributor")!;
     expect(contributor.permissions).toContain("folio:write");

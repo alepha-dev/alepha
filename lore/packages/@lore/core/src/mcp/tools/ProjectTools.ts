@@ -342,7 +342,7 @@ export class ProjectTools {
    * every capability-owned key on `projectContextResultSchema` is optional.
    *
    * Measured on a Remember-only project holding five folios: 947 chars
-   * (~237 tokens) here against 1216 (~304) with all four capabilities on.
+   * (~237 tokens) here against 1216 (~304) with all three capabilities on.
    * The saving is small and the reason to do it is not the saving.
    */
   project_context = $tool({

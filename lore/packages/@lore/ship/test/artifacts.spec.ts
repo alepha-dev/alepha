@@ -1505,7 +1505,7 @@ describe("artifacts", () => {
       ).resolves.toBeDefined();
     });
 
-    it("refuses while the Apps capability is off", async ({ expect }) => {
+    it("refuses while the Ship capability is off", async ({ expect }) => {
       const { owner, projectId } = await aProject();
       await push(projectId, owner, { file: await packedArtifact() });
       const [row] = await ctx.rows.artifacts.findMany({});

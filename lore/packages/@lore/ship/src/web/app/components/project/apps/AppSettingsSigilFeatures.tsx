@@ -18,7 +18,7 @@ import { sigilConfigurable } from "./appTabs.ts";
  * tab in the bar for a handful of switches.
  *
  * Absent unless Lore can really configure it: a sigil, somewhere Lore deploys
- * to (`sigilConfigurable`), and the project's `apps.deploy` option. Nothing is
+ * to (`sigilConfigurable`), and the project's `ship.deploy` option. Nothing is
  * fetched otherwise.
  *
  * Reads the copy's variables through the Environment tab's own endpoint and

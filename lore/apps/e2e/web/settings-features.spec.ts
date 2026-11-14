@@ -2,7 +2,7 @@ import { expect, test } from "./_fixtures.ts";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
- * The four capability pages, from the only side that matters: a switch here
+ * The three capability pages, from the only side that matters: a switch here
  * has to change what the sidebar offers, and survive a reload.
  *
  * ⚠️ **Every switch on these pages is optimistic.** `aria-checked` flips the
@@ -12,7 +12,7 @@ import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
  * `waitForResponse` BEFORE the click, or reload and look again.
  *
  * The Quality case that used to live here is gone with the switch it drove:
- * Quality joined the Apps baseline, and its Reports tab self-hides until a run
+ * Quality joined the Ship baseline, and its Reports tab self-hides until a run
  * exists rather than waiting on a flag.
  */
 test.describe("Project settings — capabilities", () => {

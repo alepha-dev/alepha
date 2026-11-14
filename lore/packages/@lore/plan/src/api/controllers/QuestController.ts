@@ -282,7 +282,7 @@ export class QuestController {
     $ownsProject({ requires, repository: () => this.quests, param: "id" });
 
   /**
-   * The same three gates, plus the Work capability.
+   * The same three gates, plus the Plan capability.
    *
    * ⚠️ **Writes only.** Every read on this class keeps the plain gate, because
    * disabling a capability HIDES and never deletes: a project that turns Work

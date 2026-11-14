@@ -144,7 +144,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
    * Why a metric cannot be added right now, if it cannot.
    *
    * ⚠️ **"No project" means "no project that does this".** A reader whose
-   * only project is Knowledge-only has projects and no quest to count, so
+   * only project is Remember-only has projects and no quest to count, so
    * Active Quests is offered greyed out with the reason rather than added as
    * a tile that can only ever say zero. The rule and the beacon rule both
    * live in `dashboardEligibility.ts`, read off the metric's own `needs` -

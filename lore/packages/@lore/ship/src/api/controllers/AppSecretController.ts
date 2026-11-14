@@ -27,7 +27,7 @@ import { AppSecretService } from "../services/AppSecretService.ts";
  * ## The read/write split, and why the read is not owner-only
  *
  * Reads take `app:read`, like every other read on this page; writes take
- * `deploy:manage` and additionally the `apps.deploy` capability. A variable is
+ * `deploy:manage` and additionally the `ship.deploy` capability. A variable is
  * part of what a deploy ships, so the act of setting one is the act of
  * deploying rather than of renaming an app. A member learns which
  * variables exist and four characters of the long ones, which is the same order

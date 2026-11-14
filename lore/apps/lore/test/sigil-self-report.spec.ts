@@ -74,7 +74,7 @@ const KEY = "sg_lore_fixed_secret_for_the_test";
  * Every project flag that still means something.
  *
  * Only the two capabilities the ingest gate reads: `apps` with `track` on
- * (what `features.sigils` used to be) and `support` (which the `feedback`
+ * (what `features.sigils` used to be) and `plan.feedback` (which the `feedback`
  * kind additionally needs). Work and Knowledge would suggest the gate
  * consults them - it consults these two and the sigil's own `kinds`.
  */

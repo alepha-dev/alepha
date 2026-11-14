@@ -75,7 +75,7 @@ export class SearchController {
     },
     handler: async ({ params, query, user }) => {
       // ⚠️ **The palette is Core; the tables it reaches into are not.** A
-      // Knowledge-only project must never answer with a quest: disabling
+      // Remember-only project must never answer with a quest: disabling
       // hides, so the rows are still there and a search that found them would
       // be the one surface still offering a way into a capability the project
       // turned off. Skipped rather than filtered afterwards, so a disabled

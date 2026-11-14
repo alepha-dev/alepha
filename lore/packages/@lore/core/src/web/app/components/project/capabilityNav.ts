@@ -118,7 +118,7 @@ export const navGroupsWithSettings = <T>(
  * The dashboard is the project's landing page and Activity sits under it;
  * both say something whatever else is turned off, which is what makes them
  * Core. Reports is Core because its TABS declare capabilities - Quality
- * is Apps baseline and Members comes from a core table, so an Apps-only
+ * is Ship baseline and Members comes from a core table, so a Ship-only
  * project would lose its Quality tab along with the Reports entry.
  */
 export const CORE_NAV: CapabilityNavEntry[] = [
@@ -151,10 +151,9 @@ export const CORE_NAV: CapabilityNavEntry[] = [
    * What that entry's own note argued still holds for the page and the bell,
    * so it is kept here rather than deleted with the row. The inbox is
    * **Core, not a capability**: a mention comes from a quest comment
-   * (`work`) or a feedback comment (`support`), and a release publish from
-   * `work`. Hang it off `work` and a Support-only project generates messages
-   * with no door to them; hang it off `support` and the common case loses
-   * it.
+   * (`plan`) or a feedback comment (`plan.feedback`), and a release publish
+   * from `plan`. It was argued when feedback was a capability of its own
+   * (Support, until #E143): hung off either, one kind of message had no door.
    *
    * The list is no longer a project page at all (#Q3564): it is the
    * account dialog's Inbox section, since it shows every project's

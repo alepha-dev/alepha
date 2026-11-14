@@ -252,7 +252,7 @@ export class CoreRouter {
    *
    * ⚠️ **No capability gate and no permission gate**, unlike `projectQuests`
    * one route over, which 404s on both. Every project lands here whatever it
-   * has turned on - a Knowledge-only one included, which lands on the empty
+   * has turned on - a Remember-only one included, which lands on the empty
    * state - and a gate on the project root would lock people out of their own
    * project.
    *

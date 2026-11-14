@@ -108,7 +108,7 @@ export class ReleaseProgressMetric implements DashboardMetricResolver {
     for (const entry of cards) {
       const release = this.releaseOf(entry.scope);
       if (!release) {
-        // The project turned `work.releases` off after the card was added.
+        // The project turned `plan.releases` off after the card was added.
         // Zero-ish rather than unreadable, the same answer the epic card gives.
         out.set(entry.card.id, {
           empty: "noRelease",

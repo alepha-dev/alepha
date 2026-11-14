@@ -80,7 +80,7 @@ export class EpicProgressMetric implements DashboardMetricResolver {
     >();
 
     // A card whose epic dropped out of `narrow()` - its project turned
-    // `work.epics` off - has no epic here and never reaches the query.
+    // `plan.epics` off - has no epic here and never reaches the query.
     const epics = cards
       .map((entry) => this.epicOf(entry.scope))
       .filter((epic): epic is Epic => !!epic);

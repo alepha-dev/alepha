@@ -131,7 +131,7 @@ export class DashboardMetricRegistry {
    * project", and an id from elsewhere is a 404 rather than an empty answer.
    *
    * `narrow()` still runs. A capability is hidden and never deleted, so a card
-   * added while `work.epics` was on must resolve to zero once the option goes
+   * added while `plan.epics` was on must resolve to zero once the option goes
    * off, rather than counting rows the project no longer shows.
    */
   async resolveForProject(
@@ -352,7 +352,7 @@ export class DashboardMetricRegistry {
     );
     const projectIds = new Set(projects.map((project) => project.id));
     // ⚠️ Subjects are dropped WITH their project rather than carried through
-    // it. An epic card added while `work.epics` was on must resolve to zero
+    // it. An epic card added while `plan.epics` was on must resolve to zero
     // once the option goes off, and the resolvers read the subjects, so
     // leaving them standing over an emptied project list would count rows the
     // project no longer shows.

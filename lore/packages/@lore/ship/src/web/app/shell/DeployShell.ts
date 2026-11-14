@@ -139,7 +139,7 @@ export class DeployShell {
     ]);
 
     this.shell.registerSettings({
-      key: "apps",
+      key: "ship",
       order: 50,
       labelKey: "project.settings.nav.ship",
       icon: AppWindow,

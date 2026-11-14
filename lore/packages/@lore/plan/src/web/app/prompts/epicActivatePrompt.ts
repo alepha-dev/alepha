@@ -19,7 +19,7 @@
  * the frozen quest set forbids once the epic has started, and what to do
  * when a quest cannot be done as written.
  *
- * ⚠️ It names `folio_create`, which belongs to the Knowledge capability, so
+ * ⚠️ It names `folio_create`, which belongs to the Remember capability, so
  * on a project with Work on and Knowledge off the last step is refused by
  * the capability gate. Left as it is rather than branched on: the template
  * is editable, and the prompt already says to stop and comment rather than

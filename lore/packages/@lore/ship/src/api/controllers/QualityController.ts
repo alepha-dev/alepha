@@ -56,7 +56,7 @@ export class QualityController {
    * a build red for a reason that has nothing to do with the build, and the
    * person who flipped it would never connect the two. Artifact push and sigil
    * ingest hold the same rule, and it is why Quality lost its own switch and
-   * joined the Apps baseline: the tab self-hides until a run exists, so there
+   * joined the Ship baseline: the tab self-hides until a run exists, so there
    * was never anything for the switch to decide.
    *
    * A failed push exits non-zero on the CLI side. The safety is where the

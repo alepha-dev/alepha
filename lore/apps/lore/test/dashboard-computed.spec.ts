@@ -104,7 +104,7 @@ describe("the computed project board", () => {
   };
 
   describe("the survey's project shapes", () => {
-    it("fills needs you and flow for a Work project with held and open quests", async ({
+    it("fills needs you and flow for a Plan project with held and open quests", async ({
       expect,
     }) => {
       const { project, user } = await projectOf();
@@ -138,9 +138,7 @@ describe("the computed project board", () => {
       expect(board.cards).toEqual([]);
     });
 
-    it("offers no Work tile to a Knowledge-only project", async ({
-      expect,
-    }) => {
+    it("offers no Work tile to a Remember-only project", async ({ expect }) => {
       const { project, user } = await projectOf({
         capabilities: [{ key: "remember" }],
       });

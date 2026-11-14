@@ -257,7 +257,7 @@ export class ArtifactController {
    * grouping is done once, here, rather than three times.
    *
    * Member-gated like every other project read, with no capability check of
-   * its own. Apps hides the app page and `work.releases` the release page; the
+   * its own. Apps hides the app page and `plan.releases` the release page; the
    * endpoint under both is the same one, and gating it a third time would only
    * mean a 404 in a place the router already handles.
    */
@@ -413,7 +413,7 @@ export class ArtifactController {
    * ## ⚠️ Not the push's gate
    *
    * `artifact:delete`, which no member holds by default and the Admin preset
-   * carries. And, unlike the two pushes, the Apps capability is required: the
+   * carries. And, unlike the two pushes, the Ship capability is required: the
    * reason they skip it (a switch must never turn a CI run red) does not
    * apply to a delete, which a person makes from the Artifacts page, so this
    * is a write under a capability like every other one.

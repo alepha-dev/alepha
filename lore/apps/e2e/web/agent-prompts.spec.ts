@@ -321,7 +321,7 @@ test.describe("agent prompts", () => {
     });
 
     await test.step("a feedback item copies a prompt referencing #P", async () => {
-      // The wizard leaves Support off, and the panel exists only under it:
+      // The wizard leaves Plan's Feedback option off, and the panel exists only under it:
       // the menu reads Work's option to narrow what it offers, and Support
       // to exist at all.
       await setCapability(page, projectId, "plan", {

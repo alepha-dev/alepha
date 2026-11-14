@@ -84,7 +84,7 @@ const setup = async (): Promise<TestContext> => {
 
   await alepha.start();
 
-  // `apps.track` is what `features.sigils` was: the switch above the
+  // `ship.track` is what `features.sigils` was: the switch above the
   // telemetry surfaces that `gatesFor` reads.
   const project = await createTestProject(alepha, {
     capabilities: [{ key: "ship", options: { track: true } }],

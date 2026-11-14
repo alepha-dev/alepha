@@ -17,7 +17,7 @@ import { LorePermissions } from "./LorePermissions.ts";
  *
  * ## Why they are a function of the enabled capability set
  *
- * A Contributor of a Knowledge-only project should not carry `quest:create`.
+ * A Contributor of a Remember-only project should not carry `quest:create`.
  * A permission whose group belongs to a capability the project does not have
  * is a checkbox in the matrix that grants nothing and explains nothing, and
  * once seeded it stays there after the capability is turned on, so the

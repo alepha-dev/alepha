@@ -29,7 +29,7 @@ export type QuestAgentGateReason =
  *
  * ⚠️ **When the epic list could not be read, the gate OPENS.**
  * `currentEpicsAtom` is `undefined` after a failed read (the loader's
- * deliberate `.catch`) and `[]` when the `work.epics` option is off; either
+ * deliberate `.catch`) and `[]` when the `plan.epics` option is off; either
  * way the epic resolves to `undefined` and this answers `undefined`. That is
  * what the quest page's Accept button already does, so the shared helper
  * keeps that behaviour rather than inventing a third one: the server is

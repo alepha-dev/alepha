@@ -56,7 +56,7 @@ const anInstance = (kinds: string[]): AppInstanceResource =>
 /**
  * The disclosure for a real bug, and one this epic did not cause.
  *
- * `SigilIngestService.gatesFor` needs `apps.track` AND `support` for the
+ * `SigilIngestService.gatesFor` needs `ship.track` AND `support` for the
  * feedback kind, because Support also gates the first-party request form,
  * which exists with no app enrolled at all. The reporting client fails open on
  * any config error, so an app whose sigil carries `feedback` while the project

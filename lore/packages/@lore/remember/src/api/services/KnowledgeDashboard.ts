@@ -31,7 +31,7 @@ export class KnowledgeDashboard {
       size: 2,
       height: 2,
     });
-    // After every Work candidate (ranks 10 to 40), so a Knowledge-only
+    // After every Work candidate (ranks 10 to 40), so a Remember-only
     // project's headline is its knowledge moving.
     this.slots.register({
       slot: "headline",

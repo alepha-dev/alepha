@@ -14,7 +14,7 @@ but not added to. Turn it back on and everything is where you left it.
 
 ## The request form
 
-Every project with Support on has a form at its own address:
+Every project with Feedback on has a form at its own address:
 
 ```text
 https://lore.alepha.dev/<project-slug>/request

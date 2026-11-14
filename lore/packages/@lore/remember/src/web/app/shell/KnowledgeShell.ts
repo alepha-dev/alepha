@@ -54,7 +54,7 @@ export class KnowledgeShell {
     ]);
 
     this.shell.registerSettings({
-      key: "knowledge",
+      key: "remember",
       order: 40,
       labelKey: "project.settings.nav.remember",
       icon: BookOpen,

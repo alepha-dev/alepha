@@ -74,7 +74,7 @@ const openCreateMenu = async (page: Page) => {
 };
 
 test.describe("Project capabilities", () => {
-  test("a Knowledge-only project has folios and nothing else", async ({
+  test("a Remember-only project has folios and nothing else", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -137,7 +137,7 @@ test.describe("Project capabilities", () => {
     ).toHaveCount(0);
   });
 
-  test("an Apps-only project watches apps and drops the feedback they send", async ({
+  test("a Ship-only project watches apps and drops the feedback they send", async ({
     page,
     request,
   }) => {
@@ -164,7 +164,7 @@ test.describe("Project capabilities", () => {
       "/artifacts",
       "/reports",
     ]);
-    // Support is off, so the feedback inbox is not a page this project has.
+    // Feedback is off, so the feedback inbox is not a page this project has.
     await expect404(page, `/${slug}/feedback`);
 
     // Enrol one deployed copy, then mint its sigil from the Settings tab the
@@ -214,8 +214,8 @@ test.describe("Project capabilities", () => {
     });
     // ⚠️ **Accepted, and discarded.** The reporting client fails open on any
     // config error, so refusing the batch would make an enrolled app retry
-    // forever. `gatesFor` needs `apps.track` AND `support` for this kind, and
-    // Support is off - so the batch is 2xx and nothing is written.
+    // forever. `gatesFor` needs `ship.track` AND `plan.feedback` for this kind,
+    // and Feedback is off - so the batch is 2xx and nothing is written.
     expect(ingest.ok()).toBe(true);
 
     const feedbackCount = await page.evaluate(
@@ -252,15 +252,15 @@ test.describe("Project capabilities", () => {
     await expect(
       page.locator(`a[href="/${slug}/reports/backlog"]`),
     ).toHaveCount(0);
-    // Quality is Apps baseline, and its tab shows the push command until a
+    // Quality is Ship baseline, and its tab shows the push command until a
     // run exists (#Q3070).
     await expect(
       page.locator(`a[href="/${slug}/reports/quality"]`),
     ).toBeVisible();
 
-    // ⚠️ Quality has no switch, and this is why an Apps-only project needs
+    // ⚠️ Quality has no switch, and this is why a Ship-only project needs
     // Reports to stay Core: pushed by CI under a CI credential, its tab is the
-    // one thing an Apps-only project reads there besides Members. If Reports
+    // one thing a Ship-only project reads there besides Members. If Reports
     // had stayed under Work, the entry would have taken this with it.
     const pushed = await page.evaluate(
       async ({ projectId }) => {

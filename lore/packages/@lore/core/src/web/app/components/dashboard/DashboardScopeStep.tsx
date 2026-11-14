@@ -80,7 +80,7 @@ export interface DashboardScopeStepProps {
  * permanent zero and link to an error.
  *
  * ⚠️ **A target that does not do this is not listed at all**, rather than
- * listed and refused. A Knowledge-only project is absent from the Active
+ * listed and refused. A Remember-only project is absent from the Active
  * Quests picker; if it is the reader's only project, the metric never got
  * past the catalogue. Both filters come from `dashboardEligibility.ts`, which
  * reads the metric's own `needs` - this file names no metric, which is the

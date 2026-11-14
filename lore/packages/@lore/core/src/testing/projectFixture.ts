@@ -81,7 +81,7 @@ class ProjectFixtureBuilder {
   protected allOptionsOf(key: CapabilityKey): Record<string, boolean> {
     const options: Record<string, boolean> = {};
     for (const option of this.registry.get(key).options) {
-      // ⚠️ `soon` was `apps.deploy`'s until epic #1 shipped it: a fixture
+      // ⚠️ `soon` was `ship.deploy`'s until epic #1 shipped it: a fixture
       // asserting an option on would have been asserting a surface nobody had
       // built. Nothing declares it today, so this reads as "all on" - and it
       // keeps working for whatever option is announced before it exists.

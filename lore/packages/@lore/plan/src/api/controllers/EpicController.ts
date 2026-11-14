@@ -148,9 +148,9 @@ export class EpicController {
     $ownsProject({ requires, repository: () => this.epics, param: "id" });
 
   /**
-   * The same two gates plus the Work capability, for the writes.
+   * The same two gates plus the Plan capability, for the writes.
    *
-   * Gated on the capability rather than on `work.epics`, deliberately: the
+   * Gated on the capability rather than on `plan.epics`, deliberately: the
    * option decides what the sidebar OFFERS, and a saved link keeps resolving
    * either way - the rule `projectKanban` set. Reads stay open, because
    * disabling hides and never deletes.

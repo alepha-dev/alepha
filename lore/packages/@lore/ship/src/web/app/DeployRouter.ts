@@ -231,7 +231,7 @@ export class DeployRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      // Gated on the Apps capability, not on whether any app currently
+      // Gated on the Ship capability, not on whether any app currently
       // carries the Errors kind. Deriving it from the instance list would
       // turn a transient `listApps` failure into a 404 on a deep link, and an
       // inbox with nothing in it costs nothing. The sidebar entry is the one
@@ -259,7 +259,7 @@ export class DeployRouter {
   /**
    * Every deployed copy of every app, in one flat table.
    *
-   * Gated on the Apps capability the same way `projectApp` is, and for the
+   * Gated on the Ship capability the same way `projectApp` is, and for the
    * same reason: the capability is the whole gate, so reaching this by URL
    * without it is a 404 rather than a 403.
    */
@@ -291,8 +291,8 @@ export class DeployRouter {
 
   /**
    * Stacks (#E79): apps and services deployed together from one compose.yml.
-   * Under the Apps capability; the pages read with `app:read` and every write
-   * is refused server-side without `deploy:manage` behind `apps.deploy`.
+   * Under the Ship capability; the pages read with `app:read` and every write
+   * is refused server-side without `deploy:manage` behind `ship.deploy`.
    */
   projectStacks = $pageProject({
     name: "projectStacks",
@@ -665,7 +665,7 @@ export class DeployRouter {
    * What has been deployed here, and what to deploy next.
    *
    * ⚠️ Unguarded in the router. The tab self-hides on
-   * `apps.deploy` plus the copy having a host, and every write behind it is
+   * `ship.deploy` plus the copy having a host, and every write behind it is
    * refused server-side by #1205's gate; a route guard would only turn a link
    * somebody already holds into a 404 while changing no permission.
    */
@@ -682,7 +682,7 @@ export class DeployRouter {
    * This copy's backups on its Bay machine, and every verb Bay offers on them.
    *
    * ⚠️ Unguarded in the router, like `appDeploy`: the tab self-hides on
-   * `apps.deploy` plus a host, and `BackupController` refuses every read
+   * `ship.deploy` plus a host, and `BackupController` refuses every read
    * and write server-side.
    */
   appBackups = $page({
@@ -703,7 +703,7 @@ export class DeployRouter {
    * `lore:app-secrets:v1`, opened only by the deploy.
    *
    * ⚠️ Unguarded in the router, like `appDeploy` and unlike the beacon
-   * tabs. The tab self-hides on `apps.deploy` plus the copy having a host,
+   * tabs. The tab self-hides on `ship.deploy` plus the copy having a host,
    * and the endpoints refuse server-side; a route guard here would only turn a
    * link somebody already holds into a 404 while changing no permission.
    */

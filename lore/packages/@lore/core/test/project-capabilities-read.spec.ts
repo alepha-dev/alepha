@@ -232,7 +232,7 @@ describe("CapabilityRegistry", () => {
     expect(ctx.registry.isActivityKindEnabled("release", on)).toBe(true);
     expect(ctx.registry.isActivityKindEnabled("epic", off)).toBe(false);
     expect(ctx.registry.isActivityKindEnabled("release", off)).toBe(false);
-    // Quests are Work's baseline, and Core kinds need nothing at all.
+    // Quests are Plan's baseline, and Core kinds need nothing at all.
     expect(ctx.registry.isActivityKindEnabled("quest", off)).toBe(true);
     expect(ctx.registry.isActivityKindEnabled("project", {})).toBe(true);
     // No option can bring back a kind whose capability is off.

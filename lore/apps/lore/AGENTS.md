@@ -318,8 +318,8 @@ views: master && carries(sigil, "beacon");
 ```
 
 Same for `errors` (`features.errors`) and `vitals` (`features.vitals`). Only
-`feedback` still carries a project-level switch - today the **Support**
-capability - because it also governs the first-party form at
+`feedback` still carries a project-level switch - the **Feedback** option
+of Plan (the Support capability until #E143) - because it also governs the first-party form at
 `/:projectSlug/request`, which exists with no app enrolled.
 
 **Removing a conjunct is monotone in the "on" direction.** No sigil loses a

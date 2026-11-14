@@ -20,10 +20,10 @@ import { TestHostnameResolver } from "../services/TestHostnameResolver.ts";
 /**
  * Stacks: apps and services deployed together from one `compose.yml`.
  *
- * They live under the Apps capability with its `stacks` option, off by
+ * They live under the Ship capability with its `stacks` option, off by
  * default: reads take `app:read` and no capability (a
  * project that turns `stacks` off gets its stacks back untouched when it
- * returns), writes take `deploy:manage` behind `apps.stacks`.
+ * returns), writes take `deploy:manage` behind `ship.stacks`.
  */
 export class StackController {
   protected readonly stacks = $inject(StackService);

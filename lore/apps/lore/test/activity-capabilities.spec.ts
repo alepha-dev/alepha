@@ -235,7 +235,7 @@ describe("the activity feed and capabilities", () => {
   });
 
   /**
-   * Feedback #P2177: a Work project with the `epics` and `releases` options
+   * Feedback #P2177: a Plan project with the `epics` and `releases` options
    * off still offered Epic and Release, two kinds the sidebar hides. A kind
    * whose surface hangs off an option is offered only while that option is
    * on - and, like a capability, turning it off hides and never deletes.

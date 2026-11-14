@@ -91,7 +91,7 @@ export class MonitorTools {
   monitor_create = $tool({
     title: "Create an uptime monitor",
     description:
-      "Add a monitor to a project. Checks start within a minute; it stays `pending` until one passes. A `push` monitor answers with a token, shown ONCE: the job pushes to Lore with it, and nothing can read it back. Needs `app:manage` and the Apps capability's `uptime` option.",
+      "Add a monitor to a project. Checks start within a minute; it stays `pending` until one passes. A `push` monitor answers with a token, shown ONCE: the job pushes to Lore with it, and nothing can read it back. Needs `app:manage` and the Ship capability's `uptime` option.",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: monitorCreateParamsSchema,
@@ -121,7 +121,7 @@ export class MonitorTools {
   monitor_update = $tool({
     title: "Update an uptime monitor",
     description:
-      "Change a monitor's settings. Only the fields passed change; `expect` and `notifications` are replaced whole when passed. Changing the target or the kind does not reset its history. Needs `app:manage` and the Apps capability's `uptime` option.",
+      "Change a monitor's settings. Only the fields passed change; `expect` and `notifications` are replaced whole when passed. Changing the target or the kind does not reset its history. Needs `app:manage` and the Ship capability's `uptime` option.",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
       params: monitorUpdateParamsSchema,

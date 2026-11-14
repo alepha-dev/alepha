@@ -23,7 +23,7 @@ import {
 /**
  * The ⌘K palette is Core; the tables it reaches into are not.
  *
- * ⚠️ **A Knowledge-only project must never answer with a quest.** Disabling a
+ * ⚠️ **A Remember-only project must never answer with a quest.** Disabling a
  * capability hides it and never deletes anything, so every quest a project
  * had is still on disk - and the palette would be the one surface left
  * offering a way into a capability the project turned off, from a keystroke,
@@ -131,7 +131,7 @@ describe("the command palette and capabilities", () => {
     ]);
   });
 
-  it("returns no quest hit on a Knowledge-only project", async ({ expect }) => {
+  it("returns no quest hit on a Remember-only project", async ({ expect }) => {
     const { user, project } = await seeded(ctx, [{ key: "remember" }]);
 
     const { hits } = await search(ctx, project, user);
@@ -144,7 +144,7 @@ describe("the command palette and capabilities", () => {
     ]);
   });
 
-  it("returns no folio or directory hit on a Work-only project", async ({
+  it("returns no folio or directory hit on a Plan-only project", async ({
     expect,
   }) => {
     const { user, project } = await seeded(ctx, [{ key: "plan" }]);
@@ -206,11 +206,11 @@ describe("the command palette and capabilities", () => {
     expect(await kindsFor(off.project, off.user, "#E1")).toEqual([]);
     expect(await kindsFor(off.project, off.user, "#R1")).toEqual([]);
     expect(await kindsFor(off.project, off.user, "1")).not.toContain("epic");
-    // Quests are Work's baseline and answer as before.
+    // Quests are Plan's baseline and answer as before.
     expect(await kindsFor(off.project, off.user, "amber")).toEqual(["quest"]);
   });
 
-  it("finds feedback by number only under the Support capability", async ({
+  it("finds feedback by number only under Plan's feedback option", async ({
     expect,
   }) => {
     const without = await seeded(ctx, [{ key: "plan" }]);

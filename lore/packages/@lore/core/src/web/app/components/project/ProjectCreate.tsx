@@ -106,7 +106,7 @@ const ProjectCreate = () => {
    * Which capabilities have something to ask on the setup step.
    *
    * ⚠️ **This is what makes `TOTAL_STEPS` stop being a constant.** A
-   * Knowledge-only or Support-only project has nothing to set up, so the
+   * Remember-only project has nothing to set up, so the
    * wizard is two steps instead of three - and a variable step count is
    * exactly the condition that fires the React 19 button hazard below.
    */
@@ -629,7 +629,7 @@ interface StepSetupProps {
  * "Set it up" - one section per enabled capability that has something to ask.
  *
  * ⚠️ A capability with no wizard options contributes nothing, which is what
- * lets a Knowledge-only project skip this step entirely rather than see an
+ * lets a Remember-only project skip this step entirely rather than see an
  * empty screen. That is also what makes the step count variable, and the
  * button below carries a React 19 hazard because of it.
  */

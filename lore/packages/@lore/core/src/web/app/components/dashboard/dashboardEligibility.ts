@@ -85,7 +85,7 @@ export const eligibleApps = (
  *
  * The two messages are about different absences and both already existed.
  * What is new is that "no project" now means "no project that does this",
- * which is the same sentence from the reader's side: a Knowledge-only
+ * which is the same sentence from the reader's side: a Remember-only
  * account has projects and none of them has a quest to count.
  */
 export const metricUnavailableKey = (
@@ -100,7 +100,7 @@ export const metricUnavailableKey = (
   | undefined => {
   // ⚠️ A project board asks a different question, and the same one for every
   // metric on it: not "have you a project that does this" but "does THIS
-  // project do this". There is nowhere else to look, so a Knowledge-only
+  // project do this". There is nowhere else to look, so a Remember-only
   // project reads "this project does not do this yet" rather than the home
   // board's "you have no project", which would be false on the very page the
   // reader is standing on.

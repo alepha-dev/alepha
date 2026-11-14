@@ -227,7 +227,7 @@ test.describe("Reports", () => {
   });
 
   /**
-   * The Support tab (#Q3006), which only a project with Support has.
+   * The Support tab (#Q3006), which only a project with Plan's Feedback option has.
    */
   test("Support reports on feedback, on a project that has it", async ({
     page,

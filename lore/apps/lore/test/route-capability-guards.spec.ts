@@ -57,7 +57,7 @@ describe("route guards on a capability", () => {
     return page.options.loader;
   };
 
-  it("404s /apps on a project without the Apps capability", async ({
+  it("404s /apps on a project without the Ship capability", async ({
     expect,
   }) => {
     const alepha = await bootRouter();

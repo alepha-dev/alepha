@@ -193,7 +193,7 @@ describe("the instance's tab set", () => {
   it("gives every gated tab an option and every baseline tab none", ({
     expect,
   }) => {
-    // Overview and Settings are the Apps baseline per
+    // Overview and Settings are the Ship baseline per
     // `shipCapabilityOptionsSchema`, so they answer to no switch at all.
     const baseline = new Set(["app", "appSettings"]);
     for (const tab of APP_TABS) {
@@ -216,7 +216,7 @@ describe("the instance's tab set", () => {
     // production credentials and the other is how anything ships at all;
     // either vanishing because somebody turned TELEMETRY off is a support
     // ticket nobody diagnoses, and it is exactly what the implicit
-    // `apps.track` on every gated tab used to do.
+    // `ship.track` on every gated tab used to do.
     for (const route of ["appDeploy", "appEnvironment", "appBackups"]) {
       expect(APP_TABS.find((it) => it.route === route)?.option).toBe("deploy");
     }

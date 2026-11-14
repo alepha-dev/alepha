@@ -24,7 +24,7 @@ export class AutomationDatabase {
 
   /**
    * Whether a project has automations, as a predicate a native batch can
-   * carry: whether it has Work, since automations are a baseline of Work
+   * carry: whether it has Work, since automations are a baseline of Plan
    * (#Q3594). A project without the Work row has none.
    */
   public automationsOn(projectId: number): SQLLike {

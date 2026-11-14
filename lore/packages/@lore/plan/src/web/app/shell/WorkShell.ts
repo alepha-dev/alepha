@@ -197,7 +197,7 @@ export class WorkShell {
     });
 
     this.shell.registerSettings({
-      key: "work",
+      key: "plan",
       order: 30,
       labelKey: "project.settings.nav.plan",
       icon: SquareCheckBig,
@@ -239,7 +239,7 @@ export class WorkShell {
     });
 
     // ⚠️ New quest was once the one item gated on the PERMISSION alone. It
-    // left a Knowledge-only project offering the one create that answers
+    // left a Remember-only project offering the one create that answers
     // 400 - the first thing a reader would try.
     this.shell.registerCreate({
       key: "quest",

@@ -215,7 +215,7 @@ describe("dashboard cards and capabilities", () => {
   });
 
   describe("what the Add-card panel offers", () => {
-    it("withholds a quest card from a Knowledge-only project", ({ expect }) => {
+    it("withholds a quest card from a Remember-only project", ({ expect }) => {
       const catalog = ctx.alepha.inject(DashboardMetricCatalog);
       const activeQuests = catalog.get("activeQuests");
       const projects = [aProject(1, [{ key: "remember" }])];

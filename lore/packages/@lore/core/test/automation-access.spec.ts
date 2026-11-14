@@ -55,7 +55,7 @@ describe("Automation access", () => {
   it("has no Work option of its own and grants only new rank presets", async ({
     expect,
   }) => {
-    // A baseline of Work since #Q3594: a stored `automations` key is stripped.
+    // A baseline of Plan since #Q3594: a stored `automations` key is stripped.
     expect(
       alepha
         .inject(CapabilityRegistry)

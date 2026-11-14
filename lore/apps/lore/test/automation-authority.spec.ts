@@ -323,7 +323,7 @@ describe("Current automation authority", () => {
       }),
     ).rejects.toThrow("Member is no longer in this project");
     const last = await create();
-    // Automations are a baseline of Work (#Q3594): Work off is what stops
+    // Automations are a baseline of Plan (#Q3594): Work off is what stops
     // them.
     await entities.capabilities.deleteMany({
       projectId: project.id,

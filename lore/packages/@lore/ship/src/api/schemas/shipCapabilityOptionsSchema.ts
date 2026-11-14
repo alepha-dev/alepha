@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 /**
- * The switches inside the Apps capability.
+ * The switches inside the Ship capability.
  *
  * Apps has a **baseline plus two options**: instances, artifacts and quality
  * are there whenever Apps is on, `track` adds the sigil telemetry surfaces

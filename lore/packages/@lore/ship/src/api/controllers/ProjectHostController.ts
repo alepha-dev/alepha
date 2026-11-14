@@ -180,7 +180,7 @@ export class ProjectHostController {
   /**
    * Create a host in this project, its home, and lend it here in the same
    * step: the one way a host comes to exist (#Q3279). `host:create`,
-   * with the Apps capability on, since a host homed in a project without
+   * with the Ship capability on, since a host homed in a project without
    * it could be managed through no page. The body is
    * `createHostBodySchema`: a bay host hands its secret back exactly
    * once, a cloudflare host hands back nothing because the caller already

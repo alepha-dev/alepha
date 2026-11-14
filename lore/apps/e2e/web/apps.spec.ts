@@ -1388,7 +1388,7 @@ test.describe("Apps", () => {
     });
 
     await test.step("an app without Beacon has no analytics tabs, and gets them back", async () => {
-      // Flipped through the API: the four capability switches left the
+      // Flipped through the API: the three capability switches left the
       // Settings page with the rebuild (they were a second, unaware copy of a
       // decision `SIGIL_CONFIG` already makes). The GATE did not move, so what
       // it does to the page is still worth guarding.

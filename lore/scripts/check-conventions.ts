@@ -18,6 +18,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 import { JobNameRule } from "./job-name-rule.ts";
 import { LorePackageGraph } from "./lore-package-graph.ts";
+import { RetiredPillarsRule } from "./retired-pillars-rule.ts";
 import { RetiredWordsRule } from "./retired-words-rule.ts";
 
 /**
@@ -893,6 +894,40 @@ if (retiredWordViolations.length > 0) {
       "A survivor that has to stay (Bay wire v1, a stored name) goes in\n" +
       "RetiredWordsRule's allowlist, in\n" +
       "scripts/retired-words-rule.ts, with its reason.\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * Lore's pillars are Plan, Remember and Ship (#E143): the old package names,
+ * their modules and the old capability keys stay gone, in code, specs,
+ * fixtures and guides alike. History is `RetiredPillarsRule`'s allowlist.
+ */
+const retiredPillarsRule = new RetiredPillarsRule();
+const retiredPillarViolations = execFileSync(
+  "git",
+  ["ls-files", "-co", "--exclude-standard"],
+  { cwd: "..", encoding: "utf8" },
+)
+  .trim()
+  .split("\n")
+  .filter(
+    (file) =>
+      /\.(ts|tsx|mts|js|mjs|md|ya?ml|json|sql)$/.test(file) &&
+      existsSync(`../${file}`),
+  )
+  .flatMap((file) =>
+    retiredPillarsRule.check(file, readFileSync(`../${file}`, "utf8")),
+  );
+
+if (retiredPillarViolations.length > 0) {
+  console.error(
+    `\n${retiredPillarViolations.length} line(s) use a name #E143 retired:\n\n` +
+      `${retiredPillarViolations.join("\n")}\n\n` +
+      "Lore's packages are @lore/plan, @lore/remember and @lore/ship, and its\n" +
+      "capabilities plan, remember and ship; feedback is the option\n" +
+      "plan.feedback (#E143). History is RetiredPillarsRule's allowlist, in\n" +
+      "scripts/retired-pillars-rule.ts.\n",
   );
   process.exit(1);
 }

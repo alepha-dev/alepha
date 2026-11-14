@@ -5,7 +5,7 @@ import {
 import { useInject } from "alepha/react";
 
 /**
- * Folios > Features: the Knowledge capability's options. Its master switch
+ * Folios > Features: the Remember capability's options. Its master switch
  * is in General > Capabilities (#Q2565).
  *
  * `agentSummary` reveals the "Summary for agents" field on a folio. Off by

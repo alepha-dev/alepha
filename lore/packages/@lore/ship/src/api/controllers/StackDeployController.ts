@@ -16,7 +16,7 @@ import { StackService } from "../services/StackService.ts";
  *
  * There is no host argument anywhere, as on an app deploy: the host is a
  * property of the environment (or the stack's default), resolved server-side.
- * Writes take `deploy:manage` behind `apps.stacks`; the log takes `app:read`.
+ * Writes take `deploy:manage` behind `ship.stacks`; the log takes `app:read`.
  */
 export class StackDeployController {
   protected readonly stacks = $inject(StackService);

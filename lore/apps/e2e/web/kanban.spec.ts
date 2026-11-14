@@ -412,7 +412,7 @@ test.describe("Kanban", () => {
     await addKanbanColumn(page, projectId, "Review");
 
     // The board's column configuration is its own tab under Quests since
-    // #Q2565, listed while `work.board` is on.
+    // #Q2565, listed while `plan.board` is on.
     await page.goto(`/${projectSlug}/settings/work/board`);
     const rows = page.getByTestId("kanban-settings-column");
     await expect(rows).toHaveCount(2, { timeout: 10_000 });

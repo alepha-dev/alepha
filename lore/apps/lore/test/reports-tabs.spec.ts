@@ -27,12 +27,12 @@ const registry = (() => {
  *
  * Reports itself is Core: its ENTRY is unconditional, and each tab declares
  * what it needs. That split is the point, and it is what the first reading of
- * this epic got wrong - giving Reports to Work would have taken an Apps-only
+ * this epic got wrong - giving Reports to Work would have taken a Ship-only
  * project's Quality tab away with it.
  *
  * ⚠️ Quality has no switch. It was gated on `features.quality`, an optional
  * key absent from every project that predated the module, and the case that
- * mattered was which way ABSENT read. It is Apps baseline now, and shows the
+ * mattered was which way ABSENT read. It is Ship baseline now, and shows the
  * push command until CI sends a run (#Q3070).
  */
 describe("reportsTabs", () => {
@@ -79,7 +79,7 @@ describe("reportsTabs", () => {
     expect(names([])).toEqual(["reportsSummary", "reportsTeam"]);
   });
 
-  it("keeps Delivery and Quality for an Apps-only project", () => {
+  it("keeps Delivery and Quality for a Ship-only project", () => {
     // The case that decided Reports is Core rather than Work: this project
     // has no quests at all and still needs to reach what CI pushed.
     expect(names(["ship"])).toEqual([

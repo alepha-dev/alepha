@@ -68,7 +68,7 @@ export class QuestCommentController {
     });
 
   /**
-   * The same two gates plus the Work capability, for the writes.
+   * The same two gates plus the Plan capability, for the writes.
    *
    * A comment is part of a quest, so it belongs to Work: a project that has
    * turned Work off has no quest page to comment on. Reading the thread stays

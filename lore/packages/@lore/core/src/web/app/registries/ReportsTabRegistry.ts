@@ -14,8 +14,8 @@ import type { ReportsFilterKey } from "../services/ReportsUrlQuery.ts";
  * #Q2611): Work's Overview, Quests and Members, Deploy's Quality.
  *
  * Reports itself is CORE and its entry is unconditional, which is the whole
- * reason each tab declares its own gate: Quality is Apps baseline, so an
- * Apps-only project would lose its Quality tab along with the Reports entry
+ * reason each tab declares its own gate: Quality is Ship baseline, so an
+ * Ship-only project would lose its Quality tab along with the Reports entry
  * if the section belonged to Work. The pages are each module's, mounted
  * under core's `projectReports` with `parent:`.
  */

@@ -45,7 +45,7 @@ export class DeployDashboardMetrics {
       scopeKinds: ["apps", "projects", "all"],
       filters: openErrorsFiltersSchema,
       /**
-       * `apps.track`, not bare `apps`. Errors arrive on the same ingest
+       * `ship.track`, not bare `apps`. Errors arrive on the same ingest
        * path the option governs, so a project that deploys without watching
        * has no source for this number.
        */

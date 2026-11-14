@@ -68,7 +68,7 @@ export class FolioAttachmentController {
     });
 
   /**
-   * The same two gates plus the Knowledge capability, for the writes.
+   * The same two gates plus the Remember capability, for the writes.
    *
    * An attachment hangs off a folio, so it belongs to Knowledge. Reading and
    * downloading one stays open: the bytes are still there.

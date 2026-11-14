@@ -123,8 +123,8 @@ describe("quality runs", () => {
 
   /**
    * `quality` was a project flag and is not one any more: Quality joins the
-   * Apps baseline, so what these cases used to say with `{ quality: true }`
-   * they now say by giving the project the Apps capability. The push path is
+   * Ship baseline, so what these cases used to say with `{ quality: true }`
+   * they now say by giving the project the Ship capability. The push path is
    * unaffected either way - a CI credential is never gated on a switch in the
    * UI, which is the rule this file exists to hold.
    */
@@ -210,7 +210,7 @@ describe("quality runs", () => {
    * ⚠️ The two cases that used to live here are gone with the flag they
    * guarded: `features.quality` was optional, and absent on every project
    * that predated the module, so both asked which way ABSENT read. Quality has
-   * no switch now - it joined the Apps baseline, and its Reports tab appears
+   * no switch now - it joined the Ship baseline, and its Reports tab appears
    * once a run exists. `reportsTabs.spec.ts` asks that question instead.
    *
    * The `features` column itself keeps its `quality` key forever: dropping a

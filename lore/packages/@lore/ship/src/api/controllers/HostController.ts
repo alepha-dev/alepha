@@ -91,7 +91,7 @@ export class HostController {
 
   /**
    * The gate on one host, by its home project's rank. A write names the
-   * Apps capability, as every other Deploy write does; a read names none.
+   * Ship capability, as every other Deploy write does; a read names none.
    * Declared above the actions: a field initializer reading a field declared
    * below it sees `undefined`.
    */
@@ -180,7 +180,7 @@ export class HostController {
 
   /**
    * The projects the caller may create a host in: where their effective
-   * permissions hold `host:create`, which also means the Apps capability is
+   * permissions hold `host:create`, which also means the Ship capability is
    * on. What the account page's Add dialog offers.
    */
   listHostHomeChoices = $action({

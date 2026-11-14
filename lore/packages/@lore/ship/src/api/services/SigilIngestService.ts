@@ -247,7 +247,7 @@ export class SigilIngestService {
   async gatesFor(sigil: Sigil): Promise<SigilGates> {
     const capabilities = await this.security.capabilitiesOf(sigil.projectId);
 
-    // `apps.track` is what `features.sigils` was: the switch above the
+    // `ship.track` is what `features.sigils` was: the switch above the
     // telemetry surfaces. An option of a capability that is off reads false,
     // so a project without Apps at all reports nothing, which is also the
     // right answer for a sigil whose project is gone.

@@ -209,7 +209,7 @@ describe("the assistant's read tools", () => {
     await alepha.stop();
   });
 
-  it("never offers feedback_list or feedback_get on a project with Support off", async ({
+  it("never offers feedback_list or feedback_get on a project with Feedback off", async ({
     expect,
   }) => {
     const { alepha, signIn } = await boot();

@@ -24,7 +24,7 @@ export type AppTabLabelKey =
   | "app.tab.settings";
 
 /**
- * Which switch inside the Apps capability a gated tab answers to.
+ * Which switch inside the Ship capability a gated tab answers to.
  */
 export type AppTabOption = keyof ShipCapabilityOptions;
 
@@ -33,7 +33,7 @@ export type AppTabOption = keyof ShipCapabilityOptions;
  *
  * ⚠️ **A union rather than two optional fields**, so a gated tab cannot forget
  * to name its option and an ungated one cannot name one. That is not style:
- * the option used to be implicit and every gated tab inherited `apps.track`,
+ * the option used to be implicit and every gated tab inherited `ship.track`,
  * which would have hidden epic #1's Deploy tab from any project that deploys
  * through Lore with telemetry off. Making the omission a type error is what
  * stops the next tab repeating it.
@@ -44,7 +44,7 @@ export interface UngatedAppTab {
   route: AppTabRoute;
   labelKey: AppTabLabelKey;
   /**
-   * The Apps baseline: always there, whatever the project switched on. True of
+   * The Ship baseline: always there, whatever the project switched on. True of
    * exactly two - Overview and Settings - and that is the set
    * `shipCapabilityOptionsSchema` calls the baseline.
    */
@@ -165,7 +165,7 @@ export const APP_TABS: AppTab[] = [
  * It needs a sigil AND somewhere Lore deploys to: for a copy Lore only hears
  * from, what the app sends is decided in its own deploy, which Lore cannot
  * change. The Settings tab shows the Sigil features section on this, under
- * the project's `apps.deploy` option, since it is a deploy setting.
+ * the project's `ship.deploy` option, since it is a deploy setting.
  */
 export const sigilConfigurable = (instance: AppInstanceResource): boolean =>
   !!instance.sigil && (!!instance.hostId || !!instance.stackEnvironmentId);
@@ -190,7 +190,7 @@ const collects = (instance: AppInstanceResource, kind: string): boolean =>
  * at once without touching a single sigil, and turning it back on returns
  * exactly the tabs each instance had.
  *
- * ⚠️ The upper gate is **not** `apps.track` for every gated tab. It was, and a
+ * ⚠️ The upper gate is **not** `ship.track` for every gated tab. It was, and a
  * project with `deploy` on and `track` off would have lost epic #1's Deploy tab
  * with nothing on screen saying why; `AppTab` now makes each tab name its own.
  *

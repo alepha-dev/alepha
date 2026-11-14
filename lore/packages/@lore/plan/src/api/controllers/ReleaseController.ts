@@ -141,7 +141,7 @@ export class ReleaseController {
     $ownsProject({ requires, repository: () => this.releases, param: "id" });
 
   /**
-   * The same two plus the Work capability, for the writes.
+   * The same two plus the Plan capability, for the writes.
    *
    * A release holds the epics and quests due to ship in it, so it belongs to
    * Work. Reads stay open: turning Work off hides releases and deletes none

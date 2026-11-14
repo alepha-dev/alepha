@@ -65,7 +65,7 @@ class TestRows {
 }
 
 /**
- * The four steps every case here needs: a user, a project, the Apps capability
+ * The four steps every case here needs: a user, a project, the Ship capability
  * and one deployed copy.
  */
 const aUser = async (alepha: Alepha) => {

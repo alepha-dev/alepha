@@ -272,7 +272,7 @@ const QuestCreate = (props: QuestCreateProps) => {
     q?.dependsOn != null ||
     q?.releaseId != null;
 
-  // The `work.releases` option, never the old `projects.features.milestones`
+  // The `plan.releases` option, never the old `projects.features.milestones`
   // (dropped with #E74), which ignored the switch the owner actually moved.
   const releasesEnabled = capabilityOption(props.project, "plan", "releases");
   const releaseOptions = (releases ?? [])
@@ -398,7 +398,7 @@ const QuestCreate = (props: QuestCreateProps) => {
               />
 
               {/* Estimation is a methodology, not a default: the
-              `work.estimate` option. With the switch off the
+              `plan.estimate` option. With the switch off the
               field is not rendered, but a stored estimate still rides along
               in `initialValues` and is submitted untouched, so turning the
               switch back on shows the old value rather than a blank. */}

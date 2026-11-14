@@ -153,7 +153,7 @@ A row's menu holds what you can do with it:
 - **Forward to quest** creates a quest carrying the error's name, message and
   stack, linked back to the error, in the **Errors** area, and opens it. The
   error leaves the inbox and cannot be forwarded twice. Forwarding needs the
-  Work capability too.
+  Plan capability too.
 - **Delete** removes the row for good, in any status, after a confirmation.
   Select rows and use **Delete selected** for up to 200 at once. Unlike
   resolving, it decides nothing about the future: the same failure reported

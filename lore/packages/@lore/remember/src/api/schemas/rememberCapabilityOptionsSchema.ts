@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 /**
- * The switches inside the Knowledge capability.
+ * The switches inside the Remember capability.
  *
  * One so far, and it is why Knowledge contributes no section to the creation
  * wizard: `agentSummary` reveals the "Summary for agents" field on a folio,

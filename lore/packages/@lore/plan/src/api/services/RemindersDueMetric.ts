@@ -16,7 +16,7 @@ import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 
 /**
  * The reader's quests whose recurring reminder falls in the next seven days
- * (#Q2655), soonest first. `needs work.reminder`.
+ * (#Q2655), soonest first. `needs plan.reminder`.
  */
 export class RemindersDueMetric implements DashboardMetricResolver {
   protected readonly dashboard = $inject(DashboardMetricRegistry);

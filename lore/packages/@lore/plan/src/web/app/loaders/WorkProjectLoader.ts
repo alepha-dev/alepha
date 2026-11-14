@@ -31,7 +31,7 @@ export class WorkProjectLoader {
 
   constructor() {
     this.loaders.register({
-      key: "work",
+      key: "plan",
       order: 10,
       load: async (project) => {
         const projectId = project.id;
@@ -80,7 +80,7 @@ export class WorkProjectLoader {
             // `getEpics`: the full resource carries `description`, which is
             // 213 KB of the 222 KB this project's own epic list weighs.
             //
-            // Gated on the same `work.epics` option that decides whether the
+            // Gated on the same `plan.epics` option that decides whether the
             // Epics entry renders at all, so a project with epics off pays
             // nothing. `undefined` on failure and NOT `[]`, like
             // `currentInstancesAtom`: the badge must read "could not count"

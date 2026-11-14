@@ -241,7 +241,7 @@ const AppSettingsSigil = () => {
                 keeps sending it - and `absorb` stamps `lastSeenAt` for a batch
                 every gate rejected, so the app looks healthy while nothing is
                 stored and nothing anywhere says so.
-                `SigilIngestService.gatesFor` needs `apps.track` AND `support`,
+                `SigilIngestService.gatesFor` needs `ship.track` AND `support`,
                 which is the one place a capability reads another's state: to
                 NARROW what it does, never to widen it. Support must never
                 silently enable tracking. */}

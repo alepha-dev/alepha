@@ -1,6 +1,6 @@
 /**
  * The built-in default for `errorTriage`: Agent Prompts > Triage the
- * errors, offered on the Errors toolbar while the Apps capability is on.
+ * errors, offered on the Errors toolbar while the Ship capability is on.
  *
  * ⚠️ **Surface-scoped, like {@link feedbackLoopPromptDefault}.** Its subject
  * is an `AgentPromptProjectSubject`: a triage loop has no item, so

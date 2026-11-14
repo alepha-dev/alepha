@@ -157,7 +157,7 @@ export class FolioController {
     $ownsProject({ requires, repository: () => this.folios, param: "id" });
 
   /**
-   * The same two gates plus the Knowledge capability, for the writes.
+   * The same two gates plus the Remember capability, for the writes.
    *
    * Reads stay open on purpose: a project that turns Knowledge back on has to
    * find every folio exactly where it left them, and an endpoint refusing to

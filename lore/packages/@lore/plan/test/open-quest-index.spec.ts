@@ -106,7 +106,7 @@ describe("The open-quest count's index", () => {
 
     // A draft epic in the FIRST project only, so the two counts below are the
     // gated shape and the ungated one. Written as raw SQL rather than through
-    // `createEpic`, which gates on the Work capability's `epics` option: what
+    // `createEpic`, which gates on the Plan capability's `epics` option: what
     // this spec needs is the row, not the write path.
     await database.run(
       sql.raw(

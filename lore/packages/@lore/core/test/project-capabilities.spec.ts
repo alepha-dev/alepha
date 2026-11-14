@@ -129,7 +129,7 @@ describe("Project capabilities", () => {
       "plan",
       "remember",
     ]);
-    // Automations are a baseline of Work, not an option (#Q3594).
+    // Automations are a baseline of Plan, not an option (#Q3594).
     expect(
       created.data.capabilities.find((it) => it.key === "plan")?.options,
     ).not.toHaveProperty("automations");

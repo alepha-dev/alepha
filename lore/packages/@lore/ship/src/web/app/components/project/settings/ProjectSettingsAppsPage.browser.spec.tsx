@@ -99,7 +99,7 @@ describe("the Apps settings page", () => {
     return { alepha, fake: alepha.inject(FakeLinkProvider), view };
   };
 
-  it("turns the Apps capability on, whatever the label says", async ({
+  it("turns the Ship capability on, whatever the label says", async ({
     expect,
   }) => {
     const { alepha, fake, view } = await mount();

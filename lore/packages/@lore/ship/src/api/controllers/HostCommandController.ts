@@ -83,7 +83,7 @@ export class HostCommandController {
    * The gate on the host in the path, by its home project's rank (#Q3279).
    * Listing the commands is `host:read`; queueing one and reading a log
    * tail's stored result are `host:update`, since a machine runs the copies
-   * of every project that borrows it. Writes name the Apps capability.
+   * of every project that borrows it. Writes name the Ship capability.
    */
   protected ownsHost = (requires: string, write = false) =>
     $ownsProject({

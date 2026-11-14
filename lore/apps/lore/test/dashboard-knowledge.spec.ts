@@ -27,7 +27,7 @@ class KnowledgeRepositories extends TestEntityRepositories {
 }
 
 /**
- * The Knowledge tiles of #E77 (#Q2658): before them a Knowledge-only project
+ * The Knowledge tiles of #E77 (#Q2658): before them a Remember-only project
  * had no tile at all.
  */
 describe("dashboard knowledge tiles", () => {
