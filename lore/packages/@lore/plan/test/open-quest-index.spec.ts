@@ -48,118 +48,120 @@ const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
  */
 describe("The open-quest count's index", () => {
   // SQLite only on purpose: it reads EXPLAIN QUERY PLAN.
-  it.skipIf(onPostgres)("is served by the covering partial index, gated and ungated", async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create({
-      env: { LOG_LEVEL: "trace", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
-    }).with({
-      provide: LogDestinationProvider,
-      use: MemoryDestinationProvider,
-    });
-    alepha.with(AlephaOrm);
-    alepha.with(AlephaServer);
-    alepha.with(AlephaSecurity);
-    alepha.with(AlephaEmail);
-    alepha.with(AlephaApiUsers);
-    alepha.with(AlephaFake);
-    alepha.with(LorePlanApi);
-    await alepha.start();
+  it.skipIf(onPostgres)(
+    "is served by the covering partial index, gated and ungated",
+    async ({ expect }) => {
+      const alepha = Alepha.create({
+        env: { LOG_LEVEL: "trace", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
+      }).with({
+        provide: LogDestinationProvider,
+        use: MemoryDestinationProvider,
+      });
+      alepha.with(AlephaOrm);
+      alepha.with(AlephaServer);
+      alepha.with(AlephaSecurity);
+      alepha.with(AlephaEmail);
+      alepha.with(AlephaApiUsers);
+      alepha.with(AlephaFake);
+      alepha.with(LorePlanApi);
+      await alepha.start();
 
-    const logs = alepha.inject(MemoryDestinationProvider);
-    const admins = alepha.inject(AdminUserController);
-    const projectApi = alepha.inject(ProjectController);
-    const questApi = alepha.inject(QuestController);
-    const database = alepha.inject(DatabaseProvider);
-    const fake = alepha.inject(FakeProvider);
-    const scope = alepha.inject(OpenQuestScope);
+      const logs = alepha.inject(MemoryDestinationProvider);
+      const admins = alepha.inject(AdminUserController);
+      const projectApi = alepha.inject(ProjectController);
+      const questApi = alepha.inject(QuestController);
+      const database = alepha.inject(DatabaseProvider);
+      const fake = alepha.inject(FakeProvider);
+      const scope = alepha.inject(OpenQuestScope);
 
-    const created = await admins.createUser.fetch(
-      {
-        body: {
-          ...fake.generate(
-            z.object({ username: z.string(), email: z.email() }),
-          ),
-          roles: ["user"],
-        },
-      },
-      { user: { id: crypto.randomUUID(), roles: ["admin"] } },
-    );
-    const user = { id: created.data.id, roles: created.data.roles };
-
-    const ids: number[] = [];
-    for (let i = 0; i < 3; i++) {
-      // Letters, not numbers: a title that slugs to `project-0` is reserved.
-      const project = await projectApi.createProject.fetch(
-        { body: { title: `Garden ${String.fromCharCode(97 + i)}` } },
-        { user },
-      );
-      ids.push(project.data.id);
-      for (let q = 0; q < 5; q++) {
-        await questApi.createQuest.fetch(
-          {
-            body: {
-              projectId: project.data.id,
-              title: `Quest ${q}`,
-              area: "general",
-              priority: "medium",
-            },
+      const created = await admins.createUser.fetch(
+        {
+          body: {
+            ...fake.generate(
+              z.object({ username: z.string(), email: z.email() }),
+            ),
+            roles: ["user"],
           },
+        },
+        { user: { id: crypto.randomUUID(), roles: ["admin"] } },
+      );
+      const user = { id: created.data.id, roles: created.data.roles };
+
+      const ids: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        // Letters, not numbers: a title that slugs to `project-0` is reserved.
+        const project = await projectApi.createProject.fetch(
+          { body: { title: `Garden ${String.fromCharCode(97 + i)}` } },
           { user },
         );
+        ids.push(project.data.id);
+        for (let q = 0; q < 5; q++) {
+          await questApi.createQuest.fetch(
+            {
+              body: {
+                projectId: project.data.id,
+                title: `Quest ${q}`,
+                area: "general",
+                priority: "medium",
+              },
+            },
+            { user },
+          );
+        }
       }
-    }
 
-    // A draft epic in the FIRST project only, so the two counts below are the
-    // gated shape and the ungated one. Written as raw SQL rather than through
-    // `createEpic`, which gates on the Plan capability's `epics` option: what
-    // this spec needs is the row, not the write path.
-    await database.run(
-      sql.raw(
-        `INSERT INTO epics (project_id, number, title, description, status, created_at, updated_at)
+      // A draft epic in the FIRST project only, so the two counts below are the
+      // gated shape and the ungated one. Written as raw SQL rather than through
+      // `createEpic`, which gates on the Plan capability's `epics` option: what
+      // this spec needs is the row, not the write path.
+      await database.run(
+        sql.raw(
+          `INSERT INTO epics (project_id, number, title, description, status, created_at, updated_at)
          VALUES (${ids[0]}, 1, 'Draft epic', 'x', 'draft', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`,
-      ),
-      z.object({}),
-    );
-
-    const questStatements = async (call: () => Promise<unknown>) => {
-      const before = logs.logs.length;
-      await call();
-      return logs.logs
-        .slice(before)
-        .filter(
-          (entry) =>
-            entry.level === "TRACE" &&
-            /^\s*select/i.test(String(entry.message)) &&
-            String(entry.message).includes('from "quests"'),
-        )
-        .map((entry) => String(entry.message));
-    };
-
-    const gated = await questStatements(() => scope.countByProject(ids));
-    const ungated = await questStatements(() =>
-      scope.countByProject([ids[1], ids[2]]),
-    );
-
-    expect(gated).toHaveLength(1);
-    expect(ungated).toHaveLength(1);
-    // The gate is only in the first one, which is what makes them two shapes.
-    expect(gated[0]).toContain("epic_id");
-    expect(ungated[0]).not.toContain("epic_id");
-
-    for (const statement of [gated[0], ungated[0]]) {
-      // The placeholders stand for project ids and epic ids, so any integer
-      // reads the same to the planner: it binds constraints, not values.
-      const plan = await database.run(
-        sql.raw(`EXPLAIN QUERY PLAN ${statement.replace(/\?/g, "1")}`),
-        z.object({ detail: z.string() }),
+        ),
+        z.object({}),
       );
-      const detail = plan.map((row) => row.detail).join("\n");
-      expect(detail).toContain("quests_open_idx");
-      // Covering: neither the gate nor the count reaches the table.
-      expect(detail).toContain("COVERING INDEX");
-    }
 
-    await alepha.stop();
-  }, 120_000);
+      const questStatements = async (call: () => Promise<unknown>) => {
+        const before = logs.logs.length;
+        await call();
+        return logs.logs
+          .slice(before)
+          .filter(
+            (entry) =>
+              entry.level === "TRACE" &&
+              /^\s*select/i.test(String(entry.message)) &&
+              String(entry.message).includes('from "quests"'),
+          )
+          .map((entry) => String(entry.message));
+      };
+
+      const gated = await questStatements(() => scope.countByProject(ids));
+      const ungated = await questStatements(() =>
+        scope.countByProject([ids[1], ids[2]]),
+      );
+
+      expect(gated).toHaveLength(1);
+      expect(ungated).toHaveLength(1);
+      // The gate is only in the first one, which is what makes them two shapes.
+      expect(gated[0]).toContain("epic_id");
+      expect(ungated[0]).not.toContain("epic_id");
+
+      for (const statement of [gated[0], ungated[0]]) {
+        // The placeholders stand for project ids and epic ids, so any integer
+        // reads the same to the planner: it binds constraints, not values.
+        const plan = await database.run(
+          sql.raw(`EXPLAIN QUERY PLAN ${statement.replace(/\?/g, "1")}`),
+          z.object({ detail: z.string() }),
+        );
+        const detail = plan.map((row) => row.detail).join("\n");
+        expect(detail).toContain("quests_open_idx");
+        // Covering: neither the gate nor the count reaches the table.
+        expect(detail).toContain("COVERING INDEX");
+      }
+
+      await alepha.stop();
+    },
+    120_000,
+  );
 });
