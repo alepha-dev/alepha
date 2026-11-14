@@ -1,10 +1,10 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { currentProjectAtom, I18n } from "@lore/core/web";
-import type { AppInstanceResource } from "@lore/deploy/schemas";
-import { ProjectArtifacts } from "@lore/deploy/testing";
-import { currentInstancesAtom } from "@lore/deploy/web";
 import { currentReleasesAtom, WorkShell } from "@lore/plan/web";
+import type { AppInstanceResource } from "@lore/ship/schemas";
+import { ProjectArtifacts } from "@lore/ship/testing";
+import { currentInstancesAtom } from "@lore/ship/web";
 import {
   cleanup,
   fireEvent,

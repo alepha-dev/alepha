@@ -1,11 +1,11 @@
 import { AlephaLoreCli } from "@alepha/lore/cli";
 import { ProjectController } from "@lore/core/api";
-import { projectErrors } from "@lore/deploy/schemas";
 import {
   EpicController,
   FeedbackCommentController,
   FeedbackController,
 } from "@lore/plan/api";
+import { projectErrors } from "@lore/ship/schemas";
 import { Alepha, AlephaError, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";

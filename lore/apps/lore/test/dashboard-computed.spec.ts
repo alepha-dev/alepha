@@ -5,7 +5,7 @@ import {
   projectDashboardCards,
 } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
-import { sigils } from "@lore/deploy/schemas";
+import { sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

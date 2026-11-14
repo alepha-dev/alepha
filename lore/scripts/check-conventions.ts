@@ -750,7 +750,7 @@ if (transactionalViolations.length > 0) {
  * rule cannot read it. Specs are exempt: they declare jobs for pretend
  * applications, and the registration check still binds them. Files are read
  * whole rather than through `grep`, which skips a file holding a NUL byte as
- * binary (`packages/@lore/deploy/src/api/jobs/SigilJobs.ts` has one on purpose).
+ * binary (`packages/@lore/ship/src/api/jobs/SigilJobs.ts` has one on purpose).
  */
 const jobNameViolations: string[] = [];
 const jobTimeoutViolations: string[] = [];
@@ -818,7 +818,7 @@ if (jobTimeoutViolations.length > 0) {
 /*
  * The `@lore` packages depend on core only (#E75, folio #F1356).
  *
- * `plan`, `remember` and `deploy` import `@lore/core` and nothing else of
+ * `plan`, `remember` and `ship` import `@lore/core` and nothing else of
  * Lore's; `core` imports none of them. The graph, and the four rules that go
  * with it (no deep import, type-only server imports from `./web`, no app, no
  * `@/`), are `scripts/lore-package-graph.ts`, which reads the allowed edges
@@ -851,7 +851,7 @@ if (lorePackageViolations.length > 0) {
   console.error(
     `\n${lorePackageViolations.length} @lore package import(s) off the graph:\n\n` +
       `${lorePackageViolations.join("\n")}\n\n` +
-      "plan, remember and deploy import @lore/core only, and core imports no\n" +
+      "plan, remember and ship import @lore/core only, and core imports no\n" +
       "other @lore package. A feature spanning two modules goes through a core\n" +
       "registry or a core link. The graph is LorePackageGraph.GRAPH in\n" +
       "scripts/lore-package-graph.ts.\n",

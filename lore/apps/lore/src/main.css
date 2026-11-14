@@ -11,7 +11,7 @@
 @source "../../../packages/@lore/core/src/web";
 @source "../../../packages/@lore/plan/src/web";
 @source "../../../packages/@lore/remember/src/web";
-@source "../../../packages/@lore/deploy/src/web";
+@source "../../../packages/@lore/ship/src/web";
 
 /* ────────────────────────────────────────────────────────────────────────
  * Page transitions — the classes `$page({ viewTransition })` names in

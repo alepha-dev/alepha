@@ -1,10 +1,10 @@
 import { ProjectController } from "@lore/core/api";
-import { AppController, SigilController } from "@lore/deploy/api";
 import {
   FeedbackController,
   QuestController,
   ReleaseController,
 } from "@lore/plan/api";
+import { AppController, SigilController } from "@lore/ship/api";
 import { Alepha, z } from "alepha";
 import { AuditService } from "alepha/api/audits";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";

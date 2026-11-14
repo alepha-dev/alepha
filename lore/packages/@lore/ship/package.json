@@ -1,0 +1,45 @@
+{
+  "name": "@lore/ship",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./api": "./src/api/index.ts",
+    "./mcp": "./src/mcp/index.ts",
+    "./web": "./src/web/index.ts",
+    "./schemas": "./src/schemas/index.ts",
+    "./testing": "./src/testing/index.ts",
+    "./testing/tarball": "./src/testing/artifactTarball.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test"
+  },
+  "dependencies": {
+    "@alepha/lore": "workspace:*",
+    "@alepha/ui": "workspace:*",
+    "@lore/core": "workspace:*",
+    "alepha": "workspace:*",
+    "js-yaml": "5.5.0",
+    "lucide-react": "^1.70.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-is": "^19.3.1",
+    "recharts": "^3.10.1"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/bun": "^1.4.4",
+    "@types/js-yaml": "4.0.9",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0",
+    "ws": "^8.22.2"
+  }
+}

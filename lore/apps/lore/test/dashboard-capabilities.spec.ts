@@ -11,7 +11,7 @@ import {
   eligibleProjects,
   metricUnavailableKey,
 } from "@lore/core/web";
-import { type Sigil, sigils, sigilUniquesDaily } from "@lore/deploy/schemas";
+import { type Sigil, sigils, sigilUniquesDaily } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

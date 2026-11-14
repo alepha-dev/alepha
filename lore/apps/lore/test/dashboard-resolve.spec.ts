@@ -12,6 +12,8 @@ import {
 } from "@lore/core/schemas";
 import type { DashboardScope } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
+import { EpicProgressService, QuestTagTallyService } from "@lore/plan/api";
+import { feedback, releases } from "@lore/plan/schemas";
 import {
   appInstances,
   projectErrors,
@@ -19,9 +21,7 @@ import {
   type Sigil,
   sigils,
   sigilUniquesDaily,
-} from "@lore/deploy/schemas";
-import { EpicProgressService, QuestTagTallyService } from "@lore/plan/api";
-import { feedback, releases } from "@lore/plan/schemas";
+} from "@lore/ship/schemas";
 import { Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

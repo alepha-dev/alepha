@@ -83,7 +83,7 @@ class AppInventory {
    * Each `@lore/*` package's source root, where the atoms and the components
    * live since #E75.
    */
-  protected readonly packages = ["core", "plan", "remember", "deploy"].map(
+  protected readonly packages = ["core", "plan", "remember", "ship"].map(
     (pkg) => ({
       pkg,
       src: join(import.meta.dirname, "../../../packages/@lore", pkg, "src"),

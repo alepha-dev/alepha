@@ -1,7 +1,7 @@
 import { projectFixture } from "@lore/core/testing";
 import { ReportsTabRegistry } from "@lore/core/web";
-import { DeployShell } from "@lore/deploy/web";
 import { WorkShell } from "@lore/plan/web";
+import { DeployShell } from "@lore/ship/web";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 

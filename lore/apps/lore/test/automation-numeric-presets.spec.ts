@@ -13,7 +13,7 @@ import {
 } from "@lore/core/api";
 import type { AutomationResource } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { projectErrors, qualityRuns, sigils } from "@lore/deploy/schemas";
+import { projectErrors, qualityRuns, sigils } from "@lore/ship/schemas";
 import { Alepha, AlephaError } from "alepha";
 import { JobQueueProvider, jobExecutionEntity } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";

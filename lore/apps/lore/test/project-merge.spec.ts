@@ -3,7 +3,7 @@ import {
   ProjectMergeController,
   ProjectMergeService,
 } from "@lore/core/api";
-import { appInstances, qualityRuns, sigils } from "@lore/deploy/schemas";
+import { appInstances, qualityRuns, sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 // Its own subpath, not `./testing`: that barrel renders React pages, and
 // Playwright's loader cannot import their stylesheets.
-import { packedArtifact } from "@lore/deploy/testing/tarball";
+import { packedArtifact } from "@lore/ship/testing/tarball";
 
 import { expect, test } from "./_fixtures.ts";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";

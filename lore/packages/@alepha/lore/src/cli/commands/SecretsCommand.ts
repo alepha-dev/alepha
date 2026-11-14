@@ -1,5 +1,5 @@
-import type { AppController } from "@lore/deploy/api";
-import type { AppSecretController } from "@lore/deploy/api";
+import type { AppController } from "@lore/ship/api";
+import type { AppSecretController } from "@lore/ship/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command, EnvUtils } from "alepha/command";
 import { $logger } from "alepha/logger";

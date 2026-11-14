@@ -1,7 +1,7 @@
 import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { projectCapabilities, projects } from "@lore/core/schemas";
-import { DeployAnalytics, LoreDeployApi } from "@lore/deploy/api";
-import { sigils } from "@lore/deploy/schemas";
+import { DeployAnalytics, LoreShipApi } from "@lore/ship/api";
+import { sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
@@ -121,7 +121,7 @@ const setup = async (
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreDeployApi);
+  alepha.with(LoreShipApi);
   alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 
   const probe = alepha.inject(Probe);

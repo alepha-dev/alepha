@@ -179,13 +179,13 @@ jobs:
             apps/lore/test/sigil-self-report.spec.ts
             apps/lore/test/home-open-counts.spec.ts
             apps/lore/test/owns-project-query-count.spec.ts
-            packages/@lore/deploy/test/SigilIngest
-            packages/@lore/deploy/test/sigil-
-            packages/@lore/deploy/test/insights-controller.spec.ts
-            packages/@lore/deploy/test/lore-analytics.spec.ts
-            packages/@lore/deploy/test/uptime-retention.spec.ts
-            packages/@lore/deploy/test/uptime-controller.spec.ts
-            packages/@lore/deploy/test/open-error-counter.spec.ts
+            packages/@lore/ship/test/SigilIngest
+            packages/@lore/ship/test/sigil-
+            packages/@lore/ship/test/insights-controller.spec.ts
+            packages/@lore/ship/test/lore-analytics.spec.ts
+            packages/@lore/ship/test/uptime-retention.spec.ts
+            packages/@lore/ship/test/uptime-controller.spec.ts
+            packages/@lore/ship/test/open-error-counter.spec.ts
             packages/@lore/remember/test/folio-
             packages/@lore/plan/test/WorkAutomationSelections.spec.ts
             packages/@lore/plan/test/release-default.spec.ts

@@ -6,7 +6,7 @@ const exports = {
   core: ["api", "mcp", "web", "schemas", "testing"],
   plan: ["api", "mcp", "web", "schemas"],
   remember: ["api", "mcp", "web", "schemas"],
-  deploy: ["api", "mcp", "web", "schemas"],
+  ship: ["api", "mcp", "web", "schemas"],
 };
 
 const graph = new LorePackageGraph(exports);
@@ -79,7 +79,7 @@ describe("LorePackageGraph", () => {
   it("refuses a deep import past a package's exports", ({ expect }) => {
     expect(
       graph.check(
-        "packages/@lore/deploy/src/api/AppService.ts",
+        "packages/@lore/ship/src/api/AppService.ts",
         'import { ProjectService } from "@lore/core/src/api/services/ProjectService.ts";',
       ),
     ).toHaveLength(1);

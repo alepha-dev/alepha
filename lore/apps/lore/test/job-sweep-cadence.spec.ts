@@ -1,4 +1,4 @@
-import { DeployJobs } from "@lore/deploy/api";
+import { DeployJobs } from "@lore/ship/api";
 import { Alepha } from "alepha";
 import { jobConfig } from "alepha/api/jobs";
 import { AlephaApiUsers } from "alepha/api/users";

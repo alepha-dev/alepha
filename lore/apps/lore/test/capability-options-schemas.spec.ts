@@ -1,10 +1,10 @@
 import { CapabilityRegistry } from "@lore/core/schemas";
-import { appsCapabilityOptionsSchema } from "@lore/deploy/schemas";
 import {
   supportCapabilityOptionsSchema,
   workCapabilityOptionsSchema,
 } from "@lore/plan/schemas";
 import { knowledgeCapabilityOptionsSchema } from "@lore/remember/schemas";
+import { appsCapabilityOptionsSchema } from "@lore/ship/schemas";
 import { describe, it } from "vitest";
 
 /**

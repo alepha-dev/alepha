@@ -5,14 +5,14 @@ import {
   AutomationOrigin,
   AutomationPersistence,
 } from "@lore/core/api";
-import { DeployJobs, DeployRegistry } from "@lore/deploy/api";
-import { appInstances, deployments } from "@lore/deploy/schemas";
 import {
   FeedbackController,
   QuestController,
   ReleaseController,
   EpicWorkflowService,
 } from "@lore/plan/api";
+import { DeployJobs, DeployRegistry } from "@lore/ship/api";
+import { appInstances, deployments } from "@lore/ship/schemas";
 import { Alepha, AlephaError, $inject, $hook, z } from "alepha";
 import {
   $job,

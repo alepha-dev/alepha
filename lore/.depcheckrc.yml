@@ -10,7 +10,7 @@ ignores:
   - "@lore/core"
   - "@lore/plan"
   - "@lore/remember"
-  - "@lore/deploy"
+  - "@lore/ship"
   - "@vitest/coverage-v8"
   - "vite"
   - "@types/react"

@@ -6,15 +6,15 @@ import {
   LoreAccountSections,
   LoreCoreWeb,
 } from "@lore/core/web";
-import { LoreDeployApi } from "@lore/deploy/api";
-import { LoreDeployMcp } from "@lore/deploy/mcp";
-import { DeployRouter, LoreDeployWeb } from "@lore/deploy/web";
 import { LorePlanApi } from "@lore/plan/api";
 import { LorePlanMcp } from "@lore/plan/mcp";
 import { LorePlanWeb, WorkAccountSections, WorkRouter } from "@lore/plan/web";
 import { LoreRememberApi } from "@lore/remember/api";
 import { LoreRememberMcp } from "@lore/remember/mcp";
 import { KnowledgeRouter, LoreRememberWeb } from "@lore/remember/web";
+import { LoreShipApi } from "@lore/ship/api";
+import { LoreShipMcp } from "@lore/ship/mcp";
+import { DeployRouter, LoreShipWeb } from "@lore/ship/web";
 import type { Alepha } from "alepha";
 
 /**
@@ -56,21 +56,21 @@ export const bootLore = (
       .with(LoreCoreApi)
       .with(LorePlanApi)
       .with(LoreRememberApi)
-      .with(LoreDeployApi);
+      .with(LoreShipApi);
   }
   if (layers.includes("mcp")) {
     alepha
       .with(LoreCoreMcp)
       .with(LorePlanMcp)
       .with(LoreRememberMcp)
-      .with(LoreDeployMcp);
+      .with(LoreShipMcp);
   }
   if (layers.includes("web")) {
     alepha
       .with(LoreCoreWeb)
       .with(LorePlanWeb)
       .with(LoreRememberWeb)
-      .with(LoreDeployWeb);
+      .with(LoreShipWeb);
   }
   if (layers.includes("routes")) {
     alepha.inject(AutomationRouter);

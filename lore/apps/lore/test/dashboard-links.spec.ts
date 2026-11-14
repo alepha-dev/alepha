@@ -1,6 +1,6 @@
 import { DashboardMetricCatalog } from "@lore/core/schemas";
-import { DeployDashboardMetrics } from "@lore/deploy/schemas";
 import { WorkDashboardMetrics } from "@lore/plan/schemas";
+import { DeployDashboardMetrics } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";

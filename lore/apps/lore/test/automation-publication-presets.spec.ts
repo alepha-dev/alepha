@@ -14,10 +14,10 @@ import {
 import { AutomationWorker } from "@lore/core/api";
 import type { AutomationResource } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { DeployJobs, DeployRegistry } from "@lore/deploy/api";
-import { appInstances, artifacts, deployments } from "@lore/deploy/schemas";
 import { ReleaseController } from "@lore/plan/api";
 import { FolioController } from "@lore/remember/api";
+import { DeployJobs, DeployRegistry } from "@lore/ship/api";
+import { appInstances, artifacts, deployments } from "@lore/ship/schemas";
 import { Alepha, AlephaError, $hook, $inject } from "alepha";
 import { JobQueueProvider, jobExecutionEntity } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";

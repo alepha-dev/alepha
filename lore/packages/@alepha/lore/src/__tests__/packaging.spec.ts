@@ -127,7 +127,7 @@ describe("@alepha/lore packaging", () => {
       "@lore/core",
       "@lore/plan",
       "@lore/remember",
-      "@lore/deploy",
+      "@lore/ship",
     ]) {
       expect(manifest.peerDependencies[pkg]).toBe("*");
       expect(manifest.peerDependenciesMeta[pkg]).toEqual({ optional: true });

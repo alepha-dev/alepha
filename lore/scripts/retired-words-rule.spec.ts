@@ -9,7 +9,7 @@ describe("RetiredWordsRule", () => {
     expect,
   }) => {
     const found = rule.check(
-      "lore/packages/@lore/deploy/src/api/Thing.ts",
+      "lore/packages/@lore/ship/src/api/Thing.ts",
       [
         "// Resolves a blight.",
         'const kind = "estate";',
@@ -38,7 +38,7 @@ describe("RetiredWordsRule", () => {
       "framework/CHANGELOG.md",
       "lore/apps/lore/migrations/sqlite/20261114021313_errors_and_hosts/migration.sql",
       "bay/internal/connector/testdata/wire-v1/welcome.json",
-      "lore/packages/@lore/deploy/test/fixtures/bay/wire-v1/config.json",
+      "lore/packages/@lore/ship/test/fixtures/bay/wire-v1/config.json",
       "lore/apps/lore/test/estates-become-hosts-migration.spec.ts",
     ]) {
       expect(rule.check(file, "estates and blights")).toEqual([]);

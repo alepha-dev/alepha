@@ -10,7 +10,7 @@ import { dirname, join, normalize } from "node:path";
  * | `core`      | the glue         | nothing     |
  * | `plan`      | Lore as Jira     | `core`      |
  * | `remember`  | Lore as Obsidian | `core`      |
- * | `deploy`    | Lore as Vercel   | `core`      |
+ * | `ship`      | Lore as Vercel   | `core`      |
  *
  * A feature module never imports another one. A feature that spans two of
  * them (an epic files folios, an error is forwarded to a quest, a release
@@ -41,7 +41,7 @@ export class LorePackageGraph {
     core: [],
     plan: ["core"],
     remember: ["core"],
-    deploy: ["core"],
+    ship: ["core"],
   };
 
   /**

@@ -10,7 +10,7 @@ import type {
   AutomationVariableApproval,
 } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { appInstances } from "@lore/deploy/schemas";
+import { appInstances } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { JobQueueProvider } from "alepha/api/jobs";
 import { ApiKeyService } from "alepha/api/keys";

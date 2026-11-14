@@ -73,7 +73,7 @@ export class ArtifactAssetLister {
  * The asset list as it travels: the `assets` part of a push, JSON.
  *
  * ⚠️ **A wire contract with Lore's push endpoint**, which validates it with its
- * own schema (`artifactAssetListSchema` in `@lore/deploy`). An older Lore
+ * own schema (`artifactAssetListSchema` in `@lore/ship`). An older Lore
  * ignores the part, and an older CLI sends none: both still push.
  */
 export interface ArtifactAssetList {

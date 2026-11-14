@@ -9,8 +9,8 @@ import {
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import type { AdminProjectController } from "@lore/core/api";
-import type { AdminHostController } from "@lore/deploy/api";
-import type { AdminHostResource } from "@lore/deploy/schemas";
+import type { AdminHostController } from "@lore/ship/api";
+import type { AdminHostResource } from "@lore/ship/schemas";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useState } from "react";

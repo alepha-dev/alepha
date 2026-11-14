@@ -12,7 +12,7 @@ import (
 /*
 The compose conformance set: files Bay accepts and files it refuses, with the
 words it refuses them in. Lore copies testdata/conformance into
-packages/@lore/deploy/test/fixtures/bay/compose and runs the same cases
+packages/@lore/ship/test/fixtures/bay/compose and runs the same cases
 through its own parser, so a file fails at upload exactly where and how it
 would fail here. Bay's copy is the authority.
 */

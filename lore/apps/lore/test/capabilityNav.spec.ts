@@ -6,13 +6,13 @@ import {
   CORE_NAV,
   type ProjectShellContext,
 } from "@lore/core/web";
+import { WorkShell } from "@lore/plan/web";
+import { KnowledgeShell } from "@lore/remember/web";
 import {
   currentErrorCountAtom,
   currentInstancesAtom,
   DeployShell,
-} from "@lore/deploy/web";
-import { WorkShell } from "@lore/plan/web";
-import { KnowledgeShell } from "@lore/remember/web";
+} from "@lore/ship/web";
 import { Alepha, type Atom } from "alepha";
 import { describe, it } from "vitest";
 

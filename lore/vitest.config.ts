@@ -3,9 +3,9 @@ import { defineConfig } from "vitest/config";
 import { projects as lore } from "./apps/lore/vitest.config.ts";
 import { projects as loreSdk } from "./packages/@alepha/lore/vitest.config.ts";
 import { projects as loreCore } from "./packages/@lore/core/vitest.config.ts";
-import { projects as loreDeploy } from "./packages/@lore/deploy/vitest.config.ts";
 import { projects as lorePlan } from "./packages/@lore/plan/vitest.config.ts";
 import { projects as loreRemember } from "./packages/@lore/remember/vitest.config.ts";
+import { projects as loreShip } from "./packages/@lore/ship/vitest.config.ts";
 import { workspaceProjects } from "./scripts/vitest.projects.ts";
 
 /**
@@ -29,7 +29,7 @@ export default defineConfig({
       ...loreCore,
       ...lorePlan,
       ...loreRemember,
-      ...loreDeploy,
+      ...loreShip,
     ],
   },
 });

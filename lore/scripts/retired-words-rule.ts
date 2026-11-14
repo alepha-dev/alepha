@@ -38,7 +38,7 @@ export class RetiredWordsRule {
     /(^|\/)CHANGELOG\.md$/,
     /(^|\/)migrations\//,
     /(^|\/)testdata\/wire-v1\//,
-    /^lore\/packages\/@lore\/deploy\/test\/fixtures\/bay\//,
+    /^lore\/packages\/@lore\/ship\/test\/fixtures\/bay\//,
     /^lore\/apps\/lore\/test\/[a-z-]+-become-[a-z-]+-migration\.spec\.ts$/,
     /^lore\/scripts\/retired-words-rule(\.spec)?\.ts$/,
   ];

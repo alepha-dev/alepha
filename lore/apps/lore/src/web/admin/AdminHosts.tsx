@@ -5,8 +5,8 @@ import {
   type DataTableFilterFields,
   type DataTableFilterValues,
 } from "@alepha/ui/table";
-import type { AdminHostController } from "@lore/deploy/api";
-import type { AdminHostResource } from "@lore/deploy/schemas";
+import type { AdminHostController } from "@lore/ship/api";
+import type { AdminHostResource } from "@lore/ship/schemas";
 import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";

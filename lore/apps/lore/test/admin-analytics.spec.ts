@@ -1,5 +1,5 @@
 import { ProjectAnalytics } from "@lore/core/api";
-import { DeployAnalytics } from "@lore/deploy/api";
+import { DeployAnalytics } from "@lore/ship/api";
 import { Alepha } from "alepha";
 import { AdminAnalyticsService } from "alepha/api/analytics";
 import { describe, expect, it } from "vitest";

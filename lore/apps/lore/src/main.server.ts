@@ -12,20 +12,20 @@ import {
 import { LoreCoreMcp } from "@lore/core/mcp";
 import { LoreCoreWeb } from "@lore/core/web";
 import { ProjectScopeGrants } from "@lore/core/web";
-import { LoreDeployApi } from "@lore/deploy/api";
-import {
-  DeployJobs,
-  HostCommandTransport,
-  WebSocketHostCommandTransport,
-} from "@lore/deploy/api";
-import { LoreDeployMcp } from "@lore/deploy/mcp";
-import { LoreDeployWeb } from "@lore/deploy/web";
 import { LorePlanApi } from "@lore/plan/api";
 import { LorePlanMcp } from "@lore/plan/mcp";
 import { LorePlanWeb } from "@lore/plan/web";
 import { LoreRememberApi } from "@lore/remember/api";
 import { LoreRememberMcp } from "@lore/remember/mcp";
 import { LoreRememberWeb } from "@lore/remember/web";
+import { LoreShipApi } from "@lore/ship/api";
+import {
+  DeployJobs,
+  HostCommandTransport,
+  WebSocketHostCommandTransport,
+} from "@lore/ship/api";
+import { LoreShipMcp } from "@lore/ship/mcp";
+import { LoreShipWeb } from "@lore/ship/web";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import { JobProvider } from "alepha/api/jobs";
@@ -136,7 +136,7 @@ alepha.set(oauthOptions, {
 alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 
 // The host command queue pushes over the hosts websocket (epic #20).
-// Declared BEFORE `LoreDeployApi`, which registers the default transport that
+// Declared BEFORE `LoreShipApi`, which registers the default transport that
 // reaches nothing: a substitution after the service is in use is refused.
 alepha.with({
   provide: HostCommandTransport,
@@ -192,11 +192,11 @@ alepha.with({ provide: JobProvider, use: AutomationLegacyJobProvider });
 alepha.with(LoreCoreApi);
 alepha.with(LorePlanApi);
 alepha.with(LoreRememberApi);
-alepha.with(LoreDeployApi);
+alepha.with(LoreShipApi);
 alepha.with(LoreCoreMcp);
 alepha.with(LorePlanMcp);
 alepha.with(LoreRememberMcp);
-alepha.with(LoreDeployMcp);
+alepha.with(LoreShipMcp);
 
 // The in-app assistant (#E120), after every module: its tools are theirs.
 // Always registered, so its tables are in every schema; `AI_ASSISTANT_ENABLED`
@@ -220,7 +220,7 @@ alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 alepha.with(LoreCoreWeb);
 alepha.with(LorePlanWeb);
 alepha.with(LoreRememberWeb);
-alepha.with(LoreDeployWeb);
+alepha.with(LoreShipWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.
 alepha.with(LoreAssistantWeb);
 alepha.with(AlephaSigil);

@@ -4,8 +4,8 @@ import {
   LoreInboxRecipientProvider,
 } from "@lore/core/api";
 import { projects, users } from "@lore/core/schemas";
-import { HostNotifications } from "@lore/deploy/api";
 import { QuestNotifications } from "@lore/plan/api";
+import { HostNotifications } from "@lore/ship/api";
 import { Alepha } from "alepha";
 import {
   notificationInboxEntity,

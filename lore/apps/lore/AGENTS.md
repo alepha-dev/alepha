@@ -35,7 +35,7 @@ Since #E75 (2026-10-06) the product lives in four packages, and `apps/lore` is w
 | `@lore/core`     | the glue         | [`packages/@lore/core/AGENTS.md`](../../packages/@lore/core/AGENTS.md): barrels, registries, capabilities, access, routing traps, I18n, no transactions |
 | `@lore/plan`     | Lore as Jira     | [`packages/@lore/plan/AGENTS.md`](../../packages/@lore/plan/AGENTS.md): quests, epics, releases, kanban, roadmap, feedback                              |
 | `@lore/remember` | Lore as Obsidian | [`packages/@lore/remember/AGENTS.md`](../../packages/@lore/remember/AGENTS.md): folios, directories, attachments, protected folios                      |
-| `@lore/deploy`   | Lore as Vercel   | [`packages/@lore/deploy/AGENTS.md`](../../packages/@lore/deploy/AGENTS.md): apps and instances, sigils and telemetry, deployments, hosts                |
+| `@lore/ship`     | Lore as Vercel   | [`packages/@lore/ship/AGENTS.md`](../../packages/@lore/ship/AGENTS.md): apps and instances, sigils and telemetry, deployments, hosts                    |
 
 The framework is **vendored**: `.vendor/alepha` and `.vendor/@alepha/ui` are the framework's `main`, synced by `yarn vendor:sync` and committed, and they are workspaces, so `alepha` / `@alepha/ui` resolve to them as source. Alepha has near-zero training data: read `../../.vendor/alepha/src/...` and `../../.vendor/@alepha/ui/src/...` as the authority, and **never edit them here**.
 
@@ -53,7 +53,7 @@ apps/lore/
 └── public/               # Static assets served at /
 ```
 
-**The entries are the only place the packages meet.** `main.server.ts` registers, in this order: every substitution that must precede a module (the job sweep cron, email, captcha, file access, OAuth, the host command transport, scope grants, inbox and preference providers); `LoreCoreApi`, `LorePlanApi`, `LoreRememberApi`, `LoreDeployApi`; the four MCP modules; the `SigilSinkProvider` substitution; then the four web modules, `AlephaSigil` and `LoreWebAdmin`. A substitution recorded after a module resolved what it replaces is a `TooLateSubstitutionError`, so a new one goes above the modules. `main.browser.ts` registers the same four web modules: SSR and hydration read one page registry. There is no `LoreApi`, `LoreMcp` or `LoreWebApp` any more.
+**The entries are the only place the packages meet.** `main.server.ts` registers, in this order: every substitution that must precede a module (the job sweep cron, email, captcha, file access, OAuth, the host command transport, scope grants, inbox and preference providers); `LoreCoreApi`, `LorePlanApi`, `LoreRememberApi`, `LoreShipApi`; the four MCP modules; the `SigilSinkProvider` substitution; then the four web modules, `AlephaSigil` and `LoreWebAdmin`. A substitution recorded after a module resolved what it replaces is a `TooLateSubstitutionError`, so a new one goes above the modules. `main.browser.ts` registers the same four web modules: SSR and hydration read one page registry. There is no `LoreApi`, `LoreMcp` or `LoreWebApp` any more.
 
 **Specs.** A spec whose subject is one package lives in that package's `test/` and boots its module alone. `apps/lore/test` holds the scenario specs, the ones that need several packages registered, and boots them with `bootLore(alepha, layers)` (`test/fixtures/bootLore.ts`): `api`, `mcp`, `web`, or `routes` (every router and account page, without the UI behind them). The migration specs live here too, because the migrations are the app's.
 
@@ -303,7 +303,7 @@ npx wrangler d1 execute lore-production --remote --json --command "SELECT name F
 ```
 
 The companion defect — why no error was ever raised for any of it — is under
-"Sigils, Errors, Beacon, Vitals" in [`packages/@lore/deploy/AGENTS.md`](../../packages/@lore/deploy/AGENTS.md); both are written up in folio #82.
+"Sigils, Errors, Beacon, Vitals" in [`packages/@lore/ship/AGENTS.md`](../../packages/@lore/ship/AGENTS.md); both are written up in folio #82.
 
 ### ⚠️ Dropping a conjunct from a gate is a data migration with no SQL (accepted, 2026-08-06)
 

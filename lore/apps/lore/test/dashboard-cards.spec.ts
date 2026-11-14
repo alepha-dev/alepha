@@ -4,7 +4,7 @@ import {
   dashboardSettings,
   type Project,
 } from "@lore/core/schemas";
-import { sigils } from "@lore/deploy/schemas";
+import { sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

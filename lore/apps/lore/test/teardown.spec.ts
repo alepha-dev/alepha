@@ -7,8 +7,8 @@ import {
   AppController,
   CredentialSealService,
   TeardownService,
-} from "@lore/deploy/api";
-import { appInstances, hostProjects, hosts } from "@lore/deploy/schemas";
+} from "@lore/ship/api";
+import { appInstances, hostProjects, hosts } from "@lore/ship/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

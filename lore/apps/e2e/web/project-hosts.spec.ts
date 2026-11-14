@@ -110,7 +110,7 @@ const call = async (
 
 const FIXTURE = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../../../packages/@lore/deploy/test/fixtures/bay/wire-v1",
+  "../../../packages/@lore/ship/test/fixtures/bay/wire-v1",
 );
 
 /**

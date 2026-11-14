@@ -249,7 +249,7 @@ export default defineConfig({
         "../../packages/@lore/core/src",
         "../../packages/@lore/plan/src",
         "../../packages/@lore/remember/src",
-        "../../packages/@lore/deploy/src",
+        "../../packages/@lore/ship/src",
         "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [

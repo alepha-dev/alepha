@@ -1,5 +1,5 @@
 import type { ProjectController } from "@lore/core/api";
-import type { HostController, ProjectHostController } from "@lore/deploy/api";
+import type { HostController, ProjectHostController } from "@lore/ship/api";
 import { $inject, AlephaError } from "alepha";
 import { CommandError } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
