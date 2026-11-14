@@ -55,12 +55,11 @@ export default defineConfig({
   //
   // Build metadata (version, commit, build date, runtime) is resolved for you
   // and served on \`GET /version\`, readable anywhere as \`alepha.meta\`. The
-  // version comes from the git tag on the built commit, or "latest" when there
-  // is none. Declare one yourself only if that is not the answer you want -
-  // typically an app that deploys on every push, where tags exist only on
-  // releases:
+  // version comes from git: the release tag on the built commit, or the last
+  // one and the distance past it (\`1.2.0-4-gabc1234\`), or "latest" with no
+  // tag at all. Declare one yourself only if that is not the answer you want:
   //
-  // meta: { version: pkg.version },
+  // meta: { version: "1.2.0" },
   //
   // \`alepha deploy\` targets the configured default (production unless
   // overridden): authenticate, provision, build, migrate, deploy, secrets.
