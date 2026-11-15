@@ -28,6 +28,13 @@ on:
   pull_request:
     branches:
       - main
+  # The merge queue (#Q3688): a pull request is tested again on top of main
+  # and of every pull request queued ahead of it, and merges only if that is
+  # green too. Two pull requests green alone can be red together (four
+  # migrations on one snapshot, 2026-11-15). Nothing deploys from a queue
+  # run: its ref is `gh-readonly-queue/main/...`, never main.
+  merge_group:
+    types: [checks_requested]
   # By hand. A green dispatch on `main` deploys, like a push, when a person
   # started it. Release dispatched it too until it went tag-driven (#Q3640):
   # it pushes no commit any more, so there is nothing new to verify.
@@ -59,12 +66,14 @@ defaults:
     working-directory: lore
 
 jobs:
-  # Whether this pull request touches this workflow's part of the tree (#Q3633).
-  # Any other event runs everything. The list is the `push` trigger's `paths`.
+  # Whether this pull request, or this merge queue group (#Q3688), touches this
+  # workflow's part of the tree (#Q3633). Any other event runs everything.
+  # The list is the `push` trigger's `paths`.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      contents: read
       pull-requests: read
     defaults:
       run:
@@ -76,12 +85,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')
+          elif [ "$GITHUB_EVENT_NAME" = "merge_group" ]; then
+            # Every commit the group adds to main: this pull request's and
+            # those queued ahead of it.
+            files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BASE_SHA...$HEAD_SHA?per_page=100" --paginate --jq '.files[].filename')
+          else
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')
           if printf '%s\n' "$files" | grep -qE '^(lore/|framework/|bay/|\.github/workflows/verify-lore\.yml$|\.github/actions/|package\.json$|yarn\.lock$|\.yarnrc\.yml$|\.nvmrc$)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
