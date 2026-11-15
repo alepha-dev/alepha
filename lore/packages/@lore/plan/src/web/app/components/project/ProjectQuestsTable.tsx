@@ -34,6 +34,7 @@ import {
   useProjectUsers,
   AgentPromptsMenu,
   useAgentPrompt,
+  settleBulk,
 } from "@lore/core/web";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -71,9 +72,12 @@ import {
   FlagOff,
   Tag,
   Trash,
+  UserPlus,
+  Milestone,
 } from "lucide-react";
 import { useState } from "react";
 
+import type { EpicController } from "../../../../api/controllers/EpicController.ts";
 import type { QuestController } from "../../../../api/controllers/QuestController.ts";
 import { QUEST_EPIC_NONE } from "../../../../api/schemas/questEpicFilter.ts";
 import {
@@ -115,6 +119,7 @@ const ProjectQuestsTable = () => {
   const agentPrompt = useAgentPrompt();
   const promptSubject = useWorkPromptSubject();
   const questApi = useClient<QuestController>();
+  const epicApi = useClient<EpicController>();
   const questMutations = useQuestMutations();
   const reportBulk = useBulkReport();
   const dateFormatter = useInject(DateTimeProvider);
@@ -398,6 +403,86 @@ const ProjectQuestsTable = () => {
     [questMutations, reportBulk, tr],
   );
 
+  // Assign (#Q3714): offered only while no selected quest has an assignee,
+  // so it never silently takes a quest from somebody.
+  const assignManyAction = useAction<
+    [
+      user: { id: string; label: string },
+      selected: QuestResource[],
+      ctx: BulkActionContext,
+    ],
+    void
+  >(
+    {
+      handler: async (_ctx, user, selected, ctx) => {
+        const outcome = await questMutations.assignMany(
+          selected.map((quest) => quest.id),
+          user.id,
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.assigned", {
+            args: [count(outcome.done), user.label],
+          }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [questMutations, reportBulk, tr],
+  );
+
+  // Create epic (#Q3714): offered only while no selected quest is in an
+  // epic. The epic starts as a draft, as every new epic does, and the
+  // selection is filed under it one quest at a time.
+  const createEpicAction = useAction<
+    [title: string, selected: QuestResource[], ctx: BulkActionContext],
+    void
+  >(
+    {
+      handler: async (_ctx, title, selected, ctx) => {
+        if (!project) return;
+        const epic = await epicApi.createEpic({
+          params: { projectId: project.id },
+          body: { title },
+        });
+        const outcome = await settleBulk(
+          selected.map((quest) => quest.id),
+          (questId) =>
+            epicApi.attachQuest({
+              params: { id: epic.id },
+              body: { questId },
+            }),
+        );
+        reportBulk(
+          outcome,
+          tr("board.bulk.epic.created", {
+            args: [String(epic.number), count(outcome.done)],
+          }),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    },
+    [epicApi, project?.id, reportBulk, tr],
+  );
+
+  const createEpicFor = async (
+    selected: QuestResource[],
+    ctx: BulkActionContext<QuestResource>,
+  ) => {
+    const title = await dialog.prompt({
+      title: tr("board.bulk.epic.title", { args: [String(selected.length)] }),
+      description: tr("board.bulk.epic.description"),
+      label: tr("board.bulk.epic.label"),
+      validate: (value) =>
+        value.trim().length < 3 || value.trim().length > 80
+          ? tr("board.bulk.epic.invalid")
+          : null,
+    });
+    if (title) void createEpicAction.run(title.trim(), selected, ctx);
+  };
+
   const removeMany = async (
     selected: QuestResource[],
     ctx: BulkActionContext<QuestResource>,
@@ -427,7 +512,11 @@ const ProjectQuestsTable = () => {
 
   // Page-wide (#E59 rule 10): every row and bulk write waits while any of
   // them runs. The bulk bar has no disabled state, so its buttons hide.
-  const busy = setReleaseAction.loading || attachToReleaseAction.loading;
+  const busy =
+    setReleaseAction.loading ||
+    attachToReleaseAction.loading ||
+    assignManyAction.loading ||
+    createEpicAction.loading;
 
   const renderAvatar = (userId?: string) => {
     const user = userId ? users.find((u) => u.id === userId) : undefined;
@@ -708,6 +797,39 @@ const ProjectQuestsTable = () => {
             onClick: (selected, ctx) =>
               void attachToReleaseAction.run(release, selected, ctx),
           })),
+    });
+  }
+
+  if (questApi.assignQuest.can()) {
+    bulkActions.push({
+      icon: UserPlus,
+      label: tr("board.bulk.assign"),
+      visible: (selected) =>
+        !busy && selected.every((quest) => !quest.acceptedBy),
+      items: () =>
+        users
+          .filter((user) => user.assignable !== false)
+          .map((user) => {
+            const label = displayName(user, user.id);
+            return {
+              label,
+              onClick: (selected, ctx) =>
+                void assignManyAction.run(
+                  { id: user.id, label },
+                  selected,
+                  ctx,
+                ),
+            };
+          }),
+    });
+  }
+
+  if (epicApi.createEpic.can() && epicApi.attachQuest.can()) {
+    bulkActions.push({
+      icon: Milestone,
+      label: tr("board.bulk.epic"),
+      visible: (selected) => !busy && selected.every((quest) => !quest.epicId),
+      onClick: (selected, ctx) => void createEpicFor(selected, ctx),
     });
   }
 
