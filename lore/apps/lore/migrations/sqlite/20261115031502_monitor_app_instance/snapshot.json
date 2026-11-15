@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "0dcb9b72-1fe0-4b01-bf2a-20b1832b38f5",
-  "prevIds": ["bd6f1466-bca1-4bfe-badf-88fc8aff80fc"],
+  "id": "984ca0db-b691-41a3-ac00-36218ad583cd",
+  "prevIds": ["62261298-5c23-4363-b54b-f3c1f2af72cc"],
   "ddl": [
     {
       "name": "ai_conversations",
@@ -5958,7 +5958,7 @@
       "table": "hosts",
       "name": "project_id",
       "type": "integer",
-      "notNull": false,
+      "notNull": true,
       "autoincrement": false,
       "default": null,
       "generated": null,
