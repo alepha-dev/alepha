@@ -25,6 +25,10 @@ import ProjectDashboard from "./ProjectDashboard.tsx";
  */
 class FakeLinkProvider extends LinkProvider {
   calls: string[] = [];
+  /**
+   * What an action answers in place of its default, by name.
+   */
+  answers: Record<string, unknown> = {};
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -33,6 +37,7 @@ class FakeLinkProvider extends LinkProvider {
         Object.assign(
           async () => {
             this.calls.push(name);
+            if (name in this.answers) return this.answers[name];
             if (name === "reorderProjectDashboardCards") {
               throw new Error("The board order could not be saved (spec)");
             }
@@ -157,7 +162,12 @@ describe("ProjectDashboard", () => {
     expect(await screen.findByTestId("dashboard-empty")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-loading")).toBeNull();
   });
-  it("renders a computed board read-only, with no card menu or edit mode", async () => {
+  /**
+   * No Customize step (#Q3675): the computed board offers Edit and Add card
+   * like a stored one, and Edit stores it first, in one write, then opens
+   * edit mode on the stored copy.
+   */
+  it("offers Edit and Add card on a computed board, and stores it on Edit", async () => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -171,13 +181,19 @@ describe("ProjectDashboard", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     const project = projectFixture();
-    alepha.store.set(currentProjectAtom, project);
-    alepha.store.set(projectDashboardAtom, {
+    const computedBoard = {
       projectId: project.id,
       computed: true,
       cards: [{ ...card(-1), slot: "flow" }],
       values: [{ cardId: -1, ok: true, value: 4, detail: {}, scopeNames: [] }],
-    });
+    };
+    const links = alepha.inject(LinkProvider) as FakeLinkProvider;
+    links.answers = {
+      getProjectDashboard: computedBoard,
+      customizeProjectDashboard: { cards: [card(7)] },
+    };
+    alepha.store.set(currentProjectAtom, project);
+    alepha.store.set(projectDashboardAtom, computedBoard);
 
     render(
       <AlephaContext.Provider value={alepha}>
@@ -189,8 +205,35 @@ describe("ProjectDashboard", () => {
 
     const tile = await screen.findByTestId("dashboard-card");
     expect(tile.dataset.slot).toBe("flow");
+    // Not stored yet: no card menu, and the header says so for tests.
     expect(screen.queryByLabelText("Card options")).toBeNull();
-    expect(screen.queryByTestId("dashboard-add")).toBeNull();
+    expect(screen.getByTestId("dashboard-header").dataset.computed).toBe(
+      "true",
+    );
+    expect(screen.queryByTestId("dashboard-customize")).toBeNull();
+    expect(screen.getByTestId("dashboard-add")).toBeTruthy();
+    const edit = screen.getByTestId("dashboard-edit");
+    expect(links.calls).not.toContain("customizeProjectDashboard");
+
+    // Once the stored copy is on screen, reads answer it.
+    links.answers.getProjectDashboard = {
+      computed: false,
+      cards: [card(7)],
+      values: [],
+    };
+    fireEvent.click(edit);
+
+    await waitFor(() =>
+      expect(links.calls).toContain("customizeProjectDashboard"),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("dashboard-edit").getAttribute("aria-pressed"),
+      ).toBe("true"),
+    );
+    expect(
+      links.calls.filter((it) => it === "customizeProjectDashboard"),
+    ).toHaveLength(1);
   });
   it("renders an archived project's notice and loads no board", async () => {
     alepha = Alepha.create()

@@ -47,7 +47,7 @@ project kept.
 
 ## The default dashboard
 
-Until someone customizes it, a project's first dashboard is built by Lore, on
+Until someone edits it, a project's first dashboard is built by Lore, on
 every load, from what the project does: its capabilities and its data. What
 needs you, your own work, the flow of quests, the plan, the apps and the folios
 each get a place when there is something to show, and a card with nothing to
@@ -56,9 +56,10 @@ say stays out.
 A project with no recorded write in 90 days shows one line under the header,
 saying since when it has been quiet, and what it shipped last.
 
-The default dashboard is read-only for everyone. To change it, click
-**Customize**: Lore copies the cards you see into the dashboard, once, and from
-then on it is yours to edit.
+To change the default dashboard, click **Edit** or **Add card**, as on any
+other: Lore copies the cards you see into the dashboard on the first click, and
+from then on it is yours. **Reset to default**, in the dashboard's menu, goes
+back to the built one.
 
 **Only the first dashboard has a default.** Any other dashboard opens empty,
 and you fill it with **Add card**.
@@ -68,13 +69,13 @@ and you fill it with **Add card**.
 Editing needs the permission **Rename the project and edit its details**
 (`project:update`). The owner has it, and so does a rank created from the
 **Admin** preset. A **Member** reads the dashboard and cannot change it: no
-**Customize**, no **Add card**, no **Edit**, no card menu, no dragging.
+**Add card**, no **Edit**, no card menu, no dragging.
 
 To let other members curate the dashboard in your project, tick that permission
 for their rank in **Settings ▸ Members ▸ Ranks**. See
 [Members](/lore/docs/project-members).
 
-With the permission, on a customized dashboard:
+With the permission:
 
 - **Add card** opens a panel. Pick a metric, point it at the thing you care
   about, then **Save card**.

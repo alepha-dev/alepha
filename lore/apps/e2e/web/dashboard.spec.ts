@@ -97,9 +97,15 @@ test.describe("Project dashboard", () => {
       await expect(held.getByText(`Parked${t}`)).toBeVisible({
         timeout: 15_000,
       });
-      // Read-only: no card menu and no Add card on a computed board.
+      // Not stored yet: no card menu, but Edit and Add card are offered as on
+      // any board, and the first of them stores it (#Q3675).
       await expect(page.getByLabel("Card options")).toHaveCount(0);
-      await expect(page.getByTestId("dashboard-add")).toHaveCount(0);
+      await expect(page.getByTestId("dashboard-header")).toHaveAttribute(
+        "data-computed",
+        "true",
+      );
+      await expect(page.getByTestId("dashboard-add")).toBeVisible();
+      await expect(page.getByTestId("dashboard-edit")).toBeVisible();
     });
 
     await test.step("Activity is still there, one path down", async () => {
@@ -109,7 +115,7 @@ test.describe("Project dashboard", () => {
       await expect(page.getByTestId("dashboard-empty")).toHaveCount(0);
     });
 
-    await test.step("Customize copies the computed board, and Add extends it", async () => {
+    await test.step("Edit stores the computed board, and Add extends it", async () => {
       await page.goto(`/${slug}`);
       await page.waitForLoadState("networkidle");
       const computed = await page.getByTestId("dashboard-card").count();
@@ -121,7 +127,8 @@ test.describe("Project dashboard", () => {
         (r) => r.url().includes("/api/") && r.request().method() === "POST",
         { timeout: 15_000 },
       );
-      await page.getByTestId("dashboard-customize").click();
+      // No Customize step (#Q3675): Edit on the computed board stores it.
+      await page.getByTestId("dashboard-edit").click();
       expect((await copied).ok()).toBe(true);
 
       // Edit mode opens on the copied tiles (#Q2660).
@@ -162,7 +169,10 @@ test.describe("Project dashboard", () => {
       await expect(held.getByText("1", { exact: true })).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByTestId("dashboard-customize")).toHaveCount(0);
+      await expect(page.getByTestId("dashboard-header")).not.toHaveAttribute(
+        "data-computed",
+        "true",
+      );
     });
 
     await test.step("a board taller than the window scrolls under the wheel", async () => {
@@ -188,9 +198,11 @@ test.describe("Project dashboard", () => {
         .last()
         .click();
 
-      await expect(page.getByTestId("dashboard-customize")).toBeVisible({
-        timeout: 15_000,
-      });
+      await expect(page.getByTestId("dashboard-header")).toHaveAttribute(
+        "data-computed",
+        "true",
+        { timeout: 15_000 },
+      );
       await expect(page.locator('[data-metric="heldQuests"]')).toHaveCount(0);
     });
   });
@@ -262,7 +274,10 @@ test.describe("Project dashboard", () => {
       await expect(page.getByTestId("dashboard-selector-current")).toHaveText(
         "Apps",
       );
-      await expect(page.getByTestId("dashboard-customize")).toHaveCount(0);
+      await expect(page.getByTestId("dashboard-header")).not.toHaveAttribute(
+        "data-computed",
+        "true",
+      );
     });
 
     await test.step("a card added here lands on this dashboard, and a reload keeps it", async () => {
@@ -300,9 +315,11 @@ test.describe("Project dashboard", () => {
         timeout: 15_000,
       });
       // The first is still computed: the card added to Apps is not here.
-      await expect(page.getByTestId("dashboard-customize")).toBeVisible({
-        timeout: 15_000,
-      });
+      await expect(page.getByTestId("dashboard-header")).toHaveAttribute(
+        "data-computed",
+        "true",
+        { timeout: 15_000 },
+      );
     });
 
     await test.step("a rename moves the link, and the old one is gone", async () => {
@@ -481,9 +498,7 @@ test.describe("Project dashboard", () => {
         // instead.
         await expect(reader.page.getByTestId("dashboard-add")).toHaveCount(0);
         await expect(reader.page.getByTestId("dashboard-menu")).toHaveCount(0);
-        await expect(
-          reader.page.getByTestId("dashboard-customize"),
-        ).toHaveCount(0);
+        await expect(reader.page.getByTestId("dashboard-edit")).toHaveCount(0);
         await expect(
           reader.page.getByRole("button", { name: /card options/i }),
         ).toHaveCount(0);
@@ -619,12 +634,12 @@ test.describe("Project dashboard", () => {
     const addCard = async (metric: string, scopeTestId: string) => {
       await page.goto(`/${slug}`);
       await page.waitForLoadState("networkidle");
-      // A computed board is customized first (#Q2660); a stored board offers
+      // A computed board is stored by Edit (#Q3675); a stored board offers
       // Add card in and out of edit mode, and adding one turns it on; an
       // empty one carries Add itself.
-      const customize = page.getByTestId("dashboard-customize");
-      if (await customize.isVisible()) {
-        await customize.click();
+      const header = page.getByTestId("dashboard-header");
+      if ((await header.getAttribute("data-computed")) === "true") {
+        await page.getByTestId("dashboard-edit").click();
         await expect(page.getByTestId("dashboard-edit")).toHaveAttribute(
           "aria-pressed",
           "true",
