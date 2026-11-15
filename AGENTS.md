@@ -40,7 +40,7 @@ A step's own `working-directory` is relative to the repository root, so it names
 
 ## The workflow
 
-The framework's rules apply to the whole repository (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, staged by explicit path and naming its quest as `#Q<n>`; every pull request rebase-merged through the merge queue with auto-merge on (`gh pr merge --auto --rebase`), so CI runs before the merge and `main` receives one commit per quest. Nothing is pushed to `main` directly. See "The workflow" in `framework/AGENTS.md`.
+The framework's rules apply to the whole repository (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, staged by explicit path and naming its quest as `#Q<n>`; every pull request rebase-merged through the merge queue with auto-merge on (`gh pr merge --auto --rebase`), so CI runs before the merge and `main` receives one commit per quest. Nothing is pushed to `main` directly. A worktree goes under `.claude/worktrees/<name>` at the repository root, never in a sibling folder of the checkout. See "The workflow" in `framework/AGENTS.md`.
 
 ## What the repository may name
 

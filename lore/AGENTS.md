@@ -41,7 +41,7 @@ core <- ship
 
 ⚠️ **CI on the pull request is the gate. A green terminal is not. Nothing reaches `main` except through a pull request (#Q3633).**
 
-The repository's workflow is "The workflow" in `../framework/AGENTS.md` (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, naming its `#Q<n>`; `gh pr merge --auto --rebase` through the merge queue, so `main` receives every quest's commit; the commit `main` received recorded with `quest_commit_add` after the merge. A small edit (a few lines, no decision anyone would look for later) needs no quest, but still lands through a pull request.
+The repository's workflow is "The workflow" in `../framework/AGENTS.md` (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, naming its `#Q<n>`; `gh pr merge --auto --rebase` through the merge queue, so `main` receives every quest's commit; the commit `main` received recorded with `quest_commit_add` after the merge. A worktree goes under `.claude/worktrees/` at the repository root, never in a sibling folder such as `../alepha-<name>`. A small edit (a few lines, no decision anyone would look for later) needs no quest, but still lands through a pull request.
 
 A pull request touching `lore/`, `framework/` or `bay/` runs **Verify Lore** (`.github/workflows/verify-lore.yml` at the root: `checks`, `test` x2, `e2e-lore` x6, `e2e-cli`, `docker`).
 
