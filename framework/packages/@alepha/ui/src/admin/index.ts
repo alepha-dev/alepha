@@ -8,7 +8,7 @@
  * shell. The pages are exported by name too, for an app that routes them itself.
  *
  * The dashboard at `/admin` is a grid of tiles, each a number that opens its
- * list filtered to the same number: Users, Connected and Failed sign-ins ship
+ * list filtered to the same number: Users, Connected and Failed audits ship
  * built in, and an app adds its own with `AdminStatTile` through
  * `AdminRouterOptions.dashboardCards`. Which tiles show, and in what order, is
  * one layout per deployment that admins edit from Customize mode, stored as a
@@ -49,9 +49,9 @@ export {
   adminDashboardDayWindow,
 } from "./adminDashboardWindows.ts";
 export {
-  AdminFailedSignInsTile,
-  type AdminFailedSignInsTileProps,
-} from "./AdminFailedSignInsTile.tsx";
+  AdminFailedAuditsTile,
+  type AdminFailedAuditsTileProps,
+} from "./AdminFailedAuditsTile.tsx";
 export { AdminFiles } from "./AdminFiles.tsx";
 export {
   AdminStatTile,

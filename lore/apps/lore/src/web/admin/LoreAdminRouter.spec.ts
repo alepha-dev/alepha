@@ -61,7 +61,7 @@ describe("LoreAdminRouter", () => {
       "lore-projects",
       "users",
       "connected",
-      "failed-sign-ins",
+      "failed-audits",
     ]);
     const projects = cards[0]!;
     expect(projects.title).toBe("Projects");

@@ -674,7 +674,7 @@ test.describe("the dashboard's tiles", () => {
   test("each tile's click lands on a list whose total equals the tile, even with a stored filter", async ({
     page,
   }) => {
-    // One failed sign-in, so the failures tile has something to count.
+    // One failed sign-in, so the failed audits tile has something to count.
     await page.goto("/auth/login");
     await page.locator('input[name="identifier"]').fill("nobody@example.test");
     await page.locator('input[name="password"]').fill("not-the-password");
@@ -698,10 +698,7 @@ test.describe("the dashboard's tiles", () => {
     for (const [label, url] of [
       ["Utilisateurs", /\/admin\/users\?filters=none$/],
       ["Connectés", /\/admin\/users\?active=24$/],
-      [
-        "Connexions échouées",
-        /\/admin\/audits\?status=failed&type=auth,security&createdAt=/,
-      ],
+      ["Audits en échec", /\/admin\/audits\?status=failed&createdAt=/],
     ] as const) {
       await page.goto("/admin");
       const value = await tileValue(page, label);
@@ -732,7 +729,7 @@ test.describe("the dashboard's tiles", () => {
 
     const saved = await save(
       [
-        { id: "failed-sign-ins", enabled: true },
+        { id: "failed-audits", enabled: true },
         { id: "users", enabled: true },
         { id: "shop-pieces", enabled: false },
       ],

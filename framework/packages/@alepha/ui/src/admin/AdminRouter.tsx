@@ -38,7 +38,7 @@ import { AdminConnectedTile } from "./AdminConnectedTile.tsx";
 import type { AdminDashboardProps } from "./AdminDashboard.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
 import { adminDashboardCatalog } from "./adminDashboardLayout.ts";
-import { AdminFailedSignInsTile } from "./AdminFailedSignInsTile.tsx";
+import { AdminFailedAuditsTile } from "./AdminFailedAuditsTile.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
 import { AdminUsersTile } from "./AdminUsersTile.tsx";
 
@@ -358,17 +358,17 @@ export class AdminRouter {
         render: () => createElement(AdminConnectedTile, { id: "connected" }),
       },
       {
-        id: "failed-sign-ins",
-        title: "Failed sign-ins",
-        titleKey: "admin.dashboard.failedSignIns",
-        description: "Failed sign-in and security audits over 7 days.",
-        descriptionKey: "admin.dashboard.failedSignInsDescription",
+        id: "failed-audits",
+        title: "Failed audits",
+        titleKey: "admin.dashboard.failedAudits",
+        description: "Failed audits of every type over 7 days.",
+        descriptionKey: "admin.dashboard.failedAuditsDescription",
         order: 1020,
         can: () => this.auditApi.findAudits.can(),
         render: () =>
-          createElement(AdminFailedSignInsTile, {
-            id: "failed-sign-ins",
-            alertThreshold: this.options.failedSignInsAlertThreshold,
+          createElement(AdminFailedAuditsTile, {
+            id: "failed-audits",
+            alertThreshold: this.options.failedAuditsAlertThreshold,
           }),
       },
       ...(this.options.dashboardCards ?? []),

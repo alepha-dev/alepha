@@ -514,14 +514,14 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.dashboard.connectedTooltip":
     "Utilisateurs distincts qui se sont connectés ou ont rafraîchi une session dans les dernières 24 heures, clés d'API non comprises.",
   "admin.dashboard.deltaNew": "nouveau",
-  "admin.dashboard.failedSignIns": "Connexions échouées",
-  "admin.dashboard.failedSignInsDescription":
-    "Audits de connexion et de sécurité en échec sur 7 jours.",
-  "admin.dashboard.failedSignInsDelta":
+  "admin.dashboard.failedAudits": "Audits en échec",
+  "admin.dashboard.failedAuditsDescription":
+    "Audits en échec de tout type sur 7 jours.",
+  "admin.dashboard.failedAuditsDelta":
     "7 derniers jours par rapport aux 7 précédents",
-  "admin.dashboard.failedSignInsNote": "7 derniers jours, UTC.",
-  "admin.dashboard.failedSignInsTooltip":
-    "Audits de connexion et de sécurité en échec (mot de passe ou code erroné, tentative bloquée ou limitée), sur les 7 derniers jours en UTC. Un verrouillage en écrit deux.",
+  "admin.dashboard.failedAuditsNote": "7 derniers jours, UTC.",
+  "admin.dashboard.failedAuditsTooltip":
+    "Audits de tout type en échec (mot de passe ou code erroné, tentative bloquée ou limitée, et les échecs propres à l'application), sur les 7 derniers jours en UTC. Un verrouillage en écrit deux.",
   "admin.dashboard.unavailable": "n.d.",
   "admin.dashboard.usersDescription":
     "Tous les comptes, avec les inscriptions comparées à la semaine précédente.",

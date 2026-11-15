@@ -97,12 +97,12 @@ export interface AdminRouterOptions {
   dashboardCards?: AdminDashboardCard[];
 
   /**
-   * The Failed sign-ins tile turns warning-coloured above this many failures
+   * The Failed audits tile turns warning-coloured above this many failures
    * in its 7 days. A lockout writes two audit rows, so a handful is normal.
    *
    * @default 10
    */
-  failedSignInsAlertThreshold?: number;
+  failedAuditsAlertThreshold?: number;
 
   /**
    * Route name the shell's "leave admin" affordance pushes.
