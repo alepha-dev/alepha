@@ -118,10 +118,10 @@ describe("Stock automation presets", () => {
     // Registration order follows module boot order, not a contract.
     expect(catalog.presets.map((preset) => preset.key)).toEqual(
       expect.arrayContaining([
-      "feedback-created",
-      "tagged-quest-digest",
-      "epic-completed",
-    ]),
+        "feedback-created",
+        "tagged-quest-digest",
+        "epic-completed",
+      ]),
     );
     const preset = catalog.presets.find(
       (entry) => entry.key === "tagged-quest-digest",
