@@ -55,6 +55,11 @@ export interface WikiLinkHoverProviderProps {
   projectSlug: string;
   attachments: AttachmentRef[];
   children: React.ReactNode;
+  /**
+   * Added to the wrapper the delegation listens on, e.g. a flex child's
+   * sizing when the content must fill its parent (a table folio's grid).
+   */
+  className?: string;
 }
 
 /**
@@ -344,7 +349,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     // is the anchors' own.
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
-      className="[&_a[href^='#lore-broken:']]:text-danger-text [&_a[href^='#lore-broken:']]:decoration-danger-text/40 relative [&_a[href^='#lore-broken:']]:cursor-help [&_a[href^='#lore-broken:']]:decoration-wavy"
+      className={`[&_a[href^='#lore-broken:']]:text-danger-text [&_a[href^='#lore-broken:']]:decoration-danger-text/40 relative [&_a[href^='#lore-broken:']]:cursor-help [&_a[href^='#lore-broken:']]:decoration-wavy ${props.className ?? ""}`}
       onMouseOver={(e) => handleEnter(e.target)}
       onFocus={(e) => handleEnter(e.target)}
       onMouseOut={(e) => handleLeave(e.relatedTarget as Node | null)}
