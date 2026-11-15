@@ -123,22 +123,4 @@ describe("the host cascade anchor", () => {
   }) => {
     await scenario(expect, true);
   });
-
-  it("leaves a host with no home on its anchor, which goes with it", async ({
-    expect,
-  }) => {
-    const ctx = await setup();
-    alepha = ctx.alepha;
-    const dan = await ctx.entities.users.create({ username: "dan" });
-    const host = await ctx.repos.hosts.create({
-      ownerUserId: dan.id,
-      createdBy: dan.id,
-      type: "bay",
-      slug: "loose",
-    });
-
-    await ctx.alepha.inject(UserService).deleteUser(dan.id);
-
-    expect(await ctx.repos.hosts.findById(host.id)).toBeUndefined();
-  });
 });

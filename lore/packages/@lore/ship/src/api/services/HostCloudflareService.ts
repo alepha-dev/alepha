@@ -1,10 +1,14 @@
+import { AutomationSourceRepository } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
+import { ConflictError } from "alepha/server";
 
 import { type Host, hosts } from "../entities/hosts.ts";
 import { CloudflareProbeService } from "./CloudflareProbeService.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
+import { HostAutomationFields } from "./HostAutomationFields.ts";
 
 /**
  * Which field on the create form a failure belongs beside.
@@ -199,6 +203,9 @@ export class HostCloudflareService {
   protected readonly probes = $inject(CloudflareProbeService);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly sources = $inject(AutomationSourceRepository.of(hosts));
+  protected readonly projects = $repository(projects);
+  protected readonly fields = $inject(HostAutomationFields);
 
   /**
    * The first characters of a token, enough for a person to tell two apart
@@ -301,12 +308,42 @@ export class HostCloudflareService {
       return check;
     }
 
-    await this.hosts.updateById(host.id, {
-      credentialCheckedAt: this.dateTime.now().toISOString(),
+    const checkedAt = this.dateTime.now().toISOString();
+    const patch = {
+      credentialCheckedAt: checkedAt,
       credentialError: check.outcome === "failed" ? check.message : null,
       credentialExpiresAt:
         check.outcome === "passed" ? (check.expiresAt ?? null) : null,
-    });
+    };
+    // A token that was working and has just failed raises
+    // `host.credential_invalid` in the host's home project (#Q3627), in the
+    // same write as the failure, once per occurrence: the WHERE names the
+    // row as it was read, valid.
+    if (check.outcome === "failed" && !host.credentialError) {
+      try {
+        await this.sources.sourceUpdate(
+          { id: host.id, credentialError: { isNull: true } },
+          patch,
+          {
+            projectId: host.projectId,
+            identity: `host:${host.id}:credential_invalid:${checkedAt}`,
+            resourceId: host.id,
+            name: "host.credential_invalid",
+            fields: this.fields.build(
+              await this.projects.getById(host.projectId),
+              host,
+              "credential_invalid",
+              checkedAt,
+            ),
+          },
+        );
+        return check;
+      } catch (error) {
+        // Another check recorded the failure first: write the row alone.
+        if (!(error instanceof ConflictError)) throw error;
+      }
+    }
+    await this.hosts.updateById(host.id, patch);
     return check;
   }
 

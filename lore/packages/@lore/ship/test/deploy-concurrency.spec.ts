@@ -230,6 +230,7 @@ describe("a deploy that finds no free slot", () => {
     ).data;
 
     const host = await rows().hosts.create({
+      projectId: project.id,
       ownerUserId: user.id,
       type: "cloudflare",
       slug: `cf-${crypto.randomUUID().slice(0, 6)}`,

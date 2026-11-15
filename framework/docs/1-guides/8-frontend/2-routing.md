@@ -512,7 +512,6 @@ export const myAdminOptions: AdminRouterOptions = {
       id: "orders",
       title: "Open orders",
       titleKey: "admin.orders.tile",
-      description: "Orders paid and not shipped yet.",
       render: () => <OrdersTile />,
     },
   ],
@@ -524,15 +523,13 @@ A card's fields:
 - `id`, unique across the built-in cards (`users`, `connected`,
   `failed-audits`) and yours: setting options that reuse one throws, at
   startup since every app sets its options before `start`;
-- `title` (required) and `description`, the tile's name and one line in the
-  Customize picker; `titleKey` and `descriptionKey` translate them;
+- `title` (required), the tile's name, which labels its region for screen
+  readers; `titleKey` translates it;
 - `order`, ascending: the built-ins sit at 1000 and up, so a card with no
   `order` leads;
 - `can`, gated on the **action** the tile reads
   (`() => this.api.countOrders.can()`), never on a permission name, so the
   tile disappears with its module;
-- `defaultEnabled` (default `true`): whether the tile shows while the stored
-  layout does not name it;
 - `render`, which owns the whole tile.
 
 `AdminStatTile`'s `load` returns the number, `{ value, previous }` for a chip
@@ -541,29 +538,22 @@ previous, label } }` for a chip comparing another number (the Users tile shows
 the total and compares sign-ups; `label` is the chip's tooltip). A failure
 renders "n/a" with the error in a tooltip, never a toast.
 
-##### The layout, and Customize
+##### Which tiles show
 
-Which tiles show, and in what order, is **one layout for the whole
-deployment**: every admin sees the same dashboard. It is a parameter,
-`admin.dashboard.layout`, served by the parameters module (`alepha/api/parameters`),
-so it has the history and author of any parameter on the Parameters page.
-Any admin reads it; an admin who may write parameters
-(`admin:parameter:create`) sees a **Customize** button, which lists every
-tile: hide one, add it back from the "Add a tile" picker, reorder by drag or
-with the arrow buttons, then **Save**, **Cancel**, or **Reset to defaults**
-(confirmed). A tile an admin cannot see is listed as unavailable and keeps its
-place, so one admin's missing permission never drops another's tile.
+The tiles and their order are code: the built-in cards, then yours, sorted by
+`order`, each shown when its `can` passes. Every admin sees the same
+dashboard, and there is nothing to edit or store. To show your tiles only,
+drop the built-in ones:
 
-A save carries the version it started from. When another admin saved in
-between, it is refused (409) and the page says so and offers to load their
-layout, rather than overwriting it.
+```typescript
+export const myAdminOptions: AdminRouterOptions = {
+  builtinDashboardCards: false,
+  dashboardCards: [/* ... */],
+};
+```
 
-The layout is read by the page's loader, so the first render is the final
-grid. A tile the layout does not name yet (a new release's, or one an app just
-added) is appended when it is `defaultEnabled`; an id the layout names that no
-longer exists is dropped. Without the parameters module, or for an admin who
-cannot read the layout, the code defaults apply: every `defaultEnabled` tile,
-in `order`, and no Customize button.
+Above the tiles, the page greets the admin: "Hello", then their name, their
+username, or the part of their email before the `@`.
 
 The account is not a route: `AccountDialog` declares a settings dialog (see
 below) named `account`, with five sections. The user menu opens it, and a

@@ -263,6 +263,7 @@ describe("a deployment", () => {
         const w = await world();
         const rows = alepha.inject(TestRows);
         const host = await rows.hosts.create({
+          projectId: w.project.id,
           ownerUserId: w.user.id,
           type: "bay",
           slug: `bay-${crypto.randomUUID().slice(0, 6)}`,
@@ -387,6 +388,7 @@ describe("a deployment", () => {
         const w = await world();
         const rows = alepha.inject(TestRows);
         const host = await rows.hosts.create({
+          projectId: w.project.id,
           ownerUserId: w.user.id,
           type: "cloudflare",
           slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -438,6 +440,7 @@ describe("a deployment", () => {
       const w = await world();
       const rows = alepha.inject(TestRows);
       const host = await rows.hosts.create({
+        projectId: w.project.id,
         ownerUserId: w.user.id,
         type: "cloudflare",
         slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -1090,6 +1093,7 @@ describe("a deployment", () => {
       const w = await world();
       const rows = alepha.inject(TestRows);
       const host = await rows.hosts.create({
+        projectId: w.project.id,
         ownerUserId: w.user.id,
         type: "cloudflare",
         slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -1227,6 +1231,7 @@ describe("a deployment", () => {
     ) => {
       const rows = alepha.inject(TestRows);
       const host = await rows.hosts.create({
+        projectId: w.project.id,
         ownerUserId: w.user.id,
         type: "cloudflare",
         slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
@@ -1813,6 +1818,7 @@ describe("the deploy gate", () => {
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
     const host = await rows.hosts.create({
+      projectId: project.id,
       ownerUserId: owner.id,
       slug: "someones-account",
       type: "cloudflare",
@@ -1846,6 +1852,7 @@ describe("the deploy gate", () => {
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
     const host = await rows.hosts.create({
+      projectId: project.id,
       ownerUserId: owner.id,
       slug: "stats-only",
       type: "bay",
@@ -1875,6 +1882,7 @@ describe("the deploy gate", () => {
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
     const host = await rows.hosts.create({
+      projectId: project.id,
       ownerUserId: owner.id,
       slug: "a-machine",
       type: "bay",
@@ -1902,6 +1910,7 @@ describe("the deploy gate", () => {
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
     const host = await rows.hosts.create({
+      projectId: project.id,
       ownerUserId: owner.id,
       slug: "expired",
       type: "cloudflare",
@@ -1951,6 +1960,7 @@ describe("rolling back", () => {
     await enableApps(alepha, project.id, owner);
     const instance = await anInstance(alepha, project.id, owner);
     const created = await rows.hosts.create({
+      projectId: project.id,
       ownerUserId: owner.id,
       deployAllowed: true,
       ...host,
