@@ -86,7 +86,11 @@ class CountingRankService extends RankService {
 }
 
 const setup = async (
-  options: { countDefinitions?: boolean; guard?: boolean } = {},
+  options: {
+    countDefinitions?: boolean;
+    guard?: boolean;
+    builtinRanks?: string[];
+  } = {},
 ) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
   if (options.countDefinitions) {
@@ -107,6 +111,7 @@ const setup = async (
     maxPendingInvitationsPerOrganization: 50,
     maxPendingInvitationsPerInviter: 100,
     invitationPurgeDays: 90,
+    builtinRanks: options.builtinRanks,
   });
   await alepha.start();
 
@@ -153,6 +158,7 @@ describe("alepha/api/organizations - RankService", () => {
         permissions: ["*"],
         builtin: true,
         editable: false,
+        renamable: true,
       },
       {
         key: "member",
@@ -160,8 +166,72 @@ describe("alepha/api/organizations - RankService", () => {
         permissions: ["organization:read"],
         builtin: true,
         editable: true,
+        renamable: true,
       },
     ]);
+  });
+
+  it("renames the owner and keeps its permissions at *", async ({ expect }) => {
+    const ctx = await setup();
+    const { id } = ctx.organization;
+
+    await ctx.ranks.save(
+      id,
+      { key: "owner", name: "Captain", permissions: [ORG_READ] },
+      ctx.owner,
+    );
+
+    const owner = (await ctx.ranks.ranksOf(id)).find(
+      (rank) => rank.key === "owner",
+    );
+    expect(owner).toMatchObject({
+      name: "Captain",
+      permissions: ["*"],
+      editable: false,
+      renamable: true,
+    });
+    await expect(ctx.ranks.delete(id, "owner", ctx.owner)).rejects.toThrow(
+      "A built-in rank cannot be deleted",
+    );
+  });
+
+  it("refuses to delete a rank the application declares built in, and lets it be renamed and edited", async ({
+    expect,
+  }) => {
+    const ctx = await setup({ builtinRanks: ["admin"] });
+    const { id } = ctx.organization;
+
+    await ctx.ranks.save(
+      id,
+      { key: "admin", name: "Admin", permissions: [ORG_READ] },
+      ctx.owner,
+    );
+    await ctx.ranks.save(
+      id,
+      {
+        key: "admin",
+        name: "Staff",
+        permissions: [ORG_READ, "quest:write"],
+      },
+      ctx.owner,
+    );
+
+    expect(
+      (await ctx.ranks.ranksOf(id)).find((rank) => rank.key === "admin"),
+    ).toEqual({
+      key: "admin",
+      name: "Staff",
+      permissions: [ORG_READ, "quest:write"],
+      builtin: true,
+      editable: true,
+      renamable: true,
+    });
+    await expect(ctx.ranks.delete(id, "admin", ctx.owner)).rejects.toThrow(
+      "A built-in rank cannot be deleted",
+    );
+    await expect(ctx.ranks.delete(id, "member", ctx.owner)).rejects.toThrow(
+      "A built-in rank cannot be deleted",
+    );
   });
 
   it("lets an application refuse a rank write or delete from its hooks", async ({

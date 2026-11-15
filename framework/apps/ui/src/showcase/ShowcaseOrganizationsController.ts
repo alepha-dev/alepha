@@ -210,6 +210,7 @@ export class ShowcaseOrganizationsController {
       permissions: body.permissions,
       builtin: ["owner", "member"].includes(params.key),
       editable: params.key !== "owner",
+      renamable: true,
     }),
   });
 

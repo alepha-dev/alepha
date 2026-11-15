@@ -29,6 +29,7 @@ class Links extends LinkProvider {
                     permissions: ["*"],
                     builtin: true,
                     editable: false,
+                    renamable: true,
                   },
                   {
                     key: "member",
@@ -36,6 +37,7 @@ class Links extends LinkProvider {
                     permissions: [],
                     builtin: true,
                     editable: true,
+                    renamable: true,
                   },
                   {
                     key: "editor",
@@ -43,6 +45,7 @@ class Links extends LinkProvider {
                     permissions: ["document:read"],
                     builtin: false,
                     editable: true,
+                    renamable: true,
                   },
                 ],
               };

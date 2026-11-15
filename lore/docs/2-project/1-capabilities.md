@@ -73,8 +73,8 @@ Turning a capability off:
 - **deletes nothing**. Turn it back on and every quest, folio or app is where
   you left it.
 
-Only the project's **owner** can switch capabilities. No rank can be given
-that right.
+The owner and the **Admin** rank can switch capabilities. Another rank can be
+given that right in the **Ranks** tab ("Turn capabilities on and off").
 
 ## The rest of a project's settings
 

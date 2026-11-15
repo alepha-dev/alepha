@@ -273,7 +273,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
       <OrganizationRankColumnHeader
         name={rank.name}
         onRename={
-          rank.editable && !saving ? () => void rename.run(rank) : undefined
+          rank.renamable && !saving ? () => void rename.run(rank) : undefined
         }
         onDelete={
           !rank.builtin && rank.editable && !saving

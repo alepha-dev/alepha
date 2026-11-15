@@ -40,15 +40,14 @@ import { LoreRankBounds } from "./LoreRankBounds.ts";
  * declared group is either claimed by a capability or on that list, so a new
  * group cannot become invisible in the matrix while still gating endpoints.
  *
- * ## Two acts no rank may be given, and one it always has
+ * ## One act no rank may be given, and one it always has
  *
- * `project:delete` and `capability:manage` are **owner-only, structurally**.
- * Both are real registered strings so a gate can read them, and Lore's
- * `$rankResource` lists them as never grantable. `capability:manage` is
- * separate from `project:update` for a reason worth stating: turning a
- * capability ON widens every rank's effective set at once, the actor's own
- * included, and the subset rule does not catch it because a switch is not a
- * grant.
+ * `project:delete` is **owner-only, hard-coded** (#Q3736): a real registered
+ * string so a gate can read it, and never grantable. `capability:manage` was
+ * owner-only too until #Q3736 and is now an Admin's by default. It stays
+ * separate from `project:update` because turning a capability ON widens every
+ * rank's effective set at once, the actor's own included: a rank can hold
+ * `project:update` without holding that.
  *
  * `project:read` is a **floor**: every rank holds it. A member whose rank
  * cannot open the project is a removal expressed badly, and removing a member
@@ -114,8 +113,8 @@ export class LorePermissions {
    *
    * Grantable to a rank - that is the whole point of the epic - but absent
    * from {@link MEMBER_DEFAULT}, so nothing changes until somebody creates a
-   * rank that carries one. {@link OWNER_ONLY} is the subset of these that
-   * never becomes grantable.
+   * rank that carries one; the built-in Admin carries all of them but
+   * {@link OWNER_ONLY}, the subset that never becomes grantable.
    */
   public static readonly OWNER_TODAY: string[] = [
     "project:update",
@@ -191,8 +190,9 @@ export class LorePermissions {
    * The project's **identity**: title, description, slug, icon, repository
    * URL, roadmap visibility.
    *
-   * ⚠️ It used to gate `setCapability` as well, which made an Admin able to
-   * widen every rank at once. That act is `capability:manage` now.
+   * ⚠️ It used to gate `setCapability` as well. That act is
+   * `capability:manage` now, a separate grant (an Admin's by default since
+   * #Q3736).
    */
   projectUpdate = $permission({
     group: "project",

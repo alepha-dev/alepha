@@ -92,7 +92,7 @@ const ProjectSettingsCapabilitySection = (
           <Switch
             // Disabled rather than hidden: a switch that vanished for a
             // member would leave them wondering what turns the capability
-            // on. `capability:manage` is owner-only structurally. Held on
+            // on, for a rank without `capability:manage`. Held on
             // while a module says what turning it off would strand.
             disabled={
               !master.canToggle ||

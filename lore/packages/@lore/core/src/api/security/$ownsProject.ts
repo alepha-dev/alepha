@@ -119,10 +119,10 @@ export const $ownsProject = (options: OwnsProjectOptions): SecureMiddleware => {
     // join answers what the column used to.
     //
     // That also retires `owner: true`. "Only the owner" is now a permission on
-    // Lore's never-grantable list (`project:delete`, `capability:manage`):
-    // no custom rank can be given one, so only the `owner` built-in's `*`
-    // grants it, and the gate says which act it is rather than merely that the
-    // caller must be somebody special.
+    // Lore's never-grantable list (`project:delete`): no rank can be given
+    // it, so only the `owner` built-in's `*` grants it, and the gate says
+    // which act it is rather than merely that the caller must be somebody
+    // special.
     key: "organizationId",
   });
 

@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, z } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { organizationRanks } from "alepha/api/organizations";
 import { $logger } from "alepha/logger";
@@ -20,6 +20,36 @@ export class DefaultRankJobs {
   protected readonly projects = $repository(projects);
   protected readonly definitions = $repository(organizationRanks);
   protected readonly defaults = $inject(DefaultRankService);
+
+  /**
+   * The one-time hard reset of #Q3736: every project down to the four
+   * built-in ranks, Admin and Viewer rewritten to their presets. Queue-only,
+   * so it runs when somebody triggers it from Admin > Jobs and never on its
+   * own: a second run is harmless (it finds nothing to remove), but it would
+   * overwrite whatever owners changed in Admin and Viewer since.
+   */
+  public readonly resetRanks = $job({
+    name: "ranks.reset-builtins",
+    description:
+      "Resets every project to the owner, admin, member and viewer ranks: Admin and Viewer back to their presets, every custom rank deleted (its holders move to Admin or Member).",
+    // An empty payload: queue-only, so it has to name one.
+    schema: z.object({}),
+    timeout: [10, "minutes"],
+    handler: async () => {
+      const all = await this.projects.findMany({
+        columns: ["id", "organizationId"],
+      });
+      let removed = 0;
+      for (const project of all) {
+        if (!project.organizationId) continue;
+        removed += (await this.defaults.reset(project.id)).removed.length;
+      }
+      this.log.info("ranks reset to the built-ins", {
+        projects: all.length,
+        removed,
+      });
+    },
+  });
 
   public readonly seedDefaultRanks = $job({
     name: "ranks.seed-defaults",

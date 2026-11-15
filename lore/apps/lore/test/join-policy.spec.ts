@@ -175,10 +175,12 @@ describe("a project's join policy", () => {
 
     it("refuses opening a project with no Viewer rank", async ({ expect }) => {
       ctx = await setup({ launched: true });
-      await ctx.rankApi.deleteOrganizationRank.fetch(
-        { params: { organizationId: ctx.organizationId, key: "viewer" } },
-        ctx.as(ctx.owner),
-      );
+      // A project from before every project held Viewer: the rank service
+      // refuses deleting a built-in since #Q3736.
+      await ctx.repos.organizationRanks.deleteMany({
+        organizationId: { eq: ctx.organizationId },
+        key: { eq: "viewer" },
+      });
 
       const refused = await ctx.statusOf(ctx.setPolicy("open"));
 

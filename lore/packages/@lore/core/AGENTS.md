@@ -328,9 +328,10 @@ back: it was removed, and its column was dropped with #E74.
   permissions in `OWNER_TODAY` (they were application-scope in
   `LoreRankBounds.OUT_OF_SCOPE` while a host was a user's). The Admin
   preset carries them, Member holds `host:read` only, Viewer none.
-- **Two acts are owner-only structurally** and are never grantable to a rank:
-  `project:delete` and `capability:manage`. One permission is never removable:
-  `project:read`. Both lists are `LoreRankBounds`, in a file the browser can
+- **One act is owner-only, hard-coded**, never grantable to a rank:
+  `project:delete` (#Q3736). `capability:manage` was the second until then;
+  the built-in Admin holds it now, with everything else. One permission is
+  never removable: `project:read`. Both lists are `LoreRankBounds`, in a file the browser can
   import - `LorePermissions` imports `$permission`, whose barrel has no
   browser condition.
 - **Ownership is transferred, not assigned.** `assignOrganizationRank`
@@ -341,8 +342,12 @@ back: it was removed, and its column was dropped with #E74.
 The vocabulary is `LorePermissions` (38 declarations, names that can never
 change - they are stored as data in every rank definition), the active rank
 resource and services live in `alepha/api/organizations`, and the presets are
-`ProjectRankPresets`. **Every project starts with four ranks: owner, admin,
-member and viewer** (#Q3661, epic #E151, reversing #Q2511). `createProject`
+`ProjectRankPresets`. **Every project holds four built-in ranks: owner, admin,
+member and viewer** (#Q3661, epic #E151, reversing #Q2511; built in since
+#Q3736): each can be renamed and none can be deleted
+(`LoreRankBounds.BUILTIN_RANKS`, the framework's
+`organizationConfigAtom.builtinRanks`). Admin holds every permission but
+`project:delete`, whatever the project's capabilities. `createProject`
 seeds `admin` and `viewer` under those stable keys after the capability rows
 (`DefaultRankService`), and the nightly `ranks.seed-defaults` job
 (`DefaultRankJobs`) adds either one to a project that lacks it, never changing

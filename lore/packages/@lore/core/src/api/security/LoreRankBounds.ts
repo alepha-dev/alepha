@@ -26,15 +26,25 @@ export class LoreRankBounds {
   /**
    * The ceiling: never grantable to any rank, whatever the writer holds.
    *
-   * Both are owner-only **structurally** rather than by policy. Deleting the
-   * project ends it; turning a capability on widens every rank at once,
-   * including the actor's own, which the subset rule cannot catch because a
-   * switch is not a grant.
+   * Deleting the project is the owner's alone, hard-coded (#Q3736): it ends
+   * the project for everybody. `capability:manage` left this list then, on
+   * the owner's decision that an Admin does everything else: an admin who
+   * switches a capability on widens every rank at once, their own included,
+   * and that is accepted.
    */
-  public static readonly OWNER_ONLY: string[] = [
-    "project:delete",
-    "capability:manage",
-  ];
+  public static readonly OWNER_ONLY: string[] = ["project:delete"];
+
+  /**
+   * The ranks every project holds, renamable and never deleted (#Q3736):
+   * `owner` and `member` are the framework's own built-ins, `admin` and
+   * `viewer` are seeded by `DefaultRankService` under these stable keys.
+   */
+  public static readonly BUILTIN_RANKS = [
+    "owner",
+    "admin",
+    "member",
+    "viewer",
+  ] as const;
 
   /**
    * Application-scope permissions the matrix does not list at all.

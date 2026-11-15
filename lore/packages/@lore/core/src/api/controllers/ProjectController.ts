@@ -118,13 +118,12 @@ export class ProjectController {
     $ownsProject({ requires, param: "id" });
 
   /**
-   * The acts that are the owner's STRUCTURALLY.
+   * The act that is the owner's alone.
    *
    * Identical to {@link ownsProject} now, and kept as a separate name because
    * what makes it owner-only is the PERMISSION rather than the gate:
-   * `project:delete` ends the project and `capability:manage` widens every
-   * rank at once, so both are on Lore's never-grantable list and only the
-   * `owner` built-in's `*` reaches them.
+   * `project:delete` ends the project, so it is on Lore's never-grantable
+   * list and only the `owner` built-in's `*` reaches it (#Q3736).
    */
   protected ownsAsOwner = (requires: string | string[]) =>
     $ownsProject({ requires, param: "id" });

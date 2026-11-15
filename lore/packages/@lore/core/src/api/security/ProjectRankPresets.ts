@@ -7,8 +7,9 @@ import { LoreViewerAllowlist } from "./LoreViewerAllowlist.ts";
 
 /**
  * The two ranks a project is seeded with beside the `owner` and `member`
- * built-ins, computed from the capabilities it actually has (#Q3661, epic
- * #E151).
+ * built-ins (#Q3661, epic #E151). Viewer is computed from the capabilities
+ * the project actually has; Admin holds everything but `project:delete`
+ * (#Q3736). All four are built in since #Q3736: renamable, never deleted.
  *
  * Every project starts with four ranks: owner, admin, member and viewer.
  * Admin and Viewer are seeded as ordinary custom ranks under STABLE keys
@@ -64,10 +65,9 @@ export class ProjectRankPresets {
   };
 
   /**
-   * Admin is everything except the two acts that belong to the owner
-   * structurally. It carries `member:manage` and `rank:manage`: the owner's
-   * decision was that an Admin is everything short of ending the project or
-   * changing what the project can do at all.
+   * Admin is everything except deleting the project (#Q3736), which is the
+   * owner's alone. It carries `member:manage`, `rank:manage` and
+   * `capability:manage`.
    */
   protected static readonly ADMIN_EXCLUDES = LorePermissions.OWNER_ONLY;
 
@@ -77,6 +77,11 @@ export class ProjectRankPresets {
    * contract"). Automations, apps, errors, hosts, members' records, reports
    * and feedback are all outside it.
    */
+  public static readonly ADMIN: string[] = [
+    ...LorePermissions.MEMBER_DEFAULT,
+    ...LorePermissions.OWNER_TODAY,
+  ].filter((it) => !ProjectRankPresets.ADMIN_EXCLUDES.includes(it));
+
   protected static readonly VIEWER: string[] = [
     ...LoreViewerAllowlist.PERMISSIONS,
   ];
@@ -93,13 +98,11 @@ export class ProjectRankPresets {
       {
         key: "admin",
         labelKey: ProjectRankPresets.LABEL_KEYS.admin,
-        permissions: this.narrow(
-          [
-            ...LorePermissions.MEMBER_DEFAULT,
-            ...LorePermissions.OWNER_TODAY,
-          ].filter((it) => !ProjectRankPresets.ADMIN_EXCLUDES.includes(it)),
-          enabled,
-        ),
+        // NOT narrowed by the enabled capabilities (#Q3736): Admin holds
+        // everything, so a capability switched on later is already covered.
+        // A permission of a disabled capability grants nothing anyway, since
+        // effective access is permission AND capability.
+        permissions: ProjectRankPresets.ADMIN,
       },
       {
         key: "viewer",

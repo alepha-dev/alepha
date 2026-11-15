@@ -17,7 +17,11 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreCoreApi } from "../src/api/index.ts";
-import { createTestProject, CoreTestEntities } from "../src/testing/index.ts";
+import {
+  createTestMember,
+  createTestProject,
+  CoreTestEntities,
+} from "../src/testing/index.ts";
 
 interface Ctx {
   alepha: Alepha;
@@ -148,13 +152,14 @@ describe("Lore's rank resource", () => {
     // Two presets since #Q3661: Member, a built-in, covers Contributor.
     expect(everything.map((it) => it.key)).toEqual(["admin", "viewer"]);
 
-    // Remember only: the Plan permissions are gone. A checkbox for a
+    // Remember only: Viewer loses the Plan reads. A checkbox for a
     // capability the project does not have grants nothing and explains
-    // nothing.
+    // nothing. Admin is not narrowed (#Q3736): it holds everything, so a
+    // capability switched on later is already covered.
     const knowledgeOnly = ctx.presets.presetsFor(["remember"]);
-    const narrowedAdmin = knowledgeOnly.find((it) => it.key === "admin")!;
-    expect(narrowedAdmin.permissions).not.toContain("quest:create");
-    expect(narrowedAdmin.permissions).toContain("folio:write");
+    const remembersAdmin = knowledgeOnly.find((it) => it.key === "admin")!;
+    expect(remembersAdmin.permissions).toContain("quest:create");
+    expect(remembersAdmin.permissions).toContain("folio:write");
     expect(
       knowledgeOnly.find((it) => it.key === "viewer")!.permissions,
     ).toEqual(["project:read", "folio:read"]);
@@ -165,13 +170,17 @@ describe("Lore's rank resource", () => {
       expect(preset.permissions).toContain("project:read");
     }
 
-    // Admin is everything except the two owner-only acts.
+    // Admin is everything but deleting the project (#Q3736).
     const admin = everything.find((it) => it.key === "admin")!;
+    expect(LorePermissions.OWNER_ONLY).toEqual(["project:delete"]);
     expect(admin.permissions).toContain("member:manage");
     expect(admin.permissions).toContain("rank:manage");
-    for (const ceiling of LorePermissions.OWNER_ONLY) {
-      expect(admin.permissions).not.toContain(ceiling);
-    }
+    expect(admin.permissions).toContain("capability:manage");
+    expect([...admin.permissions].sort()).toEqual(
+      [...LorePermissions.MEMBER_DEFAULT, ...LorePermissions.OWNER_TODAY]
+        .filter((it) => it !== "project:delete")
+        .sort(),
+    );
 
     // Viewer is the allowlist, exactly: no automations, apps, errors, hosts,
     // member records, reports or feedback.
@@ -197,8 +206,14 @@ describe("Lore's rank resource", () => {
     expect(
       ranks.map((it) => it.key).sort((a, b) => a.localeCompare(b)),
     ).toEqual(["admin", "member", "owner", "viewer"]);
-    // Seeded, not built in: the owner's to edit, rename or delete.
-    expect(ranks.find((it) => it.key === "admin")?.builtin).toBe(false);
+    // Built in since #Q3736: renamable and editable, never deleted.
+    for (const key of ["owner", "admin", "member", "viewer"]) {
+      expect(ranks.find((it) => it.key === key)?.builtin).toBe(true);
+      expect(ranks.find((it) => it.key === key)?.renamable).toBe(true);
+      await expect(ctx.ranks.delete(organizationId, key, user)).rejects.toThrow(
+        "A built-in rank cannot be deleted",
+      );
+    }
     expect(ranks.find((it) => it.key === "viewer")?.permissions).toEqual(
       expect.arrayContaining([...LoreViewerAllowlist.PERMISSIONS]),
     );
@@ -252,7 +267,12 @@ describe("Lore's rank resource", () => {
       { key: "admin", name: "Maintainer", permissions: admin.permissions },
       user,
     );
-    await ctx.ranks.delete(organizationId, "viewer", user);
+    // A Viewer missing altogether: a project from before #Q3661 that the
+    // sweep has not reached. The service refuses the delete since #Q3736.
+    await ctx.repos.organizationRanks.deleteMany({
+      organizationId: { eq: organizationId },
+      key: { eq: "viewer" },
+    });
 
     const { items } = await ctx.alepha
       .inject(ProjectRankController)
@@ -262,6 +282,70 @@ describe("Lore's rank resource", () => {
     expect(items.find((it) => it.key === "viewer")?.permissions).toEqual(
       LoreViewerAllowlist.PERMISSIONS,
     );
+  });
+
+  it("resets a project to the four built-ins, moving holders of a hand-made Admin to admin", async ({
+    expect,
+  }) => {
+    // A project from before #Q3736: no owner row, Viewer missing, Admin
+    // narrowed by hand, a hand-made "Administrateur" and a legacy
+    // contributor, each held by somebody.
+    const project = await createTestProject(ctx.alepha, {
+      capabilities: [{ key: "plan", options: {} }],
+    });
+    const organizationId = project.organizationId!;
+    await ctx.repos.organizationRanks.deleteMany({
+      organizationId: { eq: organizationId },
+    });
+    await ctx.repos.organizationMembers.deleteMany({
+      organizationId: { eq: organizationId },
+    });
+    for (const [key, name] of [
+      ["admin", "Staff"],
+      ["rmw1", " Administrateur "],
+      ["contributor", "Contributor"],
+    ]) {
+      await ctx.repos.organizationRanks.create({
+        organizationId,
+        key,
+        name,
+        permissions: ["project:read"],
+      });
+    }
+    const handMade = await ctx.repos.users.create({});
+    const contributor = await ctx.repos.users.create({});
+    await createTestMember(ctx.alepha, project, handMade.id, { rank: "rmw1" });
+    await createTestMember(ctx.alepha, project, contributor.id, {
+      rank: "contributor",
+    });
+
+    const result = await ctx.alepha
+      .inject(DefaultRankService)
+      .reset(project.id);
+
+    expect(result.rewritten).toEqual(["admin", "viewer"]);
+    expect([...result.removed].sort()).toEqual(["contributor", "rmw1"]);
+    const ranks = await ctx.ranks.ranksOf(organizationId);
+    expect(
+      ranks.map((it) => it.key).sort((a, b) => a.localeCompare(b)),
+    ).toEqual(["admin", "member", "owner", "viewer"]);
+    const admin = ranks.find((it) => it.key === "admin")!;
+    // The stored name stays, the permissions are the preset's.
+    expect(admin.name).toBe("Staff");
+    expect(admin.permissions).toEqual(ProjectRankPresets.ADMIN);
+    expect(ranks.find((it) => it.key === "viewer")?.name).toBe("Viewer");
+
+    const rankOf = async (userId: string) =>
+      (
+        await ctx.repos.organizationMembers.findOne({
+          where: {
+            organizationId: { eq: organizationId },
+            userId: { eq: userId },
+          },
+        })
+      )?.rank ?? null;
+    expect(await rankOf(handMade.id)).toBe("admin");
+    expect(await rankOf(contributor.id)).toBeNull();
   });
 
   it("backfills admin and viewer where missing, and leaves a wider viewer as it is", async ({
@@ -329,14 +413,22 @@ describe("Lore's rank resource", () => {
     expect(member?.builtin).toBe(true);
     expect(member?.editable).toBe(true);
 
-    // Owner is the other kind, and stays refused.
-    await expect(
-      ctx.ranks.save(
-        await organizationIdOf(ctx, created.id),
-        { key: "owner", name: "Boss", permissions: ["project:read"] },
-        user,
-      ),
-    ).rejects.toThrow("built-in rank and cannot be edited");
+    // Owner is the other kind: renamed (#Q3736), and its permissions stay
+    // `*` whatever the write carried.
+    await ctx.ranks.save(
+      await organizationIdOf(ctx, created.id),
+      { key: "owner", name: "Boss", permissions: ["project:read"] },
+      user,
+    );
+    const owner = (
+      await ctx.ranks.ranksOf(await organizationIdOf(ctx, created.id))
+    ).find((it) => it.key === "owner");
+    expect(owner).toMatchObject({
+      name: "Boss",
+      permissions: ["*"],
+      editable: false,
+      renamable: true,
+    });
   });
 
   it("answers the editor's bases from the project's own capabilities", async ({
@@ -359,11 +451,15 @@ describe("Lore's rank resource", () => {
 
     expect(items.map((it) => it.key)).toEqual(["admin", "member", "viewer"]);
 
-    // Seeded from the capabilities: an Admin of a Remember-only project
-    // carries folio writes and no quest permission at all.
+    // Admin holds everything whatever the capabilities (#Q3736); Viewer is
+    // narrowed to what a Remember-only project has.
     const admin = items.find((it) => it.key === "admin")!;
     expect(admin.permissions).toContain("folio:write");
-    expect(admin.permissions).not.toContain("quest:create");
+    expect(admin.permissions).toContain("quest:create");
+    expect(items.find((it) => it.key === "viewer")?.permissions).toEqual([
+      "project:read",
+      "folio:read",
+    ]);
     // The floor survives every narrowing.
     expect(admin.permissions).toContain("project:read");
   });
@@ -559,11 +655,10 @@ describe("Lore's rank resource", () => {
 
     // The preset name is only computed where the project lacks the rank:
     // a seeded Admin answers its stored name.
-    await ctx.ranks.delete(
-      await organizationIdOf(ctx, created.id),
-      "admin",
-      user,
-    );
+    await ctx.repos.organizationRanks.deleteMany({
+      organizationId: { eq: await organizationIdOf(ctx, created.id) },
+      key: { eq: "admin" },
+    });
     ctx.alepha.store.set("alepha.http.request", {
       language: "fr-FR",
     } as never);

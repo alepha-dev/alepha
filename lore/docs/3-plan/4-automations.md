@@ -9,8 +9,8 @@ Every project has automations, whatever its capabilities, with no switch of
 their own. What a rule can react to follows the project's capabilities (see
 [Capabilities](/lore/docs/project-capabilities)): quest, epic, release and
 feedback events need **Plan**, deploy, uptime and host events need **Ship**. That
-grants nothing by itself. A rank also needs the **Automations** permissions, which only the owner
-holds by default (see [Members](/lore/docs/project-members)):
+grants nothing by itself. A rank also needs the **Automations** permissions, which the owner
+and Admin hold by default (see [Members](/lore/docs/project-members)):
 
 | Permission                                                   | What it allows                                                     |
 | ------------------------------------------------------------ | ------------------------------------------------------------------ |

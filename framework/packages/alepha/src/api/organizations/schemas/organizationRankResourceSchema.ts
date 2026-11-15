@@ -6,6 +6,7 @@ export const organizationRankResourceSchema = z.object({
   permissions: z.array(z.text()),
   builtin: z.boolean(),
   editable: z.boolean(),
+  renamable: z.boolean(),
 });
 
 export type OrganizationRankResource = Infer<

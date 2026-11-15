@@ -98,6 +98,7 @@ export class ShowcaseOrganizations {
         permissions: ["organization:*", "member:*", "invitation:*", "rank:*"],
         builtin: true,
         editable: false,
+        renamable: true,
       },
       {
         key: "maintainer",
@@ -111,6 +112,7 @@ export class ShowcaseOrganizations {
         ],
         builtin: false,
         editable: true,
+        renamable: true,
       },
       {
         key: "member",
@@ -118,6 +120,7 @@ export class ShowcaseOrganizations {
         permissions: ["organization:read", "member:read"],
         builtin: true,
         editable: true,
+        renamable: true,
       },
     ];
   }

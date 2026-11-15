@@ -117,10 +117,10 @@ const accept = async (page: Page, projectTitle: string): Promise<void> => {
 
 test.describe("Ranks", () => {
   /**
-   * Feedback #P2124. The two owner-only permissions used to draw a
-   * permanently grey, permanently unchecked box in every rank column - a
-   * choice that does not exist, once per rank - and `capability:manage` is
-   * the only permission its group has, so the header had to leave with it.
+   * Feedback #P2124. An owner-only permission used to draw a permanently
+   * grey, permanently unchecked box in every rank column - a choice that does
+   * not exist, once per rank. Since #Q3736 `project:delete` is the only one;
+   * `capability:manage` is an ordinary row again.
    *
    * In a browser rather than only in `projectRankMatrix.spec.ts`: the unit
    * spec proves the rows are filtered, and what had to be confirmed is that
@@ -162,11 +162,7 @@ test.describe("Ranks", () => {
     ).toHaveCount(0);
     await expect(
       matrix.getByText("Turn capabilities on and off", { exact: true }),
-    ).toHaveCount(0);
-    // The group header goes with its only row.
-    await expect(matrix.getByText("Capabilities", { exact: true })).toHaveCount(
-      0,
-    );
+    ).toHaveCount(1);
   });
 
   test("a member writes the work and cannot touch the configuration", async ({
