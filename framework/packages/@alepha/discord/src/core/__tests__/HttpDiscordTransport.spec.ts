@@ -13,7 +13,7 @@ class RecordingTransport extends HttpDiscordTransport {
   public calls: Array<{ url: string; body: unknown }> = [];
   public answer: Response | Error = new Response(null, { status: 204 });
   protected override async request(url: string, init: RequestInit) {
-    this.calls.push({ url, body: JSON.parse(String(init.body)) });
+    this.calls.push({ url, body: JSON.parse(init.body as string) });
     if (this.answer instanceof Error) throw this.answer;
     return this.answer;
   }
