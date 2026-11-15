@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui";
+import { Button, cn } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { PanelRightClose } from "lucide-react";
@@ -131,15 +131,18 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
         {/* Collapsing the pane from inside it. Without this the only ways
             out are ⇧⌘\ and the View menu, neither of which is visible from
             here — the design puts a control at the end of the tab row. */}
-        <button
+        {/* The kit's minimal icon button, the tree's collapse button's own,
+            so the two panel controls share one colour (#Q3693). */}
+        <Button
           type="button"
+          size="icon-sm"
+          variant="minimal"
           onClick={props.onCollapse}
           aria-label={tr("folios.editor.inspector.collapse")}
           title={tr("folios.editor.inspector.collapse")}
-          className="text-muted-foreground hover:text-foreground flex size-6.5 items-center justify-center rounded-md transition-colors"
         >
           <PanelRightClose className="size-3.5" />
-        </button>
+        </Button>
       </div>
 
       {/*

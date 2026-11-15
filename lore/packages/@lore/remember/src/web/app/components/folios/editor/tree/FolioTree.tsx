@@ -172,9 +172,25 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
       }}
     >
       {/* No visible title (#Q3656): the pane is the folio tree wherever it
-          opens, so the strip holds only its actions, centred. The tree
+          opens, so the strip holds only its actions: collapse at the left,
+          the rest at the right (#Q3693). The tree
           keeps its accessible name, `TreeView`'s `label` below. */}
-      <div className="border-border flex h-10 flex-none items-center justify-center gap-1 border-b px-2">
+      <div className="border-border flex h-10 flex-none items-center gap-1 border-b px-2">
+        {/* First in the row (#Q3693), the pane control at the pane's outer
+            edge, the inspector's mirror; the tree's actions sit at the
+            other end. Outside `canWrite`: a Viewer reads the tree and is
+            just as entitled to put it away. */}
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="minimal"
+          onClick={props.onCollapse}
+          aria-label={tr("folios.editor.tree.collapse")}
+          title={tr("folios.editor.tree.collapse")}
+        >
+          <PanelLeftClose className="size-3.5" />
+        </Button>
+        <div className="flex-1" />
         {/* Both doors to a write, and the same permission behind them - the
             one `FolioTreeContextMenu` already asks for its own items. The
             tree itself stays: reading the project's folios is a Viewer's
@@ -253,20 +269,6 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             </Button>
           </>
         )}
-        {/* Last in the row, so the two creates stay together and the pane
-            control sits at its edge - the same order the inspector's header
-            uses on the other side of the document. Outside `canWrite`: a
-            Viewer reads the tree and is just as entitled to put it away. */}
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="minimal"
-          onClick={props.onCollapse}
-          aria-label={tr("folios.editor.tree.collapse")}
-          title={tr("folios.editor.tree.collapse")}
-        >
-          <PanelLeftClose className="size-3.5" />
-        </Button>
       </div>
 
       {/* `flex flex-col` for the filler below, which takes the space the
