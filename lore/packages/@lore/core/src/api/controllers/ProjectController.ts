@@ -427,18 +427,12 @@ export class ProjectController {
       // Non-fatal, deliberately. A project whose seeding failed works on its
       // built-ins, and the nightly `DefaultRankJobs` sweep adds what is
       // missing; destroying a usable project over it would be the wrong trade.
-      await this.defaultRanks
-        .seed(
-          projectId,
-          user,
-          this.alepha.store.get("alepha.http.request")?.language,
-        )
-        .catch((error: unknown) => {
-          this.log.warn(
-            "createProject: default ranks were not seeded; the nightly sweep will add them",
-            { projectId, error },
-          );
-        });
+      await this.defaultRanks.seed(projectId, user).catch((error: unknown) => {
+        this.log.warn(
+          "createProject: default ranks were not seeded; the nightly sweep will add them",
+          { projectId, error },
+        );
+      });
 
       await this.audits.project.logSuccess("create", {
         ...this.audits.actor(user),

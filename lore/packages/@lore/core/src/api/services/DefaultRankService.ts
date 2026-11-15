@@ -41,16 +41,9 @@ export class DefaultRankService {
 
   /**
    * Add the default ranks this project lacks, written as `writer`. Answers
-   * the keys it added.
-   *
-   * `language` names them in the creator's language; the backfill passes
-   * none and gets English, as the old sweep did.
+   * the keys it added. Named in English (#Q3744).
    */
-  public async seed(
-    projectId: number,
-    writer: RankWriter,
-    language?: string,
-  ): Promise<string[]> {
+  public async seed(projectId: number, writer: RankWriter): Promise<string[]> {
     const organizationId = await this.security.organizationIdOf(projectId);
     const held = new Set(
       (await this.ranks.ranksOf(organizationId)).map((rank) => rank.key),
@@ -66,7 +59,7 @@ export class DefaultRankService {
         organizationId,
         {
           key: preset.key,
-          name: await this.presets.nameFor(preset, language),
+          name: this.presets.nameFor(preset),
           permissions: preset.permissions,
         },
         writer as never,
@@ -117,7 +110,7 @@ export class DefaultRankService {
             organizationId,
             {
               key: preset.key,
-              name: existing?.name ?? (await this.presets.nameFor(preset)),
+              name: existing?.name ?? this.presets.nameFor(preset),
               permissions: preset.permissions,
             },
             DefaultRankService.SYSTEM_WRITER as never,

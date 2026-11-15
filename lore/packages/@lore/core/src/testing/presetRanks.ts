@@ -49,7 +49,7 @@ export const createPresetRanks = async (
         organizationId,
         {
           key: preset.key,
-          name: await presets.nameFor(preset),
+          name: presets.nameFor(preset),
           permissions: preset.permissions,
         },
         { id: owner.userId },
