@@ -74,13 +74,14 @@ export class DeployAutomationNumericPresets {
         needs: entry.needs,
         permissions: ["automation:write", "member:read", ...entry.permissions],
         slots: {
-          recipient: { kind: "member", required: true, bindable: true },
+          // Required only for an addressable channel (#Q3615): a Discord
+          // channel is nobody's.
+          recipient: { kind: "member", required: false, bindable: true },
           channel: {
             kind: "channel",
             bindable: true,
             required: true,
             default: "inbox",
-            values: ["inbox", "email"],
           },
           ...Object.fromEntries(
             Object.entries(slots).map(([name, slot]) => [
@@ -100,7 +101,9 @@ export class DeployAutomationNumericPresets {
   ): AutomationRule["actions"][number] {
     return {
       kind: "notify",
-      recipient: String(values.recipient),
+      ...(values.recipient !== undefined && values.recipient !== ""
+        ? { recipient: String(values.recipient) }
+        : {}),
       channel: String(values.channel),
       title,
       text,

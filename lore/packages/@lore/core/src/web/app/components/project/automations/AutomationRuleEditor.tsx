@@ -443,6 +443,11 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
             rooms={props.catalogue.channels
               .filter((item) => !item.addressable)
               .map((item) => item.key)}
+            channelNames={Object.fromEntries(
+              props.catalogue.channels
+                .filter((item) => item.kind !== item.key && item.name)
+                .map((item) => [item.key, item.name!]),
+            )}
             disabled={save.loading}
             onKind={(key) => changeAction(index, key)}
             onChange={(key, value) =>

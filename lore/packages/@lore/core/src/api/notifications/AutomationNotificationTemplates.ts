@@ -43,10 +43,28 @@ export class AutomationNotificationTemplates {
     "email",
     "tasks",
   );
+  // A project's Discord channels (#Q3615): the destination is the channel
+  // the rule names, resolved and unsealed at send time by
+  // `LoreDiscordNotificationChannel`, so the template names none.
+  public readonly discord = this.template(
+    "lore:automation:discord",
+    "discord",
+    "automations",
+  );
+  public readonly releaseDiscord = this.template(
+    "lore:automation:release-discord",
+    "discord",
+    "releases",
+  );
+  public readonly reminderDiscord = this.template(
+    "lore:automation:reminder-discord",
+    "discord",
+    "tasks",
+  );
 
   protected template(
     name: string,
-    channel: "inbox" | "email",
+    channel: "inbox" | "email" | "discord",
     category: string,
   ) {
     return $notification({
@@ -63,6 +81,14 @@ export class AutomationNotificationTemplates {
               href: (it) => it.href,
               scope: (it) => it.scope,
               scopeLabel: (it) => it.projectTitle,
+            }
+          : undefined,
+      discord:
+        channel === "discord"
+          ? {
+              // Rendered for Discord by the typed renderer (`html` holds the
+              // target's text); the channel caps and mutes it.
+              message: (it) => `**${it.title}**\n${it.html}`,
             }
           : undefined,
       email:

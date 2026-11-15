@@ -110,6 +110,8 @@ export class DiscordNotificationChannel extends NotificationChannel<
       content: rendered.body ?? "",
       username: rendered.username,
       avatar_url: rendered.avatarUrl,
+      // A template's own text pings nobody: `@everyone` stays plain text.
+      allowed_mentions: { parse: [] },
     });
     // A plain webhook POST answers 204 with no body, so there is no id for
     // the receipt to carry and nothing later can report on this message.

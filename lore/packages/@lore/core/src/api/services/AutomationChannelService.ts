@@ -38,6 +38,18 @@ export class AutomationChannelService {
   protected readonly channels = $inject(AutomationChannels);
 
   constructor() {
+    // Delivery to a project's Discord channels (#Q3615): a room, rendered
+    // for Discord, through `LoreDiscordNotificationChannel`.
+    this.channels.register("discord", {
+      addressable: false,
+      target: "discord",
+      configured: async () => true,
+      templates: {
+        automations: "lore:automation:discord",
+        releases: "lore:automation:release-discord",
+        reminders: "lore:automation:reminder-discord",
+      },
+    });
     this.channels.registerInstances(async (projectId) =>
       (
         await this.persistence.channels.findMany({

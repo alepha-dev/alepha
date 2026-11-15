@@ -23,6 +23,11 @@ export interface AutomationActionEditorProps {
    * naming only rooms needs no recipient.
    */
   rooms?: string[];
+  /**
+   * A configured channel's name by id (#Q3615); a built-in is labelled by
+   * its own key.
+   */
+  channelNames?: Record<string, string>;
   disabled: boolean;
   removable: boolean;
   allowAudience: boolean;
@@ -114,7 +119,8 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
                     )
                   }
                 />
-                {tr(`automation.channel.${value}`, { default: value })}
+                {props.channelNames?.[value] ??
+                  tr(`automation.channel.${value}`, { default: value })}
               </Label>
             ))}
           </div>

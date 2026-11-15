@@ -16,6 +16,7 @@ import {
 } from "alepha/api/organizations";
 import { DatabaseProvider, DatabaseUrlParser } from "alepha/orm";
 
+import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AutomationChannelController } from "./controllers/AutomationChannelController.ts";
@@ -247,6 +248,9 @@ export const LoreCoreApi = $module({
     // Registers the configured channels as automation channel instances
     // (#Q3614); nothing else may inject it before a rule is evaluated.
     AutomationChannelService,
+    // The `discord` notification channel: listed, not merely injected,
+    // since the notification registry finds only instantiated channels.
+    LoreDiscordNotificationChannel,
     AutomationHealth,
     AutomationEventSubjects,
     AutomationEvaluator,
@@ -603,6 +607,7 @@ export {
 } from "./services/AutomationChannels.ts";
 export { AutomationChannelRemoval } from "./services/AutomationChannelRemoval.ts";
 export { AutomationChannelService } from "./services/AutomationChannelService.ts";
+export { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
 export { AutomationChannelController } from "./controllers/AutomationChannelController.ts";
 export { CredentialSealService } from "./services/CredentialSealService.ts";
 

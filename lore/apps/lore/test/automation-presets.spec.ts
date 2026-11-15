@@ -130,8 +130,10 @@ describe("Stock automation presets", () => {
       available: true,
       schedule: "0 0 * * *",
       slots: {
-        recipient: { kind: "member", required: true },
-        channel: { default: "inbox", values: ["inbox", "email"] },
+        // Any of the project's channels; a member only for an addressable
+        // one (#Q3615).
+        recipient: { kind: "member", required: false },
+        channel: { default: "inbox" },
         tag: { kind: "text", required: true },
       },
       fields: { summary: "text", tag: "text", truncated: "boolean" },
