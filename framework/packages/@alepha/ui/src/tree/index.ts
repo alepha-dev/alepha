@@ -27,6 +27,7 @@ export {
   TreeView,
   type TreeViewProps,
 } from "./TreeView.tsx";
+export { type TreeSelectOptions } from "./TreeViewRow.tsx";
 export {
   TREE_VIEW_DEFAULT_WIDTH,
   TREE_VIEW_MAX_WIDTH,

@@ -25,8 +25,18 @@ import { TreeViewRenameInput } from "./TreeViewRenameInput.tsx";
  * memo that holds. Every method here reads through that ref, so it can be
  * held forever and still call the current implementation.
  */
+/**
+ * How a row was activated, for a tree that selects a range (#Q3654).
+ */
+export interface TreeSelectOptions {
+  /**
+   * Shift was held: extend the selection from its anchor to this row.
+   */
+  shift: boolean;
+}
+
 export interface TreeViewFacade<T = undefined> {
-  select: (node: TreeNode<T>) => void;
+  select: (node: TreeNode<T>, options?: TreeSelectOptions) => void;
   toggle: (id: string) => void;
   renderIcon: (node: TreeNode<T>, state: TreeRowState) => ReactNode;
   renderLabel: (node: TreeNode<T>, state: TreeRowState) => ReactNode;
@@ -149,14 +159,14 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
   const handleClick = (e: MouseEvent): void => {
     if (props.isRenaming) return;
     if (e.detail > 1) return;
-    facade.select(node);
+    facade.select(node, { shift: e.shiftKey });
   };
 
   const handleKeyDown = (e: KeyboardEvent): void => {
     if (props.isRenaming) return;
     if (e.key !== "Enter" && e.key !== " ") return;
     e.preventDefault();
-    facade.select(node);
+    facade.select(node, { shift: e.shiftKey });
   };
 
   const handleToggle = (e: MouseEvent): void => {
