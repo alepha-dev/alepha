@@ -12,7 +12,7 @@ describe("notify channels migration", () => {
   const sql = readFileSync(
     join(
       import.meta.dirname,
-      "../migrations/sqlite/20261115043131_notify_channels/migration.sql",
+      "../migrations/sqlite/20261115050034_notify_channels/migration.sql",
     ),
     "utf8",
   );
