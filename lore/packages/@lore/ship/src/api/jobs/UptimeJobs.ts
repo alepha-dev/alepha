@@ -7,6 +7,10 @@ import { $repository } from "alepha/orm";
 
 import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../entities/monitorHeartbeats.ts";
+import {
+  type MonitorIncident,
+  monitorIncidents,
+} from "../entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
 import { UptimeActivityService } from "../services/UptimeActivityService.ts";
 import { UptimeErrorService } from "../services/UptimeErrorService.ts";
@@ -23,6 +27,7 @@ import {
 export class UptimeJobs {
   protected readonly monitors = $repository(monitors);
   protected readonly beats = $repository(monitorHeartbeats);
+  protected readonly incidents = $repository(monitorIncidents);
   protected readonly capabilities = $repository(projectCapabilities);
   protected readonly analytics = $inject(DeployAnalytics);
   protected readonly projectErrors = $inject(UptimeErrorService);
@@ -62,6 +67,26 @@ export class UptimeJobs {
           })),
         );
       }
+      if (due.length === 0) return;
+      // One read for every due monitor's open incident, not one per probe
+      // (#Q3749): a monitor that was up and stays up then costs nothing more.
+      const open = new Map<string, MonitorIncident>();
+      for (let index = 0; index < due.length; index += 90) {
+        const rows = await this.incidents.findMany({
+          where: {
+            monitorId: {
+              inArray: due.slice(index, index + 90).map((row) => row.id),
+            },
+            endedAt: { isNull: true },
+          },
+        });
+        for (const row of rows) open.set(row.monitorId, row);
+      }
+      // Written once at the end of the tick rather than per probe (#Q3749).
+      const beats: Parameters<UptimeJobs["beats"]["createMany"]>[0] = [];
+      const probes: Parameters<
+        UptimeJobs["analytics"]["probes"]["recordMany"]
+      >[0] = [];
       let cursor = 0;
       await Promise.all(
         Array.from(
@@ -80,7 +105,7 @@ export class UptimeJobs {
               try {
                 const result = await this.prober.probe(monitor);
                 const checkedAt = this.clock.nowMillis();
-                await this.analytics.probes.record({
+                probes.push({
                   monitorId: monitor.id,
                   result: result.result,
                   prober: "local",
@@ -88,7 +113,7 @@ export class UptimeJobs {
                   up: result.ok ? 1 : 0,
                   latencyMs: result.ok ? result.latencyMs : 0,
                 });
-                await this.beats.create({
+                beats.push({
                   monitorId: monitor.id,
                   at: new Date(checkedAt).toISOString(),
                   ok: result.ok,
@@ -99,6 +124,7 @@ export class UptimeJobs {
                   monitor,
                   result,
                   checkedAt,
+                  open.get(monitor.id) ?? null,
                 );
                 for (const transition of transitions)
                   await this.transition(transition);
@@ -112,6 +138,17 @@ export class UptimeJobs {
           },
         ),
       );
+      if (beats.length === 0) return;
+      try {
+        await this.beats.createMany(beats);
+      } catch (error) {
+        this.log.error("Uptime heartbeats could not be written", error);
+      }
+      try {
+        await this.analytics.probes.recordMany(probes);
+      } catch (error) {
+        this.log.error("Uptime probe totals could not be recorded", error);
+      }
     },
   });
 
