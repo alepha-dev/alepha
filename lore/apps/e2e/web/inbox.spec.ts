@@ -239,7 +239,6 @@ test.describe("Inbox", () => {
     );
     expect(overflows).toBe(false);
   });
-
 });
 
 /**
