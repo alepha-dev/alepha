@@ -2237,6 +2237,18 @@ export default {
   "app.settings.url.detected":
     "Utilise $1, l\u2019adresse depuis laquelle cette copie a remonté ses dernières données. Saisissez une URL pour en afficher une autre, ou videz le champ pour revenir à l\u2019adresse détectée.",
   "app.settings.url.save": "Enregistrer",
+  "app.settings.monitor.title": "Surveillance",
+  "app.settings.monitor.description":
+    "Vérifier l'adresse de cette copie depuis l'extérieur, chaque minute par défaut, et alerter en cas de panne.",
+  "app.settings.monitor.label": "Surveiller cette app",
+  "app.settings.monitor.rowDescription":
+    "Activée, une carte Disponibilité apparaît dans l'Aperçu. Désactivée, la vérification est en pause et son historique est conservé.",
+  "app.settings.monitor.needsAddress":
+    "Renseignez d'abord l'adresse ci-dessus : c'est elle que la vérification interroge.",
+  "app.settings.monitor.check": "Vérification",
+  "app.settings.monitor.checkDescription":
+    "Ce que fait la vérification. Modifier la change ; sa cible suit l'adresse.",
+  "app.settings.monitor.anySuccess": "Tout 2xx",
   "app.settings.url.saved": "Adresse enregistrée",
   "app.settings.host.title": "Hôte",
   "app.settings.host.description":
@@ -3799,7 +3811,6 @@ export default {
     "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
   "uptime.invalidRecipients":
     "Saisissez 20 adresses e-mail valides au maximum.",
-  "uptime.app.none": "Aucun moniteur ne surveille encore cette adresse.",
   "uptime.title": "Disponibilité",
   "project.capability.ship.option.uptime.label": "Superviser les applications",
   "project.capability.ship.option.uptime.description":

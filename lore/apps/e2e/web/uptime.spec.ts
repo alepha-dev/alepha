@@ -17,11 +17,12 @@ const createApp = async (
   projectId: number,
   app: string,
   url?: string,
-): Promise<void> => {
+): Promise<string> => {
   const res = await page.request.post(`/api/projects/${projectId}/apps`, {
     data: { app, env: "production", ...(url ? { url } : {}) },
   });
   expect(res.ok()).toBe(true);
+  return ((await res.json()) as { id: string }).id;
 };
 
 test.describe("Uptime healthchecks", () => {
@@ -56,7 +57,7 @@ test.describe("Uptime healthchecks", () => {
     await expect(page).toHaveURL(new RegExp(`/${slug}/apps$`));
   });
 
-  test("a Ship-only project adds a monitor to an app with no sigil, then edits, pauses and deletes it", async ({
+  test("a Ship-only project monitors an app with no sigil from its settings: on, edit, off, on again", async ({
     page,
     baseURL,
   }) => {
@@ -73,79 +74,87 @@ test.describe("Uptime healthchecks", () => {
     await setCapability(page, id, "plan", { enabled: false });
     await setCapability(page, id, "remember", { enabled: false });
     await createApp(page, id, "web", `${baseURL}/health`);
+
+    // Nothing on the Overview until Monitor is on (#Q3684).
     await page.goto(`/${slug}/apps/web/production`);
-    await page
-      .getByRole("button", { name: "Add monitor", exact: true })
-      .click();
-    let dialog = page.getByRole("dialog");
+    await expect(page.getByTestId("app-uptime")).toHaveCount(0);
     await expect(
-      dialog.getByRole("textbox", { name: "Target", exact: true }),
-    ).toHaveValue(`${baseURL}/health`);
-    await dialog
-      .getByRole("textbox", { name: "Name", exact: true })
-      .fill("Web probe");
-    await expect(
-      dialog.getByRole("switch", { name: "Email alerts", exact: true }),
-    ).toBeChecked();
+      page.getByRole("button", { name: "Add monitor", exact: true }),
+    ).toHaveCount(0);
+
+    await page.goto(`/${slug}/apps/web/production/settings`);
+    const toggle = page.getByTestId("app-monitor-toggle");
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    const summary = page.getByTestId("app-monitor-summary");
+    await expect(summary).toContainText(`${baseURL}/health`);
+
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    const name = dialog.getByRole("textbox", { name: "Name", exact: true });
+    await expect(name).toHaveValue("web production");
+    await name.fill("Web probe");
     await dialog
       .getByRole("textbox", { name: "Recipients", exact: true })
       .fill("health-team@example.com");
     await dialog
-      .getByRole("button", { name: "Create monitor", exact: true })
+      .getByRole("button", { name: "Save changes", exact: true })
       .click();
     await expect(dialog).toHaveCount(0);
 
-    // The app's card links to the monitor, which the Apps table shows too.
-    await page.getByRole("link", { name: "Web probe", exact: true }).click();
+    await page.goto(`/${slug}/apps/web/production`);
+    const card = page.getByTestId("app-uptime");
+    await expect(card).toBeVisible();
+    const link = card.getByRole("link", { name: "Web probe", exact: true });
+    const href = await link.getAttribute("href");
+    await link.click();
     await expect(
       page.getByRole("heading", { name: "Web probe", exact: true }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Incident history", exact: true }),
-    ).toBeVisible();
 
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
-    dialog = page.getByRole("dialog");
+    // Off keeps the monitor: the card goes, and on brings back the same one.
+    await page.goto(`/${slug}/apps/web/production/settings`);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await page.goto(`/${slug}/apps/web/production`);
+    await expect(page.getByTestId("app-uptime")).toHaveCount(0);
+    await page.goto(`/${slug}/apps/web/production/settings`);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    await page.goto(`/${slug}/apps/web/production`);
     await expect(
-      dialog.getByRole("textbox", {
-        name: "Recipients",
-        exact: true,
-      }),
-    ).toHaveValue("health-team@example.com");
-    await dialog
-      .getByRole("switch", { name: "Email alerts", exact: true })
-      .click();
-    await dialog
-      .getByRole("textbox", { name: "Name", exact: true })
-      .fill("Renamed probe");
-    await dialog
-      .getByRole("button", { name: "Save changes", exact: true })
-      .click();
-    await expect(
-      page.getByRole("heading", { name: "Renamed probe", exact: true }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Pause", exact: true }).click();
-    await expect(
-      page.getByRole("button", { name: "Resume", exact: true }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Resume", exact: true }).click();
-    await expect(
-      page.getByRole("button", { name: "Pause", exact: true }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Delete", exact: true }).click();
-    await page
-      .getByRole("alertdialog")
-      .getByRole("button", { name: "Delete", exact: true })
-      .click();
-    await expect(page).toHaveURL(new RegExp(`/${slug}/apps$`));
+      page.getByTestId("app-uptime").getByRole("link", { name: "Web probe" }),
+    ).toHaveAttribute("href", href!);
+
     await page.goto(`/${slug}/errors`);
     await expect(page.getByText(/No errors\./i)).toBeVisible();
     await expect(page.getByText(/something went wrong/i)).toHaveCount(0);
   });
 
-  test("a push URL is shown once and rotation revokes the previous URL", async ({
+  test("an app with no address cannot switch Monitor on", async ({ page }) => {
+    await registerAndVerify(
+      page,
+      `nowhere-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const { id, slug } = await createProjectViaWizard(page, "No address", {
+      capabilities: ["ship"],
+      options: { ship: ["uptime"] },
+    });
+    await createApp(page, id, "worker");
+    await page.goto(`/${slug}/apps/worker/production/settings`);
+    await expect(page.getByTestId("app-monitor-toggle")).toHaveAttribute(
+      "data-disabled",
+      "",
+    );
+    await expect(page.getByText(/Set the address above first/)).toBeVisible();
+  });
+
+  test("a push URL is shown once and rotation, from the app's settings, revokes the previous URL", async ({
     page,
     request,
+    baseURL,
   }) => {
     await registerAndVerify(
       page,
@@ -156,36 +165,21 @@ test.describe("Uptime healthchecks", () => {
       capabilities: ["ship"],
       options: { ship: ["uptime"] },
     });
-    // A job with no address: its app is only a name.
-    await createApp(page, id, "backups");
-    await page.goto(`/${slug}/apps/backups/production`);
-    await page
-      .getByRole("button", { name: "Add monitor", exact: true })
-      .click();
-    let dialog = page.getByRole("dialog");
-    // The dialog starts from the app's name: wait for it before typing over.
-    const name = dialog.getByRole("textbox", { name: "Name", exact: true });
-    await expect(name).toHaveValue("backups production");
-    await name.fill("Nightly backup");
-    await expect(name).toHaveValue("Nightly backup");
-    await dialog.getByRole("combobox", { name: "Kind", exact: true }).click();
-    await page
-      .getByRole("option", { name: "Push receipt", exact: true })
-      .click();
-    await expect(name).toHaveValue("Nightly backup");
-    await dialog
-      .getByRole("button", { name: "Create monitor", exact: true })
-      .click();
-    const first = await dialog.locator("code").innerText();
+    // A job with no address: its app is only a name, and its push monitor
+    // is made the way an agent or the CLI makes one.
+    const appInstanceId = await createApp(page, id, "backups");
+    const made = await page.request.post(`/api/projects/${id}/monitors`, {
+      data: { appInstanceId, name: "Nightly backup", kind: "push", target: "" },
+    });
+    expect(made.ok()).toBe(true);
+    const first = `${baseURL}/uptime/push/${((await made.json()) as { token: string }).token}`;
     expect((await request.get(first)).status()).toBe(204);
-    await dialog.getByRole("button", { name: "Done", exact: true }).click();
-    await page.reload();
-    await expect(page.locator("code").filter({ hasText: first })).toHaveCount(
-      0,
+
+    await page.goto(`/${slug}/apps/backups/production/settings`);
+    await expect(page.getByTestId("app-monitor-toggle")).toHaveAttribute(
+      "aria-checked",
+      "true",
     );
-    await page
-      .getByRole("link", { name: "Nightly backup", exact: true })
-      .click();
     await page
       .getByRole("button", { name: "Rotate push URL", exact: true })
       .click();
@@ -193,7 +187,7 @@ test.describe("Uptime healthchecks", () => {
       .getByRole("alertdialog")
       .getByRole("button", { name: "Rotate push URL", exact: true })
       .click();
-    dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog");
     const second = await dialog.locator("code").innerText();
     expect(second).not.toBe(first);
     expect((await request.get(first)).status()).toBe(404);

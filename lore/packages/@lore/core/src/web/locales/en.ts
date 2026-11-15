@@ -2246,6 +2246,18 @@ export default {
   "app.settings.url.detected":
     "Using $1, the address this copy last reported from. Set a URL here to show a different one, or clear the field to go back to the detected address.",
   "app.settings.url.save": "Save",
+  "app.settings.monitor.title": "Monitor",
+  "app.settings.monitor.description":
+    "Check this copy's address from outside, every minute by default, and alert on an outage.",
+  "app.settings.monitor.label": "Monitor this app",
+  "app.settings.monitor.rowDescription":
+    "On adds an Uptime card to the Overview. Off pauses the check and keeps its history.",
+  "app.settings.monitor.needsAddress":
+    "Set the address above first: the check requests that address.",
+  "app.settings.monitor.check": "Check",
+  "app.settings.monitor.checkDescription":
+    "What the check does. Edit changes it; its target follows the address.",
+  "app.settings.monitor.anySuccess": "Any 2xx",
   "app.settings.url.saved": "Address saved",
   "app.settings.host.title": "Host",
   "app.settings.host.description":
@@ -3795,7 +3807,6 @@ export default {
   "uptime.recipientsDescription":
     "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
   "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
-  "uptime.app.none": "No monitor checks this address yet.",
   "uptime.title": "Uptime",
   "project.capability.ship.option.uptime.label": "Monitor apps",
   "project.capability.ship.option.uptime.description":

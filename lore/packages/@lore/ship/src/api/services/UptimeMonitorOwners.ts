@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-import { ConflictError, NotFoundError } from "alepha/server";
+import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
@@ -43,6 +43,42 @@ export class UptimeMonitorOwners {
       throw new NotFoundError("App not found in this project");
     }
     return instance;
+  }
+
+  /**
+   * Refuses clearing a copy's address while its HTTP monitor is on (#Q3684):
+   * the check would be left with nothing to request.
+   */
+  public async assertAddressCanClear(instance: AppInstance): Promise<void> {
+    const on = await this.monitors.findOne({
+      where: {
+        appInstanceId: { eq: instance.id },
+        kind: { eq: "http" },
+        active: { eq: true },
+      },
+    });
+    if (on) {
+      throw new BadRequestError(
+        "Turn Monitor off in this app's settings before clearing its address.",
+      );
+    }
+  }
+
+  /**
+   * Points the copy's HTTP monitors at its address (#Q3684): the monitor
+   * checks the address set in the app's settings, and follows it when it
+   * changes. Nothing to do while the copy has no address.
+   */
+  public async followAddress(instance: AppInstance): Promise<void> {
+    if (!instance.url) return;
+    const checks = await this.monitors.findMany({
+      where: { appInstanceId: { eq: instance.id }, kind: { eq: "http" } },
+    });
+    for (const monitor of checks) {
+      if (monitor.target !== instance.url) {
+        await this.monitors.updateById(monitor.id, { target: instance.url });
+      }
+    }
   }
 
   /**
