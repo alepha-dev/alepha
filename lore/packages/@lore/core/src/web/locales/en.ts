@@ -129,6 +129,9 @@ export default {
   "automation.preset.quest-reminders.title": "Quest reminders",
   "automation.preset.quest-reminders.description":
     "Every hour, remind each quest's assignee of a quest whose reminder is due, at the interval set on the quest.",
+  "automation.preset.release-published.title": "Release published",
+  "automation.preset.release-published.description":
+    "Notify one member when a release is published, with its tag, title, number of quests and a link.",
   "uptime.subscription.label":
     "Notify me when this monitor goes down or recovers",
   "uptime.subscription.description":
@@ -2855,6 +2858,11 @@ export default {
     "Feedback you turn down is kept here as a record.",
   "feedback.empty.detail.openForm": "Open the feedback form",
   "feedback.back": "Back",
+  "release.subscription.label": "Notify me when a release is published",
+  "release.subscription.description":
+    "A rule of your own will notify you of every release published in this project. You can edit, pause or delete it on the Automations page.",
+  "release.subscription.offDescription":
+    "You will no longer be notified when a release is published.",
   "feedback.subscription.label": "Notify me of new feedback",
   "feedback.subscription.description":
     "A rule will notify you of every new feedback in this project.",
