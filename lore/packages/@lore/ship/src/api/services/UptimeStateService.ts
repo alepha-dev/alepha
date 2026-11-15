@@ -42,16 +42,33 @@ export class UptimeStateService {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly fields = $inject(UptimeAutomationFields);
 
+  /**
+   * Saves one probe's result and opens or closes the monitor's incident.
+   *
+   * `open` is the monitor's open incident as the caller already read it,
+   * `null` for none: the tick reads every due monitor's in one query
+   * (#Q3749), so a monitor that was up and stays up costs no lookup here.
+   * Omitted, it is read. A stale value is safe: an insert racing another
+   * tick hits the unique open key, and a close the `endedAt is null` guard.
+   */
   public async apply(
     monitor: Monitor,
     result: ProbeResult,
     checkedAt: number,
+    open?: MonitorIncident | null,
   ): Promise<UptimeTransition[]> {
     const transitions: UptimeTransition[] = [];
+    let known = open;
     // Preserve a saved outage even if its incident insert failed and this probe recovers.
     if (monitor.status === "down") {
-      const preceding = await this.reconcile(monitor);
-      if (preceding) transitions.push(preceding);
+      const preceding = await this.reconcile(monitor, undefined, known);
+      if (preceding) {
+        transitions.push(preceding);
+        known = preceding.incident;
+      } else if (known === null) {
+        // Another tick opened it first: read it back before closing.
+        known = undefined;
+      }
     }
     const at = new Date(checkedAt).toISOString();
     const failures = result.ok ? 0 : monitor.failures + 1;
@@ -92,7 +109,7 @@ export class UptimeStateService {
         return transitions;
       throw error;
     }
-    const transition = await this.reconcile(updated, monitor.lastError);
+    const transition = await this.reconcile(updated, monitor.lastError, known);
     if (transition) transitions.push(transition);
     return transitions;
   }
@@ -162,10 +179,14 @@ export class UptimeStateService {
   protected async reconcile(
     monitor: Monitor,
     previousError?: string,
+    known?: MonitorIncident | null,
   ): Promise<UptimeTransition | undefined> {
-    const open = await this.incidents.findOne({
-      where: { monitorId: monitor.id, endedAt: { isNull: true } },
-    });
+    const open =
+      known !== undefined
+        ? known
+        : await this.incidents.findOne({
+            where: { monitorId: monitor.id, endedAt: { isNull: true } },
+          });
     if (monitor.status === "down" && !open) {
       try {
         const incident = await this.createIncident(monitor);

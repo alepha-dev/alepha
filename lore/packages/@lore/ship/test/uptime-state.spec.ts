@@ -6,7 +6,10 @@ import { afterEach, describe, it } from "vitest";
 
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../src/api/entities/monitorHeartbeats.ts";
-import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
+import {
+  type MonitorIncident,
+  monitorIncidents,
+} from "../src/api/entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../src/api/entities/monitors.ts";
 import { projectErrors } from "../src/api/entities/projectErrors.ts";
 import { LoreShipApi } from "../src/api/index.ts";
@@ -57,12 +60,25 @@ class FailingIncidentState extends UptimeStateService {
   }
 }
 
+class RecordingState extends UptimeStateService {
+  seen: Array<[string, MonitorIncident | null | undefined]> = [];
+  public override async apply(
+    monitor: Monitor,
+    result: ProbeResult,
+    checkedAt: number,
+    open?: MonitorIncident | null,
+  ) {
+    this.seen.push([monitor.id, open]);
+    return super.apply(monitor, result, checkedAt, open);
+  }
+}
+
 describe("The uptime tick and state machine", () => {
   const containers: Alepha[] = [];
   afterEach(async () => {
     for (const alepha of containers.splice(0)) await alepha.stop();
   });
-  const setup = async (failIncident = false) => {
+  const setup = async (failIncident = false, record = false) => {
     const alepha = Alepha.create({
       env: {
         DATABASE_URL: ":memory:",
@@ -72,6 +88,8 @@ describe("The uptime tick and state machine", () => {
     }).with({ provide: UptimeProber, use: MemoryProber });
     if (failIncident)
       alepha.with({ provide: UptimeStateService, use: FailingIncidentState });
+    if (record)
+      alepha.with({ provide: UptimeStateService, use: RecordingState });
     alepha.with(LoreShipApi);
     const repos = alepha.inject(Repositories);
     const clock = alepha.inject(DateTimeProvider);
@@ -265,6 +283,45 @@ describe("The uptime tick and state machine", () => {
       (await ctx.repos.monitors.getById(hidden.id)).lastCheckedAt,
     ).toBeUndefined();
     expect(await ctx.repos.beats.count()).toBe(24);
+  });
+
+  it("hands each probe its open incident from one read and writes every result at the end of the tick", async ({
+    expect,
+  }) => {
+    const ctx = await setup(false, true);
+    const steady = await ctx.seed("Steady", 1);
+    const failing = await ctx.seed("Failing", 1);
+    ctx.prober.plans.set(failing.id, [down, down, up]);
+    const state = ctx.alepha.inject(RecordingState);
+    const tick = async () => {
+      state.seen.length = 0;
+      await ctx.clock.travel(1, "minute");
+      await expect.poll(() => state.seen.length).toBe(2);
+      await UptimeTickWatch.settled(ctx.clock);
+      return new Map(state.seen);
+    };
+    const first = await tick();
+    expect(first.get(steady.id)).toBeNull();
+    expect(first.get(failing.id)).toBeNull();
+    await expect.poll(() => ctx.repos.incidents.count()).toBe(1);
+    const incident = (await ctx.repos.incidents.findMany())[0]!;
+    const second = await tick();
+    expect(second.get(steady.id)).toBeNull();
+    expect(second.get(failing.id)?.id).toBe(incident.id);
+    const third = await tick();
+    expect(third.get(failing.id)?.id).toBe(incident.id);
+    await expect
+      .poll(
+        async () => (await ctx.repos.incidents.getById(incident.id)).endedAt,
+      )
+      .toBeDefined();
+    expect(await ctx.repos.beats.count()).toBe(6);
+    const history = await ctx.alepha.inject(DeployAnalytics).probes.query({
+      since: "2000-01-01",
+      where: { monitorId: failing.id },
+      select: { count: "sum", up: "sum" },
+    });
+    expect(history.rows[0]).toMatchObject({ count: 3, up: 1 });
   });
 
   it("does not overwrite a pause made while a probe was in flight", async ({
