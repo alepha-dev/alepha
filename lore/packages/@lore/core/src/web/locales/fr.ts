@@ -132,6 +132,24 @@ export default {
   "automation.preset.quest-reminders.title": "Rappels de quête",
   "automation.preset.quest-reminders.description":
     "Toutes les heures, rappelle à la personne assignée chaque quête dont le rappel est dû, à l'intervalle choisi sur la quête.",
+  "uptime.subscription.label":
+    "M'avertir quand ce moniteur tombe ou se rétablit",
+  "uptime.subscription.description":
+    "Une règle à votre nom vous avertira quand une panne de ce moniteur est confirmée, puis quand il se rétablit. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "uptime.subscription.offDescription":
+    "Vous ne serez plus averti des pannes et rétablissements de ce moniteur.",
+  "uptime.subscription.allLabel":
+    "M'avertir quand un moniteur tombe ou se rétablit",
+  "uptime.subscription.allDescription":
+    "Une règle à votre nom vous avertira quand une panne est confirmée sur n'importe quel moniteur de ce projet, puis quand il se rétablit. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "uptime.subscription.allOffDescription":
+    "Vous ne serez plus averti des pannes et rétablissements de ce projet.",
+  "automation.preset.monitor-down.title": "Moniteur en panne",
+  "automation.preset.monitor-down.description":
+    "Avertit un membre quand une panne d'un moniteur est confirmée, avec son adresse, la cause et l'erreur.",
+  "automation.preset.monitor-up.title": "Moniteur rétabli",
+  "automation.preset.monitor-up.description":
+    "Avertit un membre quand un moniteur se rétablit après une panne, avec sa durée.",
   "automation.preset.deploy-failed.title": "Échec du déploiement",
   "automation.preset.deploy-failed.description":
     "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",

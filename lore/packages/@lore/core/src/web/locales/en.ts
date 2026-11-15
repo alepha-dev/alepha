@@ -125,6 +125,24 @@ export default {
   "automation.preset.quest-reminders.title": "Quest reminders",
   "automation.preset.quest-reminders.description":
     "Every hour, remind each quest's assignee of a quest whose reminder is due, at the interval set on the quest.",
+  "uptime.subscription.label":
+    "Notify me when this monitor goes down or recovers",
+  "uptime.subscription.description":
+    "A rule of your own will notify you when this monitor's outage is confirmed, and again when it recovers. You can edit, pause or delete it on the Automations page.",
+  "uptime.subscription.offDescription":
+    "You will no longer be notified of this monitor's outages and recoveries.",
+  "uptime.subscription.allLabel":
+    "Notify me when any monitor goes down or recovers",
+  "uptime.subscription.allDescription":
+    "A rule of your own will notify you when any monitor of this project has a confirmed outage, and again when it recovers. You can edit, pause or delete it on the Automations page.",
+  "uptime.subscription.allOffDescription":
+    "You will no longer be notified of this project's outages and recoveries.",
+  "automation.preset.monitor-down.title": "Monitor down",
+  "automation.preset.monitor-down.description":
+    "Notify one member when a monitor's outage is confirmed, with its address, the cause and the error.",
+  "automation.preset.monitor-up.title": "Monitor recovered",
+  "automation.preset.monitor-up.description":
+    "Notify one member when a monitor recovers from an outage, with how long it lasted.",
   "automation.preset.deploy-failed.title": "Deployment failed",
   "automation.preset.deploy-failed.description":
     "Notify one member when a deployment of the chosen app records a failure, in any environment. Raw logs are excluded.",

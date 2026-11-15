@@ -1,6 +1,7 @@
 import { TimeAgo, Button, Skeleton } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import {
+  AutomationSubscriptionBell,
   capabilityOption,
   useRank,
   currentProjectAtom,
@@ -334,6 +335,20 @@ const ProjectApps = () => {
         // Keyed per project: `env` values are project-specific, so one
         // project's stored column layout has no business on another's list.
         persist={{ filters: false }}
+        // Uptime alerts are automations since #Q3611: this bell covers every
+        // monitor of the project, down and recovered, and is independent of
+        // each monitor's own bell (it binds no scope).
+        toolbar={
+          uptimeOn ? (
+            <AutomationSubscriptionBell
+              presets={["monitor-down", "monitor-up"]}
+              label={tr("uptime.subscription.allLabel")}
+              description={tr("uptime.subscription.allDescription")}
+              offDescription={tr("uptime.subscription.allOffDescription")}
+              testId="apps-uptime-bell"
+            />
+          ) : undefined
+        }
         // Not "no apps enrolled": enrolment is no longer how an app comes into
         // existence, and the empty state's job here is to offer the create.
         //
