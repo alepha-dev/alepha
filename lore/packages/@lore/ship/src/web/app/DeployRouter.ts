@@ -202,6 +202,14 @@ export class DeployRouter {
       title: `${previous?.title ?? ""} › Artifacts`,
     }),
     lazy: () => import("./components/project/artifacts/ProjectArtifacts.tsx"),
+    // The Ship capability is the gate, as for Uptime and Stacks; the
+    // `deploy` option only hides the sidebar entry (#Q3631), since an
+    // option never guards a route (`route-capability-guards.spec.ts`).
+    loader: async () => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+    },
   });
 
   /**
@@ -217,6 +225,14 @@ export class DeployRouter {
       title: `${previous?.title ?? ""} › Artifacts`,
     }),
     lazy: () => import("./components/project/artifacts/ProjectArtifact.tsx"),
+    // The Ship capability is the gate, as for Uptime and Stacks; the
+    // `deploy` option only hides the sidebar entry (#Q3631), since an
+    // option never guards a route (`route-capability-guards.spec.ts`).
+    loader: async () => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+    },
   });
 
   projectErrors = $pageProject({

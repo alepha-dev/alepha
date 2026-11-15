@@ -21,6 +21,8 @@ export const automationEvents = $entity({
         "quest.completed",
         "deploy.failed",
         "deploy.succeeded",
+        "monitor.down",
+        "monitor.up",
       ])
       .meta({ mode: "text" }),
     occurredAt: z.datetime(),
