@@ -17,6 +17,8 @@ export const useAutomationLabels = () => {
     "deploy.failed": tr("automation.event.deployFailed"),
     "deploy.succeeded": tr("automation.event.deploySucceeded"),
     "quest.completed": tr("automation.event.questCompleted"),
+    "monitor.down": tr("automation.event.monitorDown"),
+    "monitor.up": tr("automation.event.monitorUp"),
   };
   const states: Record<AutomationResource["displayState"], string> = {
     disabled: tr("automation.state.disabled"),

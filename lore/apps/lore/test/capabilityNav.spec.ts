@@ -189,8 +189,8 @@ describe("the sidebar, derived from capabilities", () => {
 
   it("keeps the Ship baseline when tracking is off", ({ expect }) => {
     // The "I deploy on Vercel and only want error tracking" reader, in
-    // reverse: Apps on, telemetry off. Instances and artifacts are the
-    // baseline, so both doors stay - `track` adds the sigil surfaces to them
+    // reverse: Apps on, telemetry off. Instances and artifacts do not hang
+    // off tracking, so both doors stay - `track` adds the sigil surfaces to them
     // rather than being what makes them exist.
     const routes = offered(
       projectFixture({
@@ -203,6 +203,26 @@ describe("the sidebar, derived from capabilities", () => {
     expect(routes).toContain("projectArtifacts");
     // Errors is telemetry, so it goes with `track`.
     expect(routes).not.toContain("projectErrors");
+  });
+
+  it("hides Artifacts when the deploy option is off (#Q3631)", ({ expect }) => {
+    // Builds pushed to be deployed: without Deploy the page means nothing.
+    const off = offered(
+      projectFixture({
+        capabilities: ["ship"],
+        options: { ship: { deploy: false } },
+      }),
+    );
+    expect(off).toContain("projectApps");
+    expect(off).not.toContain("projectArtifacts");
+
+    const on = offered(
+      projectFixture({
+        capabilities: ["ship"],
+        options: { ship: { deploy: true } },
+      }),
+    );
+    expect(on).toContain("projectArtifacts");
   });
 
   it("declares every entry under exactly one capability", ({ expect }) => {

@@ -69,11 +69,13 @@ const ProjectSettingsAppsPage = () => {
           listed here too, as Monitor apps beside Track and Deploy (#Q3597):
           it is the third thing a project does with its apps, and a reader
           looking for it looks here. Both switches write the same row.
+          `deploy` is the same case since Artifacts hangs off it (#Q3631):
+          listed here as Deploy apps, where it always was, and in General.
           `stacks` stays in General only. */}
       <ProjectSettingsCapabilitySection
         capability="ship"
         master={false}
-        options={[...shell.settingsOptions("ship"), "uptime"]}
+        options={[...shell.settingsOptions("ship"), "deploy", "uptime"]}
       />
 
       {enabled && <ProjectSettingsCoverageTarget />}

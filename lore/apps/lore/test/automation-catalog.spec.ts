@@ -114,6 +114,9 @@ describe("Automation catalogue", () => {
       "deploy.succeeded",
       "epic.completed",
       "feedback.created",
+      // Uptime's, since #Q3610.
+      "monitor.down",
+      "monitor.up",
       "quest.completed",
       "release.published",
     ]);
@@ -169,7 +172,7 @@ describe("Automation catalogue", () => {
     const folio = await createTestFolio(alepha, project);
     await persistence.variables.create({
       projectId: project.id,
-      key: "target",
+      key: "destination",
       value: { kind: "folio", value: folio.id },
     });
     const reader = await entities.users.create({ roles: ["user"] });
@@ -200,7 +203,7 @@ describe("Automation catalogue", () => {
       catalog.resolveMetric(project.id, limited, "quality.coverage.lines", {}),
     ).rejects.toThrow("Missing quality:read");
     expect(result.variables[0]).toMatchObject({
-      key: "target",
+      key: "destination",
       available: false,
       reason: "Missing folio:read",
     });

@@ -11,8 +11,14 @@ export const automationTriggerSchema = z.union([
         "deploy.failed",
         "deploy.succeeded",
         "quest.completed",
+        "monitor.down",
+        "monitor.up",
       ]),
       app: z.string().max(255).optional(),
+      /**
+       * Only this monitor's incidents, by id (#Q3610), on `monitor.*`.
+       */
+      monitor: z.string().max(255).optional(),
     })
     .strict(),
   z

@@ -1,5 +1,9 @@
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
+import {
+  capabilityOption,
+  currentProjectAtom,
+  type I18n,
+} from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -130,7 +134,7 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
         {/* The whole visible effect of a host in v3: Deploy and Environment
             are epic #1's. Present only when one is attached, because a row
             reading "none" would be a control that changes nothing. */}
-        {instance.host && (
+        {instance.host && capabilityOption(project, "ship", "deploy") && (
           <>
             <span className="text-muted-foreground">
               {tr("app.dashboard.deploysTo")}
