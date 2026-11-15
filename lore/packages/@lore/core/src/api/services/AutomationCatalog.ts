@@ -6,6 +6,7 @@ import type { AutomationVariable } from "../entities/automationVariables.ts";
 import { automationCatalogSchema } from "../schemas/automationCatalogSchema.ts";
 import { AutomationCron } from "../schemas/AutomationCron.ts";
 import type { AutomationDescriptor } from "../schemas/automationDescriptorSchema.ts";
+import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import {
   automationRuleSchema,
   type AutomationRule,
@@ -266,7 +267,26 @@ export class AutomationCatalog {
         "guard.value",
       );
     }
-    for (const [index, action] of rule.actions.entries()) {
+    // Validated one channel at a time (#Q3613): the vocabulary's notify takes
+    // one `channel`, and a run holds the expanded rule.
+    const addressable = new Map(
+      (await this.channels.all(projectId)).map((entry) => [
+        entry.key,
+        entry.addressable,
+      ]),
+    );
+    for (const [index, action] of AutomationRuleChannels.expand(
+      rule,
+    ).actions.entries()) {
+      if (
+        action.kind === "notify" &&
+        !action.recipient &&
+        !action.audience &&
+        addressable.get(String(action.channel)) !== false
+      )
+        throw new BadRequestError(
+          `actions[${index}].recipient: an addressable channel needs a member`,
+        );
       const descriptor = this.require(
         context,
         action.kind,
@@ -398,7 +418,13 @@ export class AutomationCatalog {
       "effect",
       true,
     );
-    if (kind === "notify" && !(action.kind === "notify" && action.audience)) {
+    if (
+      kind === "notify" &&
+      action.kind === "notify" &&
+      !action.audience &&
+      // A room is nobody's (#Q3613): no recipient to check.
+      action.recipient !== undefined
+    ) {
       const reason = await this.coreReferences.recipientReason(
         projectId,
         resolved.values.recipient as string,

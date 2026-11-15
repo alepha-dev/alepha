@@ -73,7 +73,7 @@ export class AutomationNotificationSender extends NotificationSenderService {
         .inject(AutomationCatalog)
         .entries()
         .find((entry) => entry.key === sourceKey);
-      if (source) {
+      if (source && variables.recipientUserId) {
         const reason = await this.alepha
           .inject(CoreAutomationReferences)
           .recipientReason(stored.projectId, variables.recipientUserId, source);
@@ -86,8 +86,10 @@ export class AutomationNotificationSender extends NotificationSenderService {
           index: variables.actionIndex,
           action: {
             kind: "notify",
-            recipient: variables.recipientUserId,
-            channel: payload.type,
+            ...(variables.recipientUserId
+              ? { recipient: variables.recipientUserId }
+              : {}),
+            channel: variables.channelId ?? payload.type,
             title: variables.title,
             text: variables.text,
             category: variables.category,
@@ -96,13 +98,17 @@ export class AutomationNotificationSender extends NotificationSenderService {
       });
       const adapter = await this.alepha
         .inject(AutomationChannels)
-        .adapter(current.rule.projectId, payload.type);
+        .adapter(current.rule.projectId, variables.channelId ?? payload.type);
       if (payload.template !== adapter.templates[variables.category])
         throw new ForbiddenError("Automation notification template changed");
-      const account = await this.automationUsers.getById(
-        variables.recipientUserId,
-      );
       if (adapter.addressable) {
+        // An addressable channel always names its member; a room names
+        // nobody (#Q3613).
+        if (!variables.recipientUserId)
+          throw new ForbiddenError("Automation recipient is missing");
+        const account = await this.automationUsers.getById(
+          variables.recipientUserId,
+        );
         const contact =
           payload.type === "inbox" && !account.email
             ? `lore-user:${account.id}`

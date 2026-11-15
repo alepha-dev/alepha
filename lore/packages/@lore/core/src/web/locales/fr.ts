@@ -124,6 +124,7 @@ export default {
     "Mesurer le nombre total d’erreurs ouvertes toutes les cinq minutes. Le premier relevé fixe une référence ; un retour au seuil ou en dessous réarme l’alerte.",
   "automation.setup.folio": "Folio",
   "automation.setup.app": "Application",
+  "automation.setup.channels": "Canaux",
   "automation.setup.monitor": "Moniteur",
   "automation.preset.release-to-folio.title":
     "Publier les notes de version dans un folio",

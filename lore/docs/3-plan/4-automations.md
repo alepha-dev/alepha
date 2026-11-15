@@ -313,7 +313,7 @@ parts:
       {
         "kind": "notify",
         "recipient": "22222222-2222-4222-8222-222222222222",
-        "channel": "inbox",
+        "channels": ["inbox", "email"],
         "category": "releases",
         "title": "Release {{release_tag}} published",
         "text": "{{project}}: {{title}}. {{url}}"
@@ -324,7 +324,8 @@ parts:
 ```
 
 The UUIDs stand for a folio and a member of the same project (a member is a
-user id, not an email address). The rule is created disabled, a draft;
+user id, not an email address). A notification names one or more `channels`:
+each gets its own delivery. The rule is created disabled, a draft;
 `"enabled": true` beside `title` and `rule` creates it enabled in the same
 write, or refuses and creates nothing. `automation_test` previews a draft, with
 `source: { "kind": "subject", "id": 12 }` naming a release of the project, and

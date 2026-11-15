@@ -117,6 +117,7 @@ export default {
     "Sample aggregate open errors every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
   "automation.setup.folio": "Folio",
   "automation.setup.app": "App",
+  "automation.setup.channels": "Channels",
   "automation.setup.monitor": "Monitor",
   "automation.preset.release-to-folio.title":
     "Publish release notes to a folio",

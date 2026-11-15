@@ -10,7 +10,10 @@ import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
-import { AutomationChannels } from "./AutomationChannels.ts";
+import {
+  AutomationChannels,
+  type AutomationChannelAdapter,
+} from "./AutomationChannels.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
 import type { AutomationRenderContext } from "./AutomationContextBuilder.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
@@ -65,10 +68,11 @@ export class AutomationNotifications {
       };
     if (preliminary.raw.kind !== "notify")
       throw new BadRequestError("Notification adapter requires NOTIFY");
-    const adapter = await this.channels.adapter(
-      input.rule.projectId,
-      preliminary.raw.channel,
-    );
+    // One channel per delivery: a run holds the expanded rule (#Q3613).
+    const channel = preliminary.raw.channel;
+    if (channel === undefined)
+      throw new BadRequestError("A delivery names exactly one channel");
+    const adapter = await this.channels.adapter(input.rule.projectId, channel);
     const overhead =
       adapter.target === "html"
         ? new TextEncoder().encode(
@@ -79,9 +83,7 @@ export class AutomationNotifications {
     // mail client) `{{url}}` must be absolute to be a link at all (#Q3541).
     const rendered = this.renderer.render(
       input.action,
-      preliminary.raw.channel === "inbox"
-        ? input.context
-        : this.absoluteUrl(input.context),
+      channel === "inbox" ? input.context : this.absoluteUrl(input.context),
       input.variables,
       adapter.target,
       16_384 - overhead,
@@ -93,7 +95,12 @@ export class AutomationNotifications {
     )
       throw new BadRequestError("Invalid rendered notification");
     const action = rendered.raw;
-    if (action.kind !== "notify" || !action.recipient || action.audience)
+    if (action.kind !== "notify" || action.audience)
+      throw new BadRequestError("Invalid concrete notification");
+    // A room is not addressed to anybody (#Q3613): one delivery, no member.
+    if (!adapter.addressable)
+      return this.room(input, action, adapter, rendered, channel);
+    if (!action.recipient)
       throw new BadRequestError(
         "A concrete notification requires one member recipient",
       );
@@ -116,7 +123,7 @@ export class AutomationNotifications {
       return { skipped: true as const, reason: "excluded_publisher", rendered };
     const account = await this.users.getById(action.recipient);
     const contact = adapter.addressable
-      ? action.channel === "inbox" && !account.email
+      ? channel === "inbox" && !account.email
         ? `lore-user:${account.id}`
         : account.email?.trim().toLowerCase()
       : undefined;
@@ -147,6 +154,7 @@ export class AutomationNotifications {
       ruleRevision: input.rule.revision,
       actionIndex: input.index,
       recipientUserId: action.recipient,
+      channelId: channel,
       category: action.category,
     });
     return {
@@ -154,9 +162,57 @@ export class AutomationNotifications {
       rendered,
       action,
       payload: {
-        type: action.channel,
+        type: adapter.kind,
         template: adapter.templates[action.category],
         ...(contact ? { contact } : {}),
+        variables,
+        category: action.category === "reminders" ? "tasks" : action.category,
+        critical: false,
+        sensitive: true,
+        lang: this.templates.lang,
+      },
+    };
+  }
+
+  /**
+   * A delivery to a room (#Q3613): a channel that is nobody's, such as a
+   * Discord channel. No member, no contact, no preference: one delivery per
+   * planned step, rendered for the room's own target.
+   */
+  protected async room(
+    input: Parameters<AutomationNotifications["prepare"]>[0],
+    action: Extract<AutomationRule["actions"][number], { kind: "notify" }>,
+    adapter: AutomationChannelAdapter & { kind: string },
+    rendered: ReturnType<AutomationTemplateRenderer["render"]>,
+    channel: string,
+  ) {
+    const project = await this.security.projects.getById(input.rule.projectId);
+    const href =
+      typeof input.context.values.url === "string"
+        ? input.context.values.url
+        : `/${project.slug}`;
+    const variables = automationNotificationVariablesSchema.parse({
+      title: action.title,
+      text: action.text,
+      html: rendered.action.kind === "notify" ? rendered.action.text : "",
+      href,
+      url: this.absolute(href),
+      manageUrl: this.absolute(`/${project.slug}/automations/${input.rule.id}`),
+      projectTitle: project.title,
+      scope: `project:${project.id}`,
+      automationId: input.rule.id,
+      ruleRevision: input.rule.revision,
+      actionIndex: input.index,
+      channelId: channel,
+      category: action.category,
+    });
+    return {
+      skipped: false as const,
+      rendered,
+      action,
+      payload: {
+        type: adapter.kind,
+        template: adapter.templates[action.category],
         variables,
         category: action.category === "reminders" ? "tasks" : action.category,
         critical: false,
