@@ -118,7 +118,7 @@ export class FolioCardMetric implements DashboardMetricResolver {
       found.find((f) => f.projectId === projectId && f.shortId === shortId);
     const tableIds = pairs.flatMap((it) => {
       const f = folioOf(it.project!.id, it.filters!.folio);
-      return f && f.type === "table" && !f.protected ? [f.id] : [];
+      return f && f.type !== "text" && !f.protected ? [f] : [];
     });
     const tables = await this.tables.tablesOf(tableIds);
 
@@ -139,7 +139,7 @@ export class FolioCardMetric implements DashboardMetricResolver {
         },
       };
       const limit = filters.limit ?? 5;
-      const table = folio.type === "table" ? tables.get(folio.id) : undefined;
+      const table = folio.type !== "text" ? tables.get(folio.id) : undefined;
       const show =
         filters.show !== "auto"
           ? filters.show

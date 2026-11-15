@@ -9,15 +9,15 @@ export interface FolioCreatePageProps {
    */
   directoryId?: string;
   /**
-   * `table` (from `?type=table`) creates a table folio; anything else the
-   * Markdown workspace's create mode (#E144).
+   * `table` or `calendar` (from `?type=`) creates a folio of rows; anything
+   * else the Markdown workspace's create mode (#E144, #Q3717).
    */
-  type?: "table";
+  type?: "table" | "calendar";
 }
 
 const FolioCreatePage = (props: FolioCreatePageProps) =>
-  props.type === "table" ? (
-    <FolioTableCreate directoryId={props.directoryId} />
+  props.type ? (
+    <FolioTableCreate directoryId={props.directoryId} type={props.type} />
   ) : (
     <FolioWorkspace directoryId={props.directoryId} />
   );

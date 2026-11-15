@@ -1,9 +1,10 @@
 # Tables
 
 A table is a folio made of rows: a comparison of options, an inventory, a
-reading list, a set of dated goals. Each row is its own record with typed
-cells, so you can sort and filter it, read it as a calendar, and change one
-row without touching the others. An agent can do the same, one row at a time.
+reading list. Each row is its own record with typed cells, so you can sort and
+filter it and change one row without touching the others. An agent can do the
+same, one row at a time. A calendar is the same kind of folio shown as a
+month: its rows are entries laid out by their date.
 
 A table has what every folio has: a title, a summary, a place in the tree,
 links, files and history. What it does not have is a Markdown body.
@@ -15,10 +16,13 @@ hand, it wants to be a table.
 
 ## Creating a table
 
-1. At the top of the tree, open **New folio** and choose **Table**, or
+1. At the top of the tree, open **New folio** and choose **New table**, or
    right-click a directory and choose **New table**.
 2. The table opens with one text column, **Name**. Rename it, add the columns
    you need, and start adding rows.
+
+A table is always its grid. For dated entries, create a calendar instead: see
+[Calendars](#calendars).
 
 To start from a spreadsheet instead, choose **New folio ▸ Import CSV…**, or
 drop a `.csv` file on the tree or on a directory. See
@@ -80,13 +84,14 @@ rows that hold your text in any cell. A column's header menu sorts by it.
 Both are yours alone: they live in the page's address, so a link carries them,
 and nobody else's view changes.
 
-## The calendar view
+## Calendars
 
-A table with a date column can also be read as a month. **Grid | Calendar**
-appears above the table as soon as it has one, and the folio remembers the
-view it was last read in, for everyone who opens it.
+A calendar is a folio of rows shown as a month. Open **New folio** and choose
+**New calendar**, or right-click a directory and choose **New calendar**. It
+opens on the current month, with two columns: **Title**, a text column that
+names each entry, and **Date**, the date it sits on.
 
-![A table read as a calendar](/screenshots/lore/folio-calendar-light.png)
+![A calendar folio](/screenshots/lore/folio-calendar-light.png)
 
 - Each row is an entry on the day of its date, titled by its first text
   column. A date with a time shows the time, in your time zone; a date
@@ -96,7 +101,12 @@ view it was last read in, for everyone who opens it.
 - **Click a day** to add a row on that date.
 - **Drag an entry** to another day to move it.
 - Rows without a date are listed under the month, as **No date**, so nothing
-  disappears when you switch views.
+  disappears.
+
+A table and a calendar are fixed when the folio is created: a table never
+turns into a month, and a calendar never shows a grid. A calendar keeps its
+rows and columns like a table, so the command line and agents read and write
+it the same way.
 
 The arrows move between days and `Enter` opens one. On a phone the month reads
 as a list of days.
@@ -146,6 +156,7 @@ filtered by Lore itself, which a passphrase only you hold would prevent.
 ```bash
 lore folio create --title "Hosting options" --summary "A comparison." \
   --type table --column Host:text --column Price:number --column 'Status:select:Open|Chosen'
+lore folio create --title "Launch plan" --summary "Dates." --type calendar
 lore folio row add F12 --rows '[{"Host":"Fly","Price":5}]'
 lore folio row list F12 --where '[{"column":"Price","from":1,"to":10}]' --sort Price
 lore folio row update F12 --row 3 --cells '{"Status":"Chosen"}'
@@ -165,7 +176,7 @@ changes one row without reading or rewriting the others.
 
 | Tool                                | What it does                                                 |
 | ----------------------------------- | ------------------------------------------------------------ |
-| `folio_create`                      | With `type: "table"` and `columns`, creates a table          |
+| `folio_create`                      | With `type: "table"` and `columns`, or `type: "calendar"`    |
 | `folio_get`                         | On a table: its columns, its row count and its first 50 rows |
 | `folio_row_list`                    | Rows filtered, sorted and paged; a date range is the agenda  |
 | `folio_row_add`, `folio_row_update` | Add rows, or change some cells of one row                    |

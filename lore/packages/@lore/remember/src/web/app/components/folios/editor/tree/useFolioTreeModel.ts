@@ -83,6 +83,7 @@ export interface FolioTreeVerbs {
    * Create a table folio (#E144), named "New table", and open it.
    */
   createTable: (parentId?: string) => Promise<void>;
+  createCalendar: (parentId?: string) => Promise<void>;
   createDirectory: (parentId?: string) => Promise<void>;
   remove: (node: FolioTreeNode) => Promise<void>;
   duplicate: (node: FolioTreeNode) => Promise<void>;
@@ -779,7 +780,7 @@ export const useFolioTreeModel = (
   };
 
   const createFolioAction = useAction<
-    [string | undefined, ("text" | "table")?],
+    [string | undefined, ("text" | "table" | "calendar")?],
     void
   >(
     {
@@ -790,9 +791,11 @@ export const useFolioTreeModel = (
             title:
               type === "table"
                 ? tr("folios.editor.tree.untitled-table")
-                : tr("folios.editor.tree.untitled-folio"),
+                : type === "calendar"
+                  ? tr("folios.editor.tree.untitled-calendar")
+                  : tr("folios.editor.tree.untitled-folio"),
             directoryId: parentId,
-            ...(type === "table" ? { type } : {}),
+            ...(type !== "text" ? { type } : {}),
           },
         });
         setFolios([created, ...folios]);
@@ -828,6 +831,10 @@ export const useFolioTreeModel = (
 
   const createTable = async (parentId?: string): Promise<void> => {
     await createFolioAction.run(parentId, "table");
+  };
+
+  const createCalendar = async (parentId?: string): Promise<void> => {
+    await createFolioAction.run(parentId, "calendar");
   };
 
   const createDirectoryAction = useAction<[string | undefined], void>(
@@ -1137,6 +1144,7 @@ export const useFolioTreeModel = (
     select,
     createFolio,
     createTable,
+    createCalendar,
     createDirectory,
     remove,
     duplicate,
@@ -1169,6 +1177,7 @@ export const useFolioTreeModel = (
       select: (node, options) => implRef.current.select(node, options),
       createFolio: (parentId) => implRef.current.createFolio(parentId),
       createTable: (parentId) => implRef.current.createTable(parentId),
+      createCalendar: (parentId) => implRef.current.createCalendar(parentId),
       createDirectory: (parentId) => implRef.current.createDirectory(parentId),
       remove: (node) => implRef.current.remove(node),
       duplicate: (node) => implRef.current.duplicate(node),

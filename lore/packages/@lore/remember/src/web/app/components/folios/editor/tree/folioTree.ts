@@ -38,6 +38,11 @@ export interface FolioTreeData {
    * nor Encrypt.
    */
   table?: boolean;
+  /**
+   * A calendar folio (#Q3717): rows too, so `table` is set as well, and
+   * drawn with a calendar icon.
+   */
+  calendar?: boolean;
 }
 
 /**
@@ -71,7 +76,7 @@ interface BuildFolioTreeInput {
     directoryId?: string;
     pinned?: boolean;
     protected?: boolean;
-    type?: "text" | "table";
+    type?: "text" | "table" | "calendar";
   }[];
 }
 
@@ -103,7 +108,8 @@ export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
         kind: (f.protected ? "protected" : "folio") as FolioTreeKind,
         shortId: f.shortId,
         pinned: f.pinned,
-        ...(f.type === "table" ? { table: true } : {}),
+        ...(f.type === "table" || f.type === "calendar" ? { table: true } : {}),
+        ...(f.type === "calendar" ? { calendar: true } : {}),
       },
     })),
   ]) as FolioTreeNode[];

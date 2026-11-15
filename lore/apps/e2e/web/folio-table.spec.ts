@@ -75,7 +75,9 @@ test.describe("table folios", () => {
       .locator("[data-slot=folio-tree]")
       .getByRole("button", { name: "New folio" })
       .click();
-    await page.getByRole("menuitem", { name: "Table", exact: true }).click();
+    await page
+      .getByRole("menuitem", { name: "New table", exact: true })
+      .click();
     await expect(grid(page)).toBeVisible();
 
     await page.getByRole("button", { name: "Add column" }).click();
@@ -183,25 +185,8 @@ test.describe("table folios", () => {
     const exported = fs.readFileSync((await (await download).path())!);
     expect(exported.equals(Buffer.from(FIXTURE, "utf8"))).toBe(true);
 
-    const saved = page.waitForResponse(
-      (r) => r.url().endsWith("/view") && r.request().method() === "POST",
-    );
-    await page.getByRole("tab", { name: "Calendar" }).click();
-    expect((await saved).ok()).toBe(true);
-    const url = new URL(page.url());
-    url.searchParams.set("month", "2030-01");
-    await page.goto(url.toString());
-    const calendar = page.locator("[data-slot=folio-calendar]");
-    await calendar
-      .locator("[data-day] [data-row-number='1']")
-      .dragTo(calendar.locator("[data-day='2030-01-15']"));
-    await expect(
-      calendar.locator("[data-day='2030-01-15'] [data-row-number='1']"),
-    ).toBeVisible();
-    await page.getByRole("tab", { name: "Grid" }).click();
-    await expect(cell(page, 1, "Due")).toContainText("15");
-
-    await page.getByRole("menuitem", { name: "Folio" }).click();
+    await page.keyboard.press("Escape");
+    await page.getByRole("menuitem", { name: "Folio", exact: true }).click();
     await page.getByRole("menuitem", { name: "Add to dashboard…" }).click();
     await modal(page).getByRole("button", { name: "Dashboard" }).click();
     await expect(
@@ -209,6 +194,36 @@ test.describe("table folios", () => {
     ).toBeVisible();
     await page.goto(`/${project.slug}`);
     await expect(page.getByText("Catering").first()).toBeVisible();
+
+    // A calendar is its own folio (#Q3717): created from the tree, it opens
+    // on its month, a click on a day adds an entry there, and an entry is
+    // dragged to another day.
+    await page.goto(`/${project.slug}/folios`);
+    await page
+      .locator("[data-slot=folio-tree]")
+      .getByRole("button", { name: "New folio" })
+      .click();
+    await page.getByRole("menuitem", { name: "New calendar" }).click();
+    const calendar = page.locator("[data-slot=folio-calendar]");
+    await expect(calendar).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Grid" })).toHaveCount(0);
+    const url = new URL(page.url());
+    url.searchParams.set("month", "2030-01");
+    await page.goto(url.toString());
+    await calendar.locator("[data-day='2030-01-04']").click();
+    await expect(
+      calendar.locator("[data-day='2030-01-04'] [data-row-number='1']"),
+    ).toBeVisible();
+    await calendar
+      .locator("[data-day] [data-row-number='1']")
+      .dragTo(calendar.locator("[data-day='2030-01-15']"));
+    await expect(
+      calendar.locator("[data-day='2030-01-15'] [data-row-number='1']"),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      calendar.locator("[data-day='2030-01-15'] [data-row-number='1']"),
+    ).toBeVisible();
   });
 
   test("lets two writers edit two rows at once, and keeps what the second typed in one cell", async ({
@@ -224,7 +239,9 @@ test.describe("table folios", () => {
       .locator("[data-slot=folio-tree]")
       .getByRole("button", { name: "New folio" })
       .click();
-    await page.getByRole("menuitem", { name: "Table", exact: true }).click();
+    await page
+      .getByRole("menuitem", { name: "New table", exact: true })
+      .click();
     const addRow = page.getByRole("button", { name: "Add row" });
     for (const count of [2, 3]) {
       await expect(addRow).toBeEnabled();

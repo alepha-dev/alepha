@@ -198,7 +198,7 @@ export class FolioCommand {
         }
 
         const table =
-          folio.type === "table"
+          folio.type !== "text"
             ? await this.tableApi.getFolioTable({ params: { id: folio.id } })
             : undefined;
         const links = folio.metadata?.links;
@@ -264,15 +264,15 @@ export class FolioCommand {
         })
         .optional(),
       type: z
-        .enum(["text", "table"])
+        .enum(["text", "table", "calendar"])
         .describe(
-          "text (the default), or table: typed columns and rows, no content.",
+          "text (the default); table: typed columns and rows, no content, shown as a grid; or calendar: the same rows shown as a month by a date column (Title and Date when no --column is given).",
         )
         .optional(),
       column: z
         .array(z.text())
         .describe(
-          "A table's column, repeated in order: Name:type, Status:select:Todo|Done, Due:date:time. Types: text, number, checkbox, date, select, reference.",
+          "A table's or a calendar's column, repeated in order: Name:type, Status:select:Todo|Done, Due:date:time. Types: text, number, checkbox, date, select, reference.",
         )
         .optional(),
       directory: z
@@ -296,14 +296,15 @@ export class FolioCommand {
     handler: async ({ flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
-        const isTable = flags.type === "table";
+        // A table and a calendar are both rows (#Q3717).
+        const isTable = flags.type === "table" || flags.type === "calendar";
         if (!isTable && flags.content === undefined) {
           throw new UsageError(
-            "--content is required for a text folio; a table (--type table) takes --column instead.",
+            "--content is required for a text folio; a table (--type table) or a calendar (--type calendar) takes --column instead.",
           );
         }
         if (!isTable && flags.column?.length) {
-          throw new UsageError("--column needs --type table.");
+          throw new UsageError("--column needs --type table or calendar.");
         }
         const columns = (flags.column ?? []).map((spec) =>
           this.parseColumn(spec),
@@ -329,7 +330,7 @@ export class FolioCommand {
             title: flags.title,
             summary: flags.summary,
             ...(isTable
-              ? { type: "table" as const, columns }
+              ? { type: flags.type as "table" | "calendar", columns }
               : { content: flags.content }),
             ...(directory ? { directoryId: directory.id } : {}),
             ...(flags.pinned !== undefined ? { pinned: flags.pinned } : {}),

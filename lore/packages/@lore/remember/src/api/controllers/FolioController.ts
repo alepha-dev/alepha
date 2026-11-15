@@ -1032,14 +1032,15 @@ export class FolioController {
          */
         pinned: z.boolean().optional(),
         /**
-         * `text` (the default) or `table` (#E144). Set here and never
-         * changed. A table keeps `content` empty and cannot be pinned or
-         * encrypted.
+         * `text` (the default), `table` (#E144) or `calendar` (#Q3717): a
+         * table shown as a month. Set here and never changed. A table or a
+         * calendar keeps `content` empty and cannot be pinned or encrypted.
          */
         type: folios.schema.shape.type.optional(),
         /**
          * A table's columns, created with it in the same call. A table
-         * created without any gets one text column named "Name".
+         * created without any gets one text column named "Name", a
+         * calendar a text column "Title" and a date column "Date".
          */
         columns: z
           .array(
@@ -1062,7 +1063,8 @@ export class FolioController {
     handler: async ({ body, user }) => {
       const summary = (body.summary ?? "").trim();
       const type = body.type ?? "text";
-      const isTable = type === "table";
+      // A table and a calendar are both rows (#Q3717).
+      const isTable = type !== "text";
       if (isTable && body.content) {
         throw new BadRequestError(
           "A table folio has no Markdown content: create it with columns, then add rows.",
@@ -1075,7 +1077,7 @@ export class FolioController {
       }
       if (!isTable && (body.columns || body.copyTableFrom)) {
         throw new BadRequestError(
-          'Columns belong to a table folio: pass `type: "table"`.',
+          'Columns belong to a table or a calendar folio: pass `type: "table"` or `type: "calendar"`.',
         );
       }
       const source = body.copyTableFrom
@@ -1086,9 +1088,9 @@ export class FolioController {
             },
           })
         : undefined;
-      if (body.copyTableFrom && source?.type !== "table") {
+      if (body.copyTableFrom && (!source || source.type === "text")) {
         throw new BadRequestError(
-          "`copyTableFrom` names no table folio of this project.",
+          "`copyTableFrom` names no table or calendar folio of this project.",
         );
       }
       const content = isTable ? "" : (body.content ?? "");
@@ -1242,7 +1244,7 @@ export class FolioController {
       // A table's data is its rows (#E144): its `content` stays empty, so
       // every reader expecting Markdown sees an empty folio.
       if (
-        existing.type === "table" &&
+        existing.type !== "text" &&
         body.content !== undefined &&
         body.content !== ""
       ) {
@@ -1254,12 +1256,12 @@ export class FolioController {
       // folio's Markdown into every agent's context, which a table has none
       // of, and its rows are queried on the server, which a client-side
       // passphrase cannot allow.
-      if (existing.type === "table" && body.pinned === true) {
+      if (existing.type !== "text" && body.pinned === true) {
         throw new BadRequestError(
           "A table folio cannot be pinned to context yet: pinning puts a folio's text in every agent's context, and a table's rows are not text.",
         );
       }
-      if (existing.type === "table" && body.protected === true) {
+      if (existing.type !== "text" && body.protected === true) {
         throw new BadRequestError(
           "A table folio cannot be encrypted: its rows are searched and filtered on the server, which a passphrase only you hold cannot allow.",
         );
@@ -1410,7 +1412,7 @@ export class FolioController {
         // its empty `content`.
         plan = !action
           ? undefined
-          : existing.type === "table"
+          : existing.type !== "text"
             ? await this.historyService.prepareRevisionLazy(
                 params.id,
                 user.id,
@@ -1758,7 +1760,7 @@ export class FolioController {
       const folio = this.owned.get<Folio>();
       // A table's head revision reads the table as it stands (#Q3513).
       const live =
-        folio.type === "table"
+        folio.type !== "text"
           ? await this.tables.encodeSnapshot(folio.id)
           : folio.content;
       const revisions = await this.revisionsWith.findMany({
@@ -1839,7 +1841,7 @@ export class FolioController {
         throw new NotFoundError("Revision not found");
       }
 
-      if (folio.type === "table") {
+      if (folio.type !== "text") {
         return this.revertTable(folio, revision, user, params.revisionId);
       }
 

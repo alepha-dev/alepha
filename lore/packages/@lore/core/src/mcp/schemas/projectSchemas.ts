@@ -139,7 +139,7 @@ const folioIndexEntrySchema = z.object({
    * `text` (Markdown) or `table` (typed rows, read with the row tools), so
    * an agent knows which one it is before opening it.
    */
-  type: z.enum(["text", "table"]),
+  type: z.enum(["text", "table", "calendar"]),
   updatedAt: z.string(),
   summary: z.string().optional(),
   /**

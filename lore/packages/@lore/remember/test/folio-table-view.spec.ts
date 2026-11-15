@@ -19,7 +19,8 @@ import { FolioTableTools, LoreRememberMcp } from "../src/mcp/index.ts";
 
 /**
  * The calendar's server half (#E144, #Q3518): the view a folio remembers,
- * read leniently, and the agenda an agent reads with `folio_row_list`.
+ * read leniently, its kind from the folio's type (#Q3717), and the agenda
+ * an agent reads with `folio_row_list`.
  */
 describe("table folio views", () => {
   let alepha: Alepha;
@@ -55,58 +56,80 @@ describe("table folio views", () => {
     await alepha.stop();
   });
 
-  const createTable = async (
-    columns: Array<{
+  const createFolio = async (
+    type: "table" | "calendar",
+    columns?: Array<{
       name: string;
       type: "text" | "date";
       options?: { withTime?: boolean };
     }>,
   ) =>
     (
-      await alepha
-        .inject(FolioController)
-        .create.fetch(
-          { body: { projectId, title: "Goals", type: "table", columns } },
-          { user: owner },
-        )
+      await alepha.inject(FolioController).create.fetch(
+        {
+          body: {
+            projectId,
+            title: "Goals",
+            type,
+            ...(columns ? { columns } : {}),
+          },
+        },
+        { user: owner },
+      )
     ).data;
 
-  it("reads as a grid until a calendar is chosen, and remembers it", async ({
+  const createTable = async (
+    columns: Array<{
+      name: string;
+      type: "text" | "date";
+      options?: { withTime?: boolean };
+    }>,
+  ) => createFolio("table", columns);
+
+  it("reads a table as a grid and a calendar as a month, by the folio's type (#Q3717)", async ({
     expect,
   }) => {
-    const folio = await createTable([
+    const tables = alepha.inject(FolioTableController);
+    const table = await createTable([
       { name: "Goal", type: "text" },
       { name: "Due", type: "date" },
     ]);
-    const tables = alepha.inject(FolioTableController);
-    const first = (
+    const grid = (
       await tables.getFolioTable.fetch(
-        { params: { id: folio.id }, query: {} },
+        { params: { id: table.id }, query: {} },
         { user: owner },
       )
     ).data;
-    expect(first.view.kind).toBe("grid");
-    const due = first.columns[1].id;
-    expect(first.view.dateColumnId).toBe(due);
-    expect(first.view.titleColumnId).toBe(first.columns[0].id);
+    expect(grid.view.kind).toBe("grid");
+    expect(grid.view.dateColumnId).toBe(grid.columns[1].id);
+    expect(grid.view.titleColumnId).toBe(grid.columns[0].id);
 
-    await tables.setFolioView.fetch(
-      { params: { id: folio.id }, body: { kind: "calendar" } },
-      { user: owner },
-    );
-    const read = (
+    // A calendar created without columns starts on Title and Date.
+    const calendar = await createFolio("calendar");
+    expect(calendar.type).toBe("calendar");
+    const month = (
       await tables.getFolioTable.fetch(
-        { params: { id: folio.id }, query: {} },
+        { params: { id: calendar.id }, query: {} },
         { user: owner },
       )
     ).data;
-    expect(read.view).toMatchObject({ kind: "calendar", dateColumnId: due });
+    expect(month.columns.map((c) => [c.name, c.type])).toEqual([
+      ["Title", "text"],
+      ["Date", "date"],
+    ]);
+    expect(month.view).toMatchObject({
+      kind: "calendar",
+      dateColumnId: month.columns[1].id,
+      titleColumnId: month.columns[0].id,
+    });
 
+    // The stored view picks columns, never the kind, and refuses a
+    // non-date column for the date.
     await expect(
       tables.setFolioView.fetch(
         {
-          params: { id: folio.id },
-          body: { kind: "calendar", dateColumnId: first.columns[0].id },
+          params: { id: calendar.id },
+          body: { dateColumnId: month.columns[0].id },
         },
         { user: owner },
       ),
@@ -116,28 +139,25 @@ describe("table folio views", () => {
   it("falls back to the first date column, then to the grid", async ({
     expect,
   }) => {
-    const folio = await createTable([
+    const folio = await createFolio("calendar", [
       { name: "Goal", type: "text" },
       { name: "Start", type: "date" },
       { name: "End", type: "date" },
     ]);
     const service = alepha.inject(FolioTableService);
     const columns = await service.columnsOf(folio.id);
-    await service.setView(folio, {
-      kind: "calendar",
-      dateColumnId: columns[2].id,
-    });
+    await service.setView(folio, { dateColumnId: columns[2].id });
     await service.applyColumnOperations(folio, [
       { op: "remove", column: "End" },
     ]);
-    expect(await service.viewOf(folio.id)).toMatchObject({
+    expect(await service.viewOf(folio)).toMatchObject({
       kind: "calendar",
       dateColumnId: columns[1].id,
     });
     await service.applyColumnOperations(folio, [
       { op: "remove", column: "Start" },
     ]);
-    const view = await service.viewOf(folio.id);
+    const view = await service.viewOf(folio);
     expect(view.kind).toBe("grid");
     expect(view.dateColumnId).toBeUndefined();
   });

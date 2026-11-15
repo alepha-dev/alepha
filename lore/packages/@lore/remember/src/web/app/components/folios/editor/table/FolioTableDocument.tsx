@@ -58,6 +58,11 @@ export interface FolioTableDocumentProps {
   folioId: string;
   readOnly: boolean;
   /**
+   * A calendar folio (#Q3717): the same rows, shown as a month laid out by
+   * its date column instead of a grid. A table is always its grid.
+   */
+  calendar?: boolean;
+  /**
    * Receives the commands the menubar's Insert ▸ Row, Insert ▸ Column and
    * Edit ▸ Find in folio run, `null` on unmount.
    */
@@ -211,8 +216,10 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
     if (ok) await table.deleteRows(chosen.map((row) => row.number));
   };
 
-  const hasDates = table.columns.some((column) => column.type === "date");
-  const showCalendar = hasDates && table.view.kind === "calendar";
+  // The kind is the folio's (#Q3717), and the server says the same in
+  // `view.kind`: a calendar left with no date column reads as a grid.
+  const showCalendar =
+    props.calendar === true && table.view.kind === "calendar";
   const month = /^\d{4}-\d{2}$/.test(view.month ?? "")
     ? (view.month as string)
     : folioDayKey(new Date(dateTime.nowMillis())).slice(0, 7);
@@ -225,6 +232,10 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
       </div>
     );
   }
+
+  const findLabel = props.calendar
+    ? tr("folios.calendar.find")
+    : tr("folios.table.find");
 
   const emptyHint = (
     <p className="text-muted-foreground px-3 py-4 text-sm">
@@ -257,8 +268,8 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
           <Control
             input={findForm.input.find}
             label=""
-            placeholder={tr("folios.table.find")}
-            inputProps={{ "aria-label": tr("folios.table.find") }}
+            placeholder={findLabel}
+            inputProps={{ "aria-label": findLabel }}
           />
         </div>
         <span className="text-muted-foreground text-xs whitespace-nowrap tabular-nums">
@@ -268,36 +279,9 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
               })
             : tr("folios.table.count", { args: [String(table.rows.length)] })}
         </span>
-        {hasDates && (
-          <div
-            role="tablist"
-            aria-label={tr("folios.table.view")}
-            className="bg-muted/40 flex w-fit gap-0.5 rounded-md p-0.5"
-          >
-            {(["grid", "calendar"] as const).map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                role="tab"
-                aria-selected={showCalendar === (kind === "calendar")}
-                className={
-                  showCalendar === (kind === "calendar")
-                    ? "bg-background rounded px-3 py-1 text-xs font-medium shadow-sm"
-                    : "text-muted-foreground rounded px-3 py-1 text-xs"
-                }
-                onClick={() =>
-                  void table.setView({ ...table.view, kind }, !props.readOnly)
-                }
-              >
-                {kind === "calendar"
-                  ? tr("folios.table.view.calendar")
-                  : tr("folios.table.view.grid")}
-              </button>
-            ))}
-          </div>
-        )}
         <div className="flex-1" />
-        {!props.readOnly && (
+        {/* A calendar adds an entry on its day, never a row with no date. */}
+        {!props.readOnly && !showCalendar && (
           <>
             <Button
               variant="outlined"

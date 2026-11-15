@@ -25,14 +25,10 @@ export interface UseFolioTableResult {
   rows: FolioRowResource[];
   conflicts: FolioCellConflict[];
   /**
-   * How the folio is read (#Q3518): grid or calendar, and its columns.
+   * How the folio is read (#Q3518): grid or calendar, which is the folio's
+   * type (#Q3717), and the columns a calendar reads.
    */
   view: FolioTableView;
-  /**
-   * Switch the view; remembered on the folio when `remember` (a writer),
-   * for this reader only otherwise.
-   */
-  setView: (view: FolioTableView, remember: boolean) => Promise<void>;
   /**
    * True while any write is in flight: every control of the grid that
    * writes is disabled on it, page-wide.
@@ -290,17 +286,6 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
     [api, folioId],
   );
 
-  const viewAction = useAction<[view: FolioTableView], void>(
-    {
-      handler: async (_ctx, next) => {
-        setViewState(
-          await api.setFolioView({ params: { id: folioId }, body: next }),
-        );
-      },
-    },
-    [api, folioId],
-  );
-
   const previewAction = useAction<
     [columnId: string, type: FolioColumnResource["type"]],
     number
@@ -331,10 +316,6 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
     rows,
     conflicts,
     view,
-    setView: async (next, remember) => {
-      setViewState(next);
-      if (remember) await viewAction.run(next);
-    },
     writing,
     writeCell: async (row, columnId, value) => {
       const result = await enqueue(() =>

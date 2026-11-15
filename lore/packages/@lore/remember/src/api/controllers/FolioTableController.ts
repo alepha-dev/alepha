@@ -324,11 +324,10 @@ export class FolioTableController {
     path: "/folios/:id/view",
     use: [this.ownsFolioForKnowledge("folio:write")],
     description:
-      "Remember how a table folio is read: grid or calendar, the date column a calendar lays rows out by, and the column that titles an entry.",
+      "Remember the columns a calendar folio reads: the date column it lays rows out by, and the column that titles an entry. Grid or calendar is the folio's type, set at creation.",
     schema: {
       params: folioIdParamsSchema,
       body: z.object({
-        kind: z.enum(["grid", "calendar"]),
         dateColumnId: z.string().optional(),
         titleColumnId: z.string().optional(),
       }),
@@ -376,7 +375,7 @@ export class FolioTableController {
       columns: columns.map((column) => this.tables.columnResource(column)),
       rowCount: total,
       rows,
-      view: await this.tables.viewOf(folio.id, columns),
+      view: await this.tables.viewOf(folio, columns),
     };
   }
 

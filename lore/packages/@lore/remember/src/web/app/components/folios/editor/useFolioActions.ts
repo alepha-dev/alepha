@@ -787,8 +787,8 @@ export const useFolioActions = (
             summary: values.summary,
             // A table is duplicated with its columns and rows, copied on
             // the server (#E144): it has no content to send.
-            ...(folio.type === "table"
-              ? { type: "table" as const, copyTableFrom: folio.id }
+            ...(folio.type !== "text"
+              ? { type: folio.type, copyTableFrom: folio.id }
               : { content: contentToSend, protected: isProtected }),
             projectId: project.id,
             // `currentDirectoryId` (local state, moved by `confirmMove`'s
@@ -1066,7 +1066,7 @@ export const useFolioActions = (
   const exportFolio = (): void => {
     const folio = input.folio;
     if (!folio) return;
-    if (folio.type === "table") {
+    if (folio.type !== "text") {
       void exportTableAction.run();
       return;
     }
@@ -1240,7 +1240,7 @@ export const useFolioActions = (
   const actionState: FolioActionState = {
     locked,
     isNew: !input.folio,
-    isTable: input.folio?.type === "table",
+    isTable: !!input.folio && input.folio.type !== "text",
     dirty: input.draft.dirty,
     isProtected,
     isPinned,

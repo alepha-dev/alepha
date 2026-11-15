@@ -68,8 +68,9 @@ describe("FolioCardMetric", () => {
   const table = async (
     project: Awaited<ReturnType<typeof createTestProject>>,
     rows: Array<Record<string, unknown>>,
+    type: "table" | "calendar" = "table",
   ) => {
-    const folio = await createTestFolio(alepha, project, { type: "table" });
+    const folio = await createTestFolio(alepha, project, { type });
     const tables = alepha.inject(FolioTableService);
     await tables.seedColumns(folio, [
       { name: "Goal", type: "text" },
@@ -138,17 +139,20 @@ describe("FolioCardMetric", () => {
     ]);
   });
 
-  it("shows what comes next from today on, today first, for a table read as a calendar", async ({
+  it("shows what comes next from today on, today first, for a calendar folio", async ({
     expect,
   }) => {
     const project = await createTestProject(alepha);
-    const folio = await table(project, [
-      { Goal: "past", Due: "2026-11-01" },
-      { Goal: "later", Due: "2026-12-01" },
-      { Goal: "today", Due: "2026-11-15" },
-      { Goal: "soon", Due: "2026-11-20" },
-    ]);
-    await alepha.inject(FolioTableService).setView(folio, { kind: "calendar" });
+    const folio = await table(
+      project,
+      [
+        { Goal: "past", Due: "2026-11-01" },
+        { Goal: "later", Due: "2026-12-01" },
+        { Goal: "today", Due: "2026-11-15" },
+        { Goal: "soon", Due: "2026-11-20" },
+      ],
+      "calendar",
+    );
     const entry = card(project, {
       folio: folio.shortId,
       show: "auto",

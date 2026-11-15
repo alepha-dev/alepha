@@ -85,7 +85,7 @@ export class KnowledgeProjectContext {
     // spinning the MCP transport.
     const { pinnedFolios, pinnedFoliosTruncated } = this.pinnedFolder.fold(
       folios
-        .filter((f) => f.pinned && !f.protected && f.type !== "table")
+        .filter((f) => f.pinned && !f.protected && f.type === "text")
         // The controller already sorts (pinned DESC, updatedAt DESC), so
         // this slice is already newest-first.
         .map((f) => ({

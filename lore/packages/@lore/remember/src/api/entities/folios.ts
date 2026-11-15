@@ -28,15 +28,20 @@ export const folios = $entity({
     }),
     title: z.string().min(1).max(200),
     /**
-     * `text`, a Markdown note in `content`, or `table`: typed columns and
-     * rows in `folio_columns` / `folio_rows`, with `content` kept empty
-     * (#E144, #Q3511). Set at creation and never changed.
+     * `text`, a Markdown note in `content`; `table`: typed columns and rows
+     * in `folio_columns` / `folio_rows`, with `content` kept empty (#E144,
+     * #Q3511), shown as a grid; or `calendar`: the same columns and rows,
+     * shown as a month laid out by a date column (#Q3717). Anything but
+     * `text` is rows. Set at creation and never changed.
      *
      * One `ADD COLUMN` with a constant default, so every folio that existed
      * reads `text` and `folios` is never rebuilt (it is a cascade child of
      * `projects` and a cascade parent of revisions, attachments and rows).
      */
-    type: db.default(z.enum(["text", "table"]).meta({ mode: "text" }), "text"),
+    type: db.default(
+      z.enum(["text", "table", "calendar"]).meta({ mode: "text" }),
+      "text",
+    ),
     /**
      * When `true` the folio's `content` field is a passphrase-encrypted
      * JSON envelope produced client-side by `BrowserCryptoProvider`. The

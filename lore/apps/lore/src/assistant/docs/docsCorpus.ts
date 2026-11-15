@@ -825,7 +825,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Writing a folio",
     url: "https://alepha.dev/lore/docs/remember-folios#writing-a-folio",
     capability: "remember",
-    text: '1. Open **New folio** at the top of the tree and choose **Text**, or\n   right-click a directory and choose **New folio** to create it there. Choose\n   **Table** for a list you will change row by row: see\n   [Tables](/lore/docs/remember-tables).\n2. Give it a title and write. The body is Markdown, and the **Insert** menu\n   adds headings, lists, tables, code blocks and diagrams.\n3. There is nothing to submit: edits save as you type. **Folio ▸ Save** (`⌘S`)\n   saves at once.\n\nA folio with content opens rendered, and an empty one opens ready for editing.\n**View ▸ Toggle preview** (`⌘E`) switches between the two. **Edit ▸ Find in\nfolio** (`⌘F`) searches the open folio.\n\nThe **Folio** menu also holds **Duplicate**, **Move to…**, **Export as .md**\n(a folio with files exports as a `.zip`, the files beside the Markdown) and\n**Delete folio**.\n\n⚠️ **Deleting a folio cannot be undone.**\n\nA few habits keep folios useful:\n\n- **One topic per folio.** The title is the topic.\n- **Short and self-contained.** A folio that needs scrolling is two folios.\n- **Always a summary.** One or two sentences on what the folio is for, starting\n  with the kind of note it is ("Decision: ...", "Runbook: ..."). It is...',
+    text: "1. Open **New folio** at the top of the tree and choose **New doc**, or\n   right-click a directory and choose **New doc** to create it there. Choose\n   **New table** for a list you will change row by row, or **New calendar**\n   for dated entries: see [Tables](/lore/docs/remember-tables).\n2. Give it a title and write. The body is Markdown, and the **Insert** menu\n   adds headings, lists, tables, code blocks and diagrams.\n3. There is nothing to submit: edits save as you type. **Folio ▸ Save** (`⌘S`)\n   saves at once.\n\nA folio with content opens rendered, and an empty one opens ready for editing.\n**View ▸ Toggle preview** (`⌘E`) switches between the two. **Edit ▸ Find in\nfolio** (`⌘F`) searches the open folio.\n\nThe **Folio** menu also holds **Duplicate**, **Move to…**, **Export as .md**\n(a folio with files exports as a `.zip`, the files beside the Markdown) and\n**Delete folio**.\n\n⚠️ **Deleting a folio cannot be undone.**\n\nA few habits keep folios useful:\n\n- **One topic per folio.** The title is the topic.\n- **Short and self-contained.** A folio that needs scrolling is two folios.\n- **Always a summary.** One or two sentences on what the folio is for, starting\n  with the kind of note it...",
   },
   {
     guide: "Folios",
@@ -902,7 +902,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Next",
     url: "https://alepha.dev/lore/docs/remember-folios#next",
     capability: "remember",
-    text: "- [Tables](/lore/docs/remember-tables): folios made of typed rows, with a\n  calendar view.\n- [Attachments](/lore/docs/remember-attachments): files on a folio or a quest.\n- [Epics](/lore/docs/plan-epics): the plans a design note is filed under.\n- [Connecting an agent](/lore/docs/agents-connecting): give an agent access to\n  the project's folios.",
+    text: "- [Tables](/lore/docs/remember-tables): folios made of typed rows, read as a\n  grid or as a calendar.\n- [Attachments](/lore/docs/remember-attachments): files on a folio or a quest.\n- [Epics](/lore/docs/plan-epics): the plans a design note is filed under.\n- [Connecting an agent](/lore/docs/agents-connecting): give an agent access to\n  the project's folios.",
   },
   {
     guide: "Attachments",
@@ -951,14 +951,14 @@ export const docsCorpus: DocsSection[] = [
     section: "Tables",
     url: "https://alepha.dev/lore/docs/remember-tables",
     capability: "remember",
-    text: "A table is a folio made of rows: a comparison of options, an inventory, a\nreading list, a set of dated goals. Each row is its own record with typed\ncells, so you can sort and filter it, read it as a calendar, and change one\nrow without touching the others. An agent can do the same, one row at a time.\n\nA table has what every folio has: a title, a summary, a place in the tree,\nlinks, files and history. What it does not have is a Markdown body.\n\n**When to use a text folio instead.** Prose, a decision and its reasons, a\nrunbook: anything read from top to bottom. A table is for a list you will add\nto or change row by row. If you find yourself maintaining a Markdown table by\nhand, it wants to be a table.",
+    text: "A table is a folio made of rows: a comparison of options, an inventory, a\nreading list. Each row is its own record with typed cells, so you can sort and\nfilter it and change one row without touching the others. An agent can do the\nsame, one row at a time. A calendar is the same kind of folio shown as a\nmonth: its rows are entries laid out by their date.\n\nA table has what every folio has: a title, a summary, a place in the tree,\nlinks, files and history. What it does not have is a Markdown body.\n\n**When to use a text folio instead.** Prose, a decision and its reasons, a\nrunbook: anything read from top to bottom. A table is for a list you will add\nto or change row by row. If you find yourself maintaining a Markdown table by\nhand, it wants to be a table.",
   },
   {
     guide: "Tables",
     section: "Creating a table",
     url: "https://alepha.dev/lore/docs/remember-tables#creating-a-table",
     capability: "remember",
-    text: "1. At the top of the tree, open **New folio** and choose **Table**, or\n   right-click a directory and choose **New table**.\n2. The table opens with one text column, **Name**. Rename it, add the columns\n   you need, and start adding rows.\n\nTo start from a spreadsheet instead, choose **New folio ▸ Import CSV…**, or\ndrop a `.csv` file on the tree or on a directory. See\n[Import and export](#import-and-export).",
+    text: "1. At the top of the tree, open **New folio** and choose **New table**, or\n   right-click a directory and choose **New table**.\n2. The table opens with one text column, **Name**. Rename it, add the columns\n   you need, and start adding rows.\n\nA table is always its grid. For dated entries, create a calendar instead: see\n[Calendars](#calendars).\n\nTo start from a spreadsheet instead, choose **New folio ▸ Import CSV…**, or\ndrop a `.csv` file on the tree or on a directory. See\n[Import and export](#import-and-export).",
   },
   {
     guide: "Tables",
@@ -983,10 +983,10 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Tables",
-    section: "The calendar view",
-    url: "https://alepha.dev/lore/docs/remember-tables#the-calendar-view",
+    section: "Calendars",
+    url: "https://alepha.dev/lore/docs/remember-tables#calendars",
     capability: "remember",
-    text: "A table with a date column can also be read as a month. **Grid | Calendar**\nappears above the table as soon as it has one, and the folio remembers the\nview it was last read in, for everyone who opens it.\n\n- Each row is an entry on the day of its date, titled by its first text\n  column. A date with a time shows the time, in your time zone; a date\n  without one stays on its day wherever you are.\n- A day with more entries than fit shows **+N more**, which opens the day.\n- **Click an entry** to edit its row, every cell at once, in a side panel.\n- **Click a day** to add a row on that date.\n- **Drag an entry** to another day to move it.\n- Rows without a date are listed under the month, as **No date**, so nothing\n  disappears when you switch views.\n\nThe arrows move between days and `Enter` opens one. On a phone the month reads\nas a list of days.",
+    text: "A calendar is a folio of rows shown as a month. Open **New folio** and choose\n**New calendar**, or right-click a directory and choose **New calendar**. It\nopens on the current month, with two columns: **Title**, a text column that\nnames each entry, and **Date**, the date it sits on.\n\n- Each row is an entry on the day of its date, titled by its first text\n  column. A date with a time shows the time, in your time zone; a date\n  without one stays on its day wherever you are.\n- A day with more entries than fit shows **+N more**, which opens the day.\n- **Click an entry** to edit its row, every cell at once, in a side panel.\n- **Click a day** to add a row on that date.\n- **Drag an entry** to another day to move it.\n- Rows without a date are listed under the month, as **No date**, so nothing\n  disappears.\n\nA table and a calendar are fixed when the folio is created: a table never\nturns into a month, and a calendar never shows a grid. A calendar keeps its\nrows and columns like a table, so the command line and agents read and write\nit the same way.\n\nThe arrows move between days and `Enter` opens one. On a phone the month reads\nas a list of days.",
   },
   {
     guide: "Tables",
@@ -1014,14 +1014,14 @@ export const docsCorpus: DocsSection[] = [
     section: "From the command line",
     url: "https://alepha.dev/lore/docs/remember-tables#from-the-command-line",
     capability: "remember",
-    text: '```bash\nlore folio create --title "Hosting options" --summary "A comparison." \\\n  --type table --column Host:text --column Price:number --column \'Status:select:Open|Chosen\'\nlore folio row add F12 --rows \'[{"Host":"Fly","Price":5}]\'\nlore folio row list F12 --where \'[{"column":"Price","from":1,"to":10}]\' --sort Price\nlore folio row update F12 --row 3 --cells \'{"Status":"Chosen"}\'\nlore folio column set F12 --operations \'[{"op":"add","name":"Due","type":"date"}]\'\nlore folio import hosting.csv --summary "A comparison."\nlore folio export F12 --csv > hosting.csv\n```\n\nColumns are named, never numbered. `--rows @-` reads the rows from standard\ninput. The full list is in [The lore CLI](/lore/docs/reference-cli#folios).',
+    text: '```bash\nlore folio create --title "Hosting options" --summary "A comparison." \\\n  --type table --column Host:text --column Price:number --column \'Status:select:Open|Chosen\'\nlore folio create --title "Launch plan" --summary "Dates." --type calendar\nlore folio row add F12 --rows \'[{"Host":"Fly","Price":5}]\'\nlore folio row list F12 --where \'[{"column":"Price","from":1,"to":10}]\' --sort Price\nlore folio row update F12 --row 3 --cells \'{"Status":"Chosen"}\'\nlore folio column set F12 --operations \'[{"op":"add","name":"Due","type":"date"}]\'\nlore folio import hosting.csv --summary "A comparison."\nlore folio export F12 --csv > hosting.csv\n```\n\nColumns are named, never numbered. `--rows @-` reads the rows from standard\ninput. The full list is in [The lore CLI](/lore/docs/reference-cli#folios).',
   },
   {
     guide: "Tables",
     section: "From an agent",
     url: "https://alepha.dev/lore/docs/remember-tables#from-an-agent",
     capability: "remember",
-    text: 'A table is the right folio for a list the agent will add to or change row by\nrow. An agent names columns by their names and rows by their numbers, and\nchanges one row without reading or rewriting the others.\n\n| Tool                                | What it does                                                 |\n| ----------------------------------- | ------------------------------------------------------------ |\n| `folio_create`                      | With `type: "table"` and `columns`, creates a table          |\n| `folio_get`                         | On a table: its columns, its row count and its first 50 rows |\n| `folio_row_list`                    | Rows filtered, sorted and paged; a date range is the agenda  |\n| `folio_row_add`, `folio_row_update` | Add rows, or change some cells of one row                    |\n| `folio_row_delete`                  | Delete rows by number                                        |\n| `folio_column_set`                  | Add, rename, retype, move or remove columns, in order        |',
+    text: 'A table is the right folio for a list the agent will add to or change row by\nrow. An agent names columns by their names and rows by their numbers, and\nchanges one row without reading or rewriting the others.\n\n| Tool                                | What it does                                                 |\n| ----------------------------------- | ------------------------------------------------------------ |\n| `folio_create`                      | With `type: "table"` and `columns`, or `type: "calendar"`    |\n| `folio_get`                         | On a table: its columns, its row count and its first 50 rows |\n| `folio_row_list`                    | Rows filtered, sorted and paged; a date range is the agenda  |\n| `folio_row_add`, `folio_row_update` | Add rows, or change some cells of one row                    |\n| `folio_row_delete`                  | Delete rows by number                                        |\n| `folio_column_set`                  | Add, rename, retype, move or remove columns, in order        |',
   },
   {
     guide: "Tables",

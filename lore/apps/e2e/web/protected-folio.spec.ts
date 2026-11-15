@@ -77,7 +77,9 @@ test.describe("Protected folio", () => {
         .first()
         .click();
       // The button asks which kind of folio: Text is the Markdown one.
-      await page.getByRole("menuitem", { name: "Text", exact: true }).click();
+      await page
+        .getByRole("menuitem", { name: "New doc", exact: true })
+        .click();
       // The create surface IS the workspace, and the document heading is
       // gone with it — so the BODY placeholder is what says the editor is
       // ready. The title field's placeholder used to serve this and no
