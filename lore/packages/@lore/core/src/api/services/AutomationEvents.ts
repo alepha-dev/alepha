@@ -108,7 +108,7 @@ export class AutomationEvents {
             input.mutation,
             sql`INSERT INTO automation_events (id, version, project_id, identity, name, occurred_at, replay_until, payload, created_at, updated_at)
               SELECT ${id}, 0, ${input.projectId}, ${input.identity}, ${input.name}, ${this.database.timestamp(now)}, ${this.database.timestamp(replayUntil)}, ${encoded}, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}
-              WHERE ${this.database.automationsOn(input.projectId)} RETURNING *`,
+              RETURNING *`,
           ],
         );
         rows = batch[1];

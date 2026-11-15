@@ -323,8 +323,8 @@ describe("Current automation authority", () => {
       }),
     ).rejects.toThrow("Member is no longer in this project");
     const last = await create();
-    // Automations are a baseline of Plan (#Q3594): Work off is what stops
-    // them.
+    // The rule's own event needs Plan: Plan off stops it, though
+    // automations themselves are Core since #Q3629.
     await entities.capabilities.deleteMany({
       projectId: project.id,
       key: "plan",

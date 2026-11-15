@@ -8,11 +8,11 @@ operates a product turns on all three.
 
 ## The three capabilities
 
-| Capability   | Sidebar entries                                | What it is for                                                 |
-| ------------ | ---------------------------------------------- | -------------------------------------------------------------- |
-| **Plan**     | Quests, Epics, Releases, Feedback, Automations | The work: what is planned, in progress, shipped and asked for. |
-| **Remember** | Folios                                         | The memory: linked notes, files and their history.             |
-| **Ship**     | Apps, Errors, Stacks, Artifacts, Uptime        | What you run: deploys, analytics, errors and checks.           |
+| Capability   | Sidebar entries                         | What it is for                                                 |
+| ------------ | --------------------------------------- | -------------------------------------------------------------- |
+| **Plan**     | Quests, Epics, Releases, Feedback       | The work: what is planned, in progress, shipped and asked for. |
+| **Remember** | Folios                                  | The memory: linked notes, files and their history.             |
+| **Ship**     | Apps, Errors, Stacks, Artifacts, Uptime | What you run: deploys, analytics, errors and checks.           |
 
 A capability is the pillar; the things inside it keep their own names. A quest
 is still a quest and a deploy is still a deploy: Ship is where deploys live.
@@ -20,7 +20,8 @@ is still a quest and a deploy is still a deploy: Ship is where deploys live.
 Some things belong to every project, whatever its capabilities: the
 [dashboard](/lore/docs/project-dashboard), the activity feed,
 [reports](/lore/docs/project-reports), [members and
-ranks](/lore/docs/project-members) and
+ranks](/lore/docs/project-members),
+[automations](/lore/docs/plan-automations) and
 [notifications](/lore/docs/project-notifications). A project with every
 capability off is still a project with members and a history.
 

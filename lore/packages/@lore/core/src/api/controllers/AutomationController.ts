@@ -51,15 +51,15 @@ export class AutomationController {
   protected readonly service = $inject(AutomationService);
   protected readonly subscriptions = $inject(AutomationSubscriptionService);
   protected readonly variables = $inject(AutomationVariableService);
+  // Automations are Core (#Q3629): membership and the automation
+  // permission gate them, and each vocabulary entry its own capability.
   protected readonly mutationGate = $ownsProject({
     param: "projectId",
-    capability: { key: "plan" },
   });
   protected gate = (permission: string) =>
     $ownsProject({
       param: "projectId",
       requires: permission,
-      capability: { key: "plan" },
     });
 
   previewAutomationAdoption = $action({

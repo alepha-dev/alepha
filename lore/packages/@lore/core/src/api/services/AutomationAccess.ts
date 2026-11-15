@@ -64,10 +64,8 @@ export class AutomationAccess {
     );
     if (!allowed.permissions.includes(permission))
       throw new ForbiddenError(`Missing ${permission}`);
-    // Work alone since #Q3594: automations are a baseline of Plan.
-    await this.security.assertCapability(projectId, "plan", {
-      action: "use automations",
-    });
+    // No capability since #Q3629: automations are Core, and the catalog
+    // gates each event, selector and preset by its own needs.
     return {
       project,
       member,

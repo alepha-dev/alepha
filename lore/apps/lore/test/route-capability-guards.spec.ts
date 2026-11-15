@@ -117,23 +117,17 @@ describe("route guards on a capability", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("requires Work and read permission on the automation route", async ({
+  it("opens the automation route on read permission alone, with no capability", async ({
     expect,
   }) => {
+    // Core since #Q3629: a project with no capability at all still has
+    // Automations, and the permission is what gates them.
     const alepha = await bootRouter();
     const loader = loaderOf(alepha, "projectAutomations");
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
         capabilities: [],
-      }),
-    );
-    await expect(loader?.({} as never)).rejects.toThrow("Automations");
-    alepha.store.set(
-      currentProjectAtom,
-      projectFixture({
-        capabilities: ["plan"],
-        options: { plan: {} },
         permissions: ["project:read"],
       }),
     );
@@ -141,8 +135,15 @@ describe("route guards on a capability", () => {
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
-        capabilities: ["plan"],
-        options: { plan: {} },
+        capabilities: [],
+        permissions: ["project:read", "automation:read"],
+      }),
+    );
+    await expect(loader?.({} as never)).resolves.toBeUndefined();
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["ship"],
         permissions: ["project:read", "automation:read"],
       }),
     );
@@ -207,6 +208,8 @@ describe("route guards on a capability", () => {
       }),
     );
     await expect(loader?.({} as never)).resolves.toBeUndefined();
+    // Core since #Q3629: no capability is needed to reach the gallery,
+    // which lists only the presets the project's capabilities allow.
     alepha.store.set(
       currentProjectAtom,
       projectFixture({
@@ -214,7 +217,7 @@ describe("route guards on a capability", () => {
         permissions: ["project:read", "automation:read", "automation:write"],
       }),
     );
-    await expect(loader?.({} as never)).rejects.toThrow("Automation presets");
+    await expect(loader?.({} as never)).resolves.toBeUndefined();
   });
 
   it("leaves the epic, board and release routes unguarded", async ({

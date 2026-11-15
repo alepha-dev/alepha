@@ -113,7 +113,7 @@ and Team reads core's activity dataset.
 **Three rules that are decisions, not accidents.**
 
 - **Disabling HIDES, it never deletes.** Every quest, folio and feedback item survives its capability being turned off, and comes back untouched when it returns. Reads of existing data stay allowed; only writes refuse.
-- **A CAPABILITY guards its routes; an OPTION does not.** `/quests`, `/folios` and `/apps` 404 without theirs, and `/feedback` without Plan's `feedback` option: the one option that guards its route, because it was a capability (Support) until #E143. `/kanban`, `/epics` and `/releases` have no guard at all - a saved link keeps resolving and the sidebar is what stops offering them. `test/route-capability-guards.spec.ts` pins both halves. The Automations routes require Plan and `automation:read`; there is no `automations` option since #Q3594. The owner-only diagnostics panel that kept rules readable with the option off is gone with it (#Q3595): the automations page lists every rule, its health and its author.
+- **A CAPABILITY guards its routes; an OPTION does not.** `/quests`, `/folios` and `/apps` 404 without theirs, and `/feedback` without Plan's `feedback` option: the one option that guards its route, because it was a capability (Support) until #E143. `/kanban`, `/epics` and `/releases` have no guard at all - a saved link keeps resolving and the sidebar is what stops offering them. `test/route-capability-guards.spec.ts` pins both halves. The Automations routes require `automation:read` alone: automations are Core since #Q3629, owned by no capability, and each event, selector and preset is gated by its own `needs`. The owner-only diagnostics panel that kept rules readable with the option off is gone with it (#Q3595): the automations page lists every rule, its health and its author.
 - **Routes answer 404, the API answers 400.** A page under a disabled capability does not exist; a write into one is a request the project understands and declines, and the refusal names the capability and where to turn it on.
 
 **Settings has no floor.** Every capability may be turned off, the last one
@@ -829,10 +829,9 @@ records expose labels and IDs, never document bodies or raw deployment logs.
 
 ## Automation retention, faults and deletion (#Q2685)
 
-- **Events are kept only where rules can exist.** The `automation_events` insert
-  carries `WHERE` the project has Plan (automations are a baseline of Plan
-  since #Q3594), read inside the same native batch, so a project without Plan
-  writes its domain row alone and never pays for an event nobody can consume.
+- **Every project records its events.** Automations are Core since #Q3629, so
+  the `automation_events` insert carries no capability condition: a project
+  without Plan can still hold deploy and uptime rules.
 - **Every prune loops** page by page until a short page, capped per run (20
   pages; `expireReady` 2). A run page is 50 ids: D1 refuses more than 100 bound
   values per statement, and the run prune binds a few beyond its ids.
