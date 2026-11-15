@@ -76,7 +76,30 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
     {
       handler: async (_ctx, status) => {
         const open = props.epic.openQuestions ?? 0;
-        if (status === "ready" && open > 0) {
+        const blockers = props.epic.openBlockers ?? 0;
+        if (status === "ready" && blockers > 0) {
+          // Blockers are named first, in red (#Q3634): a problem that stops
+          // the plan outranks the questions about it. Still asks, never
+          // refuses: whether the spec is done is the owner's call.
+          const ok = await dialog.confirm({
+            title:
+              blockers === 1
+                ? tr("epic.ready.openBlockers.title.one")
+                : tr("epic.ready.openBlockers.title", {
+                    args: [String(blockers)],
+                  }),
+            description: tr("epic.ready.openBlockers.confirm", {
+              args: [props.epic.title],
+            }),
+            confirmLabel: tr("epic.ready.openQuestions.anyway"),
+            cancelLabel: tr("epic.ready.openQuestions.review"),
+            destructive: true,
+          });
+          if (!ok) {
+            props.onReview?.();
+            return;
+          }
+        } else if (status === "ready" && open > 0) {
           // Asks, never refuses (#E121): whether the spec is done is the
           // owner's call, so the open questions are named and the reader
           // decides. Backing out opens the Review tab, where they are.
@@ -124,6 +147,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
       props.epic.id,
       props.epic.title,
       props.epic.openQuestions,
+      props.epic.openBlockers,
       props.onChange,
       props.onReview,
       tr,

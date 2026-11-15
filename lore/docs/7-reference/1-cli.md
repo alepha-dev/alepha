@@ -175,18 +175,18 @@ See [Quests](/lore/docs/plan-quests) for the statuses and rules behind these.
 
 ## Epics
 
-| Command                         | What it does                                                                      | Flags                                                                                   |
-| ------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `lore epic list`                | Every epic, whatever its status.                                                  |                                                                                         |
-| `lore epic get <ref>`           | One epic: status, progress, plan, folios, open review questions and log.          |                                                                                         |
-| `lore epic create`              | Create an epic, as a draft: its quests stay out of the backlog until it is ready. | `--title` (required), `--description`, `--depends-on`                                   |
-| `lore epic update <ref>`        | Change an epic's title, plan or predecessor.                                      | `--title`, `--description`, `--depends-on` (`0` clears it)                              |
-| `lore epic set status <ref>`    | Set an epic to draft or ready. The other statuses follow from its quests.         | `--status draft` or `--status ready` (required)                                         |
-| `lore epic shelve <ref>`        | Set an epic and its open quests aside.                                            |                                                                                         |
-| `lore epic unshelve <ref>`      | Bring a shelved epic back, with the quests its shelving took.                     |                                                                                         |
-| `lore epic delete <ref>`        | Delete a draft or ready epic **and every quest in it**, for good.                 | `--yes` (required)                                                                      |
-| `lore epic review create <ref>` | File a review of a draft or ready epic: its questions, decisions and changes.     | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
-| `lore epic review answer <ref>` | Record the owner's answer to one review item.                                     | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
+| Command                         | What it does                                                                            | Flags                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `lore epic list`                | Every epic, whatever its status.                                                        |                                                                                         |
+| `lore epic get <ref>`           | One epic: status, progress, plan, folios, open review blockers and questions, and log.  |                                                                                         |
+| `lore epic create`              | Create an epic, as a draft: its quests stay out of the backlog until it is ready.       | `--title` (required), `--description`, `--depends-on`                                   |
+| `lore epic update <ref>`        | Change an epic's title, plan or predecessor.                                            | `--title`, `--description`, `--depends-on` (`0` clears it)                              |
+| `lore epic set status <ref>`    | Set an epic to draft or ready. The other statuses follow from its quests.               | `--status draft` or `--status ready` (required)                                         |
+| `lore epic shelve <ref>`        | Set an epic and its open quests aside.                                                  |                                                                                         |
+| `lore epic unshelve <ref>`      | Bring a shelved epic back, with the quests its shelving took.                           |                                                                                         |
+| `lore epic delete <ref>`        | Delete a draft or ready epic **and every quest in it**, for good.                       | `--yes` (required)                                                                      |
+| `lore epic review create <ref>` | File a review of a draft or ready epic: its blockers, questions, decisions and changes. | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
+| `lore epic review answer <ref>` | Record the owner's answer to one review item.                                           | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
 
 See [Epics](/lore/docs/plan-epics), and
 [Reviewing an epic](/lore/docs/plan-epics#reviewing-an-epic) for what a review

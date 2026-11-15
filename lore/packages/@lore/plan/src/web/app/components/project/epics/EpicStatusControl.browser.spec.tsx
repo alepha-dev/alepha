@@ -45,7 +45,7 @@ const anEpic = {
  * the way out.
  */
 describe("EpicStatusControl, with review questions open", () => {
-  const mount = async (openQuestions: number) => {
+  const mount = async (openQuestions: number, openBlockers = 0) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -62,7 +62,7 @@ describe("EpicStatusControl, with review questions open", () => {
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <EpicStatusControl
-            epic={{ ...anEpic, openQuestions }}
+            epic={{ ...anEpic, openQuestions, openBlockers }}
             onChange={(epic) => changes.push(epic.status)}
             onReview={() => {
               reviewed += 1;
@@ -113,6 +113,24 @@ describe("EpicStatusControl, with review questions open", () => {
       screen.getByRole("button", { name: "Open the Review tab" }),
     );
 
+    await waitFor(() => expect(ctx.reviewed()).toBe(1));
+    expect(ctx.writes).toEqual([]);
+
+    await ctx.alepha.stop();
+  });
+
+  it("names open blockers first, in a destructive confirm (#Q3634)", async ({
+    expect,
+  }) => {
+    const ctx = await mount(3, 2);
+
+    expect(
+      await screen.findByText("2 review blockers are still open"),
+    ).toBeDefined();
+    expect(screen.queryByText("3 review questions are still open")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open the Review tab" }),
+    );
     await waitFor(() => expect(ctx.reviewed()).toBe(1));
     expect(ctx.writes).toEqual([]);
 

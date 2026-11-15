@@ -9,14 +9,18 @@ import { type Infer, z } from "alepha";
  *   can overturn it, which files a new decision naming the one it replaces.
  * - `change`: what the review edited (the epic description, a quest created
  *   or sharpened), optionally pointing at the quest or epic it touched.
+ * - `blocker` (#Q3634): a problem that stops the plan, not one more question.
+ *   It carries a question's states and is answered the same way; it ranks
+ *   above questions everywhere: counted apart, listed first, drawn red.
  *
- * Stored with `mode: "text"`, so a fourth kind is a code-only change. Never
+ * Stored with `mode: "text"`, so a new kind is a code-only change. Never
  * ordered by: a text enum sorts alphabetically, not by meaning.
  */
 export const epicReviewItemKindSchema = z.enum([
   "question",
   "decision",
   "change",
+  "blocker",
 ]);
 
 export type EpicReviewItemKind = Infer<typeof epicReviewItemKindSchema>;

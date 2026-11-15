@@ -110,7 +110,7 @@ export class EpicTools {
    */
   epic_get = $tool({
     description:
-      "Fetch a single epic by its per-project number, including its description, status, progress rollup (completed/total quest counts; every quest in the epic counts, draft-gated ones included), the folios filed under it (shortId, title, summary; read a body with `folio_get`), and `review`: the review questions still open (the owner's to answer) and the decision log, one line per answered question or standing decision, binding on whoever reviews or works the epic. Use quest_list with the `epic` filter to fetch the quests themselves.",
+      "Fetch a single epic by its per-project number, including its description, status, progress rollup (completed/total quest counts; every quest in the epic counts, draft-gated ones included), the folios filed under it (shortId, title, summary; read a body with `folio_get`), and `review`: the review blockers and questions still open (the owner's to resolve, blockers first) and the decision log, one line per answered blocker or question or standing decision, binding on whoever reviews or works the epic. Use quest_list with the `epic` filter to fetch the quests themselves.",
     title: "Get epic",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -169,19 +169,23 @@ export class EpicTools {
     const log = items
       .filter((item) => this.reviewService.inLog(item))
       .map((item) =>
-        item.kind === "question"
-          ? `${item.number}. question: ${item.title} Answer: ${item.answer ?? ""}`
+        item.kind === "question" || item.kind === "blocker"
+          ? `${item.number}. ${item.kind}: ${item.title} Answer: ${item.answer ?? ""}`
           : `${item.number}. decision: ${item.title}${item.replaces ? ` (overturns ${item.replaces})` : ""}`,
       );
+    const full = (item: (typeof items)[number]) => ({
+      number: item.number,
+      title: item.title,
+      context: item.context || undefined,
+      suggestions: item.suggestions,
+      recommended: item.recommended,
+    });
     const kept = log.slice(-EpicTools.LOG_CAP);
     return {
-      openQuestions: open.map((item) => ({
-        number: item.number,
-        title: item.title,
-        context: item.context || undefined,
-        suggestions: item.suggestions,
-        recommended: item.recommended,
-      })),
+      // Blockers first (#Q3634): a problem that stops the plan outranks a
+      // question about it.
+      openBlockers: open.filter((item) => item.kind === "blocker").map(full),
+      openQuestions: open.filter((item) => item.kind !== "blocker").map(full),
       log: kept,
       ...(log.length > kept.length
         ? { logOmitted: log.length - kept.length }
@@ -200,7 +204,7 @@ export class EpicTools {
    */
   epic_review_create = $tool({
     description:
-      "File the review of an epic's plan as ONE record: every question for the owner, every decision you took alone, and every change you made (an edit to the epic description, a quest created or sharpened). Allowed only while the epic is 'draft' or 'ready'. Items are numbered per epic, continuing across reviews (1, 2, 3, then 4 in the next review), and the result gives each item its number: quote those numbers in your reply so the owner can answer 'answer 3: B'. An empty review (no item at all) is valid; never invent an item to look thorough. Read epic_get's `review.log` first: do not ask again what is answered there, and file a decision item when you reverse one.",
+      "File the review of an epic's plan as ONE record: every blocker (a problem that stops the plan as written, which the owner must resolve before it is ready), every question for the owner, every decision you took alone, and every change you made (an edit to the epic description, a quest created or sharpened). Allowed only while the epic is 'draft' or 'ready'. Items are numbered per epic, continuing across reviews (1, 2, 3, then 4 in the next review), and the result gives each item its number: quote those numbers in your reply so the owner can answer 'answer 3: B'. An empty review (no item at all) is valid; never invent an item to look thorough. Read epic_get's `review.log` first: do not ask again what is answered there, and file a decision item when you reverse one.",
     title: "File epic review",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -240,7 +244,7 @@ export class EpicTools {
    */
   epic_review_answer = $tool({
     description:
-      "Record the owner's answer to one review item of an epic, by its per-epic number: their own text (`answer`), one of the item's suggestions (`suggestion`, by index from 0), or `waive: true` to set a question aside. Exactly one of the three. Answering a decision overturns it: a new decision is filed with the answer and the old one leaves the log. A change item takes no answer. Allowed only while the epic is 'draft' or 'ready'. Use it when the owner answers in chat ('answer 3: B'); never answer a question on your own judgement.",
+      "Record the owner's answer to one review item of an epic, by its per-epic number: their own text (`answer`), one of the item's suggestions (`suggestion`, by index from 0), or `waive: true` to set a question or blocker aside. Exactly one of the three. Answering a decision overturns it: a new decision is filed with the answer and the old one leaves the log. A change item takes no answer. Allowed only while the epic is 'draft' or 'ready'. Use it when the owner answers in chat ('answer 3: B'); never answer a question or a blocker on your own judgement.",
     title: "Answer epic review item",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -387,7 +391,7 @@ export class EpicTools {
    */
   epic_set_status = $tool({
     description:
-      "Mark an epic 'ready' (its spec is done) or move it back to 'draft' (still being specified). These are the only two statuses set by hand, and only between each other. 'ready' puts the epic's quests into the human-facing backlog and quest_list's default view, where they can be accepted; 'draft' takes them out again. Neither changes anything about the quests themselves. Two statuses happen on their own: the first quest accepted or assigned moves a ready epic to 'in_progress' and freezes its quest set, and the last open quest completed or shelved moves it to 'completed', which is terminal. An epic that has started cannot go back to 'ready' or 'draft'. The fifth, 'shelved', is set with epic_shelve and undone with epic_unshelve. Asking for the status the epic already has is a no-op. The result carries `openQuestions`, the epic's review questions still open: they never block the move, and are the owner's to weigh. " +
+      "Mark an epic 'ready' (its spec is done) or move it back to 'draft' (still being specified). These are the only two statuses set by hand, and only between each other. 'ready' puts the epic's quests into the human-facing backlog and quest_list's default view, where they can be accepted; 'draft' takes them out again. Neither changes anything about the quests themselves. Two statuses happen on their own: the first quest accepted or assigned moves a ready epic to 'in_progress' and freezes its quest set, and the last open quest completed or shelved moves it to 'completed', which is terminal. An epic that has started cannot go back to 'ready' or 'draft'. The fifth, 'shelved', is set with epic_shelve and undone with epic_unshelve. Asking for the status the epic already has is a no-op. The result carries `openBlockers` and `openQuestions`, the epic's review blockers and questions still open: they never block the move, and are the owner's to weigh, blockers first. " +
       "Deciding that a spec is done is the owner's call. Do not mark an epic ready just to be allowed to work on it: if a quest refuses because its epic is a draft, say so and stop.",
     title: "Set epic status",
     annotations: { readOnlyHint: false, idempotentHint: true },
@@ -415,6 +419,7 @@ export class EpicTools {
         title: epic.title,
         status: epic.status,
         openQuestions: epic.openQuestions ?? 0,
+        openBlockers: epic.openBlockers ?? 0,
       };
     },
   });

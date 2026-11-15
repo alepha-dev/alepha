@@ -202,7 +202,7 @@ export class EpicController {
           orderBy: [{ column: "number", direction: "asc" }],
         }),
         this.epicProgress.computeProgressOfProject(params.projectId),
-        this.reviews.countOpenQuestionsOfProject(params.projectId),
+        this.reviews.countOpenOfProject(params.projectId),
         this.reviews.countReviewsOfProject(params.projectId),
       ]);
 
@@ -217,7 +217,7 @@ export class EpicController {
           epic,
           progress.get(epic.id) ?? this.zeroProgress(),
           epic.dependsOn != null ? byId.get(epic.dependsOn) : undefined,
-          open.get(epic.id) ?? 0,
+          open.get(epic.id) ?? { questions: 0, blockers: 0 },
           reviewed.get(epic.id) ?? 0,
         ),
       );
@@ -973,21 +973,20 @@ export class EpicController {
     // no quests, for which `aggregate()` returns no row at all.
     //
     // The two in one step (#Q2636): neither needs the other.
-    const [predecessor, progress, openQuestions, reviewCount] =
-      await Promise.all([
-        epic.dependsOn != null
-          ? this.epics.findOne({ where: { id: { eq: epic.dependsOn } } })
-          : undefined,
-        this.computeProgressOf([epic.id]),
-        this.reviews.countOpenQuestions(epic.id),
-        this.reviews.countReviews(epic.id),
-      ]);
+    const [predecessor, progress, open, reviewCount] = await Promise.all([
+      epic.dependsOn != null
+        ? this.epics.findOne({ where: { id: { eq: epic.dependsOn } } })
+        : undefined,
+      this.computeProgressOf([epic.id]),
+      this.reviews.countOpen(epic.id),
+      this.reviews.countReviews(epic.id),
+    ]);
 
     return this.toEpicResource(
       epic,
       progress.get(epic.id) ?? this.zeroProgress(),
       predecessor,
-      openQuestions,
+      open,
       reviewCount,
     );
   }
@@ -1009,7 +1008,7 @@ export class EpicController {
     epic: Epic,
     progress: EpicProgress,
     predecessor?: Pick<Epic, "number" | "status">,
-    openQuestions?: number,
+    open?: { questions: number; blockers: number },
     reviewCount?: number,
   ): EpicResource {
     return {
@@ -1018,7 +1017,8 @@ export class EpicController {
       questCount: progress.total,
       dependsOnNumber: predecessor?.number,
       dependsOnStatus: predecessor?.status,
-      openQuestions,
+      openQuestions: open?.questions,
+      openBlockers: open?.blockers,
       reviewCount,
     };
   }

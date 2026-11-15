@@ -10,7 +10,7 @@ import { epicReviewTargetSchema } from "./epicReviewTargetSchema.ts";
  */
 export const epicReviewItemInputSchema = z.object({
   kind: epicReviewItemKindSchema.describe(
-    "`question` (the owner's to answer), `decision` (a call you took alone, with its reason in `context`) or `change` (what the review edited: the epic description, a quest created or sharpened).",
+    "`blocker` (a problem that stops the plan as written: the owner must resolve it before the epic is ready; answered like a question), `question` (the owner's to answer), `decision` (a call you took alone, with its reason in `context`) or `change` (what the review edited: the epic description, a quest created or sharpened).",
   ),
   title: z
     .string()

@@ -111,7 +111,7 @@ See [Epics](/lore/docs/plan-epics).
 | `epic_shelve`        | Set a whole plan aside, with its open quests.                                   |
 | `epic_unshelve`      | Bring it back, with only the quests it set aside.                               |
 | `epic_delete`        | Delete an epic and its quests, while it is `draft` or `ready`. Its folios stay. |
-| `epic_review_create` | File a review: its questions, decisions and changes.                            |
+| `epic_review_create` | File a review: its blockers, questions, decisions and changes.                  |
 | `epic_review_answer` | Answer, waive or overturn a review item, by its number.                         |
 
 ## Releases

@@ -219,7 +219,10 @@ describe("EpicReviewService", () => {
       expect(result.item.answerSuggestion).toBe(1);
       expect(result.item.answeredBy).toBe(project.createdBy);
       expect(result.item.answeredAt).toBeDefined();
-      expect(await ctx.service.countOpenQuestions(epic.id)).toBe(0);
+      expect(await ctx.service.countOpen(epic.id)).toEqual({
+        questions: 0,
+        blockers: 0,
+      });
     });
 
     it("answers a question with the owner's own text", async ({ expect }) => {
@@ -323,9 +326,9 @@ describe("EpicReviewService", () => {
       await ctx.service.create(other, undefined, review());
       await ctx.service.answer(other, 1, undefined, { waive: true });
 
-      const counts = await ctx.service.countOpenQuestionsOfProject(project.id);
+      const counts = await ctx.service.countOpenOfProject(project.id);
 
-      expect(counts.get(epic.id)).toBe(2);
+      expect(counts.get(epic.id)).toEqual({ questions: 2, blockers: 0 });
       expect(counts.has(other.id)).toBe(false);
       expect(counts.has(quiet.id)).toBe(false);
     });
@@ -364,6 +367,56 @@ describe("EpicReviewService", () => {
       expect(
         Object.fromEntries(listed.map((row) => [row.id, row.reviewCount])),
       ).toEqual({ [twice.id]: 2, [once.id]: 1, [never.id]: 0 });
+    });
+  });
+
+  /**
+   * The `blocker` kind (#Q3634): a question's states, answered like one,
+   * counted apart from questions.
+   */
+  describe("blockers", () => {
+    it("opens a blocker, counts it apart, and answers it like a question", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, project);
+      const { items } = await ctx.service.create(epic, undefined, {
+        summary: "One blocker, one question.",
+        items: [
+          { kind: "blocker", title: "The table it needs is gone." },
+          { kind: "question", title: "Which name?" },
+        ],
+      });
+      expect(items.map((item) => [item.kind, item.state])).toEqual([
+        ["blocker", "open"],
+        ["question", "open"],
+      ]);
+
+      expect(await ctx.service.countOpen(epic.id)).toEqual({
+        questions: 1,
+        blockers: 1,
+      });
+      expect(
+        (await ctx.service.countOpenOfProject(project.id)).get(epic.id),
+      ).toEqual({ questions: 1, blockers: 1 });
+      const result = await ctx.service.resultOf(epic.id);
+      expect([result.openQuestions, result.openBlockers]).toEqual([1, 1]);
+
+      const answered = await ctx.service.answer(
+        epic,
+        items[0]!.number,
+        undefined,
+        {
+          answer: "Restore it first.",
+        },
+      );
+      expect(answered.outcome).toBe("answered");
+      expect(answered.item.state).toBe("answered");
+      expect(ctx.service.inLog(answered.item)).toBe(true);
+      expect(await ctx.service.countOpen(epic.id)).toEqual({
+        questions: 1,
+        blockers: 0,
+      });
     });
   });
 

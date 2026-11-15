@@ -128,11 +128,23 @@ export class EpicCommand {
           .flatMap((review) => review.items)
           .sort((a, b) => a.number - b.number);
         const open = items.filter((item) => item.state === "open");
+        // Blockers first and apart (#Q3634): a problem that stops the plan
+        // outranks a question about it.
+        const openBlockers = open.filter((item) => item.kind === "blocker");
+        const openQuestions = open.filter((item) => item.kind !== "blocker");
         const log = items.filter((item) =>
-          item.kind === "question"
+          item.kind === "question" || item.kind === "blocker"
             ? item.state === "answered"
             : item.kind === "decision" && item.replacedBy == null,
         );
+        const lines = (list: typeof open) =>
+          list.flatMap((item) => [
+            `${item.number}. ${item.title}`,
+            ...item.suggestions.map(
+              (suggestion, index) =>
+                `   ${index}${item.recommended === index ? "*" : " "} ${suggestion.label}${suggestion.cost ? ` (${suggestion.cost})` : ""}`,
+            ),
+          ]);
 
         const { progress } = epic;
         this.render.entity(print, {
@@ -165,17 +177,14 @@ export class EpicCommand {
                   },
                 ]
               : []),
-            ...(open.length
+            ...(openBlockers.length
+              ? [{ title: "Open review blockers", lines: lines(openBlockers) }]
+              : []),
+            ...(openQuestions.length
               ? [
                   {
                     title: "Open review questions",
-                    lines: open.flatMap((item) => [
-                      `${item.number}. ${item.title}`,
-                      ...item.suggestions.map(
-                        (suggestion, index) =>
-                          `   ${index}${item.recommended === index ? "*" : " "} ${suggestion.label}${suggestion.cost ? ` (${suggestion.cost})` : ""}`,
-                      ),
-                    ]),
+                    lines: lines(openQuestions),
                   },
                 ]
               : []),
@@ -184,8 +193,8 @@ export class EpicCommand {
                   {
                     title: "Decision log",
                     lines: log.map((item) =>
-                      item.kind === "question"
-                        ? `${item.number}. ${item.title} Answer: ${item.answer ?? ""}`
+                      item.kind === "question" || item.kind === "blocker"
+                        ? `${item.number}. ${item.kind === "blocker" ? "blocker: " : ""}${item.title} Answer: ${item.answer ?? ""}`
                         : `${item.number}. decision: ${item.title}`,
                     ),
                   },
@@ -339,12 +348,17 @@ export class EpicCommand {
         });
 
         const open = updated.openQuestions ?? 0;
+        const blockers = updated.openBlockers ?? 0;
+        const still = [
+          blockers > 0 ? `${blockers} review blockers` : undefined,
+          open > 0 ? `${open} review questions` : undefined,
+        ].filter(Boolean);
         this.render.written(
           print,
           flags.output,
           updated,
-          open > 0
-            ? `E${number} is now ${updated.status}, with ${open} review questions still open`
+          still.length > 0
+            ? `E${number} is now ${updated.status}, with ${still.join(" and ")} still open`
             : `E${number} is now ${updated.status}`,
         );
       });
@@ -486,7 +500,7 @@ export class EpicCommand {
         size: "rich",
         atFile: true,
         description:
-          'The items, a JSON array: [{"kind":"question","title":"...","context":"...","suggestions":[{"label":"...","cost":"..."}],"recommended":0}]. kind is question, decision or change; [] files an empty review.',
+          'The items, a JSON array: [{"kind":"question","title":"...","context":"...","suggestions":[{"label":"...","cost":"..."}],"recommended":0}]. kind is blocker (a problem that stops the plan), question, decision or change; [] files an empty review.',
       }),
       ...LoreOutput.FLAGS,
     }),

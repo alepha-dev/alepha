@@ -76,6 +76,19 @@ export const epicListResultSchema = z.object({
  * each, bounded (the oldest past the cap go behind `logOmitted`).
  */
 export const epicGetReviewSchema = z.object({
+  openBlockers: z
+    .array(
+      z.object({
+        number: z.integer(),
+        title: z.string(),
+        context: z.string().optional(),
+        suggestions: z.array(epicReviewSuggestionSchema),
+        recommended: z.integer().optional(),
+      }),
+    )
+    .describe(
+      "Review blockers still open (#Q3634): problems that stop the plan as written, listed before the questions. The owner's to resolve: never answer one yourself, and do not start the epic's work around one.",
+    ),
   openQuestions: z
     .array(
       z.object({
@@ -92,7 +105,7 @@ export const epicGetReviewSchema = z.object({
   log: z
     .array(z.string())
     .describe(
-      "The decision log, oldest first, one line each: every answered question with its answer and every decision that stands. Binding: do not ask again what is answered here, and do not reverse a decision without filing a new decision that says so.",
+      "The decision log, oldest first, one line each: every answered question or blocker with its answer and every decision that stands. Binding: do not ask again what is answered here, and do not reverse a decision without filing a new decision that says so.",
     ),
   logOmitted: z
     .integer()
@@ -225,6 +238,11 @@ export const epicSetStatusResultSchema = z.object({
     .integer()
     .describe(
       "Review questions still open on the epic. Never a refusal: report them to the owner, whose call it is whether the spec is done.",
+    ),
+  openBlockers: z
+    .integer()
+    .describe(
+      "Review blockers still open on the epic (#Q3634): problems that stop the plan. Never a refusal either, but name them to the owner before the questions.",
     ),
 });
 
