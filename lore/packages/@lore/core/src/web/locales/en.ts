@@ -479,6 +479,8 @@ export default {
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.move-group-refused":
     "A directory cannot move into itself: nothing was moved.",
+  "folios.editor.tree.move-group-pending": "Moving $1 items…",
+  "folios.editor.tree.move-group-done": "$1 moved.",
   "folios.editor.tree.new-text": "New doc",
   "folios.editor.tree.new-table": "New table",
   "folios.editor.tree.new-calendar": "New calendar",

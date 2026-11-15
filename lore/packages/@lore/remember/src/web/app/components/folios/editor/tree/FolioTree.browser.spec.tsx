@@ -572,8 +572,12 @@ describe("FolioTree", () => {
       expect(calls.filter((c) => c.name === "update")).toEqual([]);
     });
 
-    it("moves the whole range into the directory a row of it is dropped on", async () => {
+    it("moves the whole range into the directory a row of it is dropped on, in one request (#Q3697)", async () => {
       await mount();
+      replies.moveFolioItems = {
+        folios: [{ id: AT_ROOT, title: "At the root", directoryId: DIR_A }],
+        directories: [{ id: DIR_B, name: "Lore", parentId: DIR_A }],
+      };
       await click(rowFor("At the root"));
       await shiftClick(rowFor("Lore"));
 
@@ -583,20 +587,20 @@ describe("FolioTree", () => {
       await act(async () => drag(rowFor("Framework"), "drop"));
 
       await waitFor(() =>
-        expect(
-          calls
-            .filter((c) => c.name === "moveDirectory" || c.name === "update")
-            .map((c) => [c.name, c.input.params.id]),
-        ).toEqual([
-          ["moveDirectory", DIR_B],
-          ["update", AT_ROOT],
-        ]),
+        expect(calls.filter((c) => c.name === "moveFolioItems")).toHaveLength(
+          1,
+        ),
       );
-      const moved = calls.filter(
-        (c) => c.name === "moveDirectory" || c.name === "update",
-      );
-      expect(moved[0]!.input.body).toEqual({ parentId: DIR_A });
-      expect(moved[1]!.input.body).toEqual({ directoryId: DIR_A });
+      const move = calls.find((c) => c.name === "moveFolioItems");
+      expect(move!.input.body).toMatchObject({
+        folioIds: [AT_ROOT],
+        directoryIds: [DIR_B],
+        parentId: DIR_A,
+      });
+      // No per-row write any more.
+      expect(
+        calls.filter((c) => c.name === "moveDirectory" || c.name === "update"),
+      ).toEqual([]);
     });
 
     it("refuses the whole range when a directory would land inside itself", async () => {
@@ -611,7 +615,12 @@ describe("FolioTree", () => {
 
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(
-        calls.filter((c) => c.name === "moveDirectory" || c.name === "update"),
+        calls.filter(
+          (c) =>
+            c.name === "moveDirectory" ||
+            c.name === "update" ||
+            c.name === "moveFolioItems",
+        ),
       ).toEqual([]);
     });
   });

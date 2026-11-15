@@ -672,32 +672,56 @@ export const useFolioTreeModel = (
   >(
     {
       handler: async (_ctx, items, parentId) => {
-        let nextFolios = folios;
-        let nextDirectories = directories;
-        for (const item of items) {
-          if (item.data.kind === "directory") {
-            const updated = await directoryApi.moveDirectory({
-              params: { id: item.id },
-              body: { parentId },
-            });
-            nextDirectories = nextDirectories.map((d) =>
-              d.id === item.id
-                ? { ...d, parentId: updated.parentId, name: updated.name }
-                : d,
-            );
-          } else {
-            const updated = await folioApi.update({
-              params: { id: item.id },
-              body: { directoryId: parentId ?? null },
-            });
-            nextFolios = nextFolios.map((f) =>
-              f.id === item.id ? { ...f, ...updated } : f,
-            );
-          }
+        // One request for the whole range (#Q3697), where each row used to
+        // be a full folio update of its own, in sequence. A toast says it
+        // is working, and becomes the result in the same slot.
+        const progress = toast.show(
+          tr("folios.editor.tree.move-group-pending", {
+            args: [String(items.length)],
+          }),
+          "info",
+          { duration: 60_000 },
+        );
+        try {
+          const moved = await folioApi.moveFolioItems({
+            body: {
+              projectId: input.projectId,
+              folioIds: items
+                .filter((item) => item.data.kind !== "directory")
+                .map((item) => item.id),
+              directoryIds: items
+                .filter((item) => item.data.kind === "directory")
+                .map((item) => item.id),
+              parentId: parentId ?? null,
+            },
+          });
+          setFolios(
+            folios.map((f) => {
+              const next = moved.folios.find((it) => it.id === f.id);
+              return next
+                ? { ...f, title: next.title, directoryId: next.directoryId }
+                : f;
+            }),
+          );
+          setDirectories(
+            directories.map((d) => {
+              const next = moved.directories.find((it) => it.id === d.id);
+              return next
+                ? { ...d, parentId: next.parentId, name: next.name }
+                : d;
+            }),
+          );
+          setRange({ anchorId: range.anchorId, ids: new Set() });
+          toast.success(
+            tr("folios.editor.tree.move-group-done", {
+              args: [String(moved.folios.length + moved.directories.length)],
+            }),
+            { id: progress },
+          );
+        } catch (error) {
+          toast.dismiss(progress);
+          throw error;
         }
-        setFolios(nextFolios);
-        setDirectories(nextDirectories);
-        setRange({ anchorId: range.anchorId, ids: new Set() });
       },
       invalidates: [["folioTree", input.projectId]],
     },
@@ -714,6 +738,9 @@ export const useFolioTreeModel = (
   );
 
   const moveGroup = (targetId: string, position: TreeDropPosition): void => {
+    // One range at a time: a drop while the last one is still moving is
+    // ignored rather than raced (#Q3697).
+    if (moveGroupAction.loading) return;
     const target = findFolioNode(tree, targetId);
     if (!target) return;
     if (position === "inside" && target.data.kind !== "directory") return;
