@@ -289,19 +289,24 @@ invalid**, and deploys are refused until it is replaced.
 
 ## Who is told
 
-Two events are recorded in the host's home project, once each, never in the
-projects it is lent to:
+Four events are recorded in the host's home project, once per occurrence,
+never in the projects it is lent to:
 
-- a Cloudflare token stops working;
+- a Cloudflare token stops working.
 - a host is past its expiry. A server meant to be temporary can be given
   one from the command line (`lore host add --ttl 2h`, or `lore host
   update --ttl`). Past it the host shows **overdue**. Lore stops nothing and
   deletes nothing.
+- a Bay host goes **offline**: its connection closed, or it stopped reporting,
+  and it has not come back for five minutes. A restart or an upgrade of Bay
+  reconnects in seconds and raises nothing. A host past its TTL is not
+  reported, since going away is what it was meant to do.
+- that host comes **back online**, once per outage.
 
 Nobody is told until someone asks: the bell on a host's console subscribes you
 to that host, the one on **Settings** > **Hosts** to every host of the project,
-and the **Host token invalid** and **Host past its TTL** presets can notify
-anyone or post to a Discord channel. See
+and the **Host token invalid**, **Host past its TTL**, **Host offline** and
+**Host back online** presets can notify anyone or post to a Discord channel. See
 [Automations](/lore/docs/plan-automations).
 
 ## For an instance admin

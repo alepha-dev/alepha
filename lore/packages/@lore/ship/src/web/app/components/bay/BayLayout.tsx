@@ -98,11 +98,16 @@ const BayLayout = () => {
             <Badge variant={host.online ? "default" : "outline"}>
               {host.online ? tr("hosts.online") : tr("hosts.offline")}
             </Badge>
-            {/* This host's alerts (#Q3627): past its TTL, or its token
-                invalid, scoped to it. */}
+            {/* This host's alerts (#Q3627, #Q3733): past its TTL, its token
+                invalid, offline and back, scoped to it. */}
             <div className="ms-auto">
               <AutomationSubscriptionBell
-                presets={["host-credential-invalid", "host-expired"]}
+                presets={[
+                  "host-credential-invalid",
+                  "host-expired",
+                  "host-offline",
+                  "host-online",
+                ]}
                 scope={{ host: host.id }}
                 label={tr("hosts.subscription.label")}
                 description={tr("hosts.subscription.description")}

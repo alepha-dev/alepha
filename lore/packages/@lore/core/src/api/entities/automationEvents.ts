@@ -25,6 +25,8 @@ export const automationEvents = $entity({
         "monitor.up",
         "host.credential_invalid",
         "host.expired",
+        "host.offline",
+        "host.online",
       ])
       .meta({ mode: "text" }),
     occurredAt: z.datetime(),

@@ -243,6 +243,13 @@ export const hosts = $entity({
      */
     notifiedOverdueAt: z.string().optional(),
     /**
+     * When the outage that `host.offline` reported began (#Q3733): the one
+     * event's claim, set by the same UPDATE that records it, and cleared by
+     * the one that records `host.online` once the machine is back. Null
+     * while the host is up, or down for less than the grace period.
+     */
+    offlineSince: z.string().optional(),
+    /**
      * The hash of a one-time enrolment secret (`enr_`, #Q3165), the one a
      * provisioned server's cloud-init carries. User data is readable through
      * the metadata service, so what sits there must be worthless once used:

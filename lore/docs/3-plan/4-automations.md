@@ -68,6 +68,8 @@ The presets:
 | **Monitor recovered**                | Notifies one member when a monitor recovers from an outage, with how long it lasted.                          |
 | **Host token invalid**               | Notifies one member when the nightly check finds a Cloudflare host's token no longer works.                   |
 | **Host past its TTL**                | Notifies one member when a throwaway host passes its time to live. Lore stops and deletes nothing.            |
+| **Host offline**                     | Notifies one member when a Bay host has stopped reporting for five minutes. A quick restart raises nothing.   |
+| **Host back online**                 | Notifies one member when a Bay host reported offline reconnects.                                              |
 
 Every input belongs to this rule alone unless you choose **Share with other
 automations**, which uses or creates a [shared variable](#shared-variables).
@@ -85,7 +87,7 @@ disable it there, the bell reads as off, and turning it on again replaces it.
 | On the **Releases** page                             | Every published release.                              |
 | On an app's **Uptime** tab                           | That monitor going down and recovering.               |
 | On **Apps**                                          | Any monitor of the project going down and recovering. |
-| On a [host](/lore/docs/ship-hosts)'s console         | That host's token failing or its TTL passing.         |
+| On a [host](/lore/docs/ship-hosts)'s console         | That host's token, TTL, going offline and returning.  |
 | On **Settings** > **Hosts**                          | The same, for every host of the project.              |
 
 A bell always notifies you, so it offers your own channels, In-app and Email.
@@ -117,7 +119,7 @@ On a rule's page, **Edit** opens its four parts:
 
 The events are new feedback, a release published, an epic completed, a quest
 completed, a deployment failed or succeeded, a monitor down or recovered, and a
-host's token invalid or its TTL passed. The actions are **Send a
+host's token invalid, its TTL passed, or the host offline or back online. The actions are **Send a
 notification**, **Append to a folio**, **Create a quest**, **Assign the quest to
 a release** and **Tag the quest**.
 

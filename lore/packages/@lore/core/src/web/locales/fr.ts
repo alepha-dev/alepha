@@ -91,6 +91,8 @@ export default {
   "automation.event.deploySucceeded": "Déploiement réussi",
   "automation.event.hostCredentialInvalid": "Jeton d'hôte invalide",
   "automation.event.hostExpired": "Hôte expiré",
+  "automation.event.hostOffline": "Hôte hors ligne",
+  "automation.event.hostOnline": "Hôte de retour en ligne",
   "automation.event.monitorDown": "Moniteur en panne",
   "automation.event.monitorUp": "Moniteur rétabli",
   "automation.event.questCompleted": "Quête terminée",
@@ -162,13 +164,13 @@ export default {
   "hosts.subscription.label":
     "M'avertir quand cet hôte demande une intervention",
   "hosts.subscription.description":
-    "Une règle à votre nom vous avertira quand cet hôte dépasse sa durée de vie ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+    "Une règle à votre nom vous avertira quand cet hôte dépasse sa durée de vie, se déconnecte ou revient en ligne, ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
   "hosts.subscription.offDescription":
     "Vous ne serez plus averti au sujet de cet hôte.",
   "hosts.subscription.allLabel":
     "M'avertir quand un hôte demande une intervention",
   "hosts.subscription.allDescription":
-    "Une règle à votre nom vous avertira quand un hôte de ce projet dépasse sa durée de vie ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+    "Une règle à votre nom vous avertira quand un hôte de ce projet dépasse sa durée de vie, se déconnecte ou revient en ligne, ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
   "hosts.subscription.allOffDescription":
     "Vous ne serez plus averti au sujet des hôtes de ce projet.",
   "automation.preset.host-credential-invalid.title": "Jeton d'hôte invalide",
@@ -177,6 +179,12 @@ export default {
   "automation.preset.host-expired.title": "Hôte expiré",
   "automation.preset.host-expired.description":
     "Avertit un membre quand un hôte jetable dépasse sa durée de vie. Lore n'arrête et ne supprime rien.",
+  "automation.preset.host-offline.title": "Hôte hors ligne",
+  "automation.preset.host-offline.description":
+    "Avertit un membre quand un hôte Bay ne donne plus signe de vie depuis cinq minutes. Un redémarrage qui se reconnecte avant ne déclenche rien.",
+  "automation.preset.host-online.title": "Hôte de retour en ligne",
+  "automation.preset.host-online.description":
+    "Avertit un membre quand un hôte Bay signalé hors ligne se reconnecte.",
   "project.settings.tab.automationChannels": "Canaux",
   "automation.channels.title": "Canaux",
   "automation.channels.description":
@@ -4182,6 +4190,8 @@ export default {
   "automation.source.deploy.succeeded": "Déploiement réussi",
   "automation.source.host.credential_invalid": "Jeton d'hôte invalide",
   "automation.source.host.expired": "Hôte expiré",
+  "automation.source.host.offline": "Hôte hors ligne",
+  "automation.source.host.online": "Hôte de retour en ligne",
   "automation.source.monitor.down": "Moniteur en panne",
   "automation.source.monitor.up": "Moniteur rétabli",
   "automation.source.quests.open": "Quêtes ouvertes, une exécution chacune",

@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2279f025-bb4c-4bd9-894b-ab02c049689e",
+  "prevIds": ["8f5a979e-8725-459c-a6bf-62eed38ba8e2"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "offline_since"],
+      "writes": [
+        "s|col|public.hosts.offline_since",
+        "n|col|public.hosts.offline_since",
+        "e|col|public.hosts.offline_since"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "offline_since",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

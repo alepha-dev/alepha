@@ -117,6 +117,8 @@ describe("Automation catalogue", () => {
       // Hosts', since #Q3627.
       "host.credential_invalid",
       "host.expired",
+      "host.offline",
+      "host.online",
       // Uptime's, since #Q3610.
       "monitor.down",
       "monitor.up",
