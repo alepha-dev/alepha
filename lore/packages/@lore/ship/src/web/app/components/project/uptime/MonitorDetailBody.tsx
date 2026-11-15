@@ -1,11 +1,17 @@
 import { AutomationSubscriptionBell, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
+import type { ReactNode } from "react";
 
 import type { MonitorDetailResource } from "../../../../../api/schemas/monitorDetailResourceSchema.ts";
 import MonitorBeatBar from "./MonitorBeatBar.tsx";
 import MonitorLatencyChart from "./MonitorLatencyChart.tsx";
 export interface MonitorDetailBodyProps {
   data: MonitorDetailResource;
+  /**
+   * Controls on the title row, beside the bell: the Uptime tab's window
+   * select (#Q3696), where a row of its own used to hold it alone.
+   */
+  actions?: ReactNode;
 }
 const MonitorDetailBody = (props: MonitorDetailBodyProps) => {
   const { tr, l } = useI18n<I18n, "en">();
@@ -18,18 +24,23 @@ const MonitorDetailBody = (props: MonitorDetailBodyProps) => {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold">{monitor.name}</h1>
-          {/* This monitor's alerts (#Q3611): down and recovered, scoped to
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="min-w-0 text-2xl font-semibold break-words">
+            {monitor.name}
+          </h1>
+          <div className="flex items-center gap-2">
+            {props.actions}
+            {/* This monitor's alerts (#Q3611): down and recovered, scoped to
               it, independent of the bell on /apps. */}
-          <AutomationSubscriptionBell
-            presets={["monitor-down", "monitor-up"]}
-            scope={{ monitor: monitor.id }}
-            label={tr("uptime.subscription.label")}
-            description={tr("uptime.subscription.description")}
-            offDescription={tr("uptime.subscription.offDescription")}
-            testId="monitor-subscription-bell"
-          />
+            <AutomationSubscriptionBell
+              presets={["monitor-down", "monitor-up"]}
+              scope={{ monitor: monitor.id }}
+              label={tr("uptime.subscription.label")}
+              description={tr("uptime.subscription.description")}
+              offDescription={tr("uptime.subscription.offDescription")}
+              testId="monitor-subscription-bell"
+            />
+          </div>
         </div>
         <p className="text-muted-foreground mt-1 text-sm break-all">
           {tr(`uptime.kind.${monitor.kind}`)}

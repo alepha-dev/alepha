@@ -51,24 +51,29 @@ const AppUptime = () => {
 
   return (
     <section className="mx-auto w-full max-w-6xl overflow-auto p-5">
-      <div className="mb-5 flex justify-end">
-        <Control
-          select
-          input={form.input.window}
-          label={tr("uptime.windowLabel")}
-          items={["24h", "7d", "30d"].map((value) => ({
-            value,
-            label: tr(`uptime.window.${value}`),
-          }))}
-        />
-      </div>
       {query.error && (
         <p role="alert" className="text-danger-text">
           {query.error.message}
         </p>
       )}
       {query.data ? (
-        <MonitorDetailBody data={query.data} />
+        <MonitorDetailBody
+          data={query.data}
+          // On the title row, beside the bell (#Q3696): no visible label,
+          // the select keeps "Window" as its accessible name.
+          actions={
+            <Control
+              select
+              input={form.input.window}
+              label=""
+              inputProps={{ "aria-label": tr("uptime.windowLabel") }}
+              items={["24h", "7d", "30d"].map((value) => ({
+                value,
+                label: tr(`uptime.window.${value}`),
+              }))}
+            />
+          }
+        />
       ) : (
         !query.error && <AppUptimeSkeleton />
       )}
