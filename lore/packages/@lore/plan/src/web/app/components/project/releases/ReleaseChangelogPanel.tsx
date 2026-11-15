@@ -45,7 +45,8 @@ const ReleaseChangelogPanel = (props: ReleaseChangelogPanelProps) => {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="border-border flex shrink-0 flex-wrap items-center gap-2.5 border-b px-6 py-[14px]">
+      {/* The chrome surface, as the Flow tab's bar (#Q3699). */}
+      <div className="border-border bg-muted flex shrink-0 flex-wrap items-center gap-2.5 border-b px-6 py-[14px]">
         <ScrollText className="text-muted-foreground size-4" aria-hidden />
         <span className="text-[13.5px] font-semibold">
           {tr("release.changelog")}
