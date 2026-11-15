@@ -237,18 +237,6 @@ describe("Monitor API", () => {
         { user: ctx.user },
       ),
     ).rejects.toThrow();
-    await expect(
-      ctx.api.createMonitor.fetch(
-        {
-          params: { projectId: ctx.project.id },
-          body: {
-            ...ctx.body,
-            notifications: { email: true, recipients: ["invalid-address"] },
-          },
-        },
-        { user: ctx.user },
-      ),
-    ).rejects.toThrow();
     const created = await ctx.api.createMonitor.fetch(
       { params: { projectId: ctx.project.id }, body: ctx.body },
       { user: ctx.user },

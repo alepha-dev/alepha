@@ -7,5 +7,4 @@ export const monitorSettingsSchema = monitors.insertSchema.pick({
   timeoutSecs: true,
   confirmations: true,
   expect: true,
-  notifications: true,
 });

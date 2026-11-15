@@ -41,7 +41,6 @@ to grant.
 | An automation paused for review or broken | The rule's author                                                                        | Yes   | No    |
 | A quest reminder                          | Whoever accepted the quest                                                               | No    | Yes   |
 | A project invitation                      | The person invited                                                                       | Yes   | Yes   |
-| A healthcheck alert                       | The [monitor's recipients](/lore/docs/ship-healthchecks)                                 | No    | Yes   |
 | A Cloudflare token failing                | Every member of the host's project whose rank grants `host:update`, the owner among them | No    | Yes   |
 | A throwaway host overdue                  | The same people                                                                          | Yes   | Yes   |
 

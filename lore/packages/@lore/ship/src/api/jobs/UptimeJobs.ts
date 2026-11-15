@@ -10,7 +10,6 @@ import { monitorHeartbeats } from "../entities/monitorHeartbeats.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
 import { UptimeActivityService } from "../services/UptimeActivityService.ts";
 import { UptimeErrorService } from "../services/UptimeErrorService.ts";
-import { UptimeNotificationService } from "../services/UptimeNotificationService.ts";
 import { UptimeProber } from "../services/UptimeProber.ts";
 import {
   UptimeStateService,
@@ -26,7 +25,6 @@ export class UptimeJobs {
   protected readonly beats = $repository(monitorHeartbeats);
   protected readonly capabilities = $repository(projectCapabilities);
   protected readonly analytics = $inject(DeployAnalytics);
-  protected readonly notifications = $inject(UptimeNotificationService);
   protected readonly projectErrors = $inject(UptimeErrorService);
   protected readonly activity = $inject(UptimeActivityService);
   protected readonly prober = $inject(UptimeProber);
@@ -129,14 +127,9 @@ export class UptimeJobs {
         error,
       );
     }
-    try {
-      await this.notifications.handle(transition);
-    } catch (error) {
-      this.log.error(
-        `Uptime alert could not be queued for incident ${transition.incident.id}`,
-        error,
-      );
-    }
+    // Alerts are automations since #Q3612: the incident's write recorded
+    // `monitor.down` / `monitor.up` (#Q3610), and the Uptime bells' rules
+    // notify from there.
     try {
       await this.activity.handle(transition);
     } catch (error) {

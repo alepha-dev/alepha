@@ -455,8 +455,6 @@ and `create` take `--project`.
 | `--keyword`           | Text a passing check's body contains.                                                                              |
 | `--latency-budget`    | Milliseconds over which a check counts as failed.                                                                  |
 | `--cert-warning-days` | Days before a certificate's expiry that count as failing.                                                          |
-| `--no-email`          | Do not mail the project's members on an outage.                                                                    |
-| `--recipient`         | An extra address to mail, repeated for several. On `update`, it replaces the list.                                 |
 
 ```bash
 lore monitor create --app acme --env production --name Website --kind http --expect-status 200

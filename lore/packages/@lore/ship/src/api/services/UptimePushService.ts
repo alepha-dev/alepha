@@ -9,14 +9,7 @@ import { type Monitor, monitors } from "../entities/monitors.ts";
 
 export type PushMonitorConfig = Pick<Monitor, "name"> &
   Partial<
-    Pick<
-      Monitor,
-      | "intervalSecs"
-      | "timeoutSecs"
-      | "confirmations"
-      | "expect"
-      | "notifications"
-    >
+    Pick<Monitor, "intervalSecs" | "timeoutSecs" | "confirmations" | "expect">
   >;
 
 /**

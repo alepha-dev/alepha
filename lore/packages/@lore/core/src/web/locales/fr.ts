@@ -136,6 +136,8 @@ export default {
   "automation.preset.quest-reminders.title": "Rappels de quête",
   "automation.preset.quest-reminders.description":
     "Toutes les heures, rappelle à la personne assignée chaque quête dont le rappel est dû, à l'intervalle choisi sur la quête.",
+  "uptime.alertsByBell":
+    "Les alertes sont des automatisations : activez la cloche sur la page du moniteur, ou sur Applications pour tous les moniteurs.",
   "uptime.subscription.label":
     "M'avertir quand ce moniteur tombe ou se rétablit",
   "uptime.subscription.description":
@@ -3850,6 +3852,12 @@ export default {
     "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
   "uptime.invalidRecipients":
     "Saisissez 20 adresses e-mail valides au maximum.",
+  "uptime.suggestions.title": "Apps sans moniteur",
+  "uptime.suggestions.description":
+    "Ces copies ont une adresse que rien ne surveille. Ajoutez un moniteur avec son nom et son URL déjà remplis.",
+  "uptime.suggestions.add": "Ajouter un moniteur",
+  "uptime.suggestions.addFor": "Ajouter un moniteur pour $1",
+  "uptime.app.none": "Aucun moniteur ne surveille encore cette adresse.",
   "uptime.title": "Disponibilité",
   "project.capability.ship.option.uptime.label": "Superviser les applications",
   "project.capability.ship.option.uptime.description":

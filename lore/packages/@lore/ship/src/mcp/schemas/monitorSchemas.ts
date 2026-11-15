@@ -4,7 +4,6 @@ import { z } from "alepha";
 import { monitorExpectSchema } from "../../api/schemas/monitorExpectSchema.ts";
 import { monitorHeartbeatResourceSchema } from "../../api/schemas/monitorHeartbeatResourceSchema.ts";
 import { monitorIncidentResourceSchema } from "../../api/schemas/monitorIncidentResourceSchema.ts";
-import { monitorNotificationSettingsSchema } from "../../api/schemas/monitorNotificationSettingsSchema.ts";
 import { monitorResourceSchema } from "../../api/schemas/monitorResourceSchema.ts";
 import { monitorUptimeCardSchema } from "../../api/schemas/monitorUptimeCardSchema.ts";
 import { monitorWindowSchema } from "../../api/schemas/monitorWindowSchema.ts";
@@ -64,11 +63,6 @@ const monitorSettingsParams = {
   expect: monitorExpectSchema
     .describe(
       "What a passing check looks like: `status` (HTTP code), `keyword` (in the body), `latencyBudgetMs` (slower is a failure), `certWarningDays`. Replaces the whole object on update.",
-    )
-    .optional(),
-  notifications: monitorNotificationSettingsSchema
-    .describe(
-      "`email` mails the project's members on an outage; `recipients` adds addresses. Replaces the whole object on update.",
     )
     .optional(),
 };

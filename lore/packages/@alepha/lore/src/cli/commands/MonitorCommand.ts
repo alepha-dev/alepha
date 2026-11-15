@@ -22,7 +22,6 @@ type MonitorConfig = Pick<
   | "timeoutSecs"
   | "confirmations"
   | "expect"
-  | "notifications"
 >;
 
 /**
@@ -145,18 +144,6 @@ export class MonitorCommand {
     "cert-warning-days": z
       .integer()
       .describe("Days before a certificate's expiry that count as failing.")
-      .optional(),
-    email: z
-      .boolean()
-      .describe(
-        "Mail the project's members on an outage. On by default; --no-email turns it off.",
-      )
-      .optional(),
-    recipient: z
-      .array(z.email())
-      .describe(
-        "An extra address to mail on an outage. Repeat for several; on update, replaces the list.",
-      )
       .optional(),
   };
 
@@ -330,8 +317,7 @@ export class MonitorCommand {
 
   public readonly update = $command({
     name: "update",
-    description:
-      "Change a monitor's settings. Only the flags passed change; --recipient replaces the list",
+    description: "Change a monitor's settings. Only the flags passed change",
     args: MonitorCommand.ID_ARG,
     flags: z.object({
       ...MonitorCommand.SETTINGS_FLAGS,
@@ -482,8 +468,6 @@ export class MonitorCommand {
       keyword?: string;
       "latency-budget"?: number;
       "cert-warning-days"?: number;
-      email?: boolean;
-      recipient?: string[];
     },
     base: Pick<Monitor, "name" | "kind" | "target"> & Partial<Monitor>,
   ): MonitorConfig {
@@ -504,10 +488,6 @@ export class MonitorCommand {
       timeoutSecs: flags["timeout-secs"] ?? base.timeoutSecs,
       confirmations: flags.confirmations ?? base.confirmations,
       expect,
-      notifications: {
-        email: flags.email ?? base.notifications?.email ?? true,
-        recipients: flags.recipient ?? base.notifications?.recipients ?? [],
-      },
     } as MonitorConfig;
   }
 

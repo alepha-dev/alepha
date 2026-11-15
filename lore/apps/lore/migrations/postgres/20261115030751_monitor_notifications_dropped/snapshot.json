@@ -1,0 +1,25 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c2cf3759-0c57-4c77-a894-bc3063078d64",
+  "prevIds": ["c8294839-f3a4-43d7-96bc-ff433a71364a"],
+  "footprints": [
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "monitors", "notifications"],
+      "writes": [
+        "s|col|public.monitors.notifications",
+        "n|col|public.monitors.notifications",
+        "e|col|public.monitors.notifications"
+      ],
+      "reads": ["n|tbl|public.monitors", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"monitors\",\"notifications\"]"
+    }
+  ]
+}

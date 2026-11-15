@@ -27,7 +27,6 @@ const stored = {
   timeoutSecs: 10,
   confirmations: 2,
   expect: { status: 200, keyword: "ok" },
-  notifications: { email: true, recipients: ["ops@example.app"] },
   active: true,
   status: "up",
   statusSince: "2026-11-13T10:00:00.000Z",
@@ -133,10 +132,7 @@ describe("lore monitor", () => {
     expect,
   }) => {
     const { run, sent } = create();
-    await run(
-      "update",
-      `${MONITOR_ID} --interval-secs 300 --keyword healthy --no-email`,
-    );
+    await run("update", `${MONITOR_ID} --interval-secs 300 --keyword healthy`);
     expect(sent.at(-1)).toEqual([
       "updateMonitor",
       {
@@ -149,7 +145,6 @@ describe("lore monitor", () => {
           timeoutSecs: 10,
           confirmations: 2,
           expect: { status: 200, keyword: "healthy" },
-          notifications: { email: false, recipients: ["ops@example.app"] },
         },
       },
     ]);
@@ -198,7 +193,7 @@ describe("lore monitor", () => {
     const { run, printed, sent } = create();
     await run(
       "create",
-      "--app acme --env production --name Backup --kind push --interval-secs 86400 --recipient a@example.app --recipient b@example.app",
+      "--app acme --env production --name Backup --kind push --interval-secs 86400",
     );
     expect(sent[1]).toEqual([
       "createMonitor",
@@ -210,10 +205,6 @@ describe("lore monitor", () => {
           target: "",
           intervalSecs: 86_400,
           expect: {},
-          notifications: {
-            email: true,
-            recipients: ["a@example.app", "b@example.app"],
-          },
           appInstanceId: APP_ID,
         },
       },
