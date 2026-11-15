@@ -493,6 +493,12 @@ export class HttpClient {
           status: response.status,
         });
 
+        await this.alepha.events.emit("client:fetch:after", {
+          url,
+          request,
+          response,
+        });
+
         const fetchResponse: FetchResponse = {
           data: await this.responseData(response, options, cacheKey),
           status: response.status,

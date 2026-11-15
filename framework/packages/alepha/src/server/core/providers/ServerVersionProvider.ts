@@ -1,7 +1,8 @@
-import { $inject, $store, Alepha, type AlephaMeta } from "alepha";
+import { $hook, $inject, $store, Alepha, type AlephaMeta } from "alepha";
 
 import { versionOptions } from "../atoms/versionOptions.ts";
 import { NotFoundError } from "../errors/NotFoundError.ts";
+import { BUILD_HEADER, buildToken } from "../helpers/buildToken.ts";
 import { $route } from "../primitives/$route.ts";
 import { versionSchema } from "../schemas/versionSchema.ts";
 
@@ -52,6 +53,25 @@ export class ServerVersionProvider {
     },
     silent: true,
     handler: () => this.buildInfo(),
+  });
+
+  /**
+   * The build that answers, stamped on every response (`x-alepha-build`).
+   *
+   * A browser tab keeps running the build it loaded; this is how it learns a
+   * deploy happened before its next navigation asks for chunks that are gone
+   * (`ReactBrowserProvider` turns it into a full page load). An opaque hash,
+   * so it holds whatever `expose` withholds; a built app only.
+   */
+  protected readonly build = buildToken(this.alepha.meta);
+
+  protected readonly onResponse = $hook({
+    on: "server:response:after",
+    handler: ({ response }) => {
+      if (this.build) {
+        response.headers[BUILD_HEADER] = this.build;
+      }
+    },
   });
 
   protected buildInfo() {

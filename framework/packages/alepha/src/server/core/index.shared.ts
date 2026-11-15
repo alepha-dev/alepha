@@ -9,6 +9,7 @@ export * from "./errors/ServiceUnavailableError.ts";
 export * from "./errors/TooManyRequestsError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
+export * from "./helpers/buildToken.ts";
 export * from "./helpers/isMultipart.ts";
 export * from "./helpers/ServerReply.ts";
 export * from "./helpers/SseStreams.ts";

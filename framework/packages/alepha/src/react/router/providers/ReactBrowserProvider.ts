@@ -12,6 +12,7 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { BrowserHeadProvider } from "alepha/react/head";
+import { BUILD_HEADER, buildToken } from "alepha/server";
 import { LinkProvider } from "alepha/server/links";
 import { createElement } from "react";
 
@@ -92,6 +93,75 @@ export class ReactBrowserProvider {
   protected readonly viewTransition = $inject(ReactViewTransition);
   protected readonly deferred = $inject(ReactDeferred);
   protected readonly prefetcher = $inject(ReactPrefetchProvider);
+
+  /**
+   * The build this tab runs, as the server stamps it (`x-alepha-build`).
+   * `undefined` in development, where nothing is compared.
+   */
+  protected readonly build = buildToken(this.alepha.meta);
+
+  /**
+   * Set once a response of this origin came from another build: a deploy
+   * happened since this tab loaded. The next navigation then loads the new
+   * build as a full page instead of rendering here, before it asks for chunks
+   * the deploy removed (the version-skew handling Next.js does).
+   */
+  protected staleBuild = false;
+
+  protected readonly onFetchResponse = $hook({
+    on: "client:fetch:after",
+    handler: ({ url, response }) => this.noteBuild(url, response.headers),
+  });
+
+  /**
+   * When the tab last asked the server for its build: a tab left open across
+   * a deploy asks again when it is looked at, at most once a minute.
+   */
+  protected lastBuildCheck = 0;
+
+  /**
+   * Compare the build that answered `url` with this tab's own.
+   */
+  protected noteBuild(url: string, headers: Headers): void {
+    if (!this.build || this.staleBuild) {
+      return;
+    }
+    const served = headers.get(BUILD_HEADER);
+    if (!served || served === this.build) {
+      return;
+    }
+    // Another Alepha app (an API on its own origin) has its own build.
+    if (new URL(url, this.location.href).origin !== this.location.origin) {
+      return;
+    }
+    this.staleBuild = true;
+    this.log.info("A newer build is deployed, the next navigation loads it", {
+      running: this.build,
+      served,
+    });
+  }
+
+  /**
+   * Ask the server which build it runs, when the tab comes back into view:
+   * the one moment a tab left open across a deploy is about to be used, and
+   * may not have made a request since. `/health` answers with the header.
+   */
+  protected async checkBuild(): Promise<void> {
+    if (!this.build || this.staleBuild) {
+      return;
+    }
+    const now = this.dateTimeProvider.nowMillis();
+    if (now - this.lastBuildCheck < 60_000) {
+      return;
+    }
+    this.lastBuildCheck = now;
+    try {
+      const res = await fetch("/health", { cache: "no-store" });
+      this.noteBuild(res.url, res.headers);
+    } catch {
+      // Offline: the next response that does arrive says it.
+    }
+  }
 
   /**
    * Scroll offset of every history entry we have visited, keyed by the id
@@ -373,6 +443,20 @@ export class ReactBrowserProvider {
         this.pushState(landed, true);
       }
       return;
+    }
+
+    // A deploy happened since this tab loaded: load the new build for this
+    // URL as a full page. Never settles, like any navigation that leaves the
+    // document; the page on screen stays until the new one replaces it.
+    if (this.staleBuild) {
+      ++this.transitionId;
+      const target = this.base + url;
+      if (options.replace) {
+        this.location.replace(target);
+      } else {
+        this.location.assign(target);
+      }
+      return new Promise<void>(() => {});
     }
 
     // Before anything renders: the offset belongs to the entry we are on, and
@@ -896,6 +980,13 @@ export class ReactBrowserProvider {
 
       this.viewsMounted = true;
 
+      this.lastBuildCheck = this.dateTimeProvider.nowMillis();
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          void this.checkBuild();
+        }
+      });
+
       window.addEventListener("popstate", (event) => {
         // A swipe back the browser already animated: animating it again would
         // play the page twice.
@@ -924,6 +1015,12 @@ export class ReactBrowserProvider {
           this.base + onScreen.pathname === this.location.pathname &&
           (onScreen.search ?? "") === (this.location.search ?? "")
         ) {
+          return;
+        }
+
+        // The URL is already the one wanted: reloading it loads the new build.
+        if (this.staleBuild) {
+          this.location.reload();
           return;
         }
 

@@ -103,6 +103,12 @@ declare module "alepha" {
       options: ResolvedFetchOptions;
       request: RequestInit;
     };
+    // A response arrived, before its body is read (the raw `Response`).
+    "client:fetch:after": {
+      url: string;
+      request: RequestInit;
+      response: Response;
+    };
     "client:request:error": {
       route?: HttpAction;
       error: HttpError;
