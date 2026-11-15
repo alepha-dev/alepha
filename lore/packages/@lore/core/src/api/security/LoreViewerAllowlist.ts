@@ -77,6 +77,21 @@ export class LoreViewerAllowlist {
     LoreViewerAllowlist.READ_GROUPS.map((group) => `${group}:read`);
 
   /**
+   * Whether a permission set grants reads only: what the Viewer rank holds,
+   * and any custom rank made of reads. The surfaces that tell a reader they
+   * are read-only in a project (a refused write, `project_context`) read it.
+   */
+  public static isReadOnly(permissions: readonly string[]): boolean {
+    return (
+      permissions.length > 0 &&
+      permissions.every(
+        (permission) =>
+          permission.endsWith(":read") && !permission.includes("*"),
+      )
+    );
+  }
+
+  /**
    * The permissions of `permissions` the allowlist does not cover, in their
    * stored order. Empty when the set fits.
    *
