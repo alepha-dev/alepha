@@ -136,8 +136,12 @@ const QuestDiscussionEvent = (props: QuestDiscussionEventProps) => {
             the quest. Same bubble as a comment so the feed has one shape for
             "somebody wrote this". */}
         {entry.body && (
-          <div className="border-border bg-muted/40 rounded-md border px-3 py-3">
+          <div className="border-border bg-muted/40 rounded-md border px-4 py-3">
             <LoreViewer
+              // The box's padding alone sets its edges (#Q3660): the first and
+              // last prose blocks carry their own `my-3`, which doubled it on top
+              // and bottom.
+              className="[&>:first-child]:mt-0 [&>:last-child]:mb-0"
               element={{
                 kind: "quest",
                 projectId: project?.id ?? 0,

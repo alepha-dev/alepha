@@ -159,6 +159,19 @@ describe("FeedbackThreadBody", () => {
       expect(view.container.querySelectorAll("ol li")).toHaveLength(2);
     });
 
+    it("trims the outer margins of the first and last block (#Q3660)", async () => {
+      const view = await mount("first\n\nlast", MEMBERS, TEAM);
+
+      await expect
+        .poll(() => view.container.querySelectorAll("p").length)
+        .toBe(2);
+      const root = view.container.querySelector('[data-slot="markdown-view"]');
+      expect(root?.className).toContain("[&>:first-child]:mt-0");
+      expect(root?.className).toContain("[&>:last-child]:mb-0");
+      // The blocks are the root's direct children, which the selector needs.
+      expect(root?.firstElementChild?.tagName).toBe("P");
+    });
+
     it("lets no raw HTML through", async () => {
       const view = await mount(
         'hi <img src="x" onerror="alert(1)"><script>alert(2)</script>',
