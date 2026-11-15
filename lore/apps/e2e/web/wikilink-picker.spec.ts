@@ -72,11 +72,13 @@ test.describe("the wiki-link picker", () => {
       await page.goto(`/${slug}/folios/${folio.shortId}`);
       await page.waitForLoadState("networkidle");
 
-      const toggle = page.locator("[data-mode]").first();
-      if ((await toggle.getAttribute("data-mode")) !== "edit") {
-        await toggle.click();
+      // The Edit / View / Both toolbar (#Q3653): pick Edit by its radio.
+      const modes = page.getByTestId("folio-mode");
+      await expect(modes).toBeVisible({ timeout: 20_000 });
+      if ((await modes.getAttribute("data-mode")) !== "edit") {
+        await modes.getByRole("radio", { name: "Edit" }).click();
       }
-      await expect(toggle).toHaveAttribute("data-mode", "edit");
+      await expect(modes).toHaveAttribute("data-mode", "edit");
 
       const content = page.locator(".cm-content");
       await expect(content).toBeVisible({ timeout: 15_000 });

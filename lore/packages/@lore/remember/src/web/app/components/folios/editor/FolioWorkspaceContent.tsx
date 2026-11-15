@@ -5,15 +5,16 @@ import {
   type MarkdownCommandId,
   markdownCommands,
   type MarkdownEditorMode,
-  MarkdownModeToggle,
 } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { type ReactElement, useRef, useState } from "react";
 
 import type { FolioResource } from "../../../../../api/schemas/folioResourceSchema.ts";
+import { folioModeAtom } from "../../../atoms/folioModeAtom.ts";
 import { rewriteFolioAssetReferences } from "../folioAssetReference.ts";
 import FolioDocument from "./document/FolioDocument.tsx";
 import FolioFindBar from "./document/FolioFindBar.tsx";
+import FolioModeToolbar from "./document/FolioModeToolbar.tsx";
 import { useFolioFind } from "./document/useFolioFind.ts";
 import FolioInspector, {
   type FolioInspectorTab,
@@ -147,9 +148,21 @@ const FolioWorkspaceContent = (
   // The initializer runs once per mount, which is once per folio (this
   // page remounts on a folio switch, #Q2349), so saving a new
   // folio does not yank the author out of Edit mode mid-sentence.
-  const [mode, setMode] = useState<MarkdownEditorMode>(
-    props.folio?.content?.trim() ? "view" : "edit",
-  );
+  //
+  // The reader's own choice wins once they have made one (#Q3653), with one
+  // exception kept from the rule above: an empty folio never opens in View,
+  // which would be a blank pane with nothing to read.
+  const [preference, setPreference] = useStore(folioModeAtom);
+  const [mode, setModeState] = useState<MarkdownEditorMode>(() => {
+    const empty = !props.folio?.content?.trim();
+    const chosen = preference.mode;
+    if (chosen && !(empty && chosen === "view")) return chosen;
+    return empty ? "edit" : "view";
+  });
+  const setMode = (next: MarkdownEditorMode) => {
+    setModeState(next);
+    setPreference({ mode: next });
+  };
 
   // Both halves of wiki-link support: the `[[` picker's entries and the
   // rewritten markdown View mode renders. Hoisted to this component rather
@@ -202,9 +215,12 @@ const FolioWorkspaceContent = (
     },
     find: { show: find.show },
     mode: {
-      editing: mode === "edit",
-      toggle: () =>
-        setMode((current) => (current === "view" ? "edit" : "view")),
+      // Both edits too: the caret is in the editor half (#Q3653).
+      editing: mode !== "view",
+      // ⌘E flips View and Edit for this folio; from Both it goes to View.
+      // Only a choice in the toolbar is remembered: a keystroke is a glance
+      // at the other face, not a preference.
+      toggle: () => setModeState(mode === "view" ? "edit" : "view"),
     },
     format: {
       run: (id) => {
@@ -240,6 +256,14 @@ const FolioWorkspaceContent = (
             of it: an `absolute` element inside a scrolling box scrolls away
             with the text it is searching. */}
         <div className="relative flex min-w-0 flex-1 flex-col">
+          {/* The mode lives in a toolbar row above the document (#Q3653),
+              where a lone pencil used to float over its corner. Outside the
+              scroll container, so it stays put while the text scrolls. */}
+          <FolioModeToolbar
+            mode={mode}
+            onChange={setMode}
+            disabled={actions.locked}
+          />
           <div
             ref={setContentElement}
             className="min-w-0 flex-1 overflow-y-auto"
@@ -266,36 +290,6 @@ const FolioWorkspaceContent = (
               />
             </div>
           </div>
-
-          {/* The view/edit toggle, floating over the document's top-right
-              corner — all that survives of the deleted meta bar (feedback
-              #62), and deliberately bigger than it was in that row, since it
-              is now a lone control rather than the last chip of several.
-
-              A SIBLING of the scroll container, exactly like the find bar
-              below it and for the same reason: an `absolute` child of a
-              scrolling box scrolls away with the text. `z-10` keeps it under
-              the inspector's `z-20` drawer, which is meant to cover the
-              document at narrow widths.
-
-              Minimal, like the header's own icon buttons: no border, no
-              filled surface, no shadow. It used to carry all three on the
-              argument that a control hovering over prose needs to cover the
-              text behind it — but the document is centred to a 68ch measure
-              and this sits in the pane's right margin, so there is no prose
-              under it to read through. The chrome was solving a problem
-              that the reading measure had already removed, and a bordered
-              chip in the corner reads as a floating widget rather than as
-              part of the frame. The ghost variant's hover fill is enough to
-              show it is hittable. */}
-          <MarkdownModeToggle
-            mode={mode}
-            onChange={() => actions.handlers["view.mode"]()}
-            disabled={actions.locked}
-            iconOnly
-            className="text-muted-foreground hover:text-foreground absolute top-3 right-3 z-10 size-9"
-            iconClassName="size-4.5"
-          />
 
           <FolioFindBar find={find} />
         </div>

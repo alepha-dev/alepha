@@ -438,6 +438,10 @@ export default {
   "folios.editor.listing.items": "$1 éléments",
   "folios.editor.listing.pinned": "Épinglé",
   "folios.editor.listing.empty": "Ce dossier est vide.",
+  "folios.mode.label": "Mode",
+  "folios.mode.edit": "Éditer",
+  "folios.mode.view": "Lire",
+  "folios.mode.both": "Les deux",
   "folios.editor.root.title": "Folios",
   "folios.editor.root.description":
     "Ouvrez un folio dans l’arbre, commencez-en un nouveau, ou cherchez parmi tous.",
