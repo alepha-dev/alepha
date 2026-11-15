@@ -936,7 +936,11 @@ export class ReactPageProvider {
       } catch (error) {
         if (this.alepha.isBrowser() && this.isChunkLoadError(error)) {
           if (this.reloadAfterChunkError(targetUrl)) {
-            return undefined;
+            // The browser is leaving for a fresh document. Settling here would
+            // commit this navigation (an empty layer) or let the next lazy
+            // layer fail into the error page, painted until the unload. Never
+            // settle: the page on screen stays until the new one replaces it.
+            return new Promise<never>(() => {});
           }
         }
         throw error;
@@ -965,12 +969,21 @@ export class ReactPageProvider {
     );
   }
 
+  /** Set once this document has started reloading after a chunk failure. */
+  protected chunkReloadPending = false;
+
   /**
    * Navigate to the target URL to fetch updated assets after a chunk load failure.
    * Uses sessionStorage to prevent infinite reload loops.
    * Returns true if navigation was initiated.
    */
   protected reloadAfterChunkError(url?: URL): boolean {
+    // Already leaving this document: a second failure in the same navigation
+    // (or a click before the unload) is not a reload loop.
+    if (this.chunkReloadPending) {
+      return true;
+    }
+
     const key = "alepha:chunk-reload";
     const lastReload = sessionStorage.getItem(key);
     const now = this.dateTimeProvider.nowMillis();
@@ -984,6 +997,7 @@ export class ReactPageProvider {
 
     this.log.warn("Chunk load failed after deployment, reloading page");
     sessionStorage.setItem(key, String(now));
+    this.chunkReloadPending = true;
     window.location.assign(
       url ? url.pathname + url.search : window.location.href,
     );
