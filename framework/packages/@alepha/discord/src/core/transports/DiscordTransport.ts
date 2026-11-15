@@ -27,4 +27,9 @@ export interface DiscordWebhookPayload {
   content: string;
   username?: string;
   avatar_url?: string;
+  /**
+   * Which mentions in `content` may ping (#Q3615). `{ parse: [] }` pings
+   * nobody, so an `@everyone` typed into a message is plain text.
+   */
+  allowed_mentions?: { parse: Array<"users" | "roles" | "everyone"> };
 }

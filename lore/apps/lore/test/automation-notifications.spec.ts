@@ -615,8 +615,10 @@ describe("Automation configured notifications and durable outbox", () => {
   it("offers only configured adapters and surfaces automations in the account's real preference list", async ({
     expect,
   }) => {
+    // Core registers `discord` itself since #Q3615; an adapter whose
+    // destination is not configured is still never offered.
     const channels = alepha.inject(AutomationChannels);
-    channels.register("discord", {
+    channels.register("testroom", {
       addressable: false,
       target: "discord",
       configured: async () => false,

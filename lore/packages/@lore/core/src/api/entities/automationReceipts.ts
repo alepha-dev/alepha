@@ -62,7 +62,8 @@ export const automationReceipts = $entity({
     snapshot: automationRunSnapshotSchema.optional(),
     result: automationSafeFieldsSchema.optional(),
     recipientUserId: z.uuid().optional(),
-    recipientChannel: z.string().max(32).optional(),
+    // A channel instance id, up to 64 characters since #Q3613.
+    recipientChannel: z.string().max(64).optional(),
     position: z.integer().nonnegative().optional(),
     actionIndex: z.integer().min(0).max(4).optional(),
     rowIndex: z.integer().min(0).max(49).optional(),
