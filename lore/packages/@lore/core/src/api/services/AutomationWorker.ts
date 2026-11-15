@@ -136,7 +136,8 @@ export class AutomationWorker {
           if (!planned) {
             await this.evidence.finish(occurrence.runId!);
             if (
-              occurrence.snapshot!.rule!.select?.key === "quests.remindersDue" &&
+              occurrence.snapshot!.rule!.select?.key ===
+                "quests.remindersDue" &&
               occurrence.snapshot!.selectionNext
             ) {
               const rule = await this.persistence.rules.getById(

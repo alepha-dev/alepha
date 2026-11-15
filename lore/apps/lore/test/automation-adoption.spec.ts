@@ -1,8 +1,6 @@
 import {
   AutomationNotifications,
   AutomationController,
-  AutomationContextBuilder,
-  AutomationSelections,
   AutomationAdoptionService,
   AutomationAdoptionRegistry,
   AutomationLegacyJobProvider,
@@ -12,8 +10,6 @@ import {
   AutomationService,
   AutomationEvents,
   AutomationWorker,
-  AutomationClaims,
-  AutomationEvaluator,
   AutomationNotificationOutbox,
   LoreInboxRecipientProvider,
   LoreNotificationPreferences,
@@ -213,7 +209,11 @@ describe("Explicit policy adoption and legacy parity", () => {
       "Policy adoption is unavailable right now; try again later",
     );
     adoption.validationFault = new ForbiddenError("Missing quest:read");
-    const refused = await adoption.preview(project.id, "release-notifications", user);
+    const refused = await adoption.preview(
+      project.id,
+      "release-notifications",
+      user,
+    );
     expect(refused.reason).toBe("Missing quest:read");
     adoption.validationFault = undefined;
   });
@@ -221,7 +221,11 @@ describe("Explicit policy adoption and legacy parity", () => {
     expect,
   }) => {
     const before = await persistence.rules.count({});
-    const preview = await adoption.preview(project.id, "release-notifications", user);
+    const preview = await adoption.preview(
+      project.id,
+      "release-notifications",
+      user,
+    );
     expect(preview).toMatchObject({
       state: "legacy",
       ready: true,
@@ -232,9 +236,15 @@ describe("Explicit policy adoption and legacy parity", () => {
     expect(await persistence.adoptions.count({})).toBe(0);
     adoption.interrupt = true;
     await expect(
-      adoption.adopt(project.id, "release-notifications", user, { confirm: true }),
+      adoption.adopt(project.id, "release-notifications", user, {
+        confirm: true,
+      }),
     ).rejects.toThrow("Interrupted");
-    const pending = await adoption.preview(project.id, "release-notifications", user);
+    const pending = await adoption.preview(
+      project.id,
+      "release-notifications",
+      user,
+    );
     expect(pending.state).toBe("pending");
     expect(pending.candidate?.enabled).toBe(false);
     expect(
@@ -242,16 +252,26 @@ describe("Explicit policy adoption and legacy parity", () => {
         .inject(AutomationLegacyQueue)
         .adopted(project.id, "release-notifications"),
     ).toBe(false);
-    const adopted = await adoption.adopt(project.id, "release-notifications", user, {
-      confirm: true,
-    });
+    const adopted = await adoption.adopt(
+      project.id,
+      "release-notifications",
+      user,
+      {
+        confirm: true,
+      },
+    );
     expect(adopted.state).toBe("adopted");
     expect(adopted.replacementId).toBe(pending.replacementId);
     expect(adopted.candidate?.enabled).toBe(true);
     expect(await persistence.rules.count({})).toBe(before + 1);
-    const repeated = await adoption.adopt(project.id, "release-notifications", user, {
-      confirm: true,
-    });
+    const repeated = await adoption.adopt(
+      project.id,
+      "release-notifications",
+      user,
+      {
+        confirm: true,
+      },
+    );
     expect(repeated.candidate?.revision).toBe(adopted.candidate?.revision);
   });
   it("adopts an existing compatible rule and keeps disable/delete as permanent opt-out", async ({
@@ -504,9 +524,15 @@ describe("Explicit policy adoption and legacy parity", () => {
   }) => {
     adoption.interrupt = true;
     await expect(
-      adoption.adopt(project.id, "release-notifications", user, { confirm: true }),
+      adoption.adopt(project.id, "release-notifications", user, {
+        confirm: true,
+      }),
     ).rejects.toThrow("Interrupted");
-    const pending = await adoption.preview(project.id, "release-notifications", user);
+    const pending = await adoption.preview(
+      project.id,
+      "release-notifications",
+      user,
+    );
     expect(pending.candidate?.canEnable).toBe(false);
     await service.remove(
       project.id,
@@ -519,9 +545,14 @@ describe("Explicit policy adoption and legacy parity", () => {
         .inject(AutomationLegacyQueue)
         .adopted(project.id, "release-notifications"),
     ).toBe(false);
-    const resumed = await adoption.adopt(project.id, "release-notifications", user, {
-      confirm: true,
-    });
+    const resumed = await adoption.adopt(
+      project.id,
+      "release-notifications",
+      user,
+      {
+        confirm: true,
+      },
+    );
     expect(resumed.state).toBe("adopted");
     expect(resumed.replacementId).not.toBe(pending.replacementId);
     expect(resumed.candidate?.canEnable).toBe(true);

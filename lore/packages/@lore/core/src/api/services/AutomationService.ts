@@ -630,7 +630,9 @@ export class AutomationService {
       columns: ["id", "rule"],
       limit: 500,
     });
-    if (others.some((other) => other.rule.select?.key === "quests.remindersDue"))
+    if (
+      others.some((other) => other.rule.select?.key === "quests.remindersDue")
+    )
       throw new ConflictError(
         "This project already has a quest reminders automation",
       );

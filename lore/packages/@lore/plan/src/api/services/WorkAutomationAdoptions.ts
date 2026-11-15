@@ -12,7 +12,6 @@ import {
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
-
 /**
  * Work owns the compatibility contract. Core owns consent, authority and cutover.
  */

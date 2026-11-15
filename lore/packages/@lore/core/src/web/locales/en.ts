@@ -1550,22 +1550,18 @@ export default {
   "project.settings.kanban.columns.wip.none": "No limit",
   "project.settings.kanban.columns.delete": "Delete",
   "project.settings.kanban.columns.reorder": "Reorder column",
-  "project.settings.reminderRule.title":
-    "Quest reminders",
+  "project.settings.reminderRule.title": "Quest reminders",
   "project.settings.reminderRule.description":
     "Reminders set on a quest are sent by one automation, hourly, to the quest's assignee.",
-  "project.settings.reminderRule.label":
-    "Reminder automation",
+  "project.settings.reminderRule.label": "Reminder automation",
   "project.settings.reminderRule.on":
     "Running: due reminders are sent every hour.",
   "project.settings.reminderRule.disabled":
     "Disabled: no reminder is sent until it is enabled again.",
   "project.settings.reminderRule.none":
     "None yet: reminders set on quests are not sent.",
-  "project.settings.reminderRule.open":
-    "Open the automation",
-  "project.settings.reminderRule.create":
-    "Create the reminder automation",
+  "project.settings.reminderRule.open": "Open the automation",
+  "project.settings.reminderRule.create": "Create the reminder automation",
   "project.settings.roadmap.title": "Roadmap",
   "project.settings.roadmap.description":
     "A read-only page listing your open releases and the epics inside them. No quests, no names, no backlog.",

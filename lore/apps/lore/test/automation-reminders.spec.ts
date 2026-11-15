@@ -217,9 +217,9 @@ describe("Quest reminders through an automation (#Q3626)", () => {
     const rule = await createRule();
     const claim = await run(rule.id);
     await finish(claim.receipt!.id, claim.receipt!.leaseToken);
-    expect(
-      (await persistence.receipts.getById(claim.receipt!.id)).status,
-    ).toBe("committed");
+    expect((await persistence.receipts.getById(claim.receipt!.id)).status).toBe(
+      "committed",
+    );
     expect(await sentOnce()).toBe(true);
     expect(await notifications()).toBe(51);
     await finish(claim.receipt!.id, claim.receipt!.leaseToken);

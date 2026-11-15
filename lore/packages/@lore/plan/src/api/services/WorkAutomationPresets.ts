@@ -83,11 +83,7 @@ export class WorkAutomationPresets {
         fields: entry.fields,
         needs: [{ capability: "plan" }, ...entry.needs],
         permissions: [
-          ...new Set([
-            "automation:write",
-            "member:read",
-            ...entry.permissions,
-          ]),
+          ...new Set(["automation:write", "member:read", ...entry.permissions]),
         ],
         slots: {
           channel: {
