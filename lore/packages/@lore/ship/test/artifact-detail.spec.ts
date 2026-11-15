@@ -96,6 +96,7 @@ const setup = async () => {
     instanceId: string,
     artifact: { tag: string; sha256: string },
     status: "succeeded" | "failed" = "succeeded",
+    createdBy?: string,
   ) =>
     await rows.deployments.create({
       projectId,
@@ -104,6 +105,7 @@ const setup = async () => {
       tag: artifact.tag,
       sha256: artifact.sha256,
       status,
+      ...(createdBy ? { createdBy } : {}),
       log: [{ at: "2026-11-01T00:00:00.000Z", text: "a line of the log" }],
     });
 
@@ -201,6 +203,24 @@ describe("getArtifact", () => {
         .map((it) => it.env)
         .toSorted((a, b) => String(a).localeCompare(String(b))),
     ).toEqual(["production", "staging"]);
+  });
+
+  it("names who started a run, and nobody for a run without an author (#Q3669)", async ({
+    expect,
+  }) => {
+    const { copy, ran, detail, push, user } = await setup();
+    const build = await push("1.0.0");
+    const production = await copy("production");
+    await ran(production.id, build, "succeeded", user.id);
+    await ran((await copy("staging")).id, build);
+
+    const read = await detail("1.0.0");
+
+    const by = new Map(read.deployments.map((it) => [it.env, it.author]));
+    expect(by.get("production")).toBe("owner");
+    expect(by.get("staging")).toBeUndefined();
+    // The id never leaves the server: the author is a name.
+    expect(JSON.stringify(read)).not.toContain(user.id);
   });
 
   it("never carries a run's log", async ({ expect }) => {

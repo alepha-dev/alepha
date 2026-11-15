@@ -50,7 +50,15 @@ export const artifactDetailSchema = artifactGroupSchema.extend({
         startedAt: true,
         finishedAt: true,
       })
-      .extend({ env: z.string().optional() }),
+      .extend({
+        env: z.string().optional(),
+        /**
+         * Who started the run, by the name a project member reads
+         * (`displayName`). Absent for a run nobody started by hand (CI
+         * with a project key) and for an author no longer in the project.
+         */
+        author: z.text().optional(),
+      }),
   ),
 });
 
