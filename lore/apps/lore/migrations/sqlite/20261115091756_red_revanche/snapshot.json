@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "64a1c1b9-a803-4acb-ab60-e62b0aff1c82",
-  "prevIds": ["d736112b-b281-4934-b3b9-7f11fd7a56fc"],
+  "id": "e9eb2136-b63b-445e-928e-1cb856fef7da",
+  "prevIds": ["55510a44-56d2-4f60-94e7-9d742e1bca4c"],
   "ddl": [
     {
       "name": "ai_conversations",
@@ -101,7 +101,7 @@
       "entityType": "tables"
     },
     {
-      "name": "automation_adoptions",
+      "name": "automation_channels",
       "entityType": "tables"
     },
     {
@@ -2585,7 +2585,7 @@
       "entityType": "columns"
     },
     {
-      "table": "automation_adoptions",
+      "table": "automation_channels",
       "name": "id",
       "type": "text",
       "notNull": false,
@@ -2595,7 +2595,7 @@
       "entityType": "columns"
     },
     {
-      "table": "automation_adoptions",
+      "table": "automation_channels",
       "name": "project_id",
       "type": "integer",
       "notNull": true,
@@ -2605,8 +2605,8 @@
       "entityType": "columns"
     },
     {
-      "table": "automation_adoptions",
-      "name": "policy",
+      "table": "automation_channels",
+      "name": "kind",
       "type": "text",
       "notNull": true,
       "autoincrement": false,
@@ -2615,8 +2615,8 @@
       "entityType": "columns"
     },
     {
-      "table": "automation_adoptions",
-      "name": "automation_id",
+      "table": "automation_channels",
+      "name": "name",
       "type": "text",
       "notNull": true,
       "autoincrement": false,
@@ -2625,8 +2625,8 @@
       "entityType": "columns"
     },
     {
-      "table": "automation_adoptions",
-      "name": "author_user_id",
+      "table": "automation_channels",
+      "name": "url",
       "type": "text",
       "notNull": true,
       "autoincrement": false,
@@ -2635,19 +2635,9 @@
       "entityType": "columns"
     },
     {
-      "table": "automation_adoptions",
-      "name": "state",
+      "table": "automation_channels",
+      "name": "created_by",
       "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "automation_adoptions",
-      "name": "adopted_at",
-      "type": "integer",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -2655,7 +2645,7 @@
       "entityType": "columns"
     },
     {
-      "table": "automation_adoptions",
+      "table": "automation_channels",
       "name": "version",
       "type": "integer",
       "notNull": true,
@@ -2665,7 +2655,7 @@
       "entityType": "columns"
     },
     {
-      "table": "automation_adoptions",
+      "table": "automation_channels",
       "name": "created_at",
       "type": "integer",
       "notNull": true,
@@ -2675,7 +2665,7 @@
       "entityType": "columns"
     },
     {
-      "table": "automation_adoptions",
+      "table": "automation_channels",
       "name": "updated_at",
       "type": "integer",
       "notNull": true,
@@ -3521,6 +3511,16 @@
       "notNull": true,
       "autoincrement": false,
       "default": "false",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automations",
+      "name": "subscription_scope",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "''",
       "generated": null,
       "entityType": "columns"
     },
@@ -4995,6 +4995,26 @@
       "entityType": "columns"
     },
     {
+      "table": "folio_directories",
+      "name": "system",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "folio_directories",
+      "name": "trashed_at",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
       "table": "folio_links",
       "name": "id",
       "type": "integer",
@@ -5448,6 +5468,16 @@
       "table": "folios",
       "name": "directory_id",
       "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "folios",
+      "name": "trashed_at",
+      "type": "integer",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -5918,7 +5948,7 @@
       "table": "hosts",
       "name": "project_id",
       "type": "integer",
-      "notNull": false,
+      "notNull": true,
       "autoincrement": false,
       "default": null,
       "generated": null,
@@ -6756,6 +6786,16 @@
     },
     {
       "table": "monitors",
+      "name": "app_instance_id",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "monitors",
       "name": "name",
       "type": "text",
       "notNull": true,
@@ -6831,16 +6871,6 @@
       "notNull": true,
       "autoincrement": false,
       "default": "'{}'",
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "monitors",
-      "name": "notifications",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "'{\"email\":true,\"recipients\":[]}'",
       "generated": null,
       "entityType": "columns"
     },
@@ -11977,33 +12007,19 @@
       "entityType": "indexes"
     },
     {
-      "table": "automation_adoptions",
-      "name": "automation_adoptions_project_id_policy_idx",
+      "table": "automation_channels",
+      "name": "automation_channels_project_id_name_idx",
       "columns": [
         {
           "value": "project_id",
           "isExpression": false
         },
         {
-          "value": "policy",
+          "value": "name",
           "isExpression": false
         }
       ],
       "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "entityType": "indexes"
-    },
-    {
-      "table": "automation_adoptions",
-      "name": "automation_adoptions_automation_id_idx",
-      "columns": [
-        {
-          "value": "automation_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
       "where": null,
       "origin": "manual",
       "entityType": "indexes"
@@ -12953,6 +12969,24 @@
       "entityType": "indexes"
     },
     {
+      "table": "folio_directories",
+      "name": "folio_directories_project_id_system_idx",
+      "columns": [
+        {
+          "value": "project_id",
+          "isExpression": false
+        },
+        {
+          "value": "system",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
       "table": "folio_links",
       "name": "folio_links_from_type_from_id_target_type_to_id_relation_idx",
       "columns": [
@@ -13576,6 +13610,20 @@
       "columns": [
         {
           "value": "project_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "monitors",
+      "name": "monitors_app_instance_id_idx",
+      "columns": [
+        {
+          "value": "app_instance_id",
           "isExpression": false
         }
       ],
@@ -15151,8 +15199,8 @@
       "entityType": "fks"
     },
     {
-      "table": "automation_adoptions",
-      "name": "fk_automation_adoptions_project_id_projects_id_fk",
+      "table": "automation_channels",
+      "name": "fk_automation_channels_project_id_projects_id_fk",
       "columns": ["project_id"],
       "tableTo": "projects",
       "columnsTo": ["id"],
@@ -15162,24 +15210,13 @@
       "entityType": "fks"
     },
     {
-      "table": "automation_adoptions",
-      "name": "fk_automation_adoptions_automation_id_automations_id_fk",
-      "columns": ["automation_id"],
-      "tableTo": "automations",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "RESTRICT",
-      "nameExplicit": false,
-      "entityType": "fks"
-    },
-    {
-      "table": "automation_adoptions",
-      "name": "fk_automation_adoptions_author_user_id_users_id_fk",
-      "columns": ["author_user_id"],
+      "table": "automation_channels",
+      "name": "fk_automation_channels_created_by_users_id_fk",
+      "columns": ["created_by"],
       "tableTo": "users",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
-      "onDelete": "RESTRICT",
+      "onDelete": "SET NULL",
       "nameExplicit": false,
       "entityType": "fks"
     },
@@ -15749,6 +15786,17 @@
       "name": "fk_monitors_project_id_projects_id_fk",
       "columns": ["project_id"],
       "tableTo": "projects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "monitors",
+      "name": "fk_monitors_app_instance_id_app_instances_id_fk",
+      "columns": ["app_instance_id"],
+      "tableTo": "app_instances",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
@@ -16354,8 +16402,8 @@
       "entityType": "pks"
     },
     {
-      "table": "automation_adoptions",
-      "name": "automation_adoptions_pk",
+      "table": "automation_channels",
+      "name": "automation_channels_pk",
       "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
