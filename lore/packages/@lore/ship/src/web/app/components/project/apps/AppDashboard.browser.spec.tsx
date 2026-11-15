@@ -109,6 +109,7 @@ describe("AppDashboard", () => {
   const show = async (
     instance: AppInstanceResource,
     responses: Record<string, unknown> = {},
+    project = projectFixture({ title: "Alepha", slug: "alepha" }),
   ) => {
     // Testing Library binds its queries to `document.body`, so a second render
     // in one test would search the first one's DOM as well. Several cases here
@@ -120,10 +121,7 @@ describe("AppDashboard", () => {
     // here too; nothing on this page reads it since Artifacts left for its own
     // tab, and a case that starts needing it must not pass by skipping the
     // code it is about.
-    alepha.store.set(
-      currentProjectAtom,
-      projectFixture({ title: "Alepha", slug: "alepha" }),
-    );
+    alepha.store.set(currentProjectAtom, project);
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = responses;
     return {
@@ -296,6 +294,57 @@ describe("AppDashboard", () => {
 
     const without = await show(instanceOf());
     expect(without.queryByText("Deploys to")).toBeNull();
+  });
+
+  /**
+   * The dashboard follows the same Ship options as Settings (#Q3632): no
+   * sigil step without Track, no host step and no "Deploys to" without
+   * Deploy.
+   */
+  it("offers only the next steps and lines its Ship options allow", async ({
+    expect,
+  }) => {
+    const shipWith = (options: Record<string, boolean>) =>
+      projectFixture({
+        title: "Alepha",
+        slug: "alepha",
+        options: { ship: options },
+      });
+    const bare = {
+      id: "00000000-0000-4000-8000-000000000011",
+      projectId: 1,
+      app: "acme",
+      env: "production",
+      ephemeral: false,
+      createdAt: "2026-08-01T10:00:00.000Z",
+      updatedAt: "2026-08-01T10:00:00.000Z",
+    } as AppInstanceResource;
+
+    const all = await show(bare);
+    expect(all.getByText("Create a sigil")).toBeTruthy();
+    expect(all.getByText("Choose a host")).toBeTruthy();
+
+    const trackOff = await show(bare, {}, shipWith({ track: false }));
+    expect(trackOff.queryByText("Create a sigil")).toBeNull();
+    expect(trackOff.getByText("Choose a host")).toBeTruthy();
+
+    const deployOff = await show(bare, {}, shipWith({ deploy: false }));
+    expect(deployOff.getByText("Create a sigil")).toBeTruthy();
+    expect(deployOff.queryByText("Choose a host")).toBeNull();
+
+    const withHost = instanceOf(
+      {},
+      {
+        hostId: "00000000-0000-4000-8000-0000000000e1",
+        host: {
+          id: "00000000-0000-4000-8000-0000000000e1",
+          slug: "ovh-1",
+          type: "bay",
+        },
+      },
+    );
+    const hostDeployOff = await show(withHost, {}, shipWith({ deploy: false }));
+    expect(hostDeployOff.queryByText("Deploys to")).toBeNull();
   });
 
   it("names the absent address as a real state, not a pending one", async ({

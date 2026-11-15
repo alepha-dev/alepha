@@ -108,6 +108,9 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
       {
         route: "projectSettingsMembers",
         labelKey: "project.settings.nav.members",
+        // The member list carries emails and full records: a Viewer, held
+        // to the open-project allowlist, does not hold it (#Q3661).
+        requires: "member:read",
       },
       {
         route: "projectSettingsRanks",

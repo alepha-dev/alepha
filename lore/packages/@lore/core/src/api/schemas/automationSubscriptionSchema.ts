@@ -1,13 +1,14 @@
 import { type Infer, z } from "alepha";
 
 /**
- * The viewer's subscription to one preset in one project: whether they own
- * an enabled rule a subscription toggle created from it.
+ * The viewer's subscription in one project, to the presets one toggle names
+ * within its scope (#Q3635): whether they own an enabled rule the toggle
+ * created from each of them.
  */
 export const automationSubscriptionSchema = z
   .object({
     subscribed: z.boolean(),
-    /** The enabled rule, when subscribed. */
+    /** The first enabled rule, when subscribed. */
     automationId: z.uuid().optional(),
     /** The channel the rule notifies on, when subscribed. */
     channel: z.string().max(64).optional(),

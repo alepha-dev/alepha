@@ -39,6 +39,17 @@ export interface PlateLayoutProps {
    */
   tabsVariant?: "underline" | "folder";
   /**
+   * Draw a rule under the whole tab bar, the active folder tile included,
+   * separating the tabs from the body. Off by default: a folder tab opens
+   * into the body below it, which is the look most pages want. A page whose
+   * body is its own surface (a table, a board) asks for the rule.
+   *
+   * The `underline` variant always has it.
+   *
+   * @default false
+   */
+  tabsBorder?: boolean;
+  /**
    * Whether the layout wraps the body in its own scroll region. Default
    * `true`, which is what keeps the plate still while the content moves.
    *
@@ -76,9 +87,9 @@ export const PlateLayout = (props: PlateLayoutProps) => (
       className={cn(
         "bg-card/30 border-border shrink-0",
         // The folder band draws its own bottom line, which the active tile
-        // covers to open into the body. A border here would run under the
-        // tile too, cutting it off from the body.
-        props.tabsVariant === "underline" && "border-b",
+        // covers to open into the body. A border here runs under the tile
+        // too, cutting it off from the body: what `tabsBorder` asks for.
+        (props.tabsVariant === "underline" || props.tabsBorder) && "border-b",
       )}
     >
       {props.plate}

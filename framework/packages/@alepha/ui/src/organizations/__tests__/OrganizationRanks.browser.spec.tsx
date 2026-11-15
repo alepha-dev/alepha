@@ -90,7 +90,7 @@ describe("OrganizationRanks", () => {
     alepha = undefined;
   });
 
-  const mount = async () => {
+  const mount = async (options: { blank?: boolean } = {}) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with({ provide: LinkProvider, use: Links })
@@ -110,6 +110,7 @@ describe("OrganizationRanks", () => {
             lockPermission={(permission) =>
               permission.name === "document:edit" ? "off" : undefined
             }
+            blank={options.blank}
             presets={[
               {
                 key: "reviewer",
@@ -186,6 +187,14 @@ describe("OrganizationRanks", () => {
 
     await waitFor(() => expect(links.saved).toHaveLength(1));
     expect(links.saved[0].body).toEqual({ name: "Triage", permissions: [] });
+  });
+
+  it("offers presets only when blank is off", async () => {
+    const { view } = await mount({ blank: false });
+
+    fireEvent.click(view.getByRole("button", { name: "Create rank" }));
+    expect(await view.findByText("Start from Reviewer")).toBeDefined();
+    expect(view.queryByText("Blank rank")).toBeNull();
   });
 
   it("creates a custom rank from a caller-provided preset", async () => {

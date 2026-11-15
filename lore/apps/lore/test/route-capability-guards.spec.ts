@@ -103,6 +103,37 @@ describe("route guards on a capability", () => {
     }
   });
 
+  it("404s both artifact pages without Ship, whatever the deploy option (#Q3631)", async ({
+    expect,
+  }) => {
+    const alepha = await bootRouter();
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ capabilities: ["plan"] }),
+    );
+    for (const name of ["projectArtifacts", "projectArtifact"]) {
+      await expect(loaderOf(alepha, name)?.({} as never), name).rejects.toThrow(
+        /not enabled/i,
+      );
+    }
+
+    // An option never guards a route: Ship on with Deploy off resolves, and
+    // only the sidebar stops offering the page.
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["ship"],
+        options: { ship: { deploy: false } },
+      }),
+    );
+    for (const name of ["projectArtifacts", "projectArtifact"]) {
+      await expect(
+        loaderOf(alepha, name)?.({} as never),
+        name,
+      ).resolves.toBeUndefined();
+    }
+  });
+
   it("lets /quests through once Work is on", async ({ expect }) => {
     const alepha = await bootRouter();
     alepha.store.set(

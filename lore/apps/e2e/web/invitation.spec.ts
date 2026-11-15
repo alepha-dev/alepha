@@ -3,7 +3,6 @@ import fs from "node:fs";
 import { expect, test } from "./_fixtures.ts";
 import {
   createProjectViaWizard,
-  createRankFromPreset,
   extractInviteUrl,
   findLatestEmail,
   newUserContext,
@@ -105,17 +104,14 @@ test.describe("Invitation flow (in-app inbox)", () => {
     // Never registered, so there is no account behind this address and the
     // only way in is the link.
     const guestEmail = `linkguest-${Date.now()}@example.com`;
-    await createRankFromPreset(page, projectSlug, "Contributor");
 
     await page.goto(`/${projectSlug}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
     await page.getByRole("button", { name: /^invite$/i }).click();
     await page.getByPlaceholder("user@example.com").fill(guestEmail);
     await page.getByTestId("invite-rank").click();
-    await page.getByRole("option", { name: /^contributor$/i }).click();
-    await expect(
-      page.getByRole("option", { name: /^contributor$/i }),
-    ).toBeHidden();
+    await page.getByRole("option", { name: /^admin$/i }).click();
+    await expect(page.getByRole("option", { name: /^admin$/i })).toBeHidden();
     const sentAfter = Date.now();
     const createResp = page.waitForResponse(
       (r) =>
@@ -213,8 +209,10 @@ test.describe("Invitation flow (in-app inbox)", () => {
         await g.goto(`/${projectSlug}/settings/members`);
         await g.waitForLoadState("networkidle");
         await expect(
-          g.getByText(/^contributor$/i, { exact: true }),
-        ).toBeVisible({ timeout: 15_000 });
+          g.getByText(/^admin$/i, { exact: true }).first(),
+        ).toBeVisible({
+          timeout: 15_000,
+        });
 
         // A member now, and the owner's settings page agrees.
         await g.goto("/");

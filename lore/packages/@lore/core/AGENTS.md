@@ -327,7 +327,7 @@ back: it was removed, and its column was dropped with #E74.
   `host:create`, `host:update` and `host:delete` are ordinary project
   permissions in `OWNER_TODAY` (they were application-scope in
   `LoreRankBounds.OUT_OF_SCOPE` while a host was a user's). The Admin
-  preset carries them, Member holds `host:read` only.
+  preset carries them, Member holds `host:read` only, Viewer none.
 - **Two acts are owner-only structurally** and are never grantable to a rank:
   `project:delete` and `capability:manage`. One permission is never removable:
   `project:read`. Both lists are `LoreRankBounds`, in a file the browser can
@@ -341,21 +341,30 @@ back: it was removed, and its column was dropped with #E74.
 The vocabulary is `LorePermissions` (38 declarations, names that can never
 change - they are stored as data in every rank definition), the active rank
 resource and services live in `alepha/api/organizations`, and the presets are
-`ProjectRankPresets`. A new project starts with the two built-ins, **Owner
-and Member, and nothing else** (#Q2511, the GitHub model). Admin, Contributor
-and Viewer are created on purpose from Settings > Ranks > Create rank, which
-offers them (`ProjectRankController.getRankPresets`, computed from the
-capabilities the project actually has) beside a blank rank; each lands as an
-ordinary custom rank.
+`ProjectRankPresets`. **Every project starts with four ranks: owner, admin,
+member and viewer** (#Q3661, epic #E151, reversing #Q2511). `createProject`
+seeds `admin` and `viewer` under those stable keys after the capability rows
+(`DefaultRankService`), and the nightly `ranks.seed-defaults` job
+(`DefaultRankJobs`) adds either one to a project that lacks it, never changing
+an existing rank. An open project's joiners land on the rank keyed `viewer`,
+found by key and never by name.
 
-⚠️ **This reverses #Q2001.** `createProject` used to seed the three presets,
-and a nightly sweep (`ranks.seed-missing-presets`) filled any project holding
-no definition rows, because an owner opened the members page and asked where
-Admin was (feedback #P2122). The owner then asked for the opposite, so both
-are gone, and so is the Built-in badge on Owner and Member in the rank matrix:
-those two are told apart by having no Delete. Presets already seeded in a
-project stay: they are that owner's ranks now. A spec that needs one creates
-it with `test/fixtures/presetRanks.ts`, an e2e with `createRankFromPreset`.
+- **There is no Contributor preset.** The built-in Member covers it. A
+  project that holds a rank keyed `contributor` keeps it as a custom rank.
+- **Viewer is the allowlist** (`LoreViewerAllowlist`, folio #F1507): reads of
+  quests, epics, folios, releases and areas, nothing else. An existing Viewer
+  wider than that is not narrowed (its holders would lose reads):
+  `ProjectViewerRankNotice` flags it on the ranks page.
+- **Create rank offers three bases, admin, member and viewer**, each as the
+  project holds it now (`ProjectRankController.getRankPresets`), the preset
+  where the rank is missing, and no blank rank (`OrganizationRanks`'
+  `blank={false}`).
+
+A spec needing these ranks on a project made with `createTestProject` creates
+them with `createPresetRanks` (`@lore/core/testing`), which also writes the
+`contributor` rank an older project may hold (`LEGACY_CONTRIBUTOR`). An e2e
+project made through the wizard has them already; a rank no base offers is
+written with `saveRank`.
 
 ⚠️ **Where a rank is read on the client.** `currentProjectAtom.permissions` is
 the effective set, filled by `getProjectBySlug`, and `canInProject` answers
@@ -583,7 +592,7 @@ change that happened invites a retry that repeats it.
 
 What this package holds, with the notes that are not obvious from the code. Moved from `apps/lore/AGENTS.md` with the code (#E75); `yarn w lore inventory` prints the route table and the atoms from the live code.
 
-**Controllers (4)** - `AdminMcp` (`GET /admin/mcp/calls`, behind `admin:analytics:read`: the MCP tool-call timeline and the per-tool leaderboard split by outcome, drawn on `/admin/mcp`. Admin rather than a project page, because a tool call is not scoped to a project and the audience is whoever maintains the tool descriptions), `ProjectRank` (one action: the three presets computed from the project's enabled capabilities; everything else about ranks is `alepha/api/organizations`), `Invitation`, `Project`.
+**Controllers (4)** - `AdminMcp` (`GET /admin/mcp/calls`, behind `admin:analytics:read`: the MCP tool-call timeline and the per-tool leaderboard split by outcome, drawn on `/admin/mcp`. Admin rather than a project page, because a tool call is not scoped to a project and the audience is whoever maintains the tool descriptions), `ProjectRank` (one action: the three bases a new rank starts from, admin, member and viewer; everything else about ranks is `alepha/api/organizations`), `Invitation`, `Project`.
 
 **Entities (6)** - `files`, `folioLinks`, `identities`, `projects`, `sessions`, `users`.
 

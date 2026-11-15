@@ -4,7 +4,6 @@ import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
   createProjectViaWizard,
-  createRankFromPreset,
   newUserContext,
   openAccount,
   registerAndVerify,
@@ -170,7 +169,7 @@ test.describe("Ranks", () => {
     );
   });
 
-  test("a contributor writes the work and cannot touch the configuration", async ({
+  test("a member writes the work and cannot touch the configuration", async ({
     page,
     browser,
     baseURL,
@@ -187,11 +186,11 @@ test.describe("Ranks", () => {
 
     const b = await newUserContext(browser, baseURL!, "contributor");
     try {
-      await createRankFromPreset(page, slug, "Contributor");
-      await inviteWithRank(page, slug, b.email, /^contributor$/i);
+      // The built-in Member covers what the Contributor preset did (#Q3661).
+      await inviteWithRank(page, slug, b.email, /^member$/i);
       await accept(b.page, title);
 
-      // ── The work: a Contributor may write it ──────────────────────────
+      // ── The work: a Member may write it ──────────────────────────
       await b.page.goto(`/${slug}/quests`);
       await b.page.waitForLoadState("networkidle");
       // The list renders, and the create control is THERE. Half of this
@@ -206,11 +205,11 @@ test.describe("Ranks", () => {
 
       const rail = await railHrefs(b.page, slug);
       // ⚠️ The assertion #Q1930's trap needed. The Ranks page is
-      // `rank:manage`, which a Contributor does not hold, so its entry is
+      // `rank:manage`, which a Member does not hold, so its entry is
       // not a tab at all - rather than a link to a matrix that saves
       // nothing.
       expect(rail).not.toContain(`/${slug}/settings/ranks`);
-      // And the entries a Contributor DOES reach are still there, so this is
+      // And the entries a Member DOES reach are still there, so this is
       // not a rail that failed to render.
       expect(rail.length).toBeGreaterThan(0);
 
@@ -283,7 +282,7 @@ test.describe("Ranks", () => {
 
     const c = await newUserContext(browser, baseURL!, "viewer");
     try {
-      await createRankFromPreset(page, slug, "Viewer");
+      // Every project starts with a Viewer rank (#Q3661).
       await inviteWithRank(page, slug, c.email, /^viewer$/i);
       await accept(c.page, title);
 
@@ -309,20 +308,15 @@ test.describe("Ranks", () => {
         c.page.getByRole("button", { name: /new directory/i }),
       ).toHaveCount(0);
 
-      // ── Members: readable, and nothing to change ──────────────────────
-      await c.page.goto(`/${slug}/settings/members`);
+      // ── Members: not offered ──────────────────────────────────────────
+      // The member list is `member:read`, which a Viewer, held to the
+      // open-project allowlist, does not hold: the members tab is not in
+      // its rail at all.
+      await c.page.goto(`/${slug}/quests`);
       await c.page.waitForLoadState("networkidle");
-      // ⚠️ It RENDERS. This page answered a hard 403 error page to every
-      // non-manager until #Q1932: its loader fetched the pending
-      // invitations, which are `member:manage`, while the list itself is
-      // `member:read` - which every rank holds.
-      await expect(c.page.getByText(/members/i).first()).toBeVisible({
-        timeout: 10_000,
-      });
-      await expect(
-        c.page.getByRole("button", { name: /^invite$/i }),
-      ).toHaveCount(0);
-      await expect(c.page.getByTestId("member-rank")).toHaveCount(0);
+      expect(await railHrefs(c.page, slug)).not.toContain(
+        `/${slug}/settings/members`,
+      );
     } finally {
       await c.ctx.close();
     }
@@ -385,9 +379,8 @@ test.describe("Ranks", () => {
 
     const d = await newUserContext(browser, baseURL!, "successor");
     try {
-      await createRankFromPreset(page, slug, "Contributor");
-      const viewerKey = await createRankFromPreset(page, slug, "Viewer");
-      await inviteWithRank(page, slug, d.email, /^contributor$/i);
+      const viewerKey = "viewer";
+      await inviteWithRank(page, slug, d.email, /^member$/i);
       await accept(d.page, title);
 
       await page.goto(`/${slug}/settings/members`);

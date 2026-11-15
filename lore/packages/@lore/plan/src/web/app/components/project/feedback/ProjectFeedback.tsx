@@ -320,7 +320,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
             />
             <div className="ms-auto shrink-0" />
             <AutomationSubscriptionBell
-              presetKey="feedback-created"
+              presets={["feedback-created"]}
               label={tr("feedback.subscription.label")}
               description={tr("feedback.subscription.description")}
               offDescription={tr("feedback.subscription.offDescription")}

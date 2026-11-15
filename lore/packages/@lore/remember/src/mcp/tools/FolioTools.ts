@@ -653,7 +653,7 @@ export class FolioTools {
 
   folio_history = $tool({
     description:
-      "List the revision history of a folio (newest first). Each entry includes `action` (create / edit / rename / revert), `at` timestamp, the user who made the change, and a snapshot of the folio's title/content/summary at the time. Capped at 10 revisions per folio by default (oldest non-pinned drop off when the cap is exceeded). Use this to see how a folio evolved, then `folio_revert` to roll back if needed.",
+      "List the revision history of a folio (newest first). Each entry includes `action` (create / edit / rename / revert), `at` timestamp, the user who made the change, and a snapshot of the folio's title/content/summary at the time. Capped at 10 revisions per folio by default (oldest non-pinned drop off when the cap is exceeded). Use this to see how a folio evolved, then `folio_revert` to roll back if needed. On a table folio `contentSnapshot` is the table as JSON (`{ v: 1, columns, rows }`), cells keyed by column id; a snapshot that cannot be read is an empty string or `{ v: 1, tooLarge: true }`.",
     title: "Folio history",
     annotations: {
       readOnlyHint: true,
@@ -698,7 +698,7 @@ export class FolioTools {
 
   folio_revert = $tool({
     description:
-      "Revert a folio to a prior revision. Doesn't truly rewind — it writes a NEW revision with the prior content, so the current (about-to-be-overwritten) state stays in history and you can undo the revert if it turns out wrong. Call `folio_history` first to pick the revisionId.",
+      "Revert a folio to a prior revision. Doesn't truly rewind — it writes a NEW revision with the prior content, so the current (about-to-be-overwritten) state stays in history and you can undo the revert if it turns out wrong. Call `folio_history` first to pick the revisionId. On a table folio it restores the columns and rows, with their row numbers.",
     title: "Revert folio",
     annotations: {
       // Not destructive — it preserves the overwritten version in history.

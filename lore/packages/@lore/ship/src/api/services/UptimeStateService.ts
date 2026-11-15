@@ -1,9 +1,14 @@
+import { AutomationSourceRepository } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
+import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import {
   $repository,
   DbConflictError,
   DbEntityNotFoundError,
   DbVersionMismatchError,
 } from "alepha/orm";
+import { ConflictError } from "alepha/server";
 
 import {
   type MonitorIncident,
@@ -11,6 +16,7 @@ import {
 } from "../entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
 import type { ProbeResult } from "../schemas/probeResultSchema.ts";
+import { UptimeAutomationFields } from "./UptimeAutomationFields.ts";
 
 export interface UptimeTransition {
   kind: "opened" | "closed";
@@ -21,10 +27,20 @@ export interface UptimeTransition {
 /**
  * State is saved with a version guard. Incident boundaries reconcile from
  * that saved state, so a partial D1 write is repairable on the next tick.
+ *
+ * Opening an incident records `monitor.down` and closing it `monitor.up`
+ * (#Q3610), in the same write as the incident, the way deployments record
+ * `deploy.*`: a single failed probe opens nothing, so it records nothing.
  */
 export class UptimeStateService {
   protected readonly monitors = $repository(monitors);
   protected readonly incidents = $repository(monitorIncidents);
+  protected readonly sources = $inject(
+    AutomationSourceRepository.of(monitorIncidents),
+  );
+  protected readonly projects = $repository(projects);
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly fields = $inject(UptimeAutomationFields);
 
   public async apply(
     monitor: Monitor,
@@ -82,13 +98,65 @@ export class UptimeStateService {
   }
 
   protected async createIncident(monitor: Monitor): Promise<MonitorIncident> {
-    return this.incidents.create({
+    const incident: MonitorIncident = {
+      id: this.crypto.randomUUID(),
       monitorId: monitor.id,
       openKey: monitor.id,
       startedAt: monitor.statusSince,
       cause: monitor.lastResult ?? "connection",
       lastError: monitor.lastError,
-    });
+    };
+    return this.sources.sourceCreate(
+      incident,
+      { openKey: monitor.id },
+      {
+        projectId: monitor.projectId,
+        identity: `monitor:${incident.id}:down`,
+        resourceId: incident.id,
+        name: "monitor.down",
+        fields: this.fields.build(
+          await this.projects.getById(monitor.projectId),
+          monitor,
+          incident,
+          "down",
+        ),
+      },
+    );
+  }
+
+  protected async closeIncident(
+    open: MonitorIncident,
+    monitor: Monitor,
+    previousError?: string,
+  ): Promise<MonitorIncident> {
+    const closed: MonitorIncident = {
+      ...open,
+      endedAt: monitor.statusSince,
+      openKey: undefined,
+      lastError: previousError ?? open.lastError,
+    };
+    return this.sources.sourceUpdate(
+      { id: open.id, endedAt: { isNull: true } },
+      {
+        endedAt: closed.endedAt,
+        // `null`, not `undefined`: an update strips undefined keys, which
+        // would leave the open key, and so the incident, open.
+        openKey: null as never,
+        lastError: closed.lastError,
+      },
+      {
+        projectId: monitor.projectId,
+        identity: `monitor:${open.id}:up`,
+        resourceId: open.id,
+        name: "monitor.up",
+        fields: this.fields.build(
+          await this.projects.getById(monitor.projectId),
+          monitor,
+          closed,
+          "up",
+        ),
+      },
+    );
   }
 
   protected async reconcile(
@@ -103,19 +171,22 @@ export class UptimeStateService {
         const incident = await this.createIncident(monitor);
         return { kind: "opened", monitor, incident };
       } catch (error) {
-        if (error instanceof DbConflictError) return undefined;
+        // Another tick opened it first: the open key is unique, and the
+        // source insert refuses when an open incident already exists.
+        if (error instanceof DbConflictError || error instanceof ConflictError)
+          return undefined;
         throw error;
       }
     }
     if (monitor.status === "up" && open) {
-      const incident = {
-        ...open,
-        endedAt: monitor.statusSince,
-        openKey: undefined,
-        lastError: previousError ?? open.lastError,
-      };
-      await this.incidents.save(incident);
-      return { kind: "closed", monitor, incident };
+      try {
+        const incident = await this.closeIncident(open, monitor, previousError);
+        return { kind: "closed", monitor, incident };
+      } catch (error) {
+        // Another tick closed it first.
+        if (error instanceof ConflictError) return undefined;
+        throw error;
+      }
     }
     return undefined;
   }

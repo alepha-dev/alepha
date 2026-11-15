@@ -8,6 +8,7 @@ import { LoreRankBounds } from "../../../../../api/security/LoreRankBounds.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { ProjectViewerRankNotice } from "./ProjectViewerRankNotice.tsx";
 
 const ProjectSettingsRanksPage = () => {
   const presetApi = useClient<ProjectRankController>();
@@ -38,31 +39,36 @@ const ProjectSettingsRanksPage = () => {
   const held = project.permissions ?? [];
 
   return (
-    <OrganizationRanks
-      organizationId={project.organizationId}
-      presets={presets}
-      filterPermission={(permission, group) => {
-        if (!group.label) return false;
-        const owner = capabilityRegistry.ownerOfPermissionGroup(group.name);
-        return (
-          capabilityRegistry.isOwnerEnabled(owner, enabled) &&
-          !LoreRankBounds.OUT_OF_SCOPE.includes(permission.name) &&
-          !LoreRankBounds.OWNER_ONLY.includes(permission.name)
-        );
-      }}
-      lockPermission={(permission) => {
-        if (LoreRankBounds.FLOOR.includes(permission.name)) return "on";
-        const granted = held.some(
-          (value) =>
-            value === "*" ||
-            value === permission.name ||
-            (value.endsWith("*") &&
-              permission.name.startsWith(value.slice(0, -1))),
-        );
-        return granted ? undefined : "off";
-      }}
-      label={(key, fallback) => (key ? tr(key) : fallback)}
-    />
+    <div className="flex flex-col gap-4">
+      <ProjectViewerRankNotice organizationId={project.organizationId} />
+      <OrganizationRanks
+        organizationId={project.organizationId}
+        // A new rank starts from admin, member or viewer (#Q3661): no blank one.
+        blank={false}
+        presets={presets}
+        filterPermission={(permission, group) => {
+          if (!group.label) return false;
+          const owner = capabilityRegistry.ownerOfPermissionGroup(group.name);
+          return (
+            capabilityRegistry.isOwnerEnabled(owner, enabled) &&
+            !LoreRankBounds.OUT_OF_SCOPE.includes(permission.name) &&
+            !LoreRankBounds.OWNER_ONLY.includes(permission.name)
+          );
+        }}
+        lockPermission={(permission) => {
+          if (LoreRankBounds.FLOOR.includes(permission.name)) return "on";
+          const granted = held.some(
+            (value) =>
+              value === "*" ||
+              value === permission.name ||
+              (value.endsWith("*") &&
+                permission.name.startsWith(value.slice(0, -1))),
+          );
+          return granted ? undefined : "off";
+        }}
+        label={(key, fallback) => (key ? tr(key) : fallback)}
+      />
+    </div>
   );
 };
 

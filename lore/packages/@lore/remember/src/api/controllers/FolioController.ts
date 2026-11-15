@@ -31,6 +31,8 @@ import {
   folios,
 } from "../entities/folios.ts";
 import { knowledgeRelations } from "../relations/knowledgeRelations.ts";
+import { folioColumnInputOptionsSchema } from "../schemas/folioColumnInputOptionsSchema.ts";
+import { folioColumnTypeSchema } from "../schemas/folioColumnTypeSchema.ts";
 import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
 import { folioListQuerySchema } from "../schemas/folioListQuerySchema.ts";
 import {
@@ -50,6 +52,7 @@ import {
 } from "../services/FolioHistoryService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
+import { FolioTableService } from "../services/FolioTableService.ts";
 
 /**
  * The columns of `folio_directories` any ancestor walk needs — the tree
@@ -93,6 +96,7 @@ export class FolioController {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly bestEffort = $inject(BestEffort);
   protected readonly revisionStats = $inject(FolioRevisionStatsService);
+  protected readonly tables = $inject(FolioTableService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly owned = $inject(OwnedResourceProvider);
 
@@ -923,12 +927,67 @@ export class FolioController {
          * Pin the folio on creation. Defaults to false.
          */
         pinned: z.boolean().optional(),
+        /**
+         * `text` (the default) or `table` (#E144). Set here and never
+         * changed. A table keeps `content` empty and cannot be pinned or
+         * encrypted.
+         */
+        type: folios.schema.shape.type.optional(),
+        /**
+         * A table's columns, created with it in the same call. A table
+         * created without any gets one text column named "Name".
+         */
+        columns: z
+          .array(
+            z.object({
+              name: z.string(),
+              type: folioColumnTypeSchema,
+              options: folioColumnInputOptionsSchema.optional(),
+            }),
+          )
+          .max(50)
+          .optional(),
+        /**
+         * Copy the columns and rows of this table folio of the same
+         * project into the new one: how a table is duplicated.
+         */
+        copyTableFrom: z.uuid().optional(),
       }),
       response: folioSavedSchema,
     },
     handler: async ({ body, user }) => {
       const summary = (body.summary ?? "").trim();
-      const content = body.content ?? "";
+      const type = body.type ?? "text";
+      const isTable = type === "table";
+      if (isTable && body.content) {
+        throw new BadRequestError(
+          "A table folio has no Markdown content: create it with columns, then add rows.",
+        );
+      }
+      if (isTable && (body.protected === true || body.pinned === true)) {
+        throw new BadRequestError(
+          "A table folio cannot be encrypted or pinned to context yet.",
+        );
+      }
+      if (!isTable && (body.columns || body.copyTableFrom)) {
+        throw new BadRequestError(
+          'Columns belong to a table folio: pass `type: "table"`.',
+        );
+      }
+      const source = body.copyTableFrom
+        ? await this.folios.findOne({
+            where: {
+              id: { eq: body.copyTableFrom },
+              projectId: { eq: body.projectId },
+            },
+          })
+        : undefined;
+      if (body.copyTableFrom && source?.type !== "table") {
+        throw new BadRequestError(
+          "`copyTableFrom` names no table folio of this project.",
+        );
+      }
+      const content = isTable ? "" : (body.content ?? "");
       const isProtected = body.protected === true;
       const pinned = body.pinned === true;
       const directoryId = await this.resolveDirectoryId(
@@ -958,6 +1017,7 @@ export class FolioController {
           projectId: body.projectId,
           shortId,
           title,
+          type,
           content,
           summary,
           directoryId,
@@ -984,6 +1044,13 @@ export class FolioController {
         throw error;
       }
       const created = folio;
+      // A table's columns (or the table it copies) follow the row: a
+      // failure here leaves a table with no columns, which the grid offers
+      // to fill, and is reported rather than swallowed.
+      if (isTable) {
+        if (source) await this.tables.copyTable(source.id, created.id);
+        else await this.tables.seedColumns(created, body.columns ?? []);
+      }
       // Everything below follows the committed row, and is best effort
       // (#Q2555): a failure is logged as an error, never a 500 that invites
       // a retry creating a second folio.
@@ -1219,15 +1286,25 @@ export class FolioController {
           },
           { title, content, summary },
         );
-        plan = action
-          ? await this.historyService.prepareRevision(
-              params.id,
-              user.id,
-              action,
-              existing.content,
-              this.automationMutations.current?.action.kind === "appendFolio",
-            )
-          : undefined;
+        // A table's body is its rows (#Q3513): the revision about to stop
+        // being the head is filled with the table as it stands, not with
+        // its empty `content`.
+        plan = !action
+          ? undefined
+          : existing.type === "table"
+            ? await this.historyService.prepareRevisionLazy(
+                params.id,
+                user.id,
+                action,
+                () => this.tables.encodeSnapshot(params.id),
+              )
+            : await this.historyService.prepareRevision(
+                params.id,
+                user.id,
+                action,
+                existing.content,
+                this.automationMutations.current?.action.kind === "appendFolio",
+              );
 
         // 4. The row, against the version this request read: a write that
         //    landed since answers 409 instead of being overwritten. Not an
@@ -1564,7 +1641,12 @@ export class FolioController {
       ),
     },
     handler: async ({ params }) => {
-      const live = this.owned.get<Folio>().content;
+      const folio = this.owned.get<Folio>();
+      // A table's head revision reads the table as it stands (#Q3513).
+      const live =
+        folio.type === "table"
+          ? await this.tables.encodeSnapshot(folio.id)
+          : folio.content;
       const revisions = await this.revisionsWith.findMany({
         where: { folioId: { eq: params.id } },
         orderBy: [
@@ -1643,6 +1725,10 @@ export class FolioController {
         throw new NotFoundError("Revision not found");
       }
 
+      if (folio.type === "table") {
+        return this.revertTable(folio, revision, user, params.revisionId);
+      }
+
       const isProtected = folio.protected;
       // Read before the write: the head revision's body IS the live
       // content, and so is what the revert's own revision fills it in with.
@@ -1717,6 +1803,80 @@ export class FolioController {
       return (await this.withEpics([updated]))[0];
     },
   });
+
+  /**
+   * {@link revertHistory} for a table (#Q3513): its columns and rows are
+   * replaced with the snapshot's in one batch, the title and summary
+   * restored, and a `revert` revision written, so the state reverted from
+   * stays in history. A snapshot that does not decode is refused, and
+   * nothing is written.
+   */
+  protected async revertTable(
+    folio: Folio,
+    revision: NonNullable<
+      Awaited<ReturnType<FolioHistoryService["findRevision"]>>
+    >,
+    user: UserAccountToken,
+    revisionId: string,
+  ) {
+    const userId = user.id;
+    const previous = await this.tables.encodeSnapshot(folio.id);
+    const data = this.tables.decodeSnapshot(
+      this.historyService.contentOf(revision, previous),
+    );
+    if (!data) {
+      throw new BadRequestError(
+        "This revision cannot be restored: its snapshot of the table cannot be read.",
+      );
+    }
+    const title = await this.reserveTitle(
+      folio.id,
+      folio,
+      revision.titleSnapshot,
+      folio.directoryId ?? null,
+    );
+    let updated: Folio;
+    let plan: RevisionPlan;
+    try {
+      plan = await this.historyService.prepareRevisionLazy(
+        folio.id,
+        userId,
+        "revert",
+        async () => previous,
+      );
+      await this.tables.restoreSnapshot(folio, data, userId);
+      updated = {
+        ...folio,
+        title,
+        summary: revision.summarySnapshot,
+        searchText: buildFolioSearchText({
+          title,
+          summary: revision.summarySnapshot,
+        }),
+      };
+      await this.folios.save(updated);
+    } catch (error) {
+      if (title !== folio.title) {
+        await this.bestEffort.run(
+          "revertFolio: restoring the previous name failed",
+          () =>
+            this.reserveTitle(
+              folio.id,
+              { ...folio, title },
+              folio.title,
+              folio.directoryId ?? null,
+            ),
+        );
+      }
+      throw error;
+    }
+    const revisionPlan = plan;
+    await this.bestEffort.run("revertFolio: revision failed", () =>
+      this.historyService.recordRevision(updated, userId, revisionPlan),
+    );
+    await this.logFolio("revert", updated, user, { revisionId });
+    return (await this.withEpics([updated]))[0];
+  }
 
   /**
    * Toggle the `pinned` flag on a revision. Pinned revisions are

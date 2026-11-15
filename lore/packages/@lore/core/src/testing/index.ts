@@ -33,6 +33,6 @@ export {
   createTestProject,
 } from "./entities.ts";
 
-export { createPresetRanks } from "./presetRanks.ts";
+export { createPresetRanks, LEGACY_CONTRIBUTOR } from "./presetRanks.ts";
 export { ReadCounter } from "./ReadCounter.ts";
 export { TripCounter } from "./TripCounter.ts";

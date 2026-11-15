@@ -1,7 +1,9 @@
 import {
+  DefaultRankService,
+  LorePermissions,
+  LoreViewerAllowlist,
   ProjectController,
   ProjectRankController,
-  LorePermissions,
   ProjectRankPresets,
 } from "@lore/core/api";
 import { createPresetRanks } from "@lore/core/testing";
@@ -143,18 +145,19 @@ describe("Lore's rank resource", () => {
     expect,
   }) => {
     const everything = ctx.presets.presetsFor(["plan", "remember", "ship"]);
-    const contributor = everything.find((it) => it.key === "contributor")!;
-    expect(contributor.permissions).toContain("quest:create");
-    expect(contributor.permissions).toContain("folio:write");
+    // Two presets since #Q3661: Member, a built-in, covers Contributor.
+    expect(everything.map((it) => it.key)).toEqual(["admin", "viewer"]);
 
-    // Remember only: the Plan permissions are gone, and so is Feedback's
-    // inbox. A checkbox for a capability the project does not have grants
-    // nothing and explains nothing.
+    // Remember only: the Plan permissions are gone. A checkbox for a
+    // capability the project does not have grants nothing and explains
+    // nothing.
     const knowledgeOnly = ctx.presets.presetsFor(["remember"]);
-    const narrowed = knowledgeOnly.find((it) => it.key === "contributor")!;
-    expect(narrowed.permissions).not.toContain("quest:create");
-    expect(narrowed.permissions).not.toContain("feedback:read");
-    expect(narrowed.permissions).toContain("folio:write");
+    const narrowedAdmin = knowledgeOnly.find((it) => it.key === "admin")!;
+    expect(narrowedAdmin.permissions).not.toContain("quest:create");
+    expect(narrowedAdmin.permissions).toContain("folio:write");
+    expect(
+      knowledgeOnly.find((it) => it.key === "viewer")!.permissions,
+    ).toEqual(["project:read", "folio:read"]);
 
     // Core survives every capability being off, which is a legal state.
     const nothing = ctx.presets.presetsFor([]);
@@ -170,28 +173,40 @@ describe("Lore's rank resource", () => {
       expect(admin.permissions).not.toContain(ceiling);
     }
 
-    // Viewer reads and nothing else.
+    // Viewer is the allowlist, exactly: no automations, apps, errors, hosts,
+    // member records, reports or feedback.
     const viewer = everything.find((it) => it.key === "viewer")!;
-    expect(viewer.permissions.every((it) => it.endsWith(":read"))).toBe(true);
+    expect(viewer.permissions).toEqual(LoreViewerAllowlist.PERMISSIONS);
   });
 
-  it("starts a new project with Owner and Member only, the presets offered to create", async ({
+  it("starts a new project with owner, admin, member and viewer", async ({
     expect,
   }) => {
-    // #Q2511, the GitHub model: Admin, Contributor and Viewer are created on
-    // purpose from Create rank, never seeded. This test asserted the
-    // opposite until then (#Q2001, feedback #P2122).
+    // #Q3661 reverses #Q2511: every project starts with the four ranks, and
+    // an open project's joiners land on the one keyed `viewer`.
     const account = await ctx.repos.users.create({});
     const user: UserAccountToken = { id: account.id, roles: ["user"] };
 
     const created = await ctx.projects.createProject(
-      { body: { title: "Bare Project" } },
+      { body: { title: "Four Ranks" } },
       { user },
     );
 
     const organizationId = await organizationIdOf(ctx, created.id);
     const ranks = await ctx.ranks.ranksOf(organizationId);
-    expect(ranks.map((it) => it.key)).toEqual(["owner", "member"]);
+    expect(
+      ranks.map((it) => it.key).sort((a, b) => a.localeCompare(b)),
+    ).toEqual(["admin", "member", "owner", "viewer"]);
+    // Seeded, not built in: the owner's to edit, rename or delete.
+    expect(ranks.find((it) => it.key === "admin")?.builtin).toBe(false);
+    expect(ranks.find((it) => it.key === "viewer")?.permissions).toEqual(
+      expect.arrayContaining([...LoreViewerAllowlist.PERMISSIONS]),
+    );
+    expect(
+      LoreViewerAllowlist.extrasOf(
+        ranks.find((it) => it.key === "viewer")!.permissions,
+      ),
+    ).toEqual([]);
 
     // The creator's membership row says owner, which is what the whole epic
     // reads afterwards.
@@ -203,19 +218,79 @@ describe("Lore's rank resource", () => {
     });
     expect(membership?.rank).toBe("owner");
 
-    // Create rank still offers all three, and creating one gives an ordinary
-    // custom rank: editable, deletable, the owner's.
+    // Create rank offers the three bases, each as this project holds it.
     const offered = await ctx.alepha
       .inject(ProjectRankController)
       .getRankPresets({ params: { projectId: created.id } }, { user });
     expect(offered.items.map((it) => it.key)).toEqual([
       "admin",
-      "contributor",
+      "member",
       "viewer",
     ]);
-    await createPresetRanks(ctx.alepha, created.id);
-    const after = await ctx.ranks.ranksOf(organizationId);
-    expect(after.find((it) => it.key === "admin")?.builtin).toBe(false);
+    expect(
+      offered.items.find((it) => it.key === "member")?.permissions,
+    ).toEqual(ranks.find((it) => it.key === "member")?.permissions);
+  });
+
+  it("offers a base as the project holds it now, and the preset where the rank is missing", async ({
+    expect,
+  }) => {
+    const account = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: account.id, roles: ["user"] };
+    const created = await ctx.projects.createProject(
+      { body: { title: "Tuned bases" } },
+      { user },
+    );
+    const organizationId = await organizationIdOf(ctx, created.id);
+
+    // The owner widens Admin's name and drops Viewer altogether.
+    const admin = (await ctx.ranks.ranksOf(organizationId)).find(
+      (it) => it.key === "admin",
+    )!;
+    await ctx.ranks.save(
+      organizationId,
+      { key: "admin", name: "Maintainer", permissions: admin.permissions },
+      user,
+    );
+    await ctx.ranks.delete(organizationId, "viewer", user);
+
+    const { items } = await ctx.alepha
+      .inject(ProjectRankController)
+      .getRankPresets({ params: { projectId: created.id } }, { user });
+
+    expect(items.find((it) => it.key === "admin")?.name).toBe("Maintainer");
+    expect(items.find((it) => it.key === "viewer")?.permissions).toEqual(
+      LoreViewerAllowlist.PERMISSIONS,
+    );
+  });
+
+  it("backfills admin and viewer where missing, and leaves a wider viewer as it is", async ({
+    expect,
+  }) => {
+    // A project from before #Q3661: owner and member only, plus a Viewer
+    // that reads automations (the old preset).
+    const project = await createTestProject(ctx.alepha, {
+      capabilities: [{ key: "plan", options: {} }],
+    });
+    const organizationId = project.organizationId!;
+    const wide = [...LoreViewerAllowlist.PERMISSIONS, "automation:read"];
+    await ctx.ranks.save(
+      organizationId,
+      { key: "viewer", name: "Viewer", permissions: wide },
+      { id: project.createdBy, roles: ["user"] },
+    );
+
+    const added = await ctx.alepha
+      .inject(DefaultRankService)
+      .backfill(project.id);
+
+    expect(added).toEqual(["admin"]);
+    const ranks = await ctx.ranks.ranksOf(organizationId);
+    expect(ranks.find((it) => it.key === "viewer")?.permissions).toEqual(wide);
+    // A second pass has nothing to do.
+    expect(
+      await ctx.alepha.inject(DefaultRankService).backfill(project.id),
+    ).toEqual([]);
   });
 
   it("lets an owner tune the built-in member rank, and reads it back", async ({
@@ -264,7 +339,7 @@ describe("Lore's rank resource", () => {
     ).rejects.toThrow("built-in rank and cannot be edited");
   });
 
-  it("answers the editor's presets from the project's own capabilities", async ({
+  it("answers the editor's bases from the project's own capabilities", async ({
     expect,
   }) => {
     const account = await ctx.repos.users.create({});
@@ -282,20 +357,15 @@ describe("Lore's rank resource", () => {
       { user },
     );
 
-    expect(items.map((it) => it.key)).toEqual([
-      "admin",
-      "contributor",
-      "viewer",
-    ]);
+    expect(items.map((it) => it.key)).toEqual(["admin", "member", "viewer"]);
 
-    // The endpoint exists because neither the module nor the browser can work
-    // this out: a Contributor of a Remember-only project carries folio
-    // writes and no quest permission at all.
-    const contributor = items.find((it) => it.key === "contributor")!;
-    expect(contributor.permissions).toContain("folio:write");
-    expect(contributor.permissions).not.toContain("quest:create");
+    // Seeded from the capabilities: an Admin of a Remember-only project
+    // carries folio writes and no quest permission at all.
+    const admin = items.find((it) => it.key === "admin")!;
+    expect(admin.permissions).toContain("folio:write");
+    expect(admin.permissions).not.toContain("quest:create");
     // The floor survives every narrowing.
-    expect(contributor.permissions).toContain("project:read");
+    expect(admin.permissions).toContain("project:read");
   });
 
   it("swaps the two ranks in one statement, and leaves exactly one owner", async ({
@@ -487,6 +557,13 @@ describe("Lore's rank resource", () => {
         )
       ).items.find((it) => it.key === "admin")?.name;
 
+    // The preset name is only computed where the project lacks the rank:
+    // a seeded Admin answers its stored name.
+    await ctx.ranks.delete(
+      await organizationIdOf(ctx, created.id),
+      "admin",
+      user,
+    );
     ctx.alepha.store.set("alepha.http.request", {
       language: "fr-FR",
     } as never);
@@ -528,7 +605,7 @@ describe("Lore's rank resource", () => {
     await ctx.repos.members.create({
       organizationId: await organizationIdOf(ctx, created.id),
       userId: member.id,
-      rank: "contributor",
+      rank: "viewer",
     });
 
     // ⚠️ The closed loop this exists to break: told "your rank does not grant
@@ -546,7 +623,8 @@ describe("Lore's rank resource", () => {
     ).rejects.toThrow("does not have");
 
     // And when the rank really is the reason, the refusal names the RANK, the
-    // PERMISSION and the FIX. Three layers can refuse a call and the fixes are
+    // PERMISSION and the FIX. A viewer is read-only since #Q3661, so it gets
+    // the read-only wording of #Q3647. Three layers can refuse a call and the fixes are
     // different: turn the capability on (Settings), ask the owner for a
     // better rank, or nothing the owner can do at all. A message that only
     // said "forbidden" would leave an agent with nowhere to go.
@@ -560,7 +638,7 @@ describe("Lore's rank resource", () => {
         },
       ),
     ).rejects.toThrow(
-      "Your rank (Contributor) does not grant member:manage. Ask the project owner.",
+      "You are read-only in this project: your rank (viewer) grants reads only, not member:manage. Ask a project admin to move you to another rank.",
     );
   });
 });
