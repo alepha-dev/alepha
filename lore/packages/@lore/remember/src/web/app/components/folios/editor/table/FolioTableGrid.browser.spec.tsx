@@ -154,6 +154,37 @@ describe("FolioTableGrid", () => {
     expect(calls.write).toEqual([]);
   });
 
+  it("puts the keyboard on a select's or a date's control when it opens", async () => {
+    const { grid } = await mount({
+      columns: [
+        {
+          id: "s",
+          position: 0,
+          name: "Owner",
+          type: "select",
+          options: { choices: [{ id: "a", label: "Ana" }] },
+        },
+        { id: "d", position: 1, name: "Due", type: "date", options: {} },
+      ],
+      rows: rowsOf(1).map((row) => ({ ...row, cells: {} })),
+    });
+    fireEvent.focus(grid);
+    fireEvent.keyDown(grid, { key: "Enter" });
+    const editor = screen.getByTestId("folio-cell-editor");
+    expect(editor.closest(".w-full")?.contains(document.activeElement)).toBe(
+      true,
+    );
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    fireEvent.keyDown(grid, { key: "ArrowRight" });
+    fireEvent.keyDown(grid, { key: "Enter" });
+    expect(
+      screen
+        .getByTestId("folio-cell-editor")
+        .closest(".w-full")
+        ?.contains(document.activeElement),
+    ).toBe(true);
+  });
+
   it("toggles a checkbox with Space, and empties the selection with Delete", async () => {
     const { grid, calls } = await mount();
     fireEvent.focus(grid);

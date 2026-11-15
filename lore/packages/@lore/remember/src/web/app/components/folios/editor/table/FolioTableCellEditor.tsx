@@ -3,7 +3,12 @@ import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { type KeyboardEvent, type ReactElement, useRef } from "react";
+import {
+  type KeyboardEvent,
+  type ReactElement,
+  useEffect,
+  useRef,
+} from "react";
 
 import type { FolioColumnResource } from "../../../../../../api/schemas/folioColumnResourceSchema.ts";
 
@@ -45,6 +50,21 @@ const FolioTableCellEditor = (
   const { tr } = useI18n<I18n, "en">();
   const latest = useRef(props.initial);
   const done = useRef(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  // `autoFocus` reaches a text input only. A select's, a date's or a
+  // reference's trigger is a button the kit renders, so the editor focuses
+  // its first control itself, or the keyboard stays on the grid and the
+  // control cannot be opened without a mouse.
+  useEffect(() => {
+    const element = root.current;
+    if (!element || element.contains(document.activeElement)) return;
+    element
+      .querySelector<HTMLElement>(
+        "input:not([type=hidden]), button, [tabindex]:not([tabindex='-1'])",
+      )
+      ?.focus();
+  }, []);
 
   const form = useForm({
     schema: z.object({ value: z.string() }),
@@ -98,6 +118,7 @@ const FolioTableCellEditor = (
     // The editor's own keys must not reach the grid's navigation.
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
+      ref={root}
       className="w-full"
       onKeyDown={onKeyDown}
       onBlur={(event) => {
