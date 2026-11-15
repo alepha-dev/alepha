@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "1de7b6c5-62cc-4561-84d4-bf931538098d",
-  "prevIds": ["297f686b-b4f4-4782-8f23-836a34d55a78"],
+  "id": "11bab8bd-1812-4699-8029-c8cc413d885a",
+  "prevIds": ["52195c75-0134-493c-953a-9948b8730589"],
   "ddl": [
     {
       "name": "ai_conversations",
@@ -102,6 +102,10 @@
     },
     {
       "name": "automation_adoptions",
+      "entityType": "tables"
+    },
+    {
+      "name": "automation_channels",
       "entityType": "tables"
     },
     {
@@ -2676,6 +2680,96 @@
     },
     {
       "table": "automation_adoptions",
+      "name": "updated_at",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automation_channels",
+      "name": "id",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automation_channels",
+      "name": "project_id",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automation_channels",
+      "name": "kind",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automation_channels",
+      "name": "name",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automation_channels",
+      "name": "url",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automation_channels",
+      "name": "created_by",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automation_channels",
+      "name": "version",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automation_channels",
+      "name": "created_at",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "automation_channels",
       "name": "updated_at",
       "type": "integer",
       "notNull": true,
@@ -12039,6 +12133,24 @@
       "entityType": "indexes"
     },
     {
+      "table": "automation_channels",
+      "name": "automation_channels_project_id_name_idx",
+      "columns": [
+        {
+          "value": "project_id",
+          "isExpression": false
+        },
+        {
+          "value": "name",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
       "table": "automation_events",
       "name": "automation_events_project_id_identity_idx",
       "columns": [
@@ -15246,6 +15358,28 @@
       "entityType": "fks"
     },
     {
+      "table": "automation_channels",
+      "name": "fk_automation_channels_project_id_projects_id_fk",
+      "columns": ["project_id"],
+      "tableTo": "projects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "automation_channels",
+      "name": "fk_automation_channels_created_by_users_id_fk",
+      "columns": ["created_by"],
+      "tableTo": "users",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "SET NULL",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
       "table": "automation_events",
       "name": "fk_automation_events_project_id_projects_id_fk",
       "columns": ["project_id"],
@@ -16429,6 +16563,13 @@
     {
       "table": "automation_adoptions",
       "name": "automation_adoptions_pk",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "automation_channels",
+      "name": "automation_channels_pk",
       "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
