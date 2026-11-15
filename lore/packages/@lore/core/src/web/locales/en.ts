@@ -4096,7 +4096,6 @@ export default {
   "uptime.estimated": "Estimated from sampled history.",
   "uptime.bucketNote":
     "Uptime uses hourly buckets, including the current partial hour.",
-  "uptime.loading": "Loading monitors...",
   "uptime.staleAfter": "Stale after (seconds)",
   "automation.guide": "How automations work",
   "automation.audience.recipients": "Recipients",
