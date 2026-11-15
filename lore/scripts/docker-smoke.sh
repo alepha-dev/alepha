@@ -36,7 +36,10 @@
 set -euo pipefail
 
 IMAGE="${1:-${IMAGE:-ghcr.io/alepha-dev/lore:latest}}"
-PORT="${PORT:-38080}"
+# A port the OS reports free, unless one is given (#Q3686). It was a fixed
+# 38080, and a runner where something already held it failed the job before a
+# single check ran ("driver failed programming external connectivity").
+PORT="${PORT:-$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')}"
 BASE="http://127.0.0.1:${PORT}"
 
 PREFIX="lore-smoke-$$"
