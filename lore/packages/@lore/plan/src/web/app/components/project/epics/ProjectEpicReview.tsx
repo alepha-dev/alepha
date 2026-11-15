@@ -54,10 +54,18 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
   const items = props.reviews.reviews
     .flatMap((review) => review.items)
     .sort((a, b) => a.number - b.number);
-  const open = items.filter((item) => item.state === "open");
+  // Blockers first (#Q3634), then questions, each by number.
+  const open = items
+    .filter((item) => item.state === "open")
+    .sort(
+      (a, b) =>
+        Number(b.kind === "blocker") - Number(a.kind === "blocker") ||
+        a.number - b.number,
+    );
+  const openBlockers = open.filter((item) => item.kind === "blocker").length;
   const log = items
     .filter((item) =>
-      item.kind === "question"
+      item.kind === "question" || item.kind === "blocker"
         ? item.state === "answered"
         : item.kind === "decision" && item.replacedBy == null,
     )
@@ -116,7 +124,14 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
     <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
       <section className="space-y-3">
         <h3 className="text-sm font-semibold">
-          {tr("epic.review.open", { args: [String(open.length)] })}
+          {openBlockers > 0
+            ? tr("epic.review.openWithBlockers", {
+                args: [
+                  String(openBlockers),
+                  String(open.length - openBlockers),
+                ],
+              })
+            : tr("epic.review.open", { args: [String(open.length)] })}
         </h3>
         {open.length === 0 ? (
           <p className="text-muted-foreground text-sm italic">
@@ -158,19 +173,22 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
                       {item.number}
                     </Badge>
                     <span className="text-muted-foreground mr-2 text-xs">
-                      {item.kind === "question"
-                        ? tr("epic.review.kind.question")
-                        : tr("epic.review.kind.decision")}
+                      {item.kind === "blocker"
+                        ? tr("epic.review.kind.blocker")
+                        : item.kind === "question"
+                          ? tr("epic.review.kind.question")
+                          : tr("epic.review.kind.decision")}
                     </span>
                     {item.title}
-                    {item.kind === "question" && item.answer && (
-                      <p className="mt-1">
-                        <span className="text-muted-foreground">
-                          {tr("epic.review.answered")}
-                        </span>{" "}
-                        {item.answer}
-                      </p>
-                    )}
+                    {(item.kind === "question" || item.kind === "blocker") &&
+                      item.answer && (
+                        <p className="mt-1">
+                          <span className="text-muted-foreground">
+                            {tr("epic.review.answered")}
+                          </span>{" "}
+                          {item.answer}
+                        </p>
+                      )}
                     {item.replaces != null && (
                       <p className="text-muted-foreground mt-1 text-xs">
                         {tr("epic.review.replaces", {

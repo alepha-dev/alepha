@@ -212,9 +212,48 @@ describe("ProjectEpicReview", () => {
     await alepha.stop();
   });
 
+  it("lists open blockers ahead of questions, in red (#Q3634)", async ({
+    expect,
+  }) => {
+    const withBlocker = {
+      ...reviews,
+      openBlockers: 1,
+      reviews: [
+        {
+          ...reviews.reviews[0]!,
+          items: [
+            ...reviews.reviews[0]!.items,
+            item({
+              number: 5,
+              kind: "blocker",
+              title: "The table it needs is gone.",
+              state: "open",
+            }),
+          ],
+        },
+      ],
+    } as unknown as EpicReviewsResult;
+    const { alepha, view } = await mount({ reviews: withBlocker });
+
+    const cards = [
+      ...view.container.querySelectorAll(
+        '[data-testid^="epic-review-question-"]',
+      ),
+    ].map((card) => card.getAttribute("data-testid"));
+    expect(cards).toEqual(["epic-review-question-5", "epic-review-question-1"]);
+    expect(screen.getByTestId("epic-review-blocker-5").textContent).toBe(
+      "Blocker",
+    );
+    expect(
+      screen.getByText("Open blockers (1) and questions (1)"),
+    ).toBeDefined();
+
+    await alepha.stop();
+  });
+
   it("says when no review was ever filed", async ({ expect }) => {
     const { alepha } = await mount({
-      reviews: { reviews: [], openQuestions: 0 },
+      reviews: { reviews: [], openQuestions: 0, openBlockers: 0 },
     });
 
     expect(

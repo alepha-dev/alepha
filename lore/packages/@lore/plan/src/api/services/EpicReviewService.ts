@@ -124,7 +124,9 @@ export class EpicReviewService {
         ...(item.recommended !== undefined
           ? { recommended: item.recommended }
           : {}),
-        ...(item.kind === "question" ? { state: "open" as const } : {}),
+        ...(item.kind === "question" || item.kind === "blocker"
+          ? { state: "open" as const }
+          : {}),
         ...(item.target ? { target: item.target } : {}),
       })),
     );
@@ -172,7 +174,8 @@ export class EpicReviewService {
       ...(user ? { answeredBy: user.id } : {}),
     };
 
-    if (item.kind === "question") {
+    // A blocker is answered, or waived, exactly as a question is (#Q3634).
+    if (item.kind === "question" || item.kind === "blocker") {
       const updated = await this.items.updateById(item.id, {
         ...stamp,
         state: input.waive ? "waived" : "answered",
@@ -237,7 +240,12 @@ export class EpicReviewService {
         ...review,
         items: byReview.get(review.id) ?? [],
       })),
-      openQuestions: items.filter((item) => item.state === "open").length,
+      openQuestions: items.filter(
+        (item) => item.kind === "question" && item.state === "open",
+      ).length,
+      openBlockers: items.filter(
+        (item) => item.kind === "blocker" && item.state === "open",
+      ).length,
     };
   }
 
@@ -262,16 +270,6 @@ export class EpicReviewService {
   }
 
   /**
-   * The questions still open, by number.
-   */
-  async openQuestionsOf(epicId: number): Promise<EpicReviewItem[]> {
-    return await this.items.findMany({
-      where: { epicId: { eq: epicId }, state: { eq: "open" } },
-      orderBy: [{ column: "number", direction: "asc" }],
-    });
-  }
-
-  /**
    * The epic's decision log: answered questions and the decisions that
    * stand (an overturned one has left it for its replacement), by number.
    * A waived question is not a decision, and a change is not one either.
@@ -285,28 +283,37 @@ export class EpicReviewService {
    * Whether an item belongs to the decision log.
    */
   inLog(item: Pick<EpicReviewItem, "kind" | "state" | "replacedBy">): boolean {
-    if (item.kind === "question") return item.state === "answered";
+    if (item.kind === "question" || item.kind === "blocker") {
+      return item.state === "answered";
+    }
     return item.kind === "decision" && item.replacedBy == null;
   }
 
   /**
-   * How many questions are still open on one epic.
+   * How many questions, and how many blockers (#Q3634), are still open on
+   * one epic. One read: both kinds carry the `open` state.
    */
-  async countOpenQuestions(epicId: number): Promise<number> {
-    return await this.items.count({
-      epicId: { eq: epicId },
-      state: { eq: "open" },
+  async countOpen(
+    epicId: number,
+  ): Promise<{ questions: number; blockers: number }> {
+    const rows = await this.items.findMany({
+      where: { epicId: { eq: epicId }, state: { eq: "open" } },
+      columns: ["kind"],
     });
+    return {
+      questions: rows.filter((row) => row.kind === "question").length,
+      blockers: rows.filter((row) => row.kind === "blocker").length,
+    };
   }
 
   /**
-   * How many questions are still open on each epic of a project, in one
-   * read keyed on the project alone, so the epic list runs it beside its
-   * epic read. An epic with none is absent from the map.
+   * How many questions and blockers are still open on each epic of a
+   * project, in one read keyed on the project alone, so the epic list runs
+   * it beside its epic read. An epic with none is absent from the map.
    */
-  async countOpenQuestionsOfProject(
+  async countOpenOfProject(
     projectId: number,
-  ): Promise<Map<number, number>> {
+  ): Promise<Map<number, { questions: number; blockers: number }>> {
     const rows = await this.items.findMany({
       where: {
         epicId: {
@@ -314,11 +321,14 @@ export class EpicReviewService {
         },
         state: { eq: "open" },
       },
-      columns: ["epicId"],
+      columns: ["epicId", "kind"],
     });
-    const counts = new Map<number, number>();
+    const counts = new Map<number, { questions: number; blockers: number }>();
     for (const row of rows) {
-      counts.set(row.epicId, (counts.get(row.epicId) ?? 0) + 1);
+      const entry = counts.get(row.epicId) ?? { questions: 0, blockers: 0 };
+      if (row.kind === "blocker") entry.blockers += 1;
+      else entry.questions += 1;
+      counts.set(row.epicId, entry);
     }
     return counts;
   }

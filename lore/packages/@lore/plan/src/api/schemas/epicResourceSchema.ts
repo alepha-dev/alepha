@@ -88,6 +88,12 @@ export const epicResourceSchema = epics.schema.extend({
    */
   openQuestions: z.integer().optional(),
   /**
+   * How many review blockers are still open (#Q3634): problems that stop the
+   * plan, counted apart from questions and shown ahead of them, in red.
+   * Optional for the reason `openQuestions` is.
+   */
+  openBlockers: z.integer().optional(),
+  /**
    * How many times this epic was reviewed (#Q3311): its `epic_reviews` rows.
    * It is what tells an epic never reviewed from one whose questions are all
    * answered, which `openQuestions` reads as the same zero. Optional for the
