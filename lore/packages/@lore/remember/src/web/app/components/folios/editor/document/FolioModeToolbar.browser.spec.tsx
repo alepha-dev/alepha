@@ -43,9 +43,20 @@ describe("FolioModeToolbar", () => {
       </AlephaContext.Provider>,
     );
 
-    expect(
-      screen.getAllByRole("radio").map((radio) => radio.textContent),
-    ).toEqual(["Edit", "View", "Both"]);
+    // Three icons (#Q3692), each named and tooltipped by its old label.
+    const radios = screen.getAllByRole("radio");
+    expect(radios.map((radio) => radio.getAttribute("aria-label"))).toEqual([
+      "Edit",
+      "View",
+      "Both",
+    ]);
+    expect(radios.map((radio) => radio.getAttribute("title"))).toEqual([
+      "Edit",
+      "View",
+      "Both",
+    ]);
+    expect(radios.every((radio) => radio.querySelector("svg"))).toBe(true);
+    expect(radios.map((radio) => radio.textContent)).toEqual(["", "", ""]);
     expect(screen.getByTestId("folio-mode").dataset.mode).toBe("view");
     expect(
       screen.getByRole("radio", { name: "View" }).getAttribute("aria-checked"),

@@ -1,6 +1,7 @@
 import { Segmented } from "@alepha/ui";
 import type { I18n, MarkdownEditorMode } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
+import { Columns2, Eye, Pencil } from "lucide-react";
 
 export interface FolioModeToolbarProps {
   mode: MarkdownEditorMode;
@@ -10,7 +11,9 @@ export interface FolioModeToolbarProps {
 
 /**
  * The folio document's toolbar row (#Q3653): Edit, View and Both as one
- * segmented control, where a lone pencil used to float over the page.
+ * segmented control, where a lone pencil used to float over the page. Each
+ * mode is an icon (#Q3692), a pencil, an eye and two columns, named and
+ * tooltipped by its old label, the active one on the control's thumb.
  *
  * `data-testid="folio-mode"` and `data-mode` are the e2e's handle, as
  * `markdown-mode-toggle` was: CodeMirror is not mounted in View, so a spec
@@ -32,9 +35,21 @@ const FolioModeToolbar = (props: FolioModeToolbarProps) => {
           aria-label={tr("folios.mode.label")}
           onChange={(value) => props.onChange(value as MarkdownEditorMode)}
           options={[
-            { value: "edit", label: tr("folios.mode.edit") },
-            { value: "view", label: tr("folios.mode.view") },
-            { value: "both", label: tr("folios.mode.both") },
+            {
+              value: "edit",
+              label: <Pencil className="size-3.5" />,
+              title: tr("folios.mode.edit"),
+            },
+            {
+              value: "view",
+              label: <Eye className="size-3.5" />,
+              title: tr("folios.mode.view"),
+            },
+            {
+              value: "both",
+              label: <Columns2 className="size-3.5" />,
+              title: tr("folios.mode.both"),
+            },
           ]}
         />
       </span>
