@@ -1309,7 +1309,8 @@ describe("Alepha CLI E2E", () => {
       }
 
       expect(result.exitCode).toBe(0);
-      const binary = join(PROJECT_DIR, "dist/e2e");
+      // Bun appends `.exe` for a Windows target (#Q3729).
+      const binary = join(PROJECT_DIR, isWindows ? "dist/e2e.exe" : "dist/e2e");
       expect(existsSync(binary)).toBe(true);
       expect(existsSync(join(PROJECT_DIR, "dist/manifest.json"))).toBe(true);
       // Every slice's wrapper is gone, not just the compiled one: the binary

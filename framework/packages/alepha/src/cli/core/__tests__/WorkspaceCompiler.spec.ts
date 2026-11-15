@@ -14,7 +14,8 @@ import {
 
 /**
  * `bun build --compile`, as far as the file system can tell: it writes the
- * `--outfile` into the directory it runs in.
+ * `--outfile` into the directory it runs in, with `.exe` appended for a
+ * Windows target, as Bun does (#Q3729).
  */
 class CompilingShell extends MemoryShellProvider {
   protected readonly memory = $inject(MemoryFileSystemProvider);
@@ -26,8 +27,12 @@ class CompilingShell extends MemoryShellProvider {
     const out = await super.run(command, options);
     const line = Array.isArray(command) ? command.join(" ") : command;
     const outfile = /^bun build .*--outfile=(\S+)/.exec(line)?.[1];
+    const windows = /--target=bun-windows-/.test(line);
     if (outfile && options.root) {
-      await this.memory.writeFile(`${options.root}/${outfile}`, "binary");
+      await this.memory.writeFile(
+        `${options.root}/${outfile}${windows && !outfile.endsWith(".exe") ? ".exe" : ""}`,
+        "binary",
+      );
     }
     return out;
   }
@@ -224,6 +229,30 @@ describe("WorkspaceCompiler", () => {
         "bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig --target=bun-linux-x64 --outfile=notepad index.bun.js",
       ),
     ).toBe(true);
+  });
+
+  it("finds, copies and returns the .exe Bun writes for a Windows target (#Q3729)", async () => {
+    const { fs, task } = await createTestEnv();
+
+    const binary = await task.compile({
+      ...bare,
+      binaries: [
+        { name: "app-linux", target: "bun-linux-x64" },
+        { name: "app-windows", target: "bun-windows-x64" },
+        { name: "already.exe", target: "bun-windows-x64" },
+      ],
+    });
+
+    expect(binary).toBe("/project/dist/app-linux");
+    expect(await fs.exists("/project/dist/app-linux")).toBe(true);
+    expect(await fs.exists("/project/dist/app-windows.exe")).toBe(true);
+    expect(await fs.exists("/project/dist/app-windows")).toBe(false);
+    expect(await fs.exists("/project/dist/already.exe")).toBe(true);
+
+    const windowsOnly = await (
+      await createTestEnv()
+    ).task.compile({ ...bare, target: "bun-windows-arm64" });
+    expect(windowsOnly).toBe("/project/dist/notepad.exe");
   });
 
   it("compiles one binary per target from ONE staged copy, before the cleanup", async () => {
