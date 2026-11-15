@@ -1,11 +1,18 @@
 import { Segmented } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAction, useAlepha, useClient, useInject } from "alepha/react";
+import {
+  useAction,
+  useAlepha,
+  useClient,
+  useInject,
+  useQuery,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { BellOff, BellRing } from "lucide-react";
 
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
+import type { QuestReminderRuleController } from "../../../../../api/controllers/QuestReminderRuleController.ts";
 import type { ReminderInterval } from "../../../../../api/entities/quests.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "../../../atoms/currentAssignedQuestsAtom.ts";
@@ -41,6 +48,7 @@ const REMINDER_PRESETS: ReminderPreset[] = [
 const QuestViewSettings = (props: QuestViewSettingsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<QuestController>();
+  const rules = useClient<QuestReminderRuleController>();
   const alepha = useAlepha();
   const dateTime = useInject(DateTimeProvider);
 
@@ -88,6 +96,22 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
     !props.quest.completedAt &&
     client.setQuestReminder.can();
 
+  // Reminders are sent only by the project's reminder automation (#Q3626):
+  // without it, say so beside the control rather than let one be set in
+  // silence.
+  const rule = useQuery(
+    {
+      key: ["quest-reminder-rule", props.quest.projectId],
+      enabled: canEditReminder,
+      handler: ({ signal }) =>
+        rules.getQuestReminderRule(
+          { params: { projectId: props.quest.projectId } },
+          { request: { signal } },
+        ),
+    },
+    [canEditReminder, props.quest.projectId],
+  );
+
   // Nothing at all when the reminder cannot be set (#Q2424). It used to draw
   // the heading and a sentence saying why, a whole block on every unassigned
   // quest that offered nothing to do.
@@ -122,6 +146,14 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
         }))}
       />
       <p className="text-muted-foreground text-xs">{nextLabel}</p>
+      {rule.data && !(rule.data.exists && rule.data.enabled) && (
+        <p
+          className="text-xs text-amber-600 dark:text-amber-400"
+          data-testid="quest-reminder-no-rule"
+        >
+          {tr("quest.view.reminder.noRule")}
+        </p>
+      )}
     </div>
   );
 };

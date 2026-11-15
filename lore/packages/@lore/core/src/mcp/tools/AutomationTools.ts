@@ -68,7 +68,7 @@ export class AutomationTools {
   });
   automation_adopt = $tool({
     description:
-      "Explicitly consent as the immutable author to adopt quest-reminders or release-notifications. Requires confirm=true and current grants/capabilities/channels. Resumes pending adoption. Optionally adopt your already configured compatible automationId with expectedRevision. The legacy marker survives disable/delete; repeating adoption never reenables an opted-out rule.",
+      "Explicitly consent as the immutable author to adopt release-notifications. Requires confirm=true and current grants/capabilities/channels. Resumes pending adoption. Optionally adopt your already configured compatible automationId with expectedRevision. The legacy marker survives disable/delete; repeating adoption never reenables an opted-out rule.",
     annotations: { idempotentHint: true },
     schema: {
       params: automationAdoptParamsSchema,

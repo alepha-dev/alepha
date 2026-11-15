@@ -598,6 +598,7 @@ export class AutomationService {
   protected async prepare(rule: Automation) {
     const author = await this.access.author(rule);
     await this.access.assert(rule.projectId, author, "automation:write");
+    await this.assertSingleReminderRule(rule);
     const values = await this.variables.snapshot(rule, author, {
       transition: false,
     });
@@ -616,6 +617,23 @@ export class AutomationService {
       approved: this.approvals.capture(values),
       scheduleCron: compiled.scheduleCron,
     };
+  }
+  /**
+   * A project holds at most one quest reminder rule (#Q3626): two would
+   * process every due reminder twice. Counted whether enabled or not, since
+   * a draft is one click from running.
+   */
+  protected async assertSingleReminderRule(rule: Automation) {
+    if (rule.rule.select?.key !== "quests.remindersDue") return;
+    const others = await this.persistence.rules.findMany({
+      where: { projectId: rule.projectId, id: { ne: rule.id } },
+      columns: ["id", "rule"],
+      limit: 500,
+    });
+    if (others.some((other) => other.rule.select?.key === "quests.remindersDue"))
+      throw new ConflictError(
+        "This project already has a quest reminders automation",
+      );
   }
   protected revision(rule: Automation, expected: number) {
     if (!Number.isSafeInteger(expected) || expected !== rule.revision)

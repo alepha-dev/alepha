@@ -2563,8 +2563,9 @@ export class QuestController {
    * Only the assignee can set their own reminder — it's a per-user
    * nudge, not a project-wide notification. `interval: null` clears
    * any existing reminder; passing a preset schedules the next send
-   * at `now + REMINDER_INTERVAL_MS[interval]` and the `QuestJobs`
-   * nightly sweep advances from there.
+   * at `now + REMINDER_INTERVAL_MS[interval]`, and the project's Quest
+   * reminders automation (#Q3626) sends it and advances from there. Without
+   * that automation nothing is sent.
    */
   setQuestReminder = $action({
     method: "POST",

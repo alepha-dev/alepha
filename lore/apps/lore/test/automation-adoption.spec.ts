@@ -20,7 +20,7 @@ import {
 } from "@lore/core/api";
 import { notificationPreferences } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { QuestNotifications, ReleaseController } from "@lore/plan/api";
+import { ReleaseController } from "@lore/plan/api";
 import { Alepha, AlephaError } from "alepha";
 import {
   JobProvider,
@@ -46,7 +46,6 @@ import { bootLore } from "./fixtures/bootLore.ts";
 import {
   createTestProject,
   createTestMember,
-  createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
@@ -96,19 +95,6 @@ class AdoptionNotificationFault extends AutomationNotifications {
       throw new AlephaError("Interrupted after committed enqueue");
     }
     return result;
-  }
-}
-class AdoptionClaimFault extends AutomationClaims {
-  public crash = false;
-  public override async continueReminderSelection(
-    ...args: Parameters<AutomationClaims["continueReminderSelection"]>
-  ) {
-    const receipt = await super.continueReminderSelection(...args);
-    if (this.crash) {
-      this.crash = false;
-      throw new AlephaError("Interrupted after committed reminder page");
-    }
-    return receipt;
   }
 }
 class AdoptionOutbox extends AutomationNotificationOutbox {
@@ -172,7 +158,6 @@ describe("Explicit policy adoption and legacy parity", () => {
         provide: AutomationNotifications,
         use: AdoptionNotificationFault,
       })
-      .with({ provide: AutomationClaims, use: AdoptionClaimFault })
       .with({ provide: AutomationAdoptionService, use: InterruptedAdoption })
       .with({ provide: AutomationNotificationOutbox, use: AdoptionOutbox })
       .with({
@@ -220,7 +205,7 @@ describe("Explicit policy adoption and legacy parity", () => {
     );
     const internal = await adoption.preview(
       project.id,
-      "quest-reminders",
+      "release-notifications",
       user,
     );
     expect(internal.ready).toBe(false);
@@ -228,7 +213,7 @@ describe("Explicit policy adoption and legacy parity", () => {
       "Policy adoption is unavailable right now; try again later",
     );
     adoption.validationFault = new ForbiddenError("Missing quest:read");
-    const refused = await adoption.preview(project.id, "quest-reminders", user);
+    const refused = await adoption.preview(project.id, "release-notifications", user);
     expect(refused.reason).toBe("Missing quest:read");
     adoption.validationFault = undefined;
   });
@@ -236,35 +221,35 @@ describe("Explicit policy adoption and legacy parity", () => {
     expect,
   }) => {
     const before = await persistence.rules.count({});
-    const preview = await adoption.preview(project.id, "quest-reminders", user);
+    const preview = await adoption.preview(project.id, "release-notifications", user);
     expect(preview).toMatchObject({
       state: "legacy",
       ready: true,
       author: { id: user.id },
-      channels: ["email"],
+      channels: ["inbox", "email"],
     });
     expect(await persistence.rules.count({})).toBe(before);
     expect(await persistence.adoptions.count({})).toBe(0);
     adoption.interrupt = true;
     await expect(
-      adoption.adopt(project.id, "quest-reminders", user, { confirm: true }),
+      adoption.adopt(project.id, "release-notifications", user, { confirm: true }),
     ).rejects.toThrow("Interrupted");
-    const pending = await adoption.preview(project.id, "quest-reminders", user);
+    const pending = await adoption.preview(project.id, "release-notifications", user);
     expect(pending.state).toBe("pending");
     expect(pending.candidate?.enabled).toBe(false);
     expect(
       await alepha
         .inject(AutomationLegacyQueue)
-        .adopted(project.id, "quest-reminders"),
+        .adopted(project.id, "release-notifications"),
     ).toBe(false);
-    const adopted = await adoption.adopt(project.id, "quest-reminders", user, {
+    const adopted = await adoption.adopt(project.id, "release-notifications", user, {
       confirm: true,
     });
     expect(adopted.state).toBe("adopted");
     expect(adopted.replacementId).toBe(pending.replacementId);
     expect(adopted.candidate?.enabled).toBe(true);
     expect(await persistence.rules.count({})).toBe(before + 1);
-    const repeated = await adoption.adopt(project.id, "quest-reminders", user, {
+    const repeated = await adoption.adopt(project.id, "release-notifications", user, {
       confirm: true,
     });
     expect(repeated.candidate?.revision).toBe(adopted.candidate?.revision);
@@ -351,11 +336,6 @@ describe("Explicit policy adoption and legacy parity", () => {
     expect(await rows.inbox.count({})).toBe(0);
     expect(await rows.deliveries.count({ status: "skipped" })).toBe(2);
     expect(alepha.inject(MemoryEmailProvider).records).toHaveLength(0);
-    expect(
-      await alepha
-        .inject(AutomationLegacyQueue)
-        .adopted(project.id, "quest-reminders"),
-    ).toBe(false);
   });
   it("notifies the full current roster except publisher with both channels and live preferences", async ({
     expect,
@@ -419,67 +399,6 @@ describe("Explicit policy adoption and legacy parity", () => {
     // exceeded 30 seconds, and a Nightly runner against Postgres took 41 s
     // to over 60 s. A hang detector, not a budget.
   }, 180_000);
-  it("progresses beyond fifty due reminders without duplicating history or the interval", async ({
-    expect,
-  }) => {
-    const due = time.now().subtract(1, "hour").toISOString();
-    for (let index = 0; index < 51; index++)
-      await createTestQuest(alepha, project, {
-        acceptedBy: user.id,
-        acceptedAt: time.now().subtract(2, "days").toISOString(),
-        reminderInterval: "daily",
-        reminderNextAt: due,
-      });
-    const preview = await adoption.preview(project.id, "quest-reminders", user);
-    expect(preview.reminderCount).toBe(51);
-    expect(preview.reminders).toHaveLength(50);
-    const adopted = await adoption.adopt(project.id, "quest-reminders", user, {
-      confirm: true,
-    });
-    const stored = await persistence.rules.getById(adopted.replacementId!);
-    const evaluation = await alepha
-      .inject(AutomationEvaluator)
-      .evaluate({ rule: stored, evaluatedAt: time.nowISOString() });
-    expect(evaluation.refusal).toBeUndefined();
-    expect(evaluation.prepared!.snapshot.selectionNext).toBeDefined();
-    const claim = await alepha.inject(AutomationClaims).claim({
-      automationId: stored.id,
-      revision: stored.revision,
-      source: { kind: "schedule", scheduledAt: time.nowISOString() },
-      prepared: evaluation.prepared!,
-    });
-    expect(claim.state).toBe("claimed");
-    await finish(claim.receipt!.id, claim.receipt!.leaseToken);
-    const quests = await entities.quests.findMany({
-      where: { projectId: project.id },
-      limit: 100,
-    });
-    expect(quests).toHaveLength(51);
-    expect(
-      (await persistence.receipts.getById(claim.receipt!.id)).status,
-      (await persistence.receipts.getById(claim.receipt!.id)).reason,
-    ).toBe("committed");
-    expect(
-      quests.every(
-        (quest) =>
-          quest.history.filter((event) => event.action === "reminder_sent")
-            .length === 1,
-      ),
-    ).toBe(true);
-    expect(
-      quests.every(
-        (quest) =>
-          quest.reminderNextAt === time.now().add(24, "hour").toISOString(),
-      ),
-    ).toBe(true);
-    expect(
-      await rows.jobs.count({ jobName: "system.notifications.send" }),
-    ).toBe(51);
-    await finish(claim.receipt!.id, claim.receipt!.leaseToken);
-    expect(
-      await rows.jobs.count({ jobName: "system.notifications.send" }),
-    ).toBe(51);
-  }, 30_000);
   it("refuses missing author grants without changing capabilities, ranks or legacy eligibility", async ({
     expect,
   }) => {
@@ -504,108 +423,6 @@ describe("Explicit policy adoption and legacy parity", () => {
     expect(await entities.capabilities.findMany({})).toEqual(caps);
     expect(await persistence.adoptions.count({})).toBe(0);
     expect(await persistence.rules.count({})).toBe(0);
-  });
-  it("atomically rejects a legacy enqueue that loses the cutover race without advancing reminder state", async ({
-    expect,
-  }) => {
-    const due = time.now().subtract(1, "hour").toISOString();
-    const quest = await createTestQuest(alepha, project, {
-      acceptedBy: user.id,
-      acceptedAt: due,
-      reminderInterval: "daily",
-      reminderNextAt: due,
-    });
-    const context = await alepha
-      .inject(AutomationContextBuilder)
-      .source(project.id, "quests.remindersDue", {
-        quest_id: quest.id,
-        assignee_id: user.id,
-        reminder_interval: "daily",
-        reminder_next_at: due,
-      });
-    const settlement = alepha
-      .inject(AutomationSelections)
-      .settlement(
-        "quests.remindersDue",
-        project.id,
-        context,
-        time.nowISOString(),
-      )!;
-    const template = alepha.inject(QuestNotifications).questReminder;
-    await alepha.inject(AutomationLegacyQueue).run(
-      {
-        projectId: project.id,
-        policy: "quest-reminders",
-        identity: `reminder:${quest.id}:${due}`,
-        template: template.name,
-        ...settlement,
-      },
-      async () => {
-        await adoption.adopt(project.id, "quest-reminders", user, {
-          confirm: true,
-        });
-        await template.push({
-          contact: `author-${project.id}@example.test`,
-          variables: {
-            projectId: project.id,
-            recipientName: "Author",
-            projectTitle: project.title,
-            questTitle: quest.title,
-            shortId: quest.shortId,
-            questUrl: `/${project.slug}/quests/${quest.shortId}`,
-          },
-        });
-      },
-    );
-    expect(
-      await rows.jobs.count({ jobName: "system.notifications.send" }),
-    ).toBe(0);
-    expect((await entities.quests.getById(quest.id)).reminderNextAt).toBe(due);
-    expect((await entities.quests.getById(quest.id)).history).toEqual(
-      quest.history,
-    );
-  });
-  it("keeps legacy hourly reminders retry-safe and preserves queued old payload identification", async ({
-    expect,
-  }) => {
-    const due = time.now().subtract(1, "hour").toISOString();
-    const quest = await createTestQuest(alepha, project, {
-      acceptedBy: user.id,
-      acceptedAt: due,
-      reminderInterval: "daily",
-      reminderNextAt: due,
-    });
-    const jobs = alepha.inject(JobProvider);
-    await jobs.trigger("quests.send-due-reminders");
-    expect(
-      await rows.jobs.count({ jobName: "system.notifications.send" }),
-      JSON.stringify(await rows.jobs.findMany({})),
-    ).toBe(1);
-    const sent = await entities.quests.getById(quest.id);
-    expect(
-      sent.history.filter((entry) => entry.action === "reminder_sent"),
-    ).toHaveLength(1);
-    expect(sent.reminderNextAt).toBe(time.now().add(24, "hour").toISOString());
-    await jobs.trigger("quests.send-due-reminders");
-    expect(
-      await rows.jobs.count({ jobName: "system.notifications.send" }),
-    ).toBe(1);
-    const queued = await rows.jobs.getOne({
-      where: { jobName: "system.notifications.send" },
-    });
-    const oldPayload = structuredClone(queued.payload) as any;
-    delete oldPayload.variables.projectId;
-    expect(
-      await alepha.inject(AutomationLegacyDispatch).allowed(oldPayload),
-    ).toBe(true);
-    await adoption.adopt(project.id, "quest-reminders", user, {
-      confirm: true,
-    });
-    expect(
-      await alepha.inject(AutomationLegacyDispatch).allowed(oldPayload),
-    ).toBe(false);
-    await jobs.processExecution(queued.jobName, queued.id);
-    expect(alepha.inject(MemoryEmailProvider).records).toHaveLength(0);
   });
   it("reconciles a committed cutover whose response was interrupted", async ({
     expect,
@@ -682,79 +499,14 @@ describe("Explicit policy adoption and legacy parity", () => {
       runs.reduce((count, run) => count + run.snapshot.counts.deliveries, 0),
     ).toBe(4);
   });
-  it("resumes the next reminder page after its native cursor witness committed", async ({
-    expect,
-  }) => {
-    const due = time.now().subtract(1, "hour").toISOString();
-    for (let index = 0; index < 51; index++)
-      await createTestQuest(alepha, project, {
-        acceptedBy: user.id,
-        acceptedAt: due,
-        reminderInterval: "daily",
-        reminderNextAt: due,
-      });
-    const adopted = await adoption.adopt(project.id, "quest-reminders", user, {
-      confirm: true,
-    });
-    const stored = await persistence.rules.getById(adopted.replacementId!);
-    const evaluation = await alepha
-      .inject(AutomationEvaluator)
-      .evaluate({ rule: stored, evaluatedAt: time.nowISOString() });
-    const claimed = await alepha.inject(AutomationClaims).claim({
-      automationId: stored.id,
-      revision: stored.revision,
-      source: { kind: "schedule", scheduledAt: time.nowISOString() },
-      prepared: evaluation.prepared!,
-    });
-    (alepha.inject(AutomationClaims) as AdoptionClaimFault).crash = true;
-    let input: { receiptId: string; token?: string } | undefined = {
-      receiptId: claimed.receipt!.id,
-      token: claimed.receipt!.leaseToken,
-    };
-    let interrupted = false;
-    for (let count = 0; input && count < 20; count++) {
-      try {
-        input = await alepha.inject(AutomationWorker).step(input);
-      } catch (error) {
-        if (
-          !(error instanceof Error) ||
-          !error.message.includes("Interrupted after committed reminder page")
-        )
-          throw error;
-        interrupted = true;
-        break;
-      }
-    }
-    expect(interrupted).toBe(true);
-    expect(
-      await rows.jobs.count({ jobName: "system.notifications.send" }),
-    ).toBe(50);
-    const receipt = await persistence.receipts.getById(claimed.receipt!.id);
-    await finish(receipt.id, receipt.leaseToken);
-    expect(
-      await rows.jobs.count({ jobName: "system.notifications.send" }),
-    ).toBe(51);
-    const quests = await entities.quests.findMany({
-      where: { projectId: project.id },
-      limit: 100,
-    });
-    expect(
-      quests.every(
-        (quest) =>
-          quest.history.filter((entry) => entry.action === "reminder_sent")
-            .length === 1,
-      ),
-    ).toBe(true);
-  }, 30_000);
-
   it("resumes explicit consent after the disabled pending rule was deleted", async ({
     expect,
   }) => {
     adoption.interrupt = true;
     await expect(
-      adoption.adopt(project.id, "quest-reminders", user, { confirm: true }),
+      adoption.adopt(project.id, "release-notifications", user, { confirm: true }),
     ).rejects.toThrow("Interrupted");
-    const pending = await adoption.preview(project.id, "quest-reminders", user);
+    const pending = await adoption.preview(project.id, "release-notifications", user);
     expect(pending.candidate?.canEnable).toBe(false);
     await service.remove(
       project.id,
@@ -765,9 +517,9 @@ describe("Explicit policy adoption and legacy parity", () => {
     expect(
       await alepha
         .inject(AutomationLegacyQueue)
-        .adopted(project.id, "quest-reminders"),
+        .adopted(project.id, "release-notifications"),
     ).toBe(false);
-    const resumed = await adoption.adopt(project.id, "quest-reminders", user, {
+    const resumed = await adoption.adopt(project.id, "release-notifications", user, {
       confirm: true,
     });
     expect(resumed.state).toBe("adopted");
