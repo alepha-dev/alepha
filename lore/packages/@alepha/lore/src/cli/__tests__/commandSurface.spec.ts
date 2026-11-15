@@ -141,6 +141,7 @@ describe("the Lore CLI command surface", () => {
         "adoption",
         "adopt",
         "variable",
+        "channel",
       ],
       error: ["list", "resolve", "forward"],
       deploy: ["status", "rollback"],
