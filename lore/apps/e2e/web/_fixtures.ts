@@ -89,6 +89,9 @@ export const test = base.extend<{}, { loreServer: LoreServer }>({
           EMAIL_ENABLED: "true",
           // Discord channels post to memory, never discord.com (#Q3616).
           DISCORD_TRANSPORT: "memory",
+          // The open-projects launch gate, on as in production; a project
+          // still starts invite only (`open-projects.spec.ts`).
+          LORE_OPEN_PROJECTS: "true",
           ADMIN_EMAIL,
           LOG_LEVEL: "warn",
           LOG_FORMAT: "json",

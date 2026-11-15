@@ -29,24 +29,23 @@ Once accepted, the person is a member with the rank the invitation named.
 
 A **rank** is a named set of permissions. Every member has exactly one.
 
-A new project has two:
+A new project has four:
 
-- **Owner**: the person who created the project. There is exactly one owner,
-  and the owner can do everything.
-- **Member**: can read the whole project and do its daily work (create and
-  move quests, write epics and folios, push builds) but not administer it:
-  no inviting, no ranks, no releases to publish, no feedback to triage.
+| Rank       | Meant for                                                                                                             |
+| ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Owner**  | The person who created the project. There is exactly one owner, and the owner can do everything.                      |
+| **Admin**  | Someone who runs the project with you: everything except what only the owner can do.                                  |
+| **Member** | Someone who does the work: reads the whole project, creates and moves quests, writes epics and folios, pushes builds. |
+| **Viewer** | Someone who only reads the project's memory: quests, epics, folios and releases.                                      |
 
-That is enough for a small team. When you need finer access, open the **Ranks**
-tab and choose **Create rank**. Three presets are offered as starting points:
+Admin and Member start from what the project's capabilities need, and you can
+change both. Viewer is a short, fixed list of reads; it is the rank of everyone
+who joins an [open project](/lore/docs/project-open-projects).
 
-| Preset          | Meant for                                                                 |
-| --------------- | ------------------------------------------------------------------------- |
-| **Admin**       | Someone who runs the project with you: everything except the owner's own. |
-| **Contributor** | Someone who does the work: writes quests, epics and folios.               |
-| **Viewer**      | Someone who only reads.                                                   |
+When you need another mix, open the **Ranks** tab and choose **Create rank**:
+a new rank starts from Admin, Member or Viewer.
 
-A preset is only a starting point. The **Ranks** tab is a grid, one row per
+A base is only a starting point. The **Ranks** tab is a grid, one row per
 permission and one column per rank: tick what each rank may do.
 
 ![The Ranks tab: a grid of permissions by rank](/screenshots/lore/ranks-light.png)
@@ -84,6 +83,9 @@ The same rules apply to an agent or a script acting for that person: see
 Open the member's menu in the **Members** tab and remove them. They lose access
 to the project at once.
 
+Someone you removed cannot join an open project again by themselves. To let
+them back in, invite them: accepting the invitation lifts the exclusion.
+
 ## Transferring ownership
 
 Ownership is handed over, never shared. From a member's menu, choose **Transfer
@@ -94,6 +96,8 @@ they can give the project back.
 
 ## Next
 
+- [Open projects](/lore/docs/project-open-projects): letting anyone signed in
+  join as a viewer.
 - [Capabilities](/lore/docs/project-capabilities): what the project does,
   which decides what ranks have to cover.
 - [Notifications](/lore/docs/project-notifications): how members hear about

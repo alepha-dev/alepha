@@ -201,13 +201,13 @@ export const docsCorpus: DocsSection[] = [
     guide: "Members and ranks",
     section: "Ranks",
     url: "https://alepha.dev/lore/docs/project-members#ranks",
-    text: "A **rank** is a named set of permissions. Every member has exactly one.\n\nA new project has two:\n\n- **Owner**: the person who created the project. There is exactly one owner,\n  and the owner can do everything.\n- **Member**: can read the whole project and do its daily work (create and\n  move quests, write epics and folios, push builds) but not administer it:\n  no inviting, no ranks, no releases to publish, no feedback to triage.\n\nThat is enough for a small team. When you need finer access, open the **Ranks**\ntab and choose **Create rank**. Three presets are offered as starting points:\n\n| Preset          | Meant for                                                                 |\n| --------------- | ------------------------------------------------------------------------- |\n| **Admin**       | Someone who runs the project with you: everything except the owner's own. |\n| **Contributor** | Someone who does the work: writes quests, epics and folios.               |\n| **Viewer**      | Someone who only reads.                                                   |\n\nA preset is only a starting point. The **Ranks** tab is a grid, one row per\npermission and one column per rank: tick what each r...",
+    text: "A **rank** is a named set of permissions. Every member has exactly one.\n\nA new project has four:\n\n| Rank       | Meant for                                                                                                             |\n| ---------- | --------------------------------------------------------------------------------------------------------------------- |\n| **Owner**  | The person who created the project. There is exactly one owner, and the owner can do everything.                      |\n| **Admin**  | Someone who runs the project with you: everything except what only the owner can do.                                  |\n| **Member** | Someone who does the work: reads the whole project, creates and moves quests, writes epics and folios, pushes builds. |\n| **Viewer** | Someone who only reads the project's memory: quests, epics, folios and releases.                                      |\n\nAdmin and Member start from what the project's capabilities need, and you can\nchange both. Viewer is a short, fixed list of reads; it is the rank of everyone\nwho joins an [open project](/lore/docs/project-open-projects).\n\nWhen you need another mix, open the **Ranks** tab and choose **Create...",
   },
   {
     guide: "Members and ranks",
     section: "Removing a member",
     url: "https://alepha.dev/lore/docs/project-members#removing-a-member",
-    text: "Open the member's menu in the **Members** tab and remove them. They lose access\nto the project at once.",
+    text: "Open the member's menu in the **Members** tab and remove them. They lose access\nto the project at once.\n\nSomeone you removed cannot join an open project again by themselves. To let\nthem back in, invite them: accepting the invitation lifts the exclusion.",
   },
   {
     guide: "Members and ranks",
@@ -219,7 +219,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Members and ranks",
     section: "Next",
     url: "https://alepha.dev/lore/docs/project-members#next",
-    text: "- [Capabilities](/lore/docs/project-capabilities): what the project does,\n  which decides what ranks have to cover.\n- [Notifications](/lore/docs/project-notifications): how members hear about\n  what concerns them.\n- [Hosts](/lore/docs/ship-hosts): who may add and change the machines a\n  project deploys to.",
+    text: "- [Open projects](/lore/docs/project-open-projects): letting anyone signed in\n  join as a viewer.\n- [Capabilities](/lore/docs/project-capabilities): what the project does,\n  which decides what ranks have to cover.\n- [Notifications](/lore/docs/project-notifications): how members hear about\n  what concerns them.\n- [Hosts](/lore/docs/ship-hosts): who may add and change the machines a\n  project deploys to.",
   },
   {
     guide: "Dashboard",
@@ -364,6 +364,48 @@ export const docsCorpus: DocsSection[] = [
     section: "Next",
     url: "https://alepha.dev/lore/docs/project-notifications#next",
     text: "- [Members](/lore/docs/project-members): invitations and who is in a project.\n- [Automations](/lore/docs/plan-automations): rules that send messages of\n  their own.\n- [Feedback](/lore/docs/plan-feedback): the reports and answers behind\n  several of these messages.\n- [Healthchecks](/lore/docs/ship-healthchecks): who an outage alert goes to.",
+  },
+  {
+    guide: "Open projects",
+    section: "Open projects",
+    url: "https://alepha.dev/lore/docs/project-open-projects",
+    text: "An open project lets anyone signed in to your Lore join it, as a viewer, from\nits link. It suits a project whose plan you want to share: an open source\nroadmap, a public changelog with the work behind it, a project a community\nfollows.\n\nA project is **invite only** until you open it, and opening it shows nothing\nto people who are not signed in.",
+  },
+  {
+    guide: "Open projects",
+    section: "What a viewer sees",
+    url: "https://alepha.dev/lore/docs/project-open-projects#what-a-viewer-sees",
+    text: "A viewer reads the project's memory and changes nothing:\n\n- **quests**, with their comments, objectives and tags;\n- **epics** and the roadmap;\n- **folios**;\n- **releases** and **areas**.\n\nEverything else stays closed: the member list and its email addresses, ranks\nand settings, reports, automations, feedback, errors, apps, hosts and\ndeployments. Other members appear to a viewer by name and avatar only.\n\nA viewer gets notifications like any member, for what they can read, and can\nbe mentioned. They cannot be assigned a quest.",
+  },
+  {
+    guide: "Open projects",
+    section: "Opening a project",
+    url: "https://alepha.dev/lore/docs/project-open-projects#opening-a-project",
+    text: "1. Open **Settings ▸ Members**.\n2. Under **Who can join**, choose **Open: anyone signed in can join, as a\n   viewer**, and confirm.\n3. Copy the **Link to share** and send it where your audience is.\n\nThe choice is off when your Lore does not allow open projects, or when the\n**Viewer** rank holds more than reads. In that case the section says which\npermissions are in the way, with a link to the rank.\n\nWhile the project is open, the **Ranks** tab locks every Viewer permission\noutside the list above: you cannot give viewers more than reads by accident.\nTo give someone more, move them to another rank in the **Members** tab.\n\nChoosing **Invite only** again closes the project to new joiners. People who\nalready joined stay members until you remove them.",
+  },
+  {
+    guide: "Open projects",
+    section: "Joining",
+    url: "https://alepha.dev/lore/docs/project-open-projects#joining",
+    text: 'Someone who opens the link of an open project sees its name and icon, what a\nviewer can read, and **Join project**. Signed out, the button asks them to sign\nin or create an account first, then brings them back to the page they opened,\nas a viewer.\n\nOpening a link never makes anyone a member: they have to click **Join\nproject**.\n\nThe link of a project that is not open, or of one that does not exist, answers\nthe same "Page not found", signed in or not, so nobody learns which projects\nexist.',
+  },
+  {
+    guide: "Open projects",
+    section: "Removing a viewer",
+    url: "https://alepha.dev/lore/docs/project-open-projects#removing-a-viewer",
+    text: "Remove a viewer like any member, from their menu in the **Members** tab. They\ncannot join again by themselves. Invite them to let them back in.",
+  },
+  {
+    guide: "Open projects",
+    section: "The CLI and MCP in an open project",
+    url: "https://alepha.dev/lore/docs/project-open-projects#the-cli-and-mcp-in-an-open-project",
+    text: "A viewer can use the `lore` CLI and an agent over MCP with a personal API key,\nlike any member (see [Connecting an agent](/lore/docs/agents-connecting)).\nReads work as for a member: `lore quest list`, `lore folio search` and the\nmatching MCP tools.\n\nA write is refused with a sentence that says the caller is read-only in this\nproject, and `project_context` says so up front, so an agent plans around it\nrather than trying. The CLI prints `Access: read-only` in `lore project\ncontext`.",
+  },
+  {
+    guide: "Open projects",
+    section: "Next",
+    url: "https://alepha.dev/lore/docs/project-open-projects#next",
+    text: "- [Members and ranks](/lore/docs/project-members): the four ranks every\n  project starts with.\n- [Notifications](/lore/docs/project-notifications): what a member, viewer\n  included, hears about.",
   },
   {
     guide: "Quests",
