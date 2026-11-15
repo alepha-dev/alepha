@@ -124,8 +124,8 @@ const entityTables = async (): Promise<string[]> => {
  */
 const SANCTIONED_DROPS: Record<string, string[]> = {
   // Adoption is gone (#Q3628): a leaf, referenced by nothing.
-  "20261115062330_automation_adoptions_dropped": ["automation_adoptions"],
-  "20261115062345_automation_adoptions_dropped": ["automation_adoptions"],
+  "20261115064301_automation_adoptions_dropped": ["automation_adoptions"],
+  "20261115064310_automation_adoptions_dropped": ["automation_adoptions"],
 };
 
 /**

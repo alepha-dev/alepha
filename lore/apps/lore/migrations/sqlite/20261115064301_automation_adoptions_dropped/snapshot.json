@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "d88f1ddb-f2ea-417a-b4af-d0e4fe2aae3a",
-  "prevIds": ["52195c75-0134-493c-953a-9948b8730589"],
+  "id": "55510a44-56d2-4f60-94e7-9d742e1bca4c",
+  "prevIds": ["11bab8bd-1812-4699-8029-c8cc413d885a"],
   "ddl": [
     {
       "name": "ai_conversations",
@@ -6871,16 +6871,6 @@
       "notNull": true,
       "autoincrement": false,
       "default": "'{}'",
-      "generated": null,
-      "entityType": "columns"
-    },
-    {
-      "table": "monitors",
-      "name": "notifications",
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "'{\"email\":true,\"recipients\":[]}'",
       "generated": null,
       "entityType": "columns"
     },

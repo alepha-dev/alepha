@@ -14,7 +14,7 @@ describe("automation adoptions dropped migration", () => {
   const sql = readFileSync(
     join(
       import.meta.dirname,
-      "../migrations/sqlite/20261115062330_automation_adoptions_dropped/migration.sql",
+      "../migrations/sqlite/20261115064301_automation_adoptions_dropped/migration.sql",
     ),
     "utf8",
   );
