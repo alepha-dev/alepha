@@ -89,6 +89,8 @@ export default {
   "automation.event.epicCompleted": "Épopée terminée",
   "automation.event.deployFailed": "Déploiement en échec",
   "automation.event.deploySucceeded": "Déploiement réussi",
+  "automation.event.hostCredentialInvalid": "Jeton d'hôte invalide",
+  "automation.event.hostExpired": "Hôte expiré",
   "automation.event.monitorDown": "Moniteur en panne",
   "automation.event.monitorUp": "Moniteur rétabli",
   "automation.event.questCompleted": "Quête terminée",
@@ -124,6 +126,7 @@ export default {
     "Mesurer le nombre total d’erreurs ouvertes toutes les cinq minutes. Le premier relevé fixe une référence ; un retour au seuil ou en dessous réarme l’alerte.",
   "automation.setup.folio": "Folio",
   "automation.setup.app": "Application",
+  "automation.setup.host": "Hôte",
   "automation.setup.monitor": "Moniteur",
   "automation.preset.release-to-folio.title":
     "Publier les notes de version dans un folio",
@@ -132,6 +135,24 @@ export default {
   "automation.preset.quest-reminders.title": "Rappels de quête",
   "automation.preset.quest-reminders.description":
     "Toutes les heures, rappelle à la personne assignée chaque quête dont le rappel est dû, à l'intervalle choisi sur la quête.",
+  "hosts.subscription.label":
+    "M'avertir quand cet hôte demande une intervention",
+  "hosts.subscription.description":
+    "Une règle à votre nom vous avertira quand cet hôte dépasse sa durée de vie ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "hosts.subscription.offDescription":
+    "Vous ne serez plus averti au sujet de cet hôte.",
+  "hosts.subscription.allLabel":
+    "M'avertir quand un hôte demande une intervention",
+  "hosts.subscription.allDescription":
+    "Une règle à votre nom vous avertira quand un hôte de ce projet dépasse sa durée de vie ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "hosts.subscription.allOffDescription":
+    "Vous ne serez plus averti au sujet des hôtes de ce projet.",
+  "automation.preset.host-credential-invalid.title": "Jeton d'hôte invalide",
+  "automation.preset.host-credential-invalid.description":
+    "Avertit un membre quand la vérification nocturne constate que le jeton Cloudflare d'un hôte ne fonctionne plus. Les déploiements par cet hôte sont refusés tant qu'il n'est pas remplacé.",
+  "automation.preset.host-expired.title": "Hôte expiré",
+  "automation.preset.host-expired.description":
+    "Avertit un membre quand un hôte jetable dépasse sa durée de vie. Lore n'arrête et ne supprime rien.",
   "automation.preset.deploy-failed.title": "Échec du déploiement",
   "automation.preset.deploy-failed.description":
     "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",
@@ -2753,10 +2774,6 @@ export default {
   "account.hosts.delete.confirm": "Supprimer",
   "account.hosts.toast.rotated": "Secret changé",
   "account.hosts.toast.deleted": "Hôte supprimé",
-  "account.delete.hosts.one":
-    "1 hôte qui n'appartient à aucun projet est encore rattaché à votre compte : il sera supprimé avec lui et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
-  "account.delete.hosts.many":
-    "$1 hôtes qui n'appartiennent à aucun projet sont encore rattachés à votre compte : ils seront supprimés avec lui et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
 
   "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",
@@ -3952,6 +3969,8 @@ export default {
   "automation.source.quest.completed": "Quête terminée",
   "automation.source.deploy.failed": "Déploiement échoué",
   "automation.source.deploy.succeeded": "Déploiement réussi",
+  "automation.source.host.credential_invalid": "Jeton d'hôte invalide",
+  "automation.source.host.expired": "Hôte expiré",
   "automation.source.monitor.down": "Moniteur en panne",
   "automation.source.monitor.up": "Moniteur rétabli",
   "automation.source.quests.open": "Quêtes ouvertes, une exécution chacune",

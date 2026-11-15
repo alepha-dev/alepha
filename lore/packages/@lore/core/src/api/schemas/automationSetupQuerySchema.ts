@@ -14,6 +14,7 @@ export const automationSetupQuerySchema = automationPageQuerySchema
       "feedback",
       "deployment",
       "monitor",
+      "host",
     ]),
     /**
      * Narrows the page to labels containing this text, so a picker searches

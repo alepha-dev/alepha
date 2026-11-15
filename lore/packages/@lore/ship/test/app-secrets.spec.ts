@@ -595,6 +595,7 @@ describe("a deployed copy's environment", () => {
       const rows = alepha.inject(TestRows);
       const host = await rows.hosts.create({
         ownerUserId: w.user.id,
+        projectId: w.project.id,
         slug: `bay-${crypto.randomUUID().slice(0, 6)}`,
         type: "bay",
         deployAllowed: true,
@@ -797,6 +798,7 @@ describe("a deployed copy's environment", () => {
       const rows = alepha.inject(TestRows);
       const host = await rows.hosts.create({
         ownerUserId: w.user.id,
+        projectId: w.project.id,
         slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
         type: "cloudflare",
         deployAllowed: true,
@@ -1043,6 +1045,7 @@ describe("a deployed copy's environment", () => {
 
       const host = await rows.hosts.create({
         ownerUserId: w.user.id,
+        projectId: w.project.id,
         slug: "an-account",
         type: "cloudflare",
         deployAllowed: true,

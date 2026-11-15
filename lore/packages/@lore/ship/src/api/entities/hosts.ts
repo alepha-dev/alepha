@@ -50,10 +50,12 @@ export type HostType = (typeof HOST_TYPES)[number];
  * app instance, which resolves from a project (folio #96's `targetId`
  * warning).
  *
- * A host with no home (`projectId` NULL) is one the migration of #Q3278
- * could not place safely, or one an older Worker created inside the
- * migrate-before-deploy window. Nobody but the instance admin reaches it, and
- * the admin assigns it a home.
+ * Every host has a home since #Q3627: `projectId` is required. Production
+ * held none without one on 2026-11-14, so the migration that made it
+ * required refuses to run while any host has none rather than delete it. On
+ * SQLite / D1 the column itself stays nullable, since tightening it is a
+ * rebuild of a table with nine children (see below): a trigger refuses a
+ * NULL instead. Postgres carries `NOT NULL`.
  *
  * ## `ownerUserId` is an anchor, not an owner
  *
@@ -63,8 +65,7 @@ export type HostType = (typeof HOST_TYPES)[number];
  * cascade to the row, and it is never read for access. A homed host's
  * anchor is its home project's owner, who cannot delete their account while
  * they own a live project; `HostAnchorHooks` repoints it on an ownership
- * transfer and before a user is deleted. A host with no home keeps the
- * anchor of whoever created it, and still goes with that account.
+ * transfer and before a user is deleted.
  *
  * ## The rows that reference this table
  *
@@ -89,12 +90,12 @@ export const hosts = $entity({
       onDelete: "cascade",
     }),
     /**
-     * The home project, whose members manage the host by their rank. Null
-     * for a host the admin has yet to assign. `restrict`, and never
-     * reached in practice: projects are soft-deleted, and a guard refuses to
-     * delete a project that is the home of a host.
+     * The home project, whose members manage the host by their rank.
+     * Required since #Q3627. `restrict`, and never reached in practice:
+     * projects are soft-deleted, and a guard refuses to delete a project
+     * that is the home of a host.
      */
-    projectId: db.ref(z.integer().optional(), () => projects.cols.id, {
+    projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "restrict",
     }),
     /**

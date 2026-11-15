@@ -13,12 +13,18 @@ export const automationTriggerSchema = z.union([
         "quest.completed",
         "monitor.down",
         "monitor.up",
+        "host.credential_invalid",
+        "host.expired",
       ]),
       app: z.string().max(255).optional(),
       /**
        * Only this monitor's incidents, by id (#Q3610), on `monitor.*`.
        */
       monitor: z.string().max(255).optional(),
+      /**
+       * Only this host's alerts, by id (#Q3627), on `host.*`.
+       */
+      host: z.string().max(255).optional(),
     })
     .strict(),
   z

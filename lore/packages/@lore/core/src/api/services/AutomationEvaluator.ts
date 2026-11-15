@@ -174,22 +174,26 @@ export class AutomationEvaluator {
               { kind: row.value.kind, available: true, value: row.value },
             ]),
           );
-          const filtered = (["app", "monitor"] as const).some((name) => {
-            const filter = trigger[name];
-            return (
-              filter !== undefined &&
-              this.bindings.resolve({
-                slot: { kind: "text", required: true },
-                value: filter,
-                fields: {},
-                variables,
-                path: `trigger.${name}`,
-              }).value !==
-                (name === "monitor"
-                  ? context.values.monitor_id
-                  : context.values.app)
-            );
-          });
+          const filtered = (["app", "monitor", "host"] as const).some(
+            (name) => {
+              const filter = trigger[name];
+              return (
+                filter !== undefined &&
+                this.bindings.resolve({
+                  slot: { kind: "text", required: true },
+                  value: filter,
+                  fields: {},
+                  variables,
+                  path: `trigger.${name}`,
+                }).value !==
+                  (name === "monitor"
+                    ? context.values.monitor_id
+                    : name === "host"
+                      ? context.values.host_id
+                      : context.values.app)
+              );
+            },
+          );
           selected = {
             kind: "scalar",
             contexts: filtered ? [] : [context],
