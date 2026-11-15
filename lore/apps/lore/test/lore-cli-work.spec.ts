@@ -556,16 +556,27 @@ describe("lore project, quest and folio, against Lore", () => {
     expect(stored.data.acceptedAt).toBeFalsy();
   });
 
-  it("refuses a stranger's key with exit 4, naming the project", async () => {
+  it("answers a stranger's key as for an unknown project, naming it", async () => {
+    // A non-member gets the same 404 as a slug nobody owns (#Q3649), so the
+    // key cannot tell an invite-only project from a missing one.
     const { project } = await ownProject();
     const stranger = await createTestUser(ctx);
-    const lore = cliFor(ctx, await createApiKey(ctx, stranger), project.slug);
+    const key = await createApiKey(ctx, stranger);
+    const lore = cliFor(ctx, key, project.slug);
     clis.push(lore.cli);
 
     const refused = await lore.fail("quest list", []);
+    const unknown = cliFor(ctx, key, "nobody-owns-this");
+    clis.push(unknown.cli);
+    const missing = await unknown.fail("quest list", []);
 
-    expect(refused.error?.data.exitCode).toBe(4);
+    expect(refused.error?.data.exitCode).toBe(1);
     expect(refused.error?.message).toContain(`Project ${project.slug}:`);
+    expect(refused.error?.message).toContain("Project not found");
+    expect(missing.error?.data.exitCode).toBe(1);
+    expect(
+      missing.error?.message.replace("nobody-owns-this", project.slug),
+    ).toBe(refused.error?.message);
   });
 
   it("exits 1 on a quest that does not exist", async () => {

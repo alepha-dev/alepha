@@ -706,8 +706,9 @@ export class WorkRouter {
    *
    * ⚠️ **Top-level, and unguarded, and both are load-bearing.**
    *
-   * `/:projectSlug` carries `use: [$secure()]`, which member-gates its whole
-   * subtree AND puts it in CSR - so a child route there would render no HTML
+   * `/:projectSlug` carries a guard (`projectAccess`) and a loader that
+   * member-gate its whole subtree, and the guard puts it in CSR - so a child
+   * route there would render no HTML
    * a crawler could ever read, which is most of what this page is for. Two
    * routes cannot own one path either, so there is exactly ONE route here and
    * the members view (#1561) renders into it rather than beside it.
