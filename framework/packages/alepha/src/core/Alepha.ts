@@ -2020,7 +2020,7 @@ export class Alepha {
   /**
    * Get all environment variable schemas and their parsed values.
    *
-   * This is useful for DevTools to display all expected environment variables.
+   * The inspector uses it to list every expected environment variable.
    */
   public getEnvSchemas(): Array<{
     schema: ZType;

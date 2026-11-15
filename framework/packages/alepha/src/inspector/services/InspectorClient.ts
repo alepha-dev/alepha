@@ -37,12 +37,12 @@ export class InspectorClient {
    * A connection to one run.
    *
    * @throws AlephaError when the run speaks another protocol version, naming
-   * both and the devtools release that matches the run.
+   * both and the alepha release that matches the run.
    */
   public connect(run: InspectorRun): InspectorConnection {
     if (run.protocol !== INSPECTOR_PROTOCOL) {
       throw new AlephaError(
-        `Run "${run.name}" (${run.runId}) speaks inspector protocol ${run.protocol}, this client speaks ${INSPECTOR_PROTOCOL}. Use the tool released with alepha ${run.alephaVersion}, e.g. npx @alepha/devtools@${run.alephaVersion}.`,
+        `Run "${run.name}" (${run.runId}) speaks inspector protocol ${run.protocol}, this client speaks ${INSPECTOR_PROTOCOL}. Use the tool released with alepha ${run.alephaVersion}, e.g. npx alepha@${run.alephaVersion} mcp.`,
       );
     }
     return new InspectorConnection(run, this.registry, this.dateTime);

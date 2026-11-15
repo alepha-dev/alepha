@@ -8,7 +8,7 @@ import { DevLogStoreProvider } from "alepha/inspector";
 
 ## Overview
 
-The devtools log buffer, and the part of it that outlives the process.
+The inspector's log buffer, and the part of it that outlives the process.
 
 Logs used to live only in `MemoryDestinationProvider`, which made every dev
 restart throw them away. That is backwards: the restart is usually caused by

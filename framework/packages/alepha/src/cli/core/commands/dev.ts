@@ -147,7 +147,7 @@ export class DevCommand {
       app.with(mod.AlephaInspector);
     } catch (error) {
       this.log.warn(
-        "Could not load alepha/inspector, devtools cannot see this app",
+        "Could not load alepha/inspector, alepha mcp cannot see this app",
         {
           error,
         },

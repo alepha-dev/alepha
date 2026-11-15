@@ -5,7 +5,6 @@ message opens a trace, and the work inside it (actions, page loaders, queries,
 outbound calls, cache reads, lock waits) becomes its spans. There is no code to
 write: you choose where the spans go.
 
-- **In development**, devtools shows each trace as a waterfall.
 - **On Node and Bun**, set `OTEL_EXPORTER_OTLP_ENDPOINT` and spans are posted to
   any OpenTelemetry backend.
 - **On Cloudflare Workers**, spans join Cloudflare's own trace, beside the D1,
@@ -36,8 +35,7 @@ recorded on the span it escaped, with its type and message.
 
 One repository method can call another (`getById` reads through `findMany`),
 but each statement is one span, named by its SQL verb and table. Five
-`select order_items` spans under one parent is the shape of an N+1, and
-devtools flags it.
+`select order_items` spans under one parent is the shape of an N+1.
 
 Queries, cache operations and lock waits are only recorded inside a trace: a
 statement run at boot or by a poll loop opens no trace of its own.
@@ -45,7 +43,7 @@ statement run at boot or by a poll loop opens no trace of its own.
 ## Log lines carry their trace
 
 While a span is active, every log entry carries `traceId` and `spanId`. A JSON
-log line opens its trace, and devtools shows a span's own log lines under it.
+log line opens its trace in whatever backend received the spans.
 
 ```json
 {
@@ -143,13 +141,6 @@ off (`0`) or to another rate without a rebuild.
 
 No `traceparent` leaves a Worker: Cloudflare does not say whether a request is
 sampled, and its trace ids are not propagated outside Cloudflare.
-
-## Reading traces in devtools
-
-Under `alepha dev`, open devtools and pick **Traces**: the last two hundred
-traces of the app, newest first, with a filter for failed ones. A trace opens
-as a waterfall; a span shows its timing, attributes, error and log lines. A
-parent of five or more same-name spans carries an N+1 warning.
 
 ## What is never recorded
 

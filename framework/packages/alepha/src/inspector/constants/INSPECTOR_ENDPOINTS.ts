@@ -8,21 +8,13 @@
  */
 export const INSPECTOR_ENDPOINTS = {
   metadata: { method: "GET", path: "/metadata" },
-  updateAtom: { method: "POST", path: "/atoms" },
-  atomLog: { method: "GET", path: "/atoms/log" },
   logs: { method: "GET", path: "/logs" },
-  traces: { method: "GET", path: "/traces" },
-  trace: { method: "GET", path: "/traces/:id" },
   emails: { method: "GET", path: "/emails" },
   sms: { method: "GET", path: "/sms" },
   jobs: { method: "GET", path: "/jobs" },
-  jobExecution: { method: "GET", path: "/jobs/executions/:id" },
   jobExecutions: { method: "GET", path: "/jobs/:name/executions" },
   jobTrigger: { method: "POST", path: "/jobs/:name/trigger" },
   jobRetry: { method: "POST", path: "/jobs/executions/:id/retry" },
   dbList: { method: "GET", path: "/db/:entity/records" },
-  dbCreate: { method: "POST", path: "/db/:entity/records" },
-  dbUpdate: { method: "PUT", path: "/db/:entity/records/:id" },
-  dbDelete: { method: "DELETE", path: "/db/:entity/records/:id" },
   actionCall: { method: "POST", path: "/actions/:name/call" },
 } as const;

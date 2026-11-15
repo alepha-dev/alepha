@@ -71,7 +71,7 @@ export interface StoragePrimitiveOptions {
   name?: string;
 
   /**
-   * Human-readable purpose, surfaced in devtools and the admin UI.
+   * Human-readable purpose, surfaced by the inspector and the admin UI.
    */
   description?: string;
 

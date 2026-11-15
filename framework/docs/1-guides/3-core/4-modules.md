@@ -214,5 +214,3 @@ console.log(alepha.graph());
 //   ...
 // }
 ```
-
-The devtools (`npx @alepha/devtools`, see [Inspector](/docs/guides-core-inspector)) also includes a graph visualization that shows module boundaries and dependencies.

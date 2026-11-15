@@ -15,7 +15,7 @@ interface LogPage {
   dropped: number;
 }
 
-describe("the devtools log tail", () => {
+describe("the inspector log tail", () => {
   const boot = async () => {
     const alepha = Alepha.create({ env: { ALEPHA_INSPECT: "1" } }).with(
       AlephaInspector,

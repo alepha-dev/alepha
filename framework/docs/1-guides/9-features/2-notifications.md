@@ -390,13 +390,13 @@ mail without one.
 
 ## 9. Providers
 
-| provider   | module                    | needs                                                                                                        |
-| ---------- | ------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| SMTP       | `alepha/email/smtp`       | `EMAIL_HOST`, `EMAIL_FROM`, optionally `EMAIL_USER` / `EMAIL_PASS`, `EMAIL_PORT` (587), `EMAIL_SECURE`       |
-| Brevo      | `alepha/email/brevo`      | `BREVO_API_KEY`, `EMAIL_FROM`                                                                                |
-| Cloudflare | `alepha/email/cloudflare` | `EMAIL_FROM`, plus a `SEND_EMAIL` binding, or `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` off Workers   |
-| Local      | built in                  | the default outside tests: writes `.eml.json` files under `DATA_DIR/emails`, which the devtools outbox reads |
-| Memory     | built in                  | the default under test                                                                                       |
+| provider   | module                    | needs                                                                                                      |
+| ---------- | ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| SMTP       | `alepha/email/smtp`       | `EMAIL_HOST`, `EMAIL_FROM`, optionally `EMAIL_USER` / `EMAIL_PASS`, `EMAIL_PORT` (587), `EMAIL_SECURE`     |
+| Brevo      | `alepha/email/brevo`      | `BREVO_API_KEY`, `EMAIL_FROM`                                                                              |
+| Cloudflare | `alepha/email/cloudflare` | `EMAIL_FROM`, plus a `SEND_EMAIL` binding, or `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` off Workers |
+| Local      | built in                  | the default outside tests: writes `.eml.json` files under `DATA_DIR/emails`, which `alepha mcp` reads      |
+| Memory     | built in                  | the default under test                                                                                     |
 
 `DATA_DIR` defaults to `node_modules/.alepha`, which sits inside the deployed
 bundle. Local is also what a production app gets when it registers no real
@@ -420,8 +420,8 @@ header map is otherwise a spoofing surface. Use the `replyTo` option.
 ## 10. Previewing and testing
 
 In development the Local provider writes every message to `DATA_DIR`, and
-the devtools (`npx @alepha/devtools`) renders them in its **Outbox** view,
-emails and SMS together. That is the preview: send the thing and look at it.
+[`alepha mcp`](/docs/guides-core-dev-mcp) lists them (`emails_list`, `email_read`, `sms_list`, `sms_read`).
+That is the preview: send the thing and read it.
 
 In tests, use `MemoryEmailProvider`:
 
@@ -465,7 +465,7 @@ class Verification {
 rendering and no subject: build the string yourself.
 
 Declare a channel per purpose rather than one per app. The name is what appears
-in the `sms:send:before` and `sms:sent` hooks and in the devtools outbox, so
+in the `sms:send:before` and `sms:sent` hooks and in the local outbox, so
 `verification-code` and `delivery-update` stay distinguishable where a single
 `sms` channel would not.
 

@@ -47,7 +47,7 @@ export const buildOptions = $atom({
 
     /**
      * Bundle `alepha/inspector` into the server, registered before the app
-     * starts, so the production build can be inspected by devtools.
+     * starts, so the production build can be inspected by `alepha mcp`.
      *
      * It still stays off until the process is started with
      * `ALEPHA_INSPECT=1`. A build without this flag carries none of it. No

@@ -20,7 +20,7 @@ import {
  * Discovery without port scanning. Each process with the inspector writes
  * `<runDir>/<runId>.json` on start and removes it on stop
  * (`InspectorRunProvider`); a tool lists the directory. Side-effect free, so a
- * tool that is not itself an app (the devtools server, a script) injects this
+ * tool that is not itself an app (`alepha mcp`, a script) injects this
  * alone.
  */
 export class InspectorRegistry {

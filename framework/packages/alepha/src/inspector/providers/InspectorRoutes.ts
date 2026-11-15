@@ -16,7 +16,6 @@ import {
 } from "alepha/server";
 import { localSmsOptions } from "alepha/sms";
 import { FileSystemProvider } from "alepha/system";
-import { MemoryTraceProvider, type Span } from "alepha/tracing";
 
 import { INSPECTOR_ENDPOINTS } from "../constants/INSPECTOR_ENDPOINTS.ts";
 import type {
@@ -25,7 +24,6 @@ import type {
   InspectorRouteSchema,
 } from "../interfaces/InspectorRoute.ts";
 import { devMetadataSchema } from "../schemas/DevMetadata.ts";
-import { DevAtomLogProvider } from "./DevAtomLogProvider.ts";
 import { DevLogStoreProvider } from "./DevLogStoreProvider.ts";
 import { DevToolsMetadataProvider } from "./DevToolsMetadataProvider.ts";
 
@@ -33,13 +31,11 @@ import { DevToolsMetadataProvider } from "./DevToolsMetadataProvider.ts";
  * The inspector protocol: every endpoint a tool can call on a running app.
  *
  * A plain table of `{ method, path, schema, handler }`, not `$route`s. The
- * per-process socket serves it, the typed client is derived from it, and
- * until the in-app devtools goes, an adapter also mounts it on the app server
- * under `/__devtools/api`. Keeping it free of `$route` is what lets one table
- * feed all three.
+ * per-process socket serves it and the typed client is derived from it.
+ * Keeping it free of `$route` is what lets one table feed both.
  *
- * SECURITY: these endpoints read and MUTATE application state (arbitrary DB
- * writes, atom writes, job triggers) and serve the environment, secrets
+ * SECURITY: these endpoints read and MUTATE application state (job
+ * triggers and retries, action calls as any user) and serve the environment, secrets
  * included, in cleartext. They are unauthenticated by design, which is why
  * the module that registers them refuses production unless explicitly opted
  * into, and why the transport is a `0600` socket rather than a TCP port.
@@ -51,25 +47,12 @@ export class InspectorRoutes {
   protected readonly alepha = $inject(Alepha);
   protected readonly metadataProvider = $inject(DevToolsMetadataProvider);
   protected readonly logStore = $inject(DevLogStoreProvider);
-  protected readonly atomLog = $inject(DevAtomLogProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly json = $inject(JsonFormatterProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly emailOptions = $store(localEmailOptions);
   protected readonly smsOptions = $store(localSmsOptions);
-  /**
-   * The recent traces devtools draws. Injecting it is what turns
-   * tracing on, whenever the inspector itself is on.
-   */
-  protected readonly traceStore = $inject(MemoryTraceProvider);
-
-  /**
-   * Siblings sharing a name, under one parent, from which the parent is
-   * flagged as an N+1: `select users` five times is one query per row.
-   */
-  public nPlusOneThreshold = 5;
-
   public readonly routes = {
     metadata: this.route({
       ...INSPECTOR_ENDPOINTS.metadata,
@@ -77,61 +60,6 @@ export class InspectorRoutes {
         response: devMetadataSchema,
       },
       handler: () => this.metadataProvider.getMetadata(),
-    }),
-
-    updateAtom: this.route({
-      ...INSPECTOR_ENDPOINTS.updateAtom,
-      schema: {
-        body: z.object({
-          name: z.text(),
-          value: z.any(),
-        }),
-        response: z.object({
-          success: z.boolean(),
-          message: z.text().optional(),
-        }),
-      },
-      handler: ({ body }) => {
-        const atoms = this.alepha.store.getAtoms(false);
-        const atomEntry = atoms.find((a) => a.atom.key === body.name);
-
-        if (atomEntry) {
-          try {
-            // A transport may run the handler inside a request context, and a
-            // plain `set` writes into that context's fork: the value used to
-            // die with the response while the UI reported "Saved". The
-            // app-level store is the one being edited.
-            this.alepha.store.set(atomEntry.atom, body.value, {
-              skipContext: true,
-            });
-            return { success: true };
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : String(error);
-            this.log.warn(`Failed to update atom "${body.name}"`, { error });
-            return { success: false, message };
-          }
-        }
-
-        return { success: false, message: `Unknown atom "${body.name}"` };
-      },
-    }),
-
-    atomLog: this.route({
-      ...INSPECTOR_ENDPOINTS.atomLog,
-      schema: {
-        query: z.object({
-          key: z.text().optional(),
-        }),
-        response: z.object({
-          entries: z.array(z.any()),
-          total: z.integer(),
-        }),
-      },
-      handler: ({ query }) => {
-        const entries = this.atomLog.entries(query.key);
-        return { entries: entries.slice(0, 100) as any, total: entries.length };
-      },
     }),
 
     logs: this.route({
@@ -185,29 +113,6 @@ export class InspectorRoutes {
       handler: ({ query }) => this.readLogs(query),
     }),
 
-    traces: this.route({
-      ...INSPECTOR_ENDPOINTS.traces,
-      schema: {
-        response: z.object({
-          traces: z.array(z.record(z.text(), z.any())),
-        }),
-      },
-      handler: () => ({ traces: this.traceStore.traces() as any[] }),
-    }),
-
-    trace: this.route({
-      ...INSPECTOR_ENDPOINTS.trace,
-      schema: {
-        params: z.object({ id: z.text() }),
-        response: z.object({
-          traceId: z.text(),
-          spans: z.array(z.record(z.text(), z.any())),
-          logs: z.array(z.any()),
-        }),
-      },
-      handler: ({ params }) => this.readTrace(params.id),
-    }),
-
     emails: this.route({
       ...INSPECTOR_ENDPOINTS.emails,
       schema: {
@@ -233,7 +138,7 @@ export class InspectorRoutes {
            * Where these were read from. The view used to print the default
            * path as a literal, which is wrong the moment `DATA_DIR` moves it,
            * and that path is the whole point of the footer: it is what you
-           * need when you go looking outside devtools.
+           * need when you go looking at the files themselves.
            */
           directory: z.text({ size: "long" }),
         }),
@@ -304,21 +209,6 @@ export class InspectorRoutes {
         const service = this.getJobService();
         if (!service) return { jobs: [] };
         return { jobs: await service.listJobs() } as any;
-      },
-    }),
-
-    // Declared before `/jobs/:name/executions`, which it would otherwise
-    // shadow for a job literally named "executions".
-    jobExecution: this.route({
-      ...INSPECTOR_ENDPOINTS.jobExecution,
-      schema: {
-        params: z.object({ id: z.text() }),
-        response: z.record(z.text(), z.any()),
-      },
-      handler: async ({ params }) => {
-        const service = this.getJobService();
-        if (!service) return { error: "Jobs module not loaded" };
-        return ((await service.getExecution(params.id)) ?? {}) as any;
       },
     }),
 
@@ -417,68 +307,6 @@ export class InspectorRoutes {
           { where: this.parseWhere(repo, query.where) as any },
           { count: true },
         ) as any;
-      },
-    }),
-
-    dbCreate: this.route({
-      ...INSPECTOR_ENDPOINTS.dbCreate,
-      schema: {
-        params: z.object({ entity: z.text() }),
-        body: z.record(z.text(), z.any()),
-        response: z.record(z.text(), z.any()),
-      },
-      handler: async ({ params, body }) => {
-        const repo = this.getRepository(params.entity);
-        if (!repo) {
-          return { error: "Entity not found" };
-        }
-        return repo.create(body) as any;
-      },
-    }),
-
-    dbUpdate: this.route({
-      ...INSPECTOR_ENDPOINTS.dbUpdate,
-      schema: {
-        params: z.object({ entity: z.text(), id: z.text() }),
-        body: z.record(z.text(), z.any()),
-        response: z.record(z.text(), z.any()),
-      },
-      handler: async ({ params, body }) => {
-        const repo = this.getRepository(params.entity);
-        if (!repo) {
-          return { error: "Entity not found" };
-        }
-
-        const idValue = this.parseId(repo, params.id);
-        return repo.updateById(idValue, body) as any;
-      },
-    }),
-
-    dbDelete: this.route({
-      ...INSPECTOR_ENDPOINTS.dbDelete,
-      schema: {
-        params: z.object({ entity: z.text(), id: z.text() }),
-        response: z.record(z.text(), z.any()),
-      },
-      /**
-       * `deleteById` resolves to the deleted rows (an array) while the
-       * response is declared as a record, so every delete used to answer 500
-       * ("expected record, received array") *after* removing the row. A stable
-       * `{ deleted, id }` envelope is returned instead of the driver's own
-       * shape, so the contract no longer depends on what the ORM happens to
-       * resolve to.
-       */
-      handler: async ({ params }) => {
-        const repo = this.getRepository(params.entity);
-        if (!repo) {
-          return { deleted: 0, error: "Entity not found" };
-        }
-
-        const idValue = this.parseId(repo, params.id);
-        const result = await repo.deleteById(idValue);
-        const deleted = Array.isArray(result) ? result.length : result ? 1 : 0;
-
-        return { deleted, id: params.id };
       },
     }),
 
@@ -775,65 +603,6 @@ export class InspectorRoutes {
   }
 
   /**
-   * One trace: every span, the log lines logged inside it (matched to a span
-   * by `spanId`), and on a parent the N+1 flag: {@link nPlusOneThreshold}
-   * or more children of the same name.
-   */
-  protected readTrace(traceId: string) {
-    const spans = this.traceStore.trace(traceId);
-    const children = new Map<string, Map<string, number>>();
-    for (const span of spans) {
-      if (!span.parentSpanId) continue;
-      const names = children.get(span.parentSpanId) ?? new Map();
-      names.set(span.name, (names.get(span.name) ?? 0) + 1);
-      children.set(span.parentSpanId, names);
-    }
-    const logs = this.logStore
-      .entries()
-      .filter((entry) => entry.traceId === traceId)
-      .map((entry) => this.serializeEntry(entry));
-    return {
-      traceId,
-      spans: spans.map((span) => ({
-        ...this.serializeSpan(span),
-        nPlusOne: this.nPlusOneOf(children.get(span.spanId)),
-      })),
-      logs,
-    };
-  }
-
-  protected nPlusOneOf(
-    names: Map<string, number> | undefined,
-  ): { name: string; count: number } | undefined {
-    if (!names) return undefined;
-    let worst: { name: string; count: number } | undefined;
-    for (const [name, count] of names) {
-      if (count >= this.nPlusOneThreshold && count > (worst?.count ?? 0)) {
-        worst = { name, count };
-      }
-    }
-    return worst;
-  }
-
-  protected serializeSpan(span: Span) {
-    return {
-      traceId: span.traceId,
-      spanId: span.spanId,
-      parentSpanId: span.parentSpanId,
-      name: span.name,
-      kind: span.kind,
-      startTime: span.startTime,
-      endTime: span.endTime,
-      duration: span.duration,
-      status: span.status,
-      statusMessage: span.statusMessage,
-      exception: span.exception,
-      attributes: span.attributes,
-      links: span.links,
-    };
-  }
-
-  /**
    * A log entry as it crosses the wire: colour codes stripped, errors
    * expanded (an Error serializes as `{}`), and the first error's stack lifted
    * to `stack`, which the log panel renders as a trace.
@@ -870,7 +639,7 @@ export class InspectorRoutes {
    *
    * Under `LOG_FORMAT=pretty` some call sites colourise values inside the
    * message itself (`Listening on ${cyan(url)}`). A terminal renders that;
-   * the devtools UI is HTML, so the raw codes leak through as
+   * a reader that is not a terminal sees the raw codes leak through as
    * `Listening on [36mhttp://...[0m`. The buffer keeps the original; only the
    * served copy is cleaned.
    */

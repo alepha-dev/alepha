@@ -1,7 +1,7 @@
 import type { Span } from "../services/Span.ts";
 
 /**
- * Where finished spans go: the memory ring that serves devtools and specs,
+ * Where finished spans go: the memory ring that serves specs,
  * the OTLP exporter on Node and Bun.
  *
  * A sink is registered on the {@link Tracer} with `addSink()`. While none is

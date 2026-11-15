@@ -1,4 +1,4 @@
-import { $atom, Alepha, z } from "alepha";
+import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import { AlephaInspector } from "../index.ts";
@@ -22,12 +22,6 @@ const call = async (
   return { status: res.status, body: JSON.parse(JSON.stringify(res.body)) };
 };
 
-const testAtom = $atom({
-  name: "test.devtools.atoms.settings",
-  schema: z.object({ theme: z.string() }),
-  default: { theme: "light" },
-});
-
 const boot = async () => {
   const alepha = Alepha.create({ env: { ALEPHA_INSPECT: "1" } }).with(
     AlephaInspector,
@@ -36,73 +30,14 @@ const boot = async () => {
   return alepha;
 };
 
-const postAtom = (alepha: Alepha, body: { name: string; value: unknown }) =>
-  call(alepha, "POST", "/atoms", { body });
-
-describe("InspectorRoutes: POST /atoms", () => {
-  it("accepts a valid value for a registered atom", async () => {
-    const alepha = await boot();
-    alepha.store.get(testAtom); // register the atom
-
-    const resp = await postAtom(alepha, {
-      name: testAtom.key,
-      value: { theme: "dark" },
-    });
-
-    expect(resp.status).toBe(200);
-    expect(resp.body).toStrictEqual({ success: true });
-
-    await alepha.stop();
-  });
-
-  it("rejects an invalid value with success:false and a diagnosable message instead of a 500", async () => {
-    const alepha = await boot();
-    alepha.store.get(testAtom); // register the atom
-
-    const resp = await postAtom(alepha, {
-      name: testAtom.key,
-      value: { theme: 42 },
-    });
-
-    // Before this fix, an invalid value threw a SchemaValidationError out of the
-    // handler (an uncaught 500). The catch must turn it into a normal
-    // success:false response, with a message so the devtools UI can show
-    // *why* the edit was rejected instead of a silent, unexplained failure.
-    expect(resp.status).toBe(200);
-    const json = resp.body;
-    expect(json.success).toBe(false);
-    expect(typeof json.message).toBe("string");
-    expect(json.message.length).toBeGreaterThan(0);
-
-    await alepha.stop();
-  });
-
-  it("returns success:false with a message for an unknown atom name", async () => {
-    const alepha = await boot();
-
-    const resp = await postAtom(alepha, {
-      name: "does.not.exist",
-      value: 1,
-    });
-
-    expect(resp.status).toBe(200);
-    const json = resp.body;
-    expect(json.success).toBe(false);
-    expect(typeof json.message).toBe("string");
-    expect(json.message).toContain("does.not.exist");
-
-    await alepha.stop();
-  });
-});
-
 describe("InspectorRoutes: matching", () => {
-  it("matches a static segment before a parameter that would capture it", async () => {
+  it("matches a route by method, segment count and parameters", async () => {
     const alepha = await boot();
     const routes = alepha.inject(InspectorRoutes);
 
-    const execution = routes.match("GET", "/jobs/executions/abc");
-    expect(execution?.route.path).toBe("/jobs/executions/:id");
-    expect(execution?.params).toEqual({ id: "abc" });
+    const retry = routes.match("POST", "/jobs/executions/abc/retry");
+    expect(retry?.route.path).toBe("/jobs/executions/:id/retry");
+    expect(retry?.params).toEqual({ id: "abc" });
 
     const executions = routes.match("get", "/jobs/send-email/executions");
     expect(executions?.route.path).toBe("/jobs/:name/executions");
@@ -115,9 +50,8 @@ describe("InspectorRoutes: matching", () => {
     const alepha = await boot();
     const routes = alepha.inject(InspectorRoutes);
 
-    expect(routes.match("DELETE", "/db/user%20s/records/1")?.params).toEqual({
+    expect(routes.match("GET", "/db/user%20s/records")?.params).toEqual({
       entity: "user s",
-      id: "1",
     });
     expect(routes.match("DELETE", "/metadata")).toBeUndefined();
     expect(routes.match("GET", "/nope")).toBeUndefined();
@@ -132,7 +66,7 @@ describe("InspectorDispatcher", () => {
 
     expect((await call(alepha, "GET", "/nope")).status).toBe(404);
     expect(
-      (await call(alepha, "POST", "/atoms", { body: { value: 1 } })).status,
+      (await call(alepha, "POST", "/actions/any/call", { body: 1 })).status,
     ).toBe(400);
 
     await alepha.stop();
@@ -140,28 +74,14 @@ describe("InspectorDispatcher", () => {
 
   it("serializes through the response schema", async () => {
     const alepha = await boot();
-    alepha.store.get(testAtom);
 
-    const { status, body } = await call(alepha, "GET", "/atoms/log", {
-      query: { key: testAtom.key },
-    });
+    const { status, body } = await call(alepha, "GET", "/emails");
 
     expect(status).toBe(200);
     expect(body).toEqual({
-      entries: expect.any(Array),
-      total: expect.any(Number),
+      emails: expect.any(Array),
+      directory: expect.any(String),
     });
-
-    await alepha.stop();
-  });
-
-  it("writes an atom into the app-level store, not a request fork", async () => {
-    const alepha = await boot();
-    alepha.store.get(testAtom);
-
-    await postAtom(alepha, { name: testAtom.key, value: { theme: "dark" } });
-
-    expect(alepha.store.get(testAtom)).toEqual({ theme: "dark" });
 
     await alepha.stop();
   });

@@ -20,7 +20,7 @@ Configurable logging with multiple outputs.
 - Compact CLI format
 - Raw text format
 - Console destination
-- Memory destination (for devtools)
+- Memory destination (for the inspector)
 - Custom handlers
 - Configuration via `LOG_LEVEL`, `LOG_FORMAT`, and `DEBUG`
 

@@ -49,7 +49,7 @@ React Fast Refresh comes from Vite's React plugin, which `dev` registers for you
 
 ### Inspector
 
-`alepha dev` mounts [`alepha/inspector`](/docs/guides-core-inspector) into the app on every load, so the devtools can see it. No app imports the inspector itself: a production build carries it only when built with `alepha build --inspect`.
+`alepha dev` mounts [`alepha/inspector`](/docs/guides-core-inspector) into the app on every load, so `alepha mcp` can see it. No app imports the inspector itself: a production build carries it only when built with `alepha build --inspect`.
 
 ### Workspace Mode
 

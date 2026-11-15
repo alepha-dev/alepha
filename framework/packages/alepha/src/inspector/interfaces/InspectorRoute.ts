@@ -44,8 +44,8 @@ export type InspectorResponse<T extends InspectorRouteSchema> = Infer<
  * One endpoint of the inspector protocol.
  *
  * Deliberately independent of `$route`: the same table is served over the
- * per-process socket, mounted on the app server by the in-app devtools, and
- * read by the typed client, and none of those should depend on the others.
+ * per-process socket and read by the typed client, and neither should depend
+ * on the other.
  * `path` is relative to whatever base the transport serves it under
  * (`/metadata`, `/jobs/:name/executions`).
  */

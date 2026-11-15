@@ -24,7 +24,7 @@ import type { Infer, ZObject, ZType } from "../providers/ZodProvider.ts";
  * - Persistence adapters: cookie (SSR-safe), localStorage, sessionStorage
  * - `serverOnly` flag to keep an atom out of the hydration payload
  * - reset / watch helpers on the state manager
- * - Documentation generation & devtools integration (mutation log)
+ * - Documentation generation and inspector metadata
  *
  * Common use cases:
  * - user preferences
@@ -98,7 +98,7 @@ export type AtomOptions<T extends ZType, N extends string> = {
    * 1. `StateManager.exportAtoms()` skips the atom, so the value is never
    *    written into the `<script id="__ssr">` JSON block serialized into
    *    the HTML payload.
-   * 2. DevTools (`DevToolsMetadataProvider.getAtoms()`) omits
+   * 2. The inspector (`DevToolsMetadataProvider.getAtoms()`) omits
    *    `defaultValue` and `currentValue` from `/metadata`. The atom is
    *    still listed with its name, description, and schema — a developer
    *    can see that it exists and what shape it has, just not what is in

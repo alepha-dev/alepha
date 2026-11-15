@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAdminSlide } from "./GettingStartedAdminSlide.tsx";
 import { useAuthSlide } from "./GettingStartedAuthSlide.tsx";
-import { useDevtoolsSlide } from "./GettingStartedDevtoolsSlide.tsx";
 
 export type GettingStartedStep = {
   num: string;
@@ -76,7 +75,6 @@ const GettingStarted = (props: GettingStartedProps) => {
   // Get auth-aware slide content (hooks return undefined if routes don't exist)
   const authSlide = useAuthSlide();
   const adminSlide = useAdminSlide();
-  const devtoolsSlide = useDevtoolsSlide();
 
   const filteredMessages = useMemo(() => {
     const result: GettingStartedSlide[] = [];
@@ -101,15 +99,11 @@ const GettingStarted = (props: GettingStartedProps) => {
       result.push(adminSlide);
     }
 
-    // The same on the server and in the browser: nothing about it depends on
-    // the environment, so it cannot cause a hydration mismatch.
-    result.push(devtoolsSlide);
-
     // Add "Need help?" message
     result.push(helpSlide);
 
     return result;
-  }, [welcome, authSlide, adminSlide, devtoolsSlide]);
+  }, [welcome, authSlide, adminSlide]);
 
   const current = filteredMessages[index];
 
