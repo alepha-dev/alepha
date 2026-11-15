@@ -395,6 +395,11 @@ export default {
   "folios.editor.listing.items": "$1 items",
   "folios.editor.listing.pinned": "Pinned",
   "folios.editor.listing.empty": "This directory is empty.",
+  "folios.editor.root.title": "Folios",
+  "folios.editor.root.description":
+    "Open a folio from the tree, start a new one, or search them all.",
+  "folios.editor.root.new": "New folio",
+  "folios.editor.root.search": "Search folios",
 
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "New folio",
