@@ -615,42 +615,54 @@ export const confirmDialog = async (
 };
 
 /**
- * Create a rank from one of the presets, the way an owner does it: Settings >
- * Ranks > Create rank > Start from <preset>, then confirm the name.
+ * Add permissions to a rank the project already holds, keeping its name and
+ * the rest of its set, through the ranks API as the signed-in owner.
  *
- * A project starts with Owner and Member only since #Q2511, so a spec that
- * invites somebody as a Contributor or a Viewer creates that rank first.
- * Returns the new rank's key, read off the save request: the editor mints
- * `r<time>` rather than reusing the preset's key, so a spec that talks to the
- * API has to be told which one it got.
+ * A default rank is seeded from the capabilities the project had when it was
+ * created, so a spec that turns a capability on afterwards widens the rank
+ * the way an owner would in the matrix.
  */
-export const createRankFromPreset = async (
+export const grantRank = async (
   page: Page,
-  slug: string,
-  presetName: string,
-): Promise<string> => {
-  await page.goto(`/${slug}/settings/ranks`);
-  await page.waitForLoadState("networkidle");
-  await page.getByRole("button", { name: "Create rank" }).click();
-  await page
-    .getByRole("menuitem", { name: `Start from ${presetName}`, exact: true })
-    .click();
-
-  // `useDialog().prompt` is an AlertDialog, so its role is `alertdialog`.
-  const dialog = page.getByRole("alertdialog");
-  await expect(dialog.getByRole("textbox")).toHaveValue(presetName, {
-    timeout: 10_000,
-  });
-  const saved = page.waitForResponse(
-    (r) => r.request().method() === "PUT" && /\/ranks\/[^/?]+$/.test(r.url()),
-    { timeout: 15_000 },
+  organizationId: string,
+  key: string,
+  extra: string[],
+): Promise<void> => {
+  const list = (await apiPath(page, "getOrganizationRanks")).replace(
+    ":organizationId",
+    organizationId,
   );
-  await dialog.getByRole("button", { name: "Create", exact: true }).click();
-  const response = await saved;
-  expect(response.ok()).toBe(true);
-  await expect(dialog).toBeHidden({ timeout: 10_000 });
-  await releasePointerEvents(page);
-  return decodeURIComponent(response.url().split("/").pop()!);
+  const ranks = (await (await page.request.get(list)).json()) as {
+    items: Array<{ key: string; name: string; permissions: string[] }>;
+  };
+  const rank = ranks.items.find((it) => it.key === key);
+  expect(rank, `no rank keyed ${key}`).toBeTruthy();
+  await saveRank(page, organizationId, key, rank!.name, [
+    ...new Set([...rank!.permissions, ...extra]),
+  ]);
+};
+
+/**
+ * Write a rank with exactly these permissions, through the ranks API as the
+ * signed-in owner, under a stable key a spec can assign.
+ *
+ * For a rank no base offers: a project starts with owner, admin, member and
+ * viewer, and "Create rank" copies one of them.
+ */
+export const saveRank = async (
+  page: Page,
+  organizationId: string,
+  key: string,
+  name: string,
+  permissions: string[],
+): Promise<void> => {
+  const path = (await apiPath(page, "saveOrganizationRank"))
+    .replace(":organizationId", organizationId)
+    .replace(":key", key);
+  const response = await page.request.put(path, {
+    data: { name, permissions },
+  });
+  expect(response.ok(), await response.text()).toBe(true);
 };
 
 /**

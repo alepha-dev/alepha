@@ -3641,8 +3641,10 @@ export default {
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",
   "project.settings.nav.ranks": "Rangs",
   "rank.preset.admin": "Administrateur",
-  "rank.preset.contributor": "Contributeur",
   "rank.preset.viewer": "Lecteur",
+  "rank.viewer.wider.title": "$1 accorde plus qu’un lecteur ne peut avoir",
+  "rank.viewer.wider.description":
+    "Il accorde aussi $1. Un projet ne peut pas être ouvert à toute personne connectée tant que son rang Lecteur ne donne pas uniquement la lecture des quêtes, épopées, folios, versions et domaines.",
   "automation.editor.title": "Modifier la règle",
   "automation.editor.loading": "Chargement...",
   "automation.editor.author":

@@ -10,14 +10,37 @@ import {
   apiPath,
   confirmDialog,
   createHostInProject,
+  grantRank,
   createProjectViaWizard,
-  createRankFromPreset,
   newUserContext,
   openAccount,
   registerAndVerify,
   releasePointerEvents,
   signInAsAdmin,
 } from "./_helpers.ts";
+
+/**
+ * What the Admin preset carries for Ship (hosts since #E126), granted where
+ * Ship was turned on after the project was created.
+ */
+const SHIP_ADMIN = [
+  "app:read",
+  "app:manage",
+  "artifact:read",
+  "artifact:push",
+  "artifact:delete",
+  "deploy:manage",
+  "sigil:manage",
+  "error:read",
+  "error:triage",
+  "quality:read",
+  "quality:push",
+  "host:read",
+  "host:create",
+  "host:update",
+  "host:delete",
+  "host:lend",
+];
 
 /**
  * Hosts belong to a project, managed by rank (epic #E126, #Q3281).
@@ -180,8 +203,10 @@ test.describe("Project hosts", () => {
     });
     await createHostInProject(page, first.slug, "ovh-team");
 
-    // The Admin preset carries the three host permissions since #E126.
-    await createRankFromPreset(page, first.slug, "Admin");
+    // Admin is a default rank since #Q3661, seeded from the capabilities the
+    // project was created with; Ship was turned on afterwards, so the owner
+    // gives Admin the host permissions as they would in the matrix.
+    await grantRank(page, first.organizationId, "admin", SHIP_ADMIN);
     const reader = await newUserContext(browser, baseURL!, "pe-reader");
     const manager = await newUserContext(browser, baseURL!, "pe-manager");
     try {
@@ -311,10 +336,10 @@ test.describe("Project hosts", () => {
     const second = await createProjectViaWizard(page, t2, {
       capabilities: ["ship"],
     });
-    await createRankFromPreset(page, first.slug, "Admin");
     const builder = await newUserContext(browser, baseURL!, "ow-builder");
     const guest = await newUserContext(browser, baseURL!, "ow-guest");
     const stranger = await newUserContext(browser, baseURL!, "ow-stranger");
+    await grantRank(page, first.organizationId, "admin", SHIP_ADMIN);
     await inviteWithRank(page, first.slug, builder.email, /^admin$/i);
     await accept(builder.page, t1);
     await inviteWithRank(page, first.slug, guest.email, /^member$/i);

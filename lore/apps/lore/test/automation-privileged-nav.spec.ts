@@ -1,5 +1,4 @@
 import { AutomationAccess, ProjectController } from "@lore/core/api";
-import { createPresetRanks } from "@lore/core/testing";
 import { ProjectShellRegistry, visibleSettingsTabs } from "@lore/core/web";
 import { WorkShell } from "@lore/plan/web";
 import { Alepha } from "alepha";
@@ -151,8 +150,18 @@ describe("automation permissions for a privileged identity", () => {
     expect,
   }) => {
     const { project, admin } = await setup();
-    await createPresetRanks(alepha, project.id);
-    await createTestMember(alepha, project, admin.id, { rank: "viewer" });
+    // A reading rank that holds automations: Viewer did until #Q3661
+    // narrowed it to the open-project allowlist.
+    await alepha.inject(RankService).save(
+      project.organizationId!,
+      {
+        key: "watcher",
+        name: "Watcher",
+        permissions: ["project:read", "automation:read"],
+      },
+      { id: project.createdBy, roles: ["user"] } as UserAccountToken,
+    );
+    await createTestMember(alepha, project, admin.id, { rank: "watcher" });
 
     const { claimed, allowed, nav } = await told(project, admin);
 

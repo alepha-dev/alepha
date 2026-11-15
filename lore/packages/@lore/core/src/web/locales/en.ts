@@ -3638,8 +3638,10 @@ export default {
   "permission.feedback.triage": "Accept, reject and remove feedback",
   "project.settings.nav.ranks": "Ranks",
   "rank.preset.admin": "Admin",
-  "rank.preset.contributor": "Contributor",
   "rank.preset.viewer": "Viewer",
+  "rank.viewer.wider.title": "$1 holds more than a viewer may",
+  "rank.viewer.wider.description":
+    "It also grants $1. A project cannot be opened to everyone signed in until its Viewer rank holds only reads of quests, epics, folios, releases and areas.",
   "automation.editor.title": "Edit rule",
   "automation.editor.loading": "Loading automation...",
   "automation.editor.author":

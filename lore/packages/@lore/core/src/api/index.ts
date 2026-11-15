@@ -40,6 +40,7 @@ import { UserDockHooks } from "./hooks/UserDockHooks.ts";
 import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
+import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
 import { AutomationAttentionNotifications } from "./notifications/AutomationAttentionNotifications.ts";
 import { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
@@ -246,6 +247,8 @@ export const LoreCoreApi = $module({
     AutomationDomainActions,
     AutomationRunEvidence,
     AutomationEvidenceJobs,
+    // The nightly backfill of the Admin and Viewer ranks; nothing injects it.
+    DefaultRankJobs,
     AutomationDispatchJobs,
     AutomationSchedules,
     AutomationSelections,
@@ -414,6 +417,7 @@ export { ProjectPermissions } from "./security/ProjectPermissions.ts";
 export { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 export { AssignedWorkRegistry } from "./services/AssignedWorkRegistry.ts";
 export { BestEffort } from "./services/BestEffort.ts";
+export { DefaultRankService } from "./services/DefaultRankService.ts";
 export { BoundParameters } from "./services/BoundParameters.ts";
 export { DashboardCardService } from "./services/DashboardCardService.ts";
 export { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";

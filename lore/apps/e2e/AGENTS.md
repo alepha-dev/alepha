@@ -119,9 +119,10 @@ preset creation, Test, explicit enable, rule edits, variable changes and conflic
 Its live feedback journey uses the existing admin job page's registered dispatcher
 operation to advance the fixed cron synchronously, then waits for durable run and
 inbox receipt evidence. It does not add a test-only clock or execution endpoint.
-The owner explicitly creates Contributor/Viewer rank presets before invitation;
-a new project can carry only the framework's Member rank until configured.
-Foreign author edits and Viewer writes are refused by HTTP and hidden in the UI.
+Every project starts with owner, admin, member and viewer; the spec writes a
+Contributor and a read-only Watcher rank through the ranks API, since no
+default rank writes automations without managing them, and Viewer reads none.
+Foreign author edits and reader writes are refused by HTTP and hidden in the UI.
 Removing the source capability keeps enable intent and displays broken health;
 retained run payload and delivery receipts become redacted under current access.
 
