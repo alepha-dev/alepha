@@ -91,7 +91,12 @@ describe("Preset setup, explicit bindings and project pickers", () => {
       capabilities: [
         {
           key: "plan",
-          options: { releases: true, epics: true, feedback: true },
+          options: {
+            releases: true,
+            epics: true,
+            feedback: true,
+            reminder: true,
+          },
         },
         { key: "remember" },
         { key: "ship", options: { track: true, deploy: true } },

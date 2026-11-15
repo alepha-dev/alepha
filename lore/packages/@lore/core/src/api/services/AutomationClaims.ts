@@ -1091,7 +1091,8 @@ export class AutomationClaims {
   }
 
   /**
-   * Compatibility reminders alone advance to another bounded due page.
+   * Reminder rules alone (`quests.remindersDue`, #Q3626) advance to another
+   * bounded due page.
    * The original evaluation time and native page witness survive interruption.
    */
   public async continueReminderSelection(
@@ -1101,12 +1102,12 @@ export class AutomationClaims {
   ): Promise<AutomationReceipt> {
     const occurrence = await this.lease(id, token);
     if (
-      occurrence.snapshot?.rule?.compatibility !== "quest-reminders" ||
+      occurrence.snapshot?.rule?.select?.key !== "quests.remindersDue" ||
       !occurrence.snapshot.selectionNext ||
       occurrence.cursor < occurrence.snapshot.actions.length
     )
       throw new ConflictError(
-        "Reminder continuation requires a finished compatibility page",
+        "Reminder continuation requires a finished reminder page",
       );
     const chunkId = await this.identity.hash([
       "reminder-selection",

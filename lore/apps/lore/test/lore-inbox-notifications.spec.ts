@@ -4,7 +4,6 @@ import {
   LoreInboxRecipientProvider,
 } from "@lore/core/api";
 import { projects, users } from "@lore/core/schemas";
-import { QuestNotifications } from "@lore/plan/api";
 import { HostNotifications } from "@lore/ship/api";
 import { Alepha } from "alepha";
 import {
@@ -231,8 +230,7 @@ describe("Lore's inbox notifications", () => {
       "&lt;img src=x onerror=&quot;alert(&#39;1&#39;)&quot;&gt;&amp;",
     );
 
-    // Both still render, which is what a broken lift would have cost.
-    expect(alepha.inject(QuestNotifications).questReminder.name).toBeTruthy();
+    // It still renders, which is what a broken lift would have cost.
     expect(
       alepha.inject(HostNotifications).credentialInvalid.name,
     ).toBeTruthy();

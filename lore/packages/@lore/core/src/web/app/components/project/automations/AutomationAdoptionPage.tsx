@@ -22,12 +22,6 @@ const AutomationAdoptionPage = () => {
     >
       <AutomationAdoptionCard
         project={project}
-        policy="quest-reminders"
-        disabled={busy}
-        onBusyChange={setBusy}
-      />
-      <AutomationAdoptionCard
-        project={project}
         policy="release-notifications"
         disabled={busy}
         onBusyChange={setBusy}

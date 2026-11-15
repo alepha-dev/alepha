@@ -12,12 +12,11 @@ import { ProjectReportsController } from "./controllers/ProjectReportsController
 import { QuestAuthorshipController } from "./controllers/QuestAuthorshipController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
+import { QuestReminderRuleController } from "./controllers/QuestReminderRuleController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
 import { RoadmapController } from "./controllers/RoadmapController.ts";
 import { QuestMemberRemoval } from "./hooks/QuestMemberRemoval.ts";
 import { EpicJobs } from "./jobs/EpicJobs.ts";
-import { QuestJobs } from "./jobs/QuestJobs.ts";
-import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { EpicResourceKind } from "./resources/EpicResourceKind.ts";
 import { FeedbackResourceKind } from "./resources/FeedbackResourceKind.ts";
 import { QuestResourceKind } from "./resources/QuestResourceKind.ts";
@@ -160,9 +159,7 @@ export const LorePlanApi = $module({
     QuestProjectDeletion,
     WorkProjectMerge,
     QuestAuthorshipController,
-    QuestJobs,
     EpicJobs,
-    QuestNotifications,
     // Turns `@name` in a comment into a message. Injected by the quest and
     // feedback comment controllers.
     MentionNotifier,
@@ -209,6 +206,7 @@ export const LorePlanApi = $module({
     WorkAttentionSources,
     // Controllers
     QuestController,
+    QuestReminderRuleController,
     QuestCommentController,
     FeedbackCommentController,
     ReleaseController,
@@ -251,9 +249,9 @@ export { ProjectReportsController } from "./controllers/ProjectReportsController
 export { QuestAuthorshipController } from "./controllers/QuestAuthorshipController.ts";
 export { QuestCommentController } from "./controllers/QuestCommentController.ts";
 export { QuestController } from "./controllers/QuestController.ts";
+export { QuestReminderRuleController } from "./controllers/QuestReminderRuleController.ts";
 export { ReleaseController } from "./controllers/ReleaseController.ts";
 export { RoadmapController } from "./controllers/RoadmapController.ts";
-export { QuestNotifications } from "./notifications/QuestNotifications.ts";
 export { AreaService } from "./services/AreaService.ts";
 export { BoardRank } from "./services/BoardRank.ts";
 export { EpicDependencyService } from "./services/EpicDependencyService.ts";

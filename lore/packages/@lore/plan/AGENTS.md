@@ -386,13 +386,21 @@ These lists contain same-project IDs and labels and do not project event bodies.
 
 ## Compatibility policy ownership (#E43, #Q2044)
 
-`WorkAutomationAdoptions` registers two explicit policies through core. Per-quest
-reminders retain hourly processing, reminderNextAt/reminderInterval, acceptedBy,
-reminder_sent history and the existing quest controls. The live option remains
-plan.reminder; frozen projects.features.questReminder remains decodable. The
-legacy due query excludes adopted policies before its 50-row limit, then joins
-enqueue and reminder settlement through core's native job fence. The shared
-settlement predicate prevents a changed/completed quest from advancing twice.
+Quest reminders are an ordinary automation since #Q3626: the **Quest reminders**
+preset (`WorkAutomationPresets`, key `quest-reminders`), hourly, the
+`quests.remindersDue` selector, recipient `{{assignee_id}}`. Core's worker and
+claims recognise it by that selector (per-quest delivery key, due-page
+continuation past 50 rows) and settle each quest's `reminderNextAt` and its
+`reminder_sent` history. A project holds at most one such rule
+(`AutomationService.assertSingleReminderRule`). The legacy sender
+(`QuestJobs.sendDueReminders`, `QuestNotifications.questReminder`) and the
+`quest-reminders` adoption policy are gone: a project without the rule sends no
+reminder, which the Plan > Features card (`ProjectSettingsReminderRule`, with its
+create button) and the quest's reminder control (`getQuestReminderRule`) say.
+The live option remains plan.reminder; frozen projects.features.questReminder
+remains decodable.
+
+`WorkAutomationAdoptions` registers one explicit policy through core.
 
 Release announcements retain the current roster except publisher, inbox/email,
 releases preferences and no folio prerequisite. The compatibility audience uses

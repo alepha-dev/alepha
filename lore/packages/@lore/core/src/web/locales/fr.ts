@@ -129,6 +129,9 @@ export default {
     "Publier les notes de version dans un folio",
   "automation.preset.release-to-folio.description":
     "Ajouter le changelog publié à un folio choisi, puis notifier un membre. Chaque publication est ajoutée une seule fois.",
+  "automation.preset.quest-reminders.title": "Rappels de quête",
+  "automation.preset.quest-reminders.description":
+    "Toutes les heures, rappelle à la personne assignée chaque quête dont le rappel est dû, à l'intervalle choisi sur la quête.",
   "automation.preset.deploy-failed.title": "Échec du déploiement",
   "automation.preset.deploy-failed.description":
     "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",
@@ -1536,6 +1539,18 @@ export default {
   "project.settings.kanban.columns.wip.none": "Sans limite",
   "project.settings.kanban.columns.delete": "Supprimer",
   "project.settings.kanban.columns.reorder": "Réordonner la colonne",
+  "project.settings.reminderRule.title": "Rappels de quête",
+  "project.settings.reminderRule.description":
+    "Les rappels définis sur une quête sont envoyés par une automatisation, toutes les heures, à la personne assignée.",
+  "project.settings.reminderRule.label": "Automatisation des rappels",
+  "project.settings.reminderRule.on":
+    "Active : les rappels dus sont envoyés toutes les heures.",
+  "project.settings.reminderRule.disabled":
+    "Désactivée : aucun rappel n'est envoyé tant qu'elle n'est pas réactivée.",
+  "project.settings.reminderRule.none":
+    "Aucune pour le moment : les rappels définis sur les quêtes ne sont pas envoyés.",
+  "project.settings.reminderRule.open": "Ouvrir l'automatisation",
+  "project.settings.reminderRule.create": "Créer l'automatisation des rappels",
   "project.settings.roadmap.title": "Feuille de route",
   "project.settings.roadmap.description":
     "Une page en lecture seule listant vos versions ouvertes et les épopées qu’elles contiennent. Ni quêtes, ni noms, ni backlog.",
@@ -1838,6 +1853,8 @@ export default {
   "quest.view.reminder.daily": "Quotidien",
   "quest.view.reminder.weekly": "Hebdomadaire",
   "quest.view.reminder.monthly": "Mensuel",
+  "quest.view.reminder.noRule":
+    "Aucune automatisation de rappel ne tourne dans ce projet : les rappels ne sont pas envoyés. Un gestionnaire l'active dans Paramètres > Plan.",
   "quest.view.reminder.none":
     "Aucun rappel configuré. Aucun e-mail ne vous sera envoyé.",
   "quest.view.reminder.next": "Prochain e-mail $1.",
