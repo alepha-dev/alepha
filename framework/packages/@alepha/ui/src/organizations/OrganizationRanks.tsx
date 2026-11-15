@@ -265,66 +265,65 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
     seededFrom !== undefined &&
     JSON.stringify(draft) !== JSON.stringify(organizationRankDraft(ranks));
 
-  return (
-    <div className="flex flex-col gap-4" aria-busy={saving}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium">
-            {tr("organizations.ranks.title", { default: "Ranks" })}
-          </span>
-          <span className="text-muted-foreground text-xs">
-            {tr("organizations.ranks.description", {
-              default: "Choose what each rank may do.",
-            })}
-          </span>
-          <span className="text-muted-foreground text-xs">
-            {tr("organizations.ranks.cache", {
-              default:
-                "Permission definition changes can take up to 30 seconds. Rank demotions take effect immediately.",
-            })}
-          </span>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="outlined" size="sm" aria-label="Create rank" />
-            }
+  // No title, description or propagation note above the editor (#Q3666):
+  // the tab already names the page, and Create rank sits in the editor's own
+  // header cell, the Permission column's, beside the rank names it adds to.
+  const createRank = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="outlined" size="sm" aria-label="Create rank" />
+        }
+      >
+        <Plus className="size-3.5" />
+        {tr("organizations.ranks.create", { default: "Create rank" })}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {props.blank !== false && (
+          <DropdownMenuItem
+            disabled={saving}
+            onClick={() => void create.run(undefined)}
           >
-            <Plus className="size-3.5" />
-            {tr("organizations.ranks.create", { default: "Create rank" })}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {props.blank !== false && (
-              <DropdownMenuItem
-                disabled={saving}
-                onClick={() => void create.run(undefined)}
-              >
-                {tr("organizations.ranks.blank", { default: "Blank rank" })}
-              </DropdownMenuItem>
-            )}
-            {props.blank !== false && !!props.presets?.length && (
-              <DropdownMenuSeparator />
-            )}
-            {props.presets?.map((preset) => (
-              <DropdownMenuItem
-                key={preset.key}
-                disabled={saving}
-                onClick={() => void create.run(preset)}
-              >
-                {tr("organizations.ranks.fromPreset", {
-                  default: "Start from $1",
-                  args: [preset.name],
-                })}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <Card className={cn(settingsCardEdge, "gap-0 py-0")}>
+            {tr("organizations.ranks.blank", { default: "Blank rank" })}
+          </DropdownMenuItem>
+        )}
+        {props.blank !== false && !!props.presets?.length && (
+          <DropdownMenuSeparator />
+        )}
+        {props.presets?.map((preset) => (
+          <DropdownMenuItem
+            key={preset.key}
+            disabled={saving}
+            onClick={() => void create.run(preset)}
+          >
+            {tr("organizations.ranks.fromPreset", {
+              default: "Start from $1",
+              args: [preset.name],
+            })}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4" aria-busy={saving}>
+      <Card
+        className={cn(
+          settingsCardEdge,
+          "min-h-0 flex-1 gap-0 overflow-hidden py-0",
+        )}
+      >
         <PermissionMatrix
-          header={tr("organizations.ranks.permission", {
-            default: "Permission",
-          })}
+          className="min-h-0 flex-1"
+          header={
+            <span className="flex items-end justify-between gap-2">
+              {tr("organizations.ranks.permission", {
+                default: "Permission",
+              })}
+              {createRank}
+            </span>
+          }
           empty={tr("organizations.ranks.empty", {
             default: "No permissions to display.",
           })}

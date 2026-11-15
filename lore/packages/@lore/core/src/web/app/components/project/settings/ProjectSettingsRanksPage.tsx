@@ -39,7 +39,9 @@ const ProjectSettingsRanksPage = () => {
   const held = project.permissions ?? [];
 
   return (
-    <div className="flex flex-col gap-4">
+    // Fills the settings body (a `fullWidth` tab): the rank editor scrolls
+    // its permissions inside it, under a header that stays put (#Q3666).
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <ProjectViewerRankNotice organizationId={project.organizationId} />
       <OrganizationRanks
         organizationId={project.organizationId}

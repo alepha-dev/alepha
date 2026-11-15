@@ -2,14 +2,22 @@ import * as React from "react";
 
 import { cn } from "./utils.ts";
 
-export type TableProps = React.ComponentProps<"table">;
+export type TableProps = React.ComponentProps<"table"> & {
+  /**
+   * Classes for the wrapper around the `<table>`, merged over its default
+   * `overflow-x-auto`. A caller that owns the scrolling passes
+   * `overflow-visible`, so a `sticky` header sticks to the caller's scroll
+   * region rather than to a wrapper that never scrolls vertically.
+   */
+  containerClassName?: string;
+};
 
 const Table = (props: TableProps) => {
-  const { className, ...rest } = props;
+  const { className, containerClassName, ...rest } = props;
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className={cn("relative w-full overflow-x-auto", containerClassName)}
     >
       <table
         data-slot="table"
