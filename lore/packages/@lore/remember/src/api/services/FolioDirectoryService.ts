@@ -120,9 +120,23 @@ export class FolioDirectoryService {
     }
   }
 
+  /**
+   * Refuses a write on the project's trash (#Q3659): it always exists, under
+   * its own name, at the root. Every surface (the API, MCP, the CLI, the
+   * tree) goes through this service, so the refusal is said once.
+   */
+  public assertNotSystem(directory: FolioDirectory, verb: string): void {
+    if (directory.system === "trash") {
+      throw new BadRequestError(
+        `The trash cannot be ${verb}: it is built in, and empties itself after 30 days.`,
+      );
+    }
+  }
+
   public async rename(id: string, name: string): Promise<FolioDirectory> {
     const directory = await this.findById(id);
     if (!directory) throw new NotFoundError("Directory not found");
+    this.assertNotSystem(directory, "renamed");
     const scope = this.scopeOf(directory.projectId, directory.parentId);
     // One UPDATE of the directory's own reservation row (#Q2550), not a
     // release then a reserve: with no transaction (D1), a reserve failing
@@ -138,14 +152,17 @@ export class FolioDirectoryService {
   ): Promise<FolioDirectory> {
     const directory = await this.findById(id);
     if (!directory) throw new NotFoundError("Directory not found");
+    this.assertNotSystem(directory, "moved");
     if (newParentId === id) {
       throw new BadRequestError("A directory cannot be its own parent");
     }
+    let intoTrash = false;
     if (newParentId) {
       const newParent = await this.findById(newParentId);
       if (!newParent || newParent.projectId !== directory.projectId) {
         throw new BadRequestError("Target directory not found in this project");
       }
+      intoTrash = newParent.system === "trash";
       // Cycle check: walk up from newParent — must NOT contain id.
       let cursor: string | undefined = newParentId;
       const seen = new Set<string>();
@@ -216,6 +233,11 @@ export class FolioDirectoryService {
           // and silently left `parentId` exactly as it was.
           parentId: newParentId ?? null,
           name: nextName,
+          // Stamped going into the trash, kept while it stays, cleared on
+          // the way out (#Q3659). The purge reads it.
+          trashedAt: intoTrash
+            ? (directory.trashedAt ?? this.dateTime.nowISOString())
+            : null,
         },
       );
     } catch (error) {
@@ -256,6 +278,7 @@ export class FolioDirectoryService {
   public async delete(id: string, opts?: { cascade?: boolean }): Promise<void> {
     const directory = await this.findById(id);
     if (!directory) throw new NotFoundError("Directory not found");
+    this.assertNotSystem(directory, "deleted");
 
     // The whole subtree is read first (#Q2550), so every write below knows
     // what it covers. Id lists go in batches under D1's 100 bound values.

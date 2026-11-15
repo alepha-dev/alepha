@@ -418,6 +418,9 @@ export default {
   "folios.editor.tree.open": "Open",
   "folios.editor.tree.open-new-tab": "Open in new tab",
   "folios.editor.tree.rename": "Rename",
+  "folios.editor.tree.trash-retention": "30 days",
+  "folios.editor.tree.trash-hint":
+    "Items in the trash are deleted for good after 30 days. Move one out to restore it.",
   "folios.editor.tree.copy-wiki-link": "Copy wiki-link",
   "folios.editor.tree.encrypt": "Encrypt",
   "folios.editor.tree.confirm-delete-directory-title": "Delete this directory?",
