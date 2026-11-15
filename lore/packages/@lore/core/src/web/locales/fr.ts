@@ -3366,7 +3366,6 @@ export default {
     "Écrivez en markdown. Tous ceux qui lisent le tableau le verront.",
   "dashboard.edit": "Modifier",
   "dashboard.save": "Enregistrer",
-  "dashboard.customize": "Personnaliser",
   "dashboard.menu": "Options du tableau",
   "dashboard.reset": "Revenir au tableau par défaut",
   "dashboard.reset.confirm": "Revenir au tableau par défaut ?",

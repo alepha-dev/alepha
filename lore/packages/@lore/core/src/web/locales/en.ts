@@ -3357,7 +3357,6 @@ export default {
     "Write in markdown. Everyone who reads the board sees it.",
   "dashboard.edit": "Edit",
   "dashboard.save": "Save",
-  "dashboard.customize": "Customize",
   "dashboard.menu": "Board options",
   "dashboard.reset": "Reset to default",
   "dashboard.reset.confirm": "Reset this board to the default?",
