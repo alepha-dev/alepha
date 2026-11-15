@@ -3893,6 +3893,12 @@ export default {
   "project.settings.join.url.label": "Link to share",
   "project.settings.join.url.copy": "Copy the link",
   "project.settings.join.url.copied": "Link copied",
+  "project.join.lead": "Anyone signed in can join this project, as a viewer.",
+  "project.join.reads":
+    "A viewer reads its quests, epics, folios and releases, and changes nothing.",
+  "project.join.submit": "Join project",
+  "project.join.signIn": "Sign in to join",
+  "project.join.refused": "You cannot join this project",
   "rank.viewer.wider.title": "$1 holds more than a viewer may",
   "rank.viewer.wider.description":
     "It also grants $1. A project cannot be opened to everyone signed in until its Viewer rank holds only reads of quests, epics, folios, releases and areas.",

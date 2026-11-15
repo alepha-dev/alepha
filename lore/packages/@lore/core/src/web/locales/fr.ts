@@ -3903,6 +3903,13 @@ export default {
   "project.settings.join.url.label": "Lien à partager",
   "project.settings.join.url.copy": "Copier le lien",
   "project.settings.join.url.copied": "Lien copié",
+  "project.join.lead":
+    "Toute personne connectée peut rejoindre ce projet, en tant que lecteur.",
+  "project.join.reads":
+    "Un lecteur consulte ses quêtes, épopées, folios et versions, sans rien modifier.",
+  "project.join.submit": "Rejoindre le projet",
+  "project.join.signIn": "Se connecter pour rejoindre",
+  "project.join.refused": "Vous ne pouvez pas rejoindre ce projet",
   "rank.viewer.wider.title": "$1 accorde plus qu’un lecteur ne peut avoir",
   "rank.viewer.wider.description":
     "Il accorde aussi $1. Un projet ne peut pas être ouvert à toute personne connectée tant que son rang Lecteur ne donne pas uniquement la lecture des quêtes, épopées, folios, versions et domaines.",

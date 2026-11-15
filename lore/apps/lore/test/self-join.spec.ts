@@ -164,6 +164,33 @@ describe("joining an open project", () => {
     });
   });
 
+  describe("resolving a slug as a non-member (#Q3649)", () => {
+    it("gives the same 404 as an unknown slug, open or not, until they join", async ({
+      expect,
+    }) => {
+      ctx = await setup();
+      const closed = await ctx.create("Closed", false);
+      const stranger = await ctx.person("stranger");
+      const resolve = (slug: string) =>
+        ctx.statusOf(
+          ctx.projects.getProjectBySlug.fetch(
+            { params: { slug } },
+            ctx.as(stranger),
+          ),
+        );
+
+      for (const slug of [ctx.project.slug, closed.slug, "nothing-here"]) {
+        expect(await resolve(slug), slug).toEqual({
+          status: 404,
+          message: "Project not found",
+        });
+      }
+
+      await ctx.joinAs(stranger);
+      expect((await resolve(ctx.project.slug)).status).toBe(200);
+    });
+  });
+
   describe("the join", () => {
     it("makes a stranger a member on the viewer rank, once, and audits it", async ({
       expect,

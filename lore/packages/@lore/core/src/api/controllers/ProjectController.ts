@@ -1390,9 +1390,10 @@ export class ProjectController {
       });
 
       if (!member && user.ownership !== false) {
-        // The same message the gate gives, so a refusal never tells a caller
-        // whether the slug names a real project.
-        throw new ForbiddenError("Not a member of this project");
+        // The same 404 as an unknown slug, so a refusal never tells a caller
+        // whether the slug names a real project. The web app then asks
+        // `previewOpenProject`, which answers for an open one only.
+        throw new NotFoundError("Project not found");
       }
 
       await this.ranks.assert(project.organizationId!, "project:read", user);
