@@ -96,8 +96,10 @@ const QuestViewRail = (props: QuestViewRailProps) => {
     {
       key: ["epics", project?.id],
       enabled: !!project?.id && !!quest.epicId && epicsEnabled,
+      // The refs, not `getEpics`: the row reads a number and a title, and
+      // the full list carries every description (#Q3713).
       handler: () =>
-        epicApi.getEpics({ params: { projectId: project?.id as number } }),
+        epicApi.getEpicRefs({ params: { projectId: project?.id as number } }),
       onError: () => {},
     },
     [epicApi, project?.id],

@@ -534,7 +534,15 @@ const ProjectEpics = () => {
     sort?: string;
     filters?: DataTableFilterValues<typeof filterFields>;
   }): Promise<Page<EpicResource>> => {
-    const all = await epicApi.getEpics({ params: { projectId: project.id } });
+    const needle = (filters?.search ?? "").trim().toLowerCase();
+    // A row shows one truncated line of the description, so the list asks for
+    // that line (`brief`), and for the whole text only while a search looks
+    // inside it: the full list of a large project was 1 MB, 94% of it
+    // descriptions (#Q3713).
+    const all = await epicApi.getEpics({
+      params: { projectId: project.id },
+      query: { brief: !needle },
+    });
 
     // Push the freshest draft count to the sidebar badge, the same way
     // `ProjectErrors` pushes `openCount`. Free: `getEpics` already returns
@@ -562,7 +570,6 @@ const ProjectEpics = () => {
     const wantedIds = new Set(
       picked.filter((v) => v !== QUEST_RELEASE_NONE).map(Number),
     );
-    const needle = (filters?.search ?? "").trim().toLowerCase();
     const rows = sortEpics(
       all.filter((epic) => {
         if (statuses.length > 0 && !statuses.includes(epic.status)) {

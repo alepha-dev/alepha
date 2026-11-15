@@ -82,6 +82,11 @@ class FakeLinkProvider extends LinkProvider {
   deleteCalls = 0;
 
   /**
+   * The `brief` flag of every `getEpics` call, in order (#Q3713).
+   */
+  briefCalls: Array<boolean | undefined> = [];
+
+  /**
    * Every `shelveEpic` / `unshelveEpic` call, by epic id: a held shelve must
    * not reach the server before its Undo window closes (#Q3118).
    */
@@ -94,7 +99,10 @@ class FakeLinkProvider extends LinkProvider {
       Object.assign(fn, { can: () => true });
     return new Proxy(
       {
-        getEpics: action(async () => [...this.epics]),
+        getEpics: action(async (request?: { query?: { brief?: boolean } }) => {
+          this.briefCalls.push(request?.query?.brief);
+          return [...this.epics];
+        }),
         deleteEpic: action(async () => {
           this.deleteCalls += 1;
           throw new Error("This epic still has a quest in progress (spec)");
@@ -345,6 +353,28 @@ describe("ProjectEpics - the status filter", () => {
         "Never",
       ]),
     );
+  });
+
+  it("asks for brief descriptions, and for the whole text while a search looks inside it", async () => {
+    await mount(
+      [],
+      [
+        {
+          ...epicOf(1, "Draft epic", "draft"),
+          description: "Plan the amber migration",
+        } as EpicResource,
+        epicOf(2, "Ready epic", "ready"),
+      ],
+    );
+    const fake = alepha!.inject(FakeLinkProvider);
+    expect(fake.briefCalls[0]).toBe(true);
+
+    fireEvent.change(screen.getByPlaceholderText(/search/i), {
+      target: { value: "amber" },
+    });
+    await waitFor(() => expect(row("#E2 - Ready epic")).toBeNull());
+    expect(row("#E1 - Draft epic")).not.toBeNull();
+    expect(fake.briefCalls.at(-1)).toBe(false);
   });
 
   it("shows every status while nothing is selected", async () => {

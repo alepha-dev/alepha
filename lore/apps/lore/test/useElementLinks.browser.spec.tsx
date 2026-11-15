@@ -78,7 +78,7 @@ class FakeLinkProvider extends LinkProvider {
         return this.byShortIds(this.allFolios, config.query.shortIds);
       },
       listAttachments: async () => [],
-      getEpics: async () => this.epics,
+      getEpicRefs: async () => this.epics,
       getQuests: async (config: { query?: { includeDrafts?: boolean } }) => {
         const includeDrafts = config?.query?.includeDrafts === true;
         const visible = includeDrafts

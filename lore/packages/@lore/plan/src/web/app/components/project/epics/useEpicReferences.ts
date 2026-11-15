@@ -28,7 +28,9 @@ export const useEpicReferences = (
       enabled: projectId > 0,
       staleTime: [5, "minutes"],
       handler: async () => {
-        const rows = await epicApi.getEpics({ params: { projectId } });
+        // The refs, not `getEpics`: a reference names an epic by its number
+        // and title, and never reads its description (#Q3713).
+        const rows = await epicApi.getEpicRefs({ params: { projectId } });
         return rows.map((e) => ({ number: e.number, title: e.title }));
       },
       onError: () => {},
