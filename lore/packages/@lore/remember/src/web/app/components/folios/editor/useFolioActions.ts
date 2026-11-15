@@ -169,6 +169,11 @@ export interface UseFolioActionsResult {
    */
   addToDashboardOpen: boolean;
   closeAddToDashboard: () => void;
+  /**
+   * Folio ▸ Recently deleted… is open (#Q3698).
+   */
+  recentlyDeletedOpen: boolean;
+  closeRecentlyDeleted: () => void;
   closeMoveDialog: () => void;
   confirmMove: (directoryId: string | null) => Promise<void>;
   encryptDialogOpen: boolean;
@@ -328,6 +333,7 @@ export const useFolioActions = (
   const [isPinned, setIsPinned] = useState<boolean>(!!input.folio?.pinned);
   // Folio ▸ Add to dashboard… (#Q3520): the dialog's open state.
   const [addingToDashboard, setAddingToDashboard] = useState(false);
+  const [recentlyDeletedOpen, setRecentlyDeletedOpen] = useState(false);
   // Whether THIS session already holds the plaintext + key for a protected
   // folio. Irrelevant (and ignored) once `isProtected` is false.
   const [unlocked, setUnlocked] = useState<boolean>(!input.folio?.protected);
@@ -1227,6 +1233,7 @@ export const useFolioActions = (
     "insert.row": () => input.table?.current?.insertRow(),
     "folio.importRows": () => input.table?.current?.importRows(),
     "folio.addToDashboard": () => setAddingToDashboard(true),
+    "folio.recentlyDeleted": () => setRecentlyDeletedOpen(true),
     "insert.column": () => input.table?.current?.insertColumn(),
     "edit.find": () =>
       input.table?.current ? input.table.current.find() : input.find.show(),
@@ -1261,6 +1268,8 @@ export const useFolioActions = (
     closeMoveDialog: () => setMoveDialogOpen(false),
     addToDashboardOpen: addingToDashboard,
     closeAddToDashboard: () => setAddingToDashboard(false),
+    recentlyDeletedOpen,
+    closeRecentlyDeleted: () => setRecentlyDeletedOpen(false),
     confirmMove,
     encryptDialogOpen,
     closeEncryptDialog: () => setEncryptDialogOpen(false),

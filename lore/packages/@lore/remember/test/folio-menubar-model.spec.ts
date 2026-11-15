@@ -251,6 +251,8 @@ describe("comprehensive menu coverage", () => {
       "folio.move",
       "folio.pin",
       "folio.delete",
+      // Opens the project's deleted folios, not this document (#Q3698).
+      "folio.recentlyDeleted",
       "edit.find",
       "view.rich",
       "view.source",

@@ -2,7 +2,15 @@ import { currentProjectAtom } from "@lore/core/web";
 import { AlephaError } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { type ReactElement, use, useCallback, useMemo } from "react";
+import {
+  lazy,
+  type ReactElement,
+  Suspense,
+  use,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 import type { FolioController } from "../../../../../api/controllers/FolioController.ts";
@@ -11,6 +19,14 @@ import FolioDirectoryListing from "./document/FolioDirectoryListing.tsx";
 import FolioRootPrompt from "./document/FolioRootPrompt.tsx";
 import { FolioWorkspaceShellContext } from "./FolioWorkspaceShellContext.ts";
 import FolioMenubar from "./menubar/FolioMenubar.tsx";
+
+/**
+ * Folio ▸ Recently deleted… (#Q3698), loaded when it opens: on the empty
+ * state too, which is where a reader lands right after deleting a folio.
+ */
+const FolioRecentlyDeletedDialog = lazy(
+  () => import("./document/FolioRecentlyDeletedDialog.tsx"),
+);
 import {
   type FolioActionState,
   folioMenuItems,
@@ -86,6 +102,7 @@ const FolioWorkspaceEmpty = (
   // no document. Only the ids `availableWithoutFolio` marks can fire; the rest
   // are rendered disabled, so their no-op is never reachable and exists only
   // to satisfy the exhaustive handler map.
+  const [recentlyDeletedOpen, setRecentlyDeletedOpen] = useState(false);
   const handlers = useMemo<FolioActionHandlers>(() => {
     const noop = (): void => {};
     const map = {} as FolioActionHandlers;
@@ -103,6 +120,7 @@ const FolioWorkspaceEmpty = (
       treeActions?.createDirectory(listedDirectoryId);
     map["view.tree"] = () => panes.toggleTree();
     map["view.focus"] = () => panes.toggleFocus();
+    map["folio.recentlyDeleted"] = () => setRecentlyDeletedOpen(true);
     return map;
   }, [treeActions, panes, openCreatePage, listedDirectoryId]);
 
@@ -128,6 +146,15 @@ const FolioWorkspaceEmpty = (
           <FolioMenubar handlers={handlers} state={state} />,
           shell.chromeSlot,
         )}
+      {recentlyDeletedOpen && (
+        <Suspense fallback={null}>
+          <FolioRecentlyDeletedDialog
+            open
+            readOnly={state.readOnly}
+            onOpenChange={setRecentlyDeletedOpen}
+          />
+        </Suspense>
+      )}
       {directoryShortId === undefined ? (
         <FolioRootPrompt
           onCreateFolio={

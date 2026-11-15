@@ -836,10 +836,10 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Folios",
-    section: "Trash",
-    url: "https://alepha.dev/lore/docs/remember-folios#trash",
+    section: "Recently deleted",
+    url: "https://alepha.dev/lore/docs/remember-folios#recently-deleted",
     capability: "remember",
-    text: "Every project has a **Trash** directory, pinned at the bottom of the tree. Drag\na folio or a directory into it to set it aside: it stays readable there, and\nmoving it back out restores it. Anything that has sat in the trash for 30 days\nis deleted for good, by a nightly sweep.\n\nThe trash itself cannot be renamed, moved or deleted. A project that already\nhad a top-level directory named `trash` keeps it: that directory becomes the\nproject's trash, with what it already held.",
+    text: "A deleted folio is not gone at once. It leaves the tree, search, links and\nevery agent's view, and **Folio ▸ Recently deleted…** lists it with the date\nit was deleted and the days it has left. **Restore** puts it back where it\nwas, or at the root when its directory is gone, with its links; a title taken\nin the meantime gets a number. **Delete permanently** removes it at once.\nAfter 30 days a nightly purge deletes it for good, with its files and its\nhistory.\n\nDeleting a directory is different: everything in it is deleted for good,\nfolios included.",
   },
   {
     guide: "Folios",

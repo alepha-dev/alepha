@@ -107,9 +107,6 @@ const FolioTreeContextMenu = (
   const router = useRouter();
   const node = props.node;
   const isDirectory = node.data.kind === "directory";
-  // The built-in trash keeps every item but rename and delete: it always
-  // exists, and the API refuses both anyway.
-  const isTrash = node.data.system === "trash";
 
   const hrefFor = (): RouterPath =>
     isDirectory
@@ -182,25 +179,19 @@ const FolioTreeContextMenu = (
             <FolderPlus className="size-4" />
             {tr("folios.editor.tree.new-directory")}
           </ContextMenuItem>
-          {!isTrash && (
-            <>
-              <ContextMenuSeparator />
-              <ContextMenuItem
-                onClick={() => props.commands.beginRename(node.id)}
-              >
-                <Pencil className="size-4" />
-                {tr("folios.editor.tree.rename")}
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem
-                variant="destructive"
-                onClick={() => props.commands.remove(node)}
-              >
-                <Trash2 className="size-4" />
-                {tr("folio.action.delete")}
-              </ContextMenuItem>
-            </>
-          )}
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => props.commands.beginRename(node.id)}>
+            <Pencil className="size-4" />
+            {tr("folios.editor.tree.rename")}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            variant="destructive"
+            onClick={() => props.commands.remove(node)}
+          >
+            <Trash2 className="size-4" />
+            {tr("folio.action.delete")}
+          </ContextMenuItem>
         </>
       ) : (
         <>

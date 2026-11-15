@@ -15,6 +15,7 @@ export type FolioActionId =
   | "folio.importRows"
   | "folio.addToDashboard"
   | "folio.encrypt"
+  | "folio.recentlyDeleted"
   | "folio.delete"
   | "edit.bold"
   | "edit.italic"
@@ -179,6 +180,15 @@ export const FOLIO_MENUS: FolioMenu[] = [
         alternateLabelKey: "folios.editor.action.remove-protection",
       },
       sep,
+      // The project's deleted folios, restorable for 30 days (#Q3698), where
+      // the Trash directory used to be. A read: any reader opens it, and the
+      // dialog offers Restore and Delete permanently to a writer only.
+      {
+        id: "folio.recentlyDeleted",
+        labelKey: "folios.editor.action.recently-deleted",
+        availableWhenLocked: true,
+        availableWithoutFolio: true,
+      },
       {
         id: "folio.delete",
         labelKey: "folios.editor.action.delete",

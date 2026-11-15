@@ -84,7 +84,9 @@ describe("FolioTableService", () => {
     }) => {
       const folio = await createTable();
       await service().addRows(folio, [{ cells: { Name: "a" } }]);
-      await repos.folios.deleteById(folio.id);
+      // `force`: a folio delete is soft since #Q3698; the cascade is the
+      // purge's.
+      await repos.folios.deleteById(folio.id, { force: true });
       expect(await tables.columns.count({ folioId: { eq: folio.id } })).toBe(0);
       expect(await tables.rows.count({ folioId: { eq: folio.id } })).toBe(0);
     });

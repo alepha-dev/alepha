@@ -594,7 +594,8 @@ export class FolioCommand {
 
   public readonly delete = $command({
     name: "delete",
-    description: "Delete a folio for good",
+    description:
+      "Delete a folio: restorable for 30 days from Folio > Recently deleted, then purged",
     args: FolioCommand.REF_ARG,
     flags: z.object({
       ...FolioCommand.PROJECT_FLAG,

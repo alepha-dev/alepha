@@ -327,7 +327,8 @@ export default {
   "folios.title-placeholder": "Sans titre",
   "folios.content-placeholder": "Commencez à écrire en markdown…",
   "folios.confirm-delete-title": "Supprimer ce folio ?",
-  "folios.confirm-delete-message": "Cette action est irréversible.",
+  "folios.confirm-delete-message":
+    "Il passe dans Folio > Supprimés récemment, où il peut être restauré pendant 30 jours.",
   "folios.protected.encrypt": "Chiffrer",
   "folios.protected.encrypt-title": "Chiffrer ce folio",
   "folios.protected.encrypt-description":
@@ -589,9 +590,6 @@ export default {
   "folios.editor.tree.open": "Ouvrir",
   "folios.editor.tree.open-new-tab": "Ouvrir dans un nouvel onglet",
   "folios.editor.tree.rename": "Renommer",
-  "folios.editor.tree.trash-retention": "30 jours",
-  "folios.editor.tree.trash-hint":
-    "Les éléments de la corbeille sont supprimés définitivement après 30 jours. Déplacez-en un pour le restaurer.",
   "folios.editor.tree.copy-wiki-link": "Copier le lien wiki",
   "folios.editor.tree.encrypt": "Chiffrer",
   "folios.editor.tree.confirm-delete-directory-title": "Supprimer ce dossier ?",
@@ -3604,6 +3602,19 @@ export default {
   "dashboard.folio.search": "Chercher un folio",
   "dashboard.folio.none": "Aucun folio ne correspond.",
   "folios.editor.action.add-to-dashboard": "Ajouter au tableau de bord…",
+  "folios.editor.action.recently-deleted": "Supprimés récemment…",
+  "folios.deleted.title": "Supprimés récemment",
+  "folios.deleted.description":
+    "Les folios supprimés restent ici $1 jours, puis sont supprimés définitivement avec leurs fichiers et leur historique.",
+  "folios.deleted.empty": "Aucun folio supprimé.",
+  "folios.deleted.deletedOn": "Supprimé $1",
+  "folios.deleted.daysLeft": "$1 jours restants",
+  "folios.deleted.restore": "Restaurer",
+  "folios.deleted.purge": "Supprimer définitivement",
+  "folios.deleted.purgeTitle": "Supprimer définitivement « $1 » ?",
+  "folios.deleted.purgeBody":
+    "Son contenu, ses fichiers et son historique sont supprimés définitivement. C'est irréversible.",
+  "folios.deleted.restored": "« $1 » restauré.",
   "folios.dashboard.title": "Ajouter à un tableau de bord",
   "folios.dashboard.description": "« $1 » y apparaîtra sous forme de carte.",
   "folios.dashboard.default-name": "Tableau de bord",

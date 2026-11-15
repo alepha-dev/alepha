@@ -205,7 +205,8 @@ export class LoreAudits {
   readonly folio = $audit({
     type: "folio",
     description: "Folio lifecycle",
-    actions: ["create", "update", "delete", "revert", "move"],
+    // `restore` brings a deleted folio back (#Q3698).
+    actions: ["create", "update", "delete", "revert", "move", "restore"],
     // A session editing one resource repeatedly is the everyday case here -
     // an MCP agent, or somebody working through a form - so `update` folds
     // into one row with a count. Five minutes, measured from the row's

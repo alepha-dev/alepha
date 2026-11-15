@@ -278,49 +278,35 @@ describe("FolioTree", () => {
   });
 
   /**
-   * #Q3659: the project's built-in trash. Named "Bin" here so its name sorts
-   * FIRST, which is what proves the tree pins it last rather than leaving
-   * it to the alphabet.
+   * The Trash directory is gone (#Q3698): deleted folios are listed from the
+   * Folio menu instead. A directory a person names "Trash" is an ordinary
+   * one: sorted by name, renamed and deleted like any other.
    */
-  describe("the built-in trash", () => {
+  describe("a directory named Trash", () => {
     const TRASH = "55555555-5555-4555-8555-555555555555";
 
-    const mountWithTrash = async () => {
+    it("sorts by its name and offers Rename and Delete", async () => {
       const view = await mount();
       await act(async () => {
         alepha!.store.set(projectDirectoriesAtom, [
           { id: DIR_A, shortId: 1, name: "Framework" },
           { id: DIR_B, shortId: 2, name: "Lore" },
-          { id: TRASH, shortId: 3, name: "Bin", system: "trash" },
+          { id: TRASH, shortId: 3, name: "Bin" },
         ]);
       });
       await screen.findByText("Bin");
-      return view;
-    };
-
-    it("is pinned last at the root and says it empties after 30 days", async () => {
-      const view = await mountWithTrash();
 
       const rows = [
         ...view.container.querySelectorAll('[data-slot="tree-view-row"]'),
       ].map((row) => row.textContent ?? "");
-      expect(rows.at(-1)).toContain("Bin");
-      const hint = screen.getByTestId("folio-trash-retention");
-      expect(hint.textContent).toBe("30 days");
-      expect(hint.getAttribute("title")).toContain("after 30 days");
-      expect(rowFor("Bin").contains(hint)).toBe(true);
-    });
-
-    it("offers no Rename and no Delete in its menu", async () => {
-      await mountWithTrash();
+      expect(rows[0]).toContain("Bin");
+      expect(screen.queryByTestId("folio-trash-retention")).toBeNull();
 
       await act(async () => {
         fireEvent.contextMenu(rowFor("Bin"));
       });
-
-      await screen.findByText("New doc");
-      expect(screen.queryByText("Rename")).toBeNull();
-      expect(screen.queryByText("Delete")).toBeNull();
+      expect(await screen.findByText("Rename")).toBeTruthy();
+      expect(screen.getByText("Delete")).toBeTruthy();
     });
   });
 

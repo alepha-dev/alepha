@@ -187,6 +187,14 @@ describe("folio attachment reclamation", () => {
       { params: { id: folio.data.id } },
       { user: owner },
     );
+    // A delete is soft since #Q3698: the attachments go with the purge.
+    await ctx.folioController.purgeFolio.fetch(
+      {
+        params: { id: folio.data.id },
+        body: { projectId: folio.data.projectId },
+      },
+      { user: owner },
+    );
 
     // The overlay went with the folio either way - the FK cascades. The file
     // row and its bytes are what nothing reclaimed.

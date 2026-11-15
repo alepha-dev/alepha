@@ -29,11 +29,6 @@ export interface FolioTreeData {
   shortId: number;
   pinned?: boolean;
   /**
-   * Set on the project's built-in trash, which the tree pins last at the
-   * root and never lets anyone rename, move or delete.
-   */
-  system?: "trash";
-  /**
    * A table folio (#E144): drawn with a table icon, and offered neither Pin
    * nor Encrypt.
    */
@@ -67,7 +62,6 @@ interface BuildFolioTreeInput {
     name: string;
     shortId: number;
     parentId?: string;
-    system?: "trash";
   }[];
   folios: {
     id: string;
@@ -96,7 +90,6 @@ export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
       data: {
         kind: "directory" as const,
         shortId: d.shortId,
-        system: d.system,
       },
     })),
     ...input.folios.map((f) => ({
@@ -113,11 +106,7 @@ export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
       },
     })),
   ]) as FolioTreeNode[];
-  // The trash is pinned last at the root, below every other directory and
-  // folio, whatever its name sorts to.
-  const trash = roots.findIndex((node) => node.data.system === "trash");
-  if (trash === -1) return roots;
-  return [...roots.slice(0, trash), ...roots.slice(trash + 1), roots[trash]];
+  return roots;
 };
 
 /**
