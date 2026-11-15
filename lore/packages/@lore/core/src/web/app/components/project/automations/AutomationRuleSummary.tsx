@@ -1,6 +1,7 @@
 import { useI18n } from "alepha/react/i18n";
 
 import type { AutomationResource } from "../../../../../api/schemas/automationResourceSchema.ts";
+import { AutomationRuleChannels } from "../../../../../api/schemas/AutomationRuleChannels.ts";
 import { AutomationTemplateTokens } from "../../../../../api/schemas/AutomationTemplateTokens.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
@@ -38,6 +39,14 @@ const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
         ? [action.folio]
         : [],
     ),
+  );
+  const hosts = useAutomationOptionLabels(
+    "host",
+    rule?.trigger.kind === "event" &&
+      rule.trigger.host &&
+      literal(rule.trigger.host)
+      ? [rule.trigger.host]
+      : [],
   );
   const monitors = useAutomationOptionLabels(
     "monitor",
@@ -88,6 +97,14 @@ const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
         </dt>
         <dd>
           {labels.trigger(rule)}
+          {rule.trigger.kind === "event" && rule.trigger.host && (
+            <span className="text-muted-foreground">
+              {" "}
+              {tr("automation.summary.forApp", {
+                args: [named(rule.trigger.host, hosts)],
+              })}
+            </span>
+          )}
           {rule.trigger.kind === "event" && rule.trigger.monitor && (
             <span className="text-muted-foreground">
               {" "}
@@ -136,7 +153,9 @@ const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
                         action.audience
                           ? tr("automation.adoption.roster")
                           : named(action.recipient, members),
-                        channel(action.channel),
+                        AutomationRuleChannels.of(action)
+                          .map((name) => channel(name))
+                          .join(", "),
                       ],
                     })
                   : action.kind === "appendFolio"

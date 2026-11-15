@@ -100,6 +100,19 @@ export class AutomationVocabulary {
         { monitor: { kind: "text", required: false, resource: "monitor" } },
       );
     }
+    // Hosts (#Q3627): a Cloudflare token the nightly check found invalid,
+    // and a throwaway host past its TTL. Raised in the host's home project.
+    // Safe fields only: never the credential.
+    for (const key of ["host.credential_invalid", "host.expired"]) {
+      this.event(
+        key,
+        { host_id: "text", host: "text", kind: "text", since: "text" },
+        "host:read",
+        "ship",
+        undefined,
+        { host: { kind: "text", required: false, resource: "host" } },
+      );
+    }
     const questFields: Record<string, AutomationSlotKind> = {
       ...this.common,
       quest_id: "number",

@@ -246,7 +246,8 @@ export class AutomationWorker {
                     context,
                     ...(reminderDeliveryKey &&
                     rendered.raw.kind === "notify" &&
-                    rendered.raw.recipient
+                    rendered.raw.recipient &&
+                    rendered.raw.channel !== undefined
                       ? {
                           delivery: {
                             recipient: rendered.raw.recipient,

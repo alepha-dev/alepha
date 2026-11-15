@@ -1,6 +1,6 @@
 import { Badge } from "@alepha/ui";
 import { PlateLayout } from "@alepha/ui/shell";
-import type { I18n } from "@lore/core/web";
+import { AutomationSubscriptionBell, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -98,6 +98,18 @@ const BayLayout = () => {
             <Badge variant={host.online ? "default" : "outline"}>
               {host.online ? tr("hosts.online") : tr("hosts.offline")}
             </Badge>
+            {/* This host's alerts (#Q3627): past its TTL, or its token
+                invalid, scoped to it. */}
+            <div className="ms-auto">
+              <AutomationSubscriptionBell
+                presets={["host-credential-invalid", "host-expired"]}
+                scope={{ host: host.id }}
+                label={tr("hosts.subscription.label")}
+                description={tr("hosts.subscription.description")}
+                offDescription={tr("hosts.subscription.offDescription")}
+                testId="host-subscription-bell"
+              />
+            </div>
             {/* The home project, whose members manage the host (#E126). */}
             {host.project && (
               <span

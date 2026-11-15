@@ -6,11 +6,13 @@ import { $action, okSchema } from "alepha/server";
 
 import { type Monitor, monitors } from "../entities/monitors.ts";
 import { monitorConfigSchema } from "../schemas/monitorConfigSchema.ts";
+import { monitorCreateBodySchema } from "../schemas/monitorCreateBodySchema.ts";
 import { monitorCreateResourceSchema } from "../schemas/monitorCreateResourceSchema.ts";
 import { monitorDetailResourceSchema } from "../schemas/monitorDetailResourceSchema.ts";
 import { monitorListQuerySchema } from "../schemas/monitorListQuerySchema.ts";
 import { monitorListResourceSchema } from "../schemas/monitorListResourceSchema.ts";
 import { monitorResourceSchema } from "../schemas/monitorResourceSchema.ts";
+import { UptimeMonitorOwners } from "../services/UptimeMonitorOwners.ts";
 import { UptimeMonitorService } from "../services/UptimeMonitorService.ts";
 import { UptimeReadService } from "../services/UptimeReadService.ts";
 
@@ -19,6 +21,7 @@ export class MonitorController {
   protected readonly owned = $inject(OwnedResourceProvider);
   protected readonly service = $inject(UptimeMonitorService);
   protected readonly reads = $inject(UptimeReadService);
+  protected readonly owners = $inject(UptimeMonitorOwners);
 
   public readonly listMonitors = $action({
     method: "GET",
@@ -29,8 +32,10 @@ export class MonitorController {
       query: monitorListQuerySchema,
       response: monitorListResourceSchema,
     },
-    handler: async ({ params, query }) =>
-      this.reads.list(params.projectId, query.window),
+    handler: async ({ params, query }) => {
+      await this.owners.adopt(params.projectId);
+      return this.reads.list(params.projectId, query.window);
+    },
   });
 
   public readonly getMonitorDetail = $action({
@@ -64,11 +69,18 @@ export class MonitorController {
     ],
     schema: {
       params: z.object({ projectId: z.integer() }),
-      body: monitorConfigSchema,
+      body: monitorCreateBodySchema,
       response: monitorCreateResourceSchema,
     },
-    handler: async ({ params, body }) =>
-      this.service.create(params.projectId, body),
+    // A monitor belongs to an app copy (#Q3657): there is no standalone
+    // monitor, and a copy from another project is refused.
+    handler: async ({ params, body }) => {
+      const { appInstanceId, ...config } = body;
+      const owner = await this.owners.ownerOf(params.projectId, appInstanceId);
+      return this.service.create(params.projectId, config, {
+        appInstanceId: owner.id,
+      });
+    },
   });
 
   public readonly updateMonitor = $action({

@@ -41,11 +41,12 @@ import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
  */
 export class AdminMcpController {
   /**
-   * How many days the chart draws.
+   * How many days the chart draws when the reader names no period.
    *
    * Thirty is the dataset's hot window, so every bucket in range is still at
    * hour precision underneath and the daily fold is exact rather than a fold
-   * of a fold.
+   * of a fold. 90 (#Q3665) reaches into the day rollup, which is exact at a
+   * day's grain.
    */
   protected static readonly WINDOW_DAYS = 30;
 
@@ -78,6 +79,24 @@ export class AdminMcpController {
     ],
     description: "MCP tool calls per day, by tool and by outcome",
     schema: {
+      /**
+       * The page's filters (#Q3665), applied here so the chart and the
+       * leaderboard answer the same question.
+       */
+      query: z.object({
+        /**
+         * The window, in days. Defaults to 30.
+         */
+        days: z.enum(["7", "30", "90"]).optional(),
+        /**
+         * Only the calls that ended this way.
+         */
+        outcome: z.enum(["ok", "refused", "error"]).optional(),
+        /**
+         * Only the tools whose name contains this, case-insensitive.
+         */
+        tool: z.text().optional(),
+      }),
       response: z.object({
         /**
          * The days the series are indexed by, oldest first, `YYYY-MM-DD`.
@@ -122,26 +141,39 @@ export class AdminMcpController {
         sampleInterval: z.integer().optional(),
       }),
     },
-    handler: async () => {
-      const days = this.windowDays();
+    handler: async ({ query }) => {
+      const days = this.windowDays(
+        Number(query.days ?? AdminMcpController.WINDOW_DAYS),
+      );
       const since = days[0];
+      // ⚠️ A plain value: `$analytics` where clauses take no operators.
+      const where = query.outcome ? { outcome: query.outcome } : undefined;
+      const needle = query.tool?.trim().toLowerCase();
+      const named = (rows: Array<Record<string, string | number | null>>) =>
+        needle
+          ? rows.filter((row) =>
+              String(row.tool).toLowerCase().includes(needle),
+            )
+          : rows;
 
       const [byDay, byOutcome] = await Promise.all([
         this.datasets.mcpCalls.query({
           since,
+          ...(where ? { where } : {}),
           groupBy: ["day", "tool"],
           select: { count: "sum" },
         }),
         this.datasets.mcpCalls.query({
           since,
+          ...(where ? { where } : {}),
           groupBy: ["tool", "outcome"],
           select: { count: "sum" },
         }),
       ]);
 
-      const leaderboard = this.leaderboard(byOutcome.rows);
+      const leaderboard = this.leaderboard(named(byOutcome.rows));
       const tools = this.series(
-        byDay.rows,
+        named(byDay.rows),
         days,
         leaderboard
           .slice(0, AdminMcpController.TOP_TOOLS)
@@ -247,11 +279,11 @@ export class AdminMcpController {
    * the store never produced. Read through `DateTimeProvider`, so a test that
    * travels sees the window move with it.
    */
-  protected windowDays(): string[] {
+  protected windowDays(length: number): string[] {
     const today = this.dt.nowMillis();
     const dayMs = 24 * 60 * 60 * 1000;
     const labels: string[] = [];
-    for (let back = AdminMcpController.WINDOW_DAYS - 1; back >= 0; back--) {
+    for (let back = length - 1; back >= 0; back--) {
       labels.push(
         AnalyticsBuckets.day(AnalyticsBuckets.hour(today - back * dayMs)),
       );

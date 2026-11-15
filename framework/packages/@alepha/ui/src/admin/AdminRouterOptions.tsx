@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import type { NavGroup } from "../shell/appShellNav.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
-import { adminDashboardCardIdProblem } from "./adminDashboardLayout.ts";
+import { adminDashboardCardIdProblem } from "./adminDashboardCards.ts";
 import type { AdminParametersProps } from "./AdminParameters.tsx";
 import type { AdminUserDetailProps } from "./AdminUserDetail.tsx";
 import type { AdminUsersProps } from "./AdminUsers.tsx";
@@ -91,18 +91,28 @@ export interface AdminRouterOptions {
    * Each carries its own `can` gate, so a card is responsible for saying when
    * it should not render — the dashboard never guesses on a card's behalf.
    *
-   * The built-in cards (Users, Connected, Failed sign-ins) sit at `order`
-   * 1000 and up, so a card declaring no `order` leads the dashboard.
+   * The built-in cards (Users, Connected, Failed audits) sit at `order`
+   * 1000 and up, so a card declaring no `order` leads the dashboard. The
+   * tiles and their order are this code: nothing an admin edits or stores.
    */
   dashboardCards?: AdminDashboardCard[];
 
   /**
-   * The Failed sign-ins tile turns warning-coloured above this many failures
+   * Whether the dashboard shows the built-in cards (Users, Connected, Failed
+   * audits) beside {@link dashboardCards}. `false` leaves an application's
+   * own tiles only.
+   *
+   * @default true
+   */
+  builtinDashboardCards?: boolean;
+
+  /**
+   * The Failed audits tile turns warning-coloured above this many failures
    * in its 7 days. A lockout writes two audit rows, so a handful is normal.
    *
    * @default 10
    */
-  failedSignInsAlertThreshold?: number;
+  failedAuditsAlertThreshold?: number;
 
   /**
    * Route name the shell's "leave admin" affordance pushes.

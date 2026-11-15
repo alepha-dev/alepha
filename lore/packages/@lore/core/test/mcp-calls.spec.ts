@@ -275,6 +275,43 @@ describe("MCP call rates", () => {
       expect(series?.total).toBe(2);
     });
 
+    /**
+     * The page's filters (#Q3665), applied here so the chart and the
+     * leaderboard answer one question.
+     */
+    it("narrows by period, outcome and tool name, chart and leaderboard alike", async ({
+      expect,
+    }) => {
+      // Refused here, both: the harness carries no session.
+      await call(ctx, "project_list", {});
+      await call(ctx, "project_list", {});
+      // An error, the one outcome only it has.
+      await call(ctx, "broken_tool", {});
+      const read = async (query: Record<string, string>) =>
+        (
+          await ctx.admin.readMcpCalls.fetch({ query } as never, {
+            user: adminUser,
+          })
+        ).data;
+
+      expect((await read({ days: "7" })).days).toHaveLength(7);
+      expect((await read({ days: "90" })).days).toHaveLength(90);
+
+      const errors = await read({ outcome: "error" });
+      expect(errors.leaderboard.map((row) => row.tool)).toEqual([
+        "broken_tool",
+      ]);
+      expect(errors.tools.map((row) => row.tool)).toEqual(["broken_tool"]);
+      expect((await read({ outcome: "ok" })).leaderboard).toEqual([]);
+
+      const named = await read({ tool: "PROJECT" });
+      expect(named.leaderboard.map((row) => row.tool)).toEqual([
+        "project_list",
+      ]);
+      expect(named.tools.map((row) => row.tool)).toEqual(["project_list"]);
+      expect(named.tools[0]?.total).toBe(2);
+    });
+
     it("answers an empty window rather than nothing", async ({ expect }) => {
       const page = await ctx.admin.readMcpCalls.fetch(
         {},

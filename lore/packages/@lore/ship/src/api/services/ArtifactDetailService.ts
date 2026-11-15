@@ -1,3 +1,4 @@
+import { ProjectRoster } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
@@ -25,6 +26,7 @@ export class ArtifactDetailService {
   protected readonly deployments = $repository(deployments);
   protected readonly hosts = $repository(hosts);
   protected readonly builds = $inject(DeployedBuildService);
+  protected readonly roster = $inject(ProjectRoster);
 
   public async surroundings(
     projectId: number,
@@ -38,7 +40,7 @@ export class ArtifactDetailService {
     const hostIds = [
       ...new Set(instances.flatMap((it) => (it.hostId ? [it.hostId] : []))),
     ];
-    const [hostRows, builds, runs] = await Promise.all([
+    const [hostRows, builds, runs, members] = await Promise.all([
       hostIds.length
         ? this.hosts.findMany({ where: { id: { inArray: hostIds } } })
         : Promise.resolve([]),
@@ -55,6 +57,7 @@ export class ArtifactDetailService {
           "createdAt",
           "startedAt",
           "finishedAt",
+          "createdBy",
         ],
         where: {
           projectId: { eq: projectId },
@@ -64,10 +67,14 @@ export class ArtifactDetailService {
         orderBy: [{ column: "createdAt", direction: "desc" }],
         limit: ArtifactDetailService.MAX_RUNS,
       }),
+      // The Deployments tab's Author column (#Q3669): one read of the
+      // project's members, rather than a user lookup per run.
+      this.roster.of(projectId),
     ]);
 
     const byHost = new Map(hostRows.map((row) => [row.id, row]));
     const envs = new Map(instances.map((row) => [row.id, row.env]));
+    const names = new Map(members.map((it) => [it.userId, it.name]));
 
     return {
       copies: instances
@@ -100,9 +107,12 @@ export class ArtifactDetailService {
           };
         })
         .sort((a, b) => a.env.localeCompare(b.env)),
-      deployments: runs.map((run) => ({
+      deployments: runs.map(({ createdBy, ...run }) => ({
         ...run,
         env: envs.get(run.instanceId),
+        ...(createdBy && names.get(createdBy)
+          ? { author: names.get(createdBy) }
+          : {}),
       })),
     };
   }

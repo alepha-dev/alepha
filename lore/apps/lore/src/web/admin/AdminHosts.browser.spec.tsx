@@ -18,6 +18,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import AdminHostAssignDialog from "./AdminHostAssignDialog.tsx";
+import AdminHostRenameDialog from "./AdminHostRenameDialog.tsx";
 import { AdminHosts } from "./AdminHosts.tsx";
 
 /**
@@ -26,6 +27,7 @@ import { AdminHosts } from "./AdminHosts.tsx";
 class AdminLinks extends LinkProvider {
   public calls: Array<{ action: string; request: unknown }> = [];
   public rows: AdminHostResource[] = [];
+  public refuseRename?: string;
 
   override client(): any {
     return new Proxy(
@@ -54,6 +56,11 @@ class AdminLinks extends LinkProvider {
                   page: { number: 0, size: 100, totalElements: 2 },
                 };
               }
+              if (action === "adminRenameHost") {
+                if (this.refuseRename) throw new Error(this.refuseRename);
+                const body = (request as { body: { slug: string } }).body;
+                return { slug: body.slug };
+              }
               if (action === "assignHost") {
                 return { project: { id: 9, title: "Shop" }, loans: [] };
               }
@@ -66,10 +73,12 @@ class AdminLinks extends LinkProvider {
   }
 }
 
-const HOMELESS: AdminHostResource = {
+const LOOSE: AdminHostResource = {
   id: "00000000-0000-4000-8000-0000000000e1",
   slug: "loose",
   type: "bay",
+  // Every host has a home since #Q3627.
+  project: { id: 2, title: "Ops" },
   online: false,
   deployAllowed: true,
   createdAt: "2026-09-01T10:00:00.000Z",
@@ -81,9 +90,9 @@ const HOMELESS: AdminHostResource = {
 };
 
 /**
- * The admin's hosts page (#Q3281): where a host the migration could not
- * home gets one. Its row says it has no home, who created it and where it is
- * lent, and the assign dialog offers the project of its oldest loan first.
+ * The admin's hosts page (#Q3281): every host, its home, who created it and
+ * where it is lent, and the assign dialog that moves it, offering the project
+ * of its oldest loan first.
  */
 describe("AdminHosts", () => {
   beforeAll(() => {
@@ -110,11 +119,9 @@ describe("AdminHosts", () => {
     return alepha.inject(LinkProvider) as AdminLinks;
   };
 
-  it("names a homeless host's creator and its loans, and says it has no home", async ({
-    expect,
-  }) => {
+  it("names a host's home, its creator and its loans", async ({ expect }) => {
     const links = await boot();
-    links.rows = [HOMELESS];
+    links.rows = [LOOSE];
     render(
       <AlephaContext.Provider value={alepha!}>
         <DialogProvider>
@@ -124,35 +131,58 @@ describe("AdminHosts", () => {
     );
 
     await waitFor(() => expect(screen.getByText("loose")).toBeTruthy());
-    expect(screen.getByText("No home")).toBeTruthy();
+    expect(screen.queryByText("No home")).toBeNull();
     expect(screen.getByText("Dan")).toBeTruthy();
     expect(screen.getByText("Shop, Blog")).toBeTruthy();
   });
 
-  it("asks the server for the hosts with no home when the filter says so", async ({
+  /**
+   * The admin's rename, as moderation (#Q3664): the dialog opens on the
+   * host's names, sends both, and keeps a refusal in place.
+   */
+  it("renames a host from its current names, and shows a refusal in place", async ({
     expect,
   }) => {
-    // The filter as the table restores it: chosen once, persisted.
-    window.localStorage.setItem(
-      "lore.admin.hosts.filters",
-      JSON.stringify({ home: ["none"] }),
-    );
     const links = await boot();
-    links.rows = [HOMELESS];
+    let renamed = 0;
+    const host = { ...LOOSE, label: "Loose box" };
     render(
       <AlephaContext.Provider value={alepha!}>
-        <DialogProvider>
-          <AdminHosts />
-        </DialogProvider>
+        <AdminHostRenameDialog
+          host={host}
+          onOpenChange={() => {}}
+          onRenamed={() => {
+            renamed += 1;
+          }}
+        />
       </AlephaContext.Provider>,
     );
 
-    await waitFor(() => expect(screen.getByText("loose")).toBeTruthy());
-    const fetched = links.calls.filter((it) => it.action === "findHosts");
+    const slug = (await screen.findByTestId(
+      "admin-host-rename-slug",
+    )) as HTMLInputElement;
+    expect(slug.value).toBe("loose");
     expect(
-      (fetched.at(-1)!.request as { query: Record<string, unknown> }).query,
-    ).toMatchObject({ homeless: true });
-    window.localStorage.removeItem("lore.admin.hosts.filters");
+      (screen.getByTestId("admin-host-rename-label") as HTMLInputElement).value,
+    ).toBe("Loose box");
+
+    links.refuseRename = 'Shop already has a host named "taken"';
+    fireEvent.change(slug, { target: { value: "taken" } });
+    fireEvent.click(screen.getByTestId("admin-host-rename-submit"));
+    expect(
+      (await screen.findByTestId("admin-host-rename-error")).textContent,
+    ).toContain("already has a host");
+    expect(renamed).toBe(0);
+
+    links.refuseRename = undefined;
+    fireEvent.change(slug, { target: { value: "paris-1" } });
+    fireEvent.click(screen.getByTestId("admin-host-rename-submit"));
+    await waitFor(() => expect(renamed).toBe(1));
+    const calls = links.calls.filter((it) => it.action === "adminRenameHost");
+    expect(calls.at(-1)?.request).toEqual({
+      params: { id: LOOSE.id },
+      body: { slug: "paris-1", label: "Loose box" },
+    });
   });
 
   it("preselects the project of the oldest loan, and assigns there", async ({
@@ -163,7 +193,7 @@ describe("AdminHosts", () => {
     render(
       <AlephaContext.Provider value={alepha!}>
         <AdminHostAssignDialog
-          host={HOMELESS}
+          host={LOOSE}
           onOpenChange={() => {}}
           onAssigned={() => {
             assigned = true;
@@ -180,7 +210,7 @@ describe("AdminHosts", () => {
     await waitFor(() => expect(assigned).toBe(true));
     const call = links.calls.find((it) => it.action === "assignHost");
     expect(call?.request).toEqual({
-      params: { id: HOMELESS.id },
+      params: { id: LOOSE.id },
       body: { projectId: 9 },
     });
   });

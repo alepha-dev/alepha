@@ -7,7 +7,7 @@ import {
 import { projectCapabilities, projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { organizationConfigAtom, RankService } from "alepha/api/organizations";
-import { AlephaApiUsers, UserService } from "alepha/api/users";
+import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -258,73 +258,16 @@ describe("a host's home project changes", () => {
   });
 
   describe("the admin's assign", () => {
-    it("homes a host the migration left with none, its loan kept, its anchor the new owner", async ({
-      expect,
-    }) => {
-      // What the migration leaves: a member who owns no project lent their
-      // host to somebody else's project, which deploys a copy onto it.
-      const dan = await person("dan");
-      const borrowerOwner = await person("borrower");
-      const borrower = await createTestProject(alepha, {
-        createdBy: borrowerOwner.id,
-      });
-      const host = await repos.hosts.create({
-        ownerUserId: dan.id,
-        createdBy: dan.id,
-        type: "bay",
-        slug: "loose",
-        secretHash: "hash-loose",
-      });
-      await repos.loans.create({ hostId: host.id, projectId: borrower.id });
-      const copy = await repos.instances.create({
-        projectId: borrower.id,
-        app: "api",
-        env: "production",
-        hostId: host.id,
-      });
-
-      for (const user of [dan, borrowerOwner]) {
-        await expect(
-          hostsApi.getHost({ params: { hostId: host.id } }, { user }),
-        ).rejects.toThrow(ForbiddenError);
-      }
-      expect((await repos.instances.getById(copy.id)).hostId).toBe(host.id);
-
-      const assigned = await alepha
-        .inject(AdminHostController)
-        .assignHost(
-          { params: { id: host.id }, body: { projectId: borrower.id } },
-          { user: admin },
-        );
-      expect(assigned.project.id).toBe(borrower.id);
-      expect(assigned.loans.map((loan) => loan.id)).toEqual([borrower.id]);
-      // No credential crosses, the admin included.
-      expect(JSON.stringify(assigned)).not.toContain("hash-loose");
-
-      const row = await repos.hosts.getById(host.id);
-      expect(row.projectId).toBe(borrower.id);
-      expect(row.ownerUserId).toBe(borrowerOwner.id);
-      const managed = await hostsApi.rotateHost(
-        { params: { hostId: host.id } },
-        { user: borrowerOwner },
-      );
-      expect(managed.secret).toBeDefined();
-      expect(await repos.loans.count({ hostId: { eq: host.id } })).toBe(1);
-
-      // Its creator leaving no longer takes it.
-      await alepha.inject(UserService).deleteUser(dan.id);
-      expect(await repos.hosts.findById(host.id)).toBeDefined();
-      expect((await repos.instances.getById(copy.id)).hostId).toBe(host.id);
-    });
-
     it("refuses a target with Apps off, and needs admin:host:update", async ({
       expect,
     }) => {
       const dan = await person("dan");
       const owner = await person("owner");
       const project = await createTestProject(alepha, { createdBy: owner.id });
+      const home = await createTestProject(alepha, { createdBy: dan.id });
       const host = await repos.hosts.create({
         ownerUserId: dan.id,
+        projectId: home.id,
         type: "bay",
         slug: "loose",
       });

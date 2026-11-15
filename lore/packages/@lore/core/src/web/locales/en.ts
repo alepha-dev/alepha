@@ -84,6 +84,8 @@ export default {
   "automation.event.epicCompleted": "Epic completed",
   "automation.event.deployFailed": "Deployment failed",
   "automation.event.deploySucceeded": "Deployment succeeded",
+  "automation.event.hostCredentialInvalid": "Host token invalid",
+  "automation.event.hostExpired": "Host past its TTL",
   "automation.event.monitorDown": "Monitor down",
   "automation.event.monitorUp": "Monitor recovered",
   "automation.event.questCompleted": "Quest completed",
@@ -117,6 +119,8 @@ export default {
     "Sample aggregate open errors every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
   "automation.setup.folio": "Folio",
   "automation.setup.app": "App",
+  "automation.setup.channels": "Channels",
+  "automation.setup.host": "Host",
   "automation.setup.monitor": "Monitor",
   "automation.preset.release-to-folio.title":
     "Publish release notes to a folio",
@@ -128,6 +132,22 @@ export default {
   "automation.preset.release-published.title": "Release published",
   "automation.preset.release-published.description":
     "Notify one member when a release is published, with its tag, title, number of quests and a link.",
+  "hosts.subscription.label": "Notify me when this host needs attention",
+  "hosts.subscription.description":
+    "A rule of your own will notify you when this host passes its TTL or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
+  "hosts.subscription.offDescription":
+    "You will no longer be notified about this host.",
+  "hosts.subscription.allLabel": "Notify me when any host needs attention",
+  "hosts.subscription.allDescription":
+    "A rule of your own will notify you when any host of this project passes its TTL or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
+  "hosts.subscription.allOffDescription":
+    "You will no longer be notified about this project's hosts.",
+  "automation.preset.host-credential-invalid.title": "Host token invalid",
+  "automation.preset.host-credential-invalid.description":
+    "Notify one member when the nightly check finds a Cloudflare host's token no longer works. Deploys through it are refused until it is replaced.",
+  "automation.preset.host-expired.title": "Host past its TTL",
+  "automation.preset.host-expired.description":
+    "Notify one member when a throwaway host passes its time to live. Lore stops and deletes nothing.",
   "automation.preset.deploy-failed.title": "Deployment failed",
   "automation.preset.deploy-failed.description":
     "Notify one member when a deployment of the chosen app records a failure, in any environment. Raw logs are excluded.",
@@ -401,8 +421,15 @@ export default {
   "folios.editor.listing.items": "$1 items",
   "folios.editor.listing.pinned": "Pinned",
   "folios.editor.listing.empty": "This directory is empty.",
+  "folios.editor.root.title": "Folios",
+  "folios.editor.root.description":
+    "Open a folio from the tree, start a new one, or search them all.",
+  "folios.editor.root.new": "New folio",
+  "folios.editor.root.search": "Search folios",
 
   "folios.editor.tree.title": "Folios",
+  "folios.editor.tree.move-group-refused":
+    "A directory cannot move into itself: nothing was moved.",
   "folios.editor.tree.new-folio": "New folio",
   "folios.editor.tree.new-directory": "New directory",
   "folios.editor.tree.refresh": "Refresh the tree",
@@ -414,6 +441,9 @@ export default {
   "folios.editor.tree.open": "Open",
   "folios.editor.tree.open-new-tab": "Open in new tab",
   "folios.editor.tree.rename": "Rename",
+  "folios.editor.tree.trash-retention": "30 days",
+  "folios.editor.tree.trash-hint":
+    "Items in the trash are deleted for good after 30 days. Move one out to restore it.",
   "folios.editor.tree.copy-wiki-link": "Copy wiki-link",
   "folios.editor.tree.encrypt": "Encrypt",
   "folios.editor.tree.confirm-delete-directory-title": "Delete this directory?",
@@ -614,6 +644,11 @@ export default {
   "artifact.builds.title": "Builds of $1",
   "artifact.builds.this": "$1 (this build)",
   "artifact.deployments.empty": "This tag has not been deployed.",
+  "artifact.deployments.column.copy": "Copy",
+  "artifact.deployments.column.status": "Status",
+  "artifact.deployments.column.commit": "Commit",
+  "artifact.deployments.column.when": "When",
+  "artifact.deployments.column.author": "Author",
   "artifact.deploy.action": "Deploy",
   "artifact.deploy.newCopy": "New copy",
   "artifact.newCopy.title": "New copy from $1",
@@ -1990,6 +2025,9 @@ export default {
   "apps.create.env": "Environment",
   "apps.create.envDescription":
     "Which copy: production, staging, east-production. Free text, and nothing parses it.",
+  "apps.create.url": "Address",
+  "apps.create.urlDescription":
+    "Optional. Where this copy answers, e.g. https://acme.example; Settings can set it later.",
   "apps.create.withSigil": "Create a sigil too",
   "apps.create.withSigilDescription":
     "Mints the key this copy reports with, shown once. You can always add one later from its Settings tab.",
@@ -2231,6 +2269,18 @@ export default {
   "app.settings.url.detected":
     "Using $1, the address this copy last reported from. Set a URL here to show a different one, or clear the field to go back to the detected address.",
   "app.settings.url.save": "Save",
+  "app.settings.monitor.title": "Monitor",
+  "app.settings.monitor.description":
+    "Check this copy's address from outside, every minute by default, and alert on an outage.",
+  "app.settings.monitor.label": "Monitor this app",
+  "app.settings.monitor.rowDescription":
+    "On adds an Uptime card to the Overview. Off pauses the check and keeps its history.",
+  "app.settings.monitor.needsAddress":
+    "Set the address above first: the check requests that address.",
+  "app.settings.monitor.check": "Check",
+  "app.settings.monitor.checkDescription":
+    "What the check does. Edit changes it; its target follows the address.",
+  "app.settings.monitor.anySuccess": "Any 2xx",
   "app.settings.url.saved": "Address saved",
   "app.settings.host.title": "Host",
   "app.settings.host.description":
@@ -2338,7 +2388,6 @@ export default {
     "Where visits came from. Only the first page of a visit carries a referrer, so Direct also covers navigation inside the app.",
   "insights.topReferrers.direct": "Direct",
   "insights.empty": "No page views recorded in this range yet.",
-  "insights.backToOverview": "Back to overview",
   "insights.dimension.value": "Value",
   "insights.dimension.count": "Count",
   "insights.dimension.share": "Share",
@@ -2747,10 +2796,6 @@ export default {
   "account.hosts.delete.confirm": "Delete",
   "account.hosts.toast.rotated": "Secret rotated",
   "account.hosts.toast.deleted": "Host deleted",
-  "account.delete.hosts.one":
-    "1 host that belongs to no project is still tied to your account: it will be deleted with it and its secret revoked; $1 project(s) it is lent to lose their deploy destination.",
-  "account.delete.hosts.many":
-    "$1 hosts that belong to no project are still tied to your account: they will be deleted with it and their secrets revoked; $2 project(s) they are lent to lose a deploy destination.",
 
   "feedback.list.showMore": "Show more",
   "feedback.list.loadingMore": "Loading…",
@@ -2942,8 +2987,6 @@ export default {
 
   // Admin → Dashboard: Lore's Projects tile.
   "admin.projectsTile.title": "Projects",
-  "admin.projectsTile.description":
-    "Projects on this instance, archived excluded, with creations against the week before.",
   "admin.projectsTile.tooltip":
     "Every project on this instance, archived projects excluded.",
   "admin.projectsTile.note": "Created in 7 days: $1",
@@ -3090,6 +3133,10 @@ export default {
     "Marking $1 as ready puts its quests in the backlog with its review still unanswered. The answers are on the Review tab; you can also mark it ready now and leave them open.",
   "epic.ready.openQuestions.anyway": "Mark as ready anyway",
   "epic.ready.openQuestions.review": "Open the Review tab",
+  "epic.ready.openBlockers.title": "$1 review blockers are still open",
+  "epic.ready.openBlockers.title.one": "1 review blocker is still open",
+  "epic.ready.openBlockers.confirm":
+    "The review found problems that stop $1's plan as written. Resolve them on the Review tab before its quests reach the backlog, or mark it ready anyway.",
   "epic.start.blocked": "Blocked by Epic $1",
   "epic.status.actions.markReady": "Mark as ready",
   "epic.status.actions.backToDraft": "Back to draft",
@@ -3122,10 +3169,13 @@ export default {
   "epic.tab.activity": "Activity",
   "epic.tab.review": "Review",
   "epic.list.openQuestions": "$1 review questions open",
+  "epic.list.openBlockers": "$1 review blockers open",
   "epic.review.empty":
     "No review has been filed for this epic yet. Run Review Epic from the agent prompts to file one.",
   "epic.review.open": "Open questions ($1)",
   "epic.review.open.none": "No review question is open.",
+  "epic.review.openWithBlockers": "Open blockers ($1) and questions ($2)",
+  "epic.review.blocker": "Blocker",
   "epic.review.recommended": "Recommended",
   "epic.review.pick": "Take this",
   "epic.review.write": "Write an answer",
@@ -3138,6 +3188,7 @@ export default {
   "epic.review.log.empty": "Nothing has been decided yet.",
   "epic.review.kind.question": "question",
   "epic.review.kind.decision": "decision",
+  "epic.review.kind.blocker": "blocker",
   "epic.review.answered": "Answer:",
   "epic.review.replaces": "Replaces decision $1",
   "epic.review.overturn": "Overturn",
@@ -3382,7 +3433,6 @@ export default {
     "Write in markdown. Everyone who reads the board sees it.",
   "dashboard.edit": "Edit",
   "dashboard.save": "Save",
-  "dashboard.customize": "Customize",
   "dashboard.menu": "Board options",
   "dashboard.reset": "Reset to default",
   "dashboard.reset.confirm": "Reset this board to the default?",
@@ -3779,21 +3829,13 @@ export default {
   "uptime.recipientsDescription":
     "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
   "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
-  "uptime.suggestions.title": "Apps without a monitor",
-  "uptime.suggestions.description":
-    "These copies have an address and nothing checking it. Add one with its name and URL filled in.",
-  "uptime.suggestions.add": "Add monitor",
-  "uptime.suggestions.addFor": "Add a monitor for $1",
-  "uptime.app.none": "No monitor checks this address yet.",
   "uptime.title": "Uptime",
-  "uptime.empty": "No monitors yet.",
   "project.capability.ship.option.uptime.label": "Monitor apps",
   "project.capability.ship.option.uptime.description":
     "Check your addresses on a schedule and keep their history. No sigil needed.",
   "project.capability.ship.option.stacks.label": "Stacks",
   "project.capability.ship.option.stacks.description":
     "Deploy apps and services together from one compose.yml.",
-  "uptime.description": "Website, port, certificate and scheduled job checks.",
   "uptime.recentChecks": "Recent checks",
   "uptime.notMeasured": "Not measured",
   "uptime.beatTitle": "$1: $2 ms, $3",
@@ -3942,6 +3984,8 @@ export default {
   "automation.source.quest.completed": "Quest completed",
   "automation.source.deploy.failed": "Deployment failed",
   "automation.source.deploy.succeeded": "Deployment succeeded",
+  "automation.source.host.credential_invalid": "Host token invalid",
+  "automation.source.host.expired": "Host past its TTL",
   "automation.source.monitor.down": "Monitor down",
   "automation.source.monitor.up": "Monitor recovered",
   "automation.source.quests.open": "Open quests, one run each",

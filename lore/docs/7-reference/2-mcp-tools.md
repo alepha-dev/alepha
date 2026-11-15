@@ -111,7 +111,7 @@ See [Epics](/lore/docs/plan-epics).
 | `epic_shelve`        | Set a whole plan aside, with its open quests.                                   |
 | `epic_unshelve`      | Bring it back, with only the quests it set aside.                               |
 | `epic_delete`        | Delete an epic and its quests, while it is `draft` or `ready`. Its folios stay. |
-| `epic_review_create` | File a review: its questions, decisions and changes.                            |
+| `epic_review_create` | File a review: its blockers, questions, decisions and changes.                  |
 | `epic_review_answer` | Answer, waive or overturn a review item, by its number.                         |
 
 ## Releases
@@ -217,14 +217,14 @@ See [Apps and instances](/lore/docs/ship-instances) and
 See [Healthchecks](/lore/docs/ship-healthchecks). Reading needs `app:read`;
 the rest needs `app:manage` and the **Monitor apps** option.
 
-| Tool                              | What it does                                                                       |
-| --------------------------------- | ---------------------------------------------------------------------------------- |
-| `monitor_list`                    | Every monitor, down first, with its status and uptime over 24 hours, 7 or 30 days. |
-| `monitor_get`                     | One monitor: its settings, uptime per window, incidents and its last ten checks.   |
-| `monitor_create`                  | Add a monitor. A push monitor's token is shown once.                               |
-| `monitor_update`                  | Change the settings passed, and keep the rest.                                     |
-| `monitor_pause`, `monitor_resume` | Stop a monitor's checks and start them again, keeping its history.                 |
-| `monitor_delete`                  | Remove a monitor with its checks and incidents. This cannot be undone.             |
+| Tool                              | What it does                                                                                                                                 |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `monitor_list`                    | Every monitor, down first, with the app copy it belongs to, its status and uptime over 24 hours, 7 or 30 days.                               |
+| `monitor_get`                     | One monitor: its settings, uptime per window, incidents and its last ten checks.                                                             |
+| `monitor_create`                  | Add a monitor to an app copy (`app`, `env`); an `http` one checks its address unless given a `target`. A push monitor's token is shown once. |
+| `monitor_update`                  | Change the settings passed, and keep the rest.                                                                                               |
+| `monitor_pause`, `monitor_resume` | Stop a monitor's checks and start them again, keeping its history.                                                                           |
+| `monitor_delete`                  | Remove a monitor with its checks and incidents. This cannot be undone.                                                                       |
 
 ## Deploys
 

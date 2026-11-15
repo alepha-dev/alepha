@@ -208,7 +208,10 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           rows={tree.rows}
           collapsed={tree.collapsed}
           selectedId={tree.selectedId}
-          onSelect={(node) => commands.select(asFolioNode(node))}
+          selectedIds={tree.selectedIds}
+          onSelect={(node, options) =>
+            commands.select(asFolioNode(node), options)
+          }
           onToggle={commands.toggle}
           renderIcon={(node, state) => {
             const folio = asFolioNode(node);
@@ -231,11 +234,23 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
               <Icon className="size-3.5 shrink-0 text-[var(--folio-tree-folio)]" />
             );
           }}
-          renderTrailing={(node) =>
-            asFolioNode(node).data.pinned ? (
+          renderTrailing={(node) => {
+            const folio = asFolioNode(node);
+            if (folio.data.system === "trash") {
+              return (
+                <span
+                  className="text-muted-foreground shrink-0 text-[10px]"
+                  title={tr("folios.editor.tree.trash-hint")}
+                  data-testid="folio-trash-retention"
+                >
+                  {tr("folios.editor.tree.trash-retention")}
+                </span>
+              );
+            }
+            return folio.data.pinned ? (
               <Pin className="text-primary size-3 shrink-0" />
-            ) : null
-          }
+            ) : null;
+          }}
           renderMenu={(node) => (
             <FolioTreeContextMenu
               node={asFolioNode(node)}

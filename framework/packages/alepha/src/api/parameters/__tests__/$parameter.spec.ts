@@ -323,11 +323,7 @@ describe("ParameterProvider", () => {
     await provider.save("app.pricing.tiers", { basic: 10 }, "hash3");
     await provider.save("system.logging", { level: "info" }, "hash4");
 
-    // The module's own `admin.dashboard.layout` is registered, so `admin`
-    // is a node too; this spec is about the names it saved.
-    const tree = (await provider.getParameterTree()).filter(
-      (node) => node.name !== "admin",
-    );
+    const tree = await provider.getParameterTree();
 
     expect(tree.length).toBe(2); // app, system
     expect(tree[0].name).toBe("app");

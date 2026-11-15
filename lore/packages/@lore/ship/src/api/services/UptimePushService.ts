@@ -36,7 +36,7 @@ export class UptimePushService {
 
   public async create(
     projectId: number,
-    config: PushMonitorConfig,
+    config: PushMonitorConfig & { appInstanceId?: string },
   ): Promise<{ monitor: Monitor; token: string }> {
     const minted = await this.mint();
     const now = this.clock.nowISOString();

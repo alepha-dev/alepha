@@ -4,7 +4,9 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { afterEach, describe, it } from "vitest";
 
+import { AppController } from "../src/api/controllers/AppController.ts";
 import { MonitorController } from "../src/api/controllers/MonitorController.ts";
+import { appInstances } from "../src/api/entities/appInstances.ts";
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../src/api/entities/monitorHeartbeats.ts";
 import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
@@ -16,6 +18,7 @@ class Repositories extends DeployTestEntities {
   monitors = $repository(monitors);
   beats = $repository(monitorHeartbeats);
   incidents = $repository(monitorIncidents);
+  instances = $repository(appInstances);
 }
 
 const config = {
@@ -49,11 +52,21 @@ describe("Monitor API", () => {
     const project = await createTestProject(alepha, {
       capabilities: [{ key: "ship", options: { uptime: true } }],
     });
+    // A monitor belongs to an app copy (#Q3657); this one has no deploy and
+    // no sigil, only an address.
+    const app = await repos.instances.create({
+      projectId: project.id,
+      app: "website",
+      env: "production",
+      url: "https://example.test",
+    });
     return {
       alepha,
       repos,
       clock,
       project,
+      app,
+      body: { ...config, appInstanceId: app.id },
       api: alepha.inject(MonitorController),
       user: { id: project.createdBy, roles: ["user"] },
     };
@@ -64,7 +77,7 @@ describe("Monitor API", () => {
   }) => {
     const ctx = await setup();
     const created = await ctx.api.createMonitor.fetch(
-      { params: { projectId: ctx.project.id }, body: config },
+      { params: { projectId: ctx.project.id }, body: ctx.body },
       { user: ctx.user },
     );
     const id = created.data.monitor.id;
@@ -96,13 +109,13 @@ describe("Monitor API", () => {
   }) => {
     const ctx = await setup();
     const first = await ctx.api.createMonitor.fetch(
-      { params: { projectId: ctx.project.id }, body: config },
+      { params: { projectId: ctx.project.id }, body: ctx.body },
       { user: ctx.user },
     );
     const push = await ctx.api.createMonitor.fetch(
       {
         params: { projectId: ctx.project.id },
-        body: { ...config, name: "Backup", kind: "push", target: "" },
+        body: { ...ctx.body, name: "Backup", kind: "push", target: "" },
       },
       { user: ctx.user },
     );
@@ -145,7 +158,7 @@ describe("Monitor API", () => {
   }) => {
     const ctx = await setup();
     const created = await ctx.api.createMonitor.fetch(
-      { params: { projectId: ctx.project.id }, body: config },
+      { params: { projectId: ctx.project.id }, body: ctx.body },
       { user: ctx.user },
     );
     const monitorId = created.data.monitor.id;
@@ -219,7 +232,7 @@ describe("Monitor API", () => {
       ctx.api.createMonitor.fetch(
         {
           params: { projectId: ctx.project.id },
-          body: { ...config, target: "ftp://example.test" },
+          body: { ...ctx.body, target: "ftp://example.test" },
         },
         { user: ctx.user },
       ),
@@ -229,7 +242,7 @@ describe("Monitor API", () => {
         {
           params: { projectId: ctx.project.id },
           body: {
-            ...config,
+            ...ctx.body,
             notifications: { email: true, recipients: ["invalid-address"] },
           },
         },
@@ -237,7 +250,7 @@ describe("Monitor API", () => {
       ),
     ).rejects.toThrow();
     const created = await ctx.api.createMonitor.fetch(
-      { params: { projectId: ctx.project.id }, body: config },
+      { params: { projectId: ctx.project.id }, body: ctx.body },
       { user: ctx.user },
     );
     const stranger = await createTestProject(ctx.alepha);
@@ -252,9 +265,145 @@ describe("Monitor API", () => {
     });
     await expect(
       ctx.api.createMonitor.fetch(
-        { params: { projectId: off.id }, body: config },
+        { params: { projectId: off.id }, body: ctx.body },
         { user: { id: off.createdBy, roles: ["user"] } },
       ),
     ).rejects.toThrow();
+  });
+  it("belongs to an app copy: refuses none, and refuses another project's", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await expect(
+      ctx.api.createMonitor.fetch(
+        // biome-ignore lint/suspicious/noExplicitAny: the missing owner is the point
+        { params: { projectId: ctx.project.id }, body: config as any },
+        { user: ctx.user },
+      ),
+    ).rejects.toThrow();
+    const stranger = await createTestProject(ctx.alepha, {
+      capabilities: [{ key: "ship", options: { uptime: true } }],
+    });
+    const theirs = await ctx.repos.instances.create({
+      projectId: stranger.id,
+      app: "theirs",
+      env: "production",
+    });
+    await expect(
+      ctx.api.createMonitor.fetch(
+        {
+          params: { projectId: ctx.project.id },
+          body: { ...config, appInstanceId: theirs.id },
+        },
+        { user: ctx.user },
+      ),
+    ).rejects.toThrow("App not found in this project");
+    const created = await ctx.api.createMonitor.fetch(
+      { params: { projectId: ctx.project.id }, body: ctx.body },
+      { user: ctx.user },
+    );
+    expect(created.data.monitor.appInstanceId).toBe(ctx.app.id);
+    // Deleting the app deletes its monitor.
+    await ctx.repos.instances.deleteById(ctx.app.id);
+    expect(await ctx.repos.monitors.count()).toBe(0);
+  });
+
+  it("gives a monitor made before the link an owner: the copy at its address, or an app made for it", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const now = ctx.clock.nowISOString();
+    const orphan = (name: string, target: string, kind = "http" as const) =>
+      ctx.repos.monitors.create({
+        projectId: ctx.project.id,
+        name,
+        kind,
+        target,
+        statusSince: now,
+        nextCheckAt: now,
+      });
+    const matched = await orphan("Site", "https://EXAMPLE.test/");
+    const loose = await orphan("Status page!", "https://status.example.test");
+    const tcp = await ctx.repos.monitors.create({
+      projectId: ctx.project.id,
+      name: "Website",
+      kind: "tcp",
+      target: "db.example.test:5432",
+      statusSince: now,
+      nextCheckAt: now,
+    });
+
+    const listed = await ctx.alepha
+      .inject(AppController)
+      .listApps.fetch(
+        { params: { projectId: ctx.project.id } },
+        { user: ctx.user },
+      );
+
+    const byId = async (id: string) =>
+      (await ctx.repos.monitors.getById(id)).appInstanceId;
+    expect(await byId(matched.id)).toBe(ctx.app.id);
+    const made = listed.data.items.find((item) => item.app === "status-page");
+    expect(made?.env).toBe("production");
+    expect(made?.url).toBe("https://status.example.test");
+    expect(await byId(loose.id)).toBe(made?.id);
+    // A TCP check matches no address: it gets an app of its own, and the
+    // name the copy already holds is not reused.
+    const tcpOwner = listed.data.items.find((item) => item.app === "website-2");
+    expect(await byId(tcp.id)).toBe(tcpOwner?.id);
+    expect(tcpOwner?.url).toBeUndefined();
+
+    // Read again, nothing moves.
+    await ctx.api.listMonitors.fetch(
+      { params: { projectId: ctx.project.id }, query: { window: "24h" } },
+      { user: ctx.user },
+    );
+    expect(await ctx.repos.instances.count()).toBe(3);
+  });
+  it("follows the app's address, and refuses clearing it while Monitor is on", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const apps = ctx.alepha.inject(AppController);
+    const created = await ctx.api.createMonitor.fetch(
+      { params: { projectId: ctx.project.id }, body: ctx.body },
+      { user: ctx.user },
+    );
+    const id = created.data.monitor.id;
+    const patch = (url: string) =>
+      apps.updateApp.fetch(
+        {
+          params: {
+            projectId: ctx.project.id,
+            app: "website",
+            env: "production",
+          },
+          body: { url },
+        },
+        { user: ctx.user },
+      );
+
+    // A new address moves the check (#Q3684).
+    await patch("https://www.example.test");
+    expect((await ctx.repos.monitors.getById(id)).target).toBe(
+      "https://www.example.test",
+    );
+
+    // Clearing it while on is refused, and nothing changes.
+    await expect(patch("")).rejects.toThrow("Turn Monitor off");
+    expect((await ctx.repos.instances.getById(ctx.app.id)).url).toBe(
+      "https://www.example.test",
+    );
+
+    // Off: the address may go, and the paused check keeps its target.
+    await ctx.api.setMonitorActive.fetch(
+      { params: { monitorId: id }, body: { active: false } },
+      { user: ctx.user },
+    );
+    await patch("");
+    expect((await ctx.repos.instances.getById(ctx.app.id)).url).toBeUndefined();
+    expect((await ctx.repos.monitors.getById(id)).target).toBe(
+      "https://www.example.test",
+    );
   });
 });

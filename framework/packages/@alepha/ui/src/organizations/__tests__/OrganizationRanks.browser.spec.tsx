@@ -137,8 +137,6 @@ describe("OrganizationRanks", () => {
     expect(edit[1].hasAttribute("data-disabled")).toBe(true);
     expect(edit[1].hasAttribute("data-checked")).toBe(false);
     expect(view.queryByText("Secret documents")).toBeNull();
-    expect(view.getByText(/up to 30 seconds/i)).toBeDefined();
-    expect(view.getByText(/demotions take effect immediately/i)).toBeDefined();
   });
 
   it("saves an edited built-in member rank", async () => {
@@ -174,6 +172,31 @@ describe("OrganizationRanks", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Editor actions" }));
     expect(await view.findByRole("menuitem", { name: "Delete" })).toBeDefined();
+  });
+
+  /**
+   * The editor is the page (#Q3666): no title, description or propagation
+   * note above it, Create rank in its header row, and that row sticky inside
+   * the matrix's own scroll region.
+   */
+  it("draws no title above the editor and puts Create rank in its sticky header", async () => {
+    const { view } = await mount();
+
+    expect(view.queryByText("Ranks")).toBeNull();
+    expect(view.queryByText("Choose what each rank may do.")).toBeNull();
+    expect(view.queryByText(/can take up to 30 seconds/)).toBeNull();
+
+    const create = view.getByRole("button", { name: "Create rank" });
+    const thead = create.closest("thead");
+    expect(thead).not.toBeNull();
+    expect(thead!.className.split(/\s+/)).toContain("sticky");
+    // The header sticks to the matrix's own scroll region: the table's
+    // wrapper no longer scrolls, so it is not the nearest scrolling box.
+    const wrapper = thead!.closest('[data-slot="table-container"]')!;
+    expect(wrapper.className.split(/\s+/)).toContain("overflow-visible");
+    expect(wrapper.parentElement!.className.split(/\s+/)).toContain(
+      "overflow-auto",
+    );
   });
 
   it("creates a blank custom rank beside the presets", async () => {

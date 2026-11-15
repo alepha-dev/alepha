@@ -3,6 +3,7 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
+import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import type { AutomationSubscription } from "../schemas/automationSubscriptionSchema.ts";
 import { AutomationSubscriptionScope } from "../schemas/AutomationSubscriptionScope.ts";
 import type { AutomationSubscriptionSetBody } from "../schemas/automationSubscriptionSetBodySchema.ts";
@@ -170,9 +171,7 @@ export class AutomationSubscriptionService {
       ...new Set(
         enabled.flatMap((candidate) =>
           candidate.rule.actions.flatMap((action) =>
-            action.kind === "notify" && "channel" in action
-              ? [String(action.channel)]
-              : [],
+            AutomationRuleChannels.of(action),
           ),
         ),
       ),

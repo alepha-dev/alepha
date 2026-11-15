@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import type { FolioController } from "../../../../../api/controllers/FolioController.ts";
 import { projectDirectoriesAtom } from "../../../atoms/projectDirectoriesAtom.ts";
 import FolioDirectoryListing from "./document/FolioDirectoryListing.tsx";
+import FolioRootPrompt from "./document/FolioRootPrompt.tsx";
 import { FolioWorkspaceShellContext } from "./FolioWorkspaceShellContext.ts";
 import FolioMenubar from "./menubar/FolioMenubar.tsx";
 import {
@@ -36,7 +37,9 @@ const EMPTY_STATE_ACTION_STATE: FolioActionState = {
 /**
  * The document side of `/folios` itself: the tree is open in the shell,
  * nothing is chosen, so there is no editor. The pane lists the directory
- * `?dir=<shortId>` names, the root without it (`FolioDirectoryListing`).
+ * `?dir=<shortId>` names (`FolioDirectoryListing`); without one it offers a
+ * new folio or the search (`FolioRootPrompt`, #Q3655) rather than a listing
+ * of the root, which only repeated the tree beside it.
  *
  * Distinct from create mode, which has an empty but real document to type
  * into. It renders inside `FolioWorkspaceShell`, from `FoliosLayout`.
@@ -125,16 +128,24 @@ const FolioWorkspaceEmpty = (
           <FolioMenubar handlers={handlers} state={state} />,
           shell.chromeSlot,
         )}
-      <FolioDirectoryListing
-        projectSlug={project?.slug ?? ""}
-        directoryShortId={directoryShortId}
-        onCreateFolio={folioApi.create.can() ? openCreatePage : undefined}
-        onCreateDirectory={
-          folioApi.create.can() && treeActions
-            ? (directoryId) => treeActions.createDirectory(directoryId)
-            : undefined
-        }
-      />
+      {directoryShortId === undefined ? (
+        <FolioRootPrompt
+          onCreateFolio={
+            folioApi.create.can() ? () => openCreatePage() : undefined
+          }
+        />
+      ) : (
+        <FolioDirectoryListing
+          projectSlug={project?.slug ?? ""}
+          directoryShortId={directoryShortId}
+          onCreateFolio={folioApi.create.can() ? openCreatePage : undefined}
+          onCreateDirectory={
+            folioApi.create.can() && treeActions
+              ? (directoryId) => treeActions.createDirectory(directoryId)
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 };

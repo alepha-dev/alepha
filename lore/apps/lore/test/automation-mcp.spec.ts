@@ -139,7 +139,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       {
         kind: "notify",
         recipient: user.id,
-        channel: "inbox",
+        channels: ["inbox"],
         title: "Quest",
         text: "{{title}}",
         category: "automations",
@@ -253,7 +253,7 @@ describe("Automation MCP transport uses shared application policy", () => {
         {
           kind: "notify",
           recipient: "{{recipient}}",
-          channel: "inbox",
+          channels: ["inbox"],
           title: "Release {{release_tag}}",
           text: "{{title}}: {{url}}",
           category: "releases",
@@ -565,7 +565,7 @@ describe("Automation MCP transport uses shared application policy", () => {
         {
           kind: "notify",
           recipient: user.id,
-          channel: "inbox",
+          channels: ["inbox"],
           title: "Final publication",
           text: "{{release_tag}}",
           category: "releases",
@@ -731,7 +731,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       expect,
     }) => {
       const ast = rule();
-      if (ast.actions[0].kind === "notify") ast.actions[0].channel = channel;
+      if (ast.actions[0].kind === "notify") ast.actions[0].channels = [channel];
       ast.trigger = { kind: "event", event: "release.published" };
       const made = await create(ast, { enabled: true });
       for (const tag of ["2.0.0", "2.1.0"]) {

@@ -39,10 +39,23 @@ export const folioDirectories = $entity({
       onDelete: "cascade",
     }),
     name: z.string().min(1).max(200),
+    /**
+     * A directory Lore owns (#Q3659). `trash` is the project's one trash:
+     * always present, never renamed, moved or deleted, and anything put in
+     * it is deleted for good 30 days later. Absent for every directory a
+     * person made.
+     */
+    system: z.enum(["trash"]).meta({ mode: "text" }).optional(),
+    /**
+     * When this directory was moved into the trash (#Q3659); cleared when it
+     * is moved out. The purge reads it.
+     */
+    trashedAt: z.datetime().optional(),
   }),
   indexes: [
     { columns: ["projectId", "shortId"], unique: true },
     { columns: ["parentId"] },
+    { columns: ["projectId", "system"] },
   ],
 });
 

@@ -23,7 +23,8 @@ export const automationVariableValueSchema = z
       if (typeof value !== "string") return false;
       if (kind === "member" || kind === "folio")
         return z.uuid().safeParse(value).success;
-      if (kind === "channel") return value.length > 0 && value.length <= 32;
+      // Widened from 32 for configured channel ids (#Q3613).
+      if (kind === "channel") return value.length > 0 && value.length <= 64;
       return true;
     },
     { message: "Variable value does not match its declared kind" },

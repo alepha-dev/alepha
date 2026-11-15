@@ -161,7 +161,7 @@ describe("Quest reminders through an automation (#Q3626)", () => {
     expect(stored.rule.select?.key).toBe("quests.remindersDue");
     expect(stored.rule.actions[0]).toMatchObject({
       recipient: "{{assignee_id}}",
-      channel: "email",
+      channels: ["email"],
     });
     expect(stored.enabled).toBe(true);
     await expect(createRule()).rejects.toThrow("already has");
