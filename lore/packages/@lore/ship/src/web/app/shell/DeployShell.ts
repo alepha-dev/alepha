@@ -154,6 +154,15 @@ export class DeployShell {
       ],
     });
 
+    // The Errors inbox sits in the sidebar's Plan group, so its settings do
+    // too (#Q3703): a tab of Plan's section, while Ship is on. The page and
+    // the rules are Ship's, which is why Ship adds it.
+    this.shell.registerSettingsTab("plan", {
+      route: "projectSettingsErrors",
+      labelKey: "project.settings.tab.errors",
+      capability: "ship",
+    });
+
     // After New Release, matching the sidebar's Work then Ops order: an app
     // is where the work is deployed, not part of planning it.
     //

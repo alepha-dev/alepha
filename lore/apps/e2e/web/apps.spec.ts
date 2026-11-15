@@ -409,15 +409,19 @@ test.describe("Apps", () => {
 
       // ⚠️ The enrol block and the credential list are GONE (#1770). Creating a
       // deployed copy is what /apps is for, and a list of the same things here
-      // was a second door onto one room. What survives is the switch and the
-      // ignore rules, which are project-scoped and cannot follow a sigil down
-      // to an instance.
-      await expect(page.getByText(/Ignore rules/i)).toBeVisible({
+      // was a second door onto one room. The switches are in General since
+      // #Q3702, so what is left is the coverage target; the ignore rules are
+      // Plan > Errors since #Q3703.
+      await expect(page.getByText(/Coverage target/i)).toBeVisible({
         timeout: 15_000,
       });
       await expect(
         page.getByRole("button", { name: "Enroll", exact: true }),
       ).toHaveCount(0);
+      await page.goto(`/${projectSlug}/settings/errors`);
+      await expect(page.getByText(/Ignore rules/i)).toBeVisible({
+        timeout: 15_000,
+      });
     });
 
     await test.step("New app creates a copy from two names, and mints nothing", async () => {

@@ -59,7 +59,8 @@ class FakeLinkProvider extends LinkProvider {
 }
 
 /**
- * The page after #1770 gutted it: a switch and the ignore rules. The switch
+ * The page after #1770 gutted it: a switch and the ignore rules, which moved to
+ * Plan > Errors with #Q3703. The switch
  * moved to General > Capabilities with #Q2565, so it mounts beside it.
  *
  * The case that matters is still the KEY, and it survived the move: the label
@@ -145,8 +146,10 @@ describe("the Apps settings page", () => {
     fireEvent.click(await view.findByRole("switch", { name: "Ship" }));
 
     await waitFor(() =>
-      expect(view.container.textContent).toContain("Ignore rules"),
+      expect(view.container.textContent).toContain("Coverage target"),
     );
+    // The Ignore rules moved to Plan > Errors (#Q3703).
+    expect(view.container.textContent).not.toContain("Ignore rules");
     expect(view.container.textContent).not.toMatch(/enrol/i);
     expect(view.container.textContent).not.toMatch(/sg_/);
   });
