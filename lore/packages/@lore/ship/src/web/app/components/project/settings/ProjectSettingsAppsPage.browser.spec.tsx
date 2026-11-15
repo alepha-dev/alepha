@@ -51,7 +51,7 @@ class FakeLinkProvider extends LinkProvider {
       };
     };
     // ⚠️ Every virtual action carries `can()`, and the capability switch reads
-    // it since epic #E39: `capability:manage` is owner-only structurally. The
+    // it since epic #E39: a rank without `capability:manage` cannot move it. The
     // wrapper answers for the ones this page reads and this fake does not
     // stub - the ignore-rules dialog's own two, for instance.
     return virtualClientFake({ setCapability });

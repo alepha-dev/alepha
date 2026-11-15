@@ -389,6 +389,8 @@ export const LoreCoreApi = $module({
       memberPermissions: LorePermissions.MEMBER_DEFAULT,
       floor: LorePermissions.FLOOR,
       ownerOnly: LoreRankBounds.NEVER_GRANTED,
+      // Every project holds these four, renamable and never deleted (#Q3736).
+      builtinRanks: [...LoreRankBounds.BUILTIN_RANKS],
     });
     alepha.store.set(filesOptions, {
       ...alepha.store.get(filesOptions),

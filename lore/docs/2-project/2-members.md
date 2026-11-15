@@ -29,21 +29,25 @@ Once accepted, the person is a member with the rank the invitation named.
 
 A **rank** is a named set of permissions. Every member has exactly one.
 
-A new project has four:
+Every project has four built-in ranks. You can rename them and change what
+Admin, Member and Viewer grant, but none of the four can be deleted:
 
 | Rank       | Meant for                                                                                                             |
 | ---------- | --------------------------------------------------------------------------------------------------------------------- |
 | **Owner**  | The person who created the project. There is exactly one owner, and the owner can do everything.                      |
-| **Admin**  | Someone who runs the project with you: everything except what only the owner can do.                                  |
+| **Admin**  | Someone who runs the project with you: everything except deleting the project.                                        |
 | **Member** | Someone who does the work: reads the whole project, creates and moves quests, writes epics and folios, pushes builds. |
 | **Viewer** | Someone who only reads the project's memory: quests, epics, folios and releases.                                      |
 
-Admin and Member start from what the project's capabilities need, and you can
-change both. Viewer is a short, fixed list of reads; it is the rank of everyone
-who joins an [open project](/lore/docs/project-open-projects).
+Admin starts with every permission but one, so a capability you turn on later
+is already covered. Member starts from what a person doing the work needs.
+Viewer is a short list of reads; it is the rank of everyone who joins an
+[open project](/lore/docs/project-open-projects). Member is the rank an
+invitation offers by default.
 
 When you need another mix, open the **Ranks** tab and choose **Create rank**:
-a new rank starts from Admin, Member or Viewer.
+a new rank starts from Admin, Member or Viewer. A rank you create can be
+deleted again once nobody holds it.
 
 A base is only a starting point. The **Ranks** tab is a grid, one row per
 permission and one column per rank: tick what each rank may do.
@@ -61,10 +65,9 @@ a rank grants can take up to 30 seconds to reach everyone who holds it.
 
 ### What only the owner can do
 
-Two things can never be granted to a rank:
-
-- **deleting the project**;
-- **turning capabilities on and off**.
+One thing can never be granted to a rank: **deleting the project**. The owner
+also stays the only one who can transfer ownership, and nobody can change the
+owner's rank or remove them.
 
 ### What a person can actually do
 

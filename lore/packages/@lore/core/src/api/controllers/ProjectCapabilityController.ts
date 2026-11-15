@@ -124,10 +124,11 @@ export class ProjectCapabilityController {
    * rank already lists but the project had switched off. The subset rule does
    * not catch it: that rule governs what may be GRANTED, and this is a switch.
    *
-   * So it is its own string, owner-only in the same structural way as
-   * `project:delete`, and Lore's `$rankResource` lists it as never grantable.
-   * `project:update` now means the project's identity: title, description,
-   * slug, icon, repository URL, roadmap visibility.
+   * So it is its own string. It was owner-only until #Q3736, when the owner
+   * decided an Admin does everything but delete the project: the built-in
+   * Admin holds it, and any rank may be given it. `project:update` means the
+   * project's identity: title, description, slug, icon, repository URL,
+   * roadmap visibility.
    */
   setCapability = $action({
     use: [this.ownsAsOwner("capability:manage")],

@@ -56,6 +56,7 @@ export class RankService {
     }>,
   ): Rank[] {
     const config = this.alepha.store.get(organizationConfigAtom);
+    const builtins = this.builtinKeys();
     const byKey = new Map<string, Rank>([
       [
         "owner",
@@ -65,6 +66,7 @@ export class RankService {
           permissions: ["*"],
           builtin: true,
           editable: false,
+          renamable: true,
         },
       ],
       [
@@ -75,21 +77,42 @@ export class RankService {
           permissions: config.memberPermissions,
           builtin: true,
           editable: true,
+          renamable: true,
         },
       ],
     ]);
 
     for (const row of rows) {
       const declared = byKey.get(row.key);
+      if (row.key === "owner") {
+        // A row keyed `owner` carries its NAME only: the owner's permissions
+        // are `*` by definition, whatever the row says.
+        byKey.set("owner", { ...declared!, name: row.name });
+        continue;
+      }
+      const editable = declared ? declared.editable : !row.builtin;
       byKey.set(row.key, {
         key: row.key,
         name: row.name,
         permissions: row.permissions,
-        builtin: row.builtin || declared?.builtin === true,
-        editable: declared ? declared.editable : !row.builtin,
+        builtin: row.builtin || builtins.has(row.key),
+        editable,
+        renamable: editable,
       });
     }
     return [...byKey.values()];
+  }
+
+  /**
+   * The keys nobody can delete: `owner`, `member`, and whatever the
+   * application lists in `organizationConfigAtom.builtinRanks`.
+   */
+  public builtinKeys(): Set<string> {
+    return new Set([
+      "owner",
+      "member",
+      ...(this.alepha.store.get(organizationConfigAtom).builtinRanks ?? []),
+    ]);
   }
 
   public async permissionsOf(
@@ -220,12 +243,10 @@ export class RankService {
     input: { key: string; name: string; permissions: string[] },
     writer: UserAccountToken,
   ): Promise<Rank> {
-    await this.assertGrantable(organizationId, input.permissions, writer);
     if (input.key === "owner") {
-      throw new BadRequestError(
-        '"Owner" is a built-in rank and cannot be edited',
-      );
+      return this.renameOwner(organizationId, input.name);
     }
+    await this.assertGrantable(organizationId, input.permissions, writer);
     await this.assertNoSelfLockout(organizationId, input, writer);
     // Rewriting a rank acts on everyone who holds it, so the rank as it
     // stands must be inside the writer's set too: otherwise a `rank:manage`
@@ -269,8 +290,38 @@ export class RankService {
     }
     return {
       ...input,
-      builtin: input.key === "member",
+      builtin: this.builtinKeys().has(input.key),
       editable: true,
+      renamable: true,
+    };
+  }
+
+  /**
+   * The owner rank is renamed and never edited: its permissions are `*` by
+   * definition, so whatever permissions the write carried are dropped.
+   */
+  protected async renameOwner(
+    organizationId: string,
+    name: string,
+  ): Promise<Rank> {
+    const existing = await this.definitionOf(organizationId, "owner");
+    if (existing) {
+      await this.definitions.updateById(existing.id, { name });
+    } else {
+      await this.definitions.create({
+        organizationId,
+        key: "owner",
+        name,
+        permissions: [],
+      });
+    }
+    return {
+      key: "owner",
+      name,
+      permissions: ["*"],
+      builtin: true,
+      editable: false,
+      renamable: true,
     };
   }
 
@@ -279,7 +330,7 @@ export class RankService {
     key: string,
     writer: UserAccountToken,
   ): Promise<void> {
-    if (key === "owner" || key === "member") {
+    if (this.builtinKeys().has(key)) {
       throw new BadRequestError("A built-in rank cannot be deleted");
     }
     const existing = await this.definitionOf(organizationId, key);
@@ -548,7 +599,15 @@ export interface Rank {
   name: string;
   permissions: string[];
   builtin: boolean;
+  /**
+   * Whether its permissions can be edited. The owner's never can.
+   */
   editable: boolean;
+  /**
+   * Whether its name can be changed. Every rank but a row marked `builtin`
+   * in storage, the owner included.
+   */
+  renamable: boolean;
 }
 
 export interface RankRows {

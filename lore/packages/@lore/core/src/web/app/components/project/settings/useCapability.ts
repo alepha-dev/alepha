@@ -22,7 +22,7 @@ export interface CapabilitySwitch {
    * ⚠️ Disabled rather than hidden, and this is the exception the rule allows:
    * a capability settings page with its switch removed is a page that says
    * nothing at all. The reader sees the state and cannot change it, which is
-   * the honest rendering of `capability:manage` being owner-only.
+   * the honest rendering of a rank without `capability:manage`.
    */
   canToggle: boolean;
   /**
@@ -175,9 +175,10 @@ const optionsOf = (
  * the set it already had would leave the new capability's sidebar entries
  * hidden until the next navigation.
  *
- * ⚠️ `capability:manage` is owner-only STRUCTURALLY: turning a capability ON
- * widens every rank's effective set at once, the actor's own included, and
- * the subset rule does not catch it because a switch is not a grant. Both
+ * ⚠️ `capability:manage` is its own grant (an Admin's by default): turning a
+ * capability ON widens every rank's effective set at once, the actor's own
+ * included, and the subset rule does not catch it because a switch is not a
+ * grant. Both
  * hooks read `canToggle` off the ACTION, so this repeats no permission
  * string - the requirement travels from `$ownsProject({ requires })` through
  * the registry to `can()`.

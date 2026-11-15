@@ -2,6 +2,7 @@ import { $inject, Alepha, type Infer } from "alepha";
 import {
   type OrganizationMember,
   organizationMembers,
+  organizationRanks,
   organizations,
 } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
@@ -46,6 +47,12 @@ export class CoreTestEntities {
   organizations = $repository(organizations);
   organizationMembers = $repository(organizationMembers);
   members = $repository(organizationMembers);
+  /**
+   * The rank definitions, for a spec that needs a project from before every
+   * project held the built-ins: a built-in rank cannot be deleted through
+   * the rank service (#Q3736).
+   */
+  organizationRanks = $repository(organizationRanks);
   projects = $repository(projects);
   users = $repository(users);
   folioLinks = $repository(folioLinks);

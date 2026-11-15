@@ -6,6 +6,13 @@ export const organizationConfigAtom = $atom({
     memberPermissions: z.array(z.string()),
     floor: z.array(z.string()),
     ownerOnly: z.array(z.string()),
+    /**
+     * Rank keys every organization holds and nobody can delete, beside the
+     * `owner` and `member` built-ins (always built in, listed or not). A
+     * built-in rank is renamed freely; its permissions stay editable, except
+     * the owner's, which are always `*`.
+     */
+    builtinRanks: z.array(z.string()).optional(),
     invitationExpirationDays: z.integer().min(1).max(90),
     maxPendingInvitationsPerOrganization: z.integer().min(1).max(500),
     maxPendingInvitationsPerInviter: z.integer().min(1).max(1000),
@@ -15,6 +22,7 @@ export const organizationConfigAtom = $atom({
     memberPermissions: [],
     floor: [],
     ownerOnly: ["organization:delete"],
+    builtinRanks: ["owner", "member"],
     invitationExpirationDays: 7,
     maxPendingInvitationsPerOrganization: 50,
     maxPendingInvitationsPerInviter: 100,
