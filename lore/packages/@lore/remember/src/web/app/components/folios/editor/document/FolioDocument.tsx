@@ -39,6 +39,13 @@ const FolioAddToDashboardDialog = lazy(
   () => import("../../dashboard/FolioAddToDashboardDialog.tsx"),
 );
 
+/**
+ * Folio ▸ Recently deleted… (#Q3698), loaded when it opens.
+ */
+const FolioRecentlyDeletedDialog = lazy(
+  () => import("./FolioRecentlyDeletedDialog.tsx"),
+);
+
 export interface FolioDocumentProps {
   /**
    * `undefined` → create mode.
@@ -305,6 +312,18 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             </WikiLinkHoverProvider>
           )}
         </div>
+      )}
+
+      {props.actions.recentlyDeletedOpen && (
+        <Suspense fallback={null}>
+          <FolioRecentlyDeletedDialog
+            open
+            readOnly={props.actions.actionState.readOnly === true}
+            onOpenChange={(open) => {
+              if (!open) props.actions.closeRecentlyDeleted();
+            }}
+          />
+        </Suspense>
       )}
 
       {props.folio && props.actions.addToDashboardOpen && (

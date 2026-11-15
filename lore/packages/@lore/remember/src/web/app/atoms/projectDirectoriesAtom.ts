@@ -16,11 +16,6 @@ export const projectDirectoriesAtom = $atom({
       shortId: z.integer(),
       name: z.string(),
       parentId: z.uuid().optional(),
-      /**
-       * `"trash"` marks the project's built-in trash: always present, never
-       * renamed, moved or deleted, emptied of what sat there 30 days.
-       */
-      system: z.enum(["trash"]).optional(),
     }),
   ),
   default: [],

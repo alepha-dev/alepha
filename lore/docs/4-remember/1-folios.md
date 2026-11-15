@@ -71,16 +71,18 @@ compared without regard to case.
 ⚠️ **Deleting a directory deletes everything in it, folios included, and
 cannot be undone.** Move what you want to keep out first.
 
-## Trash
+## Recently deleted
 
-Every project has a **Trash** directory, pinned at the bottom of the tree. Drag
-a folio or a directory into it to set it aside: it stays readable there, and
-moving it back out restores it. Anything that has sat in the trash for 30 days
-is deleted for good, by a nightly sweep.
+A deleted folio is not gone at once. It leaves the tree, search, links and
+every agent's view, and **Folio ▸ Recently deleted…** lists it with the date
+it was deleted and the days it has left. **Restore** puts it back where it
+was, or at the root when its directory is gone, with its links; a title taken
+in the meantime gets a number. **Delete permanently** removes it at once.
+After 30 days a nightly purge deletes it for good, with its files and its
+history.
 
-The trash itself cannot be renamed, moved or deleted. A project that already
-had a top-level directory named `trash` keeps it: that directory becomes the
-project's trash, with what it already held.
+Deleting a directory is different: everything in it is deleted for good,
+folios included.
 
 ## Links
 

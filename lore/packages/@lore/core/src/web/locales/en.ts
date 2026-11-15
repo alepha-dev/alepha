@@ -327,7 +327,8 @@ export default {
   "folios.title-placeholder": "Untitled",
   "folios.content-placeholder": "Start writing markdown…",
   "folios.confirm-delete-title": "Delete this folio?",
-  "folios.confirm-delete-message": "This cannot be undone.",
+  "folios.confirm-delete-message":
+    "It moves to Folio > Recently deleted, where it can be restored for 30 days.",
   "folios.protected.encrypt": "Encrypt",
   "folios.protected.encrypt-title": "Encrypt this folio",
   "folios.protected.encrypt-description":
@@ -583,9 +584,6 @@ export default {
   "folios.editor.tree.open": "Open",
   "folios.editor.tree.open-new-tab": "Open in new tab",
   "folios.editor.tree.rename": "Rename",
-  "folios.editor.tree.trash-retention": "30 days",
-  "folios.editor.tree.trash-hint":
-    "Items in the trash are deleted for good after 30 days. Move one out to restore it.",
   "folios.editor.tree.copy-wiki-link": "Copy wiki-link",
   "folios.editor.tree.encrypt": "Encrypt",
   "folios.editor.tree.confirm-delete-directory-title": "Delete this directory?",
@@ -3590,6 +3588,19 @@ export default {
   "dashboard.folio.search": "Find a folio",
   "dashboard.folio.none": "No folio matches.",
   "folios.editor.action.add-to-dashboard": "Add to dashboard…",
+  "folios.editor.action.recently-deleted": "Recently deleted…",
+  "folios.deleted.title": "Recently deleted",
+  "folios.deleted.description":
+    "Deleted folios stay here $1 days, then are deleted for good with their files and history.",
+  "folios.deleted.empty": "No deleted folio.",
+  "folios.deleted.deletedOn": "Deleted $1",
+  "folios.deleted.daysLeft": "$1 days left",
+  "folios.deleted.restore": "Restore",
+  "folios.deleted.purge": "Delete permanently",
+  "folios.deleted.purgeTitle": 'Delete "$1" permanently?',
+  "folios.deleted.purgeBody":
+    "Its content, files and history are deleted for good. This cannot be undone.",
+  "folios.deleted.restored": '"$1" restored.',
   "folios.dashboard.title": "Add to a dashboard",
   "folios.dashboard.description": '"$1" will show there as a card.',
   "folios.dashboard.default-name": "Dashboard",

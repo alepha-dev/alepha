@@ -6,7 +6,7 @@ import { FolioAttachmentController } from "./controllers/FolioAttachmentControll
 import { FolioController } from "./controllers/FolioController.ts";
 import { FolioTableController } from "./controllers/FolioTableController.ts";
 import { KnowledgeReportsController } from "./controllers/KnowledgeReportsController.ts";
-import { FolioTrashJobs } from "./jobs/FolioTrashJobs.ts";
+import { FolioPurgeJobs } from "./jobs/FolioPurgeJobs.ts";
 import { DirectoryResourceKind } from "./resources/DirectoryResourceKind.ts";
 import { FolioResourceKind } from "./resources/FolioResourceKind.ts";
 import { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
@@ -16,6 +16,7 @@ import { FolioDeletion } from "./services/FolioDeletion.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
+import { FolioRecentlyDeleted } from "./services/FolioRecentlyDeleted.ts";
 /**
  * The server half of `@lore/remember`, Lore as Obsidian: folios, their directories, attachments, revisions and names.
  *
@@ -28,7 +29,6 @@ import { FolioNameService } from "./services/FolioNameService.ts";
  */ import { FoliosByDirectoryMetric } from "./services/FoliosByDirectoryMetric.ts";
 import { FoliosThisMonthMetric } from "./services/FoliosThisMonthMetric.ts";
 import { FolioTableService } from "./services/FolioTableService.ts";
-import { FolioTrashService } from "./services/FolioTrashService.ts";
 import { KnowledgeAutomationActions } from "./services/KnowledgeAutomationActions.ts";
 import { KnowledgeAutomationReferences } from "./services/KnowledgeAutomationReferences.ts";
 import { KnowledgeBuckets } from "./services/KnowledgeBuckets.ts";
@@ -57,11 +57,11 @@ export const LoreRememberApi = $module({
     FolioNameService,
     FolioDirectoryService,
     FolioAttachmentService,
-    // The folio trash (#Q3659): deletion shared with the purge, the trash
-    // itself, and its nightly sweep.
+    // Deleted folios (#Q3698): the hard deletion the purge shares, the
+    // soft deletion with its restore, and the nightly purge.
     FolioDeletion,
-    FolioTrashService,
-    FolioTrashJobs,
+    FolioRecentlyDeleted,
+    FolioPurgeJobs,
     FolioHistoryService,
     // Table folios (#E144): the cell codec and the service over their rows.
     FolioCellCodec,
@@ -97,7 +97,7 @@ export { FolioController } from "./controllers/FolioController.ts";
 export { FolioTableController } from "./controllers/FolioTableController.ts";
 export { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
 export { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
-export { FolioTrashService } from "./services/FolioTrashService.ts";
+export { FolioRecentlyDeleted } from "./services/FolioRecentlyDeleted.ts";
 export {
   type AppendedRevision,
   FolioHistoryService,

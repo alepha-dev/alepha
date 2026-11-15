@@ -431,6 +431,14 @@ describe("folio attachments are scoped to one folio", () => {
       { params: { id: folio.data.id } },
       { user: owner },
     );
+    // A delete is soft since #Q3698: the attachments go with the purge.
+    await ctx.folioController.purgeFolio.fetch(
+      {
+        params: { id: folio.data.id },
+        body: { projectId: folio.data.projectId },
+      },
+      { user: owner },
+    );
 
     // Asserted on the attachment itself rather than through `listAttachments`: that
     // endpoint resolves its folio first, so once the folio is gone it answers

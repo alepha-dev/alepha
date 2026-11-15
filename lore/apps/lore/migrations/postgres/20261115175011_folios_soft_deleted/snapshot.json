@@ -1,0 +1,29 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "e1d342f3-d3b5-43c1-bee7-942386c7cbee",
+  "prevIds": ["a728afef-c8bb-47d6-8dd0-975a8b4f21f7"],
+  "footprints": [
+    {
+      "statementType": "rename_column",
+      "statementTarget": ["column", "public", "folios", "trashed_at"],
+      "writes": [
+        "s|col|public.folios.trashed_at",
+        "n|col|public.folios.trashed_at",
+        "s|col|public.folios.deleted_at",
+        "n|col|public.folios.deleted_at"
+      ],
+      "reads": ["n|tbl|public.folios", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"folios\",\"trashed_at\"]",
+      "set": {
+        "name": "deleted_at"
+      }
+    }
+  ]
+}

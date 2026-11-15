@@ -54,9 +54,9 @@ import {
   type RevisionPlan,
 } from "../services/FolioHistoryService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
+import { FolioRecentlyDeleted } from "../services/FolioRecentlyDeleted.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
 import { FolioTableService } from "../services/FolioTableService.ts";
-import { FolioTrashService } from "../services/FolioTrashService.ts";
 
 /**
  * The columns of `folio_directories` any ancestor walk needs — the tree
@@ -103,7 +103,7 @@ export class FolioController {
   protected readonly bound = $inject(BoundParameters);
   protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly deletion = $inject(FolioDeletion);
-  protected readonly trash = $inject(FolioTrashService);
+  protected readonly recentlyDeleted = $inject(FolioRecentlyDeleted);
   protected readonly directoryService = $inject(FolioDirectoryService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
@@ -228,7 +228,6 @@ export class FolioController {
     "protected",
     "pinned",
     "directoryId",
-    "trashedAt",
     "summary",
   ] as const;
 
@@ -1440,15 +1439,6 @@ export class FolioController {
           summary,
           // `null` means "move to the root": `save()` writes it as NULL.
           directoryId: directoryId as string | undefined,
-          // Into the trash stamps it, out of it clears it (#Q3659).
-          ...(body.directoryId === undefined
-            ? {}
-            : {
-                trashedAt: ((await this.trash.trashedAtFor(
-                  directoryId ?? undefined,
-                  existing.trashedAt,
-                )) ?? undefined) as string | undefined,
-              }),
           protected: isProtected,
           pinned,
           searchText: isProtected
@@ -1649,10 +1639,6 @@ export class FolioController {
           ...existing,
           title,
           directoryId: (parentId ?? null) as string | undefined,
-          trashedAt: ((await this.trash.trashedAtFor(
-            parentId,
-            existing.trashedAt,
-          )) ?? undefined) as string | undefined,
         };
         await this.automationMutations.save(
           {
@@ -1696,10 +1682,105 @@ export class FolioController {
       // link FROM a folio that still exists TO one that no longer does is
       // a broken reference, which the reader renders as such; deleting it
       // would silently rewrite what the author wrote.
-      // Links, filing, attachments and name, then the row: one place for
-      // it, shared with the trash's purge (#Q3659).
-      await this.deletion.delete(params.id);
+      //
+      // Soft since #Q3698: the folio is hidden everywhere, its outbound
+      // links and its name released, and for 30 days Folio > Recently
+      // deleted restores it; the nightly purge then runs the hard deletion
+      // (`FolioDeletion`: links, filing, attachments, name, row).
+      await this.recentlyDeleted.delete(params.id);
       await this.logFolio("delete", folio, user);
+      return { ok: true };
+    },
+  });
+
+  /**
+   * The project's deleted folios (#Q3698), most recent first, for Folio >
+   * Recently deleted: each with when it was deleted.
+   */
+  listDeletedFolios = $action({
+    method: "GET",
+    path: "/folios/deleted",
+    use: [this.ownsProjectFromQuery("folio:read")],
+    description:
+      "List a project's deleted folios, restorable for 30 days after their deletion.",
+    schema: {
+      query: z.object({ projectId: z.integer() }),
+      response: z.object({
+        items: z.array(
+          z.object({
+            id: z.uuid(),
+            shortId: z.integer(),
+            title: z.string(),
+            type: folios.schema.shape.type,
+            deletedAt: z.datetime(),
+          }),
+        ),
+        retentionDays: z.integer(),
+      }),
+    },
+    handler: async ({ query }) => ({
+      items: (await this.recentlyDeleted.list(query.projectId)).map(
+        (folio) => ({
+          id: folio.id,
+          shortId: folio.shortId,
+          title: folio.title,
+          type: folio.type,
+          deletedAt: folio.deletedAt as string,
+        }),
+      ),
+      retentionDays: FolioRecentlyDeleted.RETENTION_DAYS,
+    }),
+  });
+
+  /**
+   * Bring a deleted folio back (#Q3698): where it was, or at the root when
+   * its directory is gone, its title suffixed when taken since.
+   */
+  restoreFolio = $action({
+    method: "POST",
+    path: "/folios/deleted/:id/restore",
+    use: [this.ownsProjectFromBodyForKnowledge("folio:write")],
+    description: "Restore a deleted folio.",
+    schema: {
+      params: folioIdParamsSchema,
+      body: z.object({ projectId: z.integer() }),
+      response: z.object({
+        id: z.uuid(),
+        shortId: z.integer(),
+        title: z.string(),
+        directoryId: z.uuid().optional(),
+      }),
+    },
+    handler: async ({ params, body, user }) => {
+      const folio = await this.recentlyDeleted.restore(
+        body.projectId,
+        params.id,
+      );
+      await this.logFolio("restore", folio, user);
+      return {
+        id: folio.id,
+        shortId: folio.shortId,
+        title: folio.title,
+        directoryId: folio.directoryId ?? undefined,
+      };
+    },
+  });
+
+  /**
+   * Delete a deleted folio for good, before its 30 days are up (#Q3698).
+   */
+  purgeFolio = $action({
+    method: "POST",
+    path: "/folios/deleted/:id/purge",
+    use: [this.ownsProjectFromBodyForKnowledge("folio:write")],
+    description: "Delete a deleted folio for good.",
+    schema: {
+      params: folioIdParamsSchema,
+      body: z.object({ projectId: z.integer() }),
+      response: okSchema,
+    },
+    handler: async ({ params, body }) => {
+      await this.recentlyDeleted.deletePermanently(body.projectId, params.id);
       return { ok: true };
     },
   });

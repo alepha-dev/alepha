@@ -34,6 +34,8 @@ export class FolioDeletion {
     // `folio_names` has no foreign key to `folios`: the reservation would
     // outlive the folio and block the name forever.
     await this.nameService.releaseByEntity(id);
-    await this.folios.deleteById(id);
+    // `force`: `folios` is soft-deleted (#Q3698), so a plain delete would
+    // only stamp `deletedAt`. This is the purge: the row goes.
+    await this.folios.deleteById(id, { force: true });
   }
 }

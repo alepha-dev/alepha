@@ -71,10 +71,13 @@ export const folios = $entity({
       onDelete: "cascade",
     }),
     /**
-     * When this folio was moved into the project's trash (#Q3659); cleared
-     * when it is moved out. The purge deletes it 30 days after.
+     * When the folio was deleted (#Q3698): a deleted folio is soft-deleted,
+     * hidden from every repository read (the ORM filters on it), listed in
+     * Folio > Recently deleted, restorable for 30 days, then purged for good.
+     * The column was `trashed_at` (#Q3659, the Trash directory): a folio that
+     * sat in the Trash when it went became a deleted one, keeping its date.
      */
-    trashedAt: z.datetime().optional(),
+    deletedAt: db.deletedAt(),
     /**
      * 1-2 sentence agent-readable summary (~200 chars). Filled by MCP tools
      * (`folio_create` / `folio_update`) so `project_context` can return a

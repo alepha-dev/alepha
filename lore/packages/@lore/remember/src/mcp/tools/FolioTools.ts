@@ -767,7 +767,8 @@ export class FolioTools {
   });
 
   folio_delete = $tool({
-    description: "Delete a folio. This cannot be undone.",
+    description:
+      "Delete a folio. It is hidden at once and can be restored for 30 days from Folio > Recently deleted in Lore's interface, then it is purged for good.",
     title: "Delete folio",
     annotations: {
       destructiveHint: true,
