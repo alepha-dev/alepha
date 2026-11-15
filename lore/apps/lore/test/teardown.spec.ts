@@ -130,6 +130,7 @@ describe("tearing a copy's resources down", () => {
 
     const rows = alepha.inject(TestRows);
     const host = await rows.hosts.create({
+      projectId: project.id,
       ownerUserId: user.id,
       type: "cloudflare",
       slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
