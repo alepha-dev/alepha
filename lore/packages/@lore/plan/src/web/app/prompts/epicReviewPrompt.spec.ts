@@ -129,4 +129,15 @@ describe("epicReviewPromptDefault", () => {
     expect(withSecrets).not.toContain("sg_");
     expect(withSecrets).toBe(prompt);
   });
+
+  /**
+   * An epic's first folio has no sibling directory to follow, so without a
+   * `directory_shortId` it lands at the root of the tree (#Q3710).
+   */
+  it("files a design note in a chosen directory, never the root", () => {
+    expect(prompt).toContain("`epic_number` 31");
+    expect(prompt).toContain("`directory_list`");
+    expect(prompt).toContain("Pass `directory_shortId` too");
+    expect(prompt).toContain("Never leave it at the root");
+  });
 });

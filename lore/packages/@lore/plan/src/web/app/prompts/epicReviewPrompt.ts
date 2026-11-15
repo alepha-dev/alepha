@@ -36,6 +36,13 @@
  * numbers it returned, so "answer 3: B" means the same item in chat and on
  * the Review tab. The decision log `epic_get` inlines is read first and is
  * binding. An empty review is filed, never padded.
+ *
+ * ⚠️ **A design note names its directory** (#Q3710). `folio_create` with
+ * `epic_number` alone follows the epic's oldest folio that sits in a
+ * directory, and an epic's first folio has none to follow, so it lands at
+ * the root of the tree. On 2026-11-15 project Alepha's root held 44 epic
+ * folios sorted by hand. The agent browses `directory_list` and passes
+ * `directory_shortId`, since only it knows what the epic is about.
  */
 export const epicReviewPromptDefault = `Review the plan of epic {{reference}} "{{title}}" in the Lore project "{{project}}".
 
@@ -65,7 +72,7 @@ Check the plan against the code as it actually is, not as the spec describes it.
 - \`epic_update\` for the epic's own description.
 - \`quest_create\` with \`epic_number\` {{number}} for work the plan is missing.
 - \`quest_update\` to sharpen a quest's title, description or objectives, and \`quest_objective_set\` to tick one.
-- A folio, filed under this epic, if the review produces a design note worth keeping.
+- A folio, filed under this epic, if the review produces a design note worth keeping (\`folio_create\` with \`epic_number\` {{number}}). Pass \`directory_shortId\` too: browse the tree with \`directory_list\` from the root, and choose the directory that holds the epic's other folios, or else the deepest one its subject belongs to. Create a directory only when none fits. Never leave it at the root, and never file it in a trash directory.
 
 Then file the review itself with ONE \`epic_review_create\` call (project_name "{{project}}", number {{number}}), holding every item:
 

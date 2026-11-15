@@ -183,4 +183,14 @@ describe("epicActivatePromptDefault", () => {
     expect(withSecrets).not.toContain("sg_");
     expect(withSecrets).toBe(prompt);
   });
+
+  /**
+   * An epic with no folio in a directory yet files its outcome at the root
+   * of the tree when no `directory_shortId` is passed (#Q3710).
+   */
+  it("files the outcome folio in a chosen directory, never the root", () => {
+    expect(prompt).toContain("`directory_list`");
+    expect(prompt).toContain("Pass `directory_shortId` too");
+    expect(prompt).toContain("Never leave it at the root");
+  });
 });

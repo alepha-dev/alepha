@@ -52,6 +52,10 @@
  * are looking. Same defect the epic-review template had, from the other
  * end: there the questions were filed, here they would be scattered.
  *
+ * ⚠️ **The outcome folio names its directory** (#Q3710), for the reason
+ * {@link epicReviewPromptDefault} gives: with `epic_number` alone, an epic
+ * with no folio in a directory yet files it at the root of the tree.
+ *
  * See {@link epicReviewPromptDefault} for why this text is English and
  * carries no secrets.
  */
@@ -86,7 +90,7 @@ If main moves and the pull request conflicts, rebase the branch onto the latest 
 1. Mark the pull request ready for review. Never merge it yourself, and never push to main. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge, so main receives one commit per quest. Otherwise it waits for review. A review fix goes into the commit of the quest it belongs to.
 2. Only once it has merged: a rebase gives every commit a new sha, so record for each quest the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference), then \`quest_complete\` the last quest.
 3. Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
-4. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left. It lands in the directory of the epic's other folios; pass \`directory_shortId\` only to put it somewhere else.
+4. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left. Pass \`directory_shortId\` too: browse the tree with \`directory_list\` from the root, and choose the directory that holds the epic's other folios, or else the deepest one its subject belongs to. Create a directory only when none fits. Never leave it at the root, and never file it in a trash directory.
 
 There is no status to set: the epic completed on its own when its last open quest was completed or shelved. If the pull request has not merged when you stop, leave the last quest accepted and say so in your reply, with the pull request's link.
 
