@@ -1072,9 +1072,11 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.userDetail.colStarted": "Ouverte le",
   "admin.userDetail.colWhen": "Date",
   "admin.userDetail.created": "Créé le",
-  "admin.userDetail.avatar.replace": "Remplacer l'avatar",
+  "admin.userDetail.avatar.change": "Changer l'avatar",
+  "admin.userDetail.avatar.upload": "Envoyer une image",
+  "admin.userDetail.avatar.uploadNew": "Envoyer une nouvelle image",
   "admin.userDetail.avatar.replaced": "Avatar remplacé.",
-  "admin.userDetail.avatar.remove": "Retirer",
+  "admin.userDetail.avatar.removePicture": "Retirer l'image",
   "admin.userDetail.avatar.removed": "Avatar retiré.",
   "admin.userDetail.credentials": "Identifiants",
   "admin.userDetail.credentialsHasPassword":

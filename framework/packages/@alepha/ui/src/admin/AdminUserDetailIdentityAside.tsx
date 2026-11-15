@@ -5,6 +5,7 @@ void React;
 import type { UserResource } from "alepha/api/users";
 import { useI18n } from "alepha/react/i18n";
 import { ShieldCheck } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { DetailAside, type DetailAsideRow } from "../shell/DetailAside.tsx";
@@ -12,6 +13,11 @@ import { AdminUsersStatusBadge } from "./AdminUsersStatusBadge.tsx";
 
 export interface AdminUserDetailIdentityAsideProps {
   user: UserResource;
+  /**
+   * Wraps the header avatar, as `DetailAside`'s `renderAvatar` (#Q3663): the
+   * page passes the avatar's edit control.
+   */
+  renderAvatar?: (avatar: ReactNode) => ReactNode;
 }
 
 /**
@@ -28,12 +34,10 @@ export const AdminUserDetailIdentityAside = (
   const { tr, l } = useI18n();
   const user = props.user;
 
-  const displayName =
-    user.email ||
-    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-    user.username ||
-    user.id.slice(0, 8);
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
+  // The full name, else `@username` (#Q3663), never the email: it is a row
+  // of the list right below. With neither, the avatar stands alone.
+  const title = fullName || (user.username ? `@${user.username}` : undefined);
 
   const rows: DetailAsideRow[] = [];
 
@@ -126,7 +130,8 @@ export const AdminUserDetailIdentityAside = (
 
   return (
     <DetailAside
-      title={String(displayName)}
+      title={title}
+      renderAvatar={props.renderAvatar}
       imageFileId={user.picture}
       fallback={user.email || user.username || user.firstName || "?"}
       rows={rows}

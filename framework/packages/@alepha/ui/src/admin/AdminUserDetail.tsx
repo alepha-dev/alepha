@@ -690,17 +690,21 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
         }
         aside={
           user ? (
-            <div className="flex flex-col gap-3">
-              <AdminUserDetailIdentityAside user={user} />
-              {/* Under the aside rather than inside it: `DetailAside` renders
-                  rows of facts, and this is an action on the picture above
-                  it. It hides itself when the realm has avatars off - the
-                  endpoint is unregistered there, so `can()` is false. */}
-              <AdminUserAvatarControl
-                user={user}
-                onChanged={() => void userQuery.refetch()}
-              />
-            </div>
+            // The avatar is its own edit control (#Q3663), wrapped around
+            // the picture the aside draws. It is the plain picture when the
+            // realm has avatars off: the endpoint is unregistered there, so
+            // `can()` is false.
+            <AdminUserDetailIdentityAside
+              user={user}
+              renderAvatar={(avatar) => (
+                <AdminUserAvatarControl
+                  user={user}
+                  onChanged={() => void userQuery.refetch()}
+                >
+                  {avatar}
+                </AdminUserAvatarControl>
+              )}
+            />
           ) : null
         }
         tabs={tabs}
