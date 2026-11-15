@@ -2,7 +2,7 @@
 -- `channel`. Rewrites every stored rule's notify actions in place, order
 -- kept; run snapshots keep `channel`, the form a run executes.
 UPDATE `automations`
-SET `rule` = json_set(`rule`, '$.actions', (
+SET `rule` = json_set(`rule`, '$.actions', json((
   SELECT json_group_array(
     CASE
       WHEN json_extract(`a`.`value`, '$.kind') = 'notify'
@@ -16,7 +16,7 @@ SET `rule` = json_set(`rule`, '$.actions', (
     END
   )
   FROM json_each(`automations`.`rule`, '$.actions') AS `a`
-))
+)))
 WHERE EXISTS (
   SELECT 1 FROM json_each(`automations`.`rule`, '$.actions') AS `a`
   WHERE json_extract(`a`.`value`, '$.kind') = 'notify'
