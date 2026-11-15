@@ -67,6 +67,39 @@ const recordIngests = (path: string) => {
 };
 
 describe("SigilBrowserProvider", () => {
+  describe("where envelopes are posted", () => {
+    const urlOf = async (hostname?: string) => {
+      const alepha = Alepha.create({
+        env: {
+          NODE_ENV: "production",
+          APP_SECRET: "test-secret",
+          SERVER_PORT: 0,
+        },
+      });
+      if (hostname) {
+        alepha.store.set("alepha.server.links.options", {
+          batch: true,
+          remoteRegistryTtl: 300,
+          hostname,
+        });
+      }
+      const provider = alepha.inject(SigilBrowserProvider) as unknown as {
+        ingestUrl(): string;
+      };
+      return provider.ingestUrl();
+    };
+
+    it("posts to its own origin on a website", async () => {
+      expect(await urlOf()).toBe("/api/sigil/ingest");
+    });
+
+    it("posts to the API origin in a native shell", async () => {
+      expect(await urlOf("https://api.example.app")).toBe(
+        "https://api.example.app/api/sigil/ingest",
+      );
+    });
+  });
+
   it("enqueues a pageview on react:transition:end (prod + browser)", async () => {
     const alepha = Alepha.create({
       env: {

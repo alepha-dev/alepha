@@ -43,6 +43,10 @@ declare module "alepha" {
     "alepha.server.links.options": {
       batch: boolean;
       remoteRegistryTtl: number;
+      /**
+       * Origin every host-less browser call goes to, set in a native shell.
+       */
+      hostname?: string;
     };
   }
 }

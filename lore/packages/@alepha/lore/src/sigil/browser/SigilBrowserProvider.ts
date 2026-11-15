@@ -9,6 +9,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import type {} from "alepha/react";
 import type {} from "alepha/react/router";
 import { ReactVitalsProvider } from "alepha/react/vitals";
+import type {} from "alepha/server/links";
 
 import type { SigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
 import { sigilCampaign } from "../shared/sigilCampaign.ts";
@@ -122,6 +123,23 @@ export class SigilBrowserProvider {
    */
   protected dwellMs = 10_000;
 
+  /**
+   * Where envelopes go: the app's own server, which holds the credential.
+   *
+   * Same-origin on a website. In a native shell the document's origin is the
+   * WebView's (`https://localhost`, `capacitor://localhost`), which serves the
+   * bundled files and nothing else, so the post goes to the origin every
+   * host-less `$client` already calls there: the links module's `hostname`.
+   * Read by its state key, so this provider keeps importing nothing at runtime
+   * from the links module.
+   */
+  protected ingestUrl(): string {
+    const hostname = this.alepha.store.get(
+      "alepha.server.links.options",
+    )?.hostname;
+    return `${hostname ?? ""}/api/sigil/ingest`;
+  }
+
   protected readonly start = $hook({
     on: "start",
     handler: () => {
@@ -136,7 +154,7 @@ export class SigilBrowserProvider {
         options: { keepalive: boolean } = { keepalive: false },
       ): Promise<void> => {
         try {
-          const res = await fetch("/api/sigil/ingest", {
+          const res = await fetch(this.ingestUrl(), {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify(env),
