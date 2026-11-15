@@ -62,12 +62,49 @@ const folioInboundLinkRefSchema = z.object({
 /**
  * Full folio payload returned by get/create/update tools.
  */
+/**
+ * A table's column as an agent reads it: by name, a select with its labels.
+ */
+export const folioCompactColumnSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  choices: z.array(z.string()).optional(),
+  withTime: z.boolean().optional(),
+});
+
+/**
+ * A table's row as an agent reads it: its number, its version, and its cells
+ * keyed by column name (a select by its label, a reference by its code).
+ */
+export const folioCompactRowSchema = z.object({
+  number: z.integer(),
+  version: z.integer(),
+  cells: z.record(
+    z.string(),
+    z.union([z.string(), z.number(), z.boolean(), z.null()]),
+  ),
+});
+
 export const folioFullSchema = z.object({
   id: z.uuid(),
   shortId: z.integer(),
   title: z.string(),
   summary: z.string().optional(),
+  /**
+   * `text`, or `table`: then `content` is empty and the folio is its
+   * `columns` and `rows`.
+   */
+  type: z.enum(["text", "table"]).optional(),
   content: z.string(),
+  /**
+   * A table's columns, its row count, and its first 50 rows; `truncated`
+   * when there are more (read them with `folio_row_list`). `folio_get`
+   * only.
+   */
+  columns: z.array(folioCompactColumnSchema).optional(),
+  rowCount: z.integer().optional(),
+  rows: z.array(folioCompactRowSchema).optional(),
+  truncated: z.boolean().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
   /**

@@ -2,10 +2,13 @@ import type { EpicController } from "@lore/plan/api";
 import type { DirectoryController } from "@lore/remember/api";
 import type { FolioAttachmentController } from "@lore/remember/api";
 import type { FolioController } from "@lore/remember/api";
+import type { FolioTableController } from "@lore/remember/api";
 import { $inject, z } from "alepha";
 import { $command, CommandError, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
+import { FileSystemProvider } from "alepha/system";
 
+import { FolioCsv } from "../../csv/FolioCsv.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
@@ -25,7 +28,17 @@ import {
  * lore folio get F1264 -p alepha --links
  * lore folio create -p alepha --title "Lore CLI plan" --summary "The plan." --content @plan.md --epic 45
  * lore folio update F1264 -p alepha --content @plan.md --summary "The plan, revised."
+ * lore folio create -p alepha --title Hosting --summary "Options." --type table --column Host:text --column Price:number
+ * lore folio row add F12 -p alepha --rows '[{"Host":"Fly","Price":5}]'
+ * lore folio row list F12 -p alepha --where '[{"column":"Price","from":1}]' --sort Price
+ * lore folio import hosting.csv -p alepha --summary "Options."
+ * lore folio export F12 -p alepha --csv > hosting.csv
  * ```
+ *
+ * A table folio's rows and columns (#E144): `row list | add | update |
+ * delete`, `column set`, and CSV in and out through `@alepha/lore/csv`,
+ * the module Lore's browser pages use, so a file exported by one imports
+ * unchanged by the other. Columns are named, never ids.
  *
  * ## Deliberately not here
  *
@@ -59,6 +72,11 @@ export class FolioCommand {
   protected readonly attachmentApi = $client<FolioAttachmentController>(
     this.client.scope(),
   );
+  protected readonly tableApi = $client<FolioTableController>(
+    this.client.scope(),
+  );
+  protected readonly fs = $inject(FileSystemProvider);
+  protected readonly csv = new FolioCsv();
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -179,6 +197,10 @@ export class FolioCommand {
           return;
         }
 
+        const table =
+          folio.type === "table"
+            ? await this.tableApi.getFolioTable({ params: { id: folio.id } })
+            : undefined;
         const links = folio.metadata?.links;
         this.render.entity(print, {
           fields: [
@@ -189,7 +211,7 @@ export class FolioCommand {
             ["Pinned", folio.pinned ? "yes" : undefined],
             ["Protected", folio.protected ? "yes" : undefined],
           ],
-          body: folio.content,
+          body: table ? this.tableText(table) : folio.content,
           protected: folio.protected,
           sections: links
             ? [
@@ -233,12 +255,26 @@ export class FolioCommand {
         description:
           "One or two sentences on what the folio is for: the line an index shows.",
       }),
-      content: z.text({
-        size: "rich",
-        maxLength: 1_000_000,
-        atFile: true,
-        description: "The folio, in Markdown.",
-      }),
+      content: z
+        .text({
+          size: "rich",
+          maxLength: 1_000_000,
+          atFile: true,
+          description: "The folio, in Markdown. Required for a text folio.",
+        })
+        .optional(),
+      type: z
+        .enum(["text", "table"])
+        .describe(
+          "text (the default), or table: typed columns and rows, no content.",
+        )
+        .optional(),
+      column: z
+        .array(z.text())
+        .describe(
+          "A table's column, repeated in order: Name:type, Status:select:Todo|Done, Due:date:time. Types: text, number, checkbox, date, select, reference.",
+        )
+        .optional(),
       directory: z
         .integer()
         .min(1)
@@ -260,6 +296,18 @@ export class FolioCommand {
     handler: async ({ flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
+        const isTable = flags.type === "table";
+        if (!isTable && flags.content === undefined) {
+          throw new UsageError(
+            "--content is required for a text folio; a table (--type table) takes --column instead.",
+          );
+        }
+        if (!isTable && flags.column?.length) {
+          throw new UsageError("--column needs --type table.");
+        }
+        const columns = (flags.column ?? []).map((spec) =>
+          this.parseColumn(spec),
+        );
         const { projectId } = await this.projects.named(flags.project, context);
 
         // Both reads before the write, so a wrong directory or epic number
@@ -280,7 +328,9 @@ export class FolioCommand {
             projectId,
             title: flags.title,
             summary: flags.summary,
-            content: flags.content,
+            ...(isTable
+              ? { type: "table" as const, columns }
+              : { content: flags.content }),
             ...(directory ? { directoryId: directory.id } : {}),
             ...(flags.pinned !== undefined ? { pinned: flags.pinned } : {}),
           },
@@ -571,6 +621,416 @@ export class FolioCommand {
     },
   });
 
+  public readonly rowList = $command({
+    name: "list",
+    description:
+      "List a table folio's rows: filtered, sorted, paged, cells by column name",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      where: z
+        .text({
+          atFile: true,
+          description:
+            'Conditions, a JSON array: [{"column":"Due","from":"2026-11-01","to":"2026-11-30"}]; also equals, contains, isEmpty. A date range sorted by that column is the agenda.',
+        })
+        .optional(),
+      sort: z.text({ description: "The column to sort by." }).optional(),
+      direction: z
+        .enum(["asc", "desc"])
+        .describe("asc (the default) or desc.")
+        .optional(),
+      limit: z
+        .integer()
+        .min(1)
+        .max(100)
+        .describe("How many rows to print, at most 100. Defaults to 20.")
+        .default(20),
+      offset: z
+        .integer()
+        .min(0)
+        .describe("How many rows to skip, for the next page.")
+        .default(0),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const where = flags.where
+          ? (this.parseJson(flags.where, "--where") as never)
+          : undefined;
+        const id = await this.idOf(args, flags.project, context);
+        const [table, page] = await Promise.all([
+          this.tableApi.getFolioTable({ params: { id } }),
+          this.tableApi.listFolioRows({
+            params: { id },
+            query: {
+              where,
+              sort: flags.sort,
+              direction: flags.direction,
+              limit: flags.limit,
+              offset: flags.offset,
+            },
+          }),
+        ]);
+        if (flags.output === "json") {
+          this.render.json(print, {
+            total: page.total,
+            rows: page.rows.map((row) => this.namedRow(table.columns, row)),
+          });
+          return;
+        }
+        print(
+          this.tableText({ ...table, rows: page.rows, rowCount: page.total }),
+        );
+      });
+    },
+  });
+
+  public readonly rowAdd = $command({
+    name: "add",
+    description:
+      "Add 1 to 100 rows to a table folio, cells keyed by column name",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      rows: z.text({
+        size: "rich",
+        atFile: true,
+        description:
+          'The rows, a JSON array of cells by column name: [{"Host":"Fly","Price":5}]. @file reads a file, @- reads stdin.',
+      }),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const rows = this.parseJson(flags.rows, "--rows");
+        if (!Array.isArray(rows) || rows.length === 0) {
+          throw new UsageError("--rows is a JSON array of at least one row.");
+        }
+        const id = await this.idOf(args, flags.project, context);
+        const added: number[] = [];
+        for (let i = 0; i < rows.length; i += 100) {
+          const answer = await this.tableApi.addFolioRows({
+            params: { id },
+            body: {
+              rows: rows
+                .slice(i, i + 100)
+                .map((cells) => ({ cells: cells as Record<string, unknown> })),
+            },
+          });
+          added.push(...answer.rows.map((row) => row.number));
+        }
+        this.printWrite(
+          print,
+          flags.output,
+          { numbers: added },
+          `Added ${added.length} row${added.length === 1 ? "" : "s"}: ${added.join(", ")}`,
+        );
+      });
+    },
+  });
+
+  public readonly rowUpdate = $command({
+    name: "update",
+    description:
+      "Change some cells of one row of a table folio; the others stay as they are",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      row: z.integer().min(1).describe("The row's number."),
+      cells: z.text({
+        atFile: true,
+        description:
+          'The cells to write, by column name, as JSON: {"Status":"Done"}; null empties one.',
+      }),
+      version: z
+        .integer()
+        .min(0)
+        .describe("Refuse the write if the row changed since this version.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const cells = this.parseJson(flags.cells, "--cells");
+        if (!cells || typeof cells !== "object" || Array.isArray(cells)) {
+          throw new UsageError("--cells is a JSON object of cells by name.");
+        }
+        const id = await this.idOf(args, flags.project, context);
+        const answer = await this.tableApi.updateFolioRow({
+          params: { id, number: flags.row },
+          body: {
+            cells: cells as Record<string, unknown>,
+            version: flags.version,
+          },
+        });
+        this.printWrite(
+          print,
+          flags.output,
+          answer,
+          `Updated row ${flags.row}${answer.replaced.length ? `, replacing ${answer.replaced.join(", ")}` : ""}`,
+        );
+      });
+    },
+  });
+
+  public readonly rowDelete = $command({
+    name: "delete",
+    description: "Delete rows of a table folio by number",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      rows: z.text({ description: "The row numbers, comma-separated: 3,5,8." }),
+      yes: z
+        .boolean()
+        .describe("Required: a delete cannot be undone.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const numbers = flags.rows
+          .split(",")
+          .map((part) => Number(part.trim()))
+          .filter((n) => Number.isSafeInteger(n) && n > 0);
+        if (numbers.length === 0) {
+          throw new UsageError("--rows names no row number.");
+        }
+        if (!flags.yes) {
+          throw new UsageError(
+            `Nothing deleted: rows ${numbers.join(", ")} would go for good. Pass --yes to delete them.`,
+          );
+        }
+        const id = await this.idOf(args, flags.project, context);
+        const answer = await this.tableApi.deleteFolioRows({
+          params: { id },
+          body: { numbers },
+        });
+        this.printWrite(
+          print,
+          flags.output,
+          answer,
+          answer.deleted.length
+            ? `Deleted rows ${answer.deleted.join(", ")}`
+            : "No row deleted: none of those numbers holds one.",
+        );
+      });
+    },
+  });
+
+  public readonly row = $command({
+    name: "row",
+    description:
+      "A table folio's rows: list, add, update and delete them, by number",
+    children: [this.rowList, this.rowAdd, this.rowUpdate, this.rowDelete],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  public readonly columnSet = $command({
+    name: "set",
+    description:
+      "Change a table folio's columns with an ordered list of operations",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      operations: z.text({
+        size: "rich",
+        atFile: true,
+        description:
+          'The operations, a JSON array applied in order: [{"op":"add","name":"Due","type":"date"},{"op":"rename","column":"Name","name":"Title"},{"op":"retype","column":"Size","type":"number"},{"op":"move","column":"Due","position":0},{"op":"remove","column":"Old"},{"op":"setOptions","column":"Status","options":{"choices":["Todo","Done"]}}].',
+      }),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const operations = this.parseJson(flags.operations, "--operations");
+        if (!Array.isArray(operations) || operations.length === 0) {
+          throw new UsageError("--operations is a JSON array of operations.");
+        }
+        const id = await this.idOf(args, flags.project, context);
+        const answer = await this.tableApi.setFolioColumns({
+          params: { id },
+          body: { operations: operations as never },
+        });
+        this.printWrite(
+          print,
+          flags.output,
+          answer,
+          `Columns: ${answer.columns.map((column) => `${column.name} (${column.type})`).join(", ")}`,
+        );
+      });
+    },
+  });
+
+  public readonly column = $command({
+    name: "column",
+    description: "A table folio's columns: set them",
+    children: [this.columnSet],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  public readonly import = $command({
+    name: "import",
+    description:
+      "Create a table folio from a CSV file, or append its rows to one whose column names match",
+    args: z.text({ title: "file", description: "The CSV file." }),
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      into: z
+        .text({
+          description:
+            "Append to this table folio instead (12, F12): the header must name its columns.",
+        })
+        .optional(),
+      title: z
+        .text({
+          maxLength: 200,
+          description: "The new folio's title. Defaults to the file's name.",
+        })
+        .optional(),
+      summary: z
+        .text({ maxLength: 500, description: "The new folio's summary." })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const path = args.startsWith("/")
+          ? args
+          : `${root.replace(/\/$/, "")}/${args}`;
+        const text = new TextDecoder().decode(await this.fs.readFile(path));
+        const { rows } = this.csv.parse(text);
+        const [header, ...body] = rows;
+        if (!header || header.length === 0) {
+          throw new UsageError(`${args} has no header line.`);
+        }
+        if (body.length > 2000 || header.length > 50) {
+          throw new UsageError(
+            `${args} has ${body.length} rows and ${header.length} columns; a table holds at most 2000 rows and 50 columns.`,
+          );
+        }
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        let id: string;
+        let shortId: number;
+        if (flags.into) {
+          shortId = this.refs.folio(flags.into);
+          const folio = await this.folioApi.getByShortId({
+            params: { projectId, shortId },
+            query: {},
+          });
+          id = folio.id;
+        } else {
+          const columns = header.map((name, index) => {
+            const values = body.map((row) => row[index] ?? "");
+            const type = this.csv.guessType(values);
+            return {
+              name: name.trim() || `Column ${index + 1}`,
+              type,
+              ...(type === "date" && this.csv.hasTime(values)
+                ? { options: { withTime: true } }
+                : {}),
+            };
+          });
+          const created = await this.folioApi.create({
+            body: {
+              projectId,
+              title:
+                flags.title ??
+                (args.split("/").pop() ?? args).replace(/\.csv$/i, ""),
+              summary: flags.summary,
+              type: "table",
+              columns,
+            },
+          });
+          id = created.id;
+          shortId = created.shortId;
+        }
+
+        const table = await this.tableApi.getFolioTable({ params: { id } });
+        const known = new Map(
+          table.columns.map((column) => [
+            column.name.toLowerCase(),
+            column.name,
+          ]),
+        );
+        const matched = header.map((name) =>
+          known.get(name.trim().toLowerCase()),
+        );
+        const skipped = header.filter((_, index) => !matched[index]);
+        let added = 0;
+        for (let i = 0; i < body.length; i += 100) {
+          const batch = body.slice(i, i + 100).map((row) => {
+            const cells: Record<string, string> = {};
+            matched.forEach((name, index) => {
+              if (name && (row[index] ?? "") !== "") cells[name] = row[index];
+            });
+            return { cells };
+          });
+          try {
+            const answer = await this.tableApi.addFolioRows({
+              params: { id },
+              body: { rows: batch },
+            });
+            added += answer.rows.length;
+          } catch (error) {
+            throw new CommandError(
+              { exitCode: 1 },
+              {
+                message: `Stopped at line ${i + 2} of ${args} (the batch starting there): ${error instanceof Error ? error.message : String(error)}. ${added} rows were imported before it, and stay.`,
+                cause: error,
+              },
+            );
+          }
+        }
+        this.printWrite(
+          print,
+          flags.output,
+          { id, shortId, added, skipped },
+          `Imported ${added} rows into F${shortId}${skipped.length ? `; skipped columns it has no name for: ${skipped.join(", ")}` : ""}`,
+        );
+      });
+    },
+  });
+
+  public readonly export = $command({
+    name: "export",
+    description:
+      "Print a table folio as CSV (--csv), every row in stored order, UTF-8 with a byte order mark",
+    args: FolioCommand.REF_ARG,
+    flags: z.object({
+      ...FolioCommand.PROJECT_FLAG,
+      csv: z
+        .boolean()
+        .describe("As CSV, the one format a table exports as today.")
+        .optional(),
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        if (!flags.csv) {
+          throw new UsageError("Pass --csv: a table exports as CSV.");
+        }
+        const id = await this.idOf(args, flags.project, context);
+        const { csv } = await this.tableApi.exportFolioTable({
+          params: { id },
+        });
+        // `print` adds the line end the file already carries.
+        print(csv.replace(/\r\n$/, ""));
+      });
+    },
+  });
+
   public readonly attachmentList = $command({
     name: "list",
     description: "List a folio's attachments",
@@ -695,7 +1155,7 @@ export class FolioCommand {
   public readonly folio = $command({
     name: "folio",
     description:
-      "A project's folios, its shared memory: list, search, read, create, update, revert and delete them",
+      "A project's folios, its shared memory: list, search, read, create, update, revert and delete them; a table's rows and columns; CSV in and out",
     children: [
       this.list,
       this.search,
@@ -705,6 +1165,10 @@ export class FolioCommand {
       this.history,
       this.revert,
       this.delete,
+      this.row,
+      this.column,
+      this.import,
+      this.export,
       this.attachment,
     ],
     handler: async ({ help }) => {
@@ -771,5 +1235,121 @@ export class FolioCommand {
     };
     if (kind === "release" && tag) return tag;
     return `${letters[kind] ?? `${kind} `}${shortId}`;
+  }
+
+  /**
+   * A `--column` spec: `Name:type`, `Status:select:Todo|Done`,
+   * `Due:date:time`.
+   */
+  protected parseColumn(spec: string): {
+    name: string;
+    type: "text" | "number" | "checkbox" | "date" | "select" | "reference";
+    options?: { choices?: string[]; withTime?: boolean };
+  } {
+    const [name, rawType = "text", extra] = spec.split(":");
+    const types = [
+      "text",
+      "number",
+      "checkbox",
+      "date",
+      "select",
+      "reference",
+    ] as const;
+    const typed = types.find((type) => type === rawType.trim().toLowerCase());
+    if (!name?.trim() || !typed) {
+      throw new UsageError(
+        `--column ${spec}: write Name:type, with type one of ${types.join(", ")}.`,
+      );
+    }
+    if (typed === "select") {
+      return {
+        name: name.trim(),
+        type: typed,
+        options: {
+          choices: (extra ?? "")
+            .split("|")
+            .map((label) => label.trim())
+            .filter(Boolean),
+        },
+      };
+    }
+    if (typed === "date" && extra?.trim().toLowerCase() === "time") {
+      return { name: name.trim(), type: typed, options: { withTime: true } };
+    }
+    return { name: name.trim(), type: typed };
+  }
+
+  protected parseJson(text: string, flag: string): unknown {
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      throw new UsageError(
+        `${flag} is not JSON: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * A row with its cells keyed by column name, a select by its label.
+   */
+  protected namedRow(
+    columns: Array<{
+      id: string;
+      name: string;
+      type: string;
+      options: { choices?: Array<{ id: string; label: string }> };
+    }>,
+    row: { number: number; version: number; cells: Record<string, unknown> },
+  ) {
+    const cells: Record<string, unknown> = {};
+    for (const column of columns) {
+      const value = row.cells[column.id] ?? null;
+      cells[column.name] =
+        column.type === "select" && value !== null
+          ? (column.options.choices?.find((c) => c.id === value)?.label ?? null)
+          : value;
+    }
+    return { number: row.number, version: row.version, cells };
+  }
+
+  /**
+   * A table as plain text: a header, then one line per row, `#number` first,
+   * cells separated by two spaces, empty cells as `-`.
+   */
+  protected tableText(table: {
+    columns: Array<{
+      id: string;
+      name: string;
+      type: string;
+      options: { choices?: Array<{ id: string; label: string }> };
+    }>;
+    rows: Array<{
+      number: number;
+      version: number;
+      cells: Record<string, unknown>;
+    }>;
+    rowCount: number;
+  }): string {
+    if (table.rows.length === 0) return "(no rows)";
+    const lines = [
+      ["#", ...table.columns.map((column) => column.name)].join("  "),
+      ...table.rows.map((row) => {
+        const named = this.namedRow(table.columns, row).cells;
+        return [
+          String(row.number),
+          ...table.columns.map((column) => {
+            const value = named[column.name];
+            if (value === null || value === undefined) return "-";
+            return typeof value === "object"
+              ? JSON.stringify(value)
+              : String(value as string | number | boolean);
+          }),
+        ].join("  ");
+      }),
+    ];
+    if (table.rowCount > table.rows.length) {
+      lines.push(`(${table.rows.length} of ${table.rowCount} rows)`);
+    }
+    return lines.join("\n");
   }
 }

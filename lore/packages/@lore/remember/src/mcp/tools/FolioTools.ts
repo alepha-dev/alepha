@@ -17,12 +17,15 @@ import { DirectoryController } from "../../api/controllers/DirectoryController.t
 import { FolioAttachmentController } from "../../api/controllers/FolioAttachmentController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { folioRevisions } from "../../api/entities/folioRevisions.ts";
+import { folioColumnInputOptionsSchema } from "../../api/schemas/folioColumnInputOptionsSchema.ts";
+import { folioColumnTypeSchema } from "../../api/schemas/folioColumnTypeSchema.ts";
 import {
   folioEpicRefSchema,
   folioFullSchema,
   folioRefParamsSchema,
   folioRefSchema,
 } from "../schemas/folioSchemas.ts";
+import { FolioTableTools } from "./FolioTableTools.ts";
 
 /**
  * Pull a ~200-character window around the first match of `query` in `text`.
@@ -69,6 +72,7 @@ export class FolioTools {
   protected readonly diagrams = $inject(DiagramCheckService);
   protected readonly attachmentPush = $inject(AttachmentPushCommand);
   protected readonly projectTools = $inject(ProjectTools);
+  protected readonly tableTools = $inject(FolioTableTools);
 
   /**
    * Resolve project ID from params (by ID or name). Required: at least one
@@ -380,7 +384,7 @@ export class FolioTools {
 
   folio_get = $tool({
     description:
-      "Get the full content of a folio (markdown) plus its links: `outbound` is what this folio references with the typed grammar (`[[#F12]]` a folio, `[[#Q12]]` a quest, `[[#E3]]` an epic, `[[#P120]]` a feedback item, `[[#R12]]` a release; the number is the per-project id, and nothing else between `[[` and `]]` is a reference), `inbound` is the folios, quests and epics that reference this one. Use `inbound` as a backlink panel: it surfaces context that may be related. Accepts either the global UUID `id` or the per-project `shortId` (with `project` / `project_name`).",
+      'Get the full content of a folio (markdown) plus its links. A table folio (`type: "table"`) answers its `columns`, `rowCount` and first 50 `rows` instead of content, cells keyed by column name, with `truncated` when there are more (read them with folio_row_list). Links: `outbound` is what this folio references with the typed grammar (`[[#F12]]` a folio, `[[#Q12]]` a quest, `[[#E3]]` an epic, `[[#P120]]` a feedback item, `[[#R12]]` a release; the number is the per-project id, and nothing else between `[[` and `]]` is a reference), `inbound` is the folios, quests and epics that reference this one. Use `inbound` as a backlink panel: it surfaces context that may be related. Accepts either the global UUID `id` or the per-project `shortId` (with `project` / `project_name`).',
     title: "Get folio",
     annotations: {
       readOnlyHint: true,
@@ -412,12 +416,19 @@ export class FolioTools {
               query,
             });
       const epic = folio.metadata?.epic;
+      // A table answers its columns and first rows by name (#Q3515).
+      const table =
+        folio.type === "table"
+          ? await this.tableTools.tableView(folio.id)
+          : undefined;
       return {
         id: folio.id,
         shortId: folio.shortId,
         title: folio.title,
         summary: folio.summary || undefined,
+        type: folio.type,
         content: folio.content,
+        ...table,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
         epic: epic
@@ -434,7 +445,7 @@ export class FolioTools {
 
   folio_create = $tool({
     description:
-      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. Pass `epic_number` to file the folio under an epic (it then shows on the epic's Folios tab and in `epic_get`), the same way quest_create does. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers.",
+      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. For a list you will add to or change row by row (a comparison of options, an inventory, dated goals), pass `type: \"table\"` and `columns` instead of content, then add rows with folio_row_add; a date column makes it readable as a calendar. Prose stays a text folio. Pass `epic_number` to file the folio under an epic (it then shows on the epic's Folios tab and in `epic_get`), the same way quest_create does. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers.",
     title: "Create folio",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -471,6 +482,25 @@ export class FolioTools {
             "Per-project number of the epic to file this folio under (see epic_list). A design or outcome folio of an epic belongs here; left unattached it never shows on the epic. Without `directory_shortId`, the folio lands beside the epic's other folios: in the directory of its oldest folio that sits in one.",
           )
           .optional(),
+        type: z
+          .enum(["text", "table"])
+          .describe(
+            "`text` (the default), or `table`: typed columns and rows, no content. Set at creation, never changed.",
+          )
+          .optional(),
+        columns: z
+          .array(
+            z.object({
+              name: z.string(),
+              type: folioColumnTypeSchema,
+              options: folioColumnInputOptionsSchema.optional(),
+            }),
+          )
+          .max(50)
+          .describe(
+            "A table's columns, in order: text, number, checkbox, date (`options.withTime`), select (`options.choices`, labels), reference (#Q12, #F12). Without any, a table gets one text column, Name.",
+          )
+          .optional(),
       }),
       result: folioFullSchema,
     },
@@ -504,6 +534,8 @@ export class FolioTools {
           summary: params.summary,
           directoryId: directoryId ?? undefined,
           pinned: params.pinned,
+          type: params.type,
+          columns: params.columns,
         },
       });
 
