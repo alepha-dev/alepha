@@ -152,6 +152,7 @@ export class AutomationVariables {
               await this.access.author(rule),
               rule.rule,
               overrides,
+              rule,
             );
             scheduleCron = compiled.scheduleCron;
             approved = this.approvals.capture([...overrides.values()]);
@@ -334,6 +335,7 @@ export class AutomationVariables {
         user,
         rule.rule,
         new Map(rows.map((row) => [row.key, row])),
+        rule,
       );
       return rows.map(({ id, key, version, value }) => ({
         id,

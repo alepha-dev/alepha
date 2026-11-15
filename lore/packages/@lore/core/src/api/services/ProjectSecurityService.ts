@@ -1,5 +1,5 @@
-import { $inject } from "alepha";
-import { organizationMembers } from "alepha/api/organizations";
+import { $inject, Alepha } from "alepha";
+import { organizationMembers, RankService } from "alepha/api/organizations";
 import { $repository } from "alepha/orm";
 import {
   ResourceGateMemoProvider,
@@ -54,6 +54,7 @@ import type { RoadmapVisibility } from "../schemas/roadmapVisibilitySchema.ts";
  * and is never an authorization input again.
  */
 export class ProjectSecurityService {
+  protected readonly alepha = $inject(Alepha);
   projects = $repository(projects);
   members = $repository(organizationMembers);
   /**
@@ -220,6 +221,44 @@ export class ProjectSecurityService {
       },
     });
     return !!member;
+  }
+
+  /**
+   * Whether a project member's RANK grants `permission`, by raw user id: a
+   * question about somebody else (an assignee, a mention), never the caller.
+   *
+   * Membership is not trust (#Q3648): in an open project anyone can become a
+   * member on the Viewer rank, so a check that trusts membership trusts a
+   * stranger. Read a permission instead.
+   *
+   * ⚠️ Not `RankService.can`: that answers from the request's resolved rank
+   * when the organization matches, which is the CALLER's, and would validate
+   * the wrong subject. `RankService` is resolved here rather than injected:
+   * it reads the policy provider, which injects this service.
+   */
+  async holds(
+    projectId: number,
+    userId: string,
+    permission: string,
+  ): Promise<boolean> {
+    const project = await this.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    if (!project?.organizationId) return false;
+    const member = await this.members.findOne({
+      where: {
+        organizationId: { eq: project.organizationId },
+        userId: { eq: userId },
+      },
+    });
+    if (!member) return false;
+    const ranks = this.alepha.inject(RankService);
+    const permissions =
+      (await ranks.permissionsOf(
+        project.organizationId,
+        member.rank ?? "member",
+      )) ?? [];
+    return ranks.grants(permissions, permission);
   }
 
   /**

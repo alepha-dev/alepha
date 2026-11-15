@@ -28,7 +28,9 @@ export class AutomationPresetService {
     input: AutomationPresetCreate,
     options: { subscription?: boolean; subscriptionScope?: string } = {},
   ) {
-    await this.access.assert(projectId, user, "automation:write");
+    await this.access.assert(projectId, user, "automation:write", {
+      subscription: options.subscription,
+    });
     const body = automationPresetCreateSchema.parse(input);
     const values = { ...body.values };
     const shared: Record<string, string> = {};

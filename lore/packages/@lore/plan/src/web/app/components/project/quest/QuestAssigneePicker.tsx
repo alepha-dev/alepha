@@ -38,7 +38,10 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
   const questApi = useClient<QuestController>();
   // Unconditionally, unlike the read-only row this replaces: the picker has
   // to list everyone, not just resolve the current holder.
-  const users = useProjectUsers(true);
+  const users = useProjectUsers(true, { assignable: true });
+  // Only those whose rank can work the quest: a viewer of an open project is
+  // listed among the members, never offered here (#Q3648).
+  const candidates = users.filter((user) => user.assignable !== false);
 
   const assignee = quest.acceptedBy
     ? users.find((u) => u.id === quest.acceptedBy)
@@ -84,7 +87,9 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
           leaves under itself: together they took the row from 34px to the
           rail's 28 (#Q2424). */}
       <DropdownMenuTrigger
-        disabled={pending || users.length === 0 || !questApi.assignQuest.can()}
+        disabled={
+          pending || candidates.length === 0 || !questApi.assignQuest.can()
+        }
         data-testid="quest-assignee-picker"
         className="hover:bg-hover -mx-1 -my-0.5 inline-flex items-center gap-1.5 rounded px-1 py-0.5 align-top disabled:opacity-60"
       >
@@ -102,7 +107,7 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
         <ChevronDown className="text-muted-foreground size-3 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-48">
-        {users.map((member) => (
+        {candidates.map((member) => (
           <DropdownMenuItem
             key={member.id}
             data-testid="quest-assignee-option"

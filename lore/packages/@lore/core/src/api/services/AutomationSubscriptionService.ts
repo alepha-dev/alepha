@@ -48,7 +48,9 @@ export class AutomationSubscriptionService {
     presets: string[],
     scope: string,
   ): Promise<AutomationSubscription> {
-    await this.access.assert(projectId, user, "automation:read");
+    await this.access.assert(projectId, user, "automation:read", {
+      subscription: true,
+    });
     const keys = this.keys(presets);
     // Parsed for its refusal only: a malformed scope names no toggle.
     try {
@@ -64,7 +66,9 @@ export class AutomationSubscriptionService {
     user: UserAccountToken,
     body: AutomationSubscriptionSetBody,
   ): Promise<AutomationSubscription> {
-    await this.access.assert(projectId, user, "automation:write");
+    await this.access.assert(projectId, user, "automation:write", {
+      subscription: true,
+    });
     const keys = this.keys(body.presets);
     const bound = body.scope ?? {};
     let scope: string;

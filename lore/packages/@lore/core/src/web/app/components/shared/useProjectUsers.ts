@@ -17,20 +17,31 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
  * it handled, so the root `ActionErrorToaster` skips it and error reporting
  * still sees it.
  */
-export const useProjectUsers = (enabled = true): ProjectUser[] => {
+export const useProjectUsers = (
+  enabled = true,
+  options: { assignable?: boolean } = {},
+): ProjectUser[] => {
   const projectApi = useClient<ProjectController>();
   const [project] = useStore(currentProjectAtom);
   const projectId = project?.id;
+  const assignable = options.assignable === true;
 
   const { data } = useQuery(
     {
-      key: ["project-users", projectId],
+      // The assignee picker's read is its own key: it carries `assignable`,
+      // which the other readers do not ask for.
+      key: assignable
+        ? ["project-users", projectId, "assignable"]
+        : ["project-users", projectId],
       enabled: enabled && !!projectId,
       handler: () =>
-        projectApi.getProjectUsers({ params: { id: projectId as number } }),
+        projectApi.getProjectUsers({
+          params: { id: projectId as number },
+          ...(assignable ? { query: { assignable: true } } : {}),
+        }),
       onError: () => {},
     },
-    [projectApi, projectId],
+    [projectApi, projectId, assignable],
   );
 
   return data ?? [];
@@ -41,4 +52,9 @@ export interface ProjectUser {
   picture?: string;
   username?: string | null;
   email?: string | null;
+  /**
+   * Whether a quest can be handed to them (their rank grants
+   * `quest:update`). Absent on a stub, which reads as assignable.
+   */
+  assignable?: boolean;
 }

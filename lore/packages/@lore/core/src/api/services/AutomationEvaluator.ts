@@ -131,6 +131,7 @@ export class AutomationEvaluator {
           input.rule.projectId,
           user,
           "automation:write",
+          input.rule,
         );
         base.variables = await this.variables.snapshot(input.rule, user, {
           transition: false,
@@ -278,6 +279,7 @@ export class AutomationEvaluator {
                 input.rule.projectId,
                 user,
                 rendered.raw,
+                input.rule,
               );
               if (action.kind === "notify" && action.audience) {
                 if (input.disclosureUser) {

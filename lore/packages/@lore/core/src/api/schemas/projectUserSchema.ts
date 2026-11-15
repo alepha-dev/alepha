@@ -1,4 +1,4 @@
-import { type Infer } from "alepha";
+import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 
 /**
@@ -11,13 +11,22 @@ import { users } from "alepha/api/users";
  * Roles, login stamps and the rest of the account never leave the server
  * through this schema.
  */
-export const projectUserSchema = users.schema.pick({
-  id: true,
-  username: true,
-  firstName: true,
-  lastName: true,
-  picture: true,
-  email: true,
-});
+export const projectUserSchema = users.schema
+  .pick({
+    id: true,
+    username: true,
+    firstName: true,
+    lastName: true,
+    picture: true,
+    email: true,
+  })
+  .extend({
+    /**
+     * Whether a quest can be handed to them: their rank grants
+     * `quest:update` (#Q3648). The assignee picker lists only these, and a
+     * viewer of an open project is not one of them.
+     */
+    assignable: z.boolean().optional(),
+  });
 
 export type ProjectUserResource = Infer<typeof projectUserSchema>;

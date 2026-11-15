@@ -159,7 +159,9 @@ export class FeedbackCommentController {
     if (row.reporterUserId === user.id) {
       return row;
     }
-    if (await this.security.isMember(row.projectId, user)) {
+    // The rank must read the inbox: a member on the Viewer rank does not
+    // (#Q3648).
+    if (await this.security.holds(row.projectId, user.id, "feedback:read")) {
       return row;
     }
     throw new NotFoundError("Feedback not found");
@@ -283,7 +285,11 @@ export class FeedbackCommentController {
       // `/:projectSlug/request`, which asks for an account and not for
       // membership, so `MentionNotifier` can never reach one who is not a
       // member - which is most of them, and the whole gap #P2165 reported.
-      const mentioned = (await this.security.isMember(row.projectId, user))
+      const mentioned = (await this.security.holds(
+        row.projectId,
+        user.id,
+        "feedback:read",
+      ))
         ? await this.mentions.notify({
             subject: await this.mentionSubject(row),
             authorId: user.id,

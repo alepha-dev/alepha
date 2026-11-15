@@ -52,7 +52,7 @@ export class AutomationAuthority {
     try {
       await this.dependencies.assert(rule);
       const user = await this.access.author(rule);
-      await this.access.assert(rule.projectId, user, "automation:write");
+      await this.access.assert(rule.projectId, user, "automation:write", rule);
       const variables = await this.variables.snapshot(rule, user, {
         transition: false,
       });
@@ -88,6 +88,7 @@ export class AutomationAuthority {
           rule.projectId,
           user,
           input.effect.action,
+          rule,
         );
       }
       // Re-read after all asynchronous gates. An edit/disable during validation

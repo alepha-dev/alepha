@@ -53,7 +53,7 @@ export class AutomationHealth {
     try {
       await this.dependencies.assert(rule);
       const user = await this.access.author(rule);
-      await this.access.assert(rule.projectId, user, "automation:write");
+      await this.access.assert(rule.projectId, user, "automation:write", rule);
       const values = await this.variables.snapshot(rule, user, {
         transition: false,
       });
