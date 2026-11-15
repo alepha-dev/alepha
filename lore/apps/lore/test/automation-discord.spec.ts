@@ -8,6 +8,8 @@ import {
 } from "@lore/core/api";
 import { createPresetRanks } from "@lore/core/testing";
 import { ReleaseController } from "@lore/plan/api";
+import { DeployRegistry } from "@lore/ship/api";
+import { appInstances, deployments } from "@lore/ship/schemas";
 import { Alepha, AlephaError } from "alepha";
 import {
   JobProvider,
@@ -35,13 +37,15 @@ class DiscordQueue extends JobQueueProvider {
 }
 class DiscordRows {
   jobs = $repository(jobExecutionEntity);
+  instances = $repository(appInstances);
+  deployments = $repository(deployments);
 }
 
 const WEBHOOK = "https://discord.com/api/webhooks/1234567890/abcDEF-ghi_JKL";
 
 /**
- * Discord channels deliver (#Q3615): a rule naming a project's Discord
- * channel posts once through the transport, muted and capped; a worker retry
+ * Discord channels deliver (#Q3615): a deploy.failed rule naming a
+ * project's Discord channel posts once through the transport, muted and capped; a worker retry
  * enqueues nothing more; the webhook URL is in no log line, outbox row,
  * snapshot or receipt.
  */
@@ -119,7 +123,10 @@ describe("Discord delivery (#Q3615)", () => {
     logs = alepha.inject(MemoryDestinationProvider);
     await alepha.start();
     project = await createTestProject(alepha, {
-      capabilities: [{ key: "plan", options: { releases: true } }],
+      capabilities: [
+        { key: "plan", options: { releases: true } },
+        { key: "ship", options: { deploy: true } },
+      ],
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };
@@ -135,28 +142,44 @@ describe("Discord delivery (#Q3615)", () => {
     const channel = await alepha
       .inject(AutomationChannelService)
       .add(project.id, user, { name: "alerts", url: WEBHOOK });
+    const instance = await rows.instances.create({
+      projectId: project.id,
+      app: "site",
+      env: "production",
+      createdBy: user.id,
+    });
     discord.clear();
     await alepha.inject(AutomationService).create(project.id, user, {
-      title: "Releases to Discord",
+      title: "Failed deploys to Discord",
       enabled: true,
       rule: {
         version: 1,
-        trigger: { kind: "event", event: "release.published" },
+        trigger: { kind: "event", event: "deploy.failed", app: "site" },
         select: null,
         guard: null,
         actions: [
           {
             kind: "notify",
             channels: [channel.id],
-            category: "releases",
-            title: "Release {{release_tag}}",
-            text: "@everyone {{title}} shipped",
+            category: "automations",
+            title: "Deployment failed: {{app}} ({{env}})",
+            text: "@everyone {{app}} failed: {{reason}}",
           },
         ],
       },
     });
 
-    await publish("1.0.0");
+    const deployment = await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: "site",
+      tag: "latest",
+      sha256: "a".repeat(64),
+      status: "running",
+    });
+    await alepha
+      .inject(DeployRegistry)
+      .failed(deployment.id, "The health check never answered");
     const occurrences = await step();
     expect(occurrences).toHaveLength(1);
     const jobs = await deliver();
@@ -166,7 +189,9 @@ describe("Discord delivery (#Q3615)", () => {
     expect(discord.posts[0].payload).toMatchObject({
       allowed_mentions: { parse: [] },
     });
-    expect(discord.posts[0].payload.content).toContain("Release 1.0.0");
+    expect(discord.posts[0].payload.content).toContain(
+      "Deployment failed: site (production)",
+    );
 
     // A worker retry over the same occurrence enqueues nothing more.
     for (const receipt of occurrences) {

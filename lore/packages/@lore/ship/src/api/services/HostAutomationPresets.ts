@@ -61,13 +61,14 @@ export class HostAutomationPresets {
             min: 1,
             max: 255,
           },
-          recipient: { kind: "member", required: true, bindable: true },
+          // Required only for an addressable channel (#Q3615): a Discord
+          // channel is nobody's.
+          recipient: { kind: "member", required: false, bindable: true },
           channel: {
             kind: "channel",
             bindable: true,
             required: true,
             default: "inbox",
-            values: ["inbox", "email"],
           },
         },
       },
@@ -94,7 +95,9 @@ export class HostAutomationPresets {
       actions: [
         {
           kind: "notify",
-          recipient: String(values.recipient),
+          ...(values.recipient !== undefined && values.recipient !== ""
+            ? { recipient: String(values.recipient) }
+            : {}),
           channel: String(values.channel),
           category: "automations",
           title: message.title,
