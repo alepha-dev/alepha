@@ -1,0 +1,1 @@
+ALTER TABLE `automations` ADD `subscription_scope` text DEFAULT '' NOT NULL;

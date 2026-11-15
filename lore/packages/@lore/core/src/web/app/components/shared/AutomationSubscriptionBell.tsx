@@ -25,6 +25,7 @@ import { Bell, BellRing } from "lucide-react";
 import { useState } from "react";
 
 import type { AutomationController } from "../../../../api/controllers/AutomationController.ts";
+import { AutomationSubscriptionScope } from "../../../../api/schemas/AutomationSubscriptionScope.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { canInProject } from "../../services/projectRank.ts";
@@ -35,8 +36,17 @@ type Channel = "inbox" | "email";
 const CHANNELS: Channel[] = ["inbox", "email"];
 
 export interface AutomationSubscriptionBellProps {
-  /** The stock preset the subscription is made from, `feedback-created`. */
-  presetKey: string;
+  /**
+   * The stock presets one toggle covers, such as `["feedback-created"]`, or
+   * a monitor's down and up presets together (#Q3635).
+   */
+  presets: string[];
+  /**
+   * The setup values this bell binds, such as `{ monitor: id }`: the bells
+   * of two objects differ by scope, and a list's bell (no scope) is
+   * independent of both.
+   */
+  scope?: Record<string, string>;
   /** What the bell subscribes to, as its tooltip: "Notify me of new feedback". */
   label: string;
   /** The dialog's sentence on what turning it on does. */
@@ -81,32 +91,39 @@ export const AutomationSubscriptionBell = (
     canInProject(project, "automation:read") &&
     canInProject(project, "automation:write");
   const projectId = project?.id ?? 0;
-  const key = ["automation-subscription", projectId, props.presetKey];
+  const presets = [...props.presets].sort().join(",");
+  const scope = AutomationSubscriptionScope.encode(props.scope);
+  const key = ["automation-subscription", projectId, presets, scope];
   const state = useQuery(
     {
       key,
       enabled: available,
       handler: ({ signal }) =>
         api.getAutomationSubscription(
-          { params: { projectId, key: props.presetKey } },
+          { params: { projectId }, query: { presets, scope } },
           { request: { signal } },
         ),
     },
-    [available, projectId, props.presetKey],
+    [available, projectId, presets, scope],
   );
   const set = useAction<[subscribed: boolean], void>(
     {
       handler: async (_ctx, subscribed) => {
         await api.setAutomationSubscription({
-          params: { projectId, key: props.presetKey },
-          body: subscribed ? { subscribed, channels } : { subscribed },
+          params: { projectId },
+          body: {
+            presets: props.presets,
+            ...(props.scope ? { scope: props.scope } : {}),
+            subscribed,
+            ...(subscribed ? { channels } : {}),
+          },
         });
         setOpen(false);
         queries.invalidate(key);
         queries.invalidate(["automations", projectId]);
       },
     },
-    [api, projectId, props.presetKey, channels, queries],
+    [api, projectId, presets, scope, channels, queries],
   );
   if (!available) return null;
 

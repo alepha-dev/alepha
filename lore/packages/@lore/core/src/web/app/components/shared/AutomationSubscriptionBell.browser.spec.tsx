@@ -106,7 +106,7 @@ describe("AutomationSubscriptionBell", () => {
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <AutomationSubscriptionBell
-            presetKey="feedback-created"
+            presets={["feedback-created"]}
             label="Notify me of new feedback"
             description="A rule will notify you of every new feedback."
             offDescription="You will no longer be notified of new feedback."
@@ -158,7 +158,11 @@ describe("AutomationSubscriptionBell", () => {
 
     await waitFor(() =>
       expect(server.sets).toEqual([
-        { subscribed: true, channels: ["inbox", "email"] },
+        {
+          presets: ["feedback-created"],
+          subscribed: true,
+          channels: ["inbox", "email"],
+        },
       ]),
     );
     await waitFor(() =>
@@ -205,7 +209,9 @@ describe("AutomationSubscriptionBell", () => {
         name: "Unsubscribe",
       }),
     );
-    await waitFor(() => expect(server.sets).toEqual([{ subscribed: false }]));
+    await waitFor(() => expect(server.sets).toEqual([
+        { presets: ["feedback-created"], subscribed: false },
+      ]));
     await waitFor(() =>
       expect(bell().getAttribute("aria-pressed")).toBe("false"),
     );

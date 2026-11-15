@@ -3,6 +3,7 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
+import { AutomationSubscriptionScope } from "../schemas/AutomationSubscriptionScope.ts";
 import type { AutomationSubscription } from "../schemas/automationSubscriptionSchema.ts";
 import type { AutomationSubscriptionSetBody } from "../schemas/automationSubscriptionSetBodySchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
@@ -12,20 +13,26 @@ import { AutomationPresetService } from "./AutomationPresetService.ts";
 import { AutomationService } from "./AutomationService.ts";
 
 /**
- * "My subscription" to a preset, in one project: a toggle (the feedback
- * page's bell) that turns a stock preset into a rule notifying its viewer,
- * and finds that rule again (#Q3576).
+ * "My subscription", in one project: a toggle (a bell) that turns one or
+ * more stock presets into rules notifying its viewer, and finds those rules
+ * again (#Q3576).
  *
- * - **The marker** is the rule's `subscription` flag, with its `presetKey`
- *   and its author. A rule the toggle made stays an ordinary rule: listed,
- *   editable, and deletable from the automations pages.
- * - **On** creates the rule from the preset, enabled in the same write, with
- *   the caller as recipient. Already on, it changes nothing.
- * - **Off** deletes every rule the caller's toggle made from that preset,
- *   enabled or not, so a rule disabled by hand does not linger behind it.
+ * - **The marker** is the rule's `subscription` flag, with its `presetKey`,
+ *   its author and its `subscriptionScope` (#Q3635). A toggle is identified
+ *   by its author, the presets it names and its scope: the bells of two
+ *   monitors on the same presets differ by scope, and a list's bell (empty
+ *   scope) shares no state with either. A rule the toggle made stays an
+ *   ordinary rule: listed, editable, and deletable from the automations
+ *   pages.
+ * - **On** creates one rule per preset and channel, enabled in the same
+ *   write, with the caller as recipient and the scope's values bound. Already
+ *   on with the same channels, it changes nothing.
+ * - **Off** deletes every rule the toggle made, enabled or not, so a rule
+ *   disabled by hand does not linger behind it.
  * - **The state** is server-side: subscribed means the caller owns an
- *   enabled marked rule. One they disabled from the automations page reads
- *   as off, and turning the toggle on again replaces it.
+ *   enabled marked rule from each named preset in that scope. One they
+ *   disabled from the automations page reads as off, and turning the toggle
+ *   on again replaces it.
  */
 export class AutomationSubscriptionService {
   protected readonly access = $inject(AutomationAccess);
@@ -37,27 +44,47 @@ export class AutomationSubscriptionService {
   public async get(
     projectId: number,
     user: UserAccountToken,
-    key: string,
+    presets: string[],
+    scope: string,
   ): Promise<AutomationSubscription> {
     await this.access.assert(projectId, user, "automation:read");
-    return this.state(await this.marked(projectId, user, key));
+    const keys = this.keys(presets);
+    // Parsed for its refusal only: a malformed scope names no toggle.
+    try {
+      AutomationSubscriptionScope.decode(scope);
+    } catch {
+      throw new BadRequestError("scope: malformed subscription scope");
+    }
+    return this.state(keys, await this.marked(projectId, user, keys, scope));
   }
 
   public async set(
     projectId: number,
     user: UserAccountToken,
-    key: string,
     body: AutomationSubscriptionSetBody,
   ): Promise<AutomationSubscription> {
     await this.access.assert(projectId, user, "automation:write");
-    const rules = await this.marked(projectId, user, key);
+    const keys = this.keys(body.presets);
+    const bound = body.scope ?? {};
+    let scope: string;
+    try {
+      scope = AutomationSubscriptionScope.encode(bound);
+    } catch {
+      throw new BadRequestError("scope: at most 255 characters");
+    }
+    const rules = await this.marked(projectId, user, keys, scope);
     if (body.subscribed) {
       if (body.values && "recipient" in body.values)
         throw new BadRequestError(
           "setup.recipient: a subscription always notifies its caller",
         );
+      for (const name of Object.keys(bound))
+        if (body.values && name in body.values)
+          throw new BadRequestError(
+            `setup.${name}: bound by the subscription's scope`,
+          );
       const wanted = body.channels ? [...new Set(body.channels)] : undefined;
-      const live = this.state(rules);
+      const live = this.state(keys, rules);
       // Already on: kept as it is, unless the caller names another set of
       // channels (#Q3602), which replaces the rules.
       if (
@@ -69,25 +96,37 @@ export class AutomationSubscriptionService {
         return live;
       // A marked rule disabled by hand is replaced, not kept beside it.
       await this.remove(projectId, user, rules);
-      // One rule per channel: a preset notifies on one channel, and two
-      // rules keep each of them an ordinary rule its author can read.
-      for (const channel of wanted ?? [undefined])
-        await this.presets.create(
-          projectId,
-          user,
-          {
-            key,
-            values: {
-              ...body.values,
-              ...(channel ? { channel } : {}),
-              recipient: user.id,
+      // One rule per preset and channel: a preset notifies on one channel,
+      // and separate rules keep each of them an ordinary rule its author can
+      // read.
+      for (const key of keys)
+        for (const channel of wanted ?? [undefined])
+          await this.presets.create(
+            projectId,
+            user,
+            {
+              key,
+              values: {
+                ...body.values,
+                ...bound,
+                ...(channel ? { channel } : {}),
+                recipient: user.id,
+              },
+              enabled: true,
             },
-            enabled: true,
-          },
-          { subscription: true },
-        );
+            { subscription: true, subscriptionScope: scope },
+          );
     } else await this.remove(projectId, user, rules);
-    return this.state(await this.marked(projectId, user, key));
+    return this.state(keys, await this.marked(projectId, user, keys, scope));
+  }
+
+  protected keys(presets: string[]): string[] {
+    const keys = [...new Set(presets.map((key) => key.trim()))].filter(
+      Boolean,
+    );
+    if (keys.length === 0 || keys.length > 8)
+      throw new BadRequestError("presets: between one and eight preset keys");
+    return keys.sort();
   }
 
   protected async remove(
@@ -99,25 +138,36 @@ export class AutomationSubscriptionService {
       await this.service.remove(projectId, rule.id, user, rule.revision);
   }
 
-  protected marked(projectId: number, user: UserAccountToken, key: string) {
+  protected marked(
+    projectId: number,
+    user: UserAccountToken,
+    keys: string[],
+    scope: string,
+  ) {
     return this.database.primary(() =>
       this.persistence.rules.findMany({
         where: {
           projectId,
           authorUserId: user.id,
-          presetKey: key,
+          presetKey: { inArray: keys },
           subscription: true,
+          subscriptionScope: scope,
         },
         orderBy: [{ column: "createdAt", direction: "desc" }],
-        limit: 16,
+        limit: 64,
       }),
     );
   }
 
-  protected state(rules: Automation[]): AutomationSubscription {
+  protected state(keys: string[], rules: Automation[]): AutomationSubscription {
     const enabled = rules.filter((candidate) => candidate.enabled);
-    const rule = enabled[0];
-    if (!rule) return { subscribed: false };
+    // Every preset the toggle names must still have its rule: one deleted or
+    // disabled from the automations page reads as off.
+    if (
+      enabled.length === 0 ||
+      !keys.every((key) => enabled.some((rule) => rule.presetKey === key))
+    )
+      return { subscribed: false };
     const channels = [
       ...new Set(
         enabled.flatMap((candidate) =>
@@ -131,7 +181,7 @@ export class AutomationSubscriptionService {
     ].sort();
     return {
       subscribed: true,
-      automationId: rule.id,
+      automationId: enabled[0].id,
       ...(channels.length ? { channel: channels[0], channels } : {}),
     };
   }

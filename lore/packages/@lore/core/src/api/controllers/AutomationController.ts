@@ -22,6 +22,7 @@ import { automationRunResourceSchema } from "../schemas/automationRunResourceSch
 import { automationSetupOptionPageSchema } from "../schemas/automationSetupOptionPageSchema.ts";
 import { automationSetupQuerySchema } from "../schemas/automationSetupQuerySchema.ts";
 import { automationSubscriptionParamsSchema } from "../schemas/automationSubscriptionParamsSchema.ts";
+import { automationSubscriptionQuerySchema } from "../schemas/automationSubscriptionQuerySchema.ts";
 import { automationSubscriptionSchema } from "../schemas/automationSubscriptionSchema.ts";
 import { automationSubscriptionSetBodySchema } from "../schemas/automationSubscriptionSetBodySchema.ts";
 import { automationTestBodySchema } from "../schemas/automationTestBodySchema.ts";
@@ -145,35 +146,42 @@ export class AutomationController {
       this.presets.create(params.projectId, user, body),
   });
   /**
-   * The caller's subscription to a preset: whether a toggle such as the
-   * feedback page's bell left them an enabled rule from it.
+   * The caller's subscription to the presets one toggle names, within its
+   * scope (#Q3635): whether a bell such as the feedback page's left them an
+   * enabled rule from each.
    */
   getAutomationSubscription = $action({
     use: [this.gate("automation:read")],
     method: "GET",
-    path: "/projects/:projectId/automation-subscriptions/:key",
+    path: "/projects/:projectId/automation-subscriptions",
     schema: {
       params: automationSubscriptionParamsSchema,
+      query: automationSubscriptionQuerySchema,
       response: automationSubscriptionSchema,
     },
-    handler: ({ params, user }) =>
-      this.subscriptions.get(params.projectId, user, params.key),
+    handler: ({ params, query, user }) =>
+      this.subscriptions.get(
+        params.projectId,
+        user,
+        query.presets.split(","),
+        query.scope ?? "",
+      ),
   });
   /**
-   * Turn the caller's subscription to a preset on (a rule created enabled,
-   * notifying them) or off (their toggle's rules deleted).
+   * Turn the caller's subscription on (one rule per preset and channel,
+   * created enabled, notifying them) or off (their toggle's rules deleted).
    */
   setAutomationSubscription = $action({
     use: [this.gate("automation:write")],
     method: "PUT",
-    path: "/projects/:projectId/automation-subscriptions/:key",
+    path: "/projects/:projectId/automation-subscriptions",
     schema: {
       params: automationSubscriptionParamsSchema,
       body: automationSubscriptionSetBodySchema,
       response: automationSubscriptionSchema,
     },
     handler: ({ params, body, user }) =>
-      this.subscriptions.set(params.projectId, user, params.key, body),
+      this.subscriptions.set(params.projectId, user, body),
   });
   updateAutomation = $action({
     use: [this.gate("automation:write")],
