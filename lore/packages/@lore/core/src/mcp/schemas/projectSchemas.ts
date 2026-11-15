@@ -1,6 +1,7 @@
 import { z } from "alepha";
 
 import { capabilityKeySchema } from "../../api/schemas/capabilityKeySchema.ts";
+import { joinPolicySchema } from "../../api/schemas/joinPolicySchema.ts";
 import { projectActivityRowSchema } from "../../api/schemas/projectActivityRowSchema.ts";
 import { epicStatusSchema } from "./epicStatusSchema.ts";
 import { prioritySchema } from "./prioritySchema.ts";
@@ -83,6 +84,11 @@ export const projectInfoResultSchema = z.object({
     }),
   ),
   createdAt: z.datetime(),
+  /**
+   * Who may join this project: `invite` (an admin invites) or `open` (anyone
+   * signed in joins by themselves, read-only, on the Viewer rank).
+   */
+  joinPolicy: joinPolicySchema,
   activeQuests: z.array(questOrientationRefSchema),
   /**
    * The caller's rank in this project.

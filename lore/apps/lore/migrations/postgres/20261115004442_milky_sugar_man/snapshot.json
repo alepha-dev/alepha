@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "77c42d77-6f06-4a60-b89d-28ac8ae30bd4",
+  "prevIds": ["68392034-3195-479f-a159-c441f1b15cf9"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "projects", "join_policy"],
+      "writes": [
+        "s|col|public.projects.join_policy",
+        "n|col|public.projects.join_policy",
+        "e|col|public.projects.join_policy"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "projects",
+        "name": "join_policy",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}
