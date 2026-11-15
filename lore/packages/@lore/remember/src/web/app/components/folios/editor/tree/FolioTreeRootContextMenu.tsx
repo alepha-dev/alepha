@@ -7,7 +7,7 @@ import {
 } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { FilePlus, FolderPlus } from "lucide-react";
+import { FilePlus, FolderPlus, Table2 } from "lucide-react";
 import type { ReactElement } from "react";
 
 import FolioTreeRefreshMenuItem from "./FolioTreeRefreshMenuItem.tsx";
@@ -67,6 +67,10 @@ const FolioTreeRootContextMenu = (
         <ContextMenuItem onClick={() => props.commands.createFolio()}>
           <FilePlus className="size-4" />
           {tr("folios.editor.tree.new-folio")}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => props.commands.createTable()}>
+          <Table2 className="size-4" />
+          {tr("folios.editor.tree.new-table-folio")}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => props.commands.createDirectory()}>
           <FolderPlus className="size-4" />

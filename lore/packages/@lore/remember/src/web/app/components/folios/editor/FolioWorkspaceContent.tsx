@@ -172,6 +172,13 @@ const FolioWorkspaceContent = (
   // nulled on unmount. The menubar's formatting actions and the selection
   // popup both dispatch into it.
   const editorViewRef = useRef<EditorView | null>(null);
+  // A table folio's grid registers its commands here (#E144).
+  const tableCommands = useRef<{
+    insertRow: () => void;
+    insertColumn: () => void;
+    find: () => void;
+  } | null>(null);
+  const isTable = props.folio?.type === "table";
 
   // The element this workspace is showing. `LoreEditor` derives its own
   // links and upload target from it; the copy computed here exists only
@@ -222,6 +229,7 @@ const FolioWorkspaceContent = (
       // at the other face, not a preference.
       toggle: () => setModeState(mode === "view" ? "edit" : "view"),
     },
+    table: tableCommands,
     format: {
       run: (id) => {
         const view = editorViewRef.current;
@@ -258,12 +266,15 @@ const FolioWorkspaceContent = (
         <div className="relative flex min-w-0 flex-1 flex-col">
           {/* The mode lives in a toolbar row above the document (#Q3653),
               where a lone pencil used to float over its corner. Outside the
-              scroll container, so it stays put while the text scrolls. */}
-          <FolioModeToolbar
-            mode={mode}
-            onChange={setMode}
-            disabled={actions.locked}
-          />
+              scroll container, so it stays put while the text scrolls. A
+              table has no Markdown face to switch to (#E144). */}
+          {!isTable && (
+            <FolioModeToolbar
+              mode={mode}
+              onChange={setMode}
+              disabled={actions.locked}
+            />
+          )}
           <div
             ref={setContentElement}
             className="min-w-0 flex-1 overflow-y-auto"
@@ -286,6 +297,9 @@ const FolioWorkspaceContent = (
                 imageUpload={!actions.actionState.isProtected}
                 onEditorViewReady={(v) => {
                   editorViewRef.current = v;
+                }}
+                onTableCommands={(commands) => {
+                  tableCommands.current = commands;
                 }}
               />
             </div>

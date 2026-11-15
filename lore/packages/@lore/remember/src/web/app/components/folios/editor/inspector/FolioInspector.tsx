@@ -94,6 +94,11 @@ const TABS: { id: FolioInspectorTab; labelKey: string }[] = [
  */
 const FolioInspector = (props: FolioInspectorProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
+  // A table has no headings, so no Outline (#E144): it opens on History.
+  const isTable = props.folio?.type === "table";
+  const tabs = isTable ? TABS.filter((t) => t.id !== "outline") : TABS;
+  const tab: FolioInspectorTab =
+    isTable && props.tab === "outline" ? "history" : props.tab;
 
   return (
     <div
@@ -105,16 +110,16 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
         aria-label={tr("folios.editor.action.toggle-inspector")}
         className="border-border flex h-10 flex-none items-center gap-0.5 border-b px-1"
       >
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             role="tab"
-            aria-selected={props.tab === t.id}
+            aria-selected={tab === t.id}
             onClick={() => props.onTabChange(t.id)}
             className={cn(
               "flex h-6.5 items-center rounded-md px-2.5 text-xs font-medium transition-colors",
-              props.tab === t.id
+              tab === t.id
                 ? "bg-accent text-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
@@ -151,17 +156,17 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
         longer pays for a revision list nobody is looking at.
       */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className={props.tab === "outline" ? undefined : "hidden"}>
+        <div className={tab === "outline" ? undefined : "hidden"}>
           <FolioOutlineTab
             content={props.content}
             contentElement={props.contentElement}
           />
         </div>
-        <div className={props.tab === "history" ? undefined : "hidden"}>
+        <div className={tab === "history" ? undefined : "hidden"}>
           {props.folio ? (
             <FolioHistoryTab
               folio={props.folio}
-              active={props.tab === "history"}
+              active={tab === "history"}
               refreshedAt={props.revisionsAt}
               onReverted={props.onReverted}
             />
@@ -171,10 +176,10 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
             </p>
           )}
         </div>
-        <div className={props.tab === "links" ? undefined : "hidden"}>
+        <div className={tab === "links" ? undefined : "hidden"}>
           <FolioLinksTab folio={props.folio} />
         </div>
-        <div className={props.tab === "attachments" ? undefined : "hidden"}>
+        <div className={tab === "attachments" ? undefined : "hidden"}>
           <FolioAttachmentsTab
             folioId={props.folio?.id}
             projectId={props.folio?.projectId}

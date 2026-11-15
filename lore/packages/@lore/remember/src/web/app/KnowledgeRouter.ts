@@ -208,7 +208,10 @@ export class KnowledgeRouter {
       if (project) {
         await this.seedFolioTree(project.id);
       }
-      return { directoryId };
+      // `?type=table` opens the create page on a table (#E144).
+      const type =
+        url.searchParams.get("type") === "table" ? "table" : undefined;
+      return { directoryId, type };
     },
   });
 

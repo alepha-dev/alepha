@@ -110,13 +110,28 @@ describe("isFolioActionEnabled", () => {
     isPinned: false,
   };
 
-  it("enables everything on an unlocked saved folio in Edit mode", () => {
+  it("enables everything but a table's own on an unlocked saved folio in Edit mode", () => {
     for (const item of folioMenuItems()) {
       expect(
         isFolioActionEnabled(item.id, { ...unlocked, editing: true }),
         item.id,
-      ).toBe(true);
+      ).toBe(item.id !== "insert.row" && item.id !== "insert.column");
     }
+  });
+
+  it("gives a table its own inserts, and none of Markdown's (#E144)", () => {
+    const table = { ...unlocked, editing: true, isTable: true };
+    expect(isFolioActionEnabled("insert.row", table)).toBe(true);
+    expect(isFolioActionEnabled("insert.column", table)).toBe(true);
+    expect(isFolioActionEnabled("insert.heading1", table)).toBe(false);
+    expect(isFolioActionEnabled("edit.bold", table)).toBe(false);
+    expect(isFolioActionEnabled("view.mode", table)).toBe(false);
+    expect(isFolioActionEnabled("folio.pin", table)).toBe(false);
+    expect(isFolioActionEnabled("folio.encrypt", table)).toBe(false);
+    expect(isFolioActionEnabled("edit.find", table)).toBe(true);
+    expect(
+      isFolioActionEnabled("insert.row", { ...table, readOnly: true }),
+    ).toBe(false);
   });
 
   it("disables the formatting actions in View mode, and only those", () => {
@@ -125,9 +140,10 @@ describe("isFolioActionEnabled", () => {
     // the folio or the workspace and stays live while reading.
     const reading = { ...unlocked, editing: false };
     for (const item of folioMenuItems()) {
-      const needsEditor = /^(edit\.(bold|italic|code|spoiler)|insert\.)/.test(
-        item.id,
-      );
+      const needsEditor =
+        /^(edit\.(bold|italic|code|spoiler)|insert\.)/.test(item.id) ||
+        item.id === "insert.row" ||
+        item.id === "insert.column";
       expect(isFolioActionEnabled(item.id, reading), item.id).toBe(
         !needsEditor,
       );

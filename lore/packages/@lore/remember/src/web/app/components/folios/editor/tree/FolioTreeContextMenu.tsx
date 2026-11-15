@@ -20,6 +20,7 @@ import {
   PinOff,
   SquareArrowOutUpRight,
   Trash2,
+  Table2,
 } from "lucide-react";
 import type { ReactElement } from "react";
 
@@ -163,6 +164,10 @@ const FolioTreeContextMenu = (
           <ContextMenuItem onClick={() => props.commands.createFolio(node.id)}>
             <FilePlus className="size-4" />
             {tr("folios.editor.tree.new-folio")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => props.commands.createTable(node.id)}>
+            <Table2 className="size-4" />
+            {tr("folios.editor.tree.new-table-folio")}
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => props.commands.createDirectory(node.id)}
