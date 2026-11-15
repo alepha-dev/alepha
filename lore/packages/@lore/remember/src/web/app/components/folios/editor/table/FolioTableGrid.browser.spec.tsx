@@ -120,6 +120,36 @@ describe("FolioTableGrid", () => {
     expect(focusedCell()?.textContent).toBe("Row 2");
   });
 
+  it("edits a text or number cell in a flush input, with no icon and no frame (#Q3715)", async () => {
+    const { grid, calls } = await mount();
+    fireEvent.focus(grid);
+    fireEvent.keyDown(grid, { key: "Enter" });
+    const input = screen.getByTestId("folio-cell-editor") as HTMLInputElement;
+    expect(input.className).toMatch(/\bborder-0\b/);
+    expect(input.className).toMatch(/\brounded-none\b/);
+    expect(input.className).not.toMatch(/\bps-9\b/);
+    const cell = input.closest("[role=gridcell]")!;
+    expect(cell.querySelector("svg")).toBeNull();
+
+    // Tab commits and moves right, onto the checkbox column.
+    fireEvent.change(input, { target: { value: "Tabbed" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(calls.write).toEqual([[1, "n", "Tabbed"]]);
+    expect(focusedCell()?.getAttribute("data-column-id")).toBe("d");
+
+    // A number cell edits flush too, and leaving it commits.
+    fireEvent.keyDown(grid, { key: "Tab" });
+    fireEvent.keyDown(grid, { key: "Enter" });
+    const number = screen.getByTestId("folio-cell-editor") as HTMLInputElement;
+    expect(number.className).toMatch(/\bborder-0\b/);
+    fireEvent.change(number, { target: { value: "42" } });
+    fireEvent.blur(number);
+    expect(calls.write).toEqual([
+      [1, "n", "Tabbed"],
+      [1, "p", "42"],
+    ]);
+  });
+
   it("cancels with Escape, writing nothing", async () => {
     const { grid, calls } = await mount();
     fireEvent.focus(grid);

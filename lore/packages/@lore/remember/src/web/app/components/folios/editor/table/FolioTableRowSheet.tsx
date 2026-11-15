@@ -91,6 +91,7 @@ const FolioTableRowSheet = (props: FolioTableRowSheetProps): ReactElement => {
                       initial={folioCellEditText(column, value)}
                       autoFocus={false}
                       persistent
+                      framed
                       referenceSuggestions={props.referenceSuggestions}
                       onCommit={(text) => {
                         if (text !== folioCellEditText(column, value)) {
