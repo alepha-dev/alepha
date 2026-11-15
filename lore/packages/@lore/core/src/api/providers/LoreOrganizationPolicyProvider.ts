@@ -94,7 +94,7 @@ export class LoreOrganizationPolicyProvider extends OrganizationPolicyProvider {
         .inject(RankService)
         .permissionsOf(refusal.organizationId, refusal.rank.key);
       if (permissions && LoreViewerAllowlist.isReadOnly(permissions)) {
-        return `You are read-only in this project: ${held.toLowerCase()} grants reads only, not ${refusal.missing.join(", ")}. Ask a project admin to move you to another rank.`;
+        return `You are read-only in this project: your rank (${refusal.rank.name}) grants reads only, not ${refusal.missing.join(", ")}. Ask a project admin to move you to another rank.`;
       }
     }
     return `${held} does not grant ${refusal.missing.join(", ")}. Ask the project owner.`;
