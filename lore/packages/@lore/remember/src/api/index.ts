@@ -10,6 +10,7 @@ import { FolioTrashJobs } from "./jobs/FolioTrashJobs.ts";
 import { DirectoryResourceKind } from "./resources/DirectoryResourceKind.ts";
 import { FolioResourceKind } from "./resources/FolioResourceKind.ts";
 import { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
+import { FolioCardMetric } from "./services/FolioCardMetric.ts";
 import { FolioCellCodec } from "./services/FolioCellCodec.ts";
 import { FolioDeletion } from "./services/FolioDeletion.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -77,6 +78,8 @@ export const LoreRememberApi = $module({
     // The Knowledge tiles of #E77 (#Q2658), and their slots.
     KnowledgeDashboardMetrics,
     PinnedFolioMetric,
+    // The Folio card (#E144, #Q3520).
+    FolioCardMetric,
     RecentFoliosMetric,
     FoliosThisMonthMetric,
     FoliosByDirectoryMetric,

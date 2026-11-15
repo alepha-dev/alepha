@@ -33,6 +33,24 @@ import { dashboardTileStateSchema } from "./dashboardTileStateSchema.ts";
 export const dashboardCardValueSchema = z.object({
   cardId: z.integer(),
   /**
+   * How this value draws, when it is not how its metric draws: a metric
+   * whose shape follows what it reads (the Folio card is a note for a text
+   * folio, a small table or an upcoming list for a table, #Q3520).
+   */
+  presentation: z
+    .enum([
+      "scalar",
+      "trend",
+      "progress",
+      "list",
+      "chart",
+      "status",
+      "feed",
+      "note",
+      "table",
+    ])
+    .optional(),
+  /**
    * Whether this metric answered.
    *
    * `false` costs a tile, never the page: one metric failing while its

@@ -36,6 +36,8 @@ export type DashboardBoard = "home" | "project";
  * - `status` — one pill per row (an app copy and its state).
  * - `feed` — `rows` with a relative time.
  * - `note` — markdown, from the card's own filters.
+ * - `table` — a few columns of `rows`: `detail.columns` names them and
+ *   `detail.cells[i]` holds row `i`'s texts (#E144, #Q3520).
  */
 export type DashboardPresentation =
   | "scalar"
@@ -45,7 +47,8 @@ export type DashboardPresentation =
   | "chart"
   | "status"
   | "feed"
-  | "note";
+  | "note"
+  | "table";
 
 /**
  * Where clicking a card goes.
@@ -242,6 +245,11 @@ export interface DashboardMetricDescriptor {
    * shows in edit mode only.
    */
   requires?: string;
+  /**
+   * The size a new card of this metric takes when the caller names none:
+   * columns wide and rows high. One by one otherwise.
+   */
+  defaultSize?: { size: number; height: number };
   /**
    * Where clicking goes.
    *

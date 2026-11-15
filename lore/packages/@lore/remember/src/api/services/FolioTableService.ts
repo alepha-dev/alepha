@@ -1289,6 +1289,58 @@ export class FolioTableService {
   }
 
   /**
+   * Several tables at once, for the dashboard's Folio cards (#Q3520): one
+   * read of their columns, one of their rows and one of their views,
+   * whatever the number of cards.
+   */
+  public async tablesOf(
+    folioIds: string[],
+  ): Promise<
+    Map<
+      string,
+      { columns: FolioColumn[]; rows: FolioRowResource[]; view: FolioTableView }
+    >
+  > {
+    const ids = [...new Set(folioIds)];
+    const out = new Map<
+      string,
+      { columns: FolioColumn[]; rows: FolioRowResource[]; view: FolioTableView }
+    >();
+    if (ids.length === 0) return out;
+    const [columns, rows, views] = await Promise.all([
+      this.bound.collect(ids, (batch) =>
+        this.columns.findMany({
+          where: { folioId: { inArray: batch } },
+          orderBy: [{ column: "position", direction: "asc" }],
+        }),
+      ),
+      this.bound.collect(ids, (batch) =>
+        this.rows.findMany({
+          where: { folioId: { inArray: batch } },
+          orderBy: [{ column: "position", direction: "asc" }],
+        }),
+      ),
+      this.bound.collect(ids, (batch) =>
+        this.views.findMany({ where: { folioId: { inArray: batch } } }),
+      ),
+    ]);
+    for (const id of ids) {
+      const own = columns.filter((column) => column.folioId === id);
+      out.set(id, {
+        columns: own,
+        rows: rows
+          .filter((row) => row.folioId === id)
+          .map((row) => this.rowResource(own, row)),
+        view: this.resolveView(
+          own,
+          views.find((view) => view.folioId === id),
+        ),
+      });
+    }
+    return out;
+  }
+
+  /**
    * Remember how the folio is read. Column ids are checked against the
    * table, so a stored view never names a column of another folio.
    */

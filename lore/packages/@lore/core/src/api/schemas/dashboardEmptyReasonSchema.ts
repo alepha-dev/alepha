@@ -27,6 +27,10 @@ export const dashboardEmptyReasonSchema = z.enum([
   "noActivity",
   "noQuests",
   "noAccess",
+  // The Folio card (#Q3520): a table with no row, and an upcoming list with
+  // nothing ahead.
+  "noRows",
+  "nothingAhead",
 ]);
 
 export type DashboardEmptyReason = Infer<typeof dashboardEmptyReasonSchema>;
