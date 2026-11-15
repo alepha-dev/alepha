@@ -90,12 +90,26 @@ const FolioTableCellEditor = (
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // A key pressed in a popup (a select's list, the date picker) reaches
+    // here through React's portal bubbling, before the pick it makes has
+    // landed: it belongs to the popup, never to the edit.
+    if (!event.currentTarget.contains(event.target as Node)) return;
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
       done.current = true;
       props.onCancel();
     } else if (event.key === "Enter" && !event.shiftKey) {
+      // In a select, a date or a reference, Enter opens the list or picks
+      // from it, and the pick commits through the form's change: committing
+      // here as well would write the value from before the pick.
+      if (
+        props.column.type === "select" ||
+        props.column.type === "date" ||
+        props.column.type === "reference"
+      ) {
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       finish(latest.current, "down");

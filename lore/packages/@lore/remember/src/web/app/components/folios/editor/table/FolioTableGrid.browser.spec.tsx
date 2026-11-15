@@ -185,6 +185,32 @@ describe("FolioTableGrid", () => {
     ).toBe(true);
   });
 
+  it("picks a select's option with Enter, and writes that option", async () => {
+    const { grid, calls } = await mount({
+      columns: [
+        {
+          id: "s",
+          position: 0,
+          name: "Owner",
+          type: "select",
+          options: {
+            choices: [
+              { id: "a", label: "Ana" },
+              { id: "b", label: "Ben" },
+            ],
+          },
+        },
+      ],
+      rows: rowsOf(1).map((row) => ({ ...row, cells: {} })),
+    });
+    fireEvent.focus(grid);
+    fireEvent.keyDown(grid, { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    const option = await screen.findByRole("option", { name: "Ben" });
+    fireEvent.keyDown(option, { key: "Enter" });
+    await waitFor(() => expect(calls.write).toEqual([[1, "s", "Ben"]]));
+  });
+
   it("toggles a checkbox with Space, and empties the selection with Delete", async () => {
     const { grid, calls } = await mount();
     fireEvent.focus(grid);
