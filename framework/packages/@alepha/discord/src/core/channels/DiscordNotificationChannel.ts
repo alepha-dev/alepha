@@ -194,7 +194,7 @@ export class DiscordNotificationChannel extends NotificationChannel<
    * A Discord incoming webhook url, with the api-version segment Discord
    * itself sometimes hands out and the legacy `discordapp.com` host.
    */
-  protected static readonly WEBHOOK_URL =
+  public static readonly WEBHOOK_URL =
     /^https:\/\/(?:[\w-]+\.)?discord(?:app)?\.com\/api\/(?:v\d+\/)?webhooks\/\d+\/[\w-]+$/;
 
   protected destination(name: string): DiscordDestination {

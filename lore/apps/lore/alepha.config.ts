@@ -246,6 +246,7 @@ export default defineConfig({
         "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [
+        "automation.channels.kind.",
         // The quest preset bar: each button's label and hint, by preset key.
         "quest.presets.",
         // The assistant's tool steps (#Q3211), named after the tool.

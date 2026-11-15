@@ -1,10 +1,11 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { currentUserAtom } from "alepha/security";
 import { BadRequestError, UnauthorizedError, okSchema } from "alepha/server";
 
 import { automationAdoptionPreviewSchema } from "../../api/schemas/automationAdoptionPreviewSchema.ts";
 import { automationCatalogSchema } from "../../api/schemas/automationCatalogSchema.ts";
+import { automationChannelResourceSchema } from "../../api/schemas/automationChannelResourceSchema.ts";
 import { automationDependentPageSchema } from "../../api/schemas/automationDependentPageSchema.ts";
 import { automationEvaluationReportSchema } from "../../api/schemas/automationEvaluationReportSchema.ts";
 import { automationPageSchema } from "../../api/schemas/automationPageSchema.ts";
@@ -13,6 +14,7 @@ import { automationRunPageSchema } from "../../api/schemas/automationRunPageSche
 import { automationVariablePageSchema } from "../../api/schemas/automationVariablePageSchema.ts";
 import { automationVariableSetResponseSchema } from "../../api/schemas/automationVariableSetResponseSchema.ts";
 import { AutomationAdoptionService } from "../../api/services/AutomationAdoptionService.ts";
+import { AutomationChannelService } from "../../api/services/AutomationChannelService.ts";
 import { AutomationService } from "../../api/services/AutomationService.ts";
 import { AutomationVariableService } from "../../api/services/AutomationVariableService.ts";
 import { automationAdoptionPreviewParamsSchema } from "../schemas/automationAdoptionPreviewParamsSchema.ts";
@@ -41,6 +43,7 @@ export class AutomationTools {
   protected readonly service = $inject(AutomationService);
   protected readonly adoption = $inject(AutomationAdoptionService);
   protected readonly variables = $inject(AutomationVariableService);
+  protected readonly channelService = $inject(AutomationChannelService);
 
   protected user() {
     const user = this.alepha.store.get(currentUserAtom);
@@ -190,6 +193,21 @@ export class AutomationTools {
         params.key,
         params.variable,
       ),
+  });
+  automation_channel_list = $tool({
+    description:
+      "List the project's notification channels a rule may name in a notify's `channels`: In-app and Email (built in), then every configured channel such as a Discord channel, with its id, kind and name. Never a webhook URL: channels are added in the browser, in Settings > Automations > Channels.",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: projectParamsSchema,
+      result: z.object({ items: z.array(automationChannelResourceSchema) }),
+    },
+    handler: async ({ params }) => ({
+      items: await this.channelService.list(
+        await this.project(params),
+        this.user(),
+      ),
+    }),
   });
   automation_variable_list = $tool({
     description:

@@ -1,3 +1,4 @@
+import { DiscordTransport, HttpDiscordTransport } from "@alepha/discord";
 import { $module } from "alepha";
 import {
   AlephaApiAnalyticsAdmin,
@@ -17,6 +18,7 @@ import { DatabaseProvider, DatabaseUrlParser } from "alepha/orm";
 
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AutomationChannelController } from "./controllers/AutomationChannelController.ts";
 import { AutomationController } from "./controllers/AutomationController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
@@ -67,6 +69,7 @@ import { AutomationAudience } from "./services/AutomationAudience.ts";
 import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
 import { AutomationChannelRemoval } from "./services/AutomationChannelRemoval.ts";
+import { AutomationChannelService } from "./services/AutomationChannelService.ts";
 import { AutomationClaims } from "./services/AutomationClaims.ts";
 import { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
 import { AutomationDependencies } from "./services/AutomationDependencies.ts";
@@ -235,11 +238,15 @@ export const LoreCoreApi = $module({
     AutomationOAuthAuthority,
     AutomationService,
     AutomationController,
+    AutomationChannelController,
     AutomationVariableService,
     AutomationMutationAudit,
     AutomationApprovalFence,
     AutomationDependencies,
     AutomationChannelRemoval,
+    // Registers the configured channels as automation channel instances
+    // (#Q3614); nothing else may inject it before a rule is evaluated.
+    AutomationChannelService,
     AutomationHealth,
     AutomationEventSubjects,
     AutomationEvaluator,
@@ -341,6 +348,14 @@ export const LoreCoreApi = $module({
     UserDockHooks,
   ],
   register: (alepha) => {
+    // The Discord transport a channel's test post and delivery go through
+    // (#Q3614, #Q3615). Optional, so a spec or the e2e server substitutes
+    // `MemoryDiscordTransport` first.
+    alepha.with({
+      optional: true,
+      provide: DiscordTransport,
+      use: HttpDiscordTransport,
+    });
     alepha.with({
       optional: true,
       provide: NotificationSenderService,
@@ -587,6 +602,9 @@ export {
   type AutomationChannelInstanceSource,
 } from "./services/AutomationChannels.ts";
 export { AutomationChannelRemoval } from "./services/AutomationChannelRemoval.ts";
+export { AutomationChannelService } from "./services/AutomationChannelService.ts";
+export { AutomationChannelController } from "./controllers/AutomationChannelController.ts";
+export { CredentialSealService } from "./services/CredentialSealService.ts";
 
 export {
   AutomationMutationContext,

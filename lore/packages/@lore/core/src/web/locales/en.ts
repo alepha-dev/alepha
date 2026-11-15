@@ -131,6 +131,9 @@ export default {
     "Every hour, remind each quest's assignee of a quest whose reminder is due, at the interval set on the quest.",
   "uptime.alertsByBell":
     "Alerts are automations: turn on the bell on the monitor's page, or on Apps for every monitor.",
+  "automation.preset.release-published.title": "Release published",
+  "automation.preset.release-published.description":
+    "Notify one member when a release is published, with its tag, title, number of quests and a link.",
   "uptime.subscription.label":
     "Notify me when this monitor goes down or recovers",
   "uptime.subscription.description":
@@ -165,6 +168,28 @@ export default {
   "automation.preset.host-expired.title": "Host past its TTL",
   "automation.preset.host-expired.description":
     "Notify one member when a throwaway host passes its time to live. Lore stops and deletes nothing.",
+  "project.settings.tab.automationChannels": "Channels",
+  "automation.channels.title": "Channels",
+  "automation.channels.description":
+    "Where automations deliver: In-app and Email, built in, and the Discord channels you add. A rule names one or more of them.",
+  "automation.channels.add": "Add a Discord channel",
+  "automation.channels.name": "Name",
+  "automation.channels.url": "Discord webhook URL",
+  "automation.channels.replaceUrl":
+    "New webhook URL (leave empty to keep the current one)",
+  "automation.channels.urlHelp":
+    "Saving posts a test message to the channel. The URL is never shown again.",
+  "automation.channels.save": "Save",
+  "automation.channels.cancel": "Cancel",
+  "automation.channels.edit": "Rename or replace URL",
+  "automation.channels.delete": "Delete",
+  "automation.channels.deleteTitle": "Delete the channel $1?",
+  "automation.channels.deleteDescription":
+    "Rules that notify it stop posting there and keep their other channels.",
+  "automation.channels.builtIn": "Built in",
+  "automation.channels.kind.inbox": "In-app",
+  "automation.channels.kind.email": "Email",
+  "automation.channels.kind.discord": "Discord",
   "automation.preset.deploy-failed.title": "Deployment failed",
   "automation.preset.deploy-failed.description":
     "Notify one member when a deployment of the chosen app records a failure, in any environment. Raw logs are excluded.",
@@ -2835,6 +2860,11 @@ export default {
     "Feedback you turn down is kept here as a record.",
   "feedback.empty.detail.openForm": "Open the feedback form",
   "feedback.back": "Back",
+  "release.subscription.label": "Notify me when a release is published",
+  "release.subscription.description":
+    "A rule of your own will notify you of every release published in this project. You can edit, pause or delete it on the Automations page.",
+  "release.subscription.offDescription":
+    "You will no longer be notified when a release is published.",
   "feedback.subscription.label": "Notify me of new feedback",
   "feedback.subscription.description":
     "A rule will notify you of every new feedback in this project.",

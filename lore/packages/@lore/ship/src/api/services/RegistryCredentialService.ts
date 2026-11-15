@@ -1,3 +1,4 @@
+import { CredentialSealService } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
@@ -6,7 +7,6 @@ import {
   type RegistryCredentialRow,
   registryCredentials,
 } from "../entities/registryCredentials.ts";
-import { CredentialSealService } from "./CredentialSealService.ts";
 import type { RegistryCredential } from "./ImageRegistryClient.ts";
 
 /**

@@ -2,6 +2,7 @@ import { $hook, AlephaError } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { automationAdoptions } from "../entities/automationAdoptions.ts";
+import { automationChannels } from "../entities/automationChannels.ts";
 import { automationEvents } from "../entities/automationEvents.ts";
 import { automationReceipts } from "../entities/automationReceipts.ts";
 import { automationRuns } from "../entities/automationRuns.ts";
@@ -18,6 +19,7 @@ export class AutomationPersistence {
   public readonly receipts = $repository(automationReceipts);
   public readonly rules = $repository(automations);
   public readonly variables = $repository(automationVariables);
+  public readonly channels = $repository(automationChannels);
   public readonly runs = $repository(automationRuns);
 
   protected readonly immutableAuthor = $hook({

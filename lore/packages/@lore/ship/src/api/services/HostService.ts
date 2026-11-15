@@ -3,6 +3,7 @@ import {
   ProjectPermissions,
   ProjectSecurityService,
 } from "@lore/core/api";
+import { CredentialSealService } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { displayName } from "@lore/core/web";
 import { $inject } from "alepha";
@@ -34,7 +35,6 @@ import {
   type HostWelcomeFrame,
 } from "../schemas/hostWelcomeFrameSchema.ts";
 import type { OwnedHostResource } from "../schemas/ownedHostResourceSchema.ts";
-import { CredentialSealService } from "./CredentialSealService.ts";
 import { HostCloudflareService } from "./HostCloudflareService.ts";
 import { HostInventoryService } from "./HostInventoryService.ts";
 import { HostTokenService } from "./HostTokenService.ts";

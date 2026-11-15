@@ -50,6 +50,15 @@ export class WorkAutomationPresets {
       { folio: { kind: "folio", required: true } },
       ["appendFolio", "notify"],
     );
+    // Release mail goes through this since #Q3625: the Releases page's bell
+    // subscribes its viewer to it, and ReleaseNotifier is gone.
+    this.register(
+      "release-published",
+      "Release published",
+      "Notify one member when a release is published, with its tag, title, number of quests and a link.",
+      "release.published",
+      (values) => this.published(values),
+    );
     this.register(
       "weekly-report-digest",
       "Weekly report",
@@ -220,6 +229,24 @@ export class WorkAutomationPresets {
       guard: null,
       actions: [
         this.notify(values, "Weekly report: {{project}}", "{{summary}}"),
+      ],
+    };
+  }
+  protected published(values: AutomationPresetValues): AutomationRule {
+    return {
+      version: 1,
+      trigger: { kind: "event", event: "release.published" },
+      select: null,
+      guard: null,
+      actions: [
+        {
+          ...this.notify(
+            values,
+            "Release published: {{release_tag}}",
+            "{{project}}: {{title}} ({{release_tag}}) has shipped, with {{quest_count}} quests.\n{{url}}",
+          ),
+          category: "releases",
+        },
       ],
     };
   }

@@ -18,6 +18,7 @@
     "test": "alepha test"
   },
   "dependencies": {
+    "@alepha/discord": "workspace:*",
     "@alepha/ui": "workspace:*",
     "@codemirror/autocomplete": "^6.20.4",
     "@codemirror/commands": "^6.11.1",

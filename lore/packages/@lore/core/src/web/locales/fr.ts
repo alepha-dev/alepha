@@ -138,6 +138,9 @@ export default {
     "Toutes les heures, rappelle à la personne assignée chaque quête dont le rappel est dû, à l'intervalle choisi sur la quête.",
   "uptime.alertsByBell":
     "Les alertes sont des automatisations : activez la cloche sur la page du moniteur, ou sur Applications pour tous les moniteurs.",
+  "automation.preset.release-published.title": "Version publiée",
+  "automation.preset.release-published.description":
+    "Avertit un membre quand une version est publiée, avec son tag, son titre, son nombre de quêtes et un lien.",
   "uptime.subscription.label":
     "M'avertir quand ce moniteur tombe ou se rétablit",
   "uptime.subscription.description":
@@ -174,6 +177,28 @@ export default {
   "automation.preset.host-expired.title": "Hôte expiré",
   "automation.preset.host-expired.description":
     "Avertit un membre quand un hôte jetable dépasse sa durée de vie. Lore n'arrête et ne supprime rien.",
+  "project.settings.tab.automationChannels": "Canaux",
+  "automation.channels.title": "Canaux",
+  "automation.channels.description":
+    "Où les automatisations publient : In-app et E-mail, intégrés, et les canaux Discord que vous ajoutez. Une règle en nomme un ou plusieurs.",
+  "automation.channels.add": "Ajouter un canal Discord",
+  "automation.channels.name": "Nom",
+  "automation.channels.url": "URL du webhook Discord",
+  "automation.channels.replaceUrl":
+    "Nouvelle URL du webhook (vide pour garder l'actuelle)",
+  "automation.channels.urlHelp":
+    "L'enregistrement publie un message de test dans le canal. L'URL n'est plus jamais affichée.",
+  "automation.channels.save": "Enregistrer",
+  "automation.channels.cancel": "Annuler",
+  "automation.channels.edit": "Renommer ou remplacer l'URL",
+  "automation.channels.delete": "Supprimer",
+  "automation.channels.deleteTitle": "Supprimer le canal $1 ?",
+  "automation.channels.deleteDescription":
+    "Les règles qui le notifient cessent d'y publier et gardent leurs autres canaux.",
+  "automation.channels.builtIn": "Intégré",
+  "automation.channels.kind.inbox": "In-app",
+  "automation.channels.kind.email": "E-mail",
+  "automation.channels.kind.discord": "Discord",
   "automation.preset.deploy-failed.title": "Échec du déploiement",
   "automation.preset.deploy-failed.description":
     "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",
@@ -2838,6 +2863,11 @@ export default {
     "Les retours refusés sont conservés ici comme trace.",
   "feedback.empty.detail.openForm": "Ouvrir le formulaire de retour",
   "feedback.back": "Retour",
+  "release.subscription.label": "M'avertir à chaque version publiée",
+  "release.subscription.description":
+    "Une règle à votre nom vous avertira de chaque version publiée dans ce projet. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "release.subscription.offDescription":
+    "Vous ne serez plus averti quand une version est publiée.",
   "feedback.subscription.label": "Me notifier des nouveaux retours",
   "feedback.subscription.description":
     "Une règle vous notifiera de chaque nouveau retour dans ce projet.",

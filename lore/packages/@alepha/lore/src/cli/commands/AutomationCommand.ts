@@ -1,4 +1,7 @@
-import type { AutomationController } from "@lore/core/api";
+import type {
+  AutomationChannelController,
+  AutomationController,
+} from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
@@ -53,6 +56,9 @@ export class AutomationCommand {
    * below it sees `undefined`.
    */
   protected readonly api = $client<AutomationController>(this.client.scope());
+  protected readonly channels = $client<AutomationChannelController>(
+    this.client.scope(),
+  );
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -636,6 +642,49 @@ export class AutomationCommand {
     },
   });
 
+  public readonly channelList = $command({
+    name: "list",
+    description:
+      "List the project's notification channels: their ids, kinds and names, never a webhook URL",
+    flags: z.object({
+      ...AutomationCommand.PROJECT_FLAG,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const page = await this.channels.listAutomationChannels({
+          params: { projectId },
+        });
+        if (flags.output === "json") {
+          this.render.json(print, page);
+          return;
+        }
+        this.render.list(
+          print,
+          page.items.map((channel) => ({
+            handle: channel.id,
+            title: channel.name,
+            fields: [channel.kind],
+          })),
+          undefined,
+          "No channels.",
+        );
+      });
+    },
+  });
+
+  public readonly channel = $command({
+    name: "channel",
+    description:
+      "A project's notification channels; they are added in the browser, under Settings > Automations > Channels",
+    children: [this.channelList],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
   public readonly variable = $command({
     name: "variable",
     description:
@@ -672,6 +721,7 @@ export class AutomationCommand {
       this.adoption,
       this.adopt,
       this.variable,
+      this.channel,
     ],
     handler: async ({ help }) => {
       help();
