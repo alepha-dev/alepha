@@ -1195,7 +1195,7 @@ export class FolioController {
         body.content !== ""
       ) {
         throw new BadRequestError(
-          "This folio is a table: it has no Markdown content. Change its rows and columns instead.",
+          "This folio is a table: it has no Markdown content. Change its rows with folio_row_add / folio_row_update / folio_row_delete and its columns with folio_column_set (lore folio row / lore folio column set).",
         );
       }
       // Neither is possible for a table yet (#Q3514): pinning inlines a

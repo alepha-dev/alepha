@@ -367,6 +367,12 @@ export class CapabilityRegistry {
         "folio_history",
         "folio_revert",
         "folio_delete",
+        // A table folio's rows and columns (#E144).
+        "folio_row_list",
+        "folio_row_add",
+        "folio_row_update",
+        "folio_row_delete",
+        "folio_column_set",
         "folio_attachment_add",
         "folio_attachment_list",
         "folio_attachment_rename",

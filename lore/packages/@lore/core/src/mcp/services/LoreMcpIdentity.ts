@@ -22,6 +22,7 @@ export class LoreMcpIdentity {
     "Read a quest with quest_get, discussion included, before writing back to it: someone may have answered since.",
     "Accept a quest before working on it, tick objectives as they are met, and complete it with a short note of what shipped.",
     "Write a folio when you take a decision a later session would look for.",
+    "A list you will add to or change row by row is a table folio (folio_create with type table, then folio_row_add); prose stays a text folio.",
   ].join(" ");
 
   /**
