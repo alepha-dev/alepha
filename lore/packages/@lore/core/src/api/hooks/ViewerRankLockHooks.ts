@@ -12,13 +12,13 @@ export class ViewerRankLockHooks {
   protected readonly joinPolicy = $inject(ProjectJoinPolicy);
 
   protected readonly onRankSaving = $hook({
-    on: "organization:rank:saving",
+    on: "organization:rank:save:before",
     handler: ({ organizationId, key, permissions }) =>
       this.joinPolicy.assertViewerWrite(organizationId, key, permissions),
   });
 
   protected readonly onRankDeleting = $hook({
-    on: "organization:rank:deleting",
+    on: "organization:rank:delete:before",
     handler: ({ organizationId, key }) =>
       this.joinPolicy.assertViewerWrite(organizationId, key, undefined),
   });

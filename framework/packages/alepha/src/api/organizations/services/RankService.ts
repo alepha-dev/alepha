@@ -248,7 +248,7 @@ export class RankService {
     // Last, after every invariant of the module: an application's own rule
     // about a rank (one it keeps narrow while some state holds) refuses by
     // throwing from its hook, and nothing has been written yet.
-    await this.alepha.events.emit("organization:rank:saving", {
+    await this.alepha.events.emit("organization:rank:save:before", {
       organizationId,
       key: input.key,
       permissions: input.permissions,
@@ -303,7 +303,7 @@ export class RankService {
         `${holders} member(s) still hold "${existing.name}". Move them to another rank first`,
       );
     }
-    await this.alepha.events.emit("organization:rank:deleting", {
+    await this.alepha.events.emit("organization:rank:delete:before", {
       organizationId,
       key,
       writer,

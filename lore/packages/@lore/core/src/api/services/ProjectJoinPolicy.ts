@@ -17,7 +17,7 @@ import { ProjectSecurityService } from "./ProjectSecurityService.ts";
  *
  * - when the project is opened ({@link assertCanOpen}),
  * - when Viewer is edited or deleted ({@link assertViewerWrite}, from the
- *   framework's `organization:rank:saving` / `:deleting` hooks, so the rule
+ *   framework's `organization:rank:save:before` / `:deleting` hooks, so the rule
  *   holds whichever route writes the rank),
  * - and at every join (#Q3646 calls {@link assertViewerFits}).
  *

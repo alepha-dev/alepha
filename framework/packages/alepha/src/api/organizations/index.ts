@@ -121,7 +121,7 @@ declare module "alepha" {
      * A rank is about to be written, every module invariant passed. A hook
      * that throws refuses the write, and its error is what the writer sees.
      */
-    "organization:rank:saving": {
+    "organization:rank:save:before": {
       organizationId: string;
       key: string;
       permissions: string[];
@@ -131,7 +131,7 @@ declare module "alepha" {
      * A rank is about to be deleted, every module invariant passed. A hook
      * that throws refuses the delete.
      */
-    "organization:rank:deleting": {
+    "organization:rank:delete:before": {
       organizationId: string;
       key: string;
       writer: { id: string };

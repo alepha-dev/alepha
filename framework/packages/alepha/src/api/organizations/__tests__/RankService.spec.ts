@@ -44,7 +44,7 @@ class LockedRankGuard {
   public seen: string[] = [];
 
   protected readonly onSaving = $hook({
-    on: "organization:rank:saving",
+    on: "organization:rank:save:before",
     handler: ({ key, permissions }) => {
       this.seen.push(`save ${key}`);
       if (key === "locked" && permissions.includes("quest:write")) {
@@ -54,7 +54,7 @@ class LockedRankGuard {
   });
 
   protected readonly onDeleting = $hook({
-    on: "organization:rank:deleting",
+    on: "organization:rank:delete:before",
     handler: ({ key }) => {
       this.seen.push(`delete ${key}`);
       if (key === "locked") {
