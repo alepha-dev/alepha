@@ -166,21 +166,30 @@ export class AutomationEvaluator {
             source.provenance.key,
             source.fields,
           );
-          const filter = input.rule.rule.trigger.app;
-          const filtered =
-            filter !== undefined &&
-            this.bindings.resolve({
-              slot: { kind: "text", required: true },
-              value: filter,
-              fields: {},
-              variables: new Map(
-                base.variables.map((row) => [
-                  row.key,
-                  { kind: row.value.kind, available: true, value: row.value },
-                ]),
-              ),
-              path: "trigger.app",
-            }).value !== context.values.app;
+          // `app` filters deploy.*, `monitor` filters monitor.* (#Q3610).
+          const trigger = input.rule.rule.trigger;
+          const variables = new Map(
+            base.variables.map((row) => [
+              row.key,
+              { kind: row.value.kind, available: true, value: row.value },
+            ]),
+          );
+          const filtered = (["app", "monitor"] as const).some((name) => {
+            const filter = trigger[name];
+            return (
+              filter !== undefined &&
+              this.bindings.resolve({
+                slot: { kind: "text", required: true },
+                value: filter,
+                fields: {},
+                variables,
+                path: `trigger.${name}`,
+              }).value !==
+                (name === "monitor"
+                  ? context.values.monitor_id
+                  : context.values.app)
+            );
+          });
           selected = {
             kind: "scalar",
             contexts: filtered ? [] : [context],

@@ -40,14 +40,18 @@ export class AutomationEventDispatch {
       orderBy: [{ column: "id", direction: "asc" }],
       limit: size,
     });
+    // A trigger filters on `app` (deploy.*) or `monitor` (monitor.*,
+    // #Q3610), each compared to the event's field of the same name.
     const filterKeys = [
       ...new Set(
         rules.flatMap((rule) => {
-          const key =
-            rule.rule.trigger.kind === "event" && rule.rule.trigger.app
-              ? this.tokens.whole(rule.rule.trigger.app)
-              : undefined;
-          return key ? [key] : [];
+          const trigger = rule.rule.trigger;
+          if (trigger.kind !== "event") return [];
+          return (["app", "monitor"] as const).flatMap((name) => {
+            const value = trigger[name];
+            const key = value ? this.tokens.whole(value) : undefined;
+            return key ? [key] : [];
+          });
         }),
       ),
     ];
@@ -71,8 +75,11 @@ export class AutomationEventDispatch {
       )
         continue;
       try {
-        const filter = rule.rule.trigger.app;
-        if (filter !== undefined) {
+        const trigger = rule.rule.trigger;
+        let skip = false;
+        for (const name of ["app", "monitor"] as const) {
+          const filter = trigger[name];
+          if (filter === undefined) continue;
           let resolved: unknown;
           try {
             resolved = this.bindings.resolve({
@@ -80,14 +87,18 @@ export class AutomationEventDispatch {
               value: filter,
               fields: {},
               variables,
-              path: "trigger.app",
+              path: `trigger.${name}`,
             }).value;
           } catch {
             // The worker records an invalid binding under current authority.
           }
-          if (resolved !== undefined && resolved !== event.payload.fields.app)
-            continue;
+          const field =
+            name === "monitor"
+              ? event.payload.fields.monitor_id
+              : event.payload.fields.app;
+          if (resolved !== undefined && resolved !== field) skip = true;
         }
+        if (skip) continue;
         await this.claims.reserve({
           automationId: rule.id,
           revision: rule.revision,

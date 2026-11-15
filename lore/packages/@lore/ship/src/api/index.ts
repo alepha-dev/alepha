@@ -55,6 +55,8 @@ import { DeployAutomationEventSubjects } from "./services/DeployAutomationEventS
 import { DeployAutomationNumericPresets } from "./services/DeployAutomationNumericPresets.ts";
 import { DeployAutomationPresets } from "./services/DeployAutomationPresets.ts";
 import { DeployAutomationReferences } from "./services/DeployAutomationReferences.ts";
+import { UptimeAutomationEventSubjects } from "./services/UptimeAutomationEventSubjects.ts";
+import { UptimeAutomationReferences } from "./services/UptimeAutomationReferences.ts";
 import { DeployBuckets } from "./services/DeployBuckets.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
@@ -137,6 +139,8 @@ export const LoreShipApi = $module({
     DeployReportsSummary,
     DeployAutomationEventSubjects,
     DeployAutomationReferences,
+    UptimeAutomationEventSubjects,
+    UptimeAutomationReferences,
     DeployDashboardMetrics,
     ProjectErrorQuestHandBack,
     DeployDashboard,

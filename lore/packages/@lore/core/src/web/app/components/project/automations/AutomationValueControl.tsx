@@ -26,7 +26,14 @@ export interface AutomationValueControlProps {
 const AutomationValueControl = (props: AutomationValueControlProps) => {
   const { tr } = useI18n<I18n, "en">();
   const resource = props.slot.resource ?? props.slot.kind;
-  const remote = ["member", "folio", "release", "quest", "app"].includes(
+  const remote = [
+    "member",
+    "folio",
+    "release",
+    "quest",
+    "app",
+    "monitor",
+  ].includes(
     resource,
   );
   const loader = useAutomationOptions(
