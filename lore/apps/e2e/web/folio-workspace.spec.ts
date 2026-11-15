@@ -1299,6 +1299,8 @@ test.describe("Folio workspace", () => {
       .getByRole("button", { name: /^new folio$/i })
       .first()
       .click();
+    // The button asks which kind of folio: Text is the Markdown one.
+    await page.getByRole("menuitem", { name: "Text", exact: true }).click();
     // The tree creates the row and navigates straight into it, ready to be
     // renamed — so the editor is mounted and the chrome is back.
     await page.waitForURL(new RegExp(`/${projectSlug}/folios/\\d+`), {
@@ -1804,6 +1806,7 @@ test.describe("Folio workspace", () => {
       .getByRole("button", { name: /^new folio$/i })
       .first()
       .click();
+    await page.getByRole("menuitem", { name: "Text", exact: true }).click();
     // Not any `/folios/<n>`: folio A, still open, already matches that.
     await page.waitForURL(
       (url) => /\/folios\/\d+$/.test(url.pathname) && url.pathname !== urlA,
