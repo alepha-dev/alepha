@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "b072d905-c550-424c-97c2-74266d6f9e1b",
-  "prevIds": ["69d7a39b-4b90-422d-aed6-56ed7efe249c"],
+  "id": "1de7b6c5-62cc-4561-84d4-bf931538098d",
+  "prevIds": ["297f686b-b4f4-4782-8f23-836a34d55a78"],
   "ddl": [
     {
       "name": "ai_conversations",
@@ -5005,6 +5005,26 @@
       "entityType": "columns"
     },
     {
+      "table": "folio_directories",
+      "name": "system",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "folio_directories",
+      "name": "trashed_at",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
       "table": "folio_links",
       "name": "id",
       "type": "integer",
@@ -5458,6 +5478,16 @@
       "table": "folios",
       "name": "directory_id",
       "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "folios",
+      "name": "trashed_at",
+      "type": "integer",
       "notNull": false,
       "autoincrement": false,
       "default": null,
@@ -5928,7 +5958,7 @@
       "table": "hosts",
       "name": "project_id",
       "type": "integer",
-      "notNull": false,
+      "notNull": true,
       "autoincrement": false,
       "default": null,
       "generated": null,
@@ -6761,6 +6791,16 @@
       "notNull": true,
       "autoincrement": false,
       "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "monitors",
+      "name": "app_instance_id",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
       "generated": null,
       "entityType": "columns"
     },
@@ -12943,6 +12983,24 @@
       "entityType": "indexes"
     },
     {
+      "table": "folio_directories",
+      "name": "folio_directories_project_id_system_idx",
+      "columns": [
+        {
+          "value": "project_id",
+          "isExpression": false
+        },
+        {
+          "value": "system",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
       "table": "folio_links",
       "name": "folio_links_from_type_from_id_target_type_to_id_relation_idx",
       "columns": [
@@ -13566,6 +13624,20 @@
       "columns": [
         {
           "value": "project_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "monitors",
+      "name": "monitors_app_instance_id_idx",
+      "columns": [
+        {
+          "value": "app_instance_id",
           "isExpression": false
         }
       ],
@@ -15739,6 +15811,17 @@
       "name": "fk_monitors_project_id_projects_id_fk",
       "columns": ["project_id"],
       "tableTo": "projects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "monitors",
+      "name": "fk_monitors_app_instance_id_app_instances_id_fk",
+      "columns": ["app_instance_id"],
+      "tableTo": "app_instances",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
