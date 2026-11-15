@@ -9,6 +9,7 @@ import { monitorListQuerySchema } from "../../../../../api/schemas/monitorListQu
 import type { MonitorWindow } from "../../../../../api/schemas/monitorWindowSchema.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import MonitorDetailBody from "../uptime/MonitorDetailBody.tsx";
+import AppUptimeSkeleton from "./AppUptimeSkeleton.tsx";
 
 /**
  * The app's Uptime tab (#Q3677): its monitor read and watched, over a window
@@ -69,7 +70,7 @@ const AppUptime = () => {
       {query.data ? (
         <MonitorDetailBody data={query.data} />
       ) : (
-        !query.error && <p>{tr("uptime.loading")}</p>
+        !query.error && <AppUptimeSkeleton />
       )}
     </section>
   );

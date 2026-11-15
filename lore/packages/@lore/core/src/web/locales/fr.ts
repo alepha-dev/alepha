@@ -4109,7 +4109,6 @@ export default {
   "uptime.estimated": "Estimation issue de données échantillonnées.",
   "uptime.bucketNote":
     "La disponibilité utilise des tranches horaires, dont l’heure en cours.",
-  "uptime.loading": "Chargement des moniteurs...",
   "uptime.staleAfter": "Silence maximal (secondes)",
   "automation.guide": "Fonctionnement des automatisations",
   "automation.audience.recipients": "Destinataires",
