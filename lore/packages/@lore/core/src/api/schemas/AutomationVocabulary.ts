@@ -77,6 +77,29 @@ export class AutomationVocabulary {
         { app: { kind: "text", required: false, resource: "app" } },
       );
     }
+    // Uptime (#Q3610): an incident opened after the monitor's confirmations,
+    // and its recovery. A single failed probe records nothing.
+    for (const key of ["monitor.down", "monitor.up"]) {
+      this.event(
+        key,
+        {
+          monitor_id: "text",
+          monitor: "text",
+          kind: "text",
+          target: "text",
+          cause: "text",
+          error: "text",
+          started_at: "text",
+          ...(key === "monitor.up"
+            ? { ended_at: "text", duration_secs: "number" }
+            : {}),
+        },
+        "app:read",
+        "ship",
+        "uptime",
+        { monitor: { kind: "text", required: false, resource: "monitor" } },
+      );
+    }
     const questFields: Record<string, AutomationSlotKind> = {
       ...this.common,
       quest_id: "number",

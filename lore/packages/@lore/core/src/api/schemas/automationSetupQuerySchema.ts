@@ -13,6 +13,7 @@ export const automationSetupQuerySchema = automationPageQuerySchema
       "epic",
       "feedback",
       "deployment",
+      "monitor",
     ]),
     /**
      * Narrows the page to labels containing this text, so a picker searches

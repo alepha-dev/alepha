@@ -84,6 +84,8 @@ export default {
   "automation.event.epicCompleted": "Epic completed",
   "automation.event.deployFailed": "Deployment failed",
   "automation.event.deploySucceeded": "Deployment succeeded",
+  "automation.event.monitorDown": "Monitor down",
+  "automation.event.monitorUp": "Monitor recovered",
   "automation.event.questCompleted": "Quest completed",
 
   "automation.setup.recipient": "Recipient",
@@ -115,6 +117,7 @@ export default {
     "Sample aggregate open errors every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
   "automation.setup.folio": "Folio",
   "automation.setup.app": "App",
+  "automation.setup.monitor": "Monitor",
   "automation.preset.release-to-folio.title":
     "Publish release notes to a folio",
   "automation.preset.release-to-folio.description":
@@ -3914,6 +3917,8 @@ export default {
   "automation.source.quest.completed": "Quest completed",
   "automation.source.deploy.failed": "Deployment failed",
   "automation.source.deploy.succeeded": "Deployment succeeded",
+  "automation.source.monitor.down": "Monitor down",
+  "automation.source.monitor.up": "Monitor recovered",
   "automation.source.quests.open": "Open quests, one run each",
   "automation.source.quests.tagged": "Open quests with a tag, as one digest",
   "automation.source.quests.remindersDue": "Quest reminders due",

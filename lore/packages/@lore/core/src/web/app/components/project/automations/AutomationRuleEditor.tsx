@@ -298,7 +298,14 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
               key={`${source?.key}:${key}`}
               label={tr(`automation.setup.${key}` as never, { default: key })}
               slot={slot}
-              value={"app" in draft.trigger ? draft.trigger.app : undefined}
+              // A trigger's filter slot is `app` (deploy.*) or `monitor`
+              // (monitor.*, #Q3610), stored on the trigger under its name.
+              value={
+                draft.trigger.kind === "event" &&
+                (key === "app" || key === "monitor")
+                  ? draft.trigger[key]
+                  : undefined
+              }
               bindings={variables.filter((item) => item.available)}
               disabled={save.loading}
               onChange={(value) =>
@@ -306,9 +313,11 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
                   ...rule,
                   trigger: {
                     ...rule.trigger,
-                    ...(value
-                      ? { app: typeof value === "string" ? value : "" }
-                      : { app: undefined }),
+                    [key]: value
+                      ? typeof value === "string"
+                        ? value
+                        : ""
+                      : undefined,
                   },
                 }))
               }
