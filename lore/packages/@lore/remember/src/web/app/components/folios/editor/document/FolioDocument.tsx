@@ -194,7 +194,11 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
     <div
       data-slot="folio-document"
       data-text-size={textSize.level}
-      className="flex flex-col gap-0"
+      className={
+        props.folio?.type === "table"
+          ? "flex h-full min-h-0 flex-col gap-0"
+          : "flex flex-col gap-0"
+      }
     >
       {/* A LAYOUT portal, nothing more. The menubar used to be created
           inside MDXEditor's realm and portalled up here, which forced a

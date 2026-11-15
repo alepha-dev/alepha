@@ -15,6 +15,7 @@ import {
   type KeyboardEvent,
   type ReactElement,
   type ReactNode,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -76,9 +77,23 @@ export interface FolioTableGridProps {
    */
   rowHeight?: number;
   /**
-   * How tall the scrolling body may grow before it scrolls.
+   * How tall the scrolling body may grow before it scrolls. Ignored with
+   * `fill`.
    */
   maxHeight?: number;
+  /**
+   * Fill the parent edge to edge, width and height, with no frame of its
+   * own (#Q3716): the body takes the height left under the header and
+   * scrolls inside itself. The parent must give the grid a height (a flex
+   * child with `min-h-0`). Without it, the grid is a framed card whose body
+   * grows up to `maxHeight`: a revision's preview.
+   */
+  fill?: boolean;
+  /**
+   * Shown in the body when there is no row: the empty state, under the
+   * header rather than below a grid that fills the pane.
+   */
+  empty?: ReactNode;
 }
 
 interface CellPoint {
@@ -107,8 +122,21 @@ interface CellPoint {
 const FolioTableGrid = (props: FolioTableGridProps): ReactElement => {
   const { tr, l } = useI18n<I18n, "en">();
   const rowHeight = props.rowHeight ?? 36;
-  const maxHeight = props.maxHeight ?? 640;
   const gridRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // Filling the pane, the window of rows drawn is the body's own height,
+  // measured, since nothing caps it.
+  const [measured, setMeasured] = useState(640);
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!props.fill || !body || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (body.clientHeight > 0) setMeasured(body.clientHeight);
+    });
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, [props.fill]);
+  const maxHeight = props.fill ? measured : (props.maxHeight ?? 640);
   const [scrollTop, setScrollTop] = useState(0);
   const [focus, setFocus] = useState<CellPoint | undefined>(undefined);
   const [anchor, setAnchor] = useState<CellPoint | undefined>(undefined);
@@ -155,9 +183,7 @@ const FolioTableGrid = (props: FolioTableGridProps): ReactElement => {
   };
 
   const scrollIntoView = (r: number) => {
-    const body = gridRef.current?.querySelector<HTMLElement>(
-      "[data-slot='folio-grid-body']",
-    );
+    const body = bodyRef.current;
     if (!body) return;
     const top = r * rowHeight;
     if (top < body.scrollTop) body.scrollTop = top;
@@ -379,7 +405,12 @@ const FolioTableGrid = (props: FolioTableGridProps): ReactElement => {
       aria-readonly={props.readOnly || undefined}
       tabIndex={0}
       data-slot="folio-grid"
-      className="border-border focus-visible:ring-ring/50 overflow-x-auto rounded-md border text-sm outline-none focus-visible:ring-2"
+      className={cn(
+        "focus-visible:ring-ring/50 overflow-x-auto text-sm outline-none focus-visible:ring-2",
+        props.fill
+          ? "flex h-full min-h-0 flex-col focus-visible:ring-inset"
+          : "border-border rounded-md border",
+      )}
       onKeyDown={onKeyDown}
       onCopy={onCopy}
       onPaste={onPaste}
@@ -392,7 +423,7 @@ const FolioTableGrid = (props: FolioTableGridProps): ReactElement => {
       <div
         role="row"
         aria-rowindex={1}
-        className="bg-muted/40 border-border grid border-b font-medium"
+        className="bg-muted/40 border-border grid shrink-0 border-b font-medium"
         style={{ gridTemplateColumns: template, minWidth }}
       >
         <div
@@ -413,11 +444,16 @@ const FolioTableGrid = (props: FolioTableGridProps): ReactElement => {
       </div>
 
       <div
+        ref={bodyRef}
         data-slot="folio-grid-body"
-        className="relative overflow-x-hidden overflow-y-auto"
-        style={{ maxHeight, minWidth }}
+        className={cn(
+          "relative overflow-x-hidden overflow-y-auto",
+          props.fill && "min-h-0 flex-1",
+        )}
+        style={props.fill ? { minWidth } : { maxHeight, minWidth }}
         onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
       >
+        {rowCount === 0 && props.empty}
         <div style={{ height: rowCount * rowHeight, position: "relative" }}>
           {props.rows.slice(first, last).map((row, offset) => {
             const r = first + offset;

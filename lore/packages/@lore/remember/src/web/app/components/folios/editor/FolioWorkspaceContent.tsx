@@ -276,16 +276,22 @@ const FolioWorkspaceContent = (
               disabled={actions.locked}
             />
           )}
+          {/* A table scrolls inside its own grid (#Q3716), so the pane
+              hands it its full height instead of scrolling it. */}
           <div
             ref={setContentElement}
-            className="min-w-0 flex-1 overflow-y-auto"
+            className={
+              isTable
+                ? "min-h-0 min-w-0 flex-1 overflow-hidden"
+                : "min-w-0 flex-1 overflow-y-auto"
+            }
           >
             {/* No width cap and no padding here anymore: the summary field
                 and the rule under it run edge to edge, and only the BODY is
                 held to the prose measure. `FolioDocument` applies both per
                 section — a single wrapper at this level cannot, since it
                 would have to be two different widths at once. */}
-            <div className="flex flex-col">
+            <div className={isTable ? "flex h-full flex-col" : "flex flex-col"}>
               <FolioDocument
                 folio={props.folio}
                 directoryId={props.directoryId}

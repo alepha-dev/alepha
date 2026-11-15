@@ -66,7 +66,8 @@ export interface FolioTableDocumentProps {
 
 /**
  * A table folio's document pane (#Q3516): a find-and-sort bar over the
- * grid. A lazy chunk: a text folio never loads it.
+ * grid, which fills the pane edge to edge (#Q3716). A lazy chunk: a text
+ * folio never loads it.
  *
  * The bar's find text and the sort are kept in the URL (`?find=`,
  * `?sort=`, `?dir=`), never stored: they are the reader's view, not the
@@ -225,10 +226,34 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
     );
   }
 
+  const emptyHint = (
+    <p className="text-muted-foreground px-3 py-4 text-sm">
+      {props.readOnly
+        ? tr("folios.table.empty-readonly")
+        : tr("folios.table.empty")}{" "}
+      <a
+        href={loreDocsUrl("remember-tables")}
+        target="_blank"
+        rel="noreferrer"
+        className="text-primary-text hover:underline"
+      >
+        {tr("folios.table.docs")}
+      </a>
+    </p>
+  );
+
   return (
-    <div data-slot="folio-table" className="flex flex-col gap-3 px-6 py-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <div ref={findRef} className="w-64 max-w-full">
+    // The pane's full width and height (#Q3716): a bar the height of a text
+    // folio's mode toolbar, then the grid edge to edge, scrolling inside.
+    <div
+      data-slot="folio-table"
+      className="flex h-full min-h-0 flex-1 flex-col"
+    >
+      <div
+        data-slot="folio-table-bar"
+        className="border-border flex h-11 shrink-0 items-center gap-2 border-b px-3"
+      >
+        <div ref={findRef} className="w-56 max-w-full">
           <Control
             input={findForm.input.find}
             label=""
@@ -236,13 +261,41 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
             inputProps={{ "aria-label": tr("folios.table.find") }}
           />
         </div>
-        <span className="text-muted-foreground text-xs tabular-nums">
+        <span className="text-muted-foreground text-xs whitespace-nowrap tabular-nums">
           {view.find
             ? tr("folios.table.count-filtered", {
                 args: [String(rows.length), String(table.rows.length)],
               })
             : tr("folios.table.count", { args: [String(table.rows.length)] })}
         </span>
+        {hasDates && (
+          <div
+            role="tablist"
+            aria-label={tr("folios.table.view")}
+            className="bg-muted/40 flex w-fit gap-0.5 rounded-md p-0.5"
+          >
+            {(["grid", "calendar"] as const).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                role="tab"
+                aria-selected={showCalendar === (kind === "calendar")}
+                className={
+                  showCalendar === (kind === "calendar")
+                    ? "bg-background rounded px-3 py-1 text-xs font-medium shadow-sm"
+                    : "text-muted-foreground rounded px-3 py-1 text-xs"
+                }
+                onClick={() =>
+                  void table.setView({ ...table.view, kind }, !props.readOnly)
+                }
+              >
+                {kind === "calendar"
+                  ? tr("folios.table.view.calendar")
+                  : tr("folios.table.view.grid")}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex-1" />
         {!props.readOnly && (
           <>
@@ -267,141 +320,108 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
         )}
       </div>
 
-      {hasDates && (
-        <div
-          role="tablist"
-          aria-label={tr("folios.table.view")}
-          className="bg-muted/40 flex w-fit gap-0.5 rounded-md p-0.5"
-        >
-          {(["grid", "calendar"] as const).map((kind) => (
-            <button
-              key={kind}
-              type="button"
-              role="tab"
-              aria-selected={showCalendar === (kind === "calendar")}
-              className={
-                showCalendar === (kind === "calendar")
-                  ? "bg-background rounded px-3 py-1 text-xs font-medium shadow-sm"
-                  : "text-muted-foreground rounded px-3 py-1 text-xs"
-              }
-              onClick={() =>
-                void table.setView({ ...table.view, kind }, !props.readOnly)
-              }
-            >
-              {kind === "calendar"
-                ? tr("folios.table.view.calendar")
-                : tr("folios.table.view.grid")}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {showCalendar && table.view.dateColumnId ? (
-        <Suspense fallback={null}>
-          <FolioTableCalendar
-            columns={table.columns}
-            rows={rows}
-            dateColumnId={table.view.dateColumnId}
-            titleColumnId={table.view.titleColumnId}
-            readOnly={props.readOnly}
-            writing={table.writing}
-            month={month}
-            onMonth={(next) => setView({ ...view, month: next } as never)}
-            onOpenRow={(row) => setOpenRowNumber(row.number)}
-            onAddOnDay={(day) =>
-              void table.addRows([
-                { cells: { [table.view.dateColumnId!]: day } },
-              ])
-            }
-            onMoveToDay={(row, day) => {
-              const before = row.cells[table.view.dateColumnId!];
-              const next = folioMoveToDay(before, day);
-              if (next !== before) {
-                void writeCell(row, table.view.dateColumnId!, next);
-              }
-            }}
-          />
-        </Suspense>
-      ) : table.columns.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          {tr("folios.table.no-columns")}
-        </p>
-      ) : (
-        // The hover card a reference cell's link opens, as in a text folio.
-        <WikiLinkHoverProvider
-          projectId={project?.id ?? 0}
-          projectSlug={project?.slug ?? ""}
-          attachments={[]}
-        >
-          <FolioTableGrid
-            columns={table.columns}
-            rows={rows}
-            readOnly={props.readOnly}
-            writing={table.writing}
-            conflicts={table.conflicts}
-            renderHeader={(column) => (
-              <FolioTableColumnMenu
-                column={column}
-                index={table.columns.indexOf(column)}
-                count={table.columns.length}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {showCalendar && table.view.dateColumnId ? (
+          <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
+            <Suspense fallback={null}>
+              <FolioTableCalendar
+                columns={table.columns}
+                rows={rows}
+                dateColumnId={table.view.dateColumnId}
+                titleColumnId={table.view.titleColumnId}
                 readOnly={props.readOnly}
-                disabled={table.writing}
-                sort={view.sort === column.id ? (view.dir ?? "asc") : undefined}
-                onSort={(direction) =>
-                  setView({
-                    ...view,
-                    sort: direction ? column.id : undefined,
-                    dir: direction === "desc" ? "desc" : undefined,
-                  } as never)
+                writing={table.writing}
+                month={month}
+                onMonth={(next) => setView({ ...view, month: next } as never)}
+                onOpenRow={(row) => setOpenRowNumber(row.number)}
+                onAddOnDay={(day) =>
+                  void table.addRows([
+                    { cells: { [table.view.dateColumnId!]: day } },
+                  ])
                 }
-                onOperations={(operations) => void table.setColumns(operations)}
-                retypePreview={(type) => table.retypePreview(column.id, type)}
+                onMoveToDay={(row, day) => {
+                  const before = row.cells[table.view.dateColumnId!];
+                  const next = folioMoveToDay(before, day);
+                  if (next !== before) {
+                    void writeCell(row, table.view.dateColumnId!, next);
+                  }
+                }}
               />
-            )}
-            onWriteCell={(row, columnId, text) =>
-              void writeCell(row, columnId, text)
-            }
-            onPaste={(r, c, range) => void paste(r, c, range)}
-            onClear={(cells) =>
-              void table.writeCells(
-                cells.map((it) => ({
-                  row: it.row,
-                  cells: Object.fromEntries(
-                    it.columnIds.map((id) => [id, null]),
-                  ),
-                })),
-              )
-            }
-            onInsertBelow={(row) => void addRow(row.number)}
-            onDeleteRows={(chosen) => void deleteRows(chosen)}
-            onMoveRow={(row, to) => void table.moveRow(row.number, to)}
-            referenceSuggestions={links.suggestions}
-            renderReference={(code) => (
-              <LoreViewer
-                element={element}
-                content={`[[${code}]]`}
-                className="truncate [&_p]:m-0"
-              />
-            )}
-          />
-        </WikiLinkHoverProvider>
-      )}
-
-      {table.rows.length === 0 && table.columns.length > 0 && (
-        <p className="text-muted-foreground text-sm">
-          {props.readOnly
-            ? tr("folios.table.empty-readonly")
-            : tr("folios.table.empty")}{" "}
-          <a
-            href={loreDocsUrl("remember-tables")}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary-text hover:underline"
+            </Suspense>
+          </div>
+        ) : table.columns.length === 0 ? (
+          <p className="text-muted-foreground px-3 py-4 text-sm">
+            {tr("folios.table.no-columns")}
+          </p>
+        ) : (
+          // The hover card a reference cell's link opens, as in a text folio.
+          <WikiLinkHoverProvider
+            projectId={project?.id ?? 0}
+            projectSlug={project?.slug ?? ""}
+            attachments={[]}
+            className="flex min-h-0 flex-1 flex-col"
           >
-            {tr("folios.table.docs")}
-          </a>
-        </p>
-      )}
+            <FolioTableGrid
+              fill
+              empty={table.rows.length === 0 ? emptyHint : undefined}
+              columns={table.columns}
+              rows={rows}
+              readOnly={props.readOnly}
+              writing={table.writing}
+              conflicts={table.conflicts}
+              renderHeader={(column) => (
+                <FolioTableColumnMenu
+                  column={column}
+                  index={table.columns.indexOf(column)}
+                  count={table.columns.length}
+                  readOnly={props.readOnly}
+                  disabled={table.writing}
+                  sort={
+                    view.sort === column.id ? (view.dir ?? "asc") : undefined
+                  }
+                  onSort={(direction) =>
+                    setView({
+                      ...view,
+                      sort: direction ? column.id : undefined,
+                      dir: direction === "desc" ? "desc" : undefined,
+                    } as never)
+                  }
+                  onOperations={(operations) =>
+                    void table.setColumns(operations)
+                  }
+                  retypePreview={(type) => table.retypePreview(column.id, type)}
+                />
+              )}
+              onWriteCell={(row, columnId, text) =>
+                void writeCell(row, columnId, text)
+              }
+              onPaste={(r, c, range) => void paste(r, c, range)}
+              onClear={(cells) =>
+                void table.writeCells(
+                  cells.map((it) => ({
+                    row: it.row,
+                    cells: Object.fromEntries(
+                      it.columnIds.map((id) => [id, null]),
+                    ),
+                  })),
+                )
+              }
+              onInsertBelow={(row) => void addRow(row.number)}
+              onDeleteRows={(chosen) => void deleteRows(chosen)}
+              onMoveRow={(row, to) => void table.moveRow(row.number, to)}
+              referenceSuggestions={links.suggestions}
+              renderReference={(code) => (
+                <LoreViewer
+                  element={element}
+                  content={`[[${code}]]`}
+                  className="truncate [&_p]:m-0"
+                />
+              )}
+            />
+          </WikiLinkHoverProvider>
+        )}
+      </div>
+
       <FolioTableRowSheet
         columns={table.columns}
         referenceSuggestions={links.suggestions}
