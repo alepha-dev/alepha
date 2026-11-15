@@ -106,12 +106,33 @@ test.describe("Uptime healthchecks", () => {
     await page.goto(`/${slug}/apps/web/production`);
     const card = page.getByTestId("app-uptime");
     await expect(card).toBeVisible();
+    // The card opens the app's Uptime tab (#Q3677), which reads and watches.
     const link = card.getByRole("link", { name: "Web probe", exact: true });
-    const href = await link.getAttribute("href");
+    const href = `/${slug}/apps/web/production/uptime`;
+    await expect(link).toHaveAttribute("href", href);
     await link.click();
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
     await expect(
       page.getByRole("heading", { name: "Web probe", exact: true }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Incident history", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Delete", exact: true }),
+    ).toHaveCount(0);
+    const tab = page.getByRole("link", { name: "Uptime", exact: true });
+    await expect(tab).toBeVisible();
+
+    // The monitor's old address lands on the tab.
+    const monitors = await page.request.get(`/api/projects/${id}/monitors`);
+    const [{ id: monitorId }] = (
+      (await monitors.json()) as {
+        items: Array<{ id: string }>;
+      }
+    ).items;
+    await page.goto(`/${slug}/uptime/${monitorId}`);
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
 
     // Off keeps the monitor: the card goes, and on brings back the same one.
     await page.goto(`/${slug}/apps/web/production/settings`);
@@ -119,13 +140,20 @@ test.describe("Uptime healthchecks", () => {
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     await page.goto(`/${slug}/apps/web/production`);
     await expect(page.getByTestId("app-uptime")).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Uptime", exact: true }),
+    ).toHaveCount(0);
     await page.goto(`/${slug}/apps/web/production/settings`);
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-checked", "true");
     await page.goto(`/${slug}/apps/web/production`);
     await expect(
       page.getByTestId("app-uptime").getByRole("link", { name: "Web probe" }),
-    ).toHaveAttribute("href", href!);
+    ).toHaveAttribute("href", href);
+    await page.getByRole("link", { name: "Uptime", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Web probe", exact: true }),
+    ).toBeVisible();
 
     await page.goto(`/${slug}/errors`);
     await expect(page.getByText(/No errors\./i)).toBeVisible();

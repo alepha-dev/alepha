@@ -132,6 +132,24 @@ export default {
   "automation.preset.release-published.title": "Release published",
   "automation.preset.release-published.description":
     "Notify one member when a release is published, with its tag, title, number of quests and a link.",
+  "uptime.subscription.label":
+    "Notify me when this monitor goes down or recovers",
+  "uptime.subscription.description":
+    "A rule of your own will notify you when this monitor's outage is confirmed, and again when it recovers. You can edit, pause or delete it on the Automations page.",
+  "uptime.subscription.offDescription":
+    "You will no longer be notified of this monitor's outages and recoveries.",
+  "uptime.subscription.allLabel":
+    "Notify me when any monitor goes down or recovers",
+  "uptime.subscription.allDescription":
+    "A rule of your own will notify you when any monitor of this project has a confirmed outage, and again when it recovers. You can edit, pause or delete it on the Automations page.",
+  "uptime.subscription.allOffDescription":
+    "You will no longer be notified of this project's outages and recoveries.",
+  "automation.preset.monitor-down.title": "Monitor down",
+  "automation.preset.monitor-down.description":
+    "Notify one member when a monitor's outage is confirmed, with its address, the cause and the error.",
+  "automation.preset.monitor-up.title": "Monitor recovered",
+  "automation.preset.monitor-up.description":
+    "Notify one member when a monitor recovers from an outage, with how long it lasted.",
   "hosts.subscription.label": "Notify me when this host needs attention",
   "hosts.subscription.description":
     "A rule of your own will notify you when this host passes its TTL or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
@@ -421,6 +439,10 @@ export default {
   "folios.editor.listing.items": "$1 items",
   "folios.editor.listing.pinned": "Pinned",
   "folios.editor.listing.empty": "This directory is empty.",
+  "folios.mode.label": "Mode",
+  "folios.mode.edit": "Edit",
+  "folios.mode.view": "View",
+  "folios.mode.both": "Both",
   "folios.editor.root.title": "Folios",
   "folios.editor.root.description":
     "Open a folio from the tree, start a new one, or search them all.",
@@ -2040,6 +2062,7 @@ export default {
   "apps.table.host": "Deploys to",
   "apps.table.created": "Created",
   "app.tab.overview": "Overview",
+  "app.tab.uptime": "Uptime",
   "app.tab.analytics": "Analytics",
   "app.tab.vitals": "Vitals",
   "app.tab.errors": "Errors",
@@ -3855,9 +3878,6 @@ export default {
   "uptime.cell.noIncident": "None recorded",
   "uptime.latencyValue": "$1 ms",
   "uptime.edit": "Edit",
-  "uptime.pause": "Pause",
-  "uptime.resume": "Resume",
-  "uptime.delete": "Delete",
   "uptime.rotate": "Rotate push URL",
   "uptime.editTitle": "Edit monitor",
   "uptime.createTitle": "Add monitor",
@@ -3886,8 +3906,6 @@ export default {
   "uptime.copied": "Push URL copied",
   "uptime.done": "Done",
   "uptime.pushUrl": "Push URL",
-  "uptime.deleteTitle": "Delete monitor?",
-  "uptime.deleteDescription": "This deletes the monitor and its check history.",
   "uptime.rotateDescription":
     "The previous push URL will stop working. Copy the new URL and update the job that calls it.",
   "uptime.windowLabel": "Window",

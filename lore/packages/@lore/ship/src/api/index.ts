@@ -104,6 +104,7 @@ import { StackTargets } from "./services/StackTargets.ts";
 import { StackVariableService } from "./services/StackVariableService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UptimeAutomationEventSubjects } from "./services/UptimeAutomationEventSubjects.ts";
+import { UptimeAutomationPresets } from "./services/UptimeAutomationPresets.ts";
 import { UptimeAutomationReferences } from "./services/UptimeAutomationReferences.ts";
 import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
@@ -142,6 +143,7 @@ export const LoreShipApi = $module({
     DeployAutomationEventSubjects,
     DeployAutomationReferences,
     UptimeAutomationEventSubjects,
+    UptimeAutomationPresets,
     HostAutomationEventSubjects,
     HostAutomationPresets,
     HostAutomationReferences,

@@ -139,6 +139,24 @@ export default {
   "automation.preset.release-published.title": "Version publiée",
   "automation.preset.release-published.description":
     "Avertit un membre quand une version est publiée, avec son tag, son titre, son nombre de quêtes et un lien.",
+  "uptime.subscription.label":
+    "M'avertir quand ce moniteur tombe ou se rétablit",
+  "uptime.subscription.description":
+    "Une règle à votre nom vous avertira quand une panne de ce moniteur est confirmée, puis quand il se rétablit. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "uptime.subscription.offDescription":
+    "Vous ne serez plus averti des pannes et rétablissements de ce moniteur.",
+  "uptime.subscription.allLabel":
+    "M'avertir quand un moniteur tombe ou se rétablit",
+  "uptime.subscription.allDescription":
+    "Une règle à votre nom vous avertira quand une panne est confirmée sur n'importe quel moniteur de ce projet, puis quand il se rétablit. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "uptime.subscription.allOffDescription":
+    "Vous ne serez plus averti des pannes et rétablissements de ce projet.",
+  "automation.preset.monitor-down.title": "Moniteur en panne",
+  "automation.preset.monitor-down.description":
+    "Avertit un membre quand une panne d'un moniteur est confirmée, avec son adresse, la cause et l'erreur.",
+  "automation.preset.monitor-up.title": "Moniteur rétabli",
+  "automation.preset.monitor-up.description":
+    "Avertit un membre quand un moniteur se rétablit après une panne, avec sa durée.",
   "hosts.subscription.label":
     "M'avertir quand cet hôte demande une intervention",
   "hosts.subscription.description":
@@ -423,6 +441,10 @@ export default {
   "folios.editor.listing.items": "$1 éléments",
   "folios.editor.listing.pinned": "Épinglé",
   "folios.editor.listing.empty": "Ce dossier est vide.",
+  "folios.mode.label": "Mode",
+  "folios.mode.edit": "Éditer",
+  "folios.mode.view": "Lire",
+  "folios.mode.both": "Les deux",
   "folios.editor.root.title": "Folios",
   "folios.editor.root.description":
     "Ouvrez un folio dans l’arbre, commencez-en un nouveau, ou cherchez parmi tous.",
@@ -2028,6 +2050,7 @@ export default {
   "apps.table.host": "Déploie sur",
   "apps.table.created": "Créée",
   "app.tab.overview": "Aperçu",
+  "app.tab.uptime": "Disponibilité",
   "app.tab.analytics": "Audience",
   "app.tab.vitals": "Vitals",
   "app.tab.errors": "Erreurs",
@@ -3861,9 +3884,6 @@ export default {
   "uptime.cell.noIncident": "Aucun enregistré",
   "uptime.latencyValue": "$1 ms",
   "uptime.edit": "Modifier",
-  "uptime.pause": "Suspendre",
-  "uptime.resume": "Reprendre",
-  "uptime.delete": "Supprimer",
   "uptime.rotate": "Renouveler l’URL",
   "uptime.editTitle": "Modifier le moniteur",
   "uptime.createTitle": "Ajouter un moniteur",
@@ -3893,9 +3913,6 @@ export default {
   "uptime.copied": "URL copiée",
   "uptime.done": "Terminé",
   "uptime.pushUrl": "URL de réception",
-  "uptime.deleteTitle": "Supprimer le moniteur ?",
-  "uptime.deleteDescription":
-    "Cette action supprime le moniteur et son historique.",
   "uptime.rotateDescription":
     "L’ancienne URL cessera de fonctionner. Copiez la nouvelle et mettez à jour la tâche qui l’appelle.",
   "uptime.windowLabel": "Période",

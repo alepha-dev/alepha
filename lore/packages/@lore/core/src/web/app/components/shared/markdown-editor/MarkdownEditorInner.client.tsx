@@ -10,7 +10,12 @@ import MarkdownToolbarBand from "./MarkdownToolbarBand.tsx";
 import { createMentionCompletion } from "./mentionCompletion.ts";
 import { createWikiLinkCompletion } from "./wikiLinkCompletion.ts";
 
-export type MarkdownEditorMode = "view" | "edit";
+/**
+ * Rendered (`view`), raw (`edit`), or both side by side (`both`, #Q3653):
+ * the editor on the left, its preview on the right, following each
+ * keystroke.
+ */
+export type MarkdownEditorMode = "view" | "edit" | "both";
 
 export interface MarkdownEditorInnerProps {
   value: string;
@@ -148,8 +153,8 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
     ? ""
     : "border-border dark:bg-input/30 rounded-lg border bg-transparent p-3";
 
-  if (props.mode === "edit") {
-    return (
+  if (props.mode === "edit" || props.mode === "both") {
+    const editor = (
       <div className={`lore-md-edit min-w-0 ${frame}`.trim()}>
         {/* Mounted only once the editor exists — before that it has no
             selection to act on, and mounting it early would make every
@@ -194,6 +199,20 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
             props.onViewReady?.(next);
           }}
         />
+      </div>
+    );
+    if (props.mode === "edit") return editor;
+    // Both (#Q3653): the raw text and what it renders to, side by side, the
+    // preview following the draft. Stacked on a narrow pane.
+    return (
+      <div
+        data-slot="markdown-both"
+        className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2"
+      >
+        {editor}
+        <div className={`lore-md-view min-w-0 ${frame}`.trim()}>
+          <MarkdownView content={props.viewContent ?? props.value} />
+        </div>
       </div>
     );
   }

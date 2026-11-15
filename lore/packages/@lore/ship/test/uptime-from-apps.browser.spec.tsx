@@ -154,8 +154,9 @@ describe("the Overview's Uptime card", () => {
         </AlephaContext.Provider>,
       );
       const link = await view.findByRole("link", { name: "Acme" });
+      // The app's Uptime tab (#Q3677), not the monitor's old page.
       expect(link.getAttribute("href")).toBe(
-        `/acme/uptime/${links.monitors[0]!.id}`,
+        `/acme/apps/${instance.app}/${instance.env}/uptime`,
       );
       expect(view.getByText("Up")).toBeTruthy();
       expect(view.queryByRole("button", { name: "Add monitor" })).toBeNull();

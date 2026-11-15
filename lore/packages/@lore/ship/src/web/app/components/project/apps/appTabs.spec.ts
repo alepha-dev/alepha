@@ -206,9 +206,36 @@ describe("the instance's tab set", () => {
         // Environment tab from a project deploying through Lore with telemetry
         // off. The set is what is asserted now, not one value.
         expect(tab.unlockedBy).toBeTypeOf("function");
-        expect(["track", "deploy"]).toContain(tab.option);
+        expect(["track", "deploy", "uptime"]).toContain(tab.option);
       }
     }
+  });
+
+  it("shows Uptime while the copy's monitor is on, and only with the uptime option", ({
+    expect,
+  }) => {
+    const routes = (
+      monitor: { id: string; active: boolean } | undefined,
+      uptime: boolean,
+    ) =>
+      appTabsFor(
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          projectId: 1,
+          app: "web",
+          env: "production",
+          ephemeral: false,
+          createdAt: "2026-11-15T00:00:00.000Z",
+          updatedAt: "2026-11-15T00:00:00.000Z",
+          ...(monitor ? { monitor } : {}),
+        } as Parameters<typeof appTabsFor>[0],
+        { uptime },
+      ).map((tab) => tab.route);
+    const on = { id: "00000000-0000-4000-8000-000000000002", active: true };
+    expect(routes(on, true)).toEqual(["app", "appUptime", "appSettings"]);
+    expect(routes({ ...on, active: false }, true)).not.toContain("appUptime");
+    expect(routes(undefined, true)).not.toContain("appUptime");
+    expect(routes(on, false)).not.toContain("appUptime");
   });
 
   it("gates Deploy and Environment on deploy, never on track", ({ expect }) => {

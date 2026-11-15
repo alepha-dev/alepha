@@ -404,7 +404,7 @@ const EDITOR_OWNED_BINDINGS = new Set<FolioActionId>([
 export const editorOwnsBinding = (
   id: FolioActionId,
   mode: MarkdownEditorMode,
-): boolean => mode === "edit" && EDITOR_OWNED_BINDINGS.has(id);
+): boolean => mode !== "view" && EDITOR_OWNED_BINDINGS.has(id);
 
 /**
  * Of the above, the ones whose glyph the menu must stop advertising while
@@ -428,7 +428,12 @@ export const folioShortcutGlyph = (
   item: FolioMenuItem,
   mode?: MarkdownEditorMode,
 ): string | undefined => {
-  if (mode === "edit" && EDIT_MODE_HIDDEN_SHORTCUTS.has(item.id)) {
+  // `both` holds the caret as `edit` does (#Q3653).
+  if (
+    mode !== undefined &&
+    mode !== "view" &&
+    EDIT_MODE_HIDDEN_SHORTCUTS.has(item.id)
+  ) {
     return item.syntaxHint;
   }
   return item.shortcut ?? item.syntaxHint;
