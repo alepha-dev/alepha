@@ -6,8 +6,8 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { ProjectDeletionService } from "./ProjectDeletionService.ts";
 
 /**
- * Automations' step of a project deletion. Runs, receipts and adoption
- * markers reference their rule with `ON DELETE RESTRICT`, and every one of
+ * Automations' step of a project deletion. Runs and receipts reference
+ * their rule with `ON DELETE RESTRICT`, and every one of
  * those tables also cascades from the project, so whether a hard delete of
  * the project succeeds depended on the order the database walked its
  * cascades. The children go first, in one native batch, before the row.

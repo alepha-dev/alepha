@@ -242,38 +242,19 @@ current record instead. Edits to a rule are also written to the project's
 audit history, which has its own limited retention, separate from the two
 windows above.
 
-## Built-in notifications
+## Reminders and release announcements
 
-Two notifications work without any automation:
+Nothing is sent without a rule. Per-quest reminders and release announcements
+are presets like the others:
 
-- **Per-quest reminders**: the email nudges a quest's holder sets on the
-  quest, governed by the **Reminders** option.
-- **Release announcements**: when a release is published, every member but the
-  publisher is told in their inbox and by email.
+- **Quest reminders** runs hourly, follows each quest's own interval and next
+  date, emails the quest's holder and writes the reminder in the quest's
+  history. A project holds at most one such rule, and it is the one rule not
+  held to 50 rows: it works through every reminder due.
+- **Release published** notifies you when a release of the project is
+  published. The bell on the Releases page creates it for you.
 
-**Built-in notifications** on the Automations page lets you **adopt** one of
-them: it is replaced by an automation that you own and can edit. Nothing is
-adopted for you, and adopting grants no permission and enables no capability.
-
-1. Open **Built-in notifications** and read the preview: who would author the
-   rule, the permissions and channels it needs, who it would notify and, for
-   reminders, how many are configured. The release preview assumes you are the
-   publisher.
-2. Choose a new rule, or a compatible rule you already own.
-3. Click **Consent and adopt**. If it is interrupted, **Resume my adoption**
-   picks up the rule already prepared.
-
-⚠️ Adoption is permanent. The built-in notification stops at that moment and
-never comes back. Disabling or deleting the replacement rule is how you opt
-out of that notification altogether: adopting again does not turn it back on,
-and only the rule's original author can enable it again.
-
-An adopted reminder rule keeps what reminders did: it runs hourly, follows each
-quest's own interval and next date, emails the quest's holder, and writes the
-reminder in the quest's history. It is also the one rule not held to 50 rows:
-it works through every reminder due. An adopted announcement rule keeps the same
-audience and both channels, and needs no folio. It is not the **Publish
-release notes to a folio** preset, which notifies one member.
+A project with neither rule sends no reminder and no release announcement.
 
 Inbox and email are the channels. Another channel appears in the pickers only
 when the instance has it configured: naming one in a rule does not create it.

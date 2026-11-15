@@ -366,7 +366,7 @@ references and approval fences. The shared metadata-generated form uses the same
 slots. Runtime continues through the existing source, selector, evaluator and
 notification paths. The digest executes once for its retained collection, sends
 nothing when empty and preserves the selector's 50-row lower-bound/truncation
-metadata. It remains separate from compatibility reminders.
+metadata. It remains separate from the Quest reminders preset.
 
 The release-to-folio stock program (#Q2043) declares both its release source and
 append-folio effect needs. It appends the frozen published changelog/counts, then
@@ -384,7 +384,7 @@ Plan registers bounded quest, release, epic and feedback picker pages through
 core's automation reference registry, each with its own source-read permission.
 These lists contain same-project IDs and labels and do not project event bodies.
 
-## Compatibility policy ownership (#E43, #Q2044)
+## Reminders and release mail are automations (#Q3626, #Q3625)
 
 Quest reminders are an ordinary automation since #Q3626: the **Quest reminders**
 preset (`WorkAutomationPresets`, key `quest-reminders`), hourly, the
@@ -404,5 +404,5 @@ Release mail is an automation since #Q3625: the **Release published** preset
 (`release-published`, `WorkAutomationPresets`), which the Releases page's bell
 subscribes its viewer to. `ReleaseNotifier`, `inboxReleasePublished` and the
 `release-notifications` adoption policy are gone, and with them the last
-adoption policy (`WorkAutomationAdoptions` is deleted); #Q3628 removes the
+adoption policy (`WorkAutomationAdoptions` is deleted); #Q3628 removed the
 adoption engine from core.

@@ -82,11 +82,11 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
       {props.action.kind === "notify" && props.allowAudience && (
         <Control
           input={audienceForm.input.audience}
-          label={tr("automation.adoption.recipients")}
+          label={tr("automation.audience.recipients")}
           select
           items={[
-            { value: "member", label: tr("automation.adoption.member") },
-            { value: "roster", label: tr("automation.adoption.roster") },
+            { value: "member", label: tr("automation.audience.member") },
+            { value: "roster", label: tr("automation.audience.roster") },
           ]}
           disabled={props.disabled}
         />

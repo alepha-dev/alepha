@@ -626,9 +626,8 @@ verbatim. HTML is escaped once by `AutomationTemplateRenderer`; the email
 template adds only a fixed whitespace-preserving wrapper, whose bytes are
 reserved in the renderer's 16 KiB budget. The `automations` preference category
 is offered by the real template registry and account settings. Release output
-retains `releases`; the compatibility wire category `reminders` maps to the
-existing `tasks` preference category. Compatibility rosters exclude publishers;
-the adapter also accepts an explicit publisher exclusion for a single delivery.
+retains `releases`; the wire category `reminders` maps to the existing `tasks`
+preference category. Release rosters exclude publishers; the adapter also accepts an explicit publisher exclusion for a single delivery.
 
 The normal sender applies current suppression and preference gates at send time.
 `AutomationNotificationSender` additionally rechecks the author, rule revision,
@@ -709,8 +708,7 @@ old occurrence. Native chunks repair interrupted run switches.
 The fixed dispatcher rotates recovery/event/schedule priority by UTC tick,
 preserving its global 50-claim budget across cold starts. Event filtering loads
 at most 50 shared app bindings in one page read; current-author validation and
-expensive target reads belong to the bounded worker. Compatibility roster and
-reminder continuation policies are integrated by their adoption quest.
+expensive target reads belong to the bounded worker.
 
 ## Automation authoring boundary (#E43, #Q2527)
 
@@ -858,34 +856,13 @@ records expose labels and IDs, never document bodies or raw deployment logs.
   claimed, the worker extends its own ready lease and the job comes back after
   at most 30 seconds, instead of evaluating and waiting for lease expiry.
 - **Deleting an author** refuses only while they own live rules. Their
-  soft-deleted rules, with receipts, runs and adoption markers, are then
-  hard-deleted in one batch. ⚠️ An adoption marker referencing such a rule goes
-  with it, so a project that opted out through that rule returns to the legacy
-  fallback for that policy.
-- **Hard-deleting a project** runs `AutomationProjectDeletion` first: runs,
-  receipts and adoptions reference their rule with RESTRICT while the project
+  soft-deleted rules, with their receipts and runs, are then hard-deleted in
+  one batch.
+- **Hard-deleting a project** runs `AutomationProjectDeletion` first: runs and
+  receipts reference their rule with RESTRICT while the project
   cascade reaches `automations` first, so the children are deleted before.
 
-## Explicit policy adoption (#E43, #Q2044)
-
-`automation_adoptions` is an independent project/policy marker. Named callers
-preview and explicitly adopt through `AutomationAdoptionService`, the HTTP
-adoption actions or MCP `automation_adoption_preview` / `automation_adopt`.
-Plan registers the compatibility definitions and state previews. Nothing creates
-a system author, changes a rank or enables a project capability. Preparing a
-disabled replacement and its pending marker is atomic; enable, configuration
-audit and permanent cutover share another native guarded batch. Retrying pending
-adoption reuses the same rule. An existing compatible rule requires its author's
-consent and expected revision. A committed marker survives rule disable/delete;
-repeating adoption never reenables an opted-out rule.
-
-The application substitutes `AutomationLegacyJobProvider` before module boot.
-Its repository joins legacy notification enqueue, 90-day deduplication receipt
-and reminder bookkeeping under NOT-adopted predicates. Fan-out retries continue
-past already handled contacts. `AutomationLegacyDispatch` resolves the policy's
-project from trusted legacy template fields and rechecks its marker at send time,
-including messages queued before cutover. Unadopted policies keep fallback code.
-An unsupported runtime refuses adoption rather than claiming atomic cutover.
+## Roster audience and reminder cursors (#E43, #Q2044)
 
 The explicit release audience freezes the current roster except the publisher.
 It is legal only for release.published and the releases category, requires member
@@ -900,10 +877,6 @@ cursors,
 with the original evaluation time and a durable page witness; each due-state
 identity couples one email enqueue to one interval/history update.
 
-The adoption UI previews author, grants, channels, recipients and configured
-reminder state before its consent dialog. Existing-rule choices are bounded.
 The advanced editor exposes one-member versus release-roster addressing, and
-Test remains read-only. The additive adoption migration creates one table and
-indexes only. Integration tests cover interruption/resume, existing rules,
-disable/delete, queued legacy work, cutover races, 51 reminders, 101 recipients
-with both channels/preferences, MCP and native D1 primary/session modes.
+Test remains read-only. The adoption engine that once replaced built-in
+notifications with these rules is gone (#Q3628): nothing is sent without a rule.

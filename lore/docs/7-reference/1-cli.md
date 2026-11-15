@@ -319,16 +319,13 @@ since is refused rather than overwritten.
 | `lore automation delete <id>`               | Delete a rule. To stop one and keep it, use `lore automation update --no-enabled`.           | `--expected-revision`, `--yes` (both required)                                      |
 | `lore automation test <id>`                 | Preview a saved rule, with no writes and no delivery.                                        | `--source` (JSON: what to test against)                                             |
 | `lore automation runs <id>`                 | A rule's retained runs, newest first.                                                        | `--limit`, `--offset`                                                               |
-| `lore automation adoption preview <policy>` | What adopting a built-in policy would do. No writes.                                         |                                                                                     |
-| `lore automation adopt <policy>`            | Adopt it. The cutover is permanent.                                                          | `--confirm` (required), `--automation-id` with `--expected-revision`                |
 | `lore automation variable list`             | The project's shared variables.                                                              | `--key` (only this exact key), `--limit`, `--offset`                                |
 | `lore automation variable set <key>`        | Create or change a shared variable. Other authors' rules that use it pause for approval.     | `--variable` (required: JSON, with the variable's id and version when it exists)    |
 | `lore automation variable dependents <key>` | The rules that use a shared variable.                                                        | `--limit`, `--offset`                                                               |
 | `lore automation variable delete <key>`     | Delete an unused shared variable.                                                            | `--id`, `--version` (both required, and both have to match)                         |
 
-`--state` is `disabled`, `active`, `paused` or `broken`. A `<policy>` is
-`quest-reminders` or `release-notifications`. `catalog`, `test` and
-`adoption preview` always print JSON.
+`--state` is `disabled`, `active`, `paused` or `broken`. `catalog` and `test`
+always print JSON.
 
 See [Automations](/lore/docs/plan-automations).
 

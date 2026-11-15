@@ -34,8 +34,8 @@ import {
  *   a customised prompt it lacks comes over, so the merged project does
  *   everything both did.
  * - **Automations** move whole, every table keyed by the project with them.
- *   A shared variable or an adopted policy the target already has is a
- *   conflict: two rules depending on one key is a person's call.
+ *   A shared variable the target already has is a conflict: two rules
+ *   depending on one key is a person's call.
  * - **Members**: a source member who is not a target member joins the
  *   target's organization. Their rank comes too when the target defines
  *   it; `owner` never does, since ownership is transferred and never
