@@ -47,12 +47,12 @@ describe("Monitor form dialog", () => {
   });
   afterEach(cleanup);
 
-  it("marks Recipients as optional by schema, not by a hand-written label", async ({
+  it("draws no alert settings, and marks only the required fields", async ({
     expect,
   }) => {
-    // #Q2679: the label said "(optional)" while the form drew the required
-    // marker beside it. The field is optional in the form schema now, so no
-    // marker is drawn and the label carries no parenthesis.
+    // Alerts are automations since #Q3612: the form has no recipients or
+    // email switch. #Q2679: required fields carry the marker by schema, and
+    // no label says "(optional)".
     const alepha = await boot();
     try {
       const view = render(
@@ -60,8 +60,9 @@ describe("Monitor form dialog", () => {
           <MonitorFormDialog projectId={1} onClose={() => {}} />
         </AlephaContext.Provider>,
       );
-      const recipients = await view.findByLabelText("Recipients");
-      expect(recipients.getAttribute("aria-required")).toBeNull();
+      await view.findByLabelText(/^Name/);
+      expect(view.queryByLabelText("Recipients")).toBeNull();
+      expect(view.queryByText("Email alerts")).toBeNull();
       expect(view.queryByText(/\(optional\)/)).toBeNull();
       expect(view.getByLabelText(/^Name/).getAttribute("aria-required")).toBe(
         "true",
