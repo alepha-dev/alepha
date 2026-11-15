@@ -50,6 +50,9 @@ const NOT_MOVED: Record<string, string> = {
   // target's flow reads its own rows and shows the merged quests from the
   // first snapshot after the merge.
   quest_flow_daily: "the source's history as it was",
+  // Who an admin of the source removed (#Q3646). The target's admins decide
+  // who may not rejoin the target; the rows go with the source.
+  project_exclusions: "the source's admins' decision, not the target's",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on
