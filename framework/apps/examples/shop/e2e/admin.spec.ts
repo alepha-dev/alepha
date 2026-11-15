@@ -635,7 +635,7 @@ test.describe("the admin sidebar", () => {
       // entry it links to, so it is French here too.
       "Utilisateurs",
       "Connectés",
-      "Connexions échouées",
+      "Audits en échec",
     ]);
   });
 });
@@ -751,7 +751,7 @@ test.describe("the dashboard's tiles", () => {
         .allInnerTexts();
       // The layout's two, then the tiles it does not name, in code order.
       expect(titles.map((title) => title.trim())).toEqual([
-        "Connexions échouées",
+        "Audits en échec",
         "Utilisateurs",
         "Commandes",
         "Connectés",
@@ -857,7 +857,7 @@ test.describe("customizing the dashboard", () => {
         "Connectés",
         "Produits",
         "Utilisateurs",
-        "Connexions échouées",
+        "Audits en échec",
       ]);
 
       // The second admin opens Customize on the same version, meanwhile.
@@ -872,7 +872,7 @@ test.describe("customizing the dashboard", () => {
         "Connectés",
         "Produits",
         "Utilisateurs",
-        "Connexions échouées",
+        "Audits en échec",
       ];
       await expect(titlesOf(page)).toHaveText(expected);
 
@@ -917,7 +917,7 @@ test.describe("customizing the dashboard", () => {
         "Commandes",
         "Utilisateurs",
         "Connectés",
-        "Connexions échouées",
+        "Audits en échec",
       ]);
     } finally {
       await secondContext.close();
