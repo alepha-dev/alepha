@@ -139,6 +139,21 @@ describe("FolioTableGrid", () => {
     expect(input.value).toBe("x");
   });
 
+  it("opens a date cell's picker on a typed key, never with the key as its value", async () => {
+    const { grid, calls } = await mount({
+      columns: [
+        { id: "d", position: 0, name: "Due", type: "date", options: {} },
+      ],
+      rows: rowsOf(1).map((row) => ({ ...row, cells: { d: "2026-11-20" } })),
+    });
+    fireEvent.focus(grid);
+    fireEvent.keyDown(grid, { key: "2" });
+    expect(screen.getByTestId("folio-cell-editor").textContent).toMatch(
+      /2026|Nov/,
+    );
+    expect(calls.write).toEqual([]);
+  });
+
   it("toggles a checkbox with Space, and empties the selection with Delete", async () => {
     const { grid, calls } = await mount();
     fireEvent.focus(grid);

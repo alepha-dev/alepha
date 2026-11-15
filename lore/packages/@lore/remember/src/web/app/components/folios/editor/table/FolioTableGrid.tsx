@@ -294,7 +294,9 @@ const FolioTableGrid = (props: FolioTableGridProps): ReactElement => {
       if (column && column.type !== "checkbox" && column.type !== "select") {
         event.preventDefault();
         if (!focus) moveTo(at);
-        startEditing(at, event.key);
+        // A date is picked, never typed: the key opens the picker on the
+        // cell's value, since a picker handed "2" cannot read it as a date.
+        startEditing(at, column.type === "date" ? undefined : event.key);
       }
     }
   };
