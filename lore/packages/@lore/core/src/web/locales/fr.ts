@@ -2314,7 +2314,6 @@ export default {
     "D'où viennent les visites. Seule la première page d'une visite porte un référent, donc Direct couvre aussi la navigation interne.",
   "insights.topReferrers.direct": "Direct",
   "insights.empty": "Aucune page vue enregistrée sur cette période.",
-  "insights.backToOverview": "Retour à la vue d'ensemble",
   "insights.dimension.value": "Valeur",
   "insights.dimension.count": "Nombre",
   "insights.dimension.share": "Part",

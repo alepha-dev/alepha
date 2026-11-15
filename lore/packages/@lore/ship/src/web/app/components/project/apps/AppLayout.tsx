@@ -22,8 +22,8 @@ import { APP_INSIGHTS_FILTER_KEYS } from "./useAppInsights.ts";
  * The routes the tab bar is responsible for.
  *
  * The redirect below fires only for one of these: `appAnalyticsDimension` is a
- * SIBLING of `appAnalytics` rather than a tab, so it is legitimately missing
- * from the tab set and redirecting it would break every "More" link.
+ * SIBLING of `appAnalytics` rather than a tab, and redirects to it itself
+ * with the leaderboard dialog open (#Q3674).
  */
 const APP_TAB_ROUTES = new Set([
   "app",

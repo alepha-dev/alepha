@@ -16,7 +16,6 @@ import {
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
 import {
   BarChart3,
   DoorOpen,
@@ -31,6 +30,8 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import type { InsightsDimensionResource } from "../../../../../api/schemas/insightsDimensionResourceSchema.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
+import { ANALYTICS_DIMENSIONS } from "./analyticsDimensions.ts";
+import AppAnalyticsDimensionDialog from "./AppAnalyticsDimensionDialog.tsx";
 import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";
 import AppAnalyticsFilterChips from "./AppAnalyticsFilterChips.tsx";
 import AppAnalyticsLeaderboard, {
@@ -66,11 +67,18 @@ const viewsChartConfig = {
  */
 const AppAnalytics = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
-  const { data, loading, error, range, traffic, filters, setFilters } =
-    useAppInsights();
+  const {
+    data,
+    loading,
+    error,
+    range,
+    traffic,
+    filters,
+    setFilters,
+    leaderboard,
+  } = useAppInsights();
 
   const controls = (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -102,16 +110,15 @@ const AppAnalytics = () => {
     );
   }
 
-  const params = {
-    projectSlug: project.slug,
-    app: instance.app,
-    env: instance.env,
-  };
-  const detailHref = (dimension: InsightsDimensionResource["dimension"]) =>
-    router.path("appAnalyticsDimension", {
-      params: { ...params, analyticsDimension: dimension },
-      query: { ...filters, range, traffic },
-    });
+  // A leaderboard's full list opens in a dialog over the tab (#Q3674),
+  // named in the URL so a reload or a link reopens it. Picking a row, like
+  // closing, drops it from the URL.
+  const openLeaderboard = (dimension: InsightsDimensionResource["dimension"]) =>
+    setFilters({ ...filters, range, traffic, leaderboard: dimension });
+  const closeLeaderboard = () => setFilters({ ...filters, range, traffic });
+  const openDimension = ANALYTICS_DIMENSIONS.has(leaderboard ?? "")
+    ? (leaderboard as InsightsDimensionResource["dimension"])
+    : undefined;
 
   const pick = (
     dimension: InsightsDimensionResource["dimension"],
@@ -164,13 +171,21 @@ const AppAnalytics = () => {
   const showDelta = delta !== undefined && range !== "1d";
 
   const segments = (
-    ...list: Array<Omit<AppAnalyticsLeaderboardSegment, "href">>
+    ...list: Array<Omit<AppAnalyticsLeaderboardSegment, "onMore">>
   ): AppAnalyticsLeaderboardSegment[] =>
-    list.map((entry) => ({ ...entry, href: detailHref(entry.dimension) }));
+    list.map((entry) => ({
+      ...entry,
+      onMore: () => openLeaderboard(entry.dimension),
+    }));
 
   return (
     <div className="flex flex-col gap-4 p-4">
       {controls}
+      <AppAnalyticsDimensionDialog
+        dimension={openDimension}
+        onClose={closeLeaderboard}
+        onPick={pick}
+      />
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">

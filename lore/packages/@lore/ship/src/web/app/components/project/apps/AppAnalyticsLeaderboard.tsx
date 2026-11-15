@@ -7,7 +7,6 @@ import {
 } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { Link } from "alepha/react/router";
 import { useState } from "react";
 
 import type { InsightsDimensionResource } from "../../../../../api/schemas/insightsDimensionResourceSchema.ts";
@@ -41,9 +40,9 @@ export interface AppAnalyticsLeaderboardSegment {
   note?: string;
   rows: AppAnalyticsLeaderboardRow[];
   /**
-   * Where the "More" link goes for this segment.
+   * "More": open this segment's full list, a dialog over the tab (#Q3674).
    */
-  href: string;
+  onMore: () => void;
 }
 
 export interface AppAnalyticsLeaderboardProps {
@@ -118,12 +117,13 @@ const AppAnalyticsLeaderboard = (props: AppAnalyticsLeaderboardProps) => {
     );
 
   const footer = (segment: AppAnalyticsLeaderboardSegment) => (
-    <Link
-      href={segment.href}
+    <button
+      type="button"
+      onClick={segment.onMore}
       className="text-muted-foreground hover:text-foreground mt-3 inline-block text-xs transition-colors"
     >
       {tr("insights.more")}
-    </Link>
+    </button>
   );
 
   if (segments.length === 1 && segments[0]) {

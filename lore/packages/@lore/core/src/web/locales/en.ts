@@ -2318,7 +2318,6 @@ export default {
     "Where visits came from. Only the first page of a visit carries a referrer, so Direct also covers navigation inside the app.",
   "insights.topReferrers.direct": "Direct",
   "insights.empty": "No page views recorded in this range yet.",
-  "insights.backToOverview": "Back to overview",
   "insights.dimension.value": "Value",
   "insights.dimension.count": "Count",
   "insights.dimension.share": "Share",
