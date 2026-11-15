@@ -55,6 +55,7 @@ export class AutomationDomainActions {
         input.rule.projectId,
         input.user,
         input.action,
+        input.rule,
       );
       const handler = this.handlers.get(input.action.kind);
       if (!handler) throw new BadRequestError("Domain adapter is unavailable");

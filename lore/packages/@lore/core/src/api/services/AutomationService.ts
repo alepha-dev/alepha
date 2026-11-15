@@ -97,12 +97,14 @@ export class AutomationService {
     nativeEffects?: (rule: Automation) => AutomationConfigurationExtension,
   ) {
     return this.database.primary(async () => {
-      await this.access.assert(projectId, user, "automation:write");
+      const subscription =
+        typeof preset === "object" && preset.subscription === true;
+      await this.access.assert(projectId, user, "automation:write", {
+        subscription,
+      });
       const body = this.authored(automationCreateBodySchema.parse(input));
       const enabled = body.enabled === true;
       const presetKey = typeof preset === "string" ? preset : preset?.key;
-      const subscription =
-        typeof preset === "object" && preset.subscription === true;
       const subscriptionScope =
         subscription && typeof preset === "object"
           ? (preset.subscriptionScope ?? "")
@@ -296,6 +298,7 @@ export class AutomationService {
         rule.authorUserId === user.id
           ? "automation:write"
           : "automation:manage",
+        rule,
       );
       this.revision(rule, expectedRevision);
       const provenance = enabled
@@ -391,10 +394,13 @@ export class AutomationService {
   public async get(projectId: number, id: string, user: UserAccountToken) {
     return this.database.primary(async () => {
       const rule = await this.stored(projectId, id);
+      // A member reads their own subscription rule without automation:read
+      // (#Q3648); any other rule needs it.
       const context = await this.access.authorize(
         rule.projectId,
         user,
         "automation:read",
+        rule,
       );
       return this.resource(
         rule,
@@ -596,7 +602,7 @@ export class AutomationService {
   }
   protected async prepare(rule: Automation) {
     const author = await this.access.author(rule);
-    await this.access.assert(rule.projectId, author, "automation:write");
+    await this.access.assert(rule.projectId, author, "automation:write", rule);
     await this.assertSingleReminderRule(rule);
     const values = await this.variables.snapshot(rule, author, {
       transition: false,
@@ -611,6 +617,7 @@ export class AutomationService {
           { ...value, projectId: rule.projectId } as AutomationVariable,
         ]),
       ),
+      rule,
     );
     return {
       approved: this.approvals.capture(values),

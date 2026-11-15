@@ -17,7 +17,10 @@ import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBinding
 import { AutomationTemplateTokens } from "../schemas/AutomationTemplateTokens.ts";
 import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
-import { AutomationAccess } from "./AutomationAccess.ts";
+import {
+  AutomationAccess,
+  type AutomationAccessSubject,
+} from "./AutomationAccess.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationPresetRegistry } from "./AutomationPresetRegistry.ts";
@@ -133,6 +136,7 @@ export class AutomationCatalog {
     user: UserAccountToken,
     input: AutomationRule,
     overrides: Map<string, AutomationVariable> = new Map(),
+    subject?: AutomationAccessSubject,
   ) {
     let scheduleCron: string | undefined;
     const parsedRule = automationRuleSchema.safeParse(input);
@@ -143,6 +147,7 @@ export class AutomationCatalog {
       projectId,
       user,
       "automation:read",
+      subject,
     );
     const names = this.names(rule);
     if (names.size > 64)
@@ -381,11 +386,13 @@ export class AutomationCatalog {
     projectId: number,
     user: UserAccountToken,
     action: AutomationRule["actions"][number],
+    subject?: AutomationAccessSubject,
   ) {
     const context = await this.access.authorize(
       projectId,
       user,
       "automation:write",
+      subject,
     );
     const source = this.require(
       context,

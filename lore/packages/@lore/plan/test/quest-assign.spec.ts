@@ -193,6 +193,32 @@ describe("assignQuest", () => {
       ).rejects.toThrow();
     });
 
+    it("refuses a member whose rank cannot work quests, a viewer (#Q3648)", async () => {
+      const { owner, projectId, quest } = await setupProject();
+      const viewer = await makeUser();
+      // `viewer` is a default rank, seeded by `createProject` (#Q3661).
+      await createTestMemberByProjectId(ctx.alepha, projectId, viewer.id, {
+        rank: "viewer",
+      });
+
+      await expect(
+        ctx.quests.assignQuest.fetch(
+          { params: { id: quest.id }, body: { userId: viewer.id } },
+          { user: owner },
+        ),
+      ).rejects.toThrow("quest:update");
+
+      // And the picker is told who can be assigned.
+      const users = (
+        await ctx.projects.getProjectUsers.fetch(
+          { params: { id: projectId }, query: { assignable: true } },
+          { user: owner },
+        )
+      ).data;
+      expect(users.find((it) => it.id === viewer.id)?.assignable).toBe(false);
+      expect(users.find((it) => it.id === owner.id)?.assignable).toBe(true);
+    });
+
     it("leaves the quest untouched when it refuses", async () => {
       const { owner, quest } = await setupProject();
       const stranger = await makeUser();

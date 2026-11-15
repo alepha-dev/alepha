@@ -123,7 +123,9 @@ export class AutomationController {
    * enabled rule from each.
    */
   getAutomationSubscription = $action({
-    use: [this.gate("automation:read")],
+    // Any member: a subscription is the caller's own, and the service asks
+    // for `automation:read`, or the self-subscription rule (#Q3648).
+    use: [this.gate("project:read")],
     method: "GET",
     path: "/projects/:projectId/automation-subscriptions",
     schema: {
@@ -144,7 +146,9 @@ export class AutomationController {
    * created enabled, notifying them) or off (their toggle's rules deleted).
    */
   setAutomationSubscription = $action({
-    use: [this.gate("automation:write")],
+    // Any member, viewers included, for their own subscription: the service
+    // authorizes it (`AutomationAccess.isSelfSubscription`, #Q3648).
+    use: [this.gate("project:read")],
     method: "PUT",
     path: "/projects/:projectId/automation-subscriptions",
     schema: {

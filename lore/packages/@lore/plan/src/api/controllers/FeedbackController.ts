@@ -151,10 +151,13 @@ export class FeedbackController {
     handler: async ({ params, body, user }) => {
       await this.assertFeedbackOpen(params.projectId);
 
-      // The feedback rate limit only throttles outsiders — feedback is the
-      // "outside-the-team feedback channel". Project owners/members belong to
-      // the project and submit without limit.
-      if (!(await this.security.isMember(params.projectId, user))) {
+      // The feedback rate limit only throttles outsiders - feedback is the
+      // "outside-the-team feedback channel". A member whose rank reads the
+      // inbox submits without limit; membership alone is not enough, since
+      // anyone can join an open project as a viewer (#Q3648).
+      if (
+        !(await this.security.holds(params.projectId, user.id, "feedback:read"))
+      ) {
         await this.rateLimiter.assertFeedbackAllowed(user.id);
       }
 
@@ -315,9 +318,11 @@ export class FeedbackController {
     },
     handler: async ({ params, body, user }) => {
       await this.assertFeedbackOpen(params.projectId);
-      // Members are exempt from the upload throttle too (same rationale as
-      // submitFeedback) — the limit is an outsider control.
-      if (!(await this.security.isMember(params.projectId, user))) {
+      // Exempt from the upload throttle on the same permission as
+      // submitFeedback - the limit is an outsider control (#Q3648).
+      if (
+        !(await this.security.holds(params.projectId, user.id, "feedback:read"))
+      ) {
         await this.rateLimiter.assertAttachmentAllowed(user.id);
       }
 

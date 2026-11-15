@@ -651,12 +651,34 @@ export class ProjectController {
       params: z.object({
         id: z.integer(),
       }),
+      query: z.object({
+        /**
+         * Also say who a quest can be handed to (`assignable`), for the
+         * assignee picker. Off by default: it reads the rank definitions,
+         * which every other reader of this list does not need.
+         */
+        assignable: z.boolean().optional(),
+      }),
       response: z.array(projectUserSchema),
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, query, user }) => {
       const members = await this.membersOf(params.id);
       const full = await this.callerHolds(params.id, "member:read", user);
-      return members.map((member) => this.projectUser(member, full));
+      if (!query.assignable) {
+        return members.map((member) => this.projectUser(member, full));
+      }
+      // One read of the members and one of the rank definitions, cached:
+      // who may be handed a quest (#Q3648).
+      const assignable = new Set(
+        await this.ranks.holdersOf(
+          await this.projectSecurity.organizationIdOf(params.id),
+          "quest:update",
+        ),
+      );
+      return members.map((member) => ({
+        ...this.projectUser(member, full),
+        assignable: assignable.has(member.id),
+      }));
     },
   });
 

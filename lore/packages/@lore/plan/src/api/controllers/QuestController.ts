@@ -2459,9 +2459,18 @@ export class QuestController {
       // starts a ready epic the same way.
       await this.epicWorkflow.assertQuestWorkable(quest, "assign");
 
-      if (!(await this.security.isMemberById(quest.projectId, body.userId))) {
+      // The assignee must be able to work the quest: membership alone is
+      // not enough, since anyone can join an open project as a viewer
+      // (#Q3648).
+      if (
+        !(await this.security.holds(
+          quest.projectId,
+          body.userId,
+          "quest:update",
+        ))
+      ) {
         throw new BadRequestError(
-          "Cannot assign quest: that user is not a member of this project.",
+          "Cannot assign quest: that user is not a member of this project whose rank can work on quests (quest:update).",
         );
       }
 

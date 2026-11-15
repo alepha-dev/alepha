@@ -36,17 +36,43 @@ export class AutomationAccess {
     projectId: number,
     user: UserAccountToken,
     permission: "automation:read" | "automation:write" | "automation:manage",
+    subject?: AutomationAccessSubject,
   ): Promise<void> {
-    await this.authorize(projectId, user, permission);
+    await this.authorize(projectId, user, permission, subject);
   }
 
   public async authorize(
     projectId: number,
     user: UserAccountToken,
     permission: "automation:read" | "automation:write" | "automation:manage",
+    subject?: AutomationAccessSubject,
   ) {
     return this.database.primary(() =>
-      this.authorizePrimary(projectId, user, permission),
+      this.authorizePrimary(projectId, user, permission, subject),
+    );
+  }
+
+  /**
+   * Whether this check is a member's own subscription (#Q3648): a rule a
+   * subscription toggle created, authored by the caller, which notifies the
+   * caller only (`AutomationSubscriptionService` writes no other kind). A
+   * member who may not author automations, a viewer of an open project
+   * among them, may still read, keep, switch off and remove their own.
+   *
+   * Never `automation:manage`, and never an edit: an edited rule is no
+   * longer the preset the toggle made, so editing one asks for
+   * `automation:write` like any rule. What the subscription may watch is
+   * still gated by the catalog, on the source's own read permission.
+   */
+  public isSelfSubscription(
+    user: UserAccountToken,
+    permission: "automation:read" | "automation:write" | "automation:manage",
+    subject?: AutomationAccessSubject,
+  ): boolean {
+    return (
+      subject?.subscription === true &&
+      permission !== "automation:manage" &&
+      (subject.authorUserId === undefined || subject.authorUserId === user.id)
     );
   }
 
@@ -54,6 +80,7 @@ export class AutomationAccess {
     projectId: number,
     user: UserAccountToken,
     permission: "automation:read" | "automation:write" | "automation:manage",
+    subject?: AutomationAccessSubject,
   ) {
     const current = await this.currentUser(user);
     const { project, member } = await this.membership(projectId, current);
@@ -62,14 +89,23 @@ export class AutomationAccess {
       { ...current, ownership: true },
       member,
     );
-    if (!allowed.permissions.includes(permission))
+    const required = this.isSelfSubscription(user, permission, subject)
+      ? "project:read"
+      : permission;
+    if (!allowed.permissions.includes(required))
       throw new ForbiddenError(`Missing ${permission}`);
     // No capability since #Q3629: automations are Core, and the catalog
     // gates each event, selector and preset by its own needs.
     return {
       project,
       member,
-      permissions: allowed.permissions,
+      // A self-subscription notifies its author and nobody else
+      // (`AutomationSubscriptionService` forces the recipient, and an edit
+      // is refused without automation:write), so the one recipient it names
+      // needs no `member:read`: that permission is for choosing others.
+      permissions: this.isSelfSubscription(user, permission, subject)
+        ? [...new Set([...allowed.permissions, "member:read"])]
+        : allowed.permissions,
       capabilities: await this.security.capabilitiesOf(projectId),
     };
   }
@@ -80,7 +116,12 @@ export class AutomationAccess {
     action: "edit" | "enable" | "disable" | "delete",
   ): Promise<void> {
     if (rule.authorUserId === user.id) {
-      await this.assert(rule.projectId, user, "automation:write");
+      await this.assert(
+        rule.projectId,
+        user,
+        "automation:write",
+        action === "edit" ? undefined : rule,
+      );
       return;
     }
     if (action !== "disable" && action !== "delete")
@@ -234,4 +275,13 @@ export class AutomationAccess {
       throw new ForbiddenError("Not a current member of this project");
     return { project, member };
   }
+}
+
+/**
+ * What an authoring check is about, when it is about a rule: whether it is
+ * a subscription, and whose (see `AutomationAccess.isSelfSubscription`).
+ */
+export interface AutomationAccessSubject {
+  subscription?: boolean;
+  authorUserId?: string;
 }

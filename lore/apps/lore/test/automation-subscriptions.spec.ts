@@ -6,6 +6,7 @@ import {
 import { createPresetRanks } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { JobQueueProvider } from "alepha/api/jobs";
+import { RankService } from "alepha/api/organizations";
 import { CronProvider } from "alepha/scheduler";
 import type { UserAccountToken } from "alepha/security";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -217,5 +218,83 @@ describe("Automation subscriptions (#Q3576)", () => {
     expect(await get()).toEqual({ subscribed: false });
     await expect(set(true)).rejects.toThrow("plan");
     expect(await live()).toHaveLength(0);
+  });
+
+  describe("a member whose rank authors no automation (#Q3648)", () => {
+    const seat = async (key: string, permissions: string[]) => {
+      await alepha
+        .inject(RankService)
+        .save(project.organizationId!, { key, name: key, permissions }, user);
+      const account = await entities.users.create({ roles: ["user"] });
+      await entities.members.create({
+        organizationId: project.organizationId!,
+        userId: account.id,
+        rank: key,
+      });
+      return { id: account.id, roles: ["user"] } as UserAccountToken;
+    };
+    const setAs = (caller: UserAccountToken, subscribed: boolean) =>
+      api.setAutomationSubscription.fetch(
+        {
+          params: { projectId: project.id },
+          body: { presets: [key], subscribed },
+        },
+        { user: caller },
+      );
+
+    it("subscribes to what it reads, without automation:write, and switches it off", async ({
+      expect,
+    }) => {
+      const reader = await seat("reader", ["project:read", "feedback:read"]);
+
+      const on = (await setAs(reader, true)).data;
+      expect(on.subscribed).toBe(true);
+      const [rule] = await persistence.rules.findMany({
+        where: { projectId: project.id, authorUserId: reader.id },
+      });
+      expect(rule).toMatchObject({
+        enabled: true,
+        subscription: true,
+        health: "active",
+        requiresApproval: false,
+        rule: { actions: [{ recipient: reader.id }] },
+      });
+
+      // Its own rule, kept as the toggle made it: editing asks for
+      // automation:write like any rule.
+      await expect(
+        api.updateAutomation.fetch(
+          {
+            params: { projectId: project.id, id: rule.id },
+            body: {
+              title: "Rewritten",
+              rule: rule.rule,
+              expectedRevision: rule.revision,
+            },
+          },
+          { user: reader },
+        ),
+      ).rejects.toThrow("automation:write");
+
+      expect((await setAs(reader, false)).data).toEqual({ subscribed: false });
+      expect(
+        await persistence.rules.findMany({
+          where: { projectId: project.id, authorUserId: reader.id },
+        }),
+      ).toHaveLength(0);
+    });
+
+    it("cannot subscribe to what its rank does not read", async ({
+      expect,
+    }) => {
+      const viewer = await seat("peek", ["project:read", "quest:read"]);
+
+      await expect(setAs(viewer, true)).rejects.toThrow();
+      expect(
+        await persistence.rules.findMany({
+          where: { projectId: project.id, authorUserId: viewer.id },
+        }),
+      ).toHaveLength(0);
+    });
   });
 });

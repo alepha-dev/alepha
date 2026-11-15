@@ -183,4 +183,29 @@ describe("feedback rate limit", () => {
       expect(res.data.id).toBeGreaterThan(0);
     }
   });
+
+  it("rate-limits a member on the Viewer rank like an outsider (#Q3648)", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const viewer = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    // Anyone can join an open project as a viewer, so membership earns no
+    // exemption: the rank must read the inbox (`feedback:read`).
+    await createTestMemberByProjectId(ctx.alepha, projectId, viewer.id, {
+      rank: "viewer",
+    });
+
+    const limit = ctx.alepha
+      .inject(FeedbackRateLimiter)
+      .options().maxFeedbackPerUserPerDay;
+    for (let i = 0; i < limit; i++) {
+      await submit(ctx, projectId, viewer, i);
+    }
+
+    const error = await submit(ctx, projectId, viewer, limit).catch(
+      (e: unknown) => e,
+    );
+    expect((error as HttpError).status).toBe(429);
+  });
 });

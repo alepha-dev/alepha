@@ -48,6 +48,8 @@ export class AutomationSelections {
         input.rule.projectId,
         input.user,
         input.rule.rule,
+        undefined,
+        input.rule,
       );
       const selection = input.rule.rule.select;
       if (input.cursor && selection?.kind !== "rows")
