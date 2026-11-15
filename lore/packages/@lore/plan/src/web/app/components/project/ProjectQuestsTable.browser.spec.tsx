@@ -80,6 +80,17 @@ class FakeLinkProvider extends LinkProvider {
    * How many times `deleteQuest` was asked. It always refuses.
    */
   deletes = 0;
+  /**
+   * Every `assignQuest` asked, as `[questId, userId]`. Quest 2 is refused,
+   * the way the server refuses an assignee whose rank cannot work quests.
+   */
+  assigned: Array<[number, string]> = [];
+  /**
+   * The epic `createEpic` made, and every quest `attachQuest` filed under
+   * it.
+   */
+  epics: string[] = [];
+  attached: number[] = [];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -108,6 +119,29 @@ class FakeLinkProvider extends LinkProvider {
           this.quests.push(quest);
           this.created.push(config.body.title);
           return quest;
+        }),
+        getProjectUsers: action(async () => [
+          { id: "00000000-0000-4000-8000-0000000000aa", username: "ana" },
+        ]),
+        assignQuest: action(
+          async (config: {
+            params: { id: number };
+            body: { userId: string };
+          }) => {
+            if (config.params.id === 2) {
+              throw new Error("Cannot assign quest (spec)");
+            }
+            this.assigned.push([config.params.id, config.body.userId]);
+            return this.quests.find((q) => q.id === config.params.id);
+          },
+        ),
+        createEpic: action(async (config: { body: { title: string } }) => {
+          this.epics.push(config.body.title);
+          return { id: 99, number: 12, title: config.body.title };
+        }),
+        attachQuest: action(async (config: { body: { questId: number } }) => {
+          this.attached.push(config.body.questId);
+          return { id: 99, number: 12 };
         }),
         deleteQuest: action(async () => {
           this.deletes += 1;
@@ -381,6 +415,87 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     expect(unshelved()).not.toBeNull();
     // The third action does not depend on the selection.
     expect(screen.getByRole("button", { name: /Add to release/ })).toBeTruthy();
+  });
+
+  describe("Assign and Create epic (#Q3714)", () => {
+    const assignedQuest = (id: number, title: string) => ({
+      ...questOf(id, title),
+      acceptedBy: "00000000-0000-4000-8000-0000000000bb",
+    });
+
+    it("offers Assign only while no selected quest has an assignee", async () => {
+      await mount([questOf(1, "Free"), assignedQuest(2, "Taken")]);
+      const assign = () => screen.queryByRole("button", { name: /^Assign/ });
+
+      selectRow(1);
+      await waitFor(() => expect(assign()).not.toBeNull());
+      // An assigned row's name starts with its assignee's avatar, not its
+      // reference: found by its title.
+      const taken = screen.getByRole("row", { name: /Taken/ });
+      fireEvent.click(within(taken).getByRole("checkbox"));
+      await waitFor(() => expect(assign()).toBeNull());
+    });
+
+    it("offers Create epic only while no selected quest is in an epic", async () => {
+      await mount([questOf(1, "Loose"), questOf(2, "Filed", false, 42)]);
+      const create = () =>
+        screen.queryByRole("button", { name: "Create epic" });
+
+      selectRow(1);
+      await waitFor(() => expect(create()).not.toBeNull());
+      selectRow(2);
+      await waitFor(() => expect(create()).toBeNull());
+    });
+
+    it("assigns the selection to the member picked, and counts a refused row", async () => {
+      const { links } = await mount([
+        questOf(1, "One"),
+        questOf(2, "Two"),
+        questOf(3, "Three"),
+      ]);
+      selectRow(1);
+      selectRow(2);
+      selectRow(3);
+      fireEvent.click(await screen.findByRole("button", { name: /^Assign/ }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: "ana" }));
+
+      await waitFor(() =>
+        expect(links.assigned.map(([id]) => id).sort((a, b) => a - b)).toEqual([
+          1, 3,
+        ]),
+      );
+      expect(
+        await screen.findByText("1 could not be updated. 2 assigned to ana."),
+      ).toBeTruthy();
+    });
+
+    it("creates a draft epic from a title and files the selection under it", async () => {
+      const { links } = await mount([questOf(1, "One"), questOf(2, "Two")]);
+      selectRow(1);
+      selectRow(2);
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Create epic" }),
+      );
+      const dialog = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>(
+          "[role=dialog],[role=alertdialog]",
+        );
+        expect(found).not.toBeNull();
+        return found!;
+      });
+      fireEvent.change(within(dialog).getByRole("textbox"), {
+        target: { value: "Bulk triage" },
+      });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Confirm" }));
+
+      await waitFor(() =>
+        expect(links.attached.sort((a, b) => a - b)).toEqual([1, 2]),
+      );
+      expect(links.epics).toEqual(["Bulk triage"]);
+      expect(
+        await screen.findByText("Epic E12 created as a draft, with 2 quests."),
+      ).toBeTruthy();
+    });
   });
 
   /**

@@ -212,6 +212,13 @@ export const useQuestMutations = (): QuestMutations => {
       await refreshCount();
       return outcome;
     },
+    assignMany: async (ids, userId) => {
+      // One `assignQuest` per id (#Q3714): a refusal (a rank that cannot
+      // work quests, an epic not yet workable) is that row's alone.
+      return settle(ids, (id) =>
+        questApi.assignQuest({ params: { id }, body: { userId } }),
+      );
+    },
     attachToRelease: async (ids, releaseId) => {
       // A quest update carrying `releaseId`, the same write the quest rail
       // and the epic page make. No atom moves: membership in a release is
@@ -269,6 +276,10 @@ export interface QuestMutations {
   shelveMany: (ids: number[]) => Promise<BulkOutcome>;
   unshelveMany: (ids: number[]) => Promise<BulkOutcome>;
   removeMany: (ids: number[]) => Promise<BulkOutcome>;
+  /**
+   * Assign every id to one member (#Q3714), each through `assignQuest`.
+   */
+  assignMany: (ids: number[], userId: string) => Promise<BulkOutcome>;
   /**
    * Attach every id to one release. Refused server-side for a published
    * release, which is why the caller only ever offers open ones.
