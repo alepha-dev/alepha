@@ -802,7 +802,11 @@ export async function analyzeModules(
 
           for (const file of files) {
             // Test-only imports are not part of a published module graph.
-            if (/\.spec\.(ts|tsx)$/.test(file) || file.includes("/__tests__/"))
+            // Either separator: a Windows path has `\` (#Q3727).
+            if (
+              /\.spec\.(ts|tsx)$/.test(file) ||
+              /[\\/]__tests__[\\/]/.test(file)
+            )
               continue;
             const content = await readFile(file, "utf-8");
             detectEscapingImports(content, file, modulePath, moduleName);
