@@ -223,7 +223,11 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           wrapper used to live in `FolioWorkspaceContent` and enclose the
           header and the rule as well, which is what kept all three the same
           width. */}
-      <div className="mx-auto w-full max-w-[812px] px-8 py-10">
+      {/* Both (#Q3653) doubles the measure: an editor and its preview, each
+          at the reading width. */}
+      <div
+        className={`mx-auto w-full px-8 py-10 ${props.mode === "both" ? "max-w-[1624px]" : "max-w-[812px]"}`}
+      >
         {props.actions.locked ? (
           <FolioLockedPanel
             onUnlock={props.actions.unlock}

@@ -58,6 +58,18 @@ describe("MarkdownEditorInner mode toggle", () => {
     expect(container.querySelector(".lore-md-edit")).toBeTruthy();
   });
 
+  it("renders the editor and its preview side by side in both mode (#Q3653)", () => {
+    const { container } = render(
+      <MarkdownEditorInner value="# Hello" onChange={() => {}} mode="both" />,
+    );
+    const both = container.querySelector('[data-slot="markdown-both"]');
+    expect(both).not.toBeNull();
+    expect(both!.querySelector(".lore-md-edit")).not.toBeNull();
+    expect(both!.querySelector(".lore-md-view")?.textContent).toContain(
+      "Hello",
+    );
+  });
+
   it("renders viewContent, not value, in view mode", () => {
     // Regression guard. The folio workspace stores `[[#F3]]` and
     // `assets/x.webp` but must DISPLAY resolved links and `/api/files/<id>`

@@ -40,6 +40,24 @@ import {
 
 test.describe.configure({ mode: "serial" });
 
+/**
+ * Put the open folio in `mode` from its toolbar (#Q3653). The mode is
+ * remembered across folios, so a test that asserts one face picks it rather
+ * than inheriting whatever the test before it left.
+ */
+const pickMode = async (
+  page: Page,
+  mode: "Edit" | "View" | "Both",
+): Promise<void> => {
+  const modes = page.getByTestId("folio-mode");
+  await expect(modes).toBeVisible({ timeout: 20_000 });
+  const value = mode.toLowerCase();
+  if ((await modes.getAttribute("data-mode")) !== value) {
+    await modes.getByRole("radio", { name: mode }).click();
+  }
+  await expect(modes).toHaveAttribute("data-mode", value);
+};
+
 test.describe("Folio workspace", () => {
   test.setTimeout(180_000);
 
@@ -496,9 +514,9 @@ test.describe("Folio workspace", () => {
    * and the `#id · N words · N revisions` line, none of which any other
    * test in this file still looks for.
    */
-  test("08c — the view/edit toggle floats and outlives the meta bar", async () => {
+  test("08c — the mode toolbar stays put and outlives the meta bar", async () => {
     await page.goto(folioUrl);
-    const toggle = page.getByTestId("markdown-mode-toggle");
+    const toggle = page.getByTestId("folio-mode");
     await expect(toggle).toBeVisible({ timeout: 15_000 });
 
     // The chip row is gone: no directory chip, no "Add a tag", no counters.
@@ -521,10 +539,27 @@ test.describe("Folio workspace", () => {
     const after = await toggle.boundingBox();
     expect(after?.y).toBeCloseTo(box?.y ?? -1, 0);
 
-    // And it still drives the mode — the one job the meta bar's copy had.
-    const before = await toggle.getAttribute("data-mode");
-    await toggle.click();
-    await expect(toggle).not.toHaveAttribute("data-mode", before ?? "");
+    // And it drives the mode: Both shows the editor and its preview side by
+    // side (#Q3653), and the choice survives a reload.
+    await toggle.getByRole("radio", { name: "Both" }).click();
+    await expect(toggle).toHaveAttribute("data-mode", "both");
+    const both = page.locator('[data-slot="markdown-both"]');
+    await expect(both.locator(".lore-md-edit")).toBeVisible();
+    await expect(both.locator(".lore-md-view")).toBeVisible();
+    await page.reload();
+    await expect(page.getByTestId("folio-mode")).toHaveAttribute(
+      "data-mode",
+      "both",
+      { timeout: 15_000 },
+    );
+    await page
+      .getByTestId("folio-mode")
+      .getByRole("radio", { name: "View" })
+      .click();
+    await expect(page.getByTestId("folio-mode")).toHaveAttribute(
+      "data-mode",
+      "view",
+    );
   });
 
   /**
@@ -549,12 +584,12 @@ test.describe("Folio workspace", () => {
    */
   test("08d — the folio body has no line-number gutter, in either mode", async () => {
     await page.goto(folioUrl);
-    const toggle = page.getByTestId("markdown-mode-toggle");
+    const toggle = page.getByTestId("folio-mode");
     await expect(toggle).toBeVisible({ timeout: 15_000 });
 
     // View mode renders through `MarkdownView`, which has no editor at all.
     if ((await toggle.getAttribute("data-mode")) !== "edit") {
-      await toggle.click();
+      await toggle.getByRole("radio", { name: "Edit" }).click();
     }
     await expect(toggle).toHaveAttribute("data-mode", "edit");
 
@@ -563,7 +598,7 @@ test.describe("Folio workspace", () => {
     await expect(page.locator(".cm-content")).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(".cm-lineNumbers")).toHaveCount(0);
 
-    await toggle.click();
+    await toggle.getByRole("radio", { name: "View" }).click();
     await expect(toggle).toHaveAttribute("data-mode", "view");
     await expect(page.locator(".cm-lineNumbers")).toHaveCount(0);
   });
@@ -584,11 +619,11 @@ test.describe("Folio workspace", () => {
    */
   test("08e — Tab indents in the editor, and Escape then Tab leaves it", async () => {
     await page.goto(folioUrl);
-    const toggle = page.getByTestId("markdown-mode-toggle");
+    const toggle = page.getByTestId("folio-mode");
     await expect(toggle).toBeVisible({ timeout: 15_000 });
 
     if ((await toggle.getAttribute("data-mode")) !== "edit") {
-      await toggle.click();
+      await toggle.getByRole("radio", { name: "Edit" }).click();
     }
     await expect(toggle).toHaveAttribute("data-mode", "edit");
 
@@ -652,7 +687,7 @@ test.describe("Folio workspace", () => {
     );
 
     await page.goto(longUrl);
-    const toggle = page.getByTestId("markdown-mode-toggle");
+    const toggle = page.getByTestId("folio-mode");
     await expect(toggle).toBeVisible({ timeout: 15_000 });
     // Polled rather than clicked once: a 400-paragraph folio is still
     // settling when the toggle first paints, and the click landed on a node
@@ -662,7 +697,10 @@ test.describe("Folio workspace", () => {
         async () => {
           const mode = await toggle.getAttribute("data-mode");
           if (mode === "edit") return mode;
-          await toggle.click({ timeout: 2_000 }).catch(() => {});
+          await toggle
+            .getByRole("radio", { name: "Edit" })
+            .click({ timeout: 2_000 })
+            .catch(() => {});
           return toggle.getAttribute("data-mode");
         },
         { timeout: 30_000 },
@@ -854,10 +892,10 @@ test.describe("Folio workspace", () => {
     // Now make the editor save. Before the fix this write carried the title
     // the draft was seeded with and undid the rename. A folio with content
     // opens in View, so the body has to be reachable first.
-    const toggle = page.getByTestId("markdown-mode-toggle");
+    const toggle = page.getByTestId("folio-mode");
     await expect(toggle).toBeVisible({ timeout: 15_000 });
     if ((await toggle.getAttribute("data-mode")) !== "edit") {
-      await toggle.click();
+      await toggle.getByRole("radio", { name: "Edit" }).click();
     }
     await expect(toggle).toHaveAttribute("data-mode", "edit");
     await expect(page.locator(".cm-content")).toBeVisible({ timeout: 15_000 });
@@ -968,7 +1006,7 @@ test.describe("Folio workspace", () => {
     // the case the report describes: the folio you are looking at.
     await row(folioTitle).click();
     await expect(page).toHaveURL(/\/folios\/\d+$/, { timeout: 15_000 });
-    await expect(page.getByTestId("markdown-mode-toggle")).toBeVisible({
+    await expect(page.getByTestId("folio-mode")).toBeVisible({
       timeout: 15_000,
     });
 
@@ -1360,6 +1398,9 @@ test.describe("Folio workspace", () => {
       `Points at [[#F${targetShortId}]] and at [[#F999999]].`,
     );
     await page.goto(hostUrl);
+    // The mode is remembered across folios (#Q3653), and an earlier test
+    // left it on Edit: pick View, which is what this asserts.
+    await pickMode(page, "View");
 
     const body = page.locator(".lore-md-view");
     await expect(body).toBeVisible({ timeout: 20_000 });
@@ -1515,6 +1556,7 @@ test.describe("Folio workspace", () => {
     // the bug it exists to catch.
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto(folioUrl);
+    await pickMode(page, "View");
 
     // The rendered body, not the pane around it: the size is set on this
     // wrapper and `MarkdownView`'s own root inherits from it, which is what
@@ -1595,6 +1637,7 @@ test.describe("Folio workspace", () => {
       ].join("\n"),
     );
     await page.goto(url);
+    await pickMode(page, "View");
 
     const ROOT = '[data-slot="folio-document"] [data-slot="markdown-view"]';
     await expect(page.locator(ROOT)).toBeVisible({ timeout: 15_000 });
