@@ -1,3 +1,4 @@
+import { CredentialSealService } from "@lore/core/api";
 import { $inject, AlephaError } from "alepha";
 import { CloudflareDeployClient } from "alepha/cli/infra-lib";
 import { $logger } from "alepha/logger";
@@ -9,7 +10,6 @@ import { artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
 import { ArtifactSchemaStore } from "./ArtifactSchemaStore.ts";
 import { ArtifactService } from "./ArtifactService.ts";
-import { CredentialSealService } from "./CredentialSealService.ts";
 import { DeployGate } from "./DeployGate.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
 import {

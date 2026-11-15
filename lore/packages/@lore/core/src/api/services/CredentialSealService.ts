@@ -78,6 +78,13 @@ export class CredentialSealService {
    */
   public static readonly REGISTRY_PURPOSE = "lore:registry-credentials:v1";
 
+  /**
+   * A project's Discord channel webhook URL (#Q3614): opened only by the
+   * outbox job that posts to it, never for a read. In core since #Q3614,
+   * with Ship's purposes beside it.
+   */
+  public static readonly DISCORD_PURPOSE = "lore:discord-webhooks:v1";
+
   public static readonly KEY_VERSION = 1;
 
   protected readonly crypto = $inject(CryptoProvider);

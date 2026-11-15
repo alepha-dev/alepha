@@ -1,3 +1,4 @@
+import { CredentialSealService } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
@@ -8,7 +9,6 @@ import {
   stackVariables,
 } from "../entities/stackVariables.ts";
 import type { StackModel } from "../schemas/stackModelSchema.ts";
-import { CredentialSealService } from "./CredentialSealService.ts";
 
 /**
  * A stack environment's variables: sealed, write-only, opened only by the

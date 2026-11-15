@@ -1,4 +1,5 @@
 import { sigilConfig } from "@alepha/lore/sigil";
+import { CredentialSealService } from "@lore/core/api";
 import { $inject } from "alepha";
 import {
   BAY_OWNED_SECRET_KEYS,
@@ -14,7 +15,6 @@ import { artifacts } from "../entities/artifacts.ts";
 import { deployments } from "../entities/deployments.ts";
 import { hosts } from "../entities/hosts.ts";
 import type { DeclaredEnvKey } from "../schemas/declaredEnvKeySchema.ts";
-import { CredentialSealService } from "./CredentialSealService.ts";
 
 /**
  * The one write path for a deployed copy's environment, and the only place

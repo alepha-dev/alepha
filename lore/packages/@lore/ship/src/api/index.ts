@@ -1,4 +1,5 @@
 import { LoreCoreApi } from "@lore/core/api";
+import { CredentialSealService } from "@lore/core/api";
 import { $module } from "alepha";
 import { AlephaRateLimit } from "alepha/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
@@ -46,7 +47,6 @@ import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BayRemovalService } from "./services/BayRemovalService.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
-import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DeployAppsDashboardMetrics } from "./services/DeployAppsDashboardMetrics.ts";
 import { DeployAttentionSources } from "./services/DeployAttentionSources.ts";
@@ -337,7 +337,6 @@ export { ArtifactService } from "./services/ArtifactService.ts";
 export { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 export { ProjectErrorRuleService } from "./services/ProjectErrorRuleService.ts";
 export { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
-export { CredentialSealService } from "./services/CredentialSealService.ts";
 export { DeployAssetCache } from "./services/DeployAssetCache.ts";
 export { DeployGate } from "./services/DeployGate.ts";
 export { DeployLimits } from "./services/DeployLimits.ts";
@@ -380,3 +379,5 @@ export { UptimePushController } from "./controllers/UptimePushController.ts";
 export { UptimePushService } from "./services/UptimePushService.ts";
 
 export { MonitorController } from "./controllers/MonitorController.ts";
+// In core since #Q3614; re-exported for the module's own callers.
+export { CredentialSealService } from "@lore/core/api";

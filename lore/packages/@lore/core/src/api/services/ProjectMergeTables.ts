@@ -28,6 +28,9 @@ import {
  *   drop is reported. For rows that only describe the project (a
  *   capability, a prompt, a day of coverage), where the target's answer is
  *   the one the merged project keeps.
+ * - `rename`: the source row keeps its data under a free name, `alerts (2)`,
+ *   and the rename is reported. For a single text key that only labels the
+ *   row, such as an automation channel's name (#Q3614).
  */
 export class ProjectMergeTables {
   protected readonly repositories = $inject(RepositoryProvider);
@@ -92,6 +95,31 @@ export class ProjectMergeTables {
           continue;
         }
         const sourceId = this.text(row[idField]);
+        if (table.onCollision === "rename" && keys.length === 1) {
+          const taken = new Set([
+            ...target.keys(),
+            ...source.map((other) => keyOf(other)),
+          ]);
+          let free = key;
+          for (let count = 2; taken.has(free); count++)
+            free = `${key.slice(0, 56)} (${count})`;
+          target.set(free, sourceId);
+          changed.push({
+            kind: table.kind,
+            id: sourceId,
+            field: keys[0],
+            from: key,
+            to: free,
+          });
+          statements.push(
+            repository.updateStatement(
+              { [idField]: { eq: row[idField] } } as never,
+              { [keys[0]]: free } as never,
+              projectMergeWrite,
+            ),
+          );
+          continue;
+        }
         if (table.onCollision === "keepTarget") {
           moved -= 1;
           changed.push({
@@ -156,5 +184,5 @@ export interface ProjectMergeTable {
    * whose rows can never collide.
    */
   keys?: string[];
-  onCollision?: "refuse" | "keepTarget";
+  onCollision?: "refuse" | "keepTarget" | "rename";
 }

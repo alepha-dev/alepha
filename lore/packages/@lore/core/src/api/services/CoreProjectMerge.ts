@@ -6,6 +6,7 @@ import {
 import { $repository, type SQLLike } from "alepha/orm";
 
 import { automationAdoptions } from "../entities/automationAdoptions.ts";
+import { automationChannels } from "../entities/automationChannels.ts";
 import { automationEvents } from "../entities/automationEvents.ts";
 import { automationReceipts } from "../entities/automationReceipts.ts";
 import { automationRuns } from "../entities/automationRuns.ts";
@@ -92,6 +93,14 @@ export class CoreProjectMerge {
       onCollision: "refuse",
     },
     { kind: "automation run", entity: automationRuns },
+    // A configured channel moves with its sealed URL; a name the target
+    // already uses gets a free one (#Q3614).
+    {
+      kind: "automation channel",
+      entity: automationChannels,
+      keys: ["name"],
+      onCollision: "rename",
+    },
   ];
 
   constructor() {
