@@ -5,6 +5,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { ProjectRankController } from "../../../../../api/controllers/ProjectRankController.ts";
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import { LoreRankBounds } from "../../../../../api/security/LoreRankBounds.ts";
+import { LoreViewerAllowlist } from "../../../../../api/security/LoreViewerAllowlist.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -69,6 +70,14 @@ const ProjectSettingsRanksPage = () => {
           return granted ? undefined : "off";
         }}
         label={(key, fallback) => (key ? tr(key) : fallback)}
+        // While the project is open, Viewer holds reads of the project's
+        // memory only: every other cell of its column is closed, and the
+        // server refuses the write anyway (#Q3644, #Q3645).
+        closedPermission={(rank, permission) =>
+          rank.key === "viewer" &&
+          project.joinPolicy === "open" &&
+          !LoreViewerAllowlist.PERMISSIONS.includes(permission)
+        }
       />
     </div>
   );
