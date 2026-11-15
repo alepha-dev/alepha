@@ -50,6 +50,10 @@ import {
 } from "../schemas/projectResourceSchema.ts";
 import { ProjectSlugService } from "../schemas/ProjectSlugService.ts";
 import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
+import {
+  type ProjectUserResource,
+  projectUserSchema,
+} from "../schemas/projectUserSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
@@ -628,10 +632,59 @@ export class ProjectController {
       params: z.object({
         id: z.integer(),
       }),
-      response: z.array(users.schema),
+      response: z.array(projectUserSchema),
     },
-    handler: ({ params }) => this.membersOf(params.id),
+    handler: async ({ params, user }) => {
+      const members = await this.membersOf(params.id);
+      const full = await this.callerHolds(params.id, "member:read", user);
+      return members.map((member) => this.projectUser(member, full));
+    },
   });
+
+  /**
+   * A member as {@link getProjectUsers} returns them: the public card, plus
+   * the email for a caller holding `member:read`.
+   *
+   * A viewer of an open project holds `project:read` and nothing about
+   * people, so the list a viewer reads is name and avatar only. `username`
+   * falls back to the email's local part, which is what `displayName` would
+   * have shown, so the card still reads as the same person.
+   */
+  protected projectUser(
+    member: { id: string } & ProjectUserResource,
+    full: boolean,
+  ): ProjectUserResource {
+    const card: ProjectUserResource = {
+      id: member.id,
+      username:
+        member.username ??
+        (full ? undefined : member.email?.split("@")[0] || undefined),
+      firstName: member.firstName,
+      lastName: member.lastName,
+      picture: member.picture,
+    };
+    return full ? { ...card, email: member.email } : card;
+  }
+
+  /**
+   * Whether the caller's rank in this project grants `permission`, for a
+   * route the floor already admitted them to.
+   *
+   * No caller (an internal read with no request user) holds nothing: the
+   * safe answer is the narrow one.
+   */
+  protected async callerHolds(
+    projectId: number,
+    permission: string,
+    user?: UserAccountToken,
+  ): Promise<boolean> {
+    if (!user) return false;
+    return this.ranks.can(
+      await this.projectSecurity.organizationIdOf(projectId),
+      permission,
+      user,
+    );
+  }
 
   /**
    * A project's members, gate already passed.
@@ -725,7 +778,10 @@ export class ProjectController {
       }),
       response: db.page(projectActivityRowSchema),
     },
-    handler: ({ params, query }) => this.activityPage(params.id, query),
+    handler: async ({ params, query, user }) =>
+      this.activityPage(params.id, query, {
+        metadata: await this.callerHolds(params.id, "member:read", user),
+      }),
   });
 
   /**
@@ -747,6 +803,17 @@ export class ProjectController {
       after?: string;
       createdAt?: string[];
     },
+    options: {
+      /**
+       * Whether rows carry their audit `metadata`. Off unless asked: the
+       * metadata of a project-layer event names people (an invitee's
+       * address, a rank moved from one member to another), so only a caller
+       * holding `member:read` gets it, and a viewer of an open project never
+       * does. The description, the kind and the actor's display name are the
+       * feed everyone reads.
+       */
+      metadata?: boolean;
+    } = {},
   ) {
     const window = this.activityWindow(query.createdAt);
     const page = await this.auditService.find({
@@ -776,7 +843,7 @@ export class ProjectController {
         resourceType: row.resourceType,
         resourceId: row.resourceId,
         description: row.description,
-        metadata: row.metadata,
+        metadata: options.metadata ? row.metadata : undefined,
         // A coalesced burst and its span (#1872). Defaulted rather than
         // passed through, because rows written before the column existed
         // read as null and every consumer would need the same guard.
