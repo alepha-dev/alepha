@@ -68,6 +68,10 @@ export interface FolioTableGridProps {
    */
   renderReference?: (code: string) => ReactNode;
   /**
+   * What a reference cell's editor offers, from the `[[#` picker.
+   */
+  referenceSuggestions?: Array<{ token: string; label: string }>;
+  /**
    * Rows are drawn this tall, so the body can be virtualised.
    */
   rowHeight?: number;
@@ -335,6 +339,7 @@ const FolioTableGrid = (props: FolioTableGridProps): ReactElement => {
         <FolioTableCellEditor
           column={column}
           initial={editing.initial}
+          referenceSuggestions={props.referenceSuggestions}
           onCommit={commit}
           onCancel={() => {
             setEditing(undefined);

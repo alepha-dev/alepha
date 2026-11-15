@@ -3,7 +3,9 @@ import { Control } from "@alepha/ui/form";
 import {
   currentProjectAtom,
   type I18n,
+  type ElementRef,
   LoreViewer,
+  useElementLinks,
   WikiLinkHoverProvider,
 } from "@lore/core/web";
 import { z } from "alepha";
@@ -53,6 +55,18 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
   const [project] = useStore(currentProjectAtom);
   const table = useFolioTable(props.folioId);
   const findRef = useRef<HTMLDivElement>(null);
+  const element = useMemo<ElementRef>(
+    () => ({
+      kind: "folio",
+      projectId: project?.id ?? 0,
+      projectSlug: project?.slug ?? "",
+      id: props.folioId,
+    }),
+    [project?.id, project?.slug, props.folioId],
+  );
+  // The `[[#` picker's entries, for a reference cell's editor: the same
+  // lookups the Markdown editor makes, so both offer the same items.
+  const links = useElementLinks(element, "");
 
   const [view, setView] = useQueryParams(
     z.object({
@@ -266,14 +280,10 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
             onInsertBelow={(row) => void addRow(row.number)}
             onDeleteRows={(chosen) => void deleteRows(chosen)}
             onMoveRow={(row, to) => void table.moveRow(row.number, to)}
+            referenceSuggestions={links.suggestions}
             renderReference={(code) => (
               <LoreViewer
-                element={{
-                  kind: "folio",
-                  projectId: project?.id ?? 0,
-                  projectSlug: project?.slug ?? "",
-                  id: props.folioId,
-                }}
+                element={element}
                 content={`[[${code}]]`}
                 className="truncate [&_p]:m-0"
               />

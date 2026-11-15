@@ -1,5 +1,5 @@
 import { I18n } from "@lore/core/web";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -206,5 +206,27 @@ describe("FolioTableGrid", () => {
     expect(screen.queryByRole("button", { name: /Row 1/ })).toBeNull();
     fireEvent.keyDown(grid, { key: "Delete" });
     expect(calls.clear).toEqual([]);
+  });
+  it("offers the [[# picker's entries in a reference cell, and writes the pick", async () => {
+    const { grid, calls } = await mount({
+      columns: [
+        { id: "r", position: 0, name: "See", type: "reference", options: {} },
+      ],
+      rows: rowsOf(1).map((row) => ({ ...row, cells: {} })),
+      referenceSuggestions: [
+        { token: "#F3", label: "Hosting decision" },
+        { token: "#Q12", label: "Move the DNS" },
+      ],
+    });
+    fireEvent.focus(grid);
+    fireEvent.keyDown(grid, { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    expect(
+      await screen.findByRole("option", { name: "#F3 Hosting decision" }),
+    ).toBeTruthy();
+    fireEvent.click(
+      await screen.findByRole("option", { name: "#Q12 Move the DNS" }),
+    );
+    await waitFor(() => expect(calls.write).toEqual([[1, "r", "#Q12"]]));
   });
 });

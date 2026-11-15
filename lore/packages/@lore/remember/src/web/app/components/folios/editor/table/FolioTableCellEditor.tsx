@@ -20,12 +20,18 @@ export interface FolioTableCellEditorProps {
    */
   onCommit: (value: string, move: "down" | "right" | "none") => void;
   onCancel: () => void;
+  /**
+   * What a reference cell offers: the same entries the Markdown editor's
+   * `[[#` picker lists (folios, quests, epics), each by its code.
+   */
+  referenceSuggestions?: Array<{ token: string; label: string }>;
 }
 
 /**
  * One cell in edit mode (#Q3516), by its column's type: a text input, a
  * number input, a date (with time when the column has it), a select of the
- * column's options, or a reference typed as its code (`#Q12`).
+ * column's options, or a reference picked from the `[[#` picker's entries
+ * (or typed as its code, `#Q12`, for one the picker's page does not hold).
  *
  * Always a `Control` over a one-field `useForm`, never a raw input: the
  * kit's fields carry its focus rings, its RTL rules and its date picker.
@@ -47,7 +53,11 @@ const FolioTableCellEditor = (
     onChange: (_key, next) => {
       latest.current = next === undefined || next === null ? "" : String(next);
       // A pick from a list is the whole edit: write it at once.
-      if (props.column.type === "select" || props.column.type === "date") {
+      if (
+        props.column.type === "select" ||
+        props.column.type === "date" ||
+        props.column.type === "reference"
+      ) {
         finish(latest.current, "none");
       }
     },
@@ -94,14 +104,10 @@ const FolioTableCellEditor = (
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
           return;
         }
-        // A popover (the date picker, the select's list) takes the focus
-        // outside this element while it is open: only text fields commit
-        // on blur.
-        if (
-          props.column.type === "text" ||
-          props.column.type === "number" ||
-          props.column.type === "reference"
-        ) {
+        // A popover (the date picker, the select's and the reference's
+        // lists) takes the focus outside this element while it is open:
+        // only text fields commit on blur.
+        if (props.column.type === "text" || props.column.type === "number") {
           finish(latest.current, "none");
         }
       }}
@@ -118,6 +124,26 @@ const FolioTableCellEditor = (
             })),
           ]}
         />
+      ) : props.column.type === "reference" ? (
+        <Control
+          {...common}
+          combobox
+          createNewEntry
+          placeholder={tr("folios.table.cell.reference-placeholder")}
+          items={[
+            { value: "", label: tr("folios.table.cell.none") },
+            ...(props.initial &&
+            !(props.referenceSuggestions ?? []).some(
+              (entry) => entry.token === props.initial,
+            )
+              ? [{ value: props.initial, label: props.initial }]
+              : []),
+            ...(props.referenceSuggestions ?? []).map((entry) => ({
+              value: entry.token,
+              label: `${entry.token} ${entry.label}`,
+            })),
+          ]}
+        />
       ) : props.column.type === "date" ? (
         <Control
           {...common}
@@ -129,11 +155,6 @@ const FolioTableCellEditor = (
       ) : (
         <Control
           {...common}
-          placeholder={
-            props.column.type === "reference"
-              ? tr("folios.table.cell.reference-placeholder")
-              : undefined
-          }
           inputProps={{
             ...common.inputProps,
             ...(props.column.type === "number"
