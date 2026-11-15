@@ -22,6 +22,7 @@ import { useState } from "react";
 import type { MonitorController } from "../../../../../api/controllers/MonitorController.ts";
 import type { UptimePushController } from "../../../../../api/controllers/UptimePushController.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
+import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { monitorOfInstance } from "../uptime/instanceMonitors.ts";
 import MonitorFormDialog from "../uptime/MonitorFormDialog.tsx";
 
@@ -42,7 +43,8 @@ const AppSettingsMonitor = () => {
   const pushApi = useClient<UptimePushController>();
   const dialog = useDialog();
   const [project] = useStore(currentProjectAtom);
-  const [instance] = useStore(currentInstanceAtom);
+  const [instance, setInstance] = useStore(currentInstanceAtom);
+  const [instances, setInstances] = useStore(currentInstancesAtom);
   const [editing, setEditing] = useState(false);
   const [token, setToken] = useState<string>();
   const enabled = Boolean(
@@ -75,15 +77,25 @@ const AppSettingsMonitor = () => {
       invalidates: [["uptime-monitors", project?.id]],
       handler: async (_context, on) => {
         if (!project || !instance) return;
+        // The copy carries its monitor's state, which the Uptime tab and its
+        // route read (#Q3677): kept in step here rather than refetched.
+        const follow = (id: string, active: boolean) => {
+          const next = { ...instance, monitor: { id, active } };
+          setInstance(next);
+          setInstances(
+            (instances ?? []).map((it) => (it.id === next.id ? next : it)),
+          );
+        };
         if (monitor) {
           await api.setMonitorActive({
             params: { monitorId: monitor.id },
             body: { active: on },
           });
+          follow(monitor.id, on);
           return;
         }
         if (on && instance.url) {
-          await api.createMonitor({
+          const created = await api.createMonitor({
             params: { projectId: project.id },
             body: {
               appInstanceId: instance.id,
@@ -92,10 +104,11 @@ const AppSettingsMonitor = () => {
               target: instance.url,
             },
           });
+          follow(created.monitor.id, true);
         }
       },
     },
-    [api, project?.id, instance, monitor],
+    [api, project?.id, instance, instances, monitor],
   );
 
   const rotate = useAction<[], void>(

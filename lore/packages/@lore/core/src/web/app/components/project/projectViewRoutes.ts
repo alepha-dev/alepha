@@ -22,6 +22,7 @@
 export const ROUTES_APP = new Set([
   "projectApp",
   "app",
+  "appUptime",
   "projectApps",
   // The bare `/apps/:app` hop. It redirects in its loader and never paints,
   // but it is a route the shell can be asked about for one tick, and a page
@@ -209,6 +210,7 @@ export const SECTION_HREF_ROUTES: Record<
   projectApp: "projectApps",
   projectAppRedirect: "projectApps",
   app: "projectApps",
+  appUptime: "projectApps",
   appAnalytics: "projectApps",
   appAnalyticsDimension: "projectApps",
   appVitals: "projectApps",
@@ -285,6 +287,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectFeedback: "project.menu.feedback",
   projectErrors: "project.menu.errors",
   projectApps: "project.menu.apps",
+  appUptime: "project.menu.apps",
   projectApp: "project.menu.apps",
   projectAppRedirect: "project.menu.apps",
   app: "project.menu.apps",

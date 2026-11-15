@@ -17,8 +17,8 @@ history and its alerts. See [Capabilities](/lore/docs/project-capabilities).
 
 The **Apps** page is the overview: its **Uptime** column shows each copy's
 uptime over the last 24 hours and a strip of its recent checks, and a hover
-tells more. While its monitor is on, an app's **Overview** tab shows it in a
-card, with a link to the monitor's page.
+tells more. While its monitor is on, an app has an **Uptime** tab, and its
+**Overview** tab shows the monitor in a card that links there.
 
 ## Turning a monitor on
 
@@ -130,8 +130,9 @@ so a recipient with an account can turn them off.
 
 ## Reading a monitor
 
-Opening a monitor from its app shows, over the **Window** you pick (24 hours,
-7 days or 30 days):
+An app's **Uptime** tab shows its monitor, over the **Window** you pick (24
+hours, 7 days or 30 days). It reads and watches; the check is changed in the
+app's settings.
 
 - **Uptime** over 24 hours, 7 days and 30 days, from hourly totals.
 - **Mean latency**, over successful checks only. A gap means no successful
@@ -147,12 +148,13 @@ estimated.
 ## Changing and deleting
 
 The app's **Settings ▸ Monitor** turns a monitor off and on, and has
-**Edit**, and **Rotate push URL** for a push monitor. A monitor's page also has
-**Delete**.
+**Edit**, and **Rotate push URL** for a push monitor. Turning it off hides the
+**Uptime** tab and the Overview card, and keeps the monitor and its history.
 
-**Delete** removes the monitor, its checks and its incidents. The hourly totals
-are kept, and an error still open stays for you to resolve. Deleting an app
-deletes its monitor.
+Deleting a monitor (`lore monitor delete`, or `monitor_delete` from an agent)
+removes it, its checks and its incidents. The hourly totals are kept, and an
+error still open stays for you to resolve. Deleting an app deletes its
+monitor.
 
 Reading monitors needs the `app:read` permission, which the default Member rank
 holds. Creating, editing, pausing and deleting them needs `app:manage`, which

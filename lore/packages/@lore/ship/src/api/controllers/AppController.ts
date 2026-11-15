@@ -658,7 +658,7 @@ export class AppController {
       ),
     ];
 
-    const [sigilRows, hostRows, deployedBuilds, stackSummaries] =
+    const [sigilRows, hostRows, deployedBuilds, stackSummaries, monitors] =
       await Promise.all([
         sigilIds.length
           ? this.sigils.findMany({ where: { id: { inArray: sigilIds } } })
@@ -668,13 +668,14 @@ export class AppController {
           : Promise.resolve([]),
         this.builds.latest(rows.map((row) => row.id)),
         this.stackSummaries(environmentIds),
+        this.monitorOwners.ofCopies(rows.map((row) => row.id)),
       ]);
 
     const bySigil = new Map(sigilRows.map((row) => [row.id, row]));
     const byHost = new Map(hostRows.map((row) => [row.id, row]));
 
-    return rows.map((row) =>
-      this.project(
+    return rows.map((row) => {
+      const resource = this.project(
         row,
         row.sigilId ? bySigil.get(row.sigilId) : undefined,
         row.hostId ? byHost.get(row.hostId) : undefined,
@@ -682,8 +683,10 @@ export class AppController {
         row.stackEnvironmentId
           ? stackSummaries.get(row.stackEnvironmentId)
           : undefined,
-      ),
-    );
+      );
+      const monitor = monitors.get(row.id);
+      return monitor ? { ...resource, monitor } : resource;
+    });
   }
 
   /**

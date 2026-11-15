@@ -104,6 +104,17 @@ export const appInstanceResourceSchema = appInstances.schema
         env: z.string(),
       })
       .optional(),
+    /**
+     * The copy's monitor (its HTTP check, else whichever it owns): what the
+     * Overview card and the Uptime tab need to know before they load it.
+     * `active` is the Monitor switch in the copy's settings (#Q3684, #Q3677).
+     */
+    monitor: z
+      .object({
+        id: z.uuid(),
+        active: z.boolean(),
+      })
+      .optional(),
   });
 
 export type AppInstanceResource = Infer<typeof appInstanceResourceSchema>;

@@ -3,6 +3,7 @@ import type { ShipCapabilityOptions } from "../../../../../api/schemas/shipCapab
 
 export type AppTabRoute =
   | "app"
+  | "appUptime"
   | "appAnalytics"
   | "appVitals"
   | "appErrors"
@@ -14,6 +15,7 @@ export type AppTabRoute =
 
 export type AppTabLabelKey =
   | "app.tab.overview"
+  | "app.tab.uptime"
   | "app.tab.analytics"
   | "app.tab.vitals"
   | "app.tab.errors"
@@ -95,6 +97,14 @@ export interface GatedAppTab {
  */
 export const APP_TABS: AppTab[] = [
   { route: "app", labelKey: "app.tab.overview" },
+  // The copy's monitor, while its Monitor switch is on (#Q3677, #Q3684).
+  // First after Overview: it is the one tab an app that is only watched has.
+  {
+    route: "appUptime",
+    labelKey: "app.tab.uptime",
+    unlockedBy: (instance) => instance.monitor?.active === true,
+    option: "uptime",
+  },
   {
     route: "appAnalytics",
     labelKey: "app.tab.analytics",

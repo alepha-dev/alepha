@@ -18,6 +18,7 @@ import { createElement } from "react";
 
 import type { AppController } from "../../api/controllers/AppController.ts";
 import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
+import type { MonitorController } from "../../api/controllers/MonitorController.ts";
 import type { ProjectHostController } from "../../api/controllers/ProjectHostController.ts";
 import type { QualityReportsController } from "../../api/controllers/QualityReportsController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
@@ -42,6 +43,7 @@ export class DeployRouter {
   reportsUrl = $inject(ReportsUrlQuery);
   reportsTabs = $inject(ReportsTabRegistry);
   appApi = $client<AppController>();
+  monitorApi = $client<MonitorController>();
   lendingApi = $client<ProjectHostController>();
   router = $inject(ReactRouter);
   /**
@@ -274,15 +276,43 @@ export class DeployRouter {
     },
   });
 
+  /**
+   * A monitor's old address, kept for every link that names it (activity,
+   * alerts, automations): it opens the owning app's Uptime tab (#Q3677).
+   */
   projectMonitor = $pageProject({
     name: "projectMonitor",
     path: "/uptime/:monitorId",
     schema: { params: z.object({ monitorId: z.uuid() }) },
-    lazy: () => import("./components/project/uptime/ProjectMonitor.tsx"),
-    loader: async ({ params }) => {
-      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship"))
+    component: RedirectPage,
+    loader: async ({ params }): Promise<void> => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project || !hasCapability(project, "ship")) {
         throw new NotFoundError("Apps are not enabled for this project");
-      return { monitorId: params.monitorId };
+      }
+      const [{ monitor }, { items }] = await Promise.all([
+        this.monitorApi.getMonitorDetail({
+          params: { monitorId: params.monitorId },
+          query: { window: "24h" },
+        }),
+        this.appApi.listApps({ params: { projectId: project.id } }),
+      ]);
+      const owner = items.find((item) => item.id === monitor.appInstanceId);
+      if (!owner) {
+        throw new NotFoundError("This monitor belongs to no app");
+      }
+      throw new Redirection({
+        redirect: this.router.path(
+          owner.monitor?.active ? "appUptime" : "appSettings",
+          {
+            params: {
+              projectSlug: project.slug,
+              app: owner.app,
+              env: owner.env,
+            },
+          },
+        ),
+      });
     },
   });
 
@@ -369,6 +399,7 @@ export class DeployRouter {
     path: "/apps/:app/:env",
     children: () => [
       this.app,
+      this.appUptime,
       this.appAnalytics,
       this.appAnalyticsDimension,
       this.appVitals,
@@ -608,6 +639,26 @@ export class DeployRouter {
     errorHandler: (error) => {
       if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+  });
+
+  /**
+   * The copy's monitor, read and watched (#Q3677): what `/uptime/:monitorId`
+   * used to be. Its switch and its settings are in the copy's Settings
+   * (#Q3684), so this tab exists only while that switch is on.
+   */
+  appUptime = $page({
+    name: "appUptime",
+    path: "/uptime",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Uptime`,
+    }),
+    lazy: () => import("./components/project/apps/AppUptime.tsx"),
+    loader: async () => {
+      const instance = this.alepha.store.get(currentInstanceAtom);
+      if (!instance?.monitor?.active) {
+        throw new NotFoundError("Monitor is off for this app");
       }
     },
   });
