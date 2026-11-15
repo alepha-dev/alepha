@@ -88,7 +88,7 @@ test.describe("Automations", () => {
             {
               kind: "notify",
               recipient: me.id,
-              channel: "inbox",
+              channels: ["inbox"],
               title: "Quest completed",
               text: "{{title}}",
               category: "automations",
@@ -284,7 +284,7 @@ test.describe("Automations", () => {
       rule: {
         select: { filters: { tag: "daily" } },
         actions: [
-          expect.objectContaining({ recipient: me.id, channel: "inbox" }),
+          expect.objectContaining({ recipient: me.id, channels: ["inbox"] }),
         ],
       },
     });
@@ -560,7 +560,7 @@ test.describe("Automations", () => {
             {
               kind: "notify",
               recipient: me.id,
-              channel: "inbox",
+              channels: ["inbox"],
               title: "Original title",
               text: "Original body",
               category: "automations",
@@ -802,7 +802,7 @@ test.describe("Automations", () => {
             {
               kind: "notify",
               recipient: me.id,
-              channel: "inbox",
+              channels: ["inbox"],
               title: "{{editor_label}}",
               text: "Done",
               category: "automations",
@@ -1163,7 +1163,7 @@ test.describe("Automations", () => {
               {
                 kind: "notify",
                 recipient: me.id,
-                channel: "inbox",
+                channels: ["inbox"],
                 title: "Done",
                 text: "{{title}}",
                 category: "automations",

@@ -22,6 +22,15 @@ export const automationNotificationVariablesSchema = z.object({
   automationId: z.uuid(),
   ruleRevision: z.integer().nonnegative(),
   actionIndex: z.integer().min(0).max(4),
-  recipientUserId: z.uuid(),
+  /**
+   * The member addressed; absent for a room, which is nobody's (#Q3613).
+   */
+  recipientUserId: z.uuid().optional(),
+  /**
+   * The channel instance the rule names (#Q3613), such as a Discord
+   * channel's id; the payload's `type` is its kind. Absent before #Q3613,
+   * when the two were one.
+   */
+  channelId: z.string().max(64).optional(),
   category: z.enum(["automations", "releases", "reminders"]),
 });

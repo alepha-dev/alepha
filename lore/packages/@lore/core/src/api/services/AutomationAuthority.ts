@@ -2,6 +2,7 @@ import { $inject } from "alepha";
 import { DbEntityNotFoundError, DbError } from "alepha/orm";
 import { ConflictError, ForbiddenError, isHttpError } from "alepha/server";
 
+import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
@@ -73,9 +74,11 @@ export class AutomationAuthority {
         );
       this.variables.assertApproved(rule, variables);
       if (input.effect) {
+        // The effect's index is a position in the expanded rule, one
+        // notify per channel (#Q3613).
         if (
-          rule.rule.actions[input.effect.index]?.kind !==
-          input.effect.action.kind
+          AutomationRuleChannels.expand(rule.rule).actions[input.effect.index]
+            ?.kind !== input.effect.action.kind
         )
           throw new ForbiddenError(
             "Effect does not match the claimed rule action",
