@@ -76,7 +76,9 @@ export class WorkAutomationPresets {
    * time, and records `reminder_sent`.
    *
    * No recipient slot, since a reminder goes to the quest's assignee, and no
-   * bell: whoever clicks is not who is reminded. A project holds at most one
+   * bell: whoever clicks is not who is reminded. Its channel is any of the
+   * project's (#Q3689): a Discord channel gets one post per due quest, and
+   * the quest's reminder state is settled the same way. A project holds at most one
    * such rule (`AutomationService`), so two clicks cannot remind twice.
    */
   protected reminders() {
@@ -100,7 +102,6 @@ export class WorkAutomationPresets {
             bindable: true,
             required: true,
             default: "email",
-            values: ["inbox", "email"],
           },
         },
       },

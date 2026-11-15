@@ -305,8 +305,9 @@ invitation, and the notice that one of their own rules was paused or broke. See
 **Quest reminders** runs hourly, follows each quest's own interval and next
 date, emails the quest's holder and writes the reminder in the quest's history.
 A project holds at most one such rule, and it is the one rule not held to 50
-rows: it works through every reminder due. Since a reminder is for the quest's
-holder, it goes by In-app or Email, never to a Discord channel.
+rows: it works through every reminder due. Its channel is any of the
+project's: In-app or Email reach the quest's holder, and a Discord channel gets
+one post per quest due.
 
 ## From the command line
 
