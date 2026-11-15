@@ -1742,18 +1742,6 @@ export default {
   "project.settings.kanban.columns.wip.none": "No limit",
   "project.settings.kanban.columns.delete": "Delete",
   "project.settings.kanban.columns.reorder": "Reorder column",
-  "project.settings.reminderRule.title": "Quest reminders",
-  "project.settings.reminderRule.description":
-    "Reminders set on a quest are sent by one automation, hourly, to the quest's assignee.",
-  "project.settings.reminderRule.label": "Reminder automation",
-  "project.settings.reminderRule.on":
-    "Running: due reminders are sent every hour.",
-  "project.settings.reminderRule.disabled":
-    "Disabled: no reminder is sent until it is enabled again.",
-  "project.settings.reminderRule.none":
-    "None yet: reminders set on quests are not sent.",
-  "project.settings.reminderRule.open": "Open the automation",
-  "project.settings.reminderRule.create": "Create the reminder automation",
   "project.settings.roadmap.title": "Roadmap",
   "project.settings.roadmap.description":
     "A read-only page listing your open releases and the epics inside them. No quests, no names, no backlog.",
@@ -2057,7 +2045,10 @@ export default {
   "quest.view.reminder.weekly": "Weekly",
   "quest.view.reminder.monthly": "Monthly",
   "quest.view.reminder.noRule":
-    "No reminder automation runs in this project, so reminders are not sent. A manager turns it on in Settings > Plan.",
+    "No reminder automation runs in this project, so reminders are not sent. Someone who may manage automations can turn it on here.",
+  "quest.view.reminder.ruleDisabled":
+    "The project's reminder automation is turned off, so reminders are not sent. Turn it on again from Automations.",
+  "quest.view.reminder.createRule": "Turn on reminders",
   "quest.view.reminder.none":
     "No reminder configured. You won't receive email nudges.",
   "quest.view.reminder.next": "Next email $1.",

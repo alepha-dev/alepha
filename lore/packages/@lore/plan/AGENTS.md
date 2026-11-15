@@ -395,8 +395,10 @@ continuation past 50 rows) and settle each quest's `reminderNextAt` and its
 (`AutomationService.assertSingleReminderRule`). The legacy sender
 (`QuestJobs.sendDueReminders`, `QuestNotifications.questReminder`) and the
 `quest-reminders` adoption policy are gone: a project without the rule sends no
-reminder, which the Plan > Features card (`ProjectSettingsReminderRule`, with its
-create button) and the quest's reminder control (`getQuestReminderRule`) say.
+reminder, which the quest's reminder control says (`getQuestReminderRule`),
+offering a **Turn on reminders** button that creates the rule from the preset
+to whoever may write automations (#Q3705). The Reminders option only shows that
+control; it creates nothing by itself.
 The live option remains plan.reminder; frozen projects.features.questReminder
 remains decodable.
 
