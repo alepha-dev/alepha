@@ -1,5 +1,6 @@
-import { I18n } from "@lore/core/web";
-import { render } from "@testing-library/react";
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -30,10 +31,29 @@ class Links extends LinkProvider {
    * Every action answers `can() === true`: the case under test is the quest,
    * not a permission.
    */
+  /**
+   * The project's reminder automation as `getQuestReminderRule` answers it,
+   * and every preset `createAutomationFromPreset` was asked for.
+   */
+  rule = { exists: false, enabled: false };
+  created: string[] = [];
+
   override client(): any {
-    const action: any = async () => ({});
-    action.can = () => true;
-    return new Proxy({} as Record<string, unknown>, { get: () => action });
+    const action = (fn: (...args: any[]) => Promise<unknown>) =>
+      Object.assign(fn, { can: () => true });
+    const actions: Record<string, unknown> = {
+      getQuestReminderRule: action(async () => this.rule),
+      createAutomationFromPreset: action(
+        async (config: { body: { key: string } }) => {
+          this.created.push(config.body.key);
+          this.rule = { exists: true, enabled: true };
+          return {};
+        },
+      ),
+    };
+    return new Proxy(actions, {
+      get: (target, prop: string) => target[prop] ?? action(async () => ({})),
+    });
   }
 
   public quest(over: Partial<QuestResource>): QuestResource {
@@ -64,7 +84,10 @@ describe("QuestViewSettings", () => {
     };
   });
 
-  const mount = async (over: Partial<QuestResource>) => {
+  const mount = async (
+    over: Partial<QuestResource>,
+    permissions: string[] = ["*"],
+  ) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -75,13 +98,19 @@ describe("QuestViewSettings", () => {
     alepha.inject(I18n);
     await alepha.start();
 
-    const quest = alepha.inject(Links).quest(over);
+    const links = alepha.inject(Links);
+    const quest = links.quest(over);
+    alepha.store.set(currentProjectAtom, {
+      ...projectFixture(),
+      permissions,
+    } as never);
 
-    return render(
+    const view = render(
       <AlephaContext.Provider value={alepha}>
         <QuestViewSettings quest={quest} onUpdate={() => {}} />
       </AlephaContext.Provider>,
     );
+    return Object.assign(view, { links });
   };
 
   it("renders nothing on a quest nobody has accepted", async ({ expect }) => {
@@ -104,5 +133,32 @@ describe("QuestViewSettings", () => {
 
     expect(view.getByText("Reminder")).toBeTruthy();
     expect(view.getByText("Weekly")).toBeTruthy();
+  });
+
+  it("turns on the project's reminder automation from the quest when none exists (#Q3705)", async ({
+    expect,
+  }) => {
+    const view = await mount({ acceptedAt: "2026-09-01T00:00:00.000Z" });
+
+    fireEvent.click(await view.findByTestId("quest-reminder-create-rule"));
+
+    await waitFor(() =>
+      expect(view.links.created).toEqual(["quest-reminders"]),
+    );
+    await waitFor(() =>
+      expect(view.queryByTestId("quest-reminder-create-rule")).toBeNull(),
+    );
+    expect(view.queryByTestId("quest-reminder-no-rule")).toBeNull();
+  });
+
+  it("only says reminders are off to a member who may not write automations", async ({
+    expect,
+  }) => {
+    const view = await mount({ acceptedAt: "2026-09-01T00:00:00.000Z" }, [
+      "quest:update",
+    ]);
+
+    expect(await view.findByTestId("quest-reminder-no-rule")).toBeTruthy();
+    expect(view.queryByTestId("quest-reminder-create-rule")).toBeNull();
   });
 });

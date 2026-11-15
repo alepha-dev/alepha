@@ -63,7 +63,10 @@ With **Timer**, it records how long it actually took, from a timer you start
 and pause on the quest. With **Reminders**, whoever holds the quest can ask for
 a daily, weekly or monthly nudge, sent by the project's **Quest reminders**
 automation (see [Automations](/lore/docs/plan-automations)). All three are switched in
-**Settings ▸ Plan ▸ Features**.
+**Settings ▸ Plan ▸ Features**. The Reminders switch only shows the control on
+each quest: while the project has no reminder automation, the quest's
+**Reminder** panel offers **Turn on reminders**, which creates it, to whoever may
+manage automations.
 
 ### Areas
 

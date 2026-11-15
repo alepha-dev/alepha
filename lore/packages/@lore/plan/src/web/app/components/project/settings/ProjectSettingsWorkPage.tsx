@@ -1,7 +1,6 @@
 import { Card, CardContent, cn } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
 import {
-  capabilityOption,
   currentProjectAtom,
   ProjectShellRegistry,
   hasCapability,
@@ -9,7 +8,6 @@ import {
 } from "@lore/core/web";
 import { useInject, useStore } from "alepha/react";
 
-import ProjectSettingsReminderRule from "./ProjectSettingsReminderRule.tsx";
 import ProjectSettingsRoadmapSection from "./ProjectSettingsRoadmapSection.tsx";
 import ProjectSettingsTagColors from "./ProjectSettingsTagColors.tsx";
 
@@ -33,12 +31,6 @@ const ProjectSettingsWorkPage = () => {
         master={false}
         options={shell.settingsOptions("plan")}
       />
-
-      {/* Reminders are sent by an automation (#Q3626): the option shows the
-          control on each quest, and this offers the rule that delivers. */}
-      {capabilityOption(project, "plan", "reminder") && (
-        <ProjectSettingsReminderRule />
-      )}
 
       {/* Tag colours belong to quests, not to the board: they render on the
           list too. Gated on the capability, not on `board`. */}
