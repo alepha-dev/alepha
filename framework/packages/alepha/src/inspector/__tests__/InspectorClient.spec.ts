@@ -92,12 +92,6 @@ describe("InspectorClient", () => {
     expect(meta.system.mode).toBe("development");
     expect(meta.atoms.some((a) => a.name === themeAtom.key)).toBe(true);
 
-    const saved = await conn.call("updateAtom", {
-      body: { name: themeAtom.key, value: { theme: "dark" } },
-    });
-    expect(saved).toEqual({ success: true });
-    expect(app.store.get(themeAtom)).toEqual({ theme: "dark" });
-
     // A path parameter, encoded; no ORM here, so an empty page.
     const rows = await conn.call("dbList", { params: { entity: "a b" } });
     expect(rows).toEqual({ content: [], page: { totalElements: 0 } });
@@ -110,8 +104,10 @@ describe("InspectorClient", () => {
     const [run] = await client.discover();
 
     await expect(
-      client.connect(run).call("updateAtom", { body: { value: 1 } as any }),
-    ).rejects.toThrow(/POST \/atoms answered 400/);
+      client
+        .connect(run)
+        .call("actionCall", { params: { name: "any" }, body: 1 as any }),
+    ).rejects.toThrow(/POST \/actions\/any\/call answered 400/);
   });
 
   it("tails new log entries in order, and stops on abort", async ({
@@ -223,7 +219,7 @@ describe("InspectorClient", () => {
     const [run] = await client.discover();
     expect(() => client.connect(run)).toThrow(
       new RegExp(
-        `protocol ${INSPECTOR_PROTOCOL + 1}, this client speaks ${INSPECTOR_PROTOCOL}.*npx @alepha/devtools@`,
+        `protocol ${INSPECTOR_PROTOCOL + 1}, this client speaks ${INSPECTOR_PROTOCOL}.*npx alepha@`,
       ),
     );
   });

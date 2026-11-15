@@ -162,7 +162,7 @@ export abstract class DatabaseProvider {
   }
 
   /**
-   * Log a database query with structured metadata for devtools inspection.
+   * Log a database query with structured metadata for the inspector.
    */
   protected logQuery(
     sql: string,

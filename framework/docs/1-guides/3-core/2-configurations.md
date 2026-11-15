@@ -238,9 +238,9 @@ Beyond `name` / `schema` / `default`, an atom takes a few options that decide wh
 
 | Option        | Effect                                                                                                                                                                                                    |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description` | Shown in the devtools and generated docs                                                                                                                                                                  |
+| `description` | Shown by the inspector and in generated docs                                                                                                                                                              |
 | `persist`     | `"cookie"`, `"localStorage"` or `"sessionStorage"`: the browser keeps the value across reloads                                                                                                            |
-| `serverOnly`  | The value never goes into the SSR payload, and the devtools show the atom without its value                                                                                                               |
+| `serverOnly`  | The value never goes into the SSR payload, and the inspector shows the atom without its value                                                                                                             |
 | `personal`    | The value belongs to the visitor: it goes into a per-request `<script id="__ssr_private">`, never the shared payload, so a cached page cannot hand it to the next visitor. Default for cookie-bound atoms |
 | `serialize`   | `(value) => value`: shapes the copy written into the HTML, to drop fields the browser has no business seeing. The server keeps the full value                                                             |
 
@@ -252,7 +252,7 @@ Four things to know before reaching for them:
 - Cookie persistence is unsigned and unencrypted, and anything client-persisted is
   attacker-writable. Never persist roles, permissions, or entitlements in an atom; treat a
   persisted value as user input.
-- `serverOnly` only covers the SSR payload and the devtools: an `$action` that returns the
+- `serverOnly` only covers the SSR payload and the inspector: an `$action` that returns the
   value still returns it.
 
 ### Reading and writing atoms
@@ -321,6 +321,6 @@ alepha.events.on("state:mutated", ({ key, value, prevValue }) => {
 ```
 
 > Atoms are not only about configuration.
-> They power SSR hydration, React integration, and devtools.
+> They power SSR hydration, React integration, and the inspector.
 
 For a value derived from one or more atoms, `$computed({ name, deps, get })` declares a read-only value recomputed on every read (`alepha.store.get(computed)`), never stored or hydrated. See [State Management](/docs/guides-frontend-state-management).

@@ -12,7 +12,7 @@ import { FileSystemProvider } from "alepha/system";
 import { DEV_LOG_RESTART_TYPE } from "../schemas/DevLogMarker.ts";
 
 /**
- * The devtools log buffer, and the part of it that outlives the process.
+ * The inspector's log buffer, and the part of it that outlives the process.
  *
  * Logs used to live only in `MemoryDestinationProvider`, which made every dev
  * restart throw them away. That is backwards: the restart is usually caused by
@@ -123,7 +123,7 @@ export class DevLogStoreProvider {
   });
 
   /**
-   * Capture all logs into memory so the devtools UI can display them.
+   * Capture all logs into memory so the inspector can serve them.
    *
    * In dev mode `LogDestinationProvider` is bound to
    * `ConsoleDestinationProvider`, so `MemoryDestinationProvider` would

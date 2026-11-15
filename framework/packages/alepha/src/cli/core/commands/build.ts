@@ -28,7 +28,7 @@ export class BuildCommand {
       inspect: z
         .boolean()
         .describe(
-          "Bundle alepha/inspector into the server so devtools can inspect this production build. It stays off until the process runs with ALEPHA_INSPECT=1; a build without the flag carries none of it. Not on workerd.",
+          "Bundle alepha/inspector into the server so `alepha mcp` can inspect this production build. It stays off until the process runs with ALEPHA_INSPECT=1; a build without the flag carries none of it. Not on workerd.",
         )
         .optional(),
       prebuilt: z

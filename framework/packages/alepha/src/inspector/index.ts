@@ -1,6 +1,5 @@
 import { $module } from "alepha";
 
-import { DevAtomLogProvider } from "./providers/DevAtomLogProvider.ts";
 import { DevLogStoreProvider } from "./providers/DevLogStoreProvider.ts";
 import { DevToolsMetadataProvider } from "./providers/DevToolsMetadataProvider.ts";
 import { InspectorRoutes } from "./providers/InspectorRoutes.ts";
@@ -12,7 +11,6 @@ import { InspectorRegistry } from "./services/InspectorRegistry.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./index.shared.ts";
-export * from "./providers/DevAtomLogProvider.ts";
 export * from "./providers/DevLogStoreProvider.ts";
 export * from "./providers/DevToolsMetadataProvider.ts";
 export * from "./providers/InspectorRoutes.ts";
@@ -33,7 +31,8 @@ export * from "./services/InspectorRegistry.ts";
  * - Application metadata: actions, jobs, topics, storages, realms, roles,
  *   caches, pages, providers, modules, entities, env, atoms
  * - A log buffer that survives a restart, read with a cursor
- * - Database rows, job executions, atom writes, the local email and SMS outbox
+ * - Database rows, job executions and triggers, action calls, the local email
+ *   and SMS outbox
  * - One route table, independent of `$route`, for every transport
  * - A run registry: each process announces itself in
  *   `~/.alepha/run/<runId>.json`, and `InspectorRegistry.discover()` lists them
@@ -41,7 +40,7 @@ export * from "./services/InspectorRegistry.ts";
  *   the app's own port
  *
  * No application imports it. `alepha dev` injects it into the app it serves,
- * and the devtools app (`npx @alepha/devtools`) is its first consumer.
+ * and `alepha mcp` is its consumer: the agent's view of every running app.
  *
  * SECURITY: the inspector reads and MUTATES application state and serves the
  * environment, secrets included. It registers in development only: never in
@@ -63,7 +62,7 @@ export const AlephaInspector = $module({
     const explicit = ["1", "true"].includes(asked);
 
     // An explicit no wins everywhere, development included: a tool that is
-    // itself an Alepha app under `alepha dev` (the devtools server) must not
+    // itself an Alepha app under `alepha dev` must not
     // list itself among the apps it inspects.
     if (["0", "false"].includes(asked)) {
       return;
@@ -77,7 +76,6 @@ export const AlephaInspector = $module({
     }
 
     alepha.with(DevLogStoreProvider);
-    alepha.with(DevAtomLogProvider);
     alepha.with(DevToolsMetadataProvider);
     alepha.with(InspectorRoutes);
     alepha.with(InspectorDispatcher);

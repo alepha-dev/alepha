@@ -896,7 +896,7 @@ export class DocsCommand {
         ? "Alepha"
         : `@alepha/${packageName.replace("@alepha/", "")}`;
     // A single-module package passes its own name as the module name - don't
-    // render "# @alepha/devtools - @alepha/devtools".
+    // render "# @alepha/mqtt - @alepha/mqtt".
     const title =
       moduleName === packageName || formatted === prefix
         ? prefix
@@ -971,7 +971,7 @@ export class DocsCommand {
 
   /**
    * A package that is run with `npx`, never installed into an app: one with
-   * a `bin` (`@alepha/devtools`). `create-alepha` has its own wording, and
+   * a `bin`, none today. `create-alepha` has its own wording, and
    * `alepha` ships a CLI beside the library every app imports.
    */
   isToolPackage(pkgJson: any): boolean {

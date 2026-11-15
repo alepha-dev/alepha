@@ -1,11 +1,10 @@
 # Inspector
 
 Every app `alepha dev` runs can be inspected from outside: its actions, jobs,
-entities, atoms, environment and logs, read and edited by a separate tool. The
-devtools app (`npx @alepha/devtools`) is one such tool. `alepha/inspector` is
-the protocol underneath it, and nothing stops you from writing another: a
-script, a TUI. [`alepha mcp`](/docs/guides-core-dev-mcp) is the MCP server for
-a coding agent, built on it.
+entities, atoms, environment and logs, read and driven by a separate tool.
+[`alepha mcp`](/docs/guides-core-dev-mcp), the MCP server for a coding agent,
+is that tool. `alepha/inspector` is the protocol underneath it, and nothing
+stops you from writing another: a script, a TUI.
 
 > ⚠️ **No stability promise before alepha 1.0.** The protocol carries a version
 > number and a client refuses a run that speaks another one, but routes and
@@ -122,10 +121,6 @@ const inspect = async () => {
   const meta = await app.call("metadata");
   console.log(meta.system.alephaVersion, meta.actions.length);
 
-  await app.call("updateAtom", {
-    body: { name: "app.settings", value: { theme: "dark" } },
-  });
-
   const page = await app.call("dbList", {
     params: { entity: "users" },
     query: { size: "10" },
@@ -135,13 +130,13 @@ const inspect = async () => {
 ```
 
 `connect()` throws when the run speaks another protocol version, naming both
-and the devtools release that matches the run. A dead run refuses every call
+and the alepha release that matches the run. A dead run refuses every call
 except its logs.
 
 ## Following the logs
 
 `tail()` is an async iterator over the run's log, oldest first. It polls the
-same cursor the devtools UI uses, drains a burst page by page before waiting
+same cursor `alepha mcp` uses, drains a burst page by page before waiting
 again, and returns when the run goes away. Here is a whole tool: every error of
 every running app, as it happens.
 
@@ -177,8 +172,8 @@ On a dead run, `logs()` and `tail()` read the file the process left behind.
 
 ## Security
 
-The inspector reads and mutates application state: database rows, atoms, job
-triggers, and the environment, secrets included, in cleartext. That is why it
+The inspector reads and mutates application state: database rows, job
+triggers and retries, action calls, and the environment, secrets included, in cleartext. That is why it
 lives on a `0600` socket in a `0700` directory rather than on a port, and why
 a production build carries it only with `--inspect` and runs it only with
 `ALEPHA_INSPECT=1`.

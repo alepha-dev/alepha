@@ -222,7 +222,7 @@ interface LogEntry {
 ## Redaction
 
 Credential-bearing values never reach a formatter, a destination, the breadcrumb
-buffer or the devtools. Before an entry is built, every key of `data`, at any
+buffer or the inspector. Before an entry is built, every key of `data`, at any
 depth, is compared with a short list, case-insensitively, ignoring `-` and `_`,
 as a substring: `authorization`, `cookie`, `password`, `passwd`, `secret`,
 `token`, `apikey`, `accesskey`, `privatekey`, `credential` and `sessionid`. A

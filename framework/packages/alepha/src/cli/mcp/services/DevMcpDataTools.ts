@@ -9,8 +9,7 @@ import { DevMcpSession } from "./DevMcpSession.ts";
  *
  * Rows go into a model's context, so every column the entity marks
  * `secret: true` comes back as `"[redacted]"`, with no opt-out, and cannot
- * be filtered on. No tool here reaches the inspector's row writes
- * (`dbCreate`, `dbUpdate`, `dbDelete`).
+ * be filtered on. The inspector has no route that writes a row.
  */
 export class DevMcpDataTools {
   protected readonly session = $inject(DevMcpSession);

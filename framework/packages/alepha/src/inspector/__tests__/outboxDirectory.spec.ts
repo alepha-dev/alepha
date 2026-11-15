@@ -7,7 +7,7 @@ import { describe, it } from "vitest";
 import { AlephaInspector } from "../index.ts";
 import { InspectorDispatcher } from "../services/InspectorDispatcher.ts";
 
-describe("the devtools outbox", () => {
+describe("the inspector outbox", () => {
   const boot = async (dirs: { emails: string; sms: string }) => {
     const alepha = Alepha.create({ env: { ALEPHA_INSPECT: "1" } })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })

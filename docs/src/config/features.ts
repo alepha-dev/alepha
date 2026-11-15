@@ -8,7 +8,6 @@ import {
   IconClock,
   IconCloud,
   IconDatabase,
-  IconDeviceDesktop,
   IconFileText,
   IconHeartRateMonitor,
   IconKey,
@@ -175,13 +174,6 @@ export const coreFeatures = [
     module: "alepha/server",
     description: "Health check endpoints.",
     slug: "reference-providers-serverhealthprovider",
-  },
-  {
-    icon: IconDeviceDesktop,
-    title: "DevTools",
-    module: "@alepha/devtools",
-    description: "Every running app, inspected.",
-    slug: "packages-alepha-devtools",
   },
   {
     icon: IconCloud,

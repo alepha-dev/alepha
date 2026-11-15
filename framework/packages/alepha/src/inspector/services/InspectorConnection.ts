@@ -131,7 +131,7 @@ export class InspectorConnection {
   /**
    * Follow the run's logs, oldest first, as an async iterator.
    *
-   * Cursor polling on the same `?after=<seq>` endpoint the devtools UI uses:
+   * Cursor polling on the same `?after=<seq>` endpoint every reader uses:
    * a burst is drained page by page before waiting again, so nothing is
    * skipped. The iterator returns when the signal aborts or the run goes
    * away; a dead run yields its log file once and returns.

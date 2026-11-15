@@ -9,7 +9,7 @@ import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { $atom, Alepha, z } from "alepha";
+import { Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { afterEach, describe, it } from "vitest";
 
@@ -48,12 +48,6 @@ const call = (
     }
     req.end();
   });
-
-const settingsAtom = $atom({
-  name: "test.inspector.socket.settings",
-  schema: z.object({ theme: z.string() }),
-  default: { theme: "light" },
-});
 
 class Win32SocketServer extends InspectorSocketServer {
   protected override readonly platform = "win32" as const;
@@ -107,19 +101,20 @@ describe("InspectorSocketServer", () => {
   }) => {
     const alepha = create(runDir());
     await alepha.start();
-    alepha.store.get(settingsAtom);
     const path = alepha.inject(InspectorSocketServer).path!;
 
     expect((await call(path, "GET", "/nope")).status).toBe(404);
-    expect((await call(path, "POST", "/atoms", { value: 1 })).status).toBe(400);
-    expect((await call(path, "POST", "/atoms", "{not json")).status).toBe(400);
+    expect((await call(path, "POST", "/actions/any/call", 1)).status).toBe(400);
+    expect(
+      (await call(path, "POST", "/actions/any/call", "{not json")).status,
+    ).toBe(400);
 
-    const saved = await call(path, "POST", "/atoms", {
-      name: settingsAtom.key,
-      value: { theme: "dark" },
+    // No jobs module here: the route answers, with what it could not do.
+    const trigger = await call(path, "POST", "/jobs/any/trigger", {});
+    expect(trigger).toEqual({
+      status: 200,
+      body: { error: "Jobs module not loaded" },
     });
-    expect(saved).toEqual({ status: 200, body: { success: true } });
-    expect(alepha.store.get(settingsAtom)).toEqual({ theme: "dark" });
 
     await alepha.stop();
   });

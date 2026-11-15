@@ -38,7 +38,7 @@ class MediaService {
 | `maxSize`       | `number`                | `10`             | Maximum size in **megabytes**; larger throws `FileTooLargeError` (413)  |
 | `ttl`           | `DurationLike`          | none             | Default retention; files are purged after it elapses                    |
 | `clientUploads` | `boolean`               | `false`          | Let a client name this storage in `POST /api/files?bucket=` (see below) |
-| `description`   | `string`                | -                | Shown in devtools and the admin UI                                      |
+| `description`   | `string`                | -                | Shown by the inspector and the admin UI                                 |
 | `provider`      | `Service` or `"memory"` | injected default | Override the backend for this storage                                   |
 
 `mimeTypes` is checked against the client-supplied type: a usability guard, not a security control.

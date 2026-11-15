@@ -752,7 +752,7 @@ cut back in chunks, however far over it is; if one tick cannot finish, it logs
 what is left and the next tick continues.
 
 The effective rule of every job, defaults filled in, is in the admin's job list
-and in devtools, with where it came from.
+and in [`alepha mcp`](/docs/guides-core-dev-mcp)'s `jobs_list`, with where it came from.
 
 ### A rename loses the history
 

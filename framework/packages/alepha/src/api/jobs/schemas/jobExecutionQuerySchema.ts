@@ -39,7 +39,7 @@ export const jobExecutionQuerySchema = pageQuerySchema.extend({
   trigger: z
     .enum(["scheduled", "manual", "code"])
     .describe(
-      "What started the run: 'scheduled' is a cron tick, 'manual' an admin trigger or retry, 'code' a push from code or devtools.",
+      "What started the run: 'scheduled' is a cron tick, 'manual' an admin trigger or retry, 'code' a push from code or the inspector.",
     )
     .optional(),
   from: z.datetime().describe("Started at or after (inclusive).").optional(),

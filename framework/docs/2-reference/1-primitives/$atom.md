@@ -28,7 +28,7 @@ Features:
 - Persistence adapters: cookie (SSR-safe), localStorage, sessionStorage
 - `serverOnly` flag to keep an atom out of the hydration payload
 - reset / watch helpers on the state manager
-- Documentation generation & devtools integration (mutation log)
+- Documentation generation and inspector metadata
 
 Common use cases:
 

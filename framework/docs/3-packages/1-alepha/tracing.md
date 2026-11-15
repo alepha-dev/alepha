@@ -21,7 +21,7 @@ Spans around units of work, nested through the async context.
 - W3C `traceparent` parse and format, with the sampled flag
 - Sampling decided once at the root, from `TRACING_SAMPLE_RATIO`
 - Log entries carry `traceId` and `spanId` while a span is active
-- Sinks: an in-memory ring of recent traces for devtools and specs, and
+- Sinks: an in-memory ring of recent traces for specs, and
   an OTLP/HTTP JSON exporter on Node and Bun (`OTEL_EXPORTER_OTLP_ENDPOINT`)
 
 With no sink registered, nothing is recorded: `span()` calls its callback
@@ -31,7 +31,7 @@ directly.
 
 ### Providers
 
-- [`MemoryTraceProvider`](/docs/reference-providers-memorytraceprovider) - Keeps finished spans in memory, grouped by trace, for devtools and specs.
+- [`MemoryTraceProvider`](/docs/reference-providers-memorytraceprovider) - Keeps finished spans in memory, grouped by trace, for specs.
 - [`OtlpTraceExporter`](/docs/reference-providers-otlptraceexporter) - Posts finished spans to an OTLP/HTTP receiver as JSON (`/v1/traces`).
 
 ### Environment Variables

@@ -8,7 +8,7 @@ import { MemoryTraceProvider } from "alepha/tracing";
 
 ## Overview
 
-Keeps finished spans in memory, grouped by trace, for devtools and specs.
+Keeps finished spans in memory, grouped by trace, for specs.
 
 A bounded ring: the last `maxTraces` traces (200), each capped at
 `maxSpansPerTrace` spans (1000), the oldest trace dropped first.

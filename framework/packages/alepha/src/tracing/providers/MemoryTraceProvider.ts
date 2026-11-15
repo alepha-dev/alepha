@@ -24,7 +24,7 @@ export interface TraceSummary {
 }
 
 /**
- * Keeps finished spans in memory, grouped by trace, for devtools and specs.
+ * Keeps finished spans in memory, grouped by trace, for specs.
  *
  * A bounded ring: the last {@link maxTraces} traces (200), each capped at
  * {@link maxSpansPerTrace} spans (1000), the oldest trace dropped first.
