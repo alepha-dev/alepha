@@ -324,6 +324,49 @@ describe("AppController", () => {
     expect(updated.url).toBe("https://acme.example");
   });
 
+  it("takes an optional address at creation, validated as updateApp's is (#Q3683)", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const params = { projectId: project.id };
+
+    const pinned = await ctx.controller.createApp(
+      {
+        params,
+        body: { app: "acme", env: "production", url: "https://acme.example" },
+      },
+      { user },
+    );
+    expect(pinned.url).toBe("https://acme.example");
+
+    // The same check Settings' Address gets.
+    await expect(
+      ctx.controller.createApp(
+        {
+          params,
+          body: { app: "acme", env: "staging", url: "ftp://acme.example" },
+        },
+        { user },
+      ),
+    ).rejects.toThrow("An app URL must be http or https");
+
+    // Without one the copy has none, and Settings can still set it.
+    const bare = await ctx.controller.createApp(
+      { params, body: { app: "acme", env: "staging" } },
+      { user },
+    );
+    expect(bare.url).toBeUndefined();
+    const later = await ctx.controller.updateApp(
+      {
+        params: { projectId: project.id, app: "acme", env: "staging" },
+        body: { url: "https://staging.acme.example" },
+      },
+      { user },
+    );
+    expect(later.url).toBe("https://staging.acme.example");
+  });
+
   it("refuses a host the project was never lent", async ({ expect }) => {
     // Validated against `host_projects` and never against `hosts`: the
     // whole point of the lending join.

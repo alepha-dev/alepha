@@ -1973,6 +1973,9 @@ export default {
   "apps.create.env": "Environnement",
   "apps.create.envDescription":
     "Quelle copie : production, staging, east-production. Texte libre, rien ne l’interprète.",
+  "apps.create.url": "Adresse",
+  "apps.create.urlDescription":
+    "Facultative. Là où cette copie répond, par exemple https://acme.example ; les réglages peuvent la définir plus tard.",
   "apps.create.withSigil": "Créer aussi un sigil",
   "apps.create.withSigilDescription":
     "Génère la clé avec laquelle cette copie remonte ses données, affichée une seule fois. Vous pourrez toujours en ajouter un plus tard depuis son onglet Réglages.",

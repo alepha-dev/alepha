@@ -1987,6 +1987,9 @@ export default {
   "apps.create.env": "Environment",
   "apps.create.envDescription":
     "Which copy: production, staging, east-production. Free text, and nothing parses it.",
+  "apps.create.url": "Address",
+  "apps.create.urlDescription":
+    "Optional. Where this copy answers, e.g. https://acme.example; Settings can set it later.",
   "apps.create.withSigil": "Create a sigil too",
   "apps.create.withSigilDescription":
     "Mints the key this copy reports with, shown once. You can always add one later from its Settings tab.",
