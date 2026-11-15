@@ -1,12 +1,20 @@
+import { DialogProvider } from "@alepha/ui";
 import { I18n } from "@lore/core/web";
 import { render, cleanup } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
+import { LinkProvider } from "alepha/server/links";
 import { afterEach, describe, it } from "vitest";
 
 import { monitorListItemSchema } from "../src/api/schemas/monitorListItemSchema.ts";
 import MonitorDetailBody from "../src/web/app/components/project/uptime/MonitorDetailBody.tsx";
+
+/**
+ * The detail body mounts the monitor's subscription bell (#Q3611), which asks
+ * for a client; no project is set, so it draws nothing and calls nothing.
+ */
+class NoLinks extends LinkProvider {}
 
 describe("Monitor detail body", () => {
   afterEach(cleanup);
@@ -14,6 +22,7 @@ describe("Monitor detail body", () => {
     expect,
   }) => {
     const alepha = Alepha.create()
+      .with({ provide: LinkProvider, use: NoLinks })
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(I18n);
@@ -75,7 +84,9 @@ describe("Monitor detail body", () => {
       };
       const body = render(
         <AlephaContext.Provider value={alepha}>
-          <MonitorDetailBody data={detail} />
+          <DialogProvider>
+            <MonitorDetailBody data={detail} />
+          </DialogProvider>
         </AlephaContext.Provider>,
       );
       expect(body.getAllByText("75%")).toHaveLength(3);
@@ -86,7 +97,9 @@ describe("Monitor detail body", () => {
       expect(body.getByText("Estimated from sampled history.")).toBeTruthy();
       body.rerender(
         <AlephaContext.Provider value={alepha}>
-          <MonitorDetailBody data={{ ...detail, estimated: false }} />
+          <DialogProvider>
+            <MonitorDetailBody data={{ ...detail, estimated: false }} />
+          </DialogProvider>
         </AlephaContext.Provider>,
       );
       expect(body.queryByText("Estimated from sampled history.")).toBeNull();
