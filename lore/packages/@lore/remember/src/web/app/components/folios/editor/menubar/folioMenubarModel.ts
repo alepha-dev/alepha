@@ -16,6 +16,7 @@ export type FolioActionId =
   | "folio.addToDashboard"
   | "folio.encrypt"
   | "folio.recentlyDeleted"
+  | "folio.editSummary"
   | "folio.delete"
   | "edit.bold"
   | "edit.italic"
@@ -165,6 +166,11 @@ export const FOLIO_MENUS: FolioMenu[] = [
         availableWhenLocked: true,
       },
       sep,
+      // The summary agents read (#Q3704), in every project.
+      {
+        id: "folio.editSummary",
+        labelKey: "folios.editor.action.edit-summary",
+      },
       { id: "folio.export", labelKey: "folios.editor.action.export" },
       // A table's own (#E144, #Q3517): rows from a CSV whose header names
       // its columns.
@@ -496,6 +502,7 @@ const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
  */
 const NEEDS_WRITE = new Set<FolioActionId>([
   "folio.addToDashboard",
+  "folio.editSummary",
   "folio.new",
   "folio.newDirectory",
   "folio.save",

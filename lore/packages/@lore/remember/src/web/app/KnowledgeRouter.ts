@@ -1,7 +1,6 @@
 import { reportsUrlSchema } from "@lore/core/schemas";
 import {
   $pageProject,
-  $pageProjectSettings,
   CoreRouter,
   currentProjectAtom,
   hasCapability,
@@ -150,16 +149,6 @@ export class KnowledgeRouter {
     onLeave: () => {
       this.alepha.store.set(currentFolioAttachmentsAtom, []);
     },
-  });
-
-  projectSettingsKnowledge = $pageProjectSettings({
-    name: "projectSettingsKnowledge",
-    path: "/knowledge",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Folios`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsKnowledgePage.tsx"),
   });
 
   projectFoliosNew = $page({

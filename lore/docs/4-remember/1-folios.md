@@ -55,9 +55,8 @@ A few habits keep folios useful:
   with the kind of note it is ("Decision: ...", "Runbook: ..."). It is the line
   an agent reads to decide whether to open the folio at all.
 
-The **Summary for agents** field appears on a folio when the **Summaries for
-agents** option is on, in **Settings ▸ Remember ▸ Features**. Agents read and
-write the summary either way.
+Read and write a folio's summary from **Folio ▸ Edit summary…**. Agents read
+and write the same summary.
 
 ## Directories
 

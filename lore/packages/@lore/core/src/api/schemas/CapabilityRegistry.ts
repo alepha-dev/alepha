@@ -350,16 +350,8 @@ export class CapabilityRegistry {
       labelKey: "project.capability.remember.label",
       descriptionKey: "project.capability.remember.description",
       preselectedCapability: true,
-      options: [
-        {
-          key: "agentSummary",
-          labelKey: "project.capability.remember.option.agentSummary.label",
-          descriptionKey:
-            "project.capability.remember.option.agentSummary.description",
-          wizard: false,
-          preselected: false,
-        },
-      ],
+      // None since #Q3704: the summary is edited from the Folio menu.
+      options: [],
       mcpTools: [
         "folio_list",
         "folio_search",

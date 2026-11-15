@@ -1163,10 +1163,6 @@ export default {
   "project.capability.remember.label": "Remember",
   "project.capability.remember.description":
     "Wiki linked folios, files, revisions.",
-  "project.capability.remember.option.agentSummary.label":
-    "Summaries for agents",
-  "project.capability.remember.option.agentSummary.description":
-    "Show the summary field on a folio. It is written and read over MCP either way.",
   "project.capability.ship.label": "Ship",
   "project.capability.ship.description":
     "Apps and their deploys, analytics, errors, vitals.",
@@ -3588,6 +3584,11 @@ export default {
   "dashboard.folio.search": "Find a folio",
   "dashboard.folio.none": "No folio matches.",
   "folios.editor.action.add-to-dashboard": "Add to dashboard…",
+  "folios.editor.action.edit-summary": "Edit summary…",
+  "folios.summary.title": "Summary for agents",
+  "folios.summary.description":
+    "One or two sentences on what this folio is for: the line an agent reads to decide whether to open it.",
+  "folios.summary.save": "Save summary",
   "folios.editor.action.recently-deleted": "Recently deleted…",
   "folios.deleted.title": "Recently deleted",
   "folios.deleted.description":

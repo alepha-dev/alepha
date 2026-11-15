@@ -1,6 +1,5 @@
 import type { EditorView } from "@codemirror/view";
 import {
-  capabilityOption,
   currentProjectAtom,
   type I18n,
   type ElementRef,
@@ -23,7 +22,7 @@ import type { UseFolioActionsResult } from "../useFolioActions.ts";
 import type { FolioDraft } from "../useFolioDraft.ts";
 import FolioLockedPanel from "./FolioLockedPanel.tsx";
 import FolioMoveDialog from "./FolioMoveDialog.tsx";
-import FolioSummaryField from "./FolioSummaryField.tsx";
+import FolioSummaryDialog from "./FolioSummaryDialog.tsx";
 
 /**
  * The grid, a lazy chunk (#E144): a text folio never loads it.
@@ -174,12 +173,6 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
     [attachments],
   );
 
-  // Off unless the project says otherwise: an absent option reads as false,
-  // which is the read rule of the whole capability model. Off is also the
-  // right default here - the summary is written for `project_context`, so for
-  // a human reading a folio it is chrome between the title and the first line.
-  const summaryVisible = capabilityOption(project, "remember", "agentSummary");
-
   // `props.actions.directoryId` (LIVE — moved by `confirmMove`'s own
   // success), NOT `props.folio?.directoryId`. The latter is the
   // route-loader snapshot, so after a successful in-session move the Move
@@ -224,36 +217,6 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           />,
           props.chromeSlot,
         )}
-
-      {/* Off unless the project opts in (Settings › Folios). The summary is
-          written for `project_context` / `folio_list`, so for a reader it is
-          chrome above the first line of prose. Hiding the field does not stop
-          it round-tripping — the draft still carries the stored value and
-          still saves it.
-
-          It is the ONLY chrome left above the body, so it now carries the
-          padding the deleted header row used to provide, and the rule below
-          renders with it rather than unconditionally: a divider with nothing
-          above it is not separating anything, it is just a line under the
-          menubar. */}
-      {summaryVisible && (
-        <>
-          <div className="px-8 pt-4">
-            <FolioSummaryField
-              value={values.summary}
-              onChange={(v) => props.draft.form.input.summary.set(v)}
-              unavailable={props.actions.actionState.isProtected}
-            />
-          </div>
-
-          {/* Edge to edge, unlike everything under it. The rule separates the
-              document's chrome from the document, so it has to reach the
-              pane's own edges — inside the prose measure it read as an
-              underline on the summary field rather than as a division of the
-              surface. */}
-          <div className="border-border border-t" />
-        </>
-      )}
 
       {/* BODY — the only part still held to the 812px prose measure. This
           wrapper used to live in `FolioWorkspaceContent` and enclose the
@@ -312,6 +275,20 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             </WikiLinkHoverProvider>
           )}
         </div>
+      )}
+
+      {/* Folio ▸ Edit summary… (#Q3704): the draft's summary, saved by
+          auto-save like every other field of the folio. */}
+      {props.actions.summaryOpen && (
+        <FolioSummaryDialog
+          open
+          value={values.summary}
+          unavailable={props.actions.actionState.isProtected}
+          onSave={(summary) => props.draft.form.input.summary.set(summary)}
+          onOpenChange={(open) => {
+            if (!open) props.actions.closeSummary();
+          }}
+        />
       )}
 
       {props.actions.recentlyDeletedOpen && (
