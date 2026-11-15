@@ -178,12 +178,25 @@ const KanbanColumn = (props: KanbanColumnProps) => {
     <div
       data-testid="kanban-column"
       data-column-key={descriptor.key}
-      className={`flex min-w-[260px] flex-1 flex-col overflow-hidden ${
+      className={`relative isolate flex min-w-[260px] flex-1 flex-col overflow-hidden ${
         last ? "" : "border-border border-r"
       }`}
     >
+      {/* The column's own hue, washed behind the whole lane so the board
+          is not white on white: the dot's class at a low opacity, which
+          covers both the operator's colour and the derived one without a
+          second palette table. The cards keep their `bg-card`, so they
+          stand out from the wash. */}
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 -z-10 opacity-[0.06] dark:opacity-[0.10] ${descriptor.dotClass}`}
+      />
       {/* Column header */}
-      <div className="border-border flex items-center gap-2 border-b px-3 py-2">
+      <div className="border-border relative flex items-center gap-2 border-b px-3 py-2">
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 -z-10 opacity-[0.10] dark:opacity-[0.14] ${descriptor.dotClass}`}
+        />
         <span
           className={`size-2 shrink-0 rounded-full ${descriptor.dotClass}`}
         />

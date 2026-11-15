@@ -103,8 +103,8 @@ import { formatQuestSize } from "./quest/questSize.ts";
 import { releaseRowMenu } from "./releaseRowMenu.ts";
 
 /**
- * The quests table, the Quests page's List tab (`projectQuests`); the Board
- * tab is `projectKanban` at `/quests/board`, and the layout above both
+ * The quests table, the Quests page's List view. `/quests` shows it or the
+ * board by `questsViewAtom` (`ProjectQuestsView`), and the layout above both
  * (`QuestsPlate`) draws the tabs.
  */
 const ProjectQuestsTable = () => {

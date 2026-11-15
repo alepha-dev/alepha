@@ -6,6 +6,7 @@ import {
   apiPath,
   apiPost,
   createProjectViaWizard,
+  openBoard,
   registerAndVerify,
   setCapability,
 } from "./_helpers.ts";
@@ -1223,16 +1224,16 @@ test.describe("Quest", () => {
   });
 
   /**
-   * The board is the Board tab of the Quests page, a route of its own
-   * (`/quests/board`), always there with Work; the Table and Board tabs are
-   * links between the two routes (#Q3580).
+   * The board is the Board tab of the Quests page: both views live at
+   * `/quests`, and the tab swaps the body and remembers the choice in a
+   * cookie. It was a route of its own (`/quests/board`, #Q3580) before.
    *
-   * Before, it had its own sidebar entry behind a `board` option, and before
-   * that a "Quest list | Kanban board" rail (removed by #1510). What has not
-   * changed is the rule #156 set: switching views is a navigation, never a
-   * query param.
+   * Before that it had its own sidebar entry behind a `board` option, and
+   * before that a "Quest list | Kanban board" rail (removed by #1510). What has
+   * not changed is the rule #156 set: switching views never writes a query
+   * param.
    */
-  test("the board is a tab of Quests, and the tabs navigate between routes", async ({
+  test("the board is a tab of Quests, on the same URL as the list", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -1249,31 +1250,20 @@ test.describe("Quest", () => {
       { options: { plan: ["epics", "releases"] } },
     );
 
-    await page.goto(`/${projectSlug}/quests`);
+    await openBoard(page, projectSlug);
+    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`));
+    expect(new URL(page.url()).search).toBe("");
+
+    // The List tab brings the table back, on the same URL.
     await page
       .getByTestId("quests-view-tabs")
-      .locator(`a[href="/${projectSlug}/quests/board"]`)
+      .getByRole("tab", { name: "List" })
       .click();
-    await expect(page.getByTestId("kanban-board")).toBeVisible({
-      timeout: 10_000,
-    });
-    // The switch is a navigation now, so it is addressable.
-    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests/board$`));
-
-    // The Quests entry is `/quests` now, not the bare project root: the root
-    // is the project dashboard.
-    await page.locator(`a[href="/${projectSlug}/quests"]`).first().click();
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByTestId("kanban-board")).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`));
-
-    // Typing the URL reaches the board — the point of the whole change.
-    await page.goto(`/${projectSlug}/quests/board`);
-    await expect(page.getByTestId("kanban-board")).toBeVisible({
-      timeout: 10_000,
-    });
   });
 
   /**
@@ -1606,8 +1596,7 @@ test.describe("Quest", () => {
       { options: { plan: ["epics", "releases"] } },
     );
 
-    // Inside the sidebar only: the Board tab over the list links to the same
-    // URL, and an unscoped match would find it.
+    // Inside the sidebar only: the page's own links would match too.
     const sidebarLink = (href: string) =>
       page
         .locator(`[data-slot="sidebar"] a[href="/${projectSlug}${href}"]`)
@@ -1618,35 +1607,30 @@ test.describe("Quest", () => {
       timeout: 10_000,
     });
 
-    const viewTab = (href: string) =>
-      page
-        .getByTestId("quests-view-tabs")
-        .locator(`a[href="/${projectSlug}${href}"]`);
+    const viewTab = (name: "List" | "Board") =>
+      page.getByTestId("quests-view-tabs").getByRole("tab", { name });
 
     await test.step("the Board tab is the way in, and no sidebar entry", async () => {
       await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
-      await expect(sidebarLink("/quests/board")).toHaveCount(0);
-
-      await viewTab("/quests/board").click();
+      await viewTab("Board").click();
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
-      // A navigation, never a QUERY param: `?view=kanban` is what #156 was
-      // about, and the seeding effect that kept it in sync bounced every
-      // sidebar link.
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests/board$`));
+      // Never a QUERY param: `?view=kanban` is what #156 was about, and the
+      // seeding effect that kept it in sync bounced every sidebar link.
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`));
       expect(new URL(page.url()).search).toBe("");
 
-      await viewTab("/quests").click();
+      await viewTab("List").click();
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
     });
 
     await test.step("the list URL is stable, whatever this browser last opened", async () => {
-      // Having just been on the board changes nothing: there is no stored
-      // view (the cookie went with #1510) and no project setting (that went
-      // with feedback #2066) that could send this anywhere else.
+      // The view last chosen is a cookie, read on render; it never moves the
+      // URL, and no project setting (that went with feedback #2066) can send
+      // this anywhere else.
       await page.goto(`/${projectSlug}/quests`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
@@ -1663,7 +1647,7 @@ test.describe("Quest", () => {
     // second navigation landing after the first succeeded, so the URL has
     // to still be there once the outgoing page has finished unmounting.
     await test.step("leaving the board actually leaves it", async () => {
-      await viewTab("/quests/board").click();
+      await viewTab("Board").click();
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
@@ -1691,8 +1675,10 @@ test.describe("Quest", () => {
 
     await test.step("the presets sit beside the list, and the detail has none", async () => {
       // The presets are the table's own rail, so the quest page, which has
-      // no table, gets its whole width.
+      // no table, gets its whole width. The step before left the board as
+      // the remembered view, so the List tab first.
       await page.goto(`/${projectSlug}/quests`);
+      await viewTab("List").click();
       await expect(
         page.locator('[data-slot="data-table-presets"]'),
       ).toBeVisible({ timeout: 10_000 });

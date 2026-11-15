@@ -111,7 +111,7 @@ export class WorkFlowDashboardMetrics {
       link: (_scope, target) =>
         target.projectSlug
           ? {
-              route: "projectKanban",
+              route: "projectQuests",
               params: { projectSlug: target.projectSlug },
             }
           : undefined,

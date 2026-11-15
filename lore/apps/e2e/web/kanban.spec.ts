@@ -3,6 +3,8 @@ import {
   addKanbanColumn,
   apiPost,
   createProjectViaWizard,
+  openBoard,
+  pickSelectOption,
   registerAndVerify,
 } from "./_helpers.ts";
 
@@ -12,7 +14,7 @@ import {
  * `quest.spec.ts` owns the view bar and the `defaultSurface` landing, since
  * those are about the Quests page as much as this one. What lives here is
  * the board itself: its tab on the Quests page, how a card reacts to a lifecycle
- * change made in its drawer, and the column configuration behind it.
+ * change made on its quest page, and the column configuration behind it.
  *
  * Three of these are regression guards for bugs found by reading the board
  * rather than by using it, so each names the shape it is pinning.
@@ -20,9 +22,11 @@ import {
 test.describe("Kanban", () => {
   /**
    * #1211, then #Q3580. The board is reached from the Quests page's Board
-   * tab, a link to its own route: never unreachable, and never a mode.
+   * tab: a view of `/quests`, remembered in a cookie, never a URL of its own.
    */
-  test("the Board tab opens the board", async ({ page }) => {
+  test("the Board tab opens the board, and the choice is remembered", async ({
+    page,
+  }) => {
     test.setTimeout(60_000);
 
     const t = Date.now();
@@ -35,29 +39,28 @@ test.describe("Kanban", () => {
       {},
     );
 
-    await page.goto(`/${projectSlug}/quests`);
-    await page
-      .getByTestId("quests-view-tabs")
-      .locator(`a[href="/${projectSlug}/quests/board"]`)
-      .click();
-    await page.waitForURL(`**/${projectSlug}/quests/board`, {
+    await openBoard(page, projectSlug);
+    // The same URL as the list: the tab swaps the body, it does not navigate.
+    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`));
+
+    // A reload reopens the board, from the cookie.
+    await page.reload();
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByTestId("kanban-board")).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(page.getByTestId("quests-table")).toHaveCount(0);
   });
 
   /**
    * #1222. `KanbanBoard`'s grouping only branched on "todo" and "completed",
    * so a shelved quest fell through to the accepted fallback: pressing
    * Shelve — the gesture meaning "I am not doing this" — visibly moved the
-   * card FORWARD into In progress, and the drawer stayed open over it.
+   * card FORWARD into In progress.
    *
-   * The two assertions are the two halves of the fix, and the second is the
-   * one a grouping unit test cannot reach.
+   * A card opens its quest's page now, not a drawer over the board, so the
+   * shelve happens there and the board is read again on the way back.
    */
-  test("shelving from the card drawer removes the card and closes the drawer", async ({
+  test("a quest shelved from its card's page leaves the board", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -87,13 +90,17 @@ test.describe("Kanban", () => {
       },
     );
 
-    await page.goto(`/${projectSlug}/quests/board`);
+    await openBoard(page, projectSlug);
     const card = page.locator(
       `[data-testid="kanban-card"][data-quest-short-id="${shortId}"]`,
     );
     await expect(card).toBeVisible({ timeout: 10_000 });
 
     await card.click();
+    await expect(page).toHaveURL(
+      new RegExp(`/${projectSlug}/quests/${shortId}$`),
+      { timeout: 10_000 },
+    );
     await expect(page.getByRole("button", { name: /^shelve$/i })).toBeVisible({
       timeout: 10_000,
     });
@@ -103,27 +110,25 @@ test.describe("Kanban", () => {
     ).toBeVisible({ timeout: 5_000 });
     await page.getByRole("button", { name: /shelve quest/i }).click();
 
-    // The drawer closes rather than sitting open over a card that is no
-    // longer on the board. Unassign already did this; Shelve did not.
-    await expect(page.getByRole("button", { name: /^unshelve$/i })).toBeHidden({
-      timeout: 10_000,
-    });
+    await expect(page.getByRole("button", { name: /^unshelve$/i })).toBeVisible(
+      { timeout: 10_000 },
+    );
 
     // And the card is gone from EVERY column — the bug was that it was
     // still on the board, one column further along.
+    await openBoard(page, projectSlug);
     await expect(card).toHaveCount(0);
-    await expect(page.getByTestId("kanban-board")).toBeVisible();
   });
 
   /**
-   * #1223. Clicking a card was `setSelectedQuest(quest)`: local state, no
-   * URL, and no refetch — a long-lived board edited whatever `getBoard`
-   * returned however long ago, and a card could not be linked at all.
-   *
-   * The deep-link half is the one that matters: it proves the card is a
-   * route with a loader rather than a sheet the board opens over itself.
+   * #1223, then a plain page. Clicking a card was `setSelectedQuest(quest)`:
+   * local state, no URL, no refetch. It then became a sheet over the board;
+   * now it is a navigation to the quest's own page, and back is the board,
+   * because the Quests page remembers which view it was on.
    */
-  test("a card has its own URL and survives a reload", async ({ page }) => {
+  test("a card opens its quest's page, and back returns to the board", async ({
+    page,
+  }) => {
     test.setTimeout(60_000);
 
     const t = Date.now();
@@ -151,106 +156,31 @@ test.describe("Kanban", () => {
       },
     );
 
-    await page.goto(`/${projectSlug}/quests/board`);
-    await expect(page.getByTestId("kanban-board")).toBeVisible({
-      timeout: 10_000,
-    });
-    await page.waitForLoadState("networkidle");
-
-    // The board's own DOM node carries a mark, and its reads are counted:
-    // nothing about the board may move while a card opens and closes.
-    await page.getByTestId("kanban-board").evaluate((board) => {
-      board.setAttribute("data-spec-mark", "still-here");
-    });
-    let boardReads = 0;
-    page.on("request", (request) => {
-      if (request.url().includes(`/kanban/${projectId}`)) {
-        boardReads += 1;
-      }
-    });
-    const boardTab = page
-      .getByTestId("quests-view-tabs")
-      .locator(`a[href="/${projectSlug}/quests/board"]`);
-    const activeBefore = await boardTab.getAttribute("aria-current");
-
+    await openBoard(page, projectSlug);
     const card = page.locator(
       `[data-testid="kanban-card"][data-quest-short-id="${shortId}"]`,
     );
-    // Neither opening nor closing may scroll the page behind. Clicked through
-    // the DOM: Playwright's own click would scroll the card into view.
-    await page.evaluate(() => {
-      const spacer = document.createElement("div");
-      spacer.style.height = "2000px";
-      document.body.appendChild(spacer);
-      window.scrollTo(0, 120);
-    });
-    const scrollY = () => page.evaluate(() => window.scrollY);
-    const offset = await scrollY();
-    await card.evaluate((node) => (node as HTMLElement).click());
-
-    // Opening the card is a navigation to the quest's own URL.
-    await expect(page).toHaveURL(
-      new RegExp(`/${projectSlug}/quests/${shortId}$`),
-      { timeout: 10_000 },
-    );
-    const sheet = page.getByRole("dialog");
-    await expect(sheet.getByText(questTitle).first()).toBeVisible({
-      timeout: 10_000,
-    });
-
-    // The board stayed mounted behind it, and the shell did not flip to the
-    // quest page's layout.
-    await expect(page.getByTestId("kanban-board")).toHaveAttribute(
-      "data-spec-mark",
-      "still-here",
-    );
-    expect(await boardTab.getAttribute("aria-current")).toBe(activeBefore);
-    expect(await scrollY()).toBe(offset);
-
-    // Closing goes back to the board, through history.
-    await page.getByRole("button", { name: /back/i }).first().click();
-    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests/board$`), {
-      timeout: 10_000,
-    });
-    await expect(sheet).toHaveCount(0);
-    expect(await scrollY()).toBe(offset);
-    await expect(page.getByTestId("kanban-board")).toHaveAttribute(
-      "data-spec-mark",
-      "still-here",
-    );
-
-    // Forward reopens it, still over the same board.
-    await page.goForward();
-    await expect(sheet.getByText(questTitle).first()).toBeVisible({
-      timeout: 10_000,
-    });
-    await expect(page.getByTestId("kanban-board")).toHaveAttribute(
-      "data-spec-mark",
-      "still-here",
-    );
-
-    await page.goBack();
-    await expect(sheet).toHaveCount(0);
-    expect(boardReads).toBe(0);
-
-    // One URL, two presentations: a reload is the full quest page.
     await card.click();
-    await expect(sheet.getByText(questTitle).first()).toBeVisible({
-      timeout: 10_000,
-    });
-    await page.reload();
-    await expect(page.getByText(questTitle).first()).toBeVisible({
-      timeout: 10_000,
-    });
-    await expect(page.getByTestId("kanban-board")).toHaveCount(0);
-    await expect(sheet).toHaveCount(0);
 
-    // The old card URL still lands somewhere.
-    await page.goto(`/${projectSlug}/quests/board/${shortId}`);
+    // The quest's own page, in full: no sheet, no board behind it.
     await expect(page).toHaveURL(
       new RegExp(`/${projectSlug}/quests/${shortId}$`),
       { timeout: 10_000 },
     );
+    await expect(page.getByTestId("quest-header")).toContainText(questTitle, {
+      timeout: 10_000,
+    });
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByTestId("kanban-board")).toHaveCount(0);
+
+    // Back is the board again.
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`), {
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   /**
@@ -264,9 +194,7 @@ test.describe("Kanban", () => {
    * e2e suite reaches these controls by `data-testid`; it does not, and did
    * not, which is why the rewire had no guard to answer to.
    */
-  test("the filter bar searches on each keystroke and resets all of it", async ({
-    page,
-  }) => {
+  test("the filter bar searches on each keystroke", async ({ page }) => {
     test.setTimeout(90_000);
 
     const t = Date.now();
@@ -293,10 +221,7 @@ test.describe("Kanban", () => {
       });
     }
 
-    await page.goto(`/${projectSlug}/quests/board`);
-    await expect(page.getByTestId("kanban-board")).toBeVisible({
-      timeout: 15_000,
-    });
+    await openBoard(page, projectSlug);
     await expect(page.getByTestId("kanban-card")).toHaveCount(2, {
       timeout: 15_000,
     });
@@ -312,14 +237,11 @@ test.describe("Kanban", () => {
       await expect(page.getByText(kept).first()).toBeVisible();
     });
 
-    await test.step("reset clears the search and brings the board back", async () => {
-      // The reset button only exists while something is filtered, which is
-      // itself the assertion that search registered as an active filter.
-      await page.getByTestId("kanban-filter-reset").click();
+    await test.step("clearing the search brings the board back", async () => {
+      await page.getByTestId("kanban-search").fill("");
       await expect(page.getByTestId("kanban-card")).toHaveCount(2, {
         timeout: 10_000,
       });
-      await expect(page.getByTestId("kanban-search")).toHaveValue("");
     });
   });
 
@@ -356,10 +278,7 @@ test.describe("Kanban", () => {
       await addKanbanColumn(page, projectId, name);
     }
 
-    await page.goto(`/${projectSlug}/quests/board`);
-    await expect(page.getByTestId("kanban-board")).toBeVisible({
-      timeout: 10_000,
-    });
+    await openBoard(page, projectSlug);
     // New + five sub-columns + Completed.
     await expect(page.getByTestId("kanban-column")).toHaveCount(7);
 
@@ -473,7 +392,7 @@ test.describe("Kanban", () => {
     );
 
     // And the board renders the new order.
-    await page.goto(`/${projectSlug}/quests/board`);
+    await openBoard(page, projectSlug);
     const columns = page.getByTestId("kanban-column");
     await expect(columns).toHaveCount(4, { timeout: 10_000 });
     await expect(columns.nth(1)).toHaveAttribute(
@@ -515,15 +434,12 @@ test.describe("Kanban", () => {
     );
 
     await page.setViewportSize({ width: 411, height: 845 });
-    await page.goto(`/${projectSlug}/quests/board`);
-    await expect(page.getByTestId("kanban-board")).toBeVisible({
-      timeout: 15_000,
-    });
+    await openBoard(page, projectSlug);
 
     // The bar itself no longer overflows, so nothing is behind its edge.
     const bar = await page.evaluate(() => {
       const el = document
-        .querySelector('[data-testid="kanban-filter-mine"]')
+        .querySelector('[data-testid="kanban-filter-due"]')
         ?.closest("div.border-b") as HTMLElement | null;
       if (!el) throw new Error("filter bar not found");
       return { clientWidth: el.clientWidth, scrollWidth: el.scrollWidth };
@@ -533,9 +449,9 @@ test.describe("Kanban", () => {
     // And each control is reachable where it stands, with no scrolling.
     for (const id of [
       "kanban-search",
-      "kanban-filter-mine",
       "kanban-filter-due",
       "kanban-lanes",
+      "kanban-card-style",
     ]) {
       const box = await page.getByTestId(id).boundingBox();
       expect(box, `${id} has no box`).not.toBeNull();
@@ -545,13 +461,8 @@ test.describe("Kanban", () => {
       );
     }
 
-    // The toggles actually work from there - the point of reaching them.
-    await page.getByTestId("kanban-filter-mine").click();
-    await expect(page.getByTestId("kanban-filter-mine")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-      { timeout: 10_000 },
-    );
+    // The selects actually work from there - the point of reaching them.
+    await pickSelectOption(page, "kanban-filter-due", "Overdue");
   });
 
   /**
@@ -578,10 +489,7 @@ test.describe("Kanban", () => {
     );
 
     await page.setViewportSize({ width: 411, height: 845 });
-    await page.goto(`/${projectSlug}/quests/board`);
-    await expect(page.getByTestId("kanban-board")).toBeVisible({
-      timeout: 15_000,
-    });
+    await openBoard(page, projectSlug);
 
     // The collapse button is on every column; the menu only on a configured,
     // editable one, which is why the audit that found this saw only the first.
@@ -648,10 +556,7 @@ test.describe("Kanban", () => {
     // A short viewport, so the stack overflows on any machine rather than
     // only on the one that wrote the test.
     await page.setViewportSize({ width: 1280, height: 700 });
-    await page.goto(`/${projectSlug}/quests/board`);
-    await expect(page.getByTestId("kanban-board")).toBeVisible({
-      timeout: 15_000,
-    });
+    await openBoard(page, projectSlug);
 
     const stack = page.getByTestId("kanban-lane-stack");
     const metrics = () =>
@@ -666,10 +571,17 @@ test.describe("Kanban", () => {
     expect(flat.overflowY).not.toBe("auto");
     expect(flat.scrollHeight).toBe(flat.clientHeight);
 
-    // Group by area - the first press of a three-state toggle.
-    await page.getByTestId("kanban-lanes").click();
+    // Group by area. Lanes start closed, so open every one: the stack only
+    // overflows with their columns showing.
+    await pickSelectOption(page, "kanban-lanes", "Lanes by area");
     const lanes = page.getByTestId("kanban-lane");
     await expect(lanes).toHaveCount(areas.length, { timeout: 10_000 });
+    const headers = page.getByTestId("kanban-lane-header");
+    await expect(headers.first()).toHaveAttribute("aria-expanded", "false");
+    for (let i = 0; i < areas.length; i++) {
+      await headers.nth(i).click();
+      await expect(headers.nth(i)).toHaveAttribute("aria-expanded", "true");
+    }
 
     const grouped = await metrics();
     expect(grouped.overflowY).toBe("auto");

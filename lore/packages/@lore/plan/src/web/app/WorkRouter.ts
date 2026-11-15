@@ -71,7 +71,7 @@ export class WorkRouter {
   projectQuestsLayout = $pageProject({
     name: "projectQuestsLayout",
     path: "/quests",
-    children: () => [this.projectQuests, this.projectKanban],
+    children: () => [this.projectQuests],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Quests`,
     }),
@@ -133,34 +133,13 @@ export class WorkRouter {
         completed: z.text().optional(),
       }),
     },
-    lazy: () => import("./components/project/ProjectQuestsTable.tsx"),
-  });
-
-  /**
-   * The Board tab of the Quests page, a route of its own rather than a mode
-   * of `projectQuests`: a linkable URL, addressable cards, and tabs that are
-   * plain links (`QuestsPlate`). Always there with Work: the board
-   * option is gone, a board costs nothing to whoever never opens it.
-   *
-   * ⚠️ `/quests/board` sits beside `/quests/:shortId`, whose `shortId` is an
-   * integer, so `board` can never be read as a quest number.
-   */
-  projectKanban = $page({
-    name: "projectKanban",
-    children: () => [this.projectKanbanCard],
-    path: "/board",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Board`,
-    }),
-    // No loader: the layout gates, and `ProjectKanbanPage` fetches the board
-    // itself, because the board reloads in place when the header creates a
-    // quest and the loader machinery does not re-run for that.
-    lazy: () => import("./components/project/ProjectKanbanPage.tsx"),
+    // The List or the Board, by `questsViewAtom`: one URL for both views.
+    lazy: () => import("./components/project/ProjectQuestsView.tsx"),
   });
 
   /**
    * The capability and rank check of the Quests layout, so of both its tabs
-   * (`/quests` and `/quests/board`): the landing route of Work, so it refuses
+   * (List and Board, both `/quests`): the landing route of Work, so it refuses
    * with Work off, as every capability's landing route does.
    */
   protected gateQuests(): void {
@@ -200,20 +179,6 @@ export class WorkRouter {
       };
     },
     lazy: () => import("./components/project/quest/QuestView.tsx"),
-    /**
-     * A card opens as a sheet over the board, which stays mounted and does not
-     * refetch, and a reload of it is this page. It used to be a local
-     * `setSelectedQuest`, which had no URL and, the part that actually bit, no
-     * refetch: a long-lived board edited whatever `getBoard` returned however
-     * long ago. The loader below gets fresh data on open for free.
-     *
-     * The board reads `currentQuestAtom`, which that loader seeds, to patch its
-     * own row.
-     */
-    overlay: {
-      over: () => [this.projectKanban],
-      lazy: () => import("./components/project/ProjectKanbanCard.tsx"),
-    },
     loader: async ({ params }) => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
@@ -531,30 +496,6 @@ export class WorkRouter {
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsBoardPage.tsx"),
-  });
-
-  /**
-   * Where a card opened on the board used to live, for the links people hold.
-   * A card is `projectQuest` now, as a sheet over the board.
-   *
-   * From a loader, because `redirect:` is a static string and cannot carry
-   * `:shortId`.
-   */
-  projectKanbanCard = $page({
-    name: "projectKanbanCard",
-    path: "/:shortId",
-    schema: {
-      params: z.object({
-        shortId: z.integer(),
-      }),
-    },
-    component: RedirectPage,
-    // Annotated `Promise<void>` because it always throws.
-    loader: async ({ params }): Promise<void> => {
-      throw new Redirection({
-        redirect: `/${this.alepha.store.get(currentProjectAtom)?.slug ?? ""}/quests/${params.shortId}`,
-      });
-    },
   });
 
   /**

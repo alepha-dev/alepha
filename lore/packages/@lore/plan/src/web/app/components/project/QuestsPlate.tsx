@@ -1,51 +1,39 @@
 import { PlateLayout, type PlateTab } from "@alepha/ui/shell";
 import type { I18n } from "@lore/core/web";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { NestedView, useRouter, useRouterState } from "alepha/react/router";
+import { NestedView } from "alepha/react/router";
 import { Columns3, List } from "lucide-react";
 
+import { questsViewAtom } from "../../atoms/questsViewAtom.ts";
+
 /**
- * The Quests page's two views, List and Board, as plate tabs over the view:
- * LINKS to two routes, `/quests` and `/quests/board`, keyed by route name.
+ * The Quests page's two views, List and Board, as plate tabs over the body.
  *
- * ⚠️ Never a `?view=` switch. That was tried, and its write-back to the URL
- * bounced the reader back to the page on the way out of it (#156). Each tab
- * is a page of its own, so back, copy-link and middle-click all work, and
- * nothing writes to the address bar.
+ * Both are `/quests`: a tab swaps the body in place and remembers the choice
+ * in `questsViewAtom`, a cookie, so the page reopens on the view last used.
+ * The board was a route of its own (`/quests/board`) before.
+ *
+ * ⚠️ Never a `?view=` switch. Its write-back to the URL bounced the reader
+ * back to the page on the way out of it (#156). The cookie is written by a
+ * click only.
  *
  * The layout page of `projectQuestsLayout`: the plate stays mounted and only
- * the `NestedView` below it swaps, so a tab switch never blanks the page.
- * No plate band: the breadcrumb already says "Quests", so only the tabs.
+ * the body below it swaps, so a tab switch never blanks the page. No plate
+ * band: the breadcrumb already says "Quests", so only the tabs.
  */
 const QuestsPlate = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter();
-  const routerState = useRouterState();
-  const params = { projectSlug: routerState.params.projectSlug };
+  const [{ view }, setView] = useStore(questsViewAtom);
   const tabs: PlateTab[] = [
-    {
-      key: "projectQuests",
-      label: tr("quests.view.list"),
-      icon: List,
-      href: router.path("projectQuests", { params }),
-    },
-    {
-      key: "projectKanban",
-      label: tr("quests.view.board"),
-      icon: Columns3,
-      href: router.path("projectKanban", { params }),
-    },
+    { key: "list", label: tr("quests.view.list"), icon: List },
+    { key: "board", label: tr("quests.view.board"), icon: Columns3 },
   ];
   return (
     <PlateLayout
       tabs={tabs}
-      // A card opened from the board is `projectQuest`, drawn as a sheet over
-      // the board: the Board tab stays the lit one under it.
-      active={
-        routerState.name === "projectQuest"
-          ? "projectKanban"
-          : (routerState.name ?? "projectQuests")
-      }
+      active={view}
+      onSelect={(key) => setView({ view: key === "board" ? "board" : "list" })}
       tabsTestId="quests-view-tabs"
       // A rule under the List / Board tabs (#Q3670): the table and the board
       // are their own surfaces, not the body the active tile opens into.

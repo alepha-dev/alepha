@@ -5,6 +5,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 
 import { kanbanReloadAtom } from "../../../atoms/kanbanReloadAtom.ts";
+import { questsViewAtom } from "../../../atoms/questsViewAtom.ts";
 import QuestCreate from "./QuestCreate.tsx";
 
 /**
@@ -15,10 +16,9 @@ const QuestCreateMenuSheet = (props: ProjectCreateDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
   const routerState = useRouterState();
-  // Kanban is its own route again, so this is just the route name. It used
-  // to be `projectQuests` plus the stored view, because the board was a mode
-  // of the Quests page rather than a place.
-  const onKanban = routerState.name === "projectKanban";
+  // The board is a view of `/quests`, chosen by `questsViewAtom`.
+  const [{ view }] = useStore(questsViewAtom);
+  const onKanban = routerState.name === "projectQuests" && view === "board";
 
   return (
     <Sheet open={props.open} onOpenChange={props.onOpenChange}>

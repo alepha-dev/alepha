@@ -53,7 +53,7 @@ export const HomeRecentProjectRow = (props: HomeRecentProjectRowProps) => {
   return (
     <li
       data-testid="home-project-row"
-      className="hover:bg-muted/40 relative grid grid-cols-1 items-center gap-x-4 gap-y-1.5 border-b px-3 py-1.5 transition-colors last:border-b-0 sm:grid-cols-[1fr_auto] md:h-16 md:grid-cols-[1fr_auto_1fr] md:py-0"
+      className="hover:bg-hover relative grid grid-cols-1 items-center gap-x-4 gap-y-1.5 border-b px-3 py-1.5 transition-colors last:border-b-0 sm:grid-cols-[1fr_auto] md:h-16 md:grid-cols-[1fr_auto_1fr] md:py-0"
     >
       <div className="flex min-w-0 items-center gap-3">
         <ProjectIcon

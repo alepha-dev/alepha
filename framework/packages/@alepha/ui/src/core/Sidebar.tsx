@@ -341,8 +341,13 @@ const SidebarInset = (props: SidebarInsetProps) => {
   return (
     <main
       data-slot="sidebar-inset"
+      // The start margin comes back only when the sidebar is collapsed
+      // OFF-CANVAS, where nothing is left beside the card. Collapsed to
+      // icons, the icon column already sits there with its own padding, and
+      // a margin on top of it left a wide empty band between the icons and
+      // the content.
       className={cn(
-        "bg-background relative flex w-full flex-1 flex-col md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ms-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ms-2",
+        "bg-background relative flex w-full flex-1 flex-col md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ms-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[collapsible=offcanvas]:ms-2",
         className,
       )}
       {...rest}
