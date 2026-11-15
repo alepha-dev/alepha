@@ -40,6 +40,7 @@ import { UserDockController } from "./controllers/UserDockController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { UserDockHooks } from "./hooks/UserDockHooks.ts";
+import { ViewerRankLockHooks } from "./hooks/ViewerRankLockHooks.ts";
 import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
@@ -214,6 +215,9 @@ export const LoreCoreApi = $module({
     ProjectRankPresets,
     UserDeletionHook,
     OrganizationHooks,
+    // Keeps Viewer inside its allowlist while a project is open; nothing
+    // injects it.
+    ViewerRankLockHooks,
     AutomationPersistence,
     // Registers its project deletion step; nothing injects it.
     AutomationProjectDeletion,
@@ -430,6 +434,7 @@ export { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 export { AssignedWorkRegistry } from "./services/AssignedWorkRegistry.ts";
 export { BestEffort } from "./services/BestEffort.ts";
 export { DefaultRankService } from "./services/DefaultRankService.ts";
+export { ProjectJoinPolicy } from "./services/ProjectJoinPolicy.ts";
 export { BoundParameters } from "./services/BoundParameters.ts";
 export { DashboardCardService } from "./services/DashboardCardService.ts";
 export { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";

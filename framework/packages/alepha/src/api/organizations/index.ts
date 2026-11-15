@@ -117,6 +117,25 @@ declare module "alepha" {
       actor: { id: string };
       leave: boolean;
     };
+    /**
+     * A rank is about to be written, every module invariant passed. A hook
+     * that throws refuses the write, and its error is what the writer sees.
+     */
+    "organization:rank:save:before": {
+      organizationId: string;
+      key: string;
+      permissions: string[];
+      writer: { id: string };
+    };
+    /**
+     * A rank is about to be deleted, every module invariant passed. A hook
+     * that throws refuses the delete.
+     */
+    "organization:rank:delete:before": {
+      organizationId: string;
+      key: string;
+      writer: { id: string };
+    };
     "organization:ownership:transferred": {
       organizationId: string;
       fromUserId: string;

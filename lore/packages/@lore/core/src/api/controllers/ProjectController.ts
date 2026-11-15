@@ -39,6 +39,7 @@ import { coreRelations } from "../relations/coreRelations.ts";
 import { assignedWorkItemSchema } from "../schemas/assignedWorkItemSchema.ts";
 import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
+import { joinPolicySchema } from "../schemas/joinPolicySchema.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projectActivityRowSchema } from "../schemas/projectActivityRowSchema.ts";
@@ -63,6 +64,7 @@ import { DefaultRankService } from "../services/DefaultRankService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
+import { ProjectJoinPolicy } from "../services/ProjectJoinPolicy.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
@@ -142,6 +144,7 @@ export class ProjectController {
   projectPermissions = $inject(ProjectPermissions);
   ranks = $inject(RankService);
   defaultRanks = $inject(DefaultRankService);
+  joinPolicy = $inject(ProjectJoinPolicy);
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -1037,6 +1040,10 @@ export class ProjectController {
         // Who may read `/:projectSlug/roadmap`. `null` clears the override →
         // `ProjectSecurityService.roadmapVisibilityOf` reads it as `off`.
         roadmapVisibility: roadmapVisibilitySchema.nullable().optional(),
+        // Who may join: `invite`, or `open` (anyone signed in joins on the
+        // `viewer` rank). Opening is refused while the launch gate is off,
+        // or while Viewer holds more than its allowlist (`ProjectJoinPolicy`).
+        joinPolicy: joinPolicySchema.optional(),
         // Colour token per quest tag. Sent whole, not merged: the settings
         // picker holds the full map, and a partial merge gives no way to
         // clear one tag's colour without inventing a "none" token.
@@ -1089,6 +1096,16 @@ export class ProjectController {
         project.roadmapVisibility = body.roadmapVisibility ?? undefined;
       }
 
+      const joinPolicyChanged =
+        body.joinPolicy !== undefined &&
+        body.joinPolicy !== this.projectSecurity.joinPolicyOf(project);
+      if (joinPolicyChanged) {
+        if (body.joinPolicy === "open") {
+          await this.joinPolicy.assertCanOpen(project.organizationId!);
+        }
+        project.joinPolicy = body.joinPolicy;
+      }
+
       if ("tagColors" in body) {
         project.tagColors = body.tagColors ?? undefined;
       }
@@ -1129,7 +1146,10 @@ export class ProjectController {
         resourceType: "project",
         resourceId: String(project.id),
         description: project.title,
-        metadata: { fields: Object.keys(body) },
+        metadata: {
+          fields: Object.keys(body),
+          ...(joinPolicyChanged ? { joinPolicy: body.joinPolicy } : {}),
+        },
       });
 
       return this.projectMapper.toResource(

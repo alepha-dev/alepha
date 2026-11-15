@@ -14,6 +14,7 @@ import {
 import { type Project, projects } from "../entities/projects.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
+import type { JoinPolicy } from "../schemas/joinPolicySchema.ts";
 import type { RoadmapVisibility } from "../schemas/roadmapVisibilitySchema.ts";
 
 /**
@@ -280,6 +281,16 @@ export class ProjectSecurityService {
    */
   roadmapVisibilityOf(project: Project): RoadmapVisibility {
     return project.roadmapVisibility ?? "off";
+  }
+
+  /**
+   * The `invite` fallback for a row written before the column existed, kept
+   * here and NOT in a column `DEFAULT` for the reason `roadmapVisibilityOf`
+   * gives. Defaulting closed is the only safe reading: an absent value must
+   * never let a stranger in.
+   */
+  joinPolicyOf(project: Pick<Project, "joinPolicy">): JoinPolicy {
+    return project.joinPolicy ?? "invite";
   }
 
   /**

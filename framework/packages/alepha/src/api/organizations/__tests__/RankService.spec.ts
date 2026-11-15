@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { $hook, Alepha } from "alepha";
 import { $realm, AlephaApiUsers, RealmProvider } from "alepha/api/users";
 import { AlephaOrmTestPostgres } from "alepha/orm";
 import {
@@ -36,6 +36,34 @@ class Permissions {
   public readonly questWrite = $permission({ group: "quest", name: "write" });
 }
 
+/**
+ * An application rule on one rank, through the two hooks: `locked` may not
+ * hold `quest:write`, and may not be deleted.
+ */
+class LockedRankGuard {
+  public seen: string[] = [];
+
+  protected readonly onSaving = $hook({
+    on: "organization:rank:save:before",
+    handler: ({ key, permissions }) => {
+      this.seen.push(`save ${key}`);
+      if (key === "locked" && permissions.includes("quest:write")) {
+        throw new BadRequestError('"locked" may not write quests');
+      }
+    },
+  });
+
+  protected readonly onDeleting = $hook({
+    on: "organization:rank:delete:before",
+    handler: ({ key }) => {
+      this.seen.push(`delete ${key}`);
+      if (key === "locked") {
+        throw new BadRequestError('"locked" may not be deleted');
+      }
+    },
+  });
+}
+
 class CountingRankService extends RankService {
   public definitionReads = 0;
   public membershipReads = 0;
@@ -57,7 +85,9 @@ class CountingRankService extends RankService {
   }
 }
 
-const setup = async (options: { countDefinitions?: boolean } = {}) => {
+const setup = async (
+  options: { countDefinitions?: boolean; guard?: boolean } = {},
+) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
   if (options.countDefinitions) {
     alepha.with({ provide: RankService, use: CountingRankService });
@@ -68,6 +98,7 @@ const setup = async (options: { countDefinitions?: boolean } = {}) => {
     .with(AlephaApiOrganizations)
     .with(Permissions)
     .with(Realm);
+  if (options.guard) alepha.with(LockedRankGuard);
   alepha.store.set(organizationConfigAtom, {
     memberPermissions: ["organization:read"],
     floor: ["organization:read"],
@@ -107,6 +138,8 @@ const setup = async (options: { countDefinitions?: boolean } = {}) => {
   };
 };
 
+const ORG_READ = "organization:read";
+
 describe("alepha/api/organizations - RankService", () => {
   it("provides a fixed owner and editable member built-in", async ({
     expect,
@@ -128,6 +161,45 @@ describe("alepha/api/organizations - RankService", () => {
         builtin: true,
         editable: true,
       },
+    ]);
+  });
+
+  it("lets an application refuse a rank write or delete from its hooks", async ({
+    expect,
+  }) => {
+    const ctx = await setup({ guard: true });
+    const guard = ctx.alepha.inject(LockedRankGuard);
+    const { id } = ctx.organization;
+
+    await ctx.ranks.save(
+      id,
+      { key: "locked", name: "Locked", permissions: [ORG_READ] },
+      ctx.owner,
+    );
+    await expect(
+      ctx.ranks.save(
+        id,
+        {
+          key: "locked",
+          name: "Locked",
+          permissions: [ORG_READ, "quest:write"],
+        },
+        ctx.owner,
+      ),
+    ).rejects.toThrow('"locked" may not write quests');
+    await expect(ctx.ranks.delete(id, "locked", ctx.owner)).rejects.toThrow(
+      '"locked" may not be deleted',
+    );
+
+    // Refused means not written: the rank is as it was.
+    const locked = (await ctx.ranks.ranksOf(id)).find(
+      (rank) => rank.key === "locked",
+    );
+    expect(locked?.permissions).toEqual([ORG_READ]);
+    expect(guard.seen).toEqual([
+      "save locked",
+      "save locked",
+      "delete locked",
     ]);
   });
 

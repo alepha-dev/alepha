@@ -245,6 +245,15 @@ export class RankService {
     if (existing?.builtin && input.key !== "member") {
       throw new BadRequestError(`"${existing.name}" cannot be edited`);
     }
+    // Last, after every invariant of the module: an application's own rule
+    // about a rank (one it keeps narrow while some state holds) refuses by
+    // throwing from its hook, and nothing has been written yet.
+    await this.alepha.events.emit("organization:rank:save:before", {
+      organizationId,
+      key: input.key,
+      permissions: input.permissions,
+      writer,
+    });
     if (existing) {
       await this.definitions.updateById(existing.id, {
         name: input.name,
@@ -294,6 +303,11 @@ export class RankService {
         `${holders} member(s) still hold "${existing.name}". Move them to another rank first`,
       );
     }
+    await this.alepha.events.emit("organization:rank:delete:before", {
+      organizationId,
+      key,
+      writer,
+    });
     await this.definitions.deleteById(existing.id);
   }
 
