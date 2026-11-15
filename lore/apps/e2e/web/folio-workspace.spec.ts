@@ -9,7 +9,6 @@ import {
   emailDirOf,
   fillMarkdownEditor,
   registerAndVerify,
-  setCapability,
 } from "./_helpers.ts";
 
 /**
@@ -122,43 +121,40 @@ test.describe("Folio workspace", () => {
   });
 
   test("01 — summary survives a save and a reload", async () => {
-    // The field is hidden unless the project opts in (#137) — the summary is
-    // written for agents, so for a reader it is chrome. Turning it on is part
-    // of this test's setup, not part of what it asserts.
-    await setCapability(page, projectId, "remember", {
-      options: { agentSummary: true },
-    });
-
+    // Edited from Folio > Edit summary... in every project since #Q3704,
+    // where an option used to reveal a field above the body.
     await page.goto(folioUrl);
-    const summary = page.getByLabel(/summary for agents/i);
+    const openSummary = async () => {
+      await page
+        .locator('[data-slot="folio-menubar"]')
+        .getByRole("menuitem", { name: "Folio", exact: true })
+        .click();
+      await page.getByRole("menuitem", { name: "Edit summary…" }).click();
+      // The textarea: the dialog is titled "Summary for agents" too.
+      return page.getByRole("textbox", { name: /summary for agents/i });
+    };
+    const summary = await openSummary();
     await expect(summary).toBeVisible({ timeout: 15_000 });
 
-    // ⚠️ No Save click and no "Saved …" line to wait for: an existing folio
-    // auto-saves (`useFolioAutoSave`, 1.5s after typing stops), and both the
-    // button and the status line were removed once that was true. The button
-    // survives in create mode ONLY, which this folio is not in.
-    //
-    // The write still has to be waited for, or the reload below races it and
-    // the final assertion measures the reload rather than the save — the same
-    // hazard the old status-line wait existed to close. Armed BEFORE the edit
-    // that triggers it, like the tree-drag update further down this file.
+    // ⚠️ No Save click on the folio: the dialog writes the draft, and an
+    // existing folio auto-saves (`useFolioAutoSave`, 1.5s after a change).
+    // The write still has to be waited for, or the reload below races it.
+    // Armed BEFORE the edit that triggers it.
     const saved = page.waitForResponse(
       (r) => /\/api\/update\//.test(r.url()) && r.status() === 200,
       { timeout: 15_000 },
     );
     await summary.fill(summaryText);
-    // Autosave debounces on the values changing, so blurring is not what
-    // fires it — the wait is on the request itself.
+    await page.getByRole("button", { name: "Save summary" }).click();
     await saved;
 
     await page.reload();
     await page.waitForLoadState("networkidle");
     // The column existed before this workspace, but only an agent (through
     // the MCP) could ever write it — this is the guard on the web writer.
-    await expect(page.getByLabel(/summary for agents/i)).toHaveValue(
-      summaryText,
-      { timeout: 15_000 },
-    );
+    await expect(await openSummary()).toHaveValue(summaryText, {
+      timeout: 15_000,
+    });
   });
 
   test("02 — inspector Outline lists the folio's headings", async () => {

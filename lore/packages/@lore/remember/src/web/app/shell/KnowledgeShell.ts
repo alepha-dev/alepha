@@ -65,19 +65,8 @@ export class KnowledgeShell {
       },
     ]);
 
-    this.shell.registerSettings({
-      key: "remember",
-      order: 40,
-      labelKey: "project.settings.nav.remember",
-      icon: BookOpen,
-      capability: "remember",
-      tabs: [
-        {
-          route: "projectSettingsKnowledge",
-          labelKey: "project.settings.tab.features",
-        },
-      ],
-    });
+    // No Remember settings section since #Q3704: its one page held the
+    // summary switch, and the summary is edited from the Folio menu.
 
     this.shell.registerCreate({
       key: "folio",

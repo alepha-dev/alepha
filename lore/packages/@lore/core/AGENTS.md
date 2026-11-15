@@ -83,7 +83,7 @@ picked in the creation wizard and switched in Settings ▸ General ▸ Capabilit
 | capability | what it brings                                                                                                                                        |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `plan`     | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` / `feedback` |
-| `remember` | folios, their directories and attachments - option `agentSummary`                                                                                     |
+| `remember` | folios, their directories and attachments - no option since #Q3704                                                                                    |
 | `ship`     | deployed copies, sigils, errors, artifacts, quality, deploys - options `track` / `deploy` / `uptime` / `stacks`                                       |
 
 A pillar is not a thing: an app is still an app and a deploy is still a deploy.

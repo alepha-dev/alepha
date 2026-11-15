@@ -146,7 +146,7 @@ export const createTestProject = async (
         feedback: true,
       },
     },
-    { key: "remember", options: { agentSummary: true } },
+    { key: "remember", options: {} },
     { key: "ship", options: { track: true, deploy: false } },
   ];
 

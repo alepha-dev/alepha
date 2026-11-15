@@ -1149,10 +1149,6 @@ export default {
   "project.capability.remember.label": "Se souvenir",
   "project.capability.remember.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
-  "project.capability.remember.option.agentSummary.label":
-    "Résumés pour les agents",
-  "project.capability.remember.option.agentSummary.description":
-    "Afficher le champ résumé sur un folio. Il est écrit et lu via MCP dans tous les cas.",
   "project.capability.ship.label": "Livrer",
   "project.capability.ship.description":
     "Des applications et leurs déploiements, analytique, erreurs, Web Vitals.",
@@ -3602,6 +3598,11 @@ export default {
   "dashboard.folio.search": "Chercher un folio",
   "dashboard.folio.none": "Aucun folio ne correspond.",
   "folios.editor.action.add-to-dashboard": "Ajouter au tableau de bord…",
+  "folios.editor.action.edit-summary": "Modifier le résumé…",
+  "folios.summary.title": "Résumé pour les agents",
+  "folios.summary.description":
+    "Une ou deux phrases sur le rôle de ce folio : la ligne qu'un agent lit pour décider de l'ouvrir.",
+  "folios.summary.save": "Enregistrer le résumé",
   "folios.editor.action.recently-deleted": "Supprimés récemment…",
   "folios.deleted.title": "Supprimés récemment",
   "folios.deleted.description":
