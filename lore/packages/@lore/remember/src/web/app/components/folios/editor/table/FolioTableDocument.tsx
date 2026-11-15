@@ -14,11 +14,24 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useQueryParams } from "alepha/react/router";
 import { Plus } from "lucide-react";
-import { type ReactElement, useEffect, useMemo, useRef } from "react";
+import {
+  lazy,
+  type ReactElement,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { FolioCellValue } from "../../../../../../api/schemas/folioCellValueSchema.ts";
 import type { FolioRowResource } from "../../../../../../api/schemas/folioRowResourceSchema.ts";
 import FolioTableColumnMenu from "./FolioTableColumnMenu.tsx";
+
+/**
+ * Folio ▸ Import rows… (#Q3517), loaded when it opens.
+ */
+const FolioCsvImportDialog = lazy(() => import("./FolioCsvImportDialog.tsx"));
 import FolioTableGrid from "./FolioTableGrid.tsx";
 import { folioVisibleRows } from "./folioTableModel.ts";
 import { useFolioTable } from "./useFolioTable.ts";
@@ -27,6 +40,7 @@ export interface FolioTableCommands {
   insertRow: () => void;
   insertColumn: () => void;
   find: () => void;
+  importRows: () => void;
 }
 
 export interface FolioTableDocumentProps {
@@ -67,6 +81,7 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
   // The `[[#` picker's entries, for a reference cell's editor: the same
   // lookups the Markdown editor makes, so both offer the same items.
   const links = useElementLinks(element, "");
+  const [importing, setImporting] = useState(false);
 
   const [view, setView] = useQueryParams(
     z.object({
@@ -119,6 +134,7 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
     insertColumn: () => void addColumn(),
     find: () =>
       findRef.current?.querySelector<HTMLInputElement>("input")?.focus(),
+    importRows: () => setImporting(true),
   };
   const commandsRef = useRef(commands);
   commandsRef.current = commands;
@@ -127,6 +143,7 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
       insertRow: () => commandsRef.current.insertRow(),
       insertColumn: () => commandsRef.current.insertColumn(),
       find: () => commandsRef.current.find(),
+      importRows: () => commandsRef.current.importRows(),
     });
     return () => props.onCommands?.(null);
     // Registered once: the ref keeps the commands current.
@@ -298,6 +315,20 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
             ? tr("folios.table.empty-readonly")
             : tr("folios.table.empty")}
         </p>
+      )}
+      {importing && (
+        <Suspense fallback={null}>
+          <FolioCsvImportDialog
+            open
+            onOpenChange={setImporting}
+            target={{
+              kind: "into",
+              folioId: props.folioId,
+              columns: table.columns,
+            }}
+            onImported={() => void table.reload()}
+          />
+        </Suspense>
       )}
     </div>
   );

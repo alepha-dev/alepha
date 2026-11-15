@@ -44,6 +44,11 @@ export interface TreeViewFacade<T = undefined> {
   onDragStart: (id: string) => void;
   onDragOver: (id: string, position: TreeDropPosition) => void;
   onDrop: (id: string) => void;
+  /**
+   * Whether the tree takes OS files dropped on a row (`onFilesDrop`).
+   */
+  acceptsFiles: () => boolean;
+  onFilesDrop: (id: string, files: File[]) => void;
   onDragEnd: () => void;
   commitRename: (id: string, name: string) => void;
   cancelRename: () => void;
@@ -185,9 +190,9 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
     e.preventDefault();
     e.stopPropagation();
     if (isFileDrag(e)) {
-      // An OS file drag has nowhere to land in a tree of rows, so refuse it
-      // rather than silently treating it as a re-parent.
-      e.dataTransfer.dropEffect = "none";
+      // An OS file drag lands only where the consumer said files may, and is
+      // never treated as a re-parent.
+      e.dataTransfer.dropEffect = facade.acceptsFiles() ? "copy" : "none";
       return;
     }
     if (!props.isDragActive || props.isDragging) return;
@@ -208,7 +213,12 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
   const handleDrop = (e: DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     e.stopPropagation();
-    if (isFileDrag(e)) return;
+    if (isFileDrag(e)) {
+      if (facade.acceptsFiles()) {
+        facade.onFilesDrop(node.id, [...e.dataTransfer.files]);
+      }
+      return;
+    }
     facade.onDrop(node.id);
   };
 

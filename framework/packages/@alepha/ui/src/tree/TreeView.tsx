@@ -163,6 +163,13 @@ export interface TreeViewProps<T = undefined> {
    */
   onDrop?: (id: string) => void;
   /**
+   * Files from the operating system were dropped on a row. Without it a file
+   * drag is refused, as it always was. With it the row accepts the drag
+   * (`dropEffect: "copy"`) and hands the files over with the row's id: a
+   * consumer decides what a file landing on a leaf means (its parent, say).
+   */
+  onFilesDrop?: (id: string, files: File[]) => void;
+  /**
    * The drag ended, dropped or cancelled. #Q1940.
    */
   onDragEnd?: () => void;
@@ -331,6 +338,8 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
       onDragStart: (id) => implRef.current.onDragStart?.(id),
       onDragOver: (id, position) => implRef.current.onDragOver?.(id, position),
       onDrop: (id) => implRef.current.onDrop?.(id),
+      acceptsFiles: () => implRef.current.onFilesDrop !== undefined,
+      onFilesDrop: (id, files) => implRef.current.onFilesDrop?.(id, files),
       onDragEnd: () => implRef.current.onDragEnd?.(),
       commitRename: (id, name) => implRef.current.onCommitRename?.(id, name),
       cancelRename: () => implRef.current.onCancelRename?.(),

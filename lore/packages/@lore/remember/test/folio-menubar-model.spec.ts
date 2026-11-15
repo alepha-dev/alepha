@@ -115,7 +115,11 @@ describe("isFolioActionEnabled", () => {
       expect(
         isFolioActionEnabled(item.id, { ...unlocked, editing: true }),
         item.id,
-      ).toBe(item.id !== "insert.row" && item.id !== "insert.column");
+      ).toBe(
+        item.id !== "insert.row" &&
+          item.id !== "insert.column" &&
+          item.id !== "folio.importRows",
+      );
     }
   });
 
@@ -123,6 +127,7 @@ describe("isFolioActionEnabled", () => {
     const table = { ...unlocked, editing: true, isTable: true };
     expect(isFolioActionEnabled("insert.row", table)).toBe(true);
     expect(isFolioActionEnabled("insert.column", table)).toBe(true);
+    expect(isFolioActionEnabled("folio.importRows", table)).toBe(true);
     expect(isFolioActionEnabled("insert.heading1", table)).toBe(false);
     expect(isFolioActionEnabled("edit.bold", table)).toBe(false);
     expect(isFolioActionEnabled("view.mode", table)).toBe(false);
@@ -143,7 +148,8 @@ describe("isFolioActionEnabled", () => {
       const needsEditor =
         /^(edit\.(bold|italic|code|spoiler)|insert\.)/.test(item.id) ||
         item.id === "insert.row" ||
-        item.id === "insert.column";
+        item.id === "insert.column" ||
+        item.id === "folio.importRows";
       expect(isFolioActionEnabled(item.id, reading), item.id).toBe(
         !needsEditor,
       );

@@ -97,6 +97,7 @@ export interface FolioDocumentProps {
       insertRow: () => void;
       insertColumn: () => void;
       find: () => void;
+      importRows: () => void;
     } | null,
   ) => void;
 }

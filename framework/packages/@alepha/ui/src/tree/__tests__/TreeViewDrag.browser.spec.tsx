@@ -71,6 +71,7 @@ const ROW_RECT = { top: 0, height: ROW_HEIGHT } as DOMRect;
 interface FakeDataTransfer {
   types: string[];
   dropEffect: string;
+  files?: File[];
   effectAllowed?: string;
   setData?: () => void;
 }
@@ -210,6 +211,35 @@ describe("TreeView drag and drop", () => {
       dropEffect: "",
     });
     expect(dropped).toEqual([]);
+  });
+
+  it("takes OS files on a row when the consumer accepts them", () => {
+    const received: Array<[string, string[]]> = [];
+    render(
+      <TreeView
+        label="Files"
+        rows={flattenTree(NODES, new Set())}
+        collapsed={new Set()}
+        onSelect={() => {}}
+        onToggle={() => {}}
+        draggable
+        onDrop={() => {}}
+        onFilesDrop={(id, files) =>
+          received.push([id, files.map((file) => file.name)])
+        }
+      />,
+    );
+
+    const over = dragOver(rowOf("Branch"), 10, ["Files"]);
+    expect(over.dropEffect).toBe("copy");
+
+    const file = new File(["a,b"], "budget.csv", { type: "text/csv" });
+    dispatchDrag(rowOf("Branch"), "drop", 10, {
+      types: ["Files"],
+      dropEffect: "",
+      files: [file],
+    } as FakeDataTransfer);
+    expect(received).toEqual([["d-0", ["budget.csv"]]]);
   });
 
   it("draws no marker where a drop would orphan the dragged branch", () => {

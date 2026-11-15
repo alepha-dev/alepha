@@ -28,6 +28,7 @@ const GUIDES = [
   "ship-cloudflare-token",
   "project-dashboard",
   "plan-releases",
+  "remember-tables",
 ] as const;
 
 // alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute

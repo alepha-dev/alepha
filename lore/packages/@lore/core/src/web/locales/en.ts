@@ -539,6 +539,25 @@ export default {
   "folios.table.history.unreadable": "This revision cannot be displayed.",
   "folios.table.create.title": "New table",
   "folios.table.create.submit": "Create table",
+  "folios.editor.tree.import-csv": "Import CSV…",
+  "folios.editor.action.import-rows": "Import rows…",
+  "folios.table.import.title-new": "Import a CSV as a table",
+  "folios.table.import.title-into": "Import rows from a CSV",
+  "folios.table.import.description":
+    "Comma, semicolon or tab separated, UTF-8. Nothing is written until you import.",
+  "folios.table.import.file": "CSV file",
+  "folios.table.import.header": "The first line names the columns",
+  "folios.table.import.over-caps":
+    "This file has $1 rows and $2 columns; a table holds at most 2000 rows and 50 columns. Nothing was written.",
+  "folios.table.import.skipped":
+    "No column of this table is named: $1. Those columns are skipped.",
+  "folios.table.import.type-of": "Type of $1",
+  "folios.table.import.progress": "Imported $1 of $2 rows",
+  "folios.table.import.failed":
+    "Stopped at line $1 of the file: $2. The $3 rows imported before it stay.",
+  "folios.table.import.cancel": "Cancel",
+  "folios.table.import.submit": "Import $1 rows",
+  "folios.table.docs": "How tables work",
   "folios.editor.tree.new-folio": "New folio",
   "folios.editor.tree.new-directory": "New directory",
   "folios.editor.tree.refresh": "Refresh the tree",
