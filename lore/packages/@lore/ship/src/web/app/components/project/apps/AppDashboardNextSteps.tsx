@@ -5,7 +5,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
+import {
+  capabilityOption,
+  currentProjectAtom,
+  type I18n,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -49,9 +53,14 @@ const AppDashboardNextSteps = () => {
     },
   });
 
+  // A step per option the project has (#Q3632): no sigil to create
+  // without Track, no host to choose without Deploy.
+  const track = capabilityOption(project, "ship", "track");
+  const deploy = capabilityOption(project, "ship", "deploy");
   const steps = [
     {
       key: "sigil",
+      offered: track,
       icon: KeyRound,
       title: tr("app.nextSteps.sigil.title"),
       description: tr("app.nextSteps.sigil.description"),
@@ -59,6 +68,7 @@ const AppDashboardNextSteps = () => {
     },
     {
       key: "url",
+      offered: true,
       icon: Link2,
       title: tr("app.nextSteps.url.title"),
       description: tr("app.nextSteps.url.description"),
@@ -66,12 +76,13 @@ const AppDashboardNextSteps = () => {
     },
     {
       key: "host",
+      offered: deploy,
       icon: Server,
       title: tr("app.nextSteps.host.title"),
       description: tr("app.nextSteps.host.description"),
       done: Boolean(instance.hostId),
     },
-  ];
+  ].filter((step) => step.offered);
 
   return (
     <Card data-testid="app-next-steps">
