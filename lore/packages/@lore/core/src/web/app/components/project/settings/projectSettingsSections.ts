@@ -140,7 +140,6 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
           "projectAutomationDetail",
           "projectAutomationVariables",
           "projectAutomationRun",
-          "projectAutomationAdoption",
         ],
       },
       {

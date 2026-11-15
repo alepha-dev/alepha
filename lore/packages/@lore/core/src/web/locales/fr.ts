@@ -3947,26 +3947,7 @@ export default {
   "uptime.loading": "Chargement des moniteurs...",
   "uptime.staleAfter": "Silence maximal (secondes)",
   "automation.guide": "Fonctionnement des automatisations",
-  "automation.adoption.title": "Notifications intégrées",
-  "automation.adoption.description":
-    "Les rappels de quête et les annonces de version fonctionnent comme des politiques intégrées. En adopter une la remplace par une automatisation que vous possédez et pouvez modifier ; la politique intégrée s'arrête alors.",
-  "automation.adoption.reminders": "Rappels par quête",
-  "automation.adoption.releases": "Annonces de versions",
-  "automation.adoption.reminderDescription":
-    "Le traitement horaire conserve les échéances, fréquences, responsables, réglages et historiques. Les préférences de notification des tâches s’appliquent.",
-  "automation.adoption.releaseDescription":
-    "Les membres actuels reçoivent les annonces dans leur boîte et par courriel, sauf l’auteur de la publication. Les préférences de versions s’appliquent. Aucun folio requis. Cet aperçu suppose que vous publiez.",
-  "automation.adoption.author": "Auteur nommé",
-  "automation.adoption.channels": "Canaux requis",
-  "automation.adoption.grants": "Droits requis",
   "automation.adoption.recipients": "Destinataires",
-  "automation.adoption.noRecipients":
-    "Aucun destinataire sélectionné actuellement.",
-  "automation.adoption.moreRecipients":
-    "L’aperçu affiche jusqu’à 50 entrées. L’exécution parcourt tous les membres autorisés par traitements limités.",
-  "automation.adoption.reminderCount": "$1 rappels de quête configurés",
-  "automation.adoption.replacement": "Règle de remplacement",
-  "automation.adoption.create": "Créer ma règle de compatibilité",
   "automation.subscription.on":
     "Abonné : cliquez pour modifier ou arrêter les notifications",
   "automation.subscription.channel": "Me notifier par",
@@ -3979,18 +3960,6 @@ export default {
   "automation.subscription.cancel": "Annuler",
   "automation.subscription.offTitle": "Se désabonner ?",
   "automation.subscription.offConfirm": "Se désabonner",
-  "automation.adoption.adopt": "Consentir et adopter",
-  "automation.adoption.resume": "Reprendre mon adoption",
-  "automation.adoption.open": "Ouvrir la règle de remplacement",
-  "automation.adoption.confirmTitle": "Adopter cette politique ?",
-  "automation.adoption.confirmDescription":
-    "$1 sera l’auteur de la règle de remplacement et l’activera. L’ancien traitement s’arrête définitivement pour cette politique. Désactivez ou supprimez la règle pour vous retirer ; cela ne rétablit jamais l’ancien envoi.",
-  "automation.adoption.optOutDescription":
-    "Après adoption, désactivez ou supprimez la règle pour arrêter cette politique. Répéter l’adoption ne la réactive jamais. Seul son auteur initial peut la réactiver explicitement.",
-  "automation.adoption.legacy": "La politique existante est toujours active",
-  "automation.adoption.pending": "Préparée, en attente de basculement",
-  "automation.adoption.adopted": "Adoptée",
-  "automation.adoption.optedOut": "Adoptée, règle désactivée ou supprimée",
   "automation.adoption.member": "Un membre du projet",
   "automation.adoption.roster":
     "Membres actuels sauf l’auteur de la publication",

@@ -1,5 +1,4 @@
 import {
-  AutomationLegacyJobProvider,
   LoreInboxRecipientProvider,
   LoreNotificationPreferences,
   AutomationEvents,
@@ -168,7 +167,6 @@ describe("Automation MCP transport uses shared application policy", () => {
     alepha = Alepha.create({
       env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "silent" },
     })
-      .with({ provide: JobProvider, use: AutomationLegacyJobProvider })
       .with({ provide: AutomationClaims, use: McpCrashAfterAdvance })
       .with({ provide: CronProvider, use: ManualCronProvider })
       .with({ provide: JobQueueProvider, use: McpPausedQueue })
@@ -491,17 +489,30 @@ describe("Automation MCP transport uses shared application policy", () => {
     expect,
   }) => {
     const before = (await persistence.rules.findMany()).length;
-    const compatibility = { ...rule(), compatibility: "release-notifications" };
+    // A channel nothing provides passes the schema, and enabling refuses it.
+    const unavailable: AutomationRule = {
+      ...rule(),
+      actions: [
+        {
+          kind: "notify",
+          recipient: user.id,
+          channel: "pigeon",
+          title: "Quest",
+          text: "{{title}}",
+          category: "automations",
+        },
+      ],
+    };
 
     const refusal = failed(
       await call("automation_create", {
-        title: "Needs adoption",
-        rule: compatibility,
+        title: "Needs a channel",
+        rule: unavailable,
         enabled: true,
       }),
     );
 
-    expect(refusal).toMatch(/adoption/i);
+    expect(refusal).toMatch(/channel 'pigeon' is unavailable/i);
     expect(await persistence.rules.findMany()).toHaveLength(before);
   });
   it("rejects invalid slots, foreign targets and scoped keys without the source grant", async ({

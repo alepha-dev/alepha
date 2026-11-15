@@ -5,7 +5,6 @@ import {
 } from "alepha/api/organizations";
 import { $repository, type SQLLike } from "alepha/orm";
 
-import { automationAdoptions } from "../entities/automationAdoptions.ts";
 import { automationChannels } from "../entities/automationChannels.ts";
 import { automationEvents } from "../entities/automationEvents.ts";
 import { automationReceipts } from "../entities/automationReceipts.ts";
@@ -72,12 +71,6 @@ export class CoreProjectMerge {
       kind: "automation variable",
       entity: automationVariables,
       keys: ["key"],
-      onCollision: "refuse",
-    },
-    {
-      kind: "automation adoption",
-      entity: automationAdoptions,
-      keys: ["policy"],
       onCollision: "refuse",
     },
     {

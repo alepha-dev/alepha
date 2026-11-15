@@ -3940,25 +3940,7 @@ export default {
   "uptime.loading": "Loading monitors...",
   "uptime.staleAfter": "Stale after (seconds)",
   "automation.guide": "How automations work",
-  "automation.adoption.title": "Built-in notifications",
-  "automation.adoption.description":
-    "Quest reminders and release announcements run as built-in policies. Adopting one replaces it with an automation you own and can edit; the built-in policy stops at that moment.",
-  "automation.adoption.reminders": "Per-quest reminders",
-  "automation.adoption.releases": "Release announcements",
-  "automation.adoption.reminderDescription":
-    "Hourly processing preserves due dates, intervals, assignees, controls and history. Existing tasks notification preferences apply.",
-  "automation.adoption.releaseDescription":
-    "The current roster receives inbox and email announcements, except the publisher. Releases preferences apply. No folio is required. This preview assumes you publish.",
-  "automation.adoption.author": "Named author",
-  "automation.adoption.channels": "Required channels",
-  "automation.adoption.grants": "Required grants",
   "automation.adoption.recipients": "Recipients",
-  "automation.adoption.noRecipients": "No recipients currently selected.",
-  "automation.adoption.moreRecipients":
-    "The preview shows up to 50 entries. Execution continues through the full authorized roster in bounded runs.",
-  "automation.adoption.reminderCount": "$1 configured quest reminders",
-  "automation.adoption.replacement": "Replacement rule",
-  "automation.adoption.create": "Create my compatibility rule",
   "automation.subscription.on":
     "Subscribed: click to change or stop notifications",
   "automation.subscription.channel": "Notify me by",
@@ -3971,18 +3953,6 @@ export default {
   "automation.subscription.cancel": "Cancel",
   "automation.subscription.offTitle": "Unsubscribe?",
   "automation.subscription.offConfirm": "Unsubscribe",
-  "automation.adoption.adopt": "Consent and adopt",
-  "automation.adoption.resume": "Resume my adoption",
-  "automation.adoption.open": "Open replacement rule",
-  "automation.adoption.confirmTitle": "Adopt this policy?",
-  "automation.adoption.confirmDescription":
-    "$1 will author and enable the replacement. The legacy path stops permanently for this policy. Disable or delete the replacement to opt out; this never restores the legacy sender.",
-  "automation.adoption.optOutDescription":
-    "After adoption, disable or delete the replacement to stop this policy. Repeating adoption never reenables it. Only its original author can explicitly enable it again.",
-  "automation.adoption.legacy": "Existing policy is still active",
-  "automation.adoption.pending": "Prepared, awaiting cutover",
-  "automation.adoption.adopted": "Adopted",
-  "automation.adoption.optedOut": "Adopted, replacement disabled or deleted",
   "automation.adoption.member": "One project member",
   "automation.adoption.roster": "Current roster except publisher",
   "automation.adoption.audiencePreview":

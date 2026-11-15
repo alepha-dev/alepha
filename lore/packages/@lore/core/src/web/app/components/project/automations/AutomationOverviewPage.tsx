@@ -17,7 +17,6 @@ import {
   Pause,
   Play,
   Plus,
-  Replace,
   Trash2,
   Workflow,
 } from "lucide-react";
@@ -183,15 +182,6 @@ const AutomationOverviewPage = () => {
             label: tr("automation.variables.title"),
             onClick: () =>
               router.push("projectAutomationVariables", {
-                params: { projectSlug: project.slug },
-              }),
-            disabled: busy,
-          },
-          {
-            icon: Replace,
-            label: tr("automation.adoption.title"),
-            onClick: () =>
-              router.push("projectAutomationAdoption", {
                 params: { projectSlug: project.slug },
               }),
             disabled: busy,

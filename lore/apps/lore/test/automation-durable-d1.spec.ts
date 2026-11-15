@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  AutomationLegacyJobProvider,
   AutomationAtomic,
   AutomationService,
   AutomationVariableService,
@@ -133,7 +132,6 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       }).with({ provide: DatabaseProvider, use: FixtureD1Provider });
       alepha.set("cloudflare.env", proxy.env);
       alepha.with({ provide: CronProvider, use: ManualCronProvider });
-      alepha.with({ provide: JobProvider, use: AutomationLegacyJobProvider });
       alepha.with({
         provide: NotificationInboxRecipientProvider,
         use: LoreInboxRecipientProvider,
