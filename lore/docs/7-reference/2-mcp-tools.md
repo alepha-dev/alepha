@@ -76,43 +76,45 @@ can reach, by id and title.
 
 See [Quests](/lore/docs/plan-quests).
 
-| Tool                   | What it does                                                                        |
-| ---------------------- | ----------------------------------------------------------------------------------- |
-| `quest_list`           | List and filter quests, newest-updated first.                                       |
-| `quest_get`            | One quest with its objectives and discussion.                                       |
-| `quest_create`         | File a quest. `accept: true` takes it in the same call.                             |
-| `quest_update`         | Change a quest. A completed quest freezes its title, description and objectives.    |
-| `quest_delete`         | Delete a quest. Refused inside an epic that has started.                            |
-| `quest_accept`         | Take a quest and start it.                                                          |
-| `quest_unassign`       | Send an accepted quest back to the backlog.                                         |
-| `quest_objective_set`  | Tick or untick one objective.                                                       |
-| `quest_complete`       | Close a quest, with a summary, the commits, and a reason for each waived objective. |
-| `quest_commit_add`     | Record a commit on a quest, completed ones included.                                |
-| `quest_hold`           | Put a quest on hold, with a required reason posted as a comment.                    |
-| `quest_unhold`         | Lift a hold, back to whatever it was before.                                        |
-| `quest_shelve`         | Set a to-do quest aside without deleting it.                                        |
-| `quest_unshelve`       | Bring a shelved quest back as to do.                                                |
-| `quest_comment_add`    | Comment on a quest, marked as written by an agent.                                  |
-| `quest_tags`           | Every tag in use in the project.                                                    |
-| `quest_attachment_get` | One attachment's content: images inline, text decoded.                              |
-| `quest_attachment_add` | How to attach a file: answers the CLI command.                                      |
+| Tool                     | What it does                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| `quest_list`             | List and filter quests, newest-updated first.                                       |
+| `quest_get`              | One quest with its objectives and discussion.                                       |
+| `quest_create`           | File a quest. `accept: true` takes it in the same call.                             |
+| `quest_update`           | Change a quest. A completed quest freezes its title, description and objectives.    |
+| `quest_delete`           | Delete a quest. Refused inside an epic that has started.                            |
+| `quest_accept`           | Take a quest and start it.                                                          |
+| `quest_unassign`         | Send an accepted quest back to the backlog.                                         |
+| `quest_objective_set`    | Tick or untick one objective.                                                       |
+| `quest_complete`         | Close a quest, with a summary, the commits, and a reason for each waived objective. |
+| `quest_commit_add`       | Record a commit on a quest, completed ones included.                                |
+| `quest_pull_request_add` | Record a pull request on a quest, completed ones included.                          |
+| `quest_hold`             | Put a quest on hold, with a required reason posted as a comment.                    |
+| `quest_unhold`           | Lift a hold, back to whatever it was before.                                        |
+| `quest_shelve`           | Set a to-do quest aside without deleting it.                                        |
+| `quest_unshelve`         | Bring a shelved quest back as to do.                                                |
+| `quest_comment_add`      | Comment on a quest, marked as written by an agent.                                  |
+| `quest_tags`             | Every tag in use in the project.                                                    |
+| `quest_attachment_get`   | One attachment's content: images inline, text decoded.                              |
+| `quest_attachment_add`   | How to attach a file: answers the CLI command.                                      |
 
 ## Epics
 
 See [Epics](/lore/docs/plan-epics).
 
-| Tool                 | What it does                                                                    |
-| -------------------- | ------------------------------------------------------------------------------- |
-| `epic_list`          | Every epic, whatever its status, with its progress.                             |
-| `epic_get`           | One epic, with its progress, folios and review log.                             |
-| `epic_create`        | Create an epic, as a draft.                                                     |
-| `epic_update`        | Change its title, description or predecessor, in any status.                    |
-| `epic_set_status`    | Move an epic between `draft` and `ready`.                                       |
-| `epic_shelve`        | Set a whole plan aside, with its open quests.                                   |
-| `epic_unshelve`      | Bring it back, with only the quests it set aside.                               |
-| `epic_delete`        | Delete an epic and its quests, while it is `draft` or `ready`. Its folios stay. |
-| `epic_review_create` | File a review: its blockers, questions, decisions and changes.                  |
-| `epic_review_answer` | Answer, waive or overturn a review item, by its number.                         |
+| Tool                    | What it does                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| `epic_list`             | Every epic, whatever its status, with its progress.                             |
+| `epic_get`              | One epic, with its progress, pull requests, folios and review log.              |
+| `epic_create`           | Create an epic, as a draft.                                                     |
+| `epic_update`           | Change its title, description or predecessor, in any status.                    |
+| `epic_set_status`       | Move an epic between `draft` and `ready`.                                       |
+| `epic_shelve`           | Set a whole plan aside, with its open quests.                                   |
+| `epic_unshelve`         | Bring it back, with only the quests it set aside.                               |
+| `epic_delete`           | Delete an epic and its quests, while it is `draft` or `ready`. Its folios stay. |
+| `epic_review_create`    | File a review: its blockers, questions, decisions and changes.                  |
+| `epic_review_answer`    | Answer, waive or overturn a review item, by its number.                         |
+| `epic_pull_request_add` | Record the epic's pull request, in any status. Its quests with none show it.    |
 
 ## Releases
 

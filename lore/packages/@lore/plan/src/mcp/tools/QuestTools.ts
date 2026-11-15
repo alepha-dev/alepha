@@ -18,6 +18,10 @@ import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import { QUEST_EPIC_NONE } from "../../api/schemas/questEpicFilter.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
+import {
+  pullRequestBodyOf,
+  pullRequestRefsOf,
+} from "../schemas/pullRequestSchemas.ts";
 // Same helper the UI labels a user with, so a name reads identically over
 // MCP and on the page. Precedent for reaching across: `FolioAttachmentService`
 // imports `folioAssetPath` from the same tree. It is a pure function with no
@@ -32,6 +36,8 @@ import {
   questCommentAddResultSchema,
   questCommitAddParamsSchema,
   questCommitAddResultSchema,
+  questPullRequestAddParamsSchema,
+  questPullRequestAddResultSchema,
   questCompleteParamsSchema,
   questCompleteResultSchema,
   questCreateParamsSchema,
@@ -832,6 +838,39 @@ export class QuestTools {
   });
 
   /**
+   * Record a pull request a quest shipped through (#Q3707).
+   */
+  quest_pull_request_add = $tool({
+    description:
+      "Record a pull request against a quest, so the pull request a quest shipped through is a field on the quest rather than a link buried in its discussion. Use it when you open the pull request, and pass its number and title too. " +
+      "For a quest in an epic, record the epic's one pull request with `epic_pull_request_add` instead: every quest of the epic with none of its own shows it. A run of loose quests landing as one pull request records it on each of its quests. " +
+      "Deduped on the URL, so recording the same pull request twice is a no-op. Allowed on completed quests. Lore never reads the pull request's state from the forge: the record is what you write, like a commit.",
+    title: "Record a pull request on a quest",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questPullRequestAddParamsSchema,
+      result: questPullRequestAddResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const quest = await this.questController.addQuestPullRequest({
+        params: { id },
+        body: pullRequestBodyOf(params),
+      });
+
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        pullRequests: pullRequestRefsOf(quest.pullRequests),
+      };
+    },
+  });
+
+  /**
    * Get a single quest by ID.
    */
   quest_get = $tool({
@@ -867,7 +906,7 @@ export class QuestTools {
       // project, and each one is scoped to this quest or its project.
       const [
         dependsOn_shortId,
-        epic,
+        { ref: epic, pullRequests: epicPullRequests },
         { discussion, discussionTruncated },
         files,
       ] = await Promise.all([
@@ -876,8 +915,9 @@ export class QuestTools {
           : undefined,
         // `quest_get` is direct addressing, so it never gates on the
         // epic's status (design §5.3): this is purely enrichment, and
-        // skipped when the quest has no epic, the common case.
-        this.epicRefs.refFor(quest.projectId, quest.epicId),
+        // skipped when the quest has no epic, the common case. The same
+        // read carries the epic's pull requests (#Q3707).
+        this.epicRefs.refWithPullRequestsFor(quest.projectId, quest.epicId),
         // Read as well as write: an agent that can comment but cannot see
         // the owner's reply has half the loop, and "do X differently" left
         // on a quest is exactly what the next session must find.
@@ -918,6 +958,12 @@ export class QuestTools {
         tags: quest.tags,
         dependsOn_shortId,
         commits: quest.commits ?? [],
+        pullRequests: pullRequestRefsOf(quest.pullRequests),
+        // The epic's, when the quest has none of its own (#Q3707): the
+        // epic's one pull request is recorded once, not on every quest.
+        ...(!quest.pullRequests?.length && epicPullRequests.length
+          ? { epicPullRequests: pullRequestRefsOf(epicPullRequests) }
+          : {}),
         attachments,
         epic,
       };

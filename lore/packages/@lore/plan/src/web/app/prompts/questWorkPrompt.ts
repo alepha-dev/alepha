@@ -37,6 +37,10 @@
  * generalises, so that is what the template states. "Pull request" is the
  * generic word here: on a forge that calls it a merge request, an agent reads
  * it as one.
+ *
+ * The pull request is recorded with `quest_pull_request_add`, not posted as a link with
+ * `quest_comment_add` (#Q3707): a link in the discussion is found by
+ * scrolling, a record shows on the quest's rail.
  */
 export const questWorkPromptDefault = `Work on quest {{reference}} "{{title}}" of the Lore project "{{project}}".
 
@@ -54,7 +58,7 @@ The quest: {{url}}
 3. Do exactly what the quest and its objectives say. Tick each objective with \`quest_objective_set\` as it is met. Anything you discover beyond the quest is a comment (\`quest_comment_add\`), not extra scope.
 4. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
 5. Commit it as one commit, its message naming {{reference}}. One quest is one commit: the pull request is rebase-merged, so main receives its commits as they are. A later fix goes into that commit (amend it, then push with \`--force-with-lease\`).
-6. Push the branch and open a pull request into main. Its title names {{reference}}, and its description links the quest. Post the pull request's link on the quest with \`quest_comment_add\`.
+6. Push the branch and open a pull request into main. Its title names {{reference}}, and its description links the quest. Record it on the quest with \`quest_pull_request_add\` (its URL, number and title), rather than posting its link as a comment.
 7. If the project verifies on CI, the run on the pull request is the source of truth and a green local check is not: wait for it, or carry on with something else and read it when it lands. Fix and push again until it is green.
 8. Never merge it yourself, and never push to main: the pull request is how the change lands. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge. Otherwise it waits for review.
 9. Only once it has merged: record the commit main received with \`quest_commit_add\` (a rebase merge gives it a new sha; find it in main's log by {{reference}}), then \`quest_complete\` with a short note: what shipped, and what was left out and why. Delete the branch locally, and on the remote if the merge did not, and remove the worktree.

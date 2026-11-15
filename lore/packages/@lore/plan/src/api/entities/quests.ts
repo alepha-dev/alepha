@@ -4,6 +4,7 @@ import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 
+import { pullRequestSchema } from "../schemas/pullRequestSchema.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
 import { epics } from "./epics.ts";
@@ -418,6 +419,17 @@ export const quests = $entity({
      * second cascade child on `quests` to worry about forever.
      */
     commits: z.array(questCommitSchema).optional(),
+    /**
+     * The pull requests this quest shipped through, appended as they are
+     * opened (#Q3707). A quest in an epic usually has none of its own: the
+     * epic's one pull request is recorded on the epic, and the quest shows
+     * that one.
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`, for the reason `commits` gives.
+     * A JSON array rather than a table for the same reason too.
+     */
+    pullRequests: z.array(pullRequestSchema).optional(),
   }),
   indexes: [
     {

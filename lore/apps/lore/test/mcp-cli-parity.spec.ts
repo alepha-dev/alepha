@@ -35,6 +35,10 @@ const ALIASES: Record<string, string> = {
   folio_attachment_add: "attachments push",
   deploy_start: "deploy",
   epic_set_status: "epic set status",
+  // One hyphenated word on the command line, where the underscore would read
+  // as two levels (#Q3707).
+  quest_pull_request_add: "quest pull-request add",
+  epic_pull_request_add: "epic pull-request add",
 };
 
 const GAPS: string[] = [];

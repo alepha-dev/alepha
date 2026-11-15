@@ -45,7 +45,7 @@ const anEpic = {
  * title to one line; a row's value wraps.
  */
 describe("ProjectEpicAside", () => {
-  const mount = async (lang: "en" | "fr") => {
+  const mount = async (lang: "en" | "fr", epic: EpicResource = anEpic) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -60,7 +60,7 @@ describe("ProjectEpicAside", () => {
 
     const view = render(
       <AlephaContext.Provider value={alepha}>
-        <ProjectEpicAside epic={anEpic} quests={null} onChange={() => {}} />
+        <ProjectEpicAside epic={epic} quests={null} onChange={() => {}} />
       </AlephaContext.Provider>,
     );
     await screen.findByText("#E49");
@@ -91,6 +91,45 @@ describe("ProjectEpicAside", () => {
     expect(view.container.firstElementChild?.firstElementChild?.tagName).toBe(
       "DL",
     );
+
+    await alepha.stop();
+  });
+
+  it("links the epic's pull requests by their url (#Q3707)", async ({
+    expect,
+  }) => {
+    const url = "https://github.com/acme/crm/pull/118";
+    const { alepha, view } = await mount("en", {
+      ...anEpic,
+      pullRequests: [
+        {
+          url,
+          number: 118,
+          at: "2026-09-14T10:00:00.000Z",
+          by: "00000000-0000-4000-8000-000000000001",
+        },
+      ],
+    });
+
+    const labels = [...view.container.querySelectorAll("dt")].map(
+      (dt) => dt.textContent,
+    );
+    expect(labels).toContain("Pull requests");
+    expect(
+      view.container.querySelector<HTMLAnchorElement>(`a[href="${url}"]`)
+        ?.textContent,
+    ).toBe("#118");
+
+    await alepha.stop();
+  });
+
+  it("has no pull request row before one is recorded", async ({ expect }) => {
+    const { alepha, view } = await mount("en");
+
+    const labels = [...view.container.querySelectorAll("dt")].map(
+      (dt) => dt.textContent,
+    );
+    expect(labels).not.toContain("Pull requests");
 
     await alepha.stop();
   });

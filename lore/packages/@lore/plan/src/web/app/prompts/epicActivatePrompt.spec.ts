@@ -85,6 +85,20 @@ describe("epicActivatePromptDefault", () => {
     expect(prompt).toContain("`epic_number` 41");
   });
 
+  /**
+   * #Q3707: the epic's one pull request is recorded once, on the epic, and
+   * every quest of the epic shows it; its link is no longer a comment
+   * posted on each quest.
+   */
+  it("records the pull request once on the epic, not as a comment", () => {
+    expect(prompt).toContain("`epic_pull_request_add`");
+    expect(prompt.indexOf("open a pull request into main")).toBeLessThan(
+      prompt.indexOf("`epic_pull_request_add`"),
+    );
+    expect(prompt).not.toMatch(/pull request's link on each quest/i);
+    expect(prompt).not.toContain("quest_pull_request_add");
+  });
+
   it("sets no epic status anywhere", () => {
     // Both automatic moves happen on the quest requests; a status call here
     // is either refused (`in_progress` and `completed` are not settable) or

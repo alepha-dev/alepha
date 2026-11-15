@@ -13,6 +13,10 @@ import { MAX_QUEST_OBJECTIVES } from "../../api/schemas/questObjectivesLimit.ts"
 import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
 import { objectiveInputSchema } from "./objectiveInputSchema.ts";
 import { objectiveSchema } from "./objectiveSchema.ts";
+import {
+  pullRequestParamsShape,
+  pullRequestRefSchema,
+} from "./pullRequestSchemas.ts";
 import { questSizeSchema } from "./questSizeSchema.ts";
 
 // -----------------------------------------------------------------------------
@@ -282,6 +286,16 @@ export const questCommitAddResultSchema = z.object({
   commits: z.array(questCommitRefSchema),
 });
 
+export const questPullRequestAddParamsSchema = entityRefSchema.extend(
+  pullRequestParamsShape,
+);
+
+export const questPullRequestAddResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  pullRequests: z.array(pullRequestRefSchema),
+});
+
 export const questAttachmentGetParamsSchema = entityRefSchema.extend({
   attachmentId: z
     .uuid()
@@ -364,6 +378,17 @@ export const questGetResultSchema = z.object({
     .describe(
       "What shipped for this quest. Empty until someone records a sha with `quest_commit_add` or `quest_complete`. Lore does not know the repository, so there is nothing to click through to.",
     ),
+  pullRequests: z
+    .array(pullRequestRefSchema)
+    .describe(
+      "The pull requests recorded on this quest itself, with `quest_pull_request_add`. Usually empty for a quest in an epic, whose pull request is recorded on the epic: see `epicPullRequests`.",
+    ),
+  epicPullRequests: z
+    .array(pullRequestRefSchema)
+    .describe(
+      "The epic's pull requests, present only when this quest is in an epic, has none of its own, and the epic has some: the pull request this quest shipped through, recorded once on the epic.",
+    )
+    .optional(),
   attachments: z
     .array(questAttachmentSchema)
     .describe(

@@ -96,6 +96,14 @@ describe("questWorkPromptDefault", () => {
    * Cleanup is part of the job. A branch and a worktree left behind are what
    * fourteen stale worktrees look like.
    */
+  // #Q3707: recorded on the quest, where its rail shows it.
+  it("records the pull request on the quest, not as a comment", () => {
+    expect(prompt).toContain(
+      "Record it on the quest with `quest_pull_request_add`",
+    );
+    expect(prompt).not.toMatch(/Post the pull request's link/i);
+  });
+
   it("requires the branch and the worktree to be cleaned up", () => {
     expect(prompt).toContain("Delete the branch locally");
     expect(prompt).toContain("remove the worktree");

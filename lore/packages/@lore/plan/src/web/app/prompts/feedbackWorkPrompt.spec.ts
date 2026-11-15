@@ -123,6 +123,14 @@ describe("feedbackWorkPromptDefault", () => {
   /**
    * ⚠️ Served to EVERY Lore project, so it must name no project's command.
    */
+  // #Q3707: recorded on the quest, where its rail shows it.
+  it("records the pull request on the quest, not as a comment", () => {
+    expect(prompt).toContain(
+      "Record it on the quest with `quest_pull_request_add`",
+    );
+    expect(prompt).not.toMatch(/Post the pull request's link/i);
+  });
+
   it("names no project-specific verification command", () => {
     expect(prompt).not.toContain("yarn v");
     expect(prompt).toContain("the project's local checks");

@@ -70,6 +70,9 @@ class Links extends LinkProvider {
       projectId: 1,
       title: "Ship it",
       commits: commits as never,
+      // The faker fills optional fields at random, and a pull request with a
+      // title is a second tooltip trigger this file counts (#Q3707).
+      pullRequests: undefined,
     };
   }
 }

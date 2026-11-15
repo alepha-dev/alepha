@@ -154,6 +154,7 @@ describe("the Lore CLI command surface", () => {
         "unshelve",
         "delete",
         "review",
+        "pull-request",
       ],
       feedback: ["list", "get", "attachment", "comment", "accept", "reject"],
       folio: [
@@ -226,6 +227,7 @@ describe("the Lore CLI command surface", () => {
         "objective",
         "comment",
         "commit",
+        "pull-request",
         "hold",
         "unhold",
         "shelve",

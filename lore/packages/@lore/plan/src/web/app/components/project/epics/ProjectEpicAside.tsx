@@ -8,6 +8,7 @@ import { Link, useRouter } from "alepha/react/router";
 
 import type { EpicResource } from "../../../../../api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
+import PullRequestLinks from "../../shared/PullRequestLinks.tsx";
 import EpicReleaseControl from "./EpicReleaseControl.tsx";
 import {
   epicBlockedBy,
@@ -118,6 +119,23 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
       // that only reports it would leave the FK writable by nothing but MCP.
       value: <EpicReleaseControl epic={props.epic} onChange={props.onChange} />,
     },
+    // What the epic shipped through (#Q3707), recorded by the agent that
+    // opened it. Omitted until one is, like every other row.
+    ...(props.epic.pullRequests?.length
+      ? [
+          {
+            label: tr("epic.aside.pullRequests"),
+            value: (
+              <span className="text-sm">
+                <PullRequestLinks
+                  pullRequests={props.epic.pullRequests}
+                  align="start"
+                />
+              </span>
+            ),
+          },
+        ]
+      : []),
     {
       label: tr("epic.aside.progress"),
       value: (

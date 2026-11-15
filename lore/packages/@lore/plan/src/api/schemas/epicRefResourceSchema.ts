@@ -16,12 +16,18 @@ import { epics } from "../entities/epics.ts";
  *
  * Picked from the entity rather than restated, so a column that changes
  * shape changes here too instead of drifting.
+ *
+ * `pullRequests` rides along (#Q3707): a quest with none of its own shows
+ * its epic's, and `quest_get` names the epic through this list, so carrying
+ * them here costs that read nothing. Absent on almost every epic, and one
+ * short entry on the rest.
  */
 export const epicRefResourceSchema = epics.schema.pick({
   id: true,
   number: true,
   title: true,
   status: true,
+  pullRequests: true,
 });
 
 export type EpicRefResource = Infer<typeof epicRefResourceSchema>;

@@ -17,6 +17,7 @@ import {
   Flag,
   Flame,
   GitCommitHorizontal,
+  GitPullRequest,
   Hourglass,
   Layers,
   MapPin,
@@ -28,7 +29,9 @@ import {
 } from "lucide-react";
 
 import type { EpicController } from "../../../../../api/controllers/EpicController.ts";
+import type { PullRequest } from "../../../../../api/schemas/pullRequestSchema.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
+import PullRequestLinks from "../../shared/PullRequestLinks.tsx";
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { QUEST_STATUS_LABEL_KEYS } from "./questChips.ts";
 import { formatEstimate } from "./questEstimate.ts";
@@ -108,6 +111,17 @@ const QuestViewRail = (props: QuestViewRailProps) => {
     quest.epicId && epicsEnabled
       ? epicsQuery.data?.find((e) => e.id === quest.epicId)
       : undefined;
+
+  // The quest's own pull requests, or its epic's when it has none (#Q3707):
+  // an epic lands as one pull request, recorded once on the epic, and each
+  // of its quests points at it from here. Read off the epic list the Epic
+  // row already holds, so it costs no request of its own.
+  const ownPullRequests = quest.pullRequests ?? [];
+  const pullRequests: PullRequest[] = ownPullRequests.length
+    ? ownPullRequests
+    : (epic?.pullRequests ?? []);
+  const pullRequestsFromEpic =
+    ownPullRequests.length === 0 && pullRequests.length > 0;
 
   const statusLabel = tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status]);
 
@@ -242,6 +256,22 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             </span>
           ) : undefined}
         </QuestViewRailRow>
+
+        <QuestViewRailRow
+          icon={GitPullRequest}
+          label={tr("quest.rail.pullRequests")}
+        >
+          {pullRequests.length ? (
+            <span className="flex min-w-0 flex-col items-end gap-0.5">
+              <PullRequestLinks pullRequests={pullRequests} />
+              {pullRequestsFromEpic && (
+                <span className="text-muted-foreground text-xs">
+                  {tr("quest.rail.pullRequests.fromEpic")}
+                </span>
+              )}
+            </span>
+          ) : undefined}
+        </QuestViewRailRow>
       </div>
 
       <QuestViewRailTags quest={quest} />
@@ -345,6 +375,7 @@ interface EpicSummary {
   id: number;
   number: number;
   title: string;
+  pullRequests?: PullRequest[];
 }
 
 export default QuestViewRail;
