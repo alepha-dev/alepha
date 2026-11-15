@@ -100,6 +100,19 @@ export class DashboardMetricRegistry {
   }
 
   /**
+   * Let the metric's resolver refuse a card's parsed filters before the
+   * card is stored (#Q3709). A metric whose resolver has no check, or that
+   * no module resolves, passes.
+   */
+  public async checkFilters(
+    projectId: number,
+    metric: string,
+    filters: Record<string, unknown>,
+  ): Promise<void> {
+    await this.resolvers().get(metric)?.checkFilters?.(projectId, filters);
+  }
+
+  /**
    * The HOME board's entry point.
    *
    * It opens with an account-wide users-to-projects join because home has no

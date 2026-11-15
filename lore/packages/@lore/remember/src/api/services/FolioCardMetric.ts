@@ -8,6 +8,7 @@ import type { DashboardCardValue } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
+import { BadRequestError } from "alepha/server";
 
 import type { FolioColumn } from "../entities/folioColumns.ts";
 import { type Folio, folios } from "../entities/folios.ts";
@@ -57,6 +58,33 @@ export class FolioCardMetric implements DashboardMetricResolver {
    * About what a 2 by 2 card shows of a note.
    */
   static readonly NOTE_CHARS = 900;
+
+  /**
+   * Refuse a card on an encrypted folio before it is stored (#Q3709): the
+   * picker never offers one, and a card cannot read it, so a write that
+   * names one through the API is a mistake to say, not a card to keep.
+   * A folio encrypted after its card was saved still resolves `noFolio`.
+   */
+  async checkFilters(
+    projectId: number,
+    filters: Record<string, unknown>,
+  ): Promise<void> {
+    const parsed = folioCardFiltersSchema.safeParse(filters);
+    if (!parsed.success || parsed.data.folio <= 0) return;
+    const [folio] = await this.folios.findMany({
+      where: {
+        projectId: { eq: projectId },
+        shortId: { eq: parsed.data.folio },
+      },
+      columns: ["id", "protected"],
+      limit: 1,
+    });
+    if (folio?.protected) {
+      throw new BadRequestError(
+        `Folio ${parsed.data.folio} is encrypted: a dashboard card cannot read an encrypted folio.`,
+      );
+    }
+  }
 
   async resolveAll(
     cards: DashboardResolvable[],
