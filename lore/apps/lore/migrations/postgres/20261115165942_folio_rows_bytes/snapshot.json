@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a728afef-c8bb-47d6-8dd0-975a8b4f21f7",
+  "prevIds": ["d89373d5-75ce-412c-b788-9196d82964c3"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "folio_rows", "bytes"],
+      "writes": [
+        "s|col|public.folio_rows.bytes",
+        "n|col|public.folio_rows.bytes",
+        "e|col|public.folio_rows.bytes"
+      ],
+      "reads": ["n|tbl|public.folio_rows", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_rows",
+        "name": "bytes",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}
