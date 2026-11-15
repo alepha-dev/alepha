@@ -9,6 +9,7 @@ import {
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
 import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
+import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import {
   type DashboardTarget,
   ProjectDashboardService,
@@ -25,7 +26,8 @@ import {
  *
  * 1. **Validation is against the registry, both ways.** A card is written
  *    only if its metric exists, may be offered on a project board, accepts
- *    that scope kind, and its filters parse. It is read back with its filters
+ *    that scope kind, its filters parse, and its resolver's `checkFilters`
+ *    accepts them (#Q3709). It is read back with its filters
  *    re-parsed, so a card stored before a metric's vocabulary changed
  *    degrades to that metric's defaults instead of resolving against a
  *    half-understood config.
@@ -43,6 +45,7 @@ export class ProjectDashboardCardService {
   protected readonly cards = $repository(projectDashboardCards);
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly dashboards = $inject(ProjectDashboardService);
+  protected readonly metrics = $inject(DashboardMetricRegistry);
 
   /**
    * This project's cards, in grid order.
@@ -88,6 +91,7 @@ export class ProjectDashboardCardService {
     },
   ): Promise<DashboardCardResource> {
     const filters = this.validate(input.metric, input.scope, input.filters);
+    await this.metrics.checkFilters(projectId, input.metric, filters);
     const target = await this.dashboards.targetForWrite(projectId, dashboardId);
 
     const last = await this.cards.findMany({
@@ -138,6 +142,7 @@ export class ProjectDashboardCardService {
       scope,
       input.filters ?? (input.metric ? undefined : current.filters),
     );
+    await this.metrics.checkFilters(projectId, metric, filters);
 
     const row = await this.cards.updateOne(
       { id: { eq: current.id } },
@@ -196,13 +201,20 @@ export class ProjectDashboardCardService {
     if (cards.length === 0) {
       return [];
     }
+    const checked = cards.map((card) => ({
+      ...card,
+      filters: this.validate(card.metric, card.scope, card.filters),
+    }));
+    for (const card of checked) {
+      await this.metrics.checkFilters(projectId, card.metric, card.filters);
+    }
     const rows = await this.cards.createMany(
-      cards.map((card, position) => ({
+      checked.map((card, position) => ({
         projectId,
         dashboardId: target.row.id,
         metric: card.metric,
         scope: card.scope,
-        filters: this.validate(card.metric, card.scope, card.filters),
+        filters: card.filters,
         size: card.size,
         height: card.height,
         section: card.section,

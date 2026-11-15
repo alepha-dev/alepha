@@ -65,4 +65,15 @@ export interface DashboardMetricResolver {
   ): Promise<
     Map<number, Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames">>
   >;
+
+  /**
+   * Refuse a card's filters before it is stored, for what their schema
+   * cannot see: the Folio card refuses an encrypted folio (#Q3709). Called
+   * with filters already parsed, on add, update and copy. Throws a 400 to
+   * refuse; a metric with nothing to check leaves it out.
+   */
+  checkFilters?(
+    projectId: number,
+    filters: Record<string, unknown>,
+  ): Promise<void>;
 }

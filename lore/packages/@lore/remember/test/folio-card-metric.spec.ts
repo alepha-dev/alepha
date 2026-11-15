@@ -1,4 +1,7 @@
-import type { DashboardResolvable } from "@lore/core/api";
+import {
+  type DashboardResolvable,
+  ProjectDashboardCardService,
+} from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -184,6 +187,40 @@ describe("FolioCardMetric", () => {
       "noFolio",
       "noFolio",
     ]);
+  });
+
+  it("refuses a card on an encrypted folio when it is saved, and keeps one on a readable folio", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(alepha);
+    const locked = await createTestFolio(alepha, project, {
+      protected: true,
+      content: "{}",
+    });
+    const open = await createTestFolio(alepha, project, { content: "Hi" });
+    const cards = alepha.inject(ProjectDashboardCardService);
+    const scope = { kind: "projects" as const, projectIds: [project.id] };
+
+    await expect(
+      cards.add(project.id, undefined, {
+        metric: "folio",
+        scope,
+        filters: { folio: locked.shortId },
+      }),
+    ).rejects.toThrow(/encrypted/);
+    const kept = await cards.add(project.id, undefined, {
+      metric: "folio",
+      scope,
+      filters: { folio: open.shortId },
+    });
+    await expect(
+      cards.update(project.id, kept.id, {
+        filters: { folio: locked.shortId },
+      }),
+    ).rejects.toThrow(/encrypted/);
+    expect(
+      (await cards.list(project.id)).map((it) => it.filters.folio),
+    ).toEqual([open.shortId]);
   });
 
   it("resolves every card of a board in one read of each table", async ({
