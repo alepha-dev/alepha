@@ -227,6 +227,21 @@ export class DeployShell {
       },
     });
 
+    // An artifact page ends its trail with the artifact (#Q3672): "Alepha >
+    // Artifacts > shop/latest", "Artifacts" climbing back to the list
+    // (`SECTION_HREF_ROUTES`). Read from the route's own params, so the
+    // leaf and the document title name the tag before its read answers.
+    this.shell.registerCrumb({
+      order: 16,
+      crumb: (ctx) => {
+        const app = ctx.params.app;
+        const tag = ctx.params.artifactTag;
+        return ctx.routeName === "projectArtifact" && app && tag
+          ? { label: `${app}/${tag}` }
+          : undefined;
+      },
+    });
+
     // ⚠️ Instances are palette rows from the atom, not from the sidebar. They
     // used to BE sidebar children; #1771 collapsed that group to one entry,
     // and dropping the children would have dropped every app out of the

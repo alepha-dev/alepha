@@ -149,6 +149,29 @@ describe("the leaf crumb of a detail page", () => {
     expect(leaves("projectSettingsAreas")).toEqual([]);
   });
 
+  it("an artifact page ends with app/tag, Artifacts linking back", async ({
+    expect,
+  }) => {
+    const { alepha, leaves } = await setup();
+    const params = { app: "shop", artifactTag: "latest" };
+
+    expect(leaves("projectArtifact", params)).toEqual([
+      { label: "shop/latest" },
+    ]);
+    // Nothing leaks onto the list it belongs to.
+    expect(leaves("projectArtifacts")).toEqual([]);
+
+    const trail = alepha.inject(ProjectTrail);
+    expect(trail.crumbs("projectArtifact", params)).toEqual([
+      { label: "MCS", href: "/project" },
+      { label: "Artifacts", href: "/projectArtifacts" },
+      { label: "shop/latest" },
+    ]);
+    expect(trail.title("projectArtifact", params)).toBe(
+      "MCS › Artifacts › shop/latest",
+    );
+  });
+
   it("the title is the trail the breadcrumb draws, joined", async ({
     expect,
   }) => {
