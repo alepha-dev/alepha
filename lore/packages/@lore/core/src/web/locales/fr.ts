@@ -408,6 +408,9 @@ export default {
   "folios.editor.tree.open": "Ouvrir",
   "folios.editor.tree.open-new-tab": "Ouvrir dans un nouvel onglet",
   "folios.editor.tree.rename": "Renommer",
+  "folios.editor.tree.trash-retention": "30 jours",
+  "folios.editor.tree.trash-hint":
+    "Les éléments de la corbeille sont supprimés définitivement après 30 jours. Déplacez-en un pour le restaurer.",
   "folios.editor.tree.copy-wiki-link": "Copier le lien wiki",
   "folios.editor.tree.encrypt": "Chiffrer",
   "folios.editor.tree.confirm-delete-directory-title": "Supprimer ce dossier ?",

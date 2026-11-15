@@ -28,6 +28,11 @@ export interface FolioTreeData {
   kind: FolioTreeKind;
   shortId: number;
   pinned?: boolean;
+  /**
+   * Set on the project's built-in trash, which the tree pins last at the
+   * root and never lets anyone rename, move or delete.
+   */
+  system?: "trash";
 }
 
 /**
@@ -52,6 +57,7 @@ interface BuildFolioTreeInput {
     name: string;
     shortId: number;
     parentId?: string;
+    system?: "trash";
   }[];
   folios: {
     id: string;
@@ -69,14 +75,18 @@ interface BuildFolioTreeInput {
  * alphabetically, which is the model's default order and the same ordering
  * the server uses, so the tree does not jump after a save.
  */
-export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] =>
-  buildTree<FolioTreeData>([
+export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
+  const roots = buildTree<FolioTreeData>([
     ...input.directories.map((d) => ({
       id: d.id,
       name: d.name,
       parentId: d.parentId,
       branch: true,
-      data: { kind: "directory" as const, shortId: d.shortId },
+      data: {
+        kind: "directory" as const,
+        shortId: d.shortId,
+        system: d.system,
+      },
     })),
     ...input.folios.map((f) => ({
       id: f.id,
@@ -90,6 +100,12 @@ export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] =>
       },
     })),
   ]) as FolioTreeNode[];
+  // The trash is pinned last at the root, below every other directory and
+  // folio, whatever its name sorts to.
+  const trash = roots.findIndex((node) => node.data.system === "trash");
+  if (trash === -1) return roots;
+  return [...roots.slice(0, trash), ...roots.slice(trash + 1), roots[trash]];
+};
 
 /**
  * `flattenTree` and `findNode` with `data` narrowed back to required. The

@@ -780,6 +780,13 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Folios",
+    section: "Trash",
+    url: "https://alepha.dev/lore/docs/remember-folios#trash",
+    capability: "remember",
+    text: "Every project has a **Trash** directory, pinned at the bottom of the tree. Drag\na folio or a directory into it to set it aside: it stays readable there, and\nmoving it back out restores it. Anything that has sat in the trash for 30 days\nis deleted for good, by a nightly sweep.\n\nThe trash itself cannot be renamed, moved or deleted. A project that already\nhad a top-level directory named `trash` keeps it: that directory becomes the\nproject's trash, with what it already held.",
+  },
+  {
+    guide: "Folios",
     section: "Links",
     url: "https://alepha.dev/lore/docs/remember-folios#links",
     capability: "remember",

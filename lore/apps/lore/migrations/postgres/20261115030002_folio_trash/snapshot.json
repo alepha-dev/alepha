@@ -1,0 +1,146 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3a403ab4-9a7e-4ceb-87e0-ab1d38c4e509",
+  "prevIds": ["c8294839-f3a4-43d7-96bc-ff433a71364a"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "folio_directories", "system"],
+      "writes": [
+        "s|col|public.folio_directories.system",
+        "n|col|public.folio_directories.system",
+        "e|col|public.folio_directories.system"
+      ],
+      "reads": ["n|tbl|public.folio_directories", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "folio_directories",
+        "trashed_at"
+      ],
+      "writes": [
+        "s|col|public.folio_directories.trashed_at",
+        "n|col|public.folio_directories.trashed_at",
+        "e|col|public.folio_directories.trashed_at"
+      ],
+      "reads": ["n|tbl|public.folio_directories", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "folios", "trashed_at"],
+      "writes": [
+        "s|col|public.folios.trashed_at",
+        "n|col|public.folios.trashed_at",
+        "e|col|public.folios.trashed_at"
+      ],
+      "reads": ["n|tbl|public.folios", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "folio_directories",
+        "folio_directories_project_id_system_idx"
+      ],
+      "writes": [
+        "s|idx|public.folio_directories_project_id_system_idx",
+        "n|idx|public.folio_directories_project_id_system_idx",
+        "e|idx|public.folio_directories_project_id_system_idx",
+        "n|rel|public.folio_directories_project_id_system_idx"
+      ],
+      "reads": [
+        "n|tbl|public.folio_directories",
+        "n|sch|public",
+        "n|col|public.folio_directories.project_id",
+        "n|col|public.folio_directories.system"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_directories",
+        "name": "system",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_directories",
+        "name": "trashed_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folios",
+        "name": "trashed_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_directories",
+        "name": "folio_directories_project_id_system_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "system",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    }
+  ]
+}

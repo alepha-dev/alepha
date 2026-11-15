@@ -629,7 +629,9 @@ export const useFolioTreeModel = (
     if (!target) return;
 
     const dragged = findFolioNode(tree, currentDragId);
-    if (!dragged) return;
+    // The trash stays at the root: the API refuses the move, so the tree
+    // does not offer it.
+    if (!dragged || dragged.data.system === "trash") return;
 
     if (dragged.data.kind === "directory") {
       void moveDirectoryAction.run(currentDragId, target.parentId);
@@ -769,6 +771,7 @@ export const useFolioTreeModel = (
   );
 
   const remove = async (node: FolioTreeNode): Promise<void> => {
+    if (node.data.system === "trash") return;
     if (node.data.kind === "directory") {
       const confirmed = await dialog.confirm({
         title: tr("folios.editor.tree.confirm-delete-directory-title"),
