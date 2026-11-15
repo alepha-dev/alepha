@@ -3935,7 +3935,7 @@ export default {
   "uptime.loading": "Loading monitors...",
   "uptime.staleAfter": "Stale after (seconds)",
   "automation.guide": "How automations work",
-  "automation.adoption.recipients": "Recipients",
+  "automation.audience.recipients": "Recipients",
   "automation.subscription.on":
     "Subscribed: click to change or stop notifications",
   "automation.subscription.channel": "Notify me by",
@@ -3948,10 +3948,9 @@ export default {
   "automation.subscription.cancel": "Cancel",
   "automation.subscription.offTitle": "Unsubscribe?",
   "automation.subscription.offConfirm": "Unsubscribe",
-  "automation.adoption.member": "One project member",
-  "automation.adoption.roster": "Current roster except publisher",
-  "automation.adoption.audiencePreview":
-    "$1 roster recipients (publisher excluded): ",
+  "automation.audience.member": "One project member",
+  "automation.audience.roster": "Current roster except publisher",
+  "automation.audience.preview": "$1 roster recipients (publisher excluded): ",
   "automation.new": "New automation",
   "automation.edit": "Edit",
   "automation.filter.allStates": "All states",

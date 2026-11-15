@@ -817,15 +817,15 @@ export class AutomationClaims {
             "An external effect cannot be blindly retried",
           );
         if (existing.leaseToken !== token) {
-          const adopted = await this.swapReceipt(existing, {
+          const taken = await this.swapReceipt(existing, {
             leaseToken: token,
             leaseUntil: occurrence.leaseUntil,
           });
-          if (!adopted)
+          if (!taken)
             throw new ConflictError(
               "Effect receipt changed concurrently; retry the step",
             );
-          return adopted;
+          return taken;
         }
         return existing;
       }

@@ -168,7 +168,7 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
               >
                 {operation.audience && (
                   <p className="text-muted-foreground text-xs">
-                    {tr("automation.adoption.audiencePreview", {
+                    {tr("automation.audience.preview", {
                       args: [String(operation.audience.total)],
                     })}
                     {operation.audience.recipients

@@ -434,8 +434,8 @@ export class AutomationService {
         offset: query.offset,
         limit: query.limit + 1,
       });
-      // Authorized once above; the per-row reads (authors, shared values,
-      // adoption markers) are batched for the whole page.
+      // Authorized once above; the per-row reads (authors, shared values)
+      // are batched for the whole page.
       const page = rows.slice(0, query.limit);
       const lookups = await this.lookups(projectId, page);
       const items = [];

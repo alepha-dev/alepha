@@ -3941,7 +3941,7 @@ export default {
   "uptime.loading": "Chargement des moniteurs...",
   "uptime.staleAfter": "Silence maximal (secondes)",
   "automation.guide": "Fonctionnement des automatisations",
-  "automation.adoption.recipients": "Destinataires",
+  "automation.audience.recipients": "Destinataires",
   "automation.subscription.on":
     "Abonné : cliquez pour modifier ou arrêter les notifications",
   "automation.subscription.channel": "Me notifier par",
@@ -3954,10 +3954,10 @@ export default {
   "automation.subscription.cancel": "Annuler",
   "automation.subscription.offTitle": "Se désabonner ?",
   "automation.subscription.offConfirm": "Se désabonner",
-  "automation.adoption.member": "Un membre du projet",
-  "automation.adoption.roster":
+  "automation.audience.member": "Un membre du projet",
+  "automation.audience.roster":
     "Membres actuels sauf l’auteur de la publication",
-  "automation.adoption.audiencePreview":
+  "automation.audience.preview":
     "$1 membres destinataires (auteur de la publication exclu) : ",
   "automation.new": "Nouvelle automatisation",
   "automation.edit": "Modifier",

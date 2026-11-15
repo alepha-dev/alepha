@@ -647,10 +647,10 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Automations",
-    section: "Built-in notifications",
-    url: "https://alepha.dev/lore/docs/plan-automations#built-in-notifications",
+    section: "Reminders and release announcements",
+    url: "https://alepha.dev/lore/docs/plan-automations#reminders-and-release-announcements",
     capability: "plan",
-    text: "Two notifications work without any automation:\n\n- **Per-quest reminders**: the email nudges a quest's holder sets on the\n  quest, governed by the **Reminders** option.\n- **Release announcements**: when a release is published, every member but the\n  publisher is told in their inbox and by email.\n\n**Built-in notifications** on the Automations page lets you **adopt** one of\nthem: it is replaced by an automation that you own and can edit. Nothing is\nadopted for you, and adopting grants no permission and enables no capability.\n\n1. Open **Built-in notifications** and read the preview: who would author the\n   rule, the permissions and channels it needs, who it would notify and, for\n   reminders, how many are configured. The release preview assumes you are the\n   publisher.\n2. Choose a new rule, or a compatible rule you already own.\n3. Click **Consent and adopt**. If it is interrupted, **Resume my adoption**\n   picks up the rule already prepared.\n\n⚠️ Adoption is permanent. The built-in notification stops at that moment and\nnever comes back. Disabling or deleting the replacement rule is how you opt\nout of that notification altogether: adopting again does not turn it back on,\nand only the ru...",
+    text: "Nothing is sent without a rule. Per-quest reminders and release announcements\nare presets like the others:\n\n- **Quest reminders** runs hourly, follows each quest's own interval and next\n  date, emails the quest's holder and writes the reminder in the quest's\n  history. A project holds at most one such rule, and it is the one rule not\n  held to 50 rows: it works through every reminder due.\n- **Release published** notifies you when a release of the project is\n  published. The bell on the Releases page creates it for you.\n\nA project with neither rule sends no reminder and no release announcement.\n\nInbox and email are the channels. Another channel appears in the pickers only\nwhen the instance has it configured: naming one in a rule does not create it.",
   },
   {
     guide: "Automations",

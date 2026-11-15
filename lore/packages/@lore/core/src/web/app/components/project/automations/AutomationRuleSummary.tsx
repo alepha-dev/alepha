@@ -151,7 +151,7 @@ const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
                   ? tr("automation.summary.notify", {
                       args: [
                         action.audience
-                          ? tr("automation.adoption.roster")
+                          ? tr("automation.audience.roster")
                           : named(action.recipient, members),
                         AutomationRuleChannels.of(action)
                           .map((name) => channel(name))

@@ -184,8 +184,6 @@ See [Automations](/lore/docs/plan-automations).
 | `automation_delete`              | Delete a rule. To keep it, disable it instead.                                  |
 | `automation_test`                | Preview a saved rule with no writes and no delivery.                            |
 | `automation_runs`                | A rule's retained runs and their notification outcomes.                         |
-| `automation_adoption_preview`    | Preview adopting a built-in policy. No writes.                                  |
-| `automation_adopt`               | Adopt `quest-reminders` or `release-notifications`, with `confirm: true`.       |
 | `automation_variable_list`       | The project's shared variables.                                                 |
 | `automation_variable_set`        | Create or change one.                                                           |
 | `automation_variable_dependents` | The rules using one.                                                            |

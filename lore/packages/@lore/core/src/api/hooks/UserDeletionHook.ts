@@ -99,14 +99,9 @@ export class UserDeletionHook {
   /**
    * Hard-deletes the author's soft-deleted rules, which nothing else ever
    * removes, so their restrictive author foreign key stops blocking the
-   * account. Their runs, receipts and adoption markers reference the rules
-   * with `ON DELETE RESTRICT` too, so the children go first, in one native
+   * account. Their runs and receipts reference the rules with
+   * `ON DELETE RESTRICT` too, so the children go first, in one native
    * batch: either the whole history goes or none of it does.
-   *
-   * A project whose compatibility policy this author adopted and then
-   * opted out of (the rule deleted, the marker kept) loses its marker here,
-   * and so returns to the legacy fallback. The marker cannot outlive the
-   * rule and the author it references without a schema change.
    */
   protected async purgeDeletedAutomations(userId: string): Promise<void> {
     const deleted = await this.automations.findOne(

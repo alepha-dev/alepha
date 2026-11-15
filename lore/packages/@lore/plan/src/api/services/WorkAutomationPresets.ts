@@ -71,9 +71,9 @@ export class WorkAutomationPresets {
   }
   /**
    * Quest reminders (#Q3626): hourly, every quest whose reminder is due,
-   * one notification to its assignee. Not a `compatibility` rule: the
-   * worker recognises it by its `quests.remindersDue` selector, keeps each
-   * quest's interval and next due time, and records `reminder_sent`.
+   * one notification to its assignee. The worker recognises it by its
+   * `quests.remindersDue` selector, keeps each quest's interval and next due
+   * time, and records `reminder_sent`.
    *
    * No recipient slot, since a reminder goes to the quest's assignee, and no
    * bell: whoever clicks is not who is reminded. A project holds at most one
