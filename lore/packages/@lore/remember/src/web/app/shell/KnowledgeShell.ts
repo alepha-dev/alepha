@@ -1,6 +1,7 @@
 import {
   formatReference,
   lazyPart,
+  DashboardPickerRegistry,
   DocumentSinkRegistry,
   ElementReferenceRegistry,
   ProjectShellRegistry,
@@ -12,6 +13,7 @@ import {
 import { $inject } from "alepha";
 import { $client } from "alepha/server/links";
 import { BookOpen } from "lucide-react";
+import { lazy } from "react";
 
 import type { FolioController } from "../../../api/controllers/FolioController.ts";
 import { useFiledFolios } from "../components/folios/epic/useFiledFolios.ts";
@@ -31,9 +33,19 @@ export class KnowledgeShell {
   protected readonly documents = $inject(DocumentSinkRegistry);
   protected readonly tabs = $inject(ResourceTabRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
+  protected readonly dashboardPickers = $inject(DashboardPickerRegistry);
   protected readonly folioApi = $client<FolioController>();
 
   constructor() {
+    // The Folio card's own filter step (#E144, #Q3520): a folio picker and
+    // a Show choice that fits the folio. Loaded when the step opens.
+    this.dashboardPickers.registerFilterEditor(
+      "folio",
+      lazy(
+        () =>
+          import("../components/folios/dashboard/FolioCardFilterEditor.tsx"),
+      ),
+    );
     this.reports.register({
       route: "reportsKnowledge",
       labelKey: "project.reports.nav.knowledge",

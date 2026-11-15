@@ -164,6 +164,11 @@ export interface UseFolioActionsResult {
    */
   directoryId?: string;
   moveDialogOpen: boolean;
+  /**
+   * Folio ▸ Add to dashboard… is open (#Q3520).
+   */
+  addToDashboardOpen: boolean;
+  closeAddToDashboard: () => void;
   closeMoveDialog: () => void;
   confirmMove: (directoryId: string | null) => Promise<void>;
   encryptDialogOpen: boolean;
@@ -321,6 +326,8 @@ export const useFolioActions = (
     !!input.folio?.protected,
   );
   const [isPinned, setIsPinned] = useState<boolean>(!!input.folio?.pinned);
+  // Folio ▸ Add to dashboard… (#Q3520): the dialog's open state.
+  const [addingToDashboard, setAddingToDashboard] = useState(false);
   // Whether THIS session already holds the plaintext + key for a protected
   // folio. Irrelevant (and ignored) once `isProtected` is false.
   const [unlocked, setUnlocked] = useState<boolean>(!input.folio?.protected);
@@ -1219,6 +1226,7 @@ export const useFolioActions = (
     "insert.divider": () => input.format.run("insert.divider"),
     "insert.row": () => input.table?.current?.insertRow(),
     "folio.importRows": () => input.table?.current?.importRows(),
+    "folio.addToDashboard": () => setAddingToDashboard(true),
     "insert.column": () => input.table?.current?.insertColumn(),
     "edit.find": () =>
       input.table?.current ? input.table.current.find() : input.find.show(),
@@ -1251,6 +1259,8 @@ export const useFolioActions = (
     directoryId: currentDirectoryId,
     moveDialogOpen,
     closeMoveDialog: () => setMoveDialogOpen(false),
+    addToDashboardOpen: addingToDashboard,
+    closeAddToDashboard: () => setAddingToDashboard(false),
     confirmMove,
     encryptDialogOpen,
     closeEncryptDialog: () => setEncryptDialogOpen(false),

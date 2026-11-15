@@ -1,6 +1,7 @@
 import { DashboardMetricCatalog } from "@lore/core/schemas";
 import { $inject } from "alepha";
 
+import { folioCardFiltersSchema } from "../schemas/folioCardFiltersSchema.ts";
 import { foliosByDirectoryFiltersSchema } from "../schemas/foliosByDirectoryFiltersSchema.ts";
 import { foliosThisMonthFiltersSchema } from "../schemas/foliosThisMonthFiltersSchema.ts";
 import { pinnedFolioFiltersSchema } from "../schemas/pinnedFolioFiltersSchema.ts";
@@ -60,6 +61,22 @@ export class KnowledgeDashboardMetrics {
       icon: "file-plus",
       presentation: "list",
       filters: foliosThisMonthFiltersSchema,
+    });
+    // A piece of the project's knowledge on the board (#E144, #Q3520): a
+    // folio the person points the card at, as a note, a table's first rows,
+    // or what comes next. Its presentation follows the folio, so the value
+    // names it (`DashboardCardValue.presentation`); `note` is the default.
+    this.catalog.register({
+      ...common,
+      key: "folio",
+      order: 90,
+      labelKey: "dashboard.metric.folio",
+      hintKey: "dashboard.metric.folio.hint",
+      icon: "file-text",
+      presentation: "note",
+      filters: folioCardFiltersSchema,
+      requires: "folio:read",
+      defaultSize: { size: 2, height: 2 },
     });
     this.catalog.register({
       ...common,

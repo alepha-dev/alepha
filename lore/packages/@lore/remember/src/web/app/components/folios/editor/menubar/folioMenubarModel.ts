@@ -13,6 +13,7 @@ export type FolioActionId =
   | "folio.pin"
   | "folio.export"
   | "folio.importRows"
+  | "folio.addToDashboard"
   | "folio.encrypt"
   | "folio.delete"
   | "edit.bold"
@@ -167,6 +168,11 @@ export const FOLIO_MENUS: FolioMenu[] = [
       // A table's own (#E144, #Q3517): rows from a CSV whose header names
       // its columns.
       { id: "folio.importRows", labelKey: "folios.editor.action.import-rows" },
+      // A Folio card on one of the project's dashboards (#Q3520).
+      {
+        id: "folio.addToDashboard",
+        labelKey: "folios.editor.action.add-to-dashboard",
+      },
       {
         id: "folio.encrypt",
         labelKey: "folios.editor.action.encrypt",
@@ -455,6 +461,7 @@ export const folioShortcutGlyph = (
  * a row (`id`) or on its revision history.
  */
 const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
+  "folio.addToDashboard",
   "folio.delete",
   "folio.move",
   "folio.pin",
@@ -478,6 +485,7 @@ const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
  * would try to persist it.
  */
 const NEEDS_WRITE = new Set<FolioActionId>([
+  "folio.addToDashboard",
   "folio.new",
   "folio.newDirectory",
   "folio.save",
@@ -597,6 +605,7 @@ export const isFolioActionEnabled = (
   // state either, where `folio.new` is otherwise available.
   if (state.readOnly && NEEDS_WRITE.has(id)) return false;
   if (state.isTable && NOT_FOR_TABLE.has(id)) return false;
+  if (state.isProtected && id === "folio.addToDashboard") return false;
   if (state.isTable && (NEEDS_EDIT_MODE.has(id) || MARKDOWN_ONLY.has(id))) {
     return false;
   }

@@ -388,6 +388,8 @@ export class CapabilityRegistry {
       dashboardCards: [
         // The Knowledge tiles of #E77 (#Q2658).
         "pinnedFolio",
+        // The Folio card (#E144, #Q3520).
+        "folio",
         "recentFolios",
         "foliosThisMonth",
         "foliosByDirectory",

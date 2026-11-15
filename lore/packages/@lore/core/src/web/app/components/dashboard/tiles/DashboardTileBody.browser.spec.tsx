@@ -95,6 +95,72 @@ describe("DashboardTileBody", () => {
     });
   });
 
+  describe("a value that names its own presentation (#Q3520)", () => {
+    it("draws a note with Read more when the resolver cut it", async ({
+      expect,
+    }) => {
+      await mount(
+        "note",
+        value({
+          presentation: "note",
+          detail: { markdown: "First paragraph.", more: true },
+          link: { route: "projectFolios", params: { projectSlug: "acme" } },
+        }),
+      );
+      expect(screen.getByTestId("tile-note").textContent).toContain(
+        "First paragraph.",
+      );
+      expect(screen.getByText("Read more")).toBeTruthy();
+    });
+
+    it("draws a small table from a note metric", async ({ expect }) => {
+      await mount(
+        "note",
+        value({
+          presentation: "table",
+          rows: [
+            { id: "1", title: "a" },
+            { id: "2", title: "b" },
+          ],
+          detail: {
+            columns: ["Goal", "Done"],
+            cells: [
+              ["a", "✓"],
+              ["b", ""],
+            ],
+          },
+        }),
+      );
+      const table = screen.getByTestId("tile-table");
+      expect(
+        [...table.querySelectorAll("th")].map((th) => th.textContent),
+      ).toEqual(["Goal", "Done"]);
+      expect(
+        [...table.querySelectorAll("tbody tr")].map((tr) => tr.textContent),
+      ).toEqual(["a✓", "b"]);
+    });
+
+    it("draws the next dated rows as a feed", async ({ expect }) => {
+      await mount(
+        "note",
+        value({
+          presentation: "feed",
+          rows: [{ id: "4", title: "Launch", at: "2030-01-01T12:00:00.000Z" }],
+        }),
+      );
+      expect(screen.getByTestId("tile-rows").textContent).toContain("Launch");
+    });
+
+    it("says a table has no rows, and that nothing is ahead", async ({
+      expect,
+    }) => {
+      await mount("note", value({ empty: "nothingAhead" }));
+      expect(screen.getByTestId("tile-empty").textContent).toContain(
+        "Nothing ahead",
+      );
+    });
+  });
+
   describe("scalar", () => {
     it("renders decimal coverage as a percent with its actual branch and closed UTC date", async ({
       expect,

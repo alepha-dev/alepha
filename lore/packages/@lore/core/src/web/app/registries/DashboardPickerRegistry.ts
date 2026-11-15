@@ -1,4 +1,5 @@
 import { AlephaError } from "alepha";
+import type { ComponentType } from "react";
 
 import type { DashboardScope } from "../../../api/schemas/dashboardScopeSchema.ts";
 import type { DashboardScopeApp } from "../components/dashboard/DashboardScopeStep.tsx";
@@ -20,6 +21,10 @@ export class DashboardPickerRegistry {
   protected apps?: DashboardAppSource;
   protected tags?: DashboardTagSource;
   protected readonly subjects: DashboardSubjectPicker[] = [];
+  protected readonly filterEditors = new Map<
+    string,
+    ComponentType<DashboardFilterEditorProps>
+  >();
   protected frozen = false;
 
   public registerApps(source: DashboardAppSource): void {
@@ -41,6 +46,29 @@ export class DashboardPickerRegistry {
     }
     this.subjects.push(picker);
     this.subjects.sort((a, b) => a.order - b.order);
+  }
+
+  /**
+   * A metric's own filter step, when chips cannot express it: the Folio
+   * card picks a folio from the tree, and its Show choice depends on the
+   * folio picked (#Q3520). Registered by the module that owns the metric;
+   * the step renders it in place of the generic fields.
+   */
+  public registerFilterEditor(
+    metric: string,
+    editor: ComponentType<DashboardFilterEditorProps>,
+  ): void {
+    this.assertOpen(`filters:${metric}`);
+    this.filterEditors.set(metric, editor);
+  }
+
+  /**
+   * The filter step a metric registered, if any.
+   */
+  public filterEditor(
+    metric: string,
+  ): ComponentType<DashboardFilterEditorProps> | undefined {
+    return this.filterEditors.get(metric);
   }
 
   public sources(): {
@@ -127,4 +155,14 @@ export interface DashboardScopeOption {
 export interface DashboardSubjectOptions {
   picker: DashboardSubjectPicker;
   options: DashboardScopeOption[];
+}
+
+/**
+ * What a metric's own filter step receives: the card's filter values so
+ * far, the project the board belongs to, and the setter.
+ */
+export interface DashboardFilterEditorProps {
+  values: Record<string, unknown>;
+  projectId?: number;
+  onChange: (values: Record<string, unknown>) => void;
 }

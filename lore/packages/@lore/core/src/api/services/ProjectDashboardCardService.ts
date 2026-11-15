@@ -102,8 +102,10 @@ export class ProjectDashboardCardService {
       metric: input.metric,
       scope: input.scope,
       filters,
-      size: input.size ?? 1,
-      height: input.height,
+      size:
+        input.size ?? this.catalog.find(input.metric)?.defaultSize?.size ?? 1,
+      height:
+        input.height ?? this.catalog.find(input.metric)?.defaultSize?.height,
       section: input.section,
       position: (last[0]?.position ?? -1) + 1,
     });

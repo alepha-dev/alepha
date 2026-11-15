@@ -32,6 +32,13 @@ const FolioTableDocument = lazy(
   () => import("../table/FolioTableDocument.tsx"),
 );
 
+/**
+ * Folio ▸ Add to dashboard… (#Q3520), loaded when it opens.
+ */
+const FolioAddToDashboardDialog = lazy(
+  () => import("../../dashboard/FolioAddToDashboardDialog.tsx"),
+);
+
 export interface FolioDocumentProps {
   /**
    * `undefined` → create mode.
@@ -293,6 +300,21 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             </WikiLinkHoverProvider>
           )}
         </div>
+      )}
+
+      {props.folio && props.actions.addToDashboardOpen && (
+        <Suspense fallback={null}>
+          <FolioAddToDashboardDialog
+            open
+            onOpenChange={(open) => {
+              if (!open) props.actions.closeAddToDashboard();
+            }}
+            folio={{
+              shortId: props.folio.shortId,
+              title: props.draft.values.title || props.folio.title,
+            }}
+          />
+        </Suspense>
       )}
 
       <FolioMoveDialog

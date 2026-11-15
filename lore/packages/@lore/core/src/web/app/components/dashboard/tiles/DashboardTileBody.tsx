@@ -13,6 +13,7 @@ import DashboardTileChart from "./DashboardTileChart.tsx";
 import DashboardTileNote from "./DashboardTileNote.tsx";
 import DashboardTileRow from "./DashboardTileRow.tsx";
 import DashboardTileStatus from "./DashboardTileStatus.tsx";
+import DashboardTileTable from "./DashboardTileTable.tsx";
 
 export interface DashboardTileBodyProps {
   card: DashboardCardResource;
@@ -43,11 +44,15 @@ export interface DashboardTileBodyProps {
 const DashboardTileBody = (props: DashboardTileBodyProps) => {
   const { tr } = useI18n<I18n, "en">();
   const value = props.value;
+  // A value may draw differently from its metric (#Q3520).
+  const presentation =
+    (value?.ok && !value.empty ? value.presentation : undefined) ??
+    props.presentation;
 
   // A note is the card's own markdown (the owner's, #Q2659) or, for a
   // resolved note such as the pinned folio (#Q2658), what the resolver put
   // in `detail.markdown`. Only the second waits for a resolve.
-  if (props.presentation === "note") {
+  if (presentation === "note") {
     const own = props.card.filters.markdown;
     if (typeof own === "string" && own.length > 0) {
       return <DashboardTileNote markdown={own} />;
@@ -55,7 +60,12 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
     const resolved =
       value?.ok && !value.empty ? value.detail.markdown : undefined;
     if (typeof resolved === "string") {
-      return <DashboardTileNote markdown={resolved} />;
+      return (
+        <DashboardTileNote
+          markdown={resolved}
+          more={value?.detail.more === true ? value.link : undefined}
+        />
+      );
     }
   }
 
@@ -97,7 +107,7 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
     <DashboardCardFooter metric={props.card.metric} value={value} />
   );
 
-  switch (props.presentation) {
+  switch (presentation) {
     case "trend":
       return (
         <>
@@ -135,6 +145,13 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
           {footer}
         </>
       );
+    case "table":
+      return (
+        <>
+          <DashboardTileTable value={value} />
+          {footer}
+        </>
+      );
     case "list":
     case "feed":
       return (
@@ -144,7 +161,7 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
               <DashboardTileRow
                 key={row.id ?? `${row.title}-${index}`}
                 row={row}
-                variant={props.presentation === "feed" ? "feed" : "list"}
+                variant={presentation === "feed" ? "feed" : "list"}
               />
             ))}
           </ul>
@@ -154,7 +171,7 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
     default:
       return (
         <>
-          <DashboardCardValue value={value} presentation={props.presentation} />
+          <DashboardCardValue value={value} presentation={presentation} />
           {footer}
         </>
       );

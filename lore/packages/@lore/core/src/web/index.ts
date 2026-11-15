@@ -238,6 +238,7 @@ export {
   AssistantSuggestionRegistry,
 } from "./app/registries/AssistantSuggestionRegistry.ts";
 export {
+  type DashboardFilterEditorProps,
   type DashboardPickerContext,
   DashboardPickerRegistry,
   type DashboardScopeOption,

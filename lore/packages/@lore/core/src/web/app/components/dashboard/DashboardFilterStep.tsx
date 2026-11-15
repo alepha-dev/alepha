@@ -1,7 +1,10 @@
 import { cn } from "@alepha/ui";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Suspense } from "react";
 
 import type { DashboardMetricDescriptor } from "../../../../api/schemas/DashboardMetricCatalog.ts";
+import { DashboardPickerRegistry } from "../../registries/DashboardPickerRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { dashboardFilterFields } from "./dashboardFilterFields.ts";
 import DashboardFilterText from "./DashboardFilterText.tsx";
@@ -14,6 +17,10 @@ export interface DashboardFilterStepProps {
    * `projectTags`. Absent on home, which has no single project to ask.
    */
   projectTags?: string[];
+  /**
+   * The board's project, for a metric's own filter step.
+   */
+  projectId?: number;
   onChange: (values: Record<string, unknown>) => void;
 }
 
@@ -30,6 +37,9 @@ export interface DashboardFilterStepProps {
  */
 const DashboardFilterStep = (props: DashboardFilterStepProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const Editor = useInject(DashboardPickerRegistry).filterEditor(
+    props.metric.key,
+  );
   const fields = dashboardFilterFields(
     props.metric.filters,
     props.metric.filterSources,
@@ -58,6 +68,19 @@ const DashboardFilterStep = (props: DashboardFilterStepProps) => {
     if (next.length === 0) return;
     props.onChange({ ...props.values, [name]: next });
   };
+
+  if (Editor) {
+    // A registered step may be a lazy chunk.
+    return (
+      <Suspense fallback={null}>
+        <Editor
+          values={props.values}
+          projectId={props.projectId}
+          onChange={props.onChange}
+        />
+      </Suspense>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">

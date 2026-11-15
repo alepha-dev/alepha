@@ -348,6 +348,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
                   metric={picked}
                   values={filters}
                   projectTags={props.projectTags}
+                  projectId={props.boardProjectId}
                   onChange={setFilters}
                 />
               )}
