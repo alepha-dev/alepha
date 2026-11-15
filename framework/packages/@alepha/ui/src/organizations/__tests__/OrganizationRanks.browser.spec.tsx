@@ -148,7 +148,8 @@ describe("OrganizationRanks", () => {
   it("saves an edited built-in member rank", async () => {
     const { links, view } = await mount();
 
-    fireEvent.click(view.getAllByLabelText("document:read")[1]);
+    // Owner, Editor, then Member: most permissions first (#Q3701).
+    fireEvent.click(view.getAllByLabelText("document:read")[2]);
     fireEvent.click(view.getByRole("button", { name: "Save ranks" }));
 
     await waitFor(() =>
@@ -225,8 +226,22 @@ describe("OrganizationRanks", () => {
     });
 
     const read = view.getAllByLabelText("document:read");
-    // Owner, then Member: Member's unchecked cell is closed.
-    expect(read[1].hasAttribute("data-disabled")).toBe(true);
+    // Owner, Editor, then Member: Member's unchecked cell is closed.
+    expect(read[2].hasAttribute("data-disabled")).toBe(true);
+  });
+
+  it("orders the rank columns by how many shown permissions they grant, most first (#Q3701)", async () => {
+    const { view } = await mount();
+
+    // Owner holds `*` (both shown permissions), Editor one, Member none:
+    // the server listed them Owner, Member, Editor.
+    const headers = view
+      .getAllByRole("columnheader")
+      .slice(1)
+      .map((header) => header.textContent ?? "");
+    expect(
+      headers.map((text) => text.match(/Owner|Editor|Member/)?.[0]),
+    ).toEqual(["Owner", "Editor", "Member"]);
   });
 
   it("offers presets only when blank is off", async () => {
