@@ -17,6 +17,9 @@ export class KnowledgeAutomationReferences {
         const rows = await this.folios.findMany({
           where: {
             projectId,
+            // Appending text is all an automation does to a folio; a table
+            // has none (#E144).
+            type: "text",
             ...(ids ? { id: { inArray: ids } } : {}),
             ...(search ? { title: { contains: search } } : {}),
           },
@@ -40,13 +43,13 @@ export class KnowledgeAutomationReferences {
       typeof value === "string" &&
       (
         await this.folios.findMany({
-          where: { id: value, projectId },
+          where: { id: value, projectId, type: "text" },
           columns: ["id"],
           limit: 1,
         })
       ).length
         ? undefined
-        : "Folio does not exist in this project",
+        : "Folio does not exist in this project, or is a table, which an automation cannot append text to",
     );
   }
 }

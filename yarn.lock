@@ -2219,6 +2219,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lore/remember@workspace:lore/packages/@lore/remember"
   dependencies:
+    "@alepha/lore": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@codemirror/view": "npm:^6.43.15"
     "@lore/core": "workspace:*"

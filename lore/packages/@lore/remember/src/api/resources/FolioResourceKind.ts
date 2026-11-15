@@ -7,6 +7,7 @@ import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { folios } from "../entities/folios.ts";
+import { FolioTableService } from "../services/FolioTableService.ts";
 
 /**
  * The `folio` resource (`#F`), registered by Knowledge. Its stored id is a
@@ -17,6 +18,7 @@ export class FolioResourceKind {
   protected readonly folios = $repository(folios);
   protected readonly bound = $inject(BoundParameters);
   protected readonly search = $inject(SearchPreview);
+  protected readonly tables = $inject(FolioTableService);
 
   constructor() {
     this.resources.register({
@@ -61,30 +63,64 @@ export class FolioResourceKind {
       },
       search: {
         find: async ({ projectId, needle, number, limit }) => {
-          const rows = await this.folios.findMany({
-            where: {
-              projectId: { eq: projectId },
-              ...(number === undefined
-                ? { searchText: { like: `%${needle}%` } }
-                : {
-                    or: [
-                      { shortId: { eq: number } },
-                      { searchText: { like: `%${needle}%` } },
-                    ],
-                  }),
-            },
-            limit,
+          const [rows, byRow] = await Promise.all([
+            this.findByText(projectId, needle, number, limit),
+            // A table is also found by its rows (#Q3514), once per folio,
+            // with the matching row as its description.
+            this.tables.searchRows(projectId, needle, limit),
+          ]);
+          const rowOf = new Map(byRow.map((hit) => [hit.folioId, hit]));
+          const known = new Set(rows.map((row) => row.id));
+          const missing = byRow
+            .map((hit) => hit.folioId)
+            .filter((id) => !known.has(id));
+          const extra = missing.length
+            ? await this.bound.collect(missing, (batch) =>
+                this.folios.findMany({ where: { id: { inArray: batch } } }),
+              )
+            : [];
+          return [...rows, ...extra].slice(0, limit).map((f) => {
+            const hit = rowOf.get(f.id);
+            return {
+              kind: "folio" as const,
+              id: f.id,
+              shortId: f.shortId,
+              title: f.title,
+              description: this.search.preview(
+                hit && !known.has(f.id)
+                  ? `Row ${hit.number}: ${hit.text}`
+                  : f.summary,
+              ),
+              protected: f.protected || undefined,
+            };
           });
-          return rows.map((f) => ({
-            kind: "folio" as const,
-            id: f.id,
-            shortId: f.shortId,
-            title: f.title,
-            description: this.search.preview(f.summary),
-            protected: f.protected || undefined,
-          }));
         },
       },
+    });
+  }
+
+  /**
+   * The folios whose own text, or number, matches.
+   */
+  protected async findByText(
+    projectId: number,
+    needle: string,
+    number: number | undefined,
+    limit: number,
+  ) {
+    return this.folios.findMany({
+      where: {
+        projectId: { eq: projectId },
+        ...(number === undefined
+          ? { searchText: { like: `%${needle}%` } }
+          : {
+              or: [
+                { shortId: { eq: number } },
+                { searchText: { like: `%${needle}%` } },
+              ],
+            }),
+      },
+      limit,
     });
   }
 }

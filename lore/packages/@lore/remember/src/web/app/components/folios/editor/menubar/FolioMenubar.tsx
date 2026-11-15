@@ -23,6 +23,7 @@ import {
   type FolioActionState,
   type FolioMenuItem,
   folioShortcutGlyph,
+  folioActionDisabledReason,
   isFolioActionEnabled,
   isFolioTextSizeEnabled,
 } from "./folioMenubarModel.ts";
@@ -81,6 +82,10 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
     if (item.id === "folio.encrypt" && props.state.isProtected) {
       return item.alternateLabelKey;
     }
+    // A table leaves as CSV (#Q3514).
+    if (item.id === "folio.export" && props.state.isTable) {
+      return "folios.editor.action.export-csv";
+    }
     return item.labelKey;
   };
 
@@ -136,6 +141,11 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
                     onClick={() => dispatch(entry.id)}
                   >
                     {tr(labelKeyFor(entry))}
+                    {folioActionDisabledReason(entry.id, props.state) && (
+                      <span className="text-muted-foreground ms-auto ps-4 text-xs">
+                        {tr(folioActionDisabledReason(entry.id, props.state)!)}
+                      </span>
+                    )}
                     {folioShortcutGlyph(entry, props.mode) && (
                       <MenubarShortcut>
                         {folioShortcutGlyph(entry, props.mode)}

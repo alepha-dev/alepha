@@ -204,7 +204,10 @@ const FolioTreeContextMenu = (
             <Link2 className="size-4" />
             {tr("folios.editor.tree.copy-wiki-link")}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => props.commands.togglePin(node)}>
+          <ContextMenuItem
+            disabled={node.data.table === true}
+            onClick={() => props.commands.togglePin(node)}
+          >
             {node.data.pinned ? (
               <PinOff className="size-4" />
             ) : (
@@ -218,12 +221,16 @@ const FolioTreeContextMenu = (
               both conditions are the file doc's, and neither is cosmetic. A
               protected row already shows the lock, and its reverse is the
               item that stays absent for the reason above. */}
-          {node.data.kind === "folio" && node.id !== props.currentFolioId && (
-            <ContextMenuItem onClick={() => props.commands.beginEncrypt(node)}>
-              <Lock className="size-4" />
-              {tr("folios.editor.tree.encrypt")}
-            </ContextMenuItem>
-          )}
+          {node.data.kind === "folio" &&
+            !node.data.table &&
+            node.id !== props.currentFolioId && (
+              <ContextMenuItem
+                onClick={() => props.commands.beginEncrypt(node)}
+              >
+                <Lock className="size-4" />
+                {tr("folios.editor.tree.encrypt")}
+              </ContextMenuItem>
+            )}
           {/* The matching item on a protected folio (#Q3423): Unlock opens it,
               where the locked panel asks for the passphrase. Not a decrypt in
               place, for the reason the file doc gives against "Remove

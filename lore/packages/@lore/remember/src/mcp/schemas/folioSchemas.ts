@@ -25,6 +25,11 @@ export const folioRefSchema = z.object({
   id: z.uuid(),
   shortId: z.integer(),
   title: z.string(),
+  /**
+   * `text` (Markdown in `content`) or `table` (typed rows: read them with
+   * the row tools).
+   */
+  type: z.enum(["text", "table"]),
   summary: z.string().optional(),
   updatedAt: z.string(),
   epic: folioEpicRefSchema.optional(),

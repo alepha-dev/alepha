@@ -14,9 +14,13 @@ import { $repository, type Repository, type SQLLike } from "alepha/orm";
 
 import { pinnedContentAtom } from "../atoms/pinnedContentAtom.ts";
 import { folioAttachments } from "../entities/folioAttachments.ts";
+import { folioColumns } from "../entities/folioColumns.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folioNames } from "../entities/folioNames.ts";
+import { folioRows } from "../entities/folioRows.ts";
 import { buildFolioSearchText, folios } from "../entities/folios.ts";
+import { FolioCellCodec } from "./FolioCellCodec.ts";
+import { FolioTableService } from "./FolioTableService.ts";
 
 /**
  * Knowledge's step of a project merge, registered on core's
@@ -48,6 +52,10 @@ export class KnowledgeProjectMerge {
   protected readonly directories = $repository(folioDirectories);
   protected readonly attachments = $repository(folioAttachments);
   protected readonly names = $repository(folioNames);
+  protected readonly tableColumns = $repository(folioColumns);
+  protected readonly tableRows = $repository(folioRows);
+  protected readonly codec = $inject(FolioCellCodec);
+  protected readonly tables = $inject(FolioTableService);
 
   constructor() {
     this.merge.registerStep({
@@ -109,7 +117,85 @@ export class KnowledgeProjectMerge {
         ),
       );
     }
-    return { rewritten: { folios: statements.length }, statements };
+    const cells = await this.rewriteReferenceCells(context, rewriter);
+    return {
+      rewritten: {
+        folios: statements.length,
+        ...(cells.length ? { folioRows: cells.length } : {}),
+      },
+      statements: [...statements, ...cells],
+    };
+  }
+
+  /**
+   * A table's reference cells (#E144, #Q3514) name items by number, as a
+   * body does, so the numbers the merge changes are rewritten in them too,
+   * with each changed row's search text.
+   */
+  protected async rewriteReferenceCells(
+    context: ProjectMergeContext,
+    rewriter: ProjectMergeRewriter,
+  ): Promise<SQLLike[]> {
+    const tableIds = (
+      await this.folios.findMany(
+        {
+          where: {
+            projectId: { eq: context.sourceProjectId },
+            type: { eq: "table" },
+          },
+          columns: ["id"],
+        },
+        { force: true },
+      )
+    ).map((row) => row.id);
+    if (tableIds.length === 0) return [];
+    const columns = await this.tableColumns.findMany({
+      where: { folioId: { inArray: tableIds } },
+    });
+    const referenceIds = new Set(
+      columns
+        .filter((column) => this.codec.typeOf(column) === "reference")
+        .map((column) => column.id),
+    );
+    if (referenceIds.size === 0) return [];
+    const folioIds = [
+      ...new Set(
+        columns
+          .filter((column) => referenceIds.has(column.id))
+          .map((column) => column.folioId),
+      ),
+    ];
+    const rows = await this.tableRows.findMany({
+      where: { folioId: { inArray: folioIds } },
+      columns: ["id", "folioId", "cells"],
+    });
+    const statements: SQLLike[] = [];
+    for (const row of rows) {
+      const next = { ...row.cells };
+      let moved = false;
+      for (const [key, value] of Object.entries(next)) {
+        if (!referenceIds.has(key) || typeof value !== "string") continue;
+        // A cell stores the bare code (`#Q12`); the rewriter reads the
+        // bracketed reference a body holds.
+        const rewritten = rewriter
+          .text(`[[${value}]]`)
+          .replace(/^\[\[(.*)\]\]$/, "$1");
+        if (rewritten !== value) {
+          next[key] = rewritten;
+          moved = true;
+        }
+      }
+      if (!moved) continue;
+      const own = columns.filter((column) => column.folioId === row.folioId);
+      statements.push(
+        this.tableRows.updateStatement(
+          { id: { eq: row.id } },
+          { cells: next, searchText: this.tables.searchTextOf(own, next) },
+          projectMergeWrite,
+        ),
+      );
+    }
+    return statements;
   }
 
   /**

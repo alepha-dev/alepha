@@ -258,7 +258,7 @@ export class FolioTools {
 
   folio_list = $tool({
     description:
-      "List the project's folios (markdown notes that act as the project's shared memory), pinned first, then newest first. Returns id, title, summary, updatedAt and the `epic` the folio is filed under, if any — call `folio_get` to read full content. Pass `epic` to narrow the list to one epic's folios. For initial orientation on a project, prefer `project_context` — it returns this same index alongside the active quests in one round-trip.",
+      "List the project's folios (markdown notes that act as the project's shared memory), pinned first, then newest first. Returns id, title, `type` (`text`, or `table` for a folio of typed rows), summary, updatedAt and the `epic` the folio is filed under, if any — call `folio_get` to read full content. Pass `epic` to narrow the list to one epic's folios. For initial orientation on a project, prefer `project_context` — it returns this same index alongside the active quests in one round-trip.",
     title: "List folios",
     annotations: {
       readOnlyHint: true,
@@ -309,6 +309,7 @@ export class FolioTools {
           id: f.id,
           shortId: f.shortId,
           title: f.title,
+          type: f.type ?? "text",
           summary: f.summary || undefined,
           updatedAt: f.updatedAt,
           epic: f.epicId != null ? epicRefs.get(f.epicId) : undefined,
@@ -319,7 +320,7 @@ export class FolioTools {
 
   folio_search = $tool({
     description:
-      "Search the project's folios by free-text query (matches title, summary and content, case-insensitive). Returns id/title + a ~200-char snippet around the match — use this before folio_get when looking something up.",
+      "Search the project's folios by free-text query (matches title, summary and content, and the rows of a table folio, case-insensitive). Returns id/title + a ~200-char snippet around the match; a table found by a row answers that row (`Row 12: Column: value · ...`). A folio appears once however many rows match. Use this before folio_get when looking something up.",
     title: "Search folios",
     annotations: {
       readOnlyHint: true,
@@ -366,7 +367,10 @@ export class FolioTools {
           id: f.id,
           shortId: f.shortId,
           title: f.title,
-          snippet: buildSnippet(f.content, params.query),
+          // A table found by a row answers that row as its snippet (#Q3514).
+          snippet: f.rowMatch
+            ? `Row ${f.rowMatch.number}: ${f.rowMatch.text}`.slice(0, 240)
+            : buildSnippet(f.content, params.query),
           updatedAt: f.updatedAt,
           epic: f.epicId != null ? epicRefs.get(f.epicId) : undefined,
         })),

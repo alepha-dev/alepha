@@ -8,7 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { pinnedContentAtom } from "../src/api/atoms/pinnedContentAtom.ts";
-import { LoreRememberApi } from "../src/api/index.ts";
+import { FolioTableService, LoreRememberApi } from "../src/api/index.ts";
 import { folioAttachments, folioNames } from "../src/schemas/index.ts";
 import {
   createTestFolio,
@@ -133,6 +133,33 @@ describe("ProjectMergeService, Knowledge's step", () => {
       expect(
         (await ctx.repos.attachments.findById(blob.fileId))!.projectId,
       ).toBe(target.id);
+    });
+  });
+
+  describe("table folios", () => {
+    it("rewrites a reference cell to a renumbered folio (#Q3514)", async ({
+      expect,
+    }) => {
+      const target = await createTestProject(ctx.alepha);
+      const source = await createTestProject(ctx.alepha);
+      await createTestFolio(ctx.alepha, target, { shortId: 7 });
+      const taken = await createTestFolio(ctx.alepha, source, { shortId: 7 });
+      const table = await createTestFolio(ctx.alepha, source, {
+        shortId: 8,
+        type: "table",
+      });
+      const tables = ctx.alepha.inject(FolioTableService);
+      await tables.seedColumns(table, [{ name: "See", type: "reference" }]);
+      await tables.addRows(table, [{ cells: { See: "#F7" } }]);
+
+      const plan = await ctx.merge.merge(source.id, target.id);
+
+      const to = knowledgeOf(plan).renumbered.find(
+        (entry) => entry.id === taken.id,
+      )!.to;
+      const moved = await ctx.repos.folios.findById(table.id);
+      const [row] = (await tables.listRows(moved!)).rows;
+      expect(Object.values(row.cells)).toEqual([`#F${to}`]);
     });
   });
 

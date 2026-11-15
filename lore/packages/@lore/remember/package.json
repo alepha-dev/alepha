@@ -18,6 +18,7 @@
     "test": "alepha test"
   },
   "dependencies": {
+    "@alepha/lore": "workspace:*",
     "@alepha/ui": "workspace:*",
     "@codemirror/view": "^6.43.15",
     "@lore/core": "workspace:*",

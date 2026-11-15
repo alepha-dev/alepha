@@ -5,6 +5,7 @@ import { useI18n } from "alepha/react/i18n";
 import {
   FilePlus,
   FileText,
+  Table2,
   FolderPlus,
   Lock,
   PanelLeftClose,
@@ -229,7 +230,12 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             // base `:root` / `.dark` only, so it is light/dark aware but NOT
             // theme aware. These are defined once per theme in `main.css` -
             // the directory half lives in `FolioTreeDirectoryIcon`.
-            const Icon = folio.data.kind === "protected" ? Lock : FileText;
+            const Icon =
+              folio.data.kind === "protected"
+                ? Lock
+                : folio.data.table
+                  ? Table2
+                  : FileText;
             return (
               <Icon className="size-3.5 shrink-0 text-[var(--folio-tree-folio)]" />
             );

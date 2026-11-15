@@ -15,6 +15,7 @@ import { ZipArchive } from "alepha/system";
 import { useEffect, useRef, useState } from "react";
 
 import type { FolioController } from "../../../../../api/controllers/FolioController.ts";
+import type { FolioTableController } from "../../../../../api/controllers/FolioTableController.ts";
 import type { FolioResource as Folio } from "../../../../../api/schemas/folioResourceSchema.ts";
 import { currentFolioAttachmentsAtom } from "../../../atoms/currentFolioAttachmentsAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
@@ -252,6 +253,7 @@ export const useFolioActions = (
   const toaster = useToast();
   const cryptoProvider = useInject(CryptoProvider);
   const folioApi = useClient<FolioController>();
+  const tableApi = useClient<FolioTableController>();
   const [project] = useStore(currentProjectAtom);
   const [folios, setFolios] = useStore(userFoliosAtom);
   const projectSlug = project ? project.slug : "";
@@ -763,8 +765,11 @@ export const useFolioActions = (
           body: {
             title: `${values.title.trim() || tr("folios.title-placeholder")}${tr("folio.action.duplicate-suffix")}`,
             summary: values.summary,
-            content: contentToSend,
-            protected: isProtected,
+            // A table is duplicated with its columns and rows, copied on
+            // the server (#E144): it has no content to send.
+            ...(folio.type === "table"
+              ? { type: "table" as const, copyTableFrom: folio.id }
+              : { content: contentToSend, protected: isProtected }),
             projectId: project.id,
             // `currentDirectoryId` (local state, moved by `confirmMove`'s
             // own success), NOT `folio.directoryId` — the same staleness
@@ -1013,9 +1018,38 @@ export const useFolioActions = (
     await confirmMoveAction.run(directoryId);
   };
 
+  /**
+   * A table exports as `.csv` (#Q3514), every row in stored order, built by
+   * the server with the module the CLI uses; with attachments, as a `.zip`
+   * holding the `.csv` and `assets/`.
+   */
+  const exportTableAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const folio = input.folio;
+        if (!folio) return;
+        const { csv } = await tableApi.exportFolioTable({
+          params: { id: folio.id },
+        });
+        const stem = folioExportFilename(folio.title);
+        const attachments = alepha.store.get(currentFolioAttachmentsAtom) ?? [];
+        if (attachments.length === 0) {
+          triggerFolioDownload(`${stem}.csv`, csv, "text/csv;charset=utf-8");
+          return;
+        }
+        await exportZip(stem, csv, attachments, "csv");
+      },
+    },
+    [input.folio, tableApi, alepha],
+  );
+
   const exportFolio = (): void => {
     const folio = input.folio;
     if (!folio) return;
+    if (folio.type === "table") {
+      void exportTableAction.run();
+      return;
+    }
     if (isProtected && locked) {
       toaster.error(tr("folios.protected.unlock-before-edit"));
       return;
@@ -1062,6 +1096,7 @@ export const useFolioActions = (
     stem: string,
     markdown: string,
     attachments: Array<{ id: string; name: string; mimeType: string }>,
+    extension: "md" | "csv" = "md",
   ): Promise<void> => {
     try {
       const fetched = await Promise.all(
@@ -1084,7 +1119,12 @@ export const useFolioActions = (
 
       const archive = await new Response(
         new ZipArchive().create(
-          folioZipEntries({ filename: stem, markdown, attachments: fetched }),
+          folioZipEntries({
+            filename: stem,
+            markdown,
+            extension,
+            attachments: fetched,
+          }),
         ),
       ).blob();
 
@@ -1175,6 +1215,7 @@ export const useFolioActions = (
   const actionState: FolioActionState = {
     locked,
     isNew: !input.folio,
+    isTable: input.folio?.type === "table",
     dirty: input.draft.dirty,
     isProtected,
     isPinned,

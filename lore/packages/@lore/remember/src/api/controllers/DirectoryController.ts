@@ -7,6 +7,7 @@ import { folioAttachments } from "../entities/folioAttachments.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
 import { FolioDirectoryService } from "../services/FolioDirectoryService.ts";
+import { FolioTableService } from "../services/FolioTableService.ts";
 import { FolioTrashService } from "../services/FolioTrashService.ts";
 
 /**
@@ -20,6 +21,7 @@ export class DirectoryController {
   protected readonly attachments = $repository(folioAttachments);
   protected readonly directoryService = $inject(FolioDirectoryService);
   protected readonly trash = $inject(FolioTrashService);
+  protected readonly tables = $inject(FolioTableService);
 
   /**
    * The two gates this controller needs, declared above the actions: a
@@ -199,7 +201,7 @@ export class DirectoryController {
     },
     handler: async ({ params, query }) => {
       const needle = `%${query.q.toLowerCase()}%`;
-      const [dirs, folioRows, attachmentRows] = await Promise.all([
+      const [dirs, textRows, attachmentRows, byRow] = await Promise.all([
         this.directories.findMany({
           where: {
             projectId: { eq: params.projectId },
@@ -227,7 +229,21 @@ export class DirectoryController {
           orderBy: [{ column: "updatedAt", direction: "desc" }],
           limit: 50,
         }),
+        // A table is found by its rows too (#Q3514), once per folio.
+        this.tables.searchRows(params.projectId, query.q, 50),
       ]);
+      const known = new Set(textRows.map((row) => row.id));
+      const missing = byRow
+        .map((hit) => hit.folioId)
+        .filter((id) => !known.has(id));
+      const folioRows = missing.length
+        ? [
+            ...textRows,
+            ...(await this.folios.findMany({
+              where: { id: { inArray: missing.slice(0, 50) } },
+            })),
+          ].slice(0, 50)
+        : textRows;
       return {
         entries: [
           ...dirs.map((d) => ({
