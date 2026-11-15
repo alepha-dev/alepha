@@ -133,6 +133,11 @@ Connecting is the easy part. What makes an agent useful is what it finds:
 
 - **Pin a folio with your conventions.** Pinned folios are handed to every
   agent with the project's context. See [Folios](/lore/docs/remember-folios).
+- **Ask for a table when the agent keeps a list.** A comparison, an
+  inventory or a set of dated goals belongs in a
+  [table](/lore/docs/remember-tables): the agent adds and changes one row at a
+  time instead of rewriting a Markdown table, and two writers on two rows never
+  collide. Prose stays a text folio.
 - **Describe your areas**, so a new quest lands in the right one. See
   [Quests](/lore/docs/plan-quests).
 - **Use [agent prompts](/lore/docs/agents-prompts)** to hand an agent a quest

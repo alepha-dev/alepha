@@ -178,6 +178,7 @@ The **Add card** panel lists them in these groups.
 
 | Card                    | What it shows                                  |
 | ----------------------- | ---------------------------------------------- |
+| **Folio**               | A folio you pick: a note, rows, or what's next |
 | **Pinned**              | The first pinned folio, its summary            |
 | **Recently edited**     | The last folios edited, by whom and when       |
 | **New folios**          | Folios created in the time window              |
@@ -198,6 +199,31 @@ The **Add card** panel lists them in these groups.
 | **Errors**          | Occurrences per day, with a mark at each deployment                |
 | **Coverage**        | Line coverage over the recorded runs                               |
 | **Unique visitors** | Per app, yesterday against the day before                          |
+
+### The Folio card
+
+The **Folio** card puts a piece of the project's knowledge on the board: the
+team's notes, a shared list, the next dates. In **Add card**, pick the folio
+from the project's (search by title or directory), then what to **Show**:
+
+- **The text**: a text folio's Markdown, cut at a heading or a paragraph to fit
+  the card, with **Read more** when there is more.
+- **First rows**: a [table](/lore/docs/remember-tables)'s first rows, with up
+  to four of its columns.
+- **What comes next**: a table's next rows by its date column, from today on,
+  each with its date. When nothing is ahead the card says so.
+- **What fits** chooses for you: the text for a text folio, what comes next
+  for a table read as a calendar, the first rows for any other table.
+
+You can also start from the folio: **Folio ▸ Add to dashboard…** asks which of
+the project's dashboards, and adds the card there. On the default dashboard,
+which has no cards of its own, it customizes the dashboard first.
+
+The card is read with the reader's own permissions: someone who cannot read
+folios sees it collapsed. An encrypted folio cannot go on a card, and a card
+whose folio is deleted or encrypted later says it has no folio.
+
+![A dashboard with a Folio card showing what comes next](/screenshots/lore/dashboard-folio-light.png)
 
 ### Rules worth knowing
 

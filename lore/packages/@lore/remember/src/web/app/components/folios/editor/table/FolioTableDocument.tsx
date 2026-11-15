@@ -5,6 +5,7 @@ import {
   type I18n,
   type ElementRef,
   LoreViewer,
+  loreDocsUrl,
   useElementLinks,
   WikiLinkHoverProvider,
 } from "@lore/core/web";
@@ -390,7 +391,15 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
         <p className="text-muted-foreground text-sm">
           {props.readOnly
             ? tr("folios.table.empty-readonly")
-            : tr("folios.table.empty")}
+            : tr("folios.table.empty")}{" "}
+          <a
+            href={loreDocsUrl("remember-tables")}
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary-text hover:underline"
+          >
+            {tr("folios.table.docs")}
+          </a>
         </p>
       )}
       <FolioTableRowSheet

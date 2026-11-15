@@ -1,7 +1,7 @@
 # Folios
 
-Folios are a project's memory: Markdown notes, filed in a tree, linked to each
-other and to the work. Quests record what was done. Folios record what you
+Folios are a project's memory: notes in Markdown, or [tables](/lore/docs/remember-tables)
+of typed rows, filed in a tree, linked to each other and to the work. Quests record what was done. Folios record what you
 know: a decision and its reasons, how a subsystem fits together, a runbook, the
 conventions of the codebase. Anything the next person, or the next agent
 session, should not have to rediscover.
@@ -28,8 +28,10 @@ Either side pane can be collapsed, and **View ▸ Focus mode** (`⌘.`) hides bo
 
 ## Writing a folio
 
-1. Click **New folio** at the top of the tree, or right-click a directory and
-   choose **New folio** to create it there.
+1. Open **New folio** at the top of the tree and choose **Text**, or
+   right-click a directory and choose **New folio** to create it there. Choose
+   **Table** for a list you will change row by row: see
+   [Tables](/lore/docs/remember-tables).
 2. Give it a title and write. The body is Markdown, and the **Insert** menu
    adds headings, lists, tables, code blocks and diagrams.
 3. There is nothing to submit: edits save as you type. **Folio ▸ Save** (`⌘S`)
@@ -98,6 +100,9 @@ The number is the per-project one shown beside each item. Nothing else between
 link. **Copy wiki-link** in a folio's right-click menu puts its reference on
 your clipboard.
 
+In a [table](/lore/docs/remember-tables), a reference cell is a link too, and
+the item it names lists the table among its backlinks.
+
 Links are recomputed on every save. The **Links** tab shows both directions:
 **Outgoing**, what this folio points to, and **Backlinks**, the folios, quests
 and epics that point to it. Backlinks are the useful half: they surface context
@@ -136,7 +141,8 @@ Pin sparingly. All pinned folios together share a budget of about 8,000
 characters, spent every time an agent orients itself, and the inspector of a
 pinned folio shows how much of it is used. The newest-updated come first: the
 first one past the budget is cut there, the ones after it are left out, and the
-agent is told so. Encrypted folios are never included.
+agent is told so. Encrypted folios are never included, and a table cannot be
+pinned: its rows are not text an agent's context can take whole.
 
 ## Folios and epics
 
@@ -161,6 +167,8 @@ What that costs:
 - An encrypted folio is not searchable, its links are not tracked, and it
   cannot carry files.
 - An agent reading it gets the ciphertext, not the text.
+- A table cannot be encrypted: Lore searches and filters its rows itself,
+  which a passphrase only you hold would prevent.
 - ⚠️ Turning encryption on, or off, **deletes the folio's revision history**,
   pinned revisions included. Otherwise the plain-text snapshots written before
   encryption would stay readable in **History**.
@@ -203,6 +211,8 @@ and `directory_delete` refuses a directory that is not empty unless it passes
 
 ## Next
 
+- [Tables](/lore/docs/remember-tables): folios made of typed rows, with a
+  calendar view.
 - [Attachments](/lore/docs/remember-attachments): files on a folio or a quest.
 - [Epics](/lore/docs/plan-epics): the plans a design note is filed under.
 - [Connecting an agent](/lore/docs/agents-connecting): give an agent access to
