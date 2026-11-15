@@ -457,15 +457,15 @@ through `adminRouterOptionsAtom` instead.
 list it counts, **filtered to the same number**. Three ship with
 `AdminRouter`, each shown only when the server registers the action it reads:
 
-| Tile            | What it counts                                                                                                                                  | Opens                                                     |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Users           | every account in the admin's realm; the chip compares sign-ups over the last 7 whole UTC days with the 7 before                                 | the Users list, with no stored filter applied             |
-| Connected       | distinct users who signed in or refreshed a session in the last 24 hours (API keys not included; it lags by up to an access token's lifetime)   | the Users list filtered to "last active: 24 h"            |
-| Failed sign-ins | `auth` and `security` audits that failed, over the last 7 whole UTC days, against the 7 before; warning-coloured above a threshold (default 10) | the audit log filtered to those types, failed, those days |
+| Tile          | What it counts                                                                                                                                | Opens                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Users         | every account in the admin's realm; the chip compares sign-ups over the last 7 whole UTC days with the 7 before                               | the Users list, with no stored filter applied            |
+| Connected     | distinct users who signed in or refreshed a session in the last 24 hours (API keys not included; it lags by up to an access token's lifetime) | the Users list filtered to "last active: 24 h"           |
+| Failed audits | audits of every type that failed, over the last 7 whole UTC days, against the 7 before; warning-coloured above a threshold (default 10)       | the audit log filtered to failed, every type, those days |
 
 Windows are whole UTC days because the audit log filters by day, and a tile
 must total what its list shows. Change the alert threshold with
-`failedSignInsAlertThreshold` in `adminRouterOptionsAtom`.
+`failedAuditsAlertThreshold` in `adminRouterOptionsAtom`.
 
 A link that carries no filter, like the Users tile's, would still get the
 filters the admin stored on that list last time. `DataTable` reads a reserved
@@ -522,7 +522,7 @@ export const myAdminOptions: AdminRouterOptions = {
 A card's fields:
 
 - `id`, unique across the built-in cards (`users`, `connected`,
-  `failed-sign-ins`) and yours: setting options that reuse one throws, at
+  `failed-audits`) and yours: setting options that reuse one throws, at
   startup since every app sets its options before `start`;
 - `title` (required) and `description`, the tile's name and one line in the
   Customize picker; `titleKey` and `descriptionKey` translate them;

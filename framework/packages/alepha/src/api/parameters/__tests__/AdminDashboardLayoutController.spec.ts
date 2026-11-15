@@ -47,7 +47,7 @@ const boot = async () => {
 
 const LAYOUT = {
   tiles: [
-    { id: "failed-sign-ins", enabled: true },
+    { id: "failed-audits", enabled: true },
     { id: "users", enabled: false },
   ],
 };

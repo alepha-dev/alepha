@@ -26,7 +26,7 @@ export interface AdminDashboardLayoutEntry {
 export const ADMIN_BUILTIN_DASHBOARD_CARD_IDS = [
   "users",
   "connected",
-  "failed-sign-ins",
+  "failed-audits",
 ] as const;
 
 /**

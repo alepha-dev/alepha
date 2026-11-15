@@ -198,7 +198,7 @@ describe("AdminRouter", () => {
     expect(cards().map((card) => [card.id, card.order])).toEqual([
       ["users", 1000],
       ["connected", 1010],
-      ["failed-sign-ins", 1020],
+      ["failed-audits", 1020],
     ]);
 
     const visible = () =>
@@ -220,7 +220,7 @@ describe("AdminRouter", () => {
         findAudits: { path: "/audits" },
       },
     });
-    expect(visible()).toEqual(["users", "connected", "failed-sign-ins"]);
+    expect(visible()).toEqual(["users", "connected", "failed-audits"]);
   });
 
   it("refuses options whose dashboard card reuses an id, when they are set", async () => {
