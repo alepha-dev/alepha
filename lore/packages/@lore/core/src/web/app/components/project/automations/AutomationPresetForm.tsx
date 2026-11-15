@@ -35,6 +35,12 @@ export interface AutomationPresetFormProps {
     SelectOption[] | ((search: string) => Promise<SelectOption[]>)
   >;
   variables?: AutomationVariableResource[];
+  /**
+   * True until the variables have loaded (#Q3718): Share waits for them,
+   * since it starts on a shared variable when a compatible one exists, and
+   * a click before they arrive would start on "Create a variable".
+   */
+  variablesLoading?: boolean;
   canManageVariables?: boolean;
   disabled?: boolean;
   onSubmit: (
@@ -303,7 +309,7 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
                   variant="link"
                   size="sm"
                   className="self-start px-0"
-                  disabled={busy}
+                  disabled={busy || props.variablesLoading === true}
                   onClick={() =>
                     form.input[`mode_${name}`].set(
                       variables.length > 0 ? "shared" : "create",

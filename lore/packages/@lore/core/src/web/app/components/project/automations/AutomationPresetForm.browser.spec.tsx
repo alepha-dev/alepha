@@ -176,6 +176,74 @@ describe("Automation preset setup form", () => {
     );
   });
 
+  it("holds Share until the variables have loaded, so an early click never starts on Create (#Q3718)", async ({
+    expect,
+  }) => {
+    const memberId = crypto.randomUUID();
+    const preset: AutomationPresetDescriptor = {
+      key: "epic-completed",
+      title: "Epic completed",
+      description: "Event",
+      source: "epic.completed",
+      fields: {},
+      needs: [],
+      permissions: [],
+      slots: {
+        recipient: { kind: "member", required: true, bindable: true },
+      },
+    };
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaReactI18n)
+      .with(AlephaReactUi);
+    alepha.inject(I18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    const form = (loading: boolean) => (
+      <AlephaContext.Provider value={alepha}>
+        <AutomationPresetForm
+          preset={preset}
+          choices={{ recipient: [{ value: memberId, label: "Myself" }] }}
+          variables={
+            loading
+              ? []
+              : [
+                  {
+                    id: crypto.randomUUID(),
+                    key: "teamRecipient",
+                    kind: "member",
+                    version: 1,
+                    available: true,
+                    value: { kind: "member", value: memberId },
+                  },
+                ]
+          }
+          variablesLoading={loading}
+          canManageVariables
+          onCreateShared={async () => {
+            throw new Error("not called");
+          }}
+          onSubmit={async () => {}}
+        />
+      </AlephaContext.Provider>
+    );
+    const view = render(form(true));
+    const share = () =>
+      screen.getByRole("button", { name: "Share with other automations" });
+    // Offered (this rank may create a variable) but not clickable yet.
+    expect(share().hasAttribute("disabled")).toBe(true);
+    fireEvent.click(share());
+    expect(screen.queryByRole("radio", { name: "Shared variable" })).toBeNull();
+
+    view.rerender(form(false));
+    fireEvent.click(share());
+    expect(
+      screen
+        .getByRole("radio", { name: "Shared variable" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+  });
+
   it("retains an explicitly created variable when rule creation fails so retry cannot replace its key", async ({
     expect,
   }) => {
