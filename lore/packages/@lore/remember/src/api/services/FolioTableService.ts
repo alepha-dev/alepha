@@ -137,10 +137,11 @@ export class FolioTableService {
   // -------------------------------------------------------------------------
 
   /**
-   * Refuse anything but a table folio, with a message that says so.
+   * Refuse anything but a folio of rows (a table or a calendar, #Q3717),
+   * with a message that says so.
    */
   public assertTable(folio: FolioTableTarget): void {
-    if (folio.type !== "table") {
+    if (folio.type === "text") {
       throw new BadRequestError(
         "This folio is not a table: its body is Markdown. Use the folio's content instead.",
       );
@@ -836,8 +837,24 @@ export class FolioTableService {
   }
 
   /**
-   * The columns a new table starts with: the ones asked for, or one text
-   * column named "Name" when none is.
+   * The columns a folio of this type starts with when none is asked for: a
+   * table one text column "Name", a calendar an entry's "Title" and the
+   * "Date" it lays it out by (#Q3717).
+   */
+  public defaultColumns(
+    type: string,
+  ): Array<{ name: string; type: FolioColumnType }> {
+    return type === "calendar"
+      ? [
+          { name: "Title", type: "text" },
+          { name: "Date", type: "date" },
+        ]
+      : [{ name: "Name", type: "text" }];
+  }
+
+  /**
+   * The columns a new table or calendar starts with: the ones asked for,
+   * or its type's defaults when none is.
    */
   public async seedColumns(
     folio: FolioTableTarget,
@@ -847,9 +864,7 @@ export class FolioTableService {
       options?: FolioColumnInputOptions;
     }>,
   ): Promise<FolioColumnResource[]> {
-    const wanted = inputs.length
-      ? inputs
-      : [{ name: "Name", type: "text" as const }];
+    const wanted = inputs.length ? inputs : this.defaultColumns(folio.type);
     return this.applyColumnOperations(
       folio,
       wanted.map((input) => ({ op: "add" as const, ...input })),
@@ -1030,7 +1045,7 @@ export class FolioTableService {
       await this.folios.findMany({
         where: {
           projectId: { eq: projectId },
-          type: { eq: "table" },
+          type: { inArray: ["table", "calendar"] },
           protected: { eq: false },
         },
         columns: ["id"],
@@ -1254,26 +1269,30 @@ export class FolioTableService {
   /**
    * How the folio is read, resolved against its columns and read leniently:
    * a date column that no longer exists falls back to the first date column,
-   * and a table with none is a grid. The title column falls back to the
-   * first text column, then to the first column.
+   * and a calendar with none reads as a grid. The title column falls back
+   * to the first text column, then to the first column.
+   *
+   * The kind is the folio's type (#Q3717): a table is a grid, a calendar a
+   * month. The stored row only picks the columns.
    */
   public async viewOf(
-    folioId: string,
+    folio: { id: string; type: string },
     columns?: FolioColumn[],
   ): Promise<FolioTableView> {
     const [stored, all] = await Promise.all([
-      this.views.findOne({ where: { folioId: { eq: folioId } } }),
-      columns ? Promise.resolve(columns) : this.columnsOf(folioId),
+      this.views.findOne({ where: { folioId: { eq: folio.id } } }),
+      columns ? Promise.resolve(columns) : this.columnsOf(folio.id),
     ]);
-    return this.resolveView(all, stored ?? undefined);
+    return this.resolveView(folio.type, all, stored ?? undefined);
   }
 
   /**
    * The view a stored row (or none) resolves to against these columns.
    */
   public resolveView(
+    folioType: string,
     columns: FolioColumn[],
-    stored?: { kind?: string; dateColumnId?: string; titleColumnId?: string },
+    stored?: { dateColumnId?: string; titleColumnId?: string },
   ): FolioTableView {
     const dates = columns.filter((c) => this.codec.typeOf(c) === "date");
     const date = dates.find((c) => c.id === stored?.dateColumnId) ?? dates[0];
@@ -1282,7 +1301,7 @@ export class FolioTableService {
       columns.find((c) => this.codec.typeOf(c) === "text") ??
       columns[0];
     return {
-      kind: date && stored?.kind === "calendar" ? "calendar" : "grid",
+      kind: date && folioType === "calendar" ? "calendar" : "grid",
       ...(date ? { dateColumnId: date.id } : {}),
       ...(title ? { titleColumnId: title.id } : {}),
     };
@@ -1294,14 +1313,14 @@ export class FolioTableService {
    * whatever the number of cards.
    */
   public async tablesOf(
-    folioIds: string[],
+    folios: Array<{ id: string; type: string }>,
   ): Promise<
     Map<
       string,
       { columns: FolioColumn[]; rows: FolioRowResource[]; view: FolioTableView }
     >
   > {
-    const ids = [...new Set(folioIds)];
+    const ids = [...new Set(folios.map((folio) => folio.id))];
     const out = new Map<
       string,
       { columns: FolioColumn[]; rows: FolioRowResource[]; view: FolioTableView }
@@ -1332,6 +1351,7 @@ export class FolioTableService {
           .filter((row) => row.folioId === id)
           .map((row) => this.rowResource(own, row)),
         view: this.resolveView(
+          folios.find((folio) => folio.id === id)?.type ?? "table",
           own,
           views.find((view) => view.folioId === id),
         ),
@@ -1341,13 +1361,14 @@ export class FolioTableService {
   }
 
   /**
-   * Remember how the folio is read. Column ids are checked against the
-   * table, so a stored view never names a column of another folio.
+   * Remember the columns a calendar reads: the date it lays rows out by and
+   * the column that titles an entry. Column ids are checked against the
+   * table, so a stored view never names a column of another folio. Whether
+   * the folio is a grid or a calendar is its type, never this (#Q3717).
    */
   public async setView(
     folio: FolioTableTarget,
     input: {
-      kind: "grid" | "calendar";
       dateColumnId?: string;
       titleColumnId?: string;
     },
@@ -1365,7 +1386,9 @@ export class FolioTableService {
       throw new BadRequestError("A calendar reads a date column.");
     }
     const data = {
-      kind: input.kind,
+      // Kept for the column's NOT NULL, and read by nothing: the kind is the
+      // folio's type (#Q3717).
+      kind: folio.type === "calendar" ? "calendar" : "grid",
       dateColumnId: input.dateColumnId
         ? this.resolveColumn(columns, input.dateColumnId).id
         : undefined,
@@ -1381,7 +1404,7 @@ export class FolioTableService {
     } else {
       await this.views.create({ folioId: folio.id, ...data });
     }
-    return this.resolveView(columns, data);
+    return this.resolveView(folio.type, columns, data);
   }
 
   // -------------------------------------------------------------------------

@@ -195,7 +195,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
       data-slot="folio-document"
       data-text-size={textSize.level}
       className={
-        props.folio?.type === "table"
+        props.folio && props.folio.type !== "text"
           ? "flex h-full min-h-0 flex-col gap-0"
           : "flex flex-col gap-0"
       }
@@ -252,12 +252,13 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           wrapper used to live in `FolioWorkspaceContent` and enclose the
           header and the rule as well, which is what kept all three the same
           width. */}
-      {props.folio?.type === "table" ? (
+      {props.folio && props.folio.type !== "text" ? (
         // A table is its grid (#E144), wider than the prose measure: a
         // table reads by columns, and several need the room.
         <Suspense fallback={null}>
           <FolioTableDocument
             folioId={props.folio.id}
+            calendar={props.folio.type === "calendar"}
             readOnly={props.actions.actionState.readOnly === true}
             onCommands={props.onTableCommands}
           />

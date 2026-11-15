@@ -5,7 +5,7 @@ import { z } from "alepha";
 import { useStore } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { FileText, Table2 } from "lucide-react";
+import { CalendarDays, FileText, Table2 } from "lucide-react";
 import type { ReactElement } from "react";
 
 import { projectDirectoriesAtom } from "../../../atoms/projectDirectoriesAtom.ts";
@@ -64,7 +64,7 @@ const FolioCardFilterEditor = (
     (folio) => folio.shortId === props.values.folio,
   );
   const shows =
-    picked?.type === "table"
+    picked && picked.type !== "text"
       ? (["auto", "rows", "upcoming"] as const)
       : (["auto", "note"] as const);
   const show = shows.includes(props.values.show as never)
@@ -95,7 +95,12 @@ const FolioCardFilterEditor = (
           )}
           {options.map(({ folio, path }) => {
             const on = folio.shortId === props.values.folio;
-            const Icon = folio.type === "table" ? Table2 : FileText;
+            const Icon =
+              folio.type === "calendar"
+                ? CalendarDays
+                : folio.type === "table"
+                  ? Table2
+                  : FileText;
             return (
               <button
                 key={folio.id}

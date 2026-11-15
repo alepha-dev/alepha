@@ -21,6 +21,7 @@ import {
   SquareArrowOutUpRight,
   Trash2,
   Table2,
+  CalendarDays,
 } from "lucide-react";
 import type { ReactElement } from "react";
 
@@ -163,11 +164,17 @@ const FolioTreeContextMenu = (
         <>
           <ContextMenuItem onClick={() => props.commands.createFolio(node.id)}>
             <FilePlus className="size-4" />
-            {tr("folios.editor.tree.new-folio")}
+            {tr("folios.editor.tree.new-text")}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => props.commands.createTable(node.id)}>
             <Table2 className="size-4" />
-            {tr("folios.editor.tree.new-table-folio")}
+            {tr("folios.editor.tree.new-table")}
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={() => props.commands.createCalendar(node.id)}
+          >
+            <CalendarDays className="size-4" />
+            {tr("folios.editor.tree.new-calendar")}
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => props.commands.createDirectory(node.id)}

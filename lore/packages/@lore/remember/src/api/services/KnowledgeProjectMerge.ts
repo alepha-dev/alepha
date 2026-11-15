@@ -141,7 +141,7 @@ export class KnowledgeProjectMerge {
         {
           where: {
             projectId: { eq: context.sourceProjectId },
-            type: { eq: "table" },
+            type: { inArray: ["table", "calendar"] },
           },
           columns: ["id"],
         },

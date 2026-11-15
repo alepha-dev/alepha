@@ -95,7 +95,7 @@ const TABS: { id: FolioInspectorTab; labelKey: string }[] = [
 const FolioInspector = (props: FolioInspectorProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   // A table has no headings, so no Outline (#E144): it opens on History.
-  const isTable = props.folio?.type === "table";
+  const isTable = !!props.folio && props.folio.type !== "text";
   const tabs = isTable ? TABS.filter((t) => t.id !== "outline") : TABS;
   const tab: FolioInspectorTab =
     isTable && props.tab === "outline" ? "history" : props.tab;

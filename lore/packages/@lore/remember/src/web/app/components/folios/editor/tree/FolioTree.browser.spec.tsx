@@ -318,7 +318,7 @@ describe("FolioTree", () => {
         fireEvent.contextMenu(rowFor("Bin"));
       });
 
-      await screen.findByText("New folio");
+      await screen.findByText("New doc");
       expect(screen.queryByText("Rename")).toBeNull();
       expect(screen.queryByText("Delete")).toBeNull();
     });
@@ -357,7 +357,7 @@ describe("FolioTree", () => {
         fireEvent.contextMenu(emptyArea(view));
       });
       await act(async () => {
-        fireEvent.click(await screen.findByText("New folio"));
+        fireEvent.click(await screen.findByText("New doc"));
       });
 
       await waitFor(() =>
@@ -398,7 +398,13 @@ describe("FolioTree", () => {
         fireEvent.contextMenu(emptyArea(view));
       });
 
-      expect(await screen.findByText("New folio")).toBeTruthy();
+      // New doc, New table, New calendar, in that order (#Q3717).
+      expect(await screen.findByText("New doc")).toBeTruthy();
+      expect(
+        [...document.querySelectorAll("[role=menuitem]")]
+          .map((item) => item.textContent)
+          .filter((text) => text?.startsWith("New ")),
+      ).toEqual(["New doc", "New table", "New calendar", "New directory"]);
       expect(screen.getByText("New directory")).toBeTruthy();
       expect(screen.getByText("Refresh the tree")).toBeTruthy();
       // Open, rename and delete are all questions about a row, and there is
@@ -427,7 +433,7 @@ describe("FolioTree", () => {
 
       expect(await screen.findByText("Rename")).toBeTruthy();
       expect(screen.queryByText("New directory")).toBeNull();
-      expect(screen.queryByText("New folio")).toBeNull();
+      expect(screen.queryByText("New doc")).toBeNull();
     });
 
     it("is not there at all for a reader who may not write", async () => {

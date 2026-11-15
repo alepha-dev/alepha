@@ -29,7 +29,7 @@ export const folioRefSchema = z.object({
    * `text` (Markdown in `content`) or `table` (typed rows: read them with
    * the row tools).
    */
-  type: z.enum(["text", "table"]),
+  type: z.enum(["text", "table", "calendar"]),
   summary: z.string().optional(),
   updatedAt: z.string(),
   epic: folioEpicRefSchema.optional(),
@@ -94,7 +94,7 @@ export const folioFullSchema = z.object({
    * `text`, or `table`: then `content` is empty and the folio is its
    * `columns` and `rows`.
    */
-  type: z.enum(["text", "table"]).optional(),
+  type: z.enum(["text", "table", "calendar"]).optional(),
   content: z.string(),
   /**
    * A table's columns, its row count, and its first 50 rows; `truncated`

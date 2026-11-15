@@ -7,7 +7,7 @@ import {
 } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { FilePlus, FolderPlus, Table2 } from "lucide-react";
+import { CalendarDays, FilePlus, FolderPlus, Table2 } from "lucide-react";
 import type { ReactElement } from "react";
 
 import FolioTreeRefreshMenuItem from "./FolioTreeRefreshMenuItem.tsx";
@@ -66,11 +66,15 @@ const FolioTreeRootContextMenu = (
       <ContextMenuContent>
         <ContextMenuItem onClick={() => props.commands.createFolio()}>
           <FilePlus className="size-4" />
-          {tr("folios.editor.tree.new-folio")}
+          {tr("folios.editor.tree.new-text")}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => props.commands.createTable()}>
           <Table2 className="size-4" />
-          {tr("folios.editor.tree.new-table-folio")}
+          {tr("folios.editor.tree.new-table")}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => props.commands.createCalendar()}>
+          <CalendarDays className="size-4" />
+          {tr("folios.editor.tree.new-calendar")}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => props.commands.createDirectory()}>
           <FolderPlus className="size-4" />

@@ -28,10 +28,10 @@ Either side pane can be collapsed, and **View ▸ Focus mode** (`⌘.`) hides bo
 
 ## Writing a folio
 
-1. Open **New folio** at the top of the tree and choose **Text**, or
-   right-click a directory and choose **New folio** to create it there. Choose
-   **Table** for a list you will change row by row: see
-   [Tables](/lore/docs/remember-tables).
+1. Open **New folio** at the top of the tree and choose **New doc**, or
+   right-click a directory and choose **New doc** to create it there. Choose
+   **New table** for a list you will change row by row, or **New calendar**
+   for dated entries: see [Tables](/lore/docs/remember-tables).
 2. Give it a title and write. The body is Markdown, and the **Insert** menu
    adds headings, lists, tables, code blocks and diagrams.
 3. There is nothing to submit: edits save as you type. **Folio ▸ Save** (`⌘S`)
@@ -211,8 +211,8 @@ and `directory_delete` refuses a directory that is not empty unless it passes
 
 ## Next
 
-- [Tables](/lore/docs/remember-tables): folios made of typed rows, with a
-  calendar view.
+- [Tables](/lore/docs/remember-tables): folios made of typed rows, read as a
+  grid or as a calendar.
 - [Attachments](/lore/docs/remember-attachments): files on a folio or a quest.
 - [Epics](/lore/docs/plan-epics): the plans a design note is filed under.
 - [Connecting an agent](/lore/docs/agents-connecting): give an agent access to

@@ -386,7 +386,7 @@ export class FolioTools {
 
   folio_get = $tool({
     description:
-      'Get the full content of a folio (markdown) plus its links. A table folio (`type: "table"`) answers its `columns`, `rowCount` and first 50 `rows` instead of content, cells keyed by column name, with `truncated` when there are more (read them with folio_row_list). Links: `outbound` is what this folio references with the typed grammar (`[[#F12]]` a folio, `[[#Q12]]` a quest, `[[#E3]]` an epic, `[[#P120]]` a feedback item, `[[#R12]]` a release; the number is the per-project id, and nothing else between `[[` and `]]` is a reference), `inbound` is the folios, quests and epics that reference this one. Use `inbound` as a backlink panel: it surfaces context that may be related. Accepts either the global UUID `id` or the per-project `shortId` (with `project` / `project_name`).',
+      'Get the full content of a folio (markdown) plus its links. A table or calendar folio (`type: "table"` / `"calendar"`) answers its `columns`, `rowCount` and first 50 `rows` instead of content, cells keyed by column name, with `truncated` when there are more (read them with folio_row_list). Links: `outbound` is what this folio references with the typed grammar (`[[#F12]]` a folio, `[[#Q12]]` a quest, `[[#E3]]` an epic, `[[#P120]]` a feedback item, `[[#R12]]` a release; the number is the per-project id, and nothing else between `[[` and `]]` is a reference), `inbound` is the folios, quests and epics that reference this one. Use `inbound` as a backlink panel: it surfaces context that may be related. Accepts either the global UUID `id` or the per-project `shortId` (with `project` / `project_name`).',
     title: "Get folio",
     annotations: {
       readOnlyHint: true,
@@ -418,9 +418,10 @@ export class FolioTools {
               query,
             });
       const epic = folio.metadata?.epic;
-      // A table answers its columns and first rows by name (#Q3515).
+      // A table or a calendar answers its columns and first rows by name
+      // (#Q3515, #Q3717).
       const table =
-        folio.type === "table"
+        folio.type !== "text"
           ? await this.tableTools.tableView(folio.id)
           : undefined;
       return {
@@ -485,9 +486,9 @@ export class FolioTools {
           )
           .optional(),
         type: z
-          .enum(["text", "table"])
+          .enum(["text", "table", "calendar"])
           .describe(
-            "`text` (the default), or `table`: typed columns and rows, no content. Set at creation, never changed.",
+            "`text` (the default); `table`: typed columns and rows, no content, shown as a grid; or `calendar`: the same rows shown as a month, laid out by a date column (created with `Title` and `Date` when `columns` is omitted). Set at creation, never changed.",
           )
           .optional(),
         columns: z

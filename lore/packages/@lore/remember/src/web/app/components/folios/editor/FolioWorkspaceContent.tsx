@@ -179,7 +179,8 @@ const FolioWorkspaceContent = (
     find: () => void;
     importRows: () => void;
   } | null>(null);
-  const isTable = props.folio?.type === "table";
+  // A table and a calendar are both rows (#Q3717).
+  const isTable = !!props.folio && props.folio.type !== "text";
 
   // The element this workspace is showing. `LoreEditor` derives its own
   // links and upload target from it; the copy computed here exists only

@@ -13,12 +13,17 @@ import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 
 export interface FolioTableCreateProps {
   directoryId?: string;
+  /**
+   * `table` (the default) or `calendar` (#Q3717).
+   */
+  type?: "table" | "calendar";
 }
 
 /**
- * Create a table folio from `/folios/new?type=table` (#E144): a title, then
- * the folio opens on its grid with one text column, Name, to rename. A
- * table has no draft to type into first, so it is created on submit.
+ * Create a table folio from `/folios/new?type=table` (#E144), or a calendar
+ * from `?type=calendar` (#Q3717): a title, then the folio opens on its grid
+ * with one text column, Name, or on its month with Title and Date. Neither
+ * has a draft to type into first, so it is created on submit.
  */
 const FolioTableCreate = (props: FolioTableCreateProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
@@ -26,17 +31,22 @@ const FolioTableCreate = (props: FolioTableCreateProps): ReactElement => {
   const [folios, setFolios] = useStore(userFoliosAtom);
   const folioApi = useClient<FolioController>();
   const router = useRouter();
+  const calendar = props.type === "calendar";
 
   const form = useForm({
     schema: z.object({ title: z.string().min(1).max(200) }),
-    initialValues: { title: tr("folios.editor.tree.untitled-table") },
+    initialValues: {
+      title: calendar
+        ? tr("folios.editor.tree.untitled-calendar")
+        : tr("folios.editor.tree.untitled-table"),
+    },
     handler: async (values) => {
       if (!project) return;
       const created = await folioApi.create({
         body: {
           projectId: project.id,
           title: values.title.trim(),
-          type: "table",
+          type: calendar ? "calendar" : "table",
           ...(props.directoryId ? { directoryId: props.directoryId } : {}),
         },
       });
@@ -55,13 +65,19 @@ const FolioTableCreate = (props: FolioTableCreateProps): ReactElement => {
       className="mx-auto flex w-full max-w-md flex-col gap-4 px-8 py-16"
     >
       <h1 className="text-lg font-semibold">
-        {tr("folios.table.create.title")}
+        {calendar
+          ? tr("folios.calendar.create.title")
+          : tr("folios.table.create.title")}
       </h1>
       <Control
         input={form.input.title}
         label={tr("folios.title-placeholder")}
       />
-      <Button type="submit">{tr("folios.table.create.submit")}</Button>
+      <Button type="submit">
+        {calendar
+          ? tr("folios.calendar.create.submit")
+          : tr("folios.table.create.submit")}
+      </Button>
     </form>
   );
 };

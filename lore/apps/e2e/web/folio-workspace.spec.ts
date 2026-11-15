@@ -1078,9 +1078,7 @@ test.describe("Folio workspace", () => {
     expect(box?.height ?? 0).toBeGreaterThan(0);
 
     await area.click({ button: "right" });
-    await expect(
-      page.getByRole("menuitem", { name: "New folio" }),
-    ).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "New doc" })).toBeVisible();
     // Two items, and none of the row menu's own: Open, rename and delete are
     // all questions about a row.
     await expect(page.getByRole("menuitem", { name: "Rename" })).toHaveCount(0);
@@ -1300,7 +1298,7 @@ test.describe("Folio workspace", () => {
       .first()
       .click();
     // The button asks which kind of folio: Text is the Markdown one.
-    await page.getByRole("menuitem", { name: "Text", exact: true }).click();
+    await page.getByRole("menuitem", { name: "New doc", exact: true }).click();
     // The tree creates the row and navigates straight into it, ready to be
     // renamed — so the editor is mounted and the chrome is back.
     await page.waitForURL(new RegExp(`/${projectSlug}/folios/\\d+`), {
@@ -1806,7 +1804,7 @@ test.describe("Folio workspace", () => {
       .getByRole("button", { name: /^new folio$/i })
       .first()
       .click();
-    await page.getByRole("menuitem", { name: "Text", exact: true }).click();
+    await page.getByRole("menuitem", { name: "New doc", exact: true }).click();
     // Not any `/folios/<n>`: folio A, still open, already matches that.
     await page.waitForURL(
       (url) => /\/folios\/\d+$/.test(url.pathname) && url.pathname !== urlA,

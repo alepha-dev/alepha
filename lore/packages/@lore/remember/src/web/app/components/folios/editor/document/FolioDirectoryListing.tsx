@@ -12,6 +12,7 @@ import {
   FilePlus,
   FileText,
   Table2,
+  CalendarDays,
   FolderPlus,
   Lock,
   Pin,
@@ -262,9 +263,11 @@ const FolioDirectoryListing = (
         {childFolios.map((f) => {
           const Icon = f.protected
             ? Lock
-            : f.type === "table"
-              ? Table2
-              : FileText;
+            : f.type === "calendar"
+              ? CalendarDays
+              : f.type === "table"
+                ? Table2
+                : FileText;
           const updated = dateTime.of(f.updatedAt);
           return (
             <Link

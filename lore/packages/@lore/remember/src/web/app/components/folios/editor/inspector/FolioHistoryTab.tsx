@@ -382,7 +382,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                 <div className="overflow-hidden">
                   <div className="flex flex-col gap-2 border-t px-3 py-2.5">
                     <RevisionSummary revision={revision} />
-                    {props.folio.type === "table" && isExpanded && (
+                    {props.folio.type !== "text" && isExpanded && (
                       <Suspense fallback={null}>
                         <FolioTableRevisionView
                           snapshot={revision.contentSnapshot}

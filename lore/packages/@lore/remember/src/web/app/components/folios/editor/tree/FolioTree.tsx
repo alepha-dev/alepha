@@ -13,6 +13,7 @@ import {
   FileText,
   FileUp,
   Table2,
+  CalendarDays,
   FolderPlus,
   Lock,
   PanelLeftClose,
@@ -205,7 +206,8 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
         </Button>
         {canWrite && (
           <>
-            {/* New folio offers Text and Table (#E144). */}
+            {/* New folio offers a doc, a table and a calendar (#E144,
+                #Q3717). */}
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -228,6 +230,10 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
                 <DropdownMenuItem onClick={() => commands.createTable()}>
                   <Table2 className="size-4" />
                   {tr("folios.editor.tree.new-table")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => commands.createCalendar()}>
+                  <CalendarDays className="size-4" />
+                  {tr("folios.editor.tree.new-calendar")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setImporting({})}>
                   <FileUp className="size-4" />
@@ -302,9 +308,11 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             const Icon =
               folio.data.kind === "protected"
                 ? Lock
-                : folio.data.table
-                  ? Table2
-                  : FileText;
+                : folio.data.calendar
+                  ? CalendarDays
+                  : folio.data.table
+                    ? Table2
+                    : FileText;
             return (
               <Icon className="size-3.5 shrink-0 text-[var(--folio-tree-folio)]" />
             );
