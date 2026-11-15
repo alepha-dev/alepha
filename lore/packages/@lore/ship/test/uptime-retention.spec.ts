@@ -6,9 +6,14 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { describe, it } from "vitest";
 
+import { appInstances } from "../src/api/entities/appInstances.ts";
+import { hosts } from "../src/api/entities/hosts.ts";
 import { monitorHeartbeats } from "../src/api/entities/monitorHeartbeats.ts";
 import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { monitors } from "../src/api/entities/monitors.ts";
+import { sigils } from "../src/api/entities/sigils.ts";
+import { stackEnvironments } from "../src/api/entities/stackEnvironments.ts";
+import { stacks } from "../src/api/entities/stacks.ts";
 import { UptimeRetentionJobs } from "../src/api/jobs/UptimeRetentionJobs.ts";
 
 class Repositories {
@@ -16,6 +21,13 @@ class Repositories {
   monitors = $repository(monitors);
   incidents = $repository(monitorIncidents);
   beats = $repository(monitorHeartbeats);
+  // `monitors.appInstanceId` references the app copies (#Q3657), and they
+  // reference their host, sigil and stack environment.
+  instances = $repository(appInstances);
+  hosts = $repository(hosts);
+  sigils = $repository(sigils);
+  stacks = $repository(stacks);
+  stackEnvironments = $repository(stackEnvironments);
 }
 
 describe("Uptime retention", () => {

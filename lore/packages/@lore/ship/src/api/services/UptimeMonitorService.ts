@@ -14,14 +14,21 @@ export class UptimeMonitorService {
   protected readonly pushes = $inject(UptimePushService);
   protected readonly clock = $inject(DateTimeProvider);
 
+  /**
+   * ⚠️ `appInstanceId` is optional here only for the specs and the adoption
+   * of monitors made before the link (#Q3657). Every surface a person or an
+   * agent creates through, the API, MCP and the CLI, requires it.
+   */
   public async create(
     projectId: number,
     config: MonitorConfig,
+    owner: { appInstanceId?: string } = {},
   ): Promise<{ monitor: Monitor; token?: string }> {
     const clean = {
       ...config,
       name: config.name.trim(),
       target: config.target.trim(),
+      ...(owner.appInstanceId ? { appInstanceId: owner.appInstanceId } : {}),
     };
     if (config.kind === "push") return this.pushes.create(projectId, clean);
     const now = this.clock.nowISOString();

@@ -3795,21 +3795,14 @@ export default {
   "uptime.recipientsDescription":
     "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
   "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
-  "uptime.suggestions.title": "Apps without a monitor",
-  "uptime.suggestions.description":
-    "These copies have an address and nothing checking it. Add one with its name and URL filled in.",
-  "uptime.suggestions.add": "Add monitor",
-  "uptime.suggestions.addFor": "Add a monitor for $1",
   "uptime.app.none": "No monitor checks this address yet.",
   "uptime.title": "Uptime",
-  "uptime.empty": "No monitors yet.",
   "project.capability.ship.option.uptime.label": "Monitor apps",
   "project.capability.ship.option.uptime.description":
     "Check your addresses on a schedule and keep their history. No sigil needed.",
   "project.capability.ship.option.stacks.label": "Stacks",
   "project.capability.ship.option.stacks.description":
     "Deploy apps and services together from one compose.yml.",
-  "uptime.description": "Website, port, certificate and scheduled job checks.",
   "uptime.recentChecks": "Recent checks",
   "uptime.notMeasured": "Not measured",
   "uptime.beatTitle": "$1: $2 ms, $3",

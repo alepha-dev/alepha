@@ -16,7 +16,7 @@ import {
   AssistantSuggestionRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
-import { Activity, AppWindow, Bug, Layers, Package } from "lucide-react";
+import { AppWindow, Bug, Layers, Package } from "lucide-react";
 
 import { currentErrorCountAtom } from "../atoms/currentErrorCountAtom.ts";
 import { currentHostAtom } from "../atoms/currentHostAtom.ts";
@@ -58,17 +58,6 @@ export class DeployShell {
     });
     this.shell.registerNav("ship", [
       {
-        route: "projectUptime",
-        permission: "app:read",
-        labelKey: "uptime.title",
-        icon: Activity,
-        group: "ops",
-        order: 30,
-        option: "uptime",
-        activeOn: (name) =>
-          name === "projectUptime" || name === "projectMonitor",
-      },
-      {
         // ONE entry, pointing at the list. It was a disclosure group with one
         // child per enrolled app; once an instance is something you create
         // freely, that is a list growing without bound in the one piece of
@@ -83,6 +72,10 @@ export class DeployShell {
         // there whenever Apps is on; `track` adds telemetry to them. Gating
         // this entry on `track` would leave a project that deploys elsewhere
         // with no way to reach the copies it has recorded.
+        //
+        // A monitor's page counts as Apps: Uptime has no entry of its own
+        // since monitors belong to an app (#Q3657).
+        activeOn: (name) => name === "projectApps" || name === "projectMonitor",
       },
       {
         // Stacks (#E79), behind their own `stacks` option, off by default.

@@ -29,8 +29,9 @@ export interface MonitorFormDialogProps {
   projectId: number;
   monitor?: MonitorResource;
   /**
-   * Starting values for a NEW monitor, from an app instance the project
-   * already knows (#Q2680). Ignored when `monitor` is given.
+   * A NEW monitor's app copy and starting values (#Q2680). A monitor always
+   * belongs to an app copy (#Q3657), so creating needs one; ignored when
+   * `monitor` is given.
    */
   prefill?: MonitorPrefill;
   onClose: () => void;
@@ -41,10 +42,13 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
   const queries = useQueryClient();
   const [token, setToken] = useState<string>();
   const monitor = props.monitor;
-  const prefill = monitor ? undefined : props.prefill;
+  // Pinned at mount: a caller that builds the prefill on every render (the
+  // app's Overview card does) would otherwise hand the form new initial
+  // values each time its page re-renders, and wipe what was typed.
+  const [prefill] = useState(() => (monitor ? undefined : props.prefill));
   const form = useForm({
     // A prefilled dialog is its own form, so two apps never share a draft.
-    id: `monitor-${monitor?.id ?? (prefill ? `new-${prefill.target}` : "new")}`,
+    id: `monitor-${monitor?.id ?? (prefill ? `new-${prefill.appInstanceId}` : "new")}`,
     schema: monitorFormSchema,
     initialValues: {
       name: monitor?.name ?? prefill?.name ?? "",
@@ -104,10 +108,10 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
         await api.updateMonitor({ params: { monitorId: monitor.id }, body });
         queries.invalidate(["uptime-monitors", props.projectId]);
         props.onClose();
-      } else {
+      } else if (prefill) {
         const created = await api.createMonitor({
           params: { projectId: props.projectId },
-          body,
+          body: { ...body, appInstanceId: prefill.appInstanceId },
         });
         queries.invalidate(["uptime-monitors", props.projectId]);
         if (created.token)

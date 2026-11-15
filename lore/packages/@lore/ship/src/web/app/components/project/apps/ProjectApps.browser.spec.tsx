@@ -791,20 +791,27 @@ describe("the Apps list", () => {
   });
 
   /**
-   * The Uptime column (#Q3587): each copy's uptime from its HTTP monitor,
+   * The Uptime column (#Q3587): each copy's uptime from the monitor it owns,
    * loaded after the table, a dash with no monitor, and absent with the
    * uptime option off.
    */
   describe("the Uptime column", () => {
+    // The monitor belongs to this copy by `appInstanceId` (#Q3657), not by
+    // its address: the second case's lore copy sits at the same URL and
+    // still shows a dash.
+    const WATCHED = "00000000-0000-4000-8000-0000000000f1";
     const watched = () =>
-      anInstance("acme", "production", { url: "https://acme.example.com" });
+      anInstance("acme", "production", {
+        id: WATCHED,
+        url: "https://acme.example.com",
+      });
 
     it("shows a placeholder until the monitors load, then each copy's uptime or a dash", async ({
       expect,
     }) => {
       const { alepha, view } = await mount([
         watched(),
-        anInstance("lore", "production", { url: "https://lore.example.com" }),
+        anInstance("lore", "production", { url: "https://acme.example.com" }),
       ]);
       const fake = alepha.inject(FakeLinkProvider);
 
@@ -818,6 +825,7 @@ describe("the Apps list", () => {
       fake.monitors = [
         {
           id: "00000000-0000-4000-8000-0000000000m1",
+          appInstanceId: WATCHED,
           kind: "http",
           target: "https://acme.example.com/",
           uptimePct: 99.5,
@@ -850,6 +858,7 @@ describe("the Apps list", () => {
       fake.monitors = [
         {
           id: "00000000-0000-4000-8000-0000000000m1",
+          appInstanceId: WATCHED,
           kind: "http",
           target: "https://acme.example.com/",
           active: true,

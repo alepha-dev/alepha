@@ -254,23 +254,23 @@ export class DeployRouter {
   });
 
   /**
-   * Every deployed copy of every app, in one flat table.
-   *
-   * Gated on the Ship capability the same way `projectApp` is, and for the
-   * same reason: the capability is the whole gate, so reaching this by URL
-   * without it is a 404 rather than a 403.
+   * The old Uptime list, gone with its sidebar entry (#Q3657): `/apps`, with
+   * its Uptime column, is the overview, and a monitor lives on its app.
    */
   projectUptime = $pageProject({
     name: "projectUptime",
     path: "/uptime",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Uptime`,
-    }),
-    lazy: () => import("./components/project/uptime/ProjectUptime.tsx"),
-    loader: async () => {
-      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
+    component: RedirectPage,
+    loader: async (): Promise<void> => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project || !hasCapability(project, "ship")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
+      throw new Redirection({
+        redirect: this.router.path("projectApps", {
+          params: { projectSlug: project.slug },
+        }),
+      });
     },
   });
 

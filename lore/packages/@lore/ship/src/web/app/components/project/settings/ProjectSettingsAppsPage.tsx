@@ -65,17 +65,23 @@ const ProjectSettingsAppsPage = () => {
   return (
     <div className="flex flex-col gap-6">
       {/* The master is in General > Capabilities since #Q2565, with every
-          option that adds a sidebar entry. `uptime` adds one (Uptime) and is
-          listed here too, as Monitor apps beside Track and Deploy (#Q3597):
-          it is the third thing a project does with its apps, and a reader
-          looking for it looks here. Both switches write the same row.
-          `deploy` is the same case since Artifacts hangs off it (#Q3631):
-          listed here as Deploy apps, where it always was, and in General.
+          option that adds a sidebar entry. `uptime`, Monitor apps, is the
+          third thing a project does with its apps (#Q3597), listed last
+          beside Track and Deploy; since monitors belong to apps it adds no
+          sidebar entry and lives here only (#Q3657). `deploy` adds one
+          (Artifacts, #Q3631) and is listed here too, as Deploy apps, where
+          it always was, and in General: both switches write the same row.
           `stacks` stays in General only. */}
       <ProjectSettingsCapabilitySection
         capability="ship"
         master={false}
-        options={[...shell.settingsOptions("ship"), "deploy", "uptime"]}
+        options={[
+          ...shell
+            .settingsOptions("ship")
+            .filter((option) => option !== "uptime"),
+          "deploy",
+          "uptime",
+        ]}
       />
 
       {enabled && <ProjectSettingsCoverageTarget />}
