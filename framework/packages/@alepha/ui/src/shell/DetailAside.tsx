@@ -60,6 +60,13 @@ export interface DetailAsideProps {
    * character twice at two sizes.
    */
   avatar?: boolean;
+  /**
+   * Wraps the drawn avatar, so a page can make it a control without this
+   * panel learning what the control does: the admin user page turns it into
+   * the avatar's own edit button (#Q3663). Not called when there is no
+   * avatar.
+   */
+  renderAvatar?: (avatar: React.ReactNode) => React.ReactNode;
   rows: DetailAsideRow[];
 }
 
@@ -107,31 +114,32 @@ export const DetailAside = (props: DetailAsideProps) => {
     .toUpperCase();
 
   const showAvatar = props.avatar !== false;
+  const avatar = props.imageFileId ? (
+    <UserAvatar
+      fileId={props.imageFileId}
+      alt={props.title ?? ""}
+      className="size-10 rounded-md"
+      fallback={<span className="text-sm">{initial}</span>}
+    />
+  ) : (
+    <Avatar className="size-10 rounded-md after:rounded-md">
+      {props.image && (
+        <AvatarImage
+          src={props.image}
+          alt={props.title ?? ""}
+          className="rounded-md"
+        />
+      )}
+      <AvatarFallback className="rounded-md">{initial}</AvatarFallback>
+    </Avatar>
+  );
   const header = showAvatar || props.title;
 
   return (
     <div className="flex flex-col gap-4">
       {header ? (
         <div className="flex items-center gap-3">
-          {showAvatar && props.imageFileId ? (
-            <UserAvatar
-              fileId={props.imageFileId}
-              alt={props.title ?? ""}
-              className="size-10 rounded-md"
-              fallback={<span className="text-sm">{initial}</span>}
-            />
-          ) : showAvatar ? (
-            <Avatar className="size-10 rounded-md after:rounded-md">
-              {props.image && (
-                <AvatarImage
-                  src={props.image}
-                  alt={props.title ?? ""}
-                  className="rounded-md"
-                />
-              )}
-              <AvatarFallback className="rounded-md">{initial}</AvatarFallback>
-            </Avatar>
-          ) : null}
+          {showAvatar ? (props.renderAvatar ?? ((it) => it))(avatar) : null}
           {props.title ? (
             <span
               className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight"
