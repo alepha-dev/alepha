@@ -158,11 +158,12 @@ test.describe("Project capabilities", () => {
     await page.reload();
     await page.waitForLoadState("networkidle");
 
+    // No Artifacts: they are builds pushed to deploy, and this project's
+    // Ship has `track` without `deploy` (#Q3631).
     expect(await navHrefs(page, slug)).toEqual([
       "/",
       "/activity",
       "/apps",
-      "/artifacts",
       "/automations",
       "/reports",
     ]);

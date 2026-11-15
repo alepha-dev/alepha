@@ -2,7 +2,11 @@ import { sigilKeyPrefix, sigilKeyProject } from "@alepha/lore/sigil";
 import type { Page, Request } from "@playwright/test";
 
 import { expect, test } from "./_fixtures.ts";
-import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
+import {
+  createProjectViaWizard,
+  registerAndVerify,
+  setCapability,
+} from "./_helpers.ts";
 
 /**
  * Apps, end to end: create a deployed copy, add a second, mint the key one of
@@ -1649,7 +1653,12 @@ test.describe("Apps", () => {
         timeout: 15_000,
       });
 
-      // Point the copy at it.
+      // Point the copy at it. The Host section needs Ship's Deploy option
+      // (#Q3632), which switching Ship on leaves off: deploying into
+      // somebody's cloud is opted into on purpose.
+      await setCapability(page, projectId, "ship", {
+        options: { deploy: true },
+      });
       await page.goto(`/${projectSlug}/apps/${appName}/${envName}/settings`);
       await page.waitForLoadState("networkidle");
       // ⚠️ By ROLE and accessible name, not by `[data-slot=select-trigger]`.

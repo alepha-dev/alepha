@@ -497,12 +497,12 @@ describe("Shared automation application service and HTTP actions", () => {
       title: "Private target",
       content: "Private body",
     });
-    const variable = await variables.set(project.id, user, "target", {
+    const variable = await variables.set(project.id, user, "destination", {
       value: { kind: "folio", value: folio.id },
     });
     const rule = ast();
     rule.actions = [
-      { kind: "appendFolio", folio: "{{target}}", text: "{{title}}" },
+      { kind: "appendFolio", folio: "{{destination}}", text: "{{title}}" },
     ];
     const stored = await create(rule);
     await create();
@@ -559,7 +559,7 @@ describe("Shared automation application service and HTTP actions", () => {
       variables: [
         {
           id: variable.variable.id,
-          key: "target",
+          key: "destination",
           version: 0,
           value: { kind: "folio", value: folio.id },
         },
@@ -590,12 +590,12 @@ describe("Shared automation application service and HTTP actions", () => {
     expect,
   }) => {
     const folio = await createTestFolio(alepha, project);
-    await variables.set(project.id, user, "target", {
+    await variables.set(project.id, user, "destination", {
       value: { kind: "folio", value: folio.id },
     });
     const shared = ast();
     shared.actions = [
-      { kind: "appendFolio", folio: "{{target}}", text: "{{title}}" },
+      { kind: "appendFolio", folio: "{{destination}}", text: "{{title}}" },
     ];
     const made = [await create(shared), await create(shared), await create()];
     const evidence = alepha.inject(AutomationRunEvidence);

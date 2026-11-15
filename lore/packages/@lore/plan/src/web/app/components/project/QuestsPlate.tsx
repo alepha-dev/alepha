@@ -47,6 +47,9 @@ const QuestsPlate = () => {
           : (routerState.name ?? "projectQuests")
       }
       tabsTestId="quests-view-tabs"
+      // A rule under the List / Board tabs (#Q3670): the table and the board
+      // are their own surfaces, not the body the active tile opens into.
+      tabsBorder
       // Both views own their scrolling: the table its rows, the board its
       // columns.
       scroll={false}
