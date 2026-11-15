@@ -84,8 +84,7 @@ export const PermissionMatrixGroupRows = (
               props.disabled ||
               column.readOnly === true ||
               !!permission.lock ||
-              (!checked &&
-                column.closed?.(permission.name) === true);
+              (!checked && column.closed?.(permission.name) === true);
 
             // A crossing that is closed rather than merely empty. An unchecked
             // box that cannot be ticked is an invitation to try; a padlock
