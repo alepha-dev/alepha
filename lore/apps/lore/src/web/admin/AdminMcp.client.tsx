@@ -1,14 +1,20 @@
 import { Badge } from "@alepha/ui";
 import { AdminPage } from "@alepha/ui/admin";
-import { DataTable } from "@alepha/ui/table";
+import {
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
+} from "@alepha/ui/table";
 import type { AdminMcpController } from "@lore/core/api";
-import { useClient, useQuery } from "alepha/react";
+import { z } from "alepha";
+import { useClient } from "alepha/react";
+import { CalendarDays, CircleDot } from "lucide-react";
+import { useCallback, useState } from "react";
 
 import { AdminMcpCallsChart } from "./AdminMcpCallsChart.client.tsx";
+import { AdminMcpRows, type McpToolRow } from "./adminMcpRows.ts";
 
-type McpToolRow = Awaited<
-  ReturnType<AdminMcpController["readMcpCalls"]>
->["leaderboard"][number];
+type McpCalls = Awaited<ReturnType<AdminMcpController["readMcpCalls"]>>;
 
 /**
  * What the MCP surface is asked for, over thirty days (#E65).
@@ -40,35 +46,118 @@ type McpToolRow = Awaited<
  * storage tile. The page title and description went: the admin nav already
  * names the page, and the chart says what it counts.
  *
+ * ## Filters (#Q3665)
+ *
+ * A tool search, an outcome and a period (7, 30 or 90 days), applied by the
+ * server so the chart and the rows answer the same question. The table
+ * fetches, and the chart draws what that fetch answered.
+ *
  * Literal English, like every other page in the Lore admin: this shell is
  * untranslated.
  */
 export const AdminMcp = () => {
   const client = useClient<AdminMcpController>();
+  // The read the table's fetch made last, which the chart above it draws:
+  // one request answers both, so the two cannot disagree about the filters.
+  const [data, setData] = useState<McpCalls>();
+  const [loading, setLoading] = useState(true);
 
-  const { data, loading } = useQuery(
-    {
-      key: ["admin-mcp-calls"],
-      handler: () => client.readMcpCalls(),
+  // Filters (#Q3665): a search on the tool name, an outcome and a period,
+  // all applied by `readMcpCalls`, so the chart follows them too. Seeded from
+  // the URL (`?outcome=error&days=7`), so a link carries a narrowed view.
+  const filterFields = {
+    search: {
+      preset: "search",
+      placeholder: "Search tools…",
+      control: { inputProps: { "aria-label": "Search tools by name" } },
+    },
+    outcome: {
+      schema: z.enum(["ok", "refused", "error"]),
+      label: "Outcome",
+      icon: CircleDot,
+      items: [
+        { value: "ok", label: "OK" },
+        { value: "refused", label: "Refused" },
+        { value: "error", label: "Error" },
+      ],
+      control: { clearLabel: "Any outcome" },
+    },
+    days: {
+      schema: z.enum(["7", "30", "90"]),
+      label: "Period",
+      icon: CalendarDays,
+      items: [
+        { value: "7", label: "7 days" },
+        { value: "30", label: "30 days" },
+        { value: "90", label: "90 days" },
+      ],
+      control: { clearLabel: "30 days" },
+    },
+  } satisfies DataTableFilterFields;
+
+  // Stable, so the state it writes never re-runs it.
+  const fetcher = useCallback(
+    async (params: {
+      page: number;
+      size: number;
+      sort?: string;
+      filters?: DataTableFilterValues<typeof filterFields>;
+    }) => {
+      setLoading(true);
+      try {
+        const read = await client.readMcpCalls({
+          query: {
+            ...(params.filters?.days ? { days: params.filters.days } : {}),
+            ...(params.filters?.outcome
+              ? { outcome: params.filters.outcome }
+              : {}),
+            ...(params.filters?.search?.trim()
+              ? { tool: params.filters.search.trim() }
+              : {}),
+          },
+        });
+        setData(read);
+        const rows = AdminMcpRows.sorted(read.leaderboard, params.sort);
+        const offset = params.page * params.size;
+        return {
+          content: rows.slice(offset, offset + params.size),
+          page: {
+            number: params.page,
+            size: params.size,
+            offset,
+            numberOfElements: Math.min(params.size, rows.length - offset),
+            totalElements: rows.length,
+            totalPages: Math.max(1, Math.ceil(rows.length / params.size)),
+            isEmpty: rows.length === 0,
+            isFirst: params.page === 0,
+            isLast: offset + params.size >= rows.length,
+            sort: { sorted: true, fields: [] },
+          },
+        };
+      } finally {
+        setLoading(false);
+      }
     },
     [client],
   );
 
   return (
     <AdminPage>
-      <DataTable<McpToolRow>
+      <DataTable<McpToolRow, typeof filterFields>
         className="min-h-0 flex-1"
-        data={data?.leaderboard ?? []}
+        fetch={fetcher}
         rowKey={(row) => row.tool}
         persistenceKey="admin.mcp"
         defaultSort={{ field: "total", direction: "desc" }}
+        filters={{ fields: filterFields, fromQuery: true }}
         summary={{
-          title: "Calls, last 30 days",
+          title: `Calls, last ${data?.days.length ?? 30} days`,
           content: <AdminMcpCallsChart data={data} loading={loading} />,
         }}
         emptyState={{
           title: loading ? "Reading…" : "No tool has been called yet.",
         }}
+        noMatchState={{ title: "No tool matches these filters." }}
         columns={{
           tool: {
             label: "Tool",
