@@ -4,6 +4,7 @@ import { $module } from "alepha";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { FolioAttachmentController } from "./controllers/FolioAttachmentController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
+import { FolioTableController } from "./controllers/FolioTableController.ts";
 import { KnowledgeReportsController } from "./controllers/KnowledgeReportsController.ts";
 import { DirectoryResourceKind } from "./resources/DirectoryResourceKind.ts";
 import { FolioResourceKind } from "./resources/FolioResourceKind.ts";
@@ -62,6 +63,7 @@ export const LoreRememberApi = $module({
     // Registers its project merge step (#Q2781); nothing injects it.
     KnowledgeProjectMerge,
     FolioController,
+    FolioTableController,
     DirectoryController,
     FolioAttachmentController,
     // The Knowledge tiles of #E77 (#Q2658), and their slots.
@@ -81,6 +83,7 @@ export { DirectoryController } from "./controllers/DirectoryController.ts";
 export { KnowledgeReportsController } from "./controllers/KnowledgeReportsController.ts";
 export { FolioAttachmentController } from "./controllers/FolioAttachmentController.ts";
 export { FolioController } from "./controllers/FolioController.ts";
+export { FolioTableController } from "./controllers/FolioTableController.ts";
 export { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
 export { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 export {
