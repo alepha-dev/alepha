@@ -120,10 +120,10 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
       style={{ width: props.width }}
       className="border-border flex h-full min-h-0 flex-none flex-col overflow-hidden border-r"
     >
-      <div className="border-border flex h-10 flex-none items-center gap-1 border-b px-2">
-        <span className="text-muted-foreground flex-1 truncate text-xs font-medium tracking-wide uppercase">
-          {tr("folios.editor.tree.title")}
-        </span>
+      {/* No visible title (#Q3656): the pane is the folio tree wherever it
+          opens, so the strip holds only its actions, centred. The tree
+          keeps its accessible name, `TreeView`'s `label` below. */}
+      <div className="border-border flex h-10 flex-none items-center justify-center gap-1 border-b px-2">
         {/* Both doors to a write, and the same permission behind them - the
             one `FolioTreeContextMenu` already asks for its own items. The
             tree itself stays: reading the project's folios is a Viewer's

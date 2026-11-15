@@ -451,6 +451,20 @@ describe("FolioTree", () => {
     back open on every click for as long as that folio stayed selected. An
     invariant cannot be overridden by the person using it, which is the bug.
   */
+  /**
+   * The header strip holds only the actions, centred (#Q3656): the FOLIOS
+   * label pushed them to the right. The tree keeps its accessible name.
+   */
+  it("draws no title in the header, centres its actions, and keeps the tree's label", async () => {
+    await mount();
+
+    const refresh = screen.getByLabelText("Refresh the tree");
+    const strip = refresh.parentElement!;
+    expect(strip.className).toContain("justify-center");
+    expect(strip.textContent).not.toContain("Folios");
+    expect(screen.getByRole("tree", { name: "Folios" })).not.toBeNull();
+  });
+
   describe("the refresh button", () => {
     const INSIDE_A = "33333333-3333-4333-8333-333333333333";
 
