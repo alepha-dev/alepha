@@ -10,7 +10,7 @@ import {
 } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { type ReactElement, useMemo } from "react";
+import { lazy, type ReactElement, Suspense, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import type { FolioResource as Folio } from "../../../../../../api/schemas/folioResourceSchema.ts";
@@ -24,6 +24,13 @@ import type { FolioDraft } from "../useFolioDraft.ts";
 import FolioLockedPanel from "./FolioLockedPanel.tsx";
 import FolioMoveDialog from "./FolioMoveDialog.tsx";
 import FolioSummaryField from "./FolioSummaryField.tsx";
+
+/**
+ * The grid, a lazy chunk (#E144): a text folio never loads it.
+ */
+const FolioTableDocument = lazy(
+  () => import("../table/FolioTableDocument.tsx"),
+);
 
 export interface FolioDocumentProps {
   /**
@@ -82,6 +89,16 @@ export interface FolioDocumentProps {
    * formatting commands into it. `null` on unmount.
    */
   onEditorViewReady?: (view: EditorView | null) => void;
+  /**
+   * Receives a table folio's grid commands (Insert ▸ Row / Column, find).
+   */
+  onTableCommands?: (
+    commands: {
+      insertRow: () => void;
+      insertColumn: () => void;
+      find: () => void;
+    } | null,
+  ) => void;
 }
 
 /**
@@ -223,47 +240,59 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           wrapper used to live in `FolioWorkspaceContent` and enclose the
           header and the rule as well, which is what kept all three the same
           width. */}
-      {/* Both (#Q3653) doubles the measure: an editor and its preview, each
-          at the reading width. */}
-      <div
-        className={`mx-auto w-full px-8 py-10 ${props.mode === "both" ? "max-w-[1624px]" : "max-w-[812px]"}`}
-      >
-        {props.actions.locked ? (
-          <FolioLockedPanel
-            onUnlock={props.actions.unlock}
-            onDelete={() => props.actions.handlers["folio.delete"]()}
+      {props.folio?.type === "table" ? (
+        // A table is its grid (#E144), wider than the prose measure: a
+        // table reads by columns, and several need the room.
+        <Suspense fallback={null}>
+          <FolioTableDocument
+            folioId={props.folio.id}
+            readOnly={props.actions.actionState.readOnly === true}
+            onCommands={props.onTableCommands}
           />
-        ) : (
-          // Same hover card the reader gets. The provider delegates over the
-          // anchors `MarkdownView` renders, so one component serves View
-          // mode here and the read-only surfaces without either knowing
-          // about the other. Edit mode has no anchors to delegate over - it
-          // is raw markdown in CodeMirror.
-          <WikiLinkHoverProvider
-            projectId={project?.id ?? 0}
-            projectSlug={project?.slug ?? ""}
-            attachments={hoverAttachments}
-          >
-            <LoreEditor
-              element={props.element}
-              // `"document"` is what turns on the line-number gutter and the
-              // taller default: a folio body is long enough for "the table
-              // around line 40" to be a usable coordinate. The quest and
-              // epic description fields are `"field"` and get neither.
-              variant="document"
-              bare
-              value={values.content}
-              onChange={(v) => props.draft.form.input.content.set(v)}
-              placeholder={tr("folios.content-placeholder")}
-              imageUpload={props.imageUpload}
-              // CONTROLLED: the menubar and ⌘E own the mode here, so the
-              // editor must not render its own toggle or hold its own state.
-              mode={props.mode}
-              onViewReady={props.onEditorViewReady}
+        </Suspense>
+      ) : (
+        // Both (#Q3653) doubles the measure: an editor and its preview, each
+        // at the reading width.
+        <div
+          className={`mx-auto w-full px-8 py-10 ${props.mode === "both" ? "max-w-[1624px]" : "max-w-[812px]"}`}
+        >
+          {props.actions.locked ? (
+            <FolioLockedPanel
+              onUnlock={props.actions.unlock}
+              onDelete={() => props.actions.handlers["folio.delete"]()}
             />
-          </WikiLinkHoverProvider>
-        )}
-      </div>
+          ) : (
+            // Same hover card the reader gets. The provider delegates over the
+            // anchors `MarkdownView` renders, so one component serves View
+            // mode here and the read-only surfaces without either knowing
+            // about the other. Edit mode has no anchors to delegate over - it
+            // is raw markdown in CodeMirror.
+            <WikiLinkHoverProvider
+              projectId={project?.id ?? 0}
+              projectSlug={project?.slug ?? ""}
+              attachments={hoverAttachments}
+            >
+              <LoreEditor
+                element={props.element}
+                // `"document"` is what turns on the line-number gutter and the
+                // taller default: a folio body is long enough for "the table
+                // around line 40" to be a usable coordinate. The quest and
+                // epic description fields are `"field"` and get neither.
+                variant="document"
+                bare
+                value={values.content}
+                onChange={(v) => props.draft.form.input.content.set(v)}
+                placeholder={tr("folios.content-placeholder")}
+                imageUpload={props.imageUpload}
+                // CONTROLLED: the menubar and ⌘E own the mode here, so the
+                // editor must not render its own toggle or hold its own state.
+                mode={props.mode}
+                onViewReady={props.onEditorViewReady}
+              />
+            </WikiLinkHoverProvider>
+          )}
+        </div>
+      )}
 
       <FolioMoveDialog
         open={props.actions.moveDialogOpen}

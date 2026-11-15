@@ -79,6 +79,10 @@ export interface FolioTreeVerbs {
    */
   select: (node: FolioTreeNode, options?: TreeSelectOptions) => void;
   createFolio: (parentId?: string) => Promise<void>;
+  /**
+   * Create a table folio (#E144), named "New table", and open it.
+   */
+  createTable: (parentId?: string) => Promise<void>;
   createDirectory: (parentId?: string) => Promise<void>;
   remove: (node: FolioTreeNode) => Promise<void>;
   duplicate: (node: FolioTreeNode) => Promise<void>;
@@ -364,6 +368,7 @@ export const useFolioTreeModel = (
           directoryId: f.directoryId,
           pinned: f.pinned,
           protected: f.protected,
+          type: f.type,
         })),
       }),
     [directories, folios],
@@ -773,14 +778,21 @@ export const useFolioTreeModel = (
     }
   };
 
-  const createFolioAction = useAction<[string | undefined], void>(
+  const createFolioAction = useAction<
+    [string | undefined, ("text" | "table")?],
+    void
+  >(
     {
-      handler: async (_ctx, parentId?: string) => {
+      handler: async (_ctx, parentId?: string, type = "text") => {
         const created = await folioApi.create({
           body: {
             projectId: input.projectId,
-            title: tr("folios.editor.tree.untitled-folio"),
+            title:
+              type === "table"
+                ? tr("folios.editor.tree.untitled-table")
+                : tr("folios.editor.tree.untitled-folio"),
             directoryId: parentId,
+            ...(type === "table" ? { type } : {}),
           },
         });
         setFolios([created, ...folios]);
@@ -812,6 +824,10 @@ export const useFolioTreeModel = (
 
   const createFolio = async (parentId?: string): Promise<void> => {
     await createFolioAction.run(parentId);
+  };
+
+  const createTable = async (parentId?: string): Promise<void> => {
+    await createFolioAction.run(parentId, "table");
   };
 
   const createDirectoryAction = useAction<[string | undefined], void>(
@@ -1120,6 +1136,7 @@ export const useFolioTreeModel = (
   implRef.current = {
     select,
     createFolio,
+    createTable,
     createDirectory,
     remove,
     duplicate,
@@ -1151,6 +1168,7 @@ export const useFolioTreeModel = (
       // Lore's own verbs, through this hook's facade for the same reason.
       select: (node, options) => implRef.current.select(node, options),
       createFolio: (parentId) => implRef.current.createFolio(parentId),
+      createTable: (parentId) => implRef.current.createTable(parentId),
       createDirectory: (parentId) => implRef.current.createDirectory(parentId),
       remove: (node) => implRef.current.remove(node),
       duplicate: (node) => implRef.current.duplicate(node),

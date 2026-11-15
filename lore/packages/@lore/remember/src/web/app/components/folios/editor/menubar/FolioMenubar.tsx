@@ -75,16 +75,17 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
   };
 
   const labelKeyFor = (item: FolioMenuItem): string => {
+    // A table leaves as CSV (#Q3514). Before the early return below: the
+    // entry has no alternate label of its own.
+    if (item.id === "folio.export" && props.state.isTable) {
+      return "folios.editor.action.export-csv";
+    }
     if (!item.alternateLabelKey) return item.labelKey;
     if (item.id === "folio.pin" && props.state.isPinned) {
       return item.alternateLabelKey;
     }
     if (item.id === "folio.encrypt" && props.state.isProtected) {
       return item.alternateLabelKey;
-    }
-    // A table leaves as CSV (#Q3514).
-    if (item.id === "folio.export" && props.state.isTable) {
-      return "folios.editor.action.export-csv";
     }
     return item.labelKey;
   };

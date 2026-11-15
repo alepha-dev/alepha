@@ -1,4 +1,10 @@
-import { Button } from "@alepha/ui";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@alepha/ui";
 import { TreeView } from "@alepha/ui/tree";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
@@ -156,16 +162,32 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
         </Button>
         {canWrite && (
           <>
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="minimal"
-              onClick={() => commands.createFolio()}
-              aria-label={tr("folios.editor.tree.new-folio")}
-              title={tr("folios.editor.tree.new-folio")}
-            >
-              <FilePlus className="size-3.5" />
-            </Button>
+            {/* New folio offers Text and Table (#E144). */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="minimal"
+                    aria-label={tr("folios.editor.tree.new-folio")}
+                    title={tr("folios.editor.tree.new-folio")}
+                  />
+                }
+              >
+                <FilePlus className="size-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => commands.createFolio()}>
+                  <FileText className="size-4" />
+                  {tr("folios.editor.tree.new-text")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => commands.createTable()}>
+                  <Table2 className="size-4" />
+                  {tr("folios.editor.tree.new-table")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               type="button"
               size="icon-sm"

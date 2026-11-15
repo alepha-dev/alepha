@@ -105,6 +105,18 @@ export interface UseFolioActionsInput {
    * its commands could only be built inside a Lexical realm.
    */
   format: { run: (id: FolioActionId) => void };
+  /**
+   * A table folio's own commands (#E144): Insert ▸ Row and Column, and the
+   * find, which on a table searches cells. Registered by the grid when it
+   * mounts; absent on a text folio.
+   */
+  table?: {
+    current: {
+      insertRow: () => void;
+      insertColumn: () => void;
+      find: () => void;
+    } | null;
+  };
 }
 
 export interface UseFolioActionsResult {
@@ -1204,7 +1216,10 @@ export const useFolioActions = (
     "insert.codeBlock": () => input.format.run("insert.codeBlock"),
     "insert.diagram": () => input.format.run("insert.diagram"),
     "insert.divider": () => input.format.run("insert.divider"),
-    "edit.find": () => input.find.show(),
+    "insert.row": () => input.table?.current?.insertRow(),
+    "insert.column": () => input.table?.current?.insertColumn(),
+    "edit.find": () =>
+      input.table?.current ? input.table.current.find() : input.find.show(),
     "view.mode": () => input.mode.toggle(),
     "view.tree": () => input.panes.toggleTree(),
     "view.inspector": () => input.panes.toggleInspector(),

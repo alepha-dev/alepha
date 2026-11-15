@@ -28,6 +28,8 @@ export type FolioActionId =
   | "insert.codeBlock"
   | "insert.diagram"
   | "insert.divider"
+  | "insert.row"
+  | "insert.column"
   | "edit.find"
   | "view.mode"
   | "view.tree"
@@ -215,6 +217,11 @@ export const FOLIO_MENUS: FolioMenu[] = [
     id: "insert",
     labelKey: "folios.editor.menu.insert",
     entries: [
+      // A table folio's own (#E144): disabled on a text folio, as the
+      // Markdown entries below are on a table.
+      { id: "insert.row", labelKey: "folios.editor.action.row" },
+      { id: "insert.column", labelKey: "folios.editor.action.column" },
+      sep,
       {
         id: "insert.heading1",
         labelKey: "folios.editor.action.heading1",
@@ -495,6 +502,17 @@ export const folioActionDisabledReason = (
   state: FolioActionState,
 ): string | undefined => (state.isTable ? NOT_FOR_TABLE.get(id) : undefined);
 
+/**
+ * Actions only a table folio takes (#E144).
+ */
+const ONLY_FOR_TABLE = new Set<FolioActionId>(["insert.row", "insert.column"]);
+
+/**
+ * Actions a table folio has no use for: it has no Markdown to format and
+ * no raw face to switch to.
+ */
+const MARKDOWN_ONLY = new Set<FolioActionId>(["view.mode"]);
+
 const NEEDS_EDIT_MODE = new Set<FolioActionId>([
   "edit.bold",
   "edit.italic",
@@ -571,6 +589,11 @@ export const isFolioActionEnabled = (
   // state either, where `folio.new` is otherwise available.
   if (state.readOnly && NEEDS_WRITE.has(id)) return false;
   if (state.isTable && NOT_FOR_TABLE.has(id)) return false;
+  if (state.isTable && (NEEDS_EDIT_MODE.has(id) || MARKDOWN_ONLY.has(id))) {
+    return false;
+  }
+  if (!state.isTable && ONLY_FOR_TABLE.has(id)) return false;
+  if (ONLY_FOR_TABLE.has(id) && state.readOnly) return false;
   if (state.noFolio) return item?.availableWithoutFolio === true;
   if (!state.editing && NEEDS_EDIT_MODE.has(id)) return false;
   if (state.isNew && NEEDS_SAVED_FOLIO.has(id)) return false;

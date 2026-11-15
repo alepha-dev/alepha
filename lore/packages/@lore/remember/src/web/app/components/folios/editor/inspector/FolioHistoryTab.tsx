@@ -23,7 +23,7 @@ import {
   Type,
   User,
 } from "lucide-react";
-import { type ReactElement, useRef, useState } from "react";
+import { type ReactElement, useRef, useState, lazy, Suspense } from "react";
 
 import type { FolioController } from "../../../../../../api/controllers/FolioController.ts";
 import type { FolioRevision } from "../../../../../../api/entities/folioRevisions.ts";
@@ -43,6 +43,14 @@ type HistoryRevision = Awaited<
 import type { I18n } from "@lore/core/web";
 
 import type { FolioResource as Folio } from "../../../../../../api/schemas/folioResourceSchema.ts";
+
+/**
+ * A table revision's read-only grid (#Q3516), a lazy chunk: a text folio's
+ * history never loads it.
+ */
+const FolioTableRevisionView = lazy(
+  () => import("../table/FolioTableRevisionView.tsx"),
+);
 
 export interface FolioHistoryTabProps {
   folio: Folio;
@@ -372,8 +380,16 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                 )}
               >
                 <div className="overflow-hidden">
-                  <div className="border-t px-3 py-2.5">
+                  <div className="flex flex-col gap-2 border-t px-3 py-2.5">
                     <RevisionSummary revision={revision} />
+                    {props.folio.type === "table" && isExpanded && (
+                      <Suspense fallback={null}>
+                        <FolioTableRevisionView
+                          snapshot={revision.contentSnapshot}
+                          title={revision.titleSnapshot}
+                        />
+                      </Suspense>
+                    )}
                   </div>
                 </div>
               </div>

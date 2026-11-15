@@ -6,8 +6,10 @@ import { OwnedResourceProvider } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 
 import { type Folio, folios } from "../entities/folios.ts";
+import { folioColumnInputOptionsSchema } from "../schemas/folioColumnInputOptionsSchema.ts";
 import { folioColumnOperationSchema } from "../schemas/folioColumnOperationSchema.ts";
 import { folioColumnResourceSchema } from "../schemas/folioColumnResourceSchema.ts";
+import { folioColumnTypeSchema } from "../schemas/folioColumnTypeSchema.ts";
 import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
 import { folioRowFilterSchema } from "../schemas/folioRowFilterSchema.ts";
 import { folioRowResourceSchema } from "../schemas/folioRowResourceSchema.ts";
@@ -86,9 +88,17 @@ export class FolioTableController {
       "A table folio's columns, its row count and its first page of rows.",
     schema: {
       params: folioIdParamsSchema,
+      query: z.object({
+        /**
+         * How many rows to carry, up to a table's 2,000: the grid reads
+         * them all (#Q3516), an agent the first 50.
+         */
+        limit: z.integer().min(1).max(2000).optional(),
+      }),
       response: this.tableSchema,
     },
-    handler: async () => this.tableOf(this.owned.get<Folio>()),
+    handler: async ({ query }) =>
+      this.tableOf(this.owned.get<Folio>(), query.limit),
   });
 
   getFolioTableByShortId = $action({
@@ -303,12 +313,38 @@ export class FolioTableController {
 
   protected readonly csv = new FolioCsv();
 
+  previewFolioColumnRetype = $action({
+    method: "GET",
+    path: "/folios/:id/columns/:column/retype-preview",
+    use: [this.ownsFolio("folio:read")],
+    description:
+      "How many non-empty cells of a column would read as empty under another type: what a person is told before retyping.",
+    schema: {
+      params: z.object({ id: z.uuid(), column: z.string() }),
+      query: z.object({
+        type: folioColumnTypeSchema,
+        withTime: z.boolean().optional(),
+      }),
+      response: z.object({ lost: z.integer() }),
+    },
+    handler: async ({ params, query }) => ({
+      lost: await this.tables.cellsLostByRetype(
+        this.owned.get<Folio>(),
+        params.column,
+        query.type,
+        query.withTime === undefined
+          ? undefined
+          : folioColumnInputOptionsSchema.parse({ withTime: query.withTime }),
+      ),
+    }),
+  });
+
   /**
    * The table's columns, its row count and its first rows.
    */
-  protected async tableOf(folio: Folio) {
+  protected async tableOf(folio: Folio, limit?: number) {
     const { columns, rows, total } = await this.tables.listRows(folio, {
-      limit: FolioTableController.FIRST_PAGE,
+      limit: limit ?? FolioTableController.FIRST_PAGE,
     });
     return {
       folioId: folio.id,
