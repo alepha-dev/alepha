@@ -1,4 +1,6 @@
+import { DiscordTransport, MemoryDiscordTransport } from "@alepha/discord";
 import {
+  AutomationChannelService,
   AutomationClaims,
   AutomationController,
   AutomationEvaluator,
@@ -9,7 +11,11 @@ import {
 import { createPresetRanks } from "@lore/core/testing";
 import { QuestReminderRuleController } from "@lore/plan/api";
 import { Alepha, AlephaError } from "alepha";
-import { JobQueueProvider, jobExecutionEntity } from "alepha/api/jobs";
+import {
+  JobProvider,
+  JobQueueProvider,
+  jobExecutionEntity,
+} from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
@@ -124,12 +130,18 @@ describe("Quest reminders through an automation (#Q3626)", () => {
   };
   beforeEach(async () => {
     alepha = Alepha.create({
-      env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "silent" },
+      env: {
+        DATABASE_URL: ":memory:",
+        SERVER_PORT: 0,
+        LOG_LEVEL: "silent",
+        APP_SECRET: "a-spec-secret-that-is-not-the-default-one",
+      },
     })
       .with({ provide: CronProvider, use: ManualCronProvider })
       .with({ provide: JobQueueProvider, use: ReminderQueue })
       .with({ provide: AutomationNotificationOutbox, use: ReminderOutbox })
-      .with({ provide: AutomationClaims, use: ReminderClaimFault });
+      .with({ provide: AutomationClaims, use: ReminderClaimFault })
+      .with({ provide: DiscordTransport, use: MemoryDiscordTransport });
     bootLore(alepha);
     entities = alepha.inject(TestEntityRepositories);
     persistence = alepha.inject(AutomationPersistence);
@@ -208,6 +220,52 @@ describe("Quest reminders through an automation (#Q3626)", () => {
     // A replay of the same occurrence sends nothing more.
     await finish(claim.receipt!.id, claim.receipt!.leaseToken);
     expect(await notifications()).toBe(1);
+  });
+
+  it("posts each due reminder once to a Discord channel and settles the quest (#Q3689)", async ({
+    expect,
+  }) => {
+    const channel = await alepha
+      .inject(AutomationChannelService)
+      .add(project.id, user, {
+        name: "reminders",
+        url: "https://discord.com/api/webhooks/1234567890/reminders-token",
+      });
+    const discord = alepha.inject(MemoryDiscordTransport);
+    discord.clear();
+    await dueQuests(2);
+    const rule = (
+      await api.createAutomationFromPreset.fetch(
+        {
+          params: { projectId: project.id },
+          body: {
+            key: "quest-reminders",
+            values: { channel: channel.id },
+            enabled: true,
+          },
+        },
+        { user },
+      )
+    ).data;
+    expect(
+      (await persistence.rules.getById(rule.id)).rule.actions[0],
+    ).toMatchObject({ channels: [channel.id] });
+    const claim = await run(rule.id);
+    await finish(claim.receipt!.id, claim.receipt!.leaseToken);
+    expect(await notifications()).toBe(2);
+    expect(await sentOnce()).toBe(true);
+    const jobs = await rows.jobs.findMany({
+      where: { jobName: "system.notifications.send" },
+    });
+    expect(JSON.stringify(jobs)).not.toContain("reminders-token");
+    for (const job of jobs)
+      await alepha.inject(JobProvider).processExecution(job.jobName, job.id);
+    expect(discord.posts).toHaveLength(2);
+    expect(discord.posts[0].payload.content).toContain("is still open");
+
+    // A replay sends nothing more.
+    await finish(claim.receipt!.id, claim.receipt!.leaseToken);
+    expect(await notifications()).toBe(2);
   });
 
   it("progresses beyond fifty due reminders without duplicating history or the interval", async ({
