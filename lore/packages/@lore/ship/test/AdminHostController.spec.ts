@@ -1,10 +1,16 @@
 import { Alepha } from "alepha";
+import { audits } from "alepha/api/audits";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
-import { AlephaServer, ForbiddenError, NotFoundError } from "alepha/server";
+import {
+  AlephaServer,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreShipApi } from "../src/api/index.ts";
@@ -20,6 +26,7 @@ import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 class HostRepositories {
   hosts = $repository(hosts);
   grants = $repository(hostProjects);
+  audits = $repository(audits);
 }
 
 interface TestContext {
@@ -181,6 +188,76 @@ describe("AdminHostController", () => {
     await expect(
       ctx.admin.findHosts({ query: page }, { user: alice }),
     ).rejects.toThrow(ForbiddenError);
+  });
+
+  /**
+   * The admin's rename, as moderation (#Q3664): the slug and the display
+   * name, unique in the home project like a creation, audited with both.
+   */
+  it("renames a host whoever owns it, audited, its secret untouched", async ({
+    expect,
+  }) => {
+    const alice = await createUser(ctx, "alice");
+    const minted = await createTestHost(ctx.alepha, alice, { slug: "ovh-1" });
+
+    const renamed = await ctx.admin.adminRenameHost(
+      {
+        params: { id: minted.id },
+        body: { slug: "  Paris-1 ", label: "Paris" },
+      },
+      { user: adminToken() },
+    );
+
+    expect(renamed).toEqual({ slug: "paris-1", label: "Paris" });
+    const row = await ctx.repos.hosts.findById(minted.id);
+    expect(row?.slug).toBe("paris-1");
+    expect(row?.label).toBe("Paris");
+    expect(await ctx.tokens.verify(minted.secret)).toBeDefined();
+
+    const audit = (
+      await ctx.repos.audits.findMany({
+        where: { type: { eq: "host" }, action: { eq: "rename" } },
+      })
+    )[0];
+    expect(audit?.resourceId).toBe(minted.id);
+    expect(audit?.metadata).toMatchObject({
+      admin: true,
+      from: { slug: "ovh-1" },
+      to: { slug: "paris-1", label: "Paris" },
+    });
+  });
+
+  it("refuses a slug already used in the host's home project, and a plain user", async ({
+    expect,
+  }) => {
+    const alice = await createUser(ctx, "alice");
+    const first = await createTestHost(ctx.alepha, alice, { slug: "ovh-1" });
+    await createTestHost(
+      ctx.alepha,
+      alice,
+      { slug: "ovh-2" },
+      { projectId: first.projectId },
+    );
+
+    await expect(
+      ctx.admin.adminRenameHost(
+        { params: { id: first.id }, body: { slug: "OVH-2" } },
+        { user: adminToken() },
+      ),
+    ).rejects.toThrow(ConflictError);
+    await expect(
+      ctx.admin.adminRenameHost(
+        { params: { id: first.id }, body: { slug: "not a slug!" } },
+        { user: adminToken() },
+      ),
+    ).rejects.toThrow("lowercase letters, digits and hyphens");
+    await expect(
+      ctx.admin.adminRenameHost(
+        { params: { id: first.id }, body: { slug: "paris-1" } },
+        { user: alice },
+      ),
+    ).rejects.toThrow(ForbiddenError);
+    expect((await ctx.repos.hosts.findById(first.id))?.slug).toBe("ovh-1");
   });
 
   it("deletes a host whoever owns it, which revokes its secret", async ({

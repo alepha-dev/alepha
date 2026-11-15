@@ -5,11 +5,12 @@ import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, NotFoundError, okSchema } from "alepha/server";
+import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
 
 import { hostProjects } from "../entities/hostProjects.ts";
 import { hosts } from "../entities/hosts.ts";
 import { adminHostResourceSchema } from "../schemas/adminHostResourceSchema.ts";
+import { hostSlugSchema } from "../schemas/hostSlugSchema.ts";
 import { HostCloudflareService } from "../services/HostCloudflareService.ts";
 import { HostService } from "../services/HostService.ts";
 
@@ -215,6 +216,88 @@ export class AdminHostController {
         },
         loans: await this.service.loansOf(host.id),
       };
+    },
+  });
+
+  /**
+   * Rename one host, slug and display name, as moderation (#Q3664): an
+   * instance admin can fix an offensive or misleading name without deleting
+   * the host.
+   *
+   * ⚠️ The owner's `updateHost` never writes the slug, because a config may
+   * record it; this is the deliberate exception, for the admin only, and its
+   * audit row records both names so a broken reference can be traced. The
+   * slug is normalised and must be free in the host's home project, as at
+   * creation; a host with no home is checked against its owner's other
+   * homeless hosts. The secret, the loans and the machine are untouched.
+   */
+  public readonly adminRenameHost = $action({
+    path: `${this.url}/:id/rename`,
+    method: "POST",
+    group: this.group,
+    use: [$secure({ permissions: ["admin:host:update"] })],
+    description: "Rename a host, slug and display name, as moderation",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: z.object({
+        slug: hostSlugSchema,
+        /**
+         * The display name. Omitted leaves it; empty clears it.
+         */
+        label: z.string().max(100).optional(),
+      }),
+      response: z.object({
+        slug: z.string(),
+        label: z.string().optional(),
+      }),
+    },
+    handler: async ({ params, body, user }) => {
+      const host = await this.hosts.findById(params.id);
+      if (!host) {
+        throw new NotFoundError("Host not found");
+      }
+
+      let slug = this.service.normalizeSlug(body.slug);
+      if (slug !== host.slug) {
+        if (host.projectId !== undefined) {
+          slug = await this.service.claimSlug(host.projectId, slug);
+        } else {
+          const clash = await this.hosts.findOne({
+            where: {
+              projectId: { isNull: true },
+              ownerUserId: { eq: host.ownerUserId },
+              slug: { eq: slug },
+            },
+          });
+          if (clash) {
+            throw new ConflictError(
+              `This host's owner already has a host named "${slug}"`,
+            );
+          }
+        }
+      }
+      const label =
+        body.label === undefined ? host.label : body.label.trim() || undefined;
+
+      await this.hosts.updateById(host.id, { slug, label: label ?? null });
+
+      await this.audits.host.logSuccess("rename", {
+        ...this.audits.actor(user),
+        ...(host.projectId === undefined
+          ? {}
+          : this.audits.scope(host.projectId)),
+        severity: "warning",
+        resourceType: "host",
+        resourceId: host.id,
+        description: slug,
+        metadata: {
+          admin: true,
+          from: { slug: host.slug, label: host.label ?? null },
+          to: { slug, label: label ?? null },
+        },
+      });
+
+      return { slug, ...(label ? { label } : {}) };
     },
   });
 
