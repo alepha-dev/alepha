@@ -136,6 +136,8 @@ export default {
   "automation.preset.quest-reminders.title": "Rappels de quête",
   "automation.preset.quest-reminders.description":
     "Toutes les heures, rappelle à la personne assignée chaque quête dont le rappel est dû, à l'intervalle choisi sur la quête.",
+  "uptime.alertsByBell":
+    "Les alertes sont des automatisations : activez la cloche sur la page du moniteur, ou sur Applications pour tous les moniteurs.",
   "automation.preset.release-published.title": "Version publiée",
   "automation.preset.release-published.description":
     "Avertit un membre quand une version est publiée, avec son tag, son titre, son nombre de quêtes et un lien.",
@@ -3872,14 +3874,6 @@ export default {
   "uptime.ongoing": "En cours",
   "uptime.duration": "$1 secondes",
   "uptime.noIncidents": "Aucun incident enregistré.",
-  "uptime.emailAlerts": "Alertes par e-mail",
-  "uptime.emailAlertsDescription":
-    "Un e-mail au début d’un incident et un autre lors du rétablissement.",
-  "uptime.recipients": "Destinataires",
-  "uptime.recipientsDescription":
-    "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
-  "uptime.invalidRecipients":
-    "Saisissez 20 adresses e-mail valides au maximum.",
   "uptime.title": "Disponibilité",
   "project.capability.ship.option.uptime.label": "Superviser les applications",
   "project.capability.ship.option.uptime.description":

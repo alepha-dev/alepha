@@ -40,7 +40,8 @@ class MemoryProber extends UptimeProber {
 /**
  * Monitoring only (#Q3597): a project whose one capability is Apps, with
  * Track and Deploy off and Monitor apps on. No sigil, no app instance, no
- * deploy, no Work: monitors, their history and their alerts still work.
+ * deploy, no Work: monitors and their history still work. Alerts are
+ * automations since #Q3612, so with no rule nothing is mailed.
  */
 describe("A monitoring-only project", () => {
   const containers: Alepha[] = [];
@@ -48,7 +49,7 @@ describe("A monitoring-only project", () => {
     for (const alepha of containers.splice(0)) await alepha.stop();
   });
 
-  it("checks any URL, keeps its history and alerts, with Track and Deploy off", async ({
+  it("checks any URL and keeps its history with Track and Deploy off, mailing no one without a rule", async ({
     expect,
   }) => {
     const alepha = Alepha.create({
@@ -127,11 +128,9 @@ describe("A monitoring-only project", () => {
     await advance();
     await advance();
     expect((await repos.monitors.getById(id)).status).toBe("down");
-    await expect.poll(() => mail.records.length).toBe(1);
-    expect(mail.records[0]?.to).toBe("owner@example.com");
     prober.failing = false;
     await advance();
-    await expect.poll(() => mail.records.length).toBe(2);
+    expect(mail.records).toHaveLength(0);
 
     const detail = await api.getMonitorDetail.fetch(
       { params: { monitorId: id }, query: { window: "24h" } },

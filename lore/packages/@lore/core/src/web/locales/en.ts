@@ -129,6 +129,8 @@ export default {
   "automation.preset.quest-reminders.title": "Quest reminders",
   "automation.preset.quest-reminders.description":
     "Every hour, remind each quest's assignee of a quest whose reminder is due, at the interval set on the quest.",
+  "uptime.alertsByBell":
+    "Alerts are automations: turn on the bell on the monitor's page, or on Apps for every monitor.",
   "automation.preset.release-published.title": "Release published",
   "automation.preset.release-published.description":
     "Notify one member when a release is published, with its tag, title, number of quests and a link.",
@@ -3867,13 +3869,6 @@ export default {
   "uptime.ongoing": "Ongoing",
   "uptime.duration": "$1 seconds",
   "uptime.noIncidents": "No incidents recorded.",
-  "uptime.emailAlerts": "Email alerts",
-  "uptime.emailAlertsDescription":
-    "One email when an incident opens and one when it recovers.",
-  "uptime.recipients": "Recipients",
-  "uptime.recipientsDescription":
-    "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
-  "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
   "uptime.title": "Uptime",
   "project.capability.ship.option.uptime.label": "Monitor apps",
   "project.capability.ship.option.uptime.description":

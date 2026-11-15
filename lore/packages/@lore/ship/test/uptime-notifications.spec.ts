@@ -9,9 +9,7 @@ import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../src/api/entities/monitors.ts";
 import { LoreShipApi } from "../src/api/index.ts";
 import { UptimeErrorService } from "../src/api/services/UptimeErrorService.ts";
-import { UptimeNotificationService } from "../src/api/services/UptimeNotificationService.ts";
 import { UptimeProber } from "../src/api/services/UptimeProber.ts";
-import { UptimeStateService } from "../src/api/services/UptimeStateService.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
 import { UptimeTickWatch } from "../src/testing/UptimeTickWatch.ts";
 
@@ -38,6 +36,11 @@ class FailingProjectErrors extends UptimeErrorService {
   }
 }
 
+/**
+ * Uptime sends no email of its own since #Q3612: an outage and its recovery
+ * are `monitor.down` / `monitor.up` events, and only a rule (a bell) turns
+ * them into a message.
+ */
 describe("Uptime email alerts", () => {
   const containers: Alepha[] = [];
   afterEach(async () => {
@@ -69,7 +72,7 @@ describe("Uptime email alerts", () => {
     await repos.users.updateById(project.createdBy, {
       email: "original-owner@example.com",
     });
-    const seed = (notifications?: Monitor["notifications"]) =>
+    const seed = () =>
       repos.monitors.create({
         projectId: project.id,
         name: "Website <probe>",
@@ -77,7 +80,6 @@ describe("Uptime email alerts", () => {
         target: "https://example.test",
         statusSince: clock.nowISOString(),
         nextCheckAt: clock.nowISOString(),
-        ...(notifications ? { notifications } : {}),
       });
     return {
       alepha,
@@ -90,7 +92,7 @@ describe("Uptime email alerts", () => {
     };
   };
 
-  it("sends only an outage and a recovery across sixty failed probes, even if the inbox output fails", async ({
+  it("sends no email for an outage and its recovery when no rule exists", async ({
     expect,
   }) => {
     const ctx = await setup(true);
@@ -109,79 +111,17 @@ describe("Uptime email alerts", () => {
       await UptimeTickWatch.settled(ctx.clock);
     };
     await advance();
-    expect(ctx.mail.records).toHaveLength(0);
     await advance();
-    await expect.poll(() => ctx.mail.records.length).toBe(1);
-    expect(ctx.mail.records[0]?.to).toBe("original-owner@example.com");
-    expect(ctx.mail.records[0]?.subject).toContain("Uptime outage");
-    expect(ctx.mail.records[0]?.body).toContain("Website &lt;probe&gt;");
-    expect(ctx.mail.records[0]?.body).not.toContain("Website <probe>");
-    for (let index = 0; index < 58; index++) await advance();
-    expect(ctx.mail.records).toHaveLength(1);
+    await expect
+      .poll(async () => ctx.repos.incidents.count({ monitorId: monitor.id }))
+      .toBe(1);
     ctx.prober.failing = false;
     await advance();
-    await expect.poll(() => ctx.mail.records.length).toBe(2);
-    expect(ctx.mail.records[1]?.subject).toContain("Uptime recovery");
-    expect(ctx.mail.records[1]?.body).toContain("after 3540 seconds");
-    expect(ctx.mail.records[1]?.body).toContain(`/uptime/${monitor.id}`);
     const incident = await ctx.repos.incidents.getOne({
       where: { monitorId: monitor.id },
     });
-    await ctx.alepha.inject(UptimeNotificationService).handle({
-      kind: "closed",
-      monitor: await ctx.repos.monitors.getById(monitor.id),
-      incident,
-    });
-    expect(ctx.mail.records).toHaveLength(2);
-  }, 30_000);
-
-  it("follows the current owner, honors explicit recipients and disables email per monitor", async ({
-    expect,
-  }) => {
-    const ctx = await setup();
-    const owner = await ctx.repos.users.create({
-      email: "current-owner@example.com",
-    });
-    await ctx.repos.members.updateMany(
-      { organizationId: ctx.project.organizationId! },
-      { rank: "member" },
-    );
-    await ctx.repos.members.create({
-      organizationId: ctx.project.organizationId!,
-      userId: owner.id,
-      rank: "owner",
-    });
-    const effects = ctx.alepha.inject(UptimeNotificationService);
-    const state = ctx.alepha.inject(UptimeStateService);
-    const emit = async (monitor: Monitor) => {
-      monitor.confirmations = 1;
-      await ctx.repos.monitors.save(monitor);
-      const transitions = await state.apply(
-        monitor,
-        { ok: false, result: "timeout", latencyMs: 1000 },
-        ctx.clock.nowMillis(),
-      );
-      for (const transition of transitions) await effects.handle(transition);
-    };
-    await emit(await ctx.seed());
-    await expect.poll(() => ctx.mail.records.length).toBe(1);
-    expect(ctx.mail.records[0]?.to).toBe("current-owner@example.com");
-    await emit(
-      await ctx.seed({
-        email: true,
-        recipients: ["one@example.com", "two@example.com", "ONE@example.com"],
-      }),
-    );
-    await expect.poll(() => ctx.mail.records.length).toBe(3);
-    expect(
-      ctx.mail.records
-        .slice(1)
-        .map((mail) => mail.to)
-        .sort(),
-    ).toEqual(["one@example.com", "two@example.com"]);
-    await emit(
-      await ctx.seed({ email: false, recipients: ["muted@example.com"] }),
-    );
-    expect(ctx.mail.records).toHaveLength(3);
+    expect(incident.endedAt).toBeDefined();
+    // The project's owner has an address, and nothing reached it.
+    expect(ctx.mail.records).toHaveLength(0);
   });
 });
