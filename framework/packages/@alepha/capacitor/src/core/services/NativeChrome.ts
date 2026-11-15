@@ -17,7 +17,9 @@ import { StatusBarProvider } from "../providers/StatusBarProvider.ts";
  *   healthy or failed, never on a timer and never on bare `ready`, so a
  *   failure is on the screen rather than masked behind the splash;
  * - the status bar follows the theme: `class="dark"` on `<html>` (what
- *   `alepha/react/ui`'s `ColorScheme` toggles) asks for light content.
+ *   `alepha/react/ui`'s `ColorScheme` toggles) asks for light content, and
+ *   so does a page that paints itself dark through its own CSS, which says
+ *   so with `color-scheme: dark` on `<html>`.
  *
  * Registered by `AlephaCapacitor` inside the native shell only.
  */
@@ -93,7 +95,7 @@ export class NativeChrome {
     const root = document.documentElement;
     let current: "light" | "dark" | undefined;
     const apply = () => {
-      const style = root.classList.contains("dark") ? "dark" : "light";
+      const style = this.isDark(root) ? "dark" : "light";
       if (style === current) {
         return;
       }
@@ -108,7 +110,22 @@ export class NativeChrome {
     this.observer = new MutationObserver(apply);
     this.observer.observe(root, {
       attributes: true,
-      attributeFilter: ["class"],
+      attributeFilter: ["class", "style"],
     });
+  }
+
+  /**
+   * Whether the page is dark: the theme's `dark` class, or a computed
+   * `color-scheme` that only allows dark. `light dark` lets the page follow
+   * the device, so it says nothing about what is painted.
+   */
+  protected isDark(root: HTMLElement): boolean {
+    if (root.classList.contains("dark")) {
+      return true;
+    }
+    const scheme = getComputedStyle(root)
+      .getPropertyValue("color-scheme")
+      .trim();
+    return /^(only\s+)?dark$/.test(scheme);
   }
 }

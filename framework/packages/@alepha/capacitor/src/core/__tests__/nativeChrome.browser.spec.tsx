@@ -128,6 +128,23 @@ describe("native chrome", () => {
     expect(statusBar.style).toBe("light");
     await alepha.stop();
   });
+
+  it("gives a page painted dark by its own CSS light content", async ({
+    expect,
+  }) => {
+    document.documentElement.style.setProperty("color-scheme", "dark");
+    try {
+      const { alepha, statusBar } = await boot();
+      expect(statusBar.style).toBe("dark");
+
+      document.documentElement.style.setProperty("color-scheme", "light dark");
+      await act(async () => {});
+      expect(statusBar.style).toBe("light");
+      await alepha.stop();
+    } finally {
+      document.documentElement.style.removeProperty("color-scheme");
+    }
+  });
 });
 
 describe("the back button", () => {
