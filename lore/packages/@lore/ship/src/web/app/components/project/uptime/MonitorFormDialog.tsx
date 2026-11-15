@@ -22,8 +22,17 @@ import type { MonitorController } from "../../../../../api/controllers/MonitorCo
 import { monitorNotificationSettingsSchema } from "../../../../../api/schemas/monitorNotificationSettingsSchema.ts";
 import type { MonitorResource } from "../../../../../api/schemas/monitorResourceSchema.ts";
 import { MonitorTarget } from "../../../../../api/schemas/MonitorTarget.ts";
-import type { MonitorPrefill } from "./instanceMonitors.ts";
 import { monitorFormSchema } from "./monitorFormSchema.ts";
+
+/**
+ * What a new monitor starts from: the app copy it belongs to (#Q3657), and
+ * the copy's own name and address.
+ */
+export interface MonitorPrefill {
+  appInstanceId: string;
+  name: string;
+  target: string;
+}
 
 export interface MonitorFormDialogProps {
   projectId: number;
