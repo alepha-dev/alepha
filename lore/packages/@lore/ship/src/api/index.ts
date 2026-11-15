@@ -55,8 +55,6 @@ import { DeployAutomationEventSubjects } from "./services/DeployAutomationEventS
 import { DeployAutomationNumericPresets } from "./services/DeployAutomationNumericPresets.ts";
 import { DeployAutomationPresets } from "./services/DeployAutomationPresets.ts";
 import { DeployAutomationReferences } from "./services/DeployAutomationReferences.ts";
-import { UptimeAutomationEventSubjects } from "./services/UptimeAutomationEventSubjects.ts";
-import { UptimeAutomationReferences } from "./services/UptimeAutomationReferences.ts";
 import { DeployBuckets } from "./services/DeployBuckets.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
@@ -103,6 +101,8 @@ import { StackService } from "./services/StackService.ts";
 import { StackTargets } from "./services/StackTargets.ts";
 import { StackVariableService } from "./services/StackVariableService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
+import { UptimeAutomationEventSubjects } from "./services/UptimeAutomationEventSubjects.ts";
+import { UptimeAutomationReferences } from "./services/UptimeAutomationReferences.ts";
 import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 import { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTransport.ts";

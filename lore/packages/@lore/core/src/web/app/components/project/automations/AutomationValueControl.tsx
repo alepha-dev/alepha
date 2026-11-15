@@ -33,9 +33,7 @@ const AutomationValueControl = (props: AutomationValueControlProps) => {
     "quest",
     "app",
     "monitor",
-  ].includes(
-    resource,
-  );
+  ].includes(resource);
   const loader = useAutomationOptions(
     (remote ? resource : "quest") as AutomationOptionKind,
   );

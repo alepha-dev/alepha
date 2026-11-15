@@ -119,7 +119,7 @@ describe("Shared automation variables", () => {
     const foreign = await createTestFolio(alepha, other);
     await expect(
       variables.set(project.id, user, {
-        key: "target",
+        key: "destination",
         value: { kind: "folio", value: foreign.id },
       }),
     ).rejects.toThrow("this project");

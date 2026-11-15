@@ -179,9 +179,7 @@ describe("Monitor automation events (#Q3610)", () => {
     expect(recovered.payload.fields.duration_secs).toBeGreaterThan(0);
     expect(await dispatch(recovery.id)).toBe(1);
     expect(await dispatch(outage.id)).toBe(0);
-    expect(
-      await persistence.events.count({ projectId: project.id }),
-    ).toBe(2);
+    expect(await persistence.events.count({ projectId: project.id })).toBe(2);
   });
 
   it("filters on the trigger's monitor", async ({ expect }) => {
