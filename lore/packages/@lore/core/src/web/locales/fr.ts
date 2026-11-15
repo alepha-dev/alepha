@@ -172,6 +172,28 @@ export default {
   "automation.preset.host-expired.title": "Hôte expiré",
   "automation.preset.host-expired.description":
     "Avertit un membre quand un hôte jetable dépasse sa durée de vie. Lore n'arrête et ne supprime rien.",
+  "project.settings.tab.automationChannels": "Canaux",
+  "automation.channels.title": "Canaux",
+  "automation.channels.description":
+    "Où les automatisations publient : In-app et E-mail, intégrés, et les canaux Discord que vous ajoutez. Une règle en nomme un ou plusieurs.",
+  "automation.channels.add": "Ajouter un canal Discord",
+  "automation.channels.name": "Nom",
+  "automation.channels.url": "URL du webhook Discord",
+  "automation.channels.replaceUrl":
+    "Nouvelle URL du webhook (vide pour garder l'actuelle)",
+  "automation.channels.urlHelp":
+    "L'enregistrement publie un message de test dans le canal. L'URL n'est plus jamais affichée.",
+  "automation.channels.save": "Enregistrer",
+  "automation.channels.cancel": "Annuler",
+  "automation.channels.edit": "Renommer ou remplacer l'URL",
+  "automation.channels.delete": "Supprimer",
+  "automation.channels.deleteTitle": "Supprimer le canal $1 ?",
+  "automation.channels.deleteDescription":
+    "Les règles qui le notifient cessent d'y publier et gardent leurs autres canaux.",
+  "automation.channels.builtIn": "Intégré",
+  "automation.channels.kind.inbox": "In-app",
+  "automation.channels.kind.email": "E-mail",
+  "automation.channels.kind.discord": "Discord",
   "automation.preset.deploy-failed.title": "Échec du déploiement",
   "automation.preset.deploy-failed.description":
     "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",

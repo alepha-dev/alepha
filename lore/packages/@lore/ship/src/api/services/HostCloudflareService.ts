@@ -1,4 +1,7 @@
-import { AutomationSourceRepository } from "@lore/core/api";
+import {
+  AutomationSourceRepository,
+  CredentialSealService,
+} from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -7,7 +10,6 @@ import { ConflictError } from "alepha/server";
 
 import { type Host, hosts } from "../entities/hosts.ts";
 import { CloudflareProbeService } from "./CloudflareProbeService.ts";
-import { CredentialSealService } from "./CredentialSealService.ts";
 import { HostAutomationFields } from "./HostAutomationFields.ts";
 
 /**

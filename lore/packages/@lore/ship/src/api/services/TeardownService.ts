@@ -1,3 +1,4 @@
+import { CredentialSealService } from "@lore/core/api";
 import { $inject, Alepha } from "alepha";
 import {
   AlephaInfraLibPlugin,
@@ -8,7 +9,6 @@ import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
-import { CredentialSealService } from "./CredentialSealService.ts";
 import { DeployGate } from "./DeployGate.ts";
 
 /**

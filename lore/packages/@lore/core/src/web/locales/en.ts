@@ -163,6 +163,28 @@ export default {
   "automation.preset.host-expired.title": "Host past its TTL",
   "automation.preset.host-expired.description":
     "Notify one member when a throwaway host passes its time to live. Lore stops and deletes nothing.",
+  "project.settings.tab.automationChannels": "Channels",
+  "automation.channels.title": "Channels",
+  "automation.channels.description":
+    "Where automations deliver: In-app and Email, built in, and the Discord channels you add. A rule names one or more of them.",
+  "automation.channels.add": "Add a Discord channel",
+  "automation.channels.name": "Name",
+  "automation.channels.url": "Discord webhook URL",
+  "automation.channels.replaceUrl":
+    "New webhook URL (leave empty to keep the current one)",
+  "automation.channels.urlHelp":
+    "Saving posts a test message to the channel. The URL is never shown again.",
+  "automation.channels.save": "Save",
+  "automation.channels.cancel": "Cancel",
+  "automation.channels.edit": "Rename or replace URL",
+  "automation.channels.delete": "Delete",
+  "automation.channels.deleteTitle": "Delete the channel $1?",
+  "automation.channels.deleteDescription":
+    "Rules that notify it stop posting there and keep their other channels.",
+  "automation.channels.builtIn": "Built in",
+  "automation.channels.kind.inbox": "In-app",
+  "automation.channels.kind.email": "Email",
+  "automation.channels.kind.discord": "Discord",
   "automation.preset.deploy-failed.title": "Deployment failed",
   "automation.preset.deploy-failed.description":
     "Notify one member when a deployment of the chosen app records a failure, in any environment. Raw logs are excluded.",
