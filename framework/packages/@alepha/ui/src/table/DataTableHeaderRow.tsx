@@ -54,6 +54,13 @@ export interface DataTableHeaderRowProps<T> {
    * `DataTableHeaderFilter`.
    */
   headerFilter?: (columnKey: string) => ReactNode;
+  /**
+   * Under the table's `headerPopup`: the whole header of a column (its name,
+   * chevron and popup), in place of the sort button and the funnel; or
+   * `undefined` for a column with neither a filter nor a sort, drawn as a
+   * plain label. See `DataTableHeaderPopup`.
+   */
+  headerPopup?: (columnKey: string, def: ColumnDef<T>) => ReactNode;
 }
 
 /**
@@ -89,6 +96,17 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
     });
   };
 
+  // The same for the header popup, found by its column.
+  const openPopup = (key: string) => {
+    requestAnimationFrame(() => {
+      row.current
+        ?.querySelector<HTMLElement>(
+          `[data-column="${key}"] [data-header-popup]`,
+        )
+        ?.click();
+    });
+  };
+
   return (
     <TableRow ref={row}>
       {hasCheckbox && (
@@ -105,7 +123,12 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
       )}
       {visibleCols.map(([key, def], index) => {
         const sorted = def.sortable && sort?.field === (def.sortKey ?? key);
-        const filter = props.headerFilter?.(key);
+        const popup = props.headerPopup?.(key, def);
+        // Under `headerPopup` the funnel is never drawn: the popup holds the
+        // filter, and the context menu's "Filter" opens the popup.
+        const filter = props.headerPopup
+          ? undefined
+          : props.headerFilter?.(key);
         return (
           // ⚠️ The menu is on the HEADER and never on a body cell.
           // Overriding the browser's own menu is acceptable on
@@ -121,6 +144,7 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
                   // touch - which is exactly why the column picker
                   // and not this is the primary path.
                   tabIndex={0}
+                  data-column={key}
                   title={def.hint}
                   className={cn(
                     props.headClassName,
@@ -144,7 +168,11 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
                   button nested in a button is invalid, and a click on it
                   would also sort. */}
               <span className="inline-flex items-center gap-1">
-                {def.sortable ? (
+                {popup ? (
+                  popup
+                ) : props.headerPopup ? (
+                  <span>{def.label}</span>
+                ) : def.sortable ? (
                   // A real button so keyboard and assistive-tech
                   // users can sort — a th onClick is mouse-only.
                   <button
@@ -231,6 +259,15 @@ export const DataTableHeaderRow = <T,>(props: DataTableHeaderRowProps<T>) => {
                     {tr("dataTable.sortClear", {
                       default: "Clear sort",
                     })}
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                </>
+              )}
+              {popup && props.headerPopup && (
+                <>
+                  <ContextMenuItem onClick={() => openPopup(key)}>
+                    <Funnel className="size-4" />
+                    {tr("dataTable.filterColumnMenu", { default: "Filter" })}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                 </>

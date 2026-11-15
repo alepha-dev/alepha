@@ -466,6 +466,24 @@ export interface DataTableFilterFieldOptions {
    */
   column?: string;
   /**
+   * One end of an open range, for a table with `headerPopup`: two fields
+   * naming the same `column`, one `"min"` and one `"max"`, draw ONE pair of
+   * boxes, « Min » and « Max », in that column's popup. Either end may stay
+   * empty, which a `z.dateRange()` cannot say: each end is its own key, so
+   * the server reads `priceMin` and `priceMax` as it reads any filter.
+   *
+   * The box follows the field's schema: a `z.date()` draws a date box, any
+   * other a number box. Without `headerPopup` the field is an ordinary
+   * filter. Read every render.
+   */
+  range?: "min" | "max";
+  /**
+   * A number filter stored in hundredths and typed in units: the reader types
+   * `12.5`, the filter holds `1250`. For an amount kept in cents and read in
+   * euros. Read by the `headerPopup` range boxes only.
+   */
+  cents?: boolean;
+  /**
    * Anything else `Control` takes: `clearLabel`, `countLabel`, `searchable`,
    * `inputProps`.
    */

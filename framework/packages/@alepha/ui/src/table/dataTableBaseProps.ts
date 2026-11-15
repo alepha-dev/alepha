@@ -383,6 +383,25 @@ export interface DataTableBaseProps<
    */
   flat?: boolean;
   /**
+   * The header popup, an opt-in header: each column whose filter names it in
+   * `column` shows its name and a small chevron, and nothing else (no sort
+   * glyph, no funnel). The name and the chevron are one button opening a
+   * popup that holds, top to bottom, the sort entries for a sortable column
+   * (the order in force ticked, choosing it again removes the sort), the
+   * column's filter drawn in place, and a « Reset » that empties that filter
+   * and leaves the sort. A sortable column with no filter opens the sort
+   * entries alone, without a chevron. A click on the name no longer sorts.
+   *
+   * The chevron takes the accent colour while its filter holds a value, and
+   * that is the only sign of it: a column filter is never drawn on the bar,
+   * in its « + » menu or in the phone dialog. Two fields naming one column
+   * with `range: "min"` and `range: "max"` draw one open « Min » / « Max »
+   * pair.
+   *
+   * @default false
+   */
+  headerPopup?: boolean;
+  /**
    * How much room the cells give their content: `small`, `normal` (the
    * default, the `Table` primitives' own padding) or `large`. Applies to the
    * header, the rows and the loading skeleton alike. A column's own
