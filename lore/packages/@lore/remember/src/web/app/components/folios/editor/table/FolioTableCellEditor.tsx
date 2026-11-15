@@ -40,6 +40,12 @@ export interface FolioTableCellEditorProps {
    * change: the row sheet's fields. The grid's editor closes on commit.
    */
   persistent?: boolean;
+  /**
+   * Draw the kit's full field (frame, padding, focus ring) instead of the
+   * flush cell input: the row sheet's fields, which sit in a form, not in a
+   * grid cell. Defaults to false.
+   */
+  framed?: boolean;
 }
 
 /**
@@ -49,10 +55,13 @@ export interface FolioTableCellEditorProps {
  * (or typed as its code, `#Q12`, for one the picker's page does not hold).
  *
  * Always a `Control` over a one-field `useForm`, never a raw input: the
- * kit's fields carry its focus rings, its RTL rules and its date picker.
- * Enter commits and moves down, Tab commits and moves right, Escape
- * cancels, leaving the cell commits. A checkbox has no editor: the grid
- * toggles it in place.
+ * kit's fields carry its RTL rules and its date picker. A cell is not a
+ * form field, though (#Q3715): no type icon, and the text and number
+ * inputs drop the kit's rounded frame, padding and focus ring, so the edit
+ * sits flush in the cell, in the cell's own font, under the grid's focus
+ * outline. Enter commits and moves down, Tab commits and moves right,
+ * Escape cancels, leaving the cell commits. A checkbox has no editor: the
+ * grid toggles it in place.
  */
 const FolioTableCellEditor = (
   props: FolioTableCellEditorProps,
@@ -136,9 +145,16 @@ const FolioTableCellEditor = (
   const common = {
     input: form.input.value,
     label: "",
+    // A cell has no type icon; the row sheet's labelled fields keep it.
+    ...(props.framed ? {} : { icon: null }),
     autoFocus: props.autoFocus ?? true,
     inputProps: { "aria-label": label, "data-testid": "folio-cell-editor" },
   };
+  // The kit's trigger, flattened into the cell: a select's and a
+  // reference's list still open from it.
+  const flatTrigger = props.framed
+    ? undefined
+    : "h-8 rounded-none border-0 bg-transparent px-0 shadow-none dark:bg-transparent";
 
   return (
     // The editor's own keys must not reach the grid's navigation.
@@ -163,6 +179,7 @@ const FolioTableCellEditor = (
         <Control
           {...common}
           select
+          triggerClassName={flatTrigger}
           items={[
             { value: "", label: tr("folios.table.cell.none") },
             ...(props.column.options.choices ?? []).map((choice) => ({
@@ -176,6 +193,7 @@ const FolioTableCellEditor = (
           {...common}
           combobox
           createNewEntry
+          triggerClassName={flatTrigger}
           placeholder={tr("folios.table.cell.reference-placeholder")}
           items={[
             { value: "", label: tr("folios.table.cell.none") },
@@ -204,6 +222,14 @@ const FolioTableCellEditor = (
           {...common}
           inputProps={{
             ...common.inputProps,
+            // Flush in the cell: the cell's padding and font, no frame and
+            // no ring of its own, so opening the edit moves nothing.
+            ...(props.framed
+              ? {}
+              : {
+                  className:
+                    "h-8 rounded-none border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent md:text-sm",
+                }),
             ...(props.column.type === "number"
               ? { inputMode: "decimal" as never }
               : {}),
