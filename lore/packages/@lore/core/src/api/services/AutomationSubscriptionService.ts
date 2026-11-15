@@ -3,8 +3,8 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
-import { AutomationSubscriptionScope } from "../schemas/AutomationSubscriptionScope.ts";
 import type { AutomationSubscription } from "../schemas/automationSubscriptionSchema.ts";
+import { AutomationSubscriptionScope } from "../schemas/AutomationSubscriptionScope.ts";
 import type { AutomationSubscriptionSetBody } from "../schemas/automationSubscriptionSetBodySchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
@@ -121,9 +121,7 @@ export class AutomationSubscriptionService {
   }
 
   protected keys(presets: string[]): string[] {
-    const keys = [...new Set(presets.map((key) => key.trim()))].filter(
-      Boolean,
-    );
+    const keys = [...new Set(presets.map((key) => key.trim()))].filter(Boolean);
     if (keys.length === 0 || keys.length > 8)
       throw new BadRequestError("presets: between one and eight preset keys");
     return keys.sort();

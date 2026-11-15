@@ -209,9 +209,11 @@ describe("AutomationSubscriptionBell", () => {
         name: "Unsubscribe",
       }),
     );
-    await waitFor(() => expect(server.sets).toEqual([
+    await waitFor(() =>
+      expect(server.sets).toEqual([
         { presets: ["feedback-created"], subscribed: false },
-      ]));
+      ]),
+    );
     await waitFor(() =>
       expect(bell().getAttribute("aria-pressed")).toBe("false"),
     );
