@@ -1,7 +1,12 @@
 import { useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
-import { useRank, currentProjectAtom, type I18n } from "@lore/core/web";
+import {
+  capabilityOption,
+  currentProjectAtom,
+  type I18n,
+  useRank,
+} from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -96,7 +101,8 @@ const AppSettingsHost = () => {
     [project?.id],
   );
 
-  if (!project || !instance) {
+  // Where the copy deploys to means nothing without Deploy (#Q3632).
+  if (!project || !instance || !capabilityOption(project, "ship", "deploy")) {
     return null;
   }
 

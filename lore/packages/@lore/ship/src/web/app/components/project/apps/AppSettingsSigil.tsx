@@ -189,7 +189,9 @@ const AppSettingsSigil = () => {
   const rotate = rotateAction.run;
   const remove = removeAction.run;
 
-  if (!project || !instance) {
+  // The credential is the sigil, which only Track collects with (#Q3632):
+  // with Track off the section would offer a token nothing accepts.
+  if (!project || !instance || !capabilityOption(project, "ship", "track")) {
     return null;
   }
 
