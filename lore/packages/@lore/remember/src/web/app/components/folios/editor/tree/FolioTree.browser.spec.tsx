@@ -507,12 +507,21 @@ describe("FolioTree", () => {
    * The header strip holds only the actions, centred (#Q3656): the FOLIOS
    * label pushed them to the right. The tree keeps its accessible name.
    */
-  it("draws no title in the header, centres its actions, and keeps the tree's label", async () => {
+  it("draws no title in the header, puts collapse first and the actions last, and keeps the tree's label", async () => {
     await mount();
 
     const refresh = screen.getByLabelText("Refresh the tree");
     const strip = refresh.parentElement!;
-    expect(strip.className).toContain("justify-center");
+    // Collapse at the left edge, the rest after a spacer (#Q3693).
+    const labels = [...strip.querySelectorAll("button")].map((button) =>
+      button.getAttribute("aria-label"),
+    );
+    expect(labels[0]).toBe("Collapse the tree");
+    expect(labels.slice(1)).toEqual([
+      "Refresh the tree",
+      "New folio",
+      "New directory",
+    ]);
     expect(strip.textContent).not.toContain("Folios");
     expect(screen.getByRole("tree", { name: "Folios" })).not.toBeNull();
   });
