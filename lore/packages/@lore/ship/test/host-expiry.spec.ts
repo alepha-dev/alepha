@@ -1,3 +1,4 @@
+import { AutomationPersistence } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -101,7 +102,7 @@ describe("host expiry", () => {
     expect(cleared.overdue).toBe(false);
   });
 
-  it("tells the owner once, again only after the TTL moves, and deletes nothing", async ({
+  it("raises host.expired once, again only after the TTL moves, and deletes nothing", async ({
     expect,
   }) => {
     const user = await owner();
@@ -113,18 +114,21 @@ describe("host expiry", () => {
 
     expect(await sweep.sweep()).toBe(1);
     expect(await sweep.sweep()).toBe(0);
-    // Queued, not inline: wait for the positive signal before reading it.
-    const deadline = Date.now() + 5000;
-    while (mail.records.length === 0 && Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    expect(mail.records).toHaveLength(1);
-    expect(mail.records[0]!.to).toBe("owner@example.com");
-    expect(mail.records[0]!.body).toContain("tmp-2");
+    // Raised as host.expired in the home project (#Q3627): nobody is
+    // emailed directly any more.
+    const events = () =>
+      alepha.inject(AutomationPersistence).events.findMany({
+        where: { name: "host.expired" },
+      });
+    const [event] = await events();
+    expect(event.projectId).toBe(minted.projectId);
+    expect(event.payload.fields).toMatchObject({ host: "tmp-2", kind: "bay" });
     // The link opens the console under the host's home project: hosts
     // have no account page since #E126.
-    expect(mail.records[0]!.body).toMatch(/\/[a-z0-9-]+\/hosts\/tmp-2"/);
-    expect(mail.records[0]!.body).not.toContain("/account/hosts");
+    expect(String(event.payload.fields.url)).toMatch(
+      /^\/[a-z0-9-]+\/hosts\/tmp-2$/,
+    );
+    expect(mail.records).toHaveLength(0);
 
     // Extending re-arms; once that expiry passes too, one more.
     await controller.updateHost(
@@ -136,6 +140,7 @@ describe("host expiry", () => {
       expiresAt: new Date(dateTime.nowMillis() - 1000).toISOString(),
     });
     expect(await sweep.sweep()).toBe(1);
+    expect(await events()).toHaveLength(2);
 
     // Lore stops and deletes nothing.
     expect(await repos.hosts.findById(minted.id)).toBeDefined();

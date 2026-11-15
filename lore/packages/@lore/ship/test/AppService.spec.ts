@@ -484,6 +484,7 @@ describe("AppService — the host an instance deploys to", () => {
     hostSeq += 1;
     const host = await ctx.repos.hosts.create({
       ownerUserId: owner.id,
+      projectId,
       type: "bay",
       slug: `ovh-${hostSeq}`,
     });

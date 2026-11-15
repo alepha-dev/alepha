@@ -360,4 +360,50 @@ describe("Monitor API", () => {
     );
     expect(await ctx.repos.instances.count()).toBe(3);
   });
+  it("follows the app's address, and refuses clearing it while Monitor is on", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const apps = ctx.alepha.inject(AppController);
+    const created = await ctx.api.createMonitor.fetch(
+      { params: { projectId: ctx.project.id }, body: ctx.body },
+      { user: ctx.user },
+    );
+    const id = created.data.monitor.id;
+    const patch = (url: string) =>
+      apps.updateApp.fetch(
+        {
+          params: {
+            projectId: ctx.project.id,
+            app: "website",
+            env: "production",
+          },
+          body: { url },
+        },
+        { user: ctx.user },
+      );
+
+    // A new address moves the check (#Q3684).
+    await patch("https://www.example.test");
+    expect((await ctx.repos.monitors.getById(id)).target).toBe(
+      "https://www.example.test",
+    );
+
+    // Clearing it while on is refused, and nothing changes.
+    await expect(patch("")).rejects.toThrow("Turn Monitor off");
+    expect((await ctx.repos.instances.getById(ctx.app.id)).url).toBe(
+      "https://www.example.test",
+    );
+
+    // Off: the address may go, and the paused check keeps its target.
+    await ctx.api.setMonitorActive.fetch(
+      { params: { monitorId: id }, body: { active: false } },
+      { user: ctx.user },
+    );
+    await patch("");
+    expect((await ctx.repos.instances.getById(ctx.app.id)).url).toBeUndefined();
+    expect((await ctx.repos.monitors.getById(id)).target).toBe(
+      "https://www.example.test",
+    );
+  });
 });

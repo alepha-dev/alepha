@@ -6,7 +6,7 @@ any address, whatever the stack behind it, and needs no sigil.
 
 A monitor belongs to an app: one copy of it, such as `acme` in `production`.
 The app needs no deploy and no sigil, so a project that only wants to ping one
-API creates an app with that address and adds its monitor there.
+API creates an app with that address and turns its monitor on.
 
 Healthchecks are the **Monitor apps** option of the **Ship** capability, off by
 default, in **Settings ▸ Apps**. It works on its own: a project can keep
@@ -17,17 +17,27 @@ history and its alerts. See [Capabilities](/lore/docs/project-capabilities).
 
 The **Apps** page is the overview: its **Uptime** column shows each copy's
 uptime over the last 24 hours and a strip of its recent checks, and a hover
-tells more. An app's **Overview** tab shows its monitor in a card, with a link
-to the monitor's page.
+tells more. While its monitor is on, an app's **Overview** tab shows it in a
+card, with a link to the monitor's page.
 
-## Adding a monitor
+## Turning a monitor on
 
-1. Open the app, and choose **Add monitor** on its **Overview** tab.
-2. Give it a name and pick its kind. The kind cannot change afterwards: create
-   a new monitor instead.
-3. Check the target, which starts as the app's address, and adjust the
-   settings below.
-4. Choose **Create monitor**.
+1. Open the app's **Settings**, and set its **Address** under **General** if it
+   has none: the check requests that address, and the switch stays off
+   without it.
+2. Under **Monitor**, turn on **Monitor this app**. Lore creates an HTTP(S)
+   check on the address with the default settings below.
+3. The check's settings are listed under the switch. Choose **Edit** to change
+   them: its name, kind-specific options, interval and alerts.
+
+The check follows the address: change the address and the check requests the
+new one. Clearing the address while the monitor is on is refused; turn it off
+first. Turning the monitor off pauses it and keeps its history and its
+settings; turning it on again resumes the same monitor.
+
+A TCP, certificate or push monitor is created from the command line or by an
+agent (see below), on the app it belongs to; the same switch pauses and
+resumes it.
 
 | Kind            | Target                                 | Up means                                                                                                           |
 | --------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -59,7 +69,8 @@ fails every check with a message saying so. HTTP and push monitors work on both.
 A push monitor watches something that runs on its own schedule, such as a backup
 or a cron job. It is the one kind Lore does not call: the job calls Lore.
 
-Creating one shows a private URL, **once**. Copy it then:
+Creating one (`lore monitor create --kind push`) prints a private URL,
+**once**. Copy it then:
 
 ```bash
 curl -fsS https://lore.alepha.dev/uptime/push/up_...
@@ -71,7 +82,8 @@ so an interval of 3600 means an hour of allowed silence, not an hourly check.
 
 The URL can do one thing, which is record a receipt for that monitor, and Lore
 does not keep it in a readable form. If it leaks or is lost, **Rotate push
-URL** replaces it, and the old one stops working.
+URL** in the app's **Settings ▸ Monitor** replaces it, and the old one stops
+working.
 
 ## From failures to an outage
 
@@ -134,8 +146,9 @@ estimated.
 
 ## Changing and deleting
 
-A monitor's page has **Edit**, **Pause** or **Resume**, and **Delete**, and
-**Rotate push URL** for a push monitor.
+The app's **Settings ▸ Monitor** turns a monitor off and on, and has
+**Edit**, and **Rotate push URL** for a push monitor. A monitor's page also has
+**Delete**.
 
 **Delete** removes the monitor, its checks and its incidents. The hourly totals
 are kept, and an error still open stays for you to resolve. Deleting an app

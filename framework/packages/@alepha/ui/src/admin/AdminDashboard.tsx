@@ -1,10 +1,7 @@
-import type { AdminDashboardLayoutController } from "alepha/api/parameters";
-import { useClient } from "alepha/react";
+import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
-import { LayoutDashboard, Settings2 } from "lucide-react";
-import { Fragment, useState } from "react";
+import { LayoutDashboard } from "lucide-react";
 
-import { Button } from "../core/Button.tsx";
 import {
   Empty,
   EmptyDescription,
@@ -13,37 +10,22 @@ import {
   EmptyTitle,
 } from "../core/Empty.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
-import { AdminDashboardEditor } from "./AdminDashboardEditor.tsx";
-import {
-  type AdminDashboardLayoutTile,
-  resolveAdminDashboardLayout,
-} from "./adminDashboardLayout.ts";
+import { visibleAdminDashboardCards } from "./adminDashboardCards.ts";
 import { AdminPage } from "./AdminPage.tsx";
 
 export interface AdminDashboardProps {
   /**
-   * The catalog: built-in cards followed by the application's, already
+   * The tiles: built-in cards followed by the application's, already
    * concatenated by `AdminRouter`. Ordering and gating happen here rather
    * than there so the two sets obey exactly one rule.
    */
   cards?: AdminDashboardCard[];
-
-  /**
-   * The deployment's stored layout, loaded by the page's loader before the
-   * first render so the grid never reflows. Absent or empty means the code
-   * defaults.
-   */
-  layout?: { tiles: AdminDashboardLayoutTile[] };
-
-  /**
-   * The stored layout's version, which a save sends back. Absent when the
-   * layout API is not registered or not readable.
-   */
-  layoutVersion?: number;
 }
 
 /**
- * The admin landing page: whatever cards survive their own `can` gate.
+ * The admin landing page: a greeting, then whatever cards survive their own
+ * `can` gate, in the order the code declares (#Q3667: nothing stored, nothing
+ * an admin rearranges).
  *
  * An admin whose deployment registers no module a card can read sees the
  * empty state rather than a page of dashes — which is the honest rendering of
@@ -52,19 +34,14 @@ export interface AdminDashboardProps {
  */
 const AdminDashboard = (props: AdminDashboardProps) => {
   const { tr } = useI18n();
-  const layoutApi = useClient<AdminDashboardLayoutController>();
-  const [editing, setEditing] = useState(false);
-  const cards = resolveAdminDashboardLayout(
-    props.cards ?? [],
-    props.layout?.tiles,
-  );
-  // Only for an admin who can both read and write the layout, and only when
-  // the loader actually read it: without its version a save could not be
-  // checked against another admin's.
-  const customizable =
-    props.layoutVersion !== undefined &&
-    layoutApi.getAdminDashboardLayout.can() &&
-    layoutApi.setAdminDashboardLayout.can();
+  const auth = useAuth();
+  const cards = visibleAdminDashboardCards(props.cards ?? []);
+  const user = auth.user as
+    | { name?: string; username?: string; email?: string }
+    | undefined;
+  // The name, else the username, else the email's local part.
+  const who =
+    user?.name?.trim() || user?.username || user?.email?.split("@")[0];
 
   return (
     // `p-6`, not the shell's `p-2`. That 8px frame is for the table pages,
@@ -72,27 +49,18 @@ const AdminDashboard = (props: AdminDashboardProps) => {
     // sitting 8px off the layout read as unframed (#Q2291). The one call site
     // of `AdminPage` that is not a table, hence the only one that overrides.
     <AdminPage className="p-6">
-      {customizable && !editing ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outlined"
-            size="sm"
-            onClick={() => setEditing(true)}
-          >
-            <Settings2 className="size-4" />
-            {tr("admin.dashboard.customize", { default: "Customize" })}
-          </Button>
-        </div>
+      {who ? (
+        <p
+          className="text-muted-foreground text-sm"
+          data-testid="admin-dashboard-hello"
+        >
+          {tr("admin.dashboard.hello", {
+            args: [who],
+            default: "Hello $1",
+          })}
+        </p>
       ) : null}
-      {editing && props.layoutVersion !== undefined ? (
-        <AdminDashboardEditor
-          cards={props.cards ?? []}
-          layout={props.layout}
-          version={props.layoutVersion}
-          onClose={() => setEditing(false)}
-        />
-      ) : cards.length === 0 ? (
+      {cards.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -105,9 +73,21 @@ const AdminDashboard = (props: AdminDashboardProps) => {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((card) => (
-            <Fragment key={card.id}>{card.render()}</Fragment>
+            // `grid`, so the tile inside stretches to the row's height as it
+            // did when it was the grid's own item.
+            <section
+              key={card.id}
+              className="grid"
+              aria-label={
+                card.titleKey
+                  ? tr(card.titleKey, { default: card.title })
+                  : card.title
+              }
+            >
+              {card.render()}
+            </section>
           ))}
         </div>
       )}

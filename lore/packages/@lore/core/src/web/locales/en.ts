@@ -84,6 +84,8 @@ export default {
   "automation.event.epicCompleted": "Epic completed",
   "automation.event.deployFailed": "Deployment failed",
   "automation.event.deploySucceeded": "Deployment succeeded",
+  "automation.event.hostCredentialInvalid": "Host token invalid",
+  "automation.event.hostExpired": "Host past its TTL",
   "automation.event.monitorDown": "Monitor down",
   "automation.event.monitorUp": "Monitor recovered",
   "automation.event.questCompleted": "Quest completed",
@@ -117,6 +119,8 @@ export default {
     "Sample aggregate open errors every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
   "automation.setup.folio": "Folio",
   "automation.setup.app": "App",
+  "automation.setup.channels": "Channels",
+  "automation.setup.host": "Host",
   "automation.setup.monitor": "Monitor",
   "automation.preset.release-to-folio.title":
     "Publish release notes to a folio",
@@ -143,6 +147,22 @@ export default {
   "automation.preset.monitor-up.title": "Monitor recovered",
   "automation.preset.monitor-up.description":
     "Notify one member when a monitor recovers from an outage, with how long it lasted.",
+  "hosts.subscription.label": "Notify me when this host needs attention",
+  "hosts.subscription.description":
+    "A rule of your own will notify you when this host passes its TTL or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
+  "hosts.subscription.offDescription":
+    "You will no longer be notified about this host.",
+  "hosts.subscription.allLabel": "Notify me when any host needs attention",
+  "hosts.subscription.allDescription":
+    "A rule of your own will notify you when any host of this project passes its TTL or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
+  "hosts.subscription.allOffDescription":
+    "You will no longer be notified about this project's hosts.",
+  "automation.preset.host-credential-invalid.title": "Host token invalid",
+  "automation.preset.host-credential-invalid.description":
+    "Notify one member when the nightly check finds a Cloudflare host's token no longer works. Deploys through it are refused until it is replaced.",
+  "automation.preset.host-expired.title": "Host past its TTL",
+  "automation.preset.host-expired.description":
+    "Notify one member when a throwaway host passes its time to live. Lore stops and deletes nothing.",
   "automation.preset.deploy-failed.title": "Deployment failed",
   "automation.preset.deploy-failed.description":
     "Notify one member when a deployment of the chosen app records a failure, in any environment. Raw logs are excluded.",
@@ -2264,6 +2284,18 @@ export default {
   "app.settings.url.detected":
     "Using $1, the address this copy last reported from. Set a URL here to show a different one, or clear the field to go back to the detected address.",
   "app.settings.url.save": "Save",
+  "app.settings.monitor.title": "Monitor",
+  "app.settings.monitor.description":
+    "Check this copy's address from outside, every minute by default, and alert on an outage.",
+  "app.settings.monitor.label": "Monitor this app",
+  "app.settings.monitor.rowDescription":
+    "On adds an Uptime card to the Overview. Off pauses the check and keeps its history.",
+  "app.settings.monitor.needsAddress":
+    "Set the address above first: the check requests that address.",
+  "app.settings.monitor.check": "Check",
+  "app.settings.monitor.checkDescription":
+    "What the check does. Edit changes it; its target follows the address.",
+  "app.settings.monitor.anySuccess": "Any 2xx",
   "app.settings.url.saved": "Address saved",
   "app.settings.host.title": "Host",
   "app.settings.host.description":
@@ -2779,10 +2811,6 @@ export default {
   "account.hosts.delete.confirm": "Delete",
   "account.hosts.toast.rotated": "Secret rotated",
   "account.hosts.toast.deleted": "Host deleted",
-  "account.delete.hosts.one":
-    "1 host that belongs to no project is still tied to your account: it will be deleted with it and its secret revoked; $1 project(s) it is lent to lose their deploy destination.",
-  "account.delete.hosts.many":
-    "$1 hosts that belong to no project are still tied to your account: they will be deleted with it and their secrets revoked; $2 project(s) they are lent to lose a deploy destination.",
 
   "feedback.list.showMore": "Show more",
   "feedback.list.loadingMore": "Loading…",
@@ -2969,8 +2997,6 @@ export default {
 
   // Admin → Dashboard: Lore's Projects tile.
   "admin.projectsTile.title": "Projects",
-  "admin.projectsTile.description":
-    "Projects on this instance, archived excluded, with creations against the week before.",
   "admin.projectsTile.tooltip":
     "Every project on this instance, archived projects excluded.",
   "admin.projectsTile.note": "Created in 7 days: $1",
@@ -3813,7 +3839,6 @@ export default {
   "uptime.recipientsDescription":
     "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
   "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
-  "uptime.app.none": "No monitor checks this address yet.",
   "uptime.title": "Uptime",
   "project.capability.ship.option.uptime.label": "Monitor apps",
   "project.capability.ship.option.uptime.description":
@@ -3969,6 +3994,8 @@ export default {
   "automation.source.quest.completed": "Quest completed",
   "automation.source.deploy.failed": "Deployment failed",
   "automation.source.deploy.succeeded": "Deployment succeeded",
+  "automation.source.host.credential_invalid": "Host token invalid",
+  "automation.source.host.expired": "Host past its TTL",
   "automation.source.monitor.down": "Monitor down",
   "automation.source.monitor.up": "Monitor recovered",
   "automation.source.quests.open": "Open quests, one run each",

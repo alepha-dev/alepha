@@ -1,4 +1,4 @@
-import { Button } from "@alepha/ui";
+import { Button, Checkbox, Label } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -6,6 +6,7 @@ import { useI18n } from "alepha/react/i18n";
 import { automationActionKindFormSchema } from "../../../../../api/schemas/automationActionKindFormSchema.ts";
 import { automationAudienceFormSchema } from "../../../../../api/schemas/automationAudienceFormSchema.ts";
 import type { AutomationDescriptor } from "../../../../../api/schemas/automationDescriptorSchema.ts";
+import { AutomationRuleChannels } from "../../../../../api/schemas/AutomationRuleChannels.ts";
 import type { AutomationRule } from "../../../../../api/schemas/automationRuleSchema.ts";
 import type { AutomationSlotKind } from "../../../../../api/schemas/automationSlotKindSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -17,6 +18,11 @@ export interface AutomationActionEditorProps {
   entries: AutomationDescriptor[];
   bindings: { key: string; kind: AutomationSlotKind }[];
   channels: string[];
+  /**
+   * The channels that are rooms (#Q3613), addressed to nobody: a notify
+   * naming only rooms needs no recipient.
+   */
+  rooms?: string[];
   disabled: boolean;
   removable: boolean;
   allowAudience: boolean;
@@ -26,6 +32,10 @@ export interface AutomationActionEditorProps {
 }
 const AutomationActionEditor = (props: AutomationActionEditorProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const chosen = AutomationRuleChannels.of(props.action);
+  const onlyRooms =
+    chosen.length > 0 &&
+    chosen.every((value) => props.rooms?.includes(value) === true);
   const form = useForm({
     schema: automationActionKindFormSchema,
     handler: () => undefined,
@@ -76,14 +86,49 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
           disabled={props.disabled}
         />
       )}
+      {props.action.kind === "notify" && (
+        // Several channels at once (#Q3613), picked from one list.
+        <div className="flex flex-col gap-1.5">
+          <span
+            id={`automation-action-${props.index}-channels`}
+            className="text-sm font-medium"
+          >
+            {tr("automation.setup.channels")}
+          </span>
+          <div
+            role="group"
+            aria-labelledby={`automation-action-${props.index}-channels`}
+            className="flex flex-wrap gap-4"
+          >
+            {props.channels.map((value) => (
+              <Label key={value} className="flex items-center gap-2">
+                <Checkbox
+                  checked={chosen.includes(value)}
+                  disabled={props.disabled}
+                  onCheckedChange={(checked) =>
+                    props.onChange(
+                      "channels",
+                      props.channels.filter((it) =>
+                        it === value ? checked : chosen.includes(it),
+                      ),
+                    )
+                  }
+                />
+                {tr(`automation.channel.${value}`, { default: value })}
+              </Label>
+            ))}
+          </div>
+        </div>
+      )}
       {Object.entries(entry?.slots ?? {})
         .filter(
           ([key]) =>
             key !== "audience" &&
+            key !== "channel" &&
             !(
               key === "recipient" &&
               props.action.kind === "notify" &&
-              props.action.audience
+              (props.action.audience || onlyRooms)
             ),
         )
         .map(([key, slot]) => (

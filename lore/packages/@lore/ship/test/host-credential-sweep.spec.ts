@@ -1,3 +1,4 @@
+import { AutomationPersistence } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -14,7 +15,7 @@ import {
   HostCloudflareService,
 } from "../src/api/index.ts";
 import { type Host, hosts } from "../src/schemas/index.ts";
-import { DeployTestEntities } from "../src/testing/index.ts";
+import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 import { MemoryCloudflareProbeService } from "../src/testing/index.ts";
 
 class HostRepositories {
@@ -130,6 +131,7 @@ describe("The nightly cloudflare credential sweep", () => {
     });
     return ctx.repos.hosts.create({
       ownerUserId: owner.id,
+      projectId: (await createTestProject(ctx.alepha)).id,
       type: "cloudflare",
       slug,
       accountId: ACCOUNT,
@@ -146,14 +148,17 @@ describe("The nightly cloudflare credential sweep", () => {
   const rowOf = async (id: string): Promise<Host> =>
     (await ctx.repos.hosts.findOne({ where: { id: { eq: id } } })) as Host;
 
-  it("emails the owner once on the flip, and not again the next night", async ({
+  it("raises host.credential_invalid once on the flip, in the home project, and not again the next night", async ({
     expect,
   }) => {
     const host = await seed("cf-flip");
     const seededAt = (await rowOf(host.id)).credentialCheckedAt;
+    const events = () =>
+      ctx.alepha.inject(AutomationPersistence).events.findMany({
+        where: { name: "host.credential_invalid" },
+      });
 
-    // Night one: everything still passes. Waiting on the stamp is what
-    // makes the empty mailbox below mean anything.
+    // Night one: everything still passes.
     await ctx.dateTime.travel(1, "day");
     const checked = await waitFor(
       () => rowOf(host.id),
@@ -161,30 +166,31 @@ describe("The nightly cloudflare credential sweep", () => {
       "night one re-checked the host",
     );
     expect(ctx.cloudflare.credentialStatus(checked)).toBe("valid");
-    expect(ctx.mail.records).toHaveLength(0);
+    expect(await events()).toHaveLength(0);
 
     // Night two: the token has been narrowed at Cloudflare.
     ctx.probes.refuse("/d1/database");
     await ctx.dateTime.travel(1, "day");
-
     const flipped = await waitFor(
       () => rowOf(host.id),
       (row) => ctx.cloudflare.credentialStatus(row) === "invalid",
       "night two flipped the host to invalid",
     );
     expect(flipped.credentialError).toContain("D1: Edit");
-    await waitFor(
-      () => ctx.mail.records,
-      (records) => records.length === 1,
-      "the owner was emailed once",
-    );
-    expect(ctx.mail.records[0]!.to).toBe("cf-flip@example.com");
-    expect(ctx.mail.records[0]!.body).toContain("cf-flip");
-    // The token itself never reaches an email body.
-    expect(ctx.mail.records[0]!.body).not.toContain(TOKEN);
+    const [event] = await events();
+    expect(event.projectId).toBe(host.projectId);
+    expect(event.payload.fields).toMatchObject({
+      host_id: host.id,
+      host: "cf-flip",
+      kind: "cloudflare",
+    });
+    // The token itself never reaches the event, nor does the check's text.
+    expect(JSON.stringify(event.payload)).not.toContain(TOKEN);
+    expect(JSON.stringify(event.payload)).not.toContain("D1: Edit");
+    // Nobody is emailed directly any more (#Q3627).
+    expect(ctx.mail.records).toHaveLength(0);
 
-    // Night three: still invalid, and silent. The email is edge-triggered,
-    // not a nightly nag; one line in the job changes that if it should be.
+    // Night three: still invalid, and nothing new is raised.
     const flippedAt = flipped.credentialCheckedAt;
     await ctx.dateTime.travel(1, "day");
     await waitFor(
@@ -192,7 +198,7 @@ describe("The nightly cloudflare credential sweep", () => {
       (row) => row.credentialCheckedAt !== flippedAt,
       "night three re-checked the host",
     );
-    expect(ctx.mail.records).toHaveLength(1);
+    expect(await events()).toHaveLength(1);
   });
 
   it("isolates one host's failure from the rest of the sweep", async ({

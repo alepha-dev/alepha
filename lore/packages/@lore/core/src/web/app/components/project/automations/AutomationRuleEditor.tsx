@@ -302,7 +302,7 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
               // (monitor.*, #Q3610), stored on the trigger under its name.
               value={
                 draft.trigger.kind === "event" &&
-                (key === "app" || key === "monitor")
+                (key === "app" || key === "monitor" || key === "host")
                   ? draft.trigger[key]
                   : undefined
               }
@@ -440,6 +440,9 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
             channels={props.catalogue.channels
               .filter((item) => item.available)
               .map((item) => item.key)}
+            rooms={props.catalogue.channels
+              .filter((item) => !item.addressable)
+              .map((item) => item.key)}
             disabled={save.loading}
             onKind={(key) => changeAction(index, key)}
             onChange={(key, value) =>
@@ -451,6 +454,8 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
                         Object.entries({
                           ...item,
                           [key]: value,
+                          // A stored rule names `channels` (#Q3613).
+                          ...(key === "channels" ? { channel: undefined } : {}),
                           ...(key === "audience" && value
                             ? { recipient: undefined, category: "releases" }
                             : {}),
@@ -482,7 +487,7 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
                 {
                   kind: "notify",
                   recipient: "",
-                  channel: "inbox",
+                  channels: ["inbox"],
                   title: "",
                   text: "",
                   category: "automations",

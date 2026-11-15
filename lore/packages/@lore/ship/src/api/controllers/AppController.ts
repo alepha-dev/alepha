@@ -303,7 +303,13 @@ export class AppController {
         });
       }
       if (body.url !== undefined) {
+        // The copy's monitor checks this address (#Q3684): clearing it while
+        // Monitor is on is refused, and a new one moves the check with it.
+        if (body.url.trim() === "") {
+          await this.monitorOwners.assertAddressCanClear(instance);
+        }
         instance = await this.service.setUrl(instance, body.url);
+        await this.monitorOwners.followAddress(instance);
       }
       if (body.hostId !== undefined) {
         instance = await this.service.setHost(instance, body.hostId);

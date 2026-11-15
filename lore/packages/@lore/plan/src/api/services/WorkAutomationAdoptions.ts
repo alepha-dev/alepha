@@ -5,6 +5,7 @@ import {
   LoreInboxNotifications,
 } from "@lore/core/api";
 import {
+  AutomationRuleChannels,
   projects,
   automationRuleSchema,
   type AutomationRule,
@@ -71,14 +72,17 @@ export class WorkAutomationAdoptions {
   }
   protected matches(rule: AutomationRule, expected: AutomationRule): boolean {
     // Copy may be edited, while every behavior-bearing field stays compatible.
+    // Compared in the authored form: a stored rule names `channels`
+    // (#Q3613), the policy's build one `channel`.
     const shape = (value: AutomationRule) =>
       JSON.stringify(
         automationRuleSchema.parse({
-          ...value,
-          actions: value.actions.map((action) =>
-            action.kind === "notify"
-              ? { ...action, title: "", text: "" }
-              : action,
+          ...AutomationRuleChannels.normalize(value),
+          actions: AutomationRuleChannels.normalize(value).actions.map(
+            (action) =>
+              action.kind === "notify"
+                ? { ...action, title: "", text: "" }
+                : action,
           ),
         }),
       );

@@ -5,6 +5,7 @@ import { DbConflictError } from "alepha/orm";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreCoreApi } from "../src/api/index.ts";
+import { AutomationRuleChannels } from "../src/api/schemas/AutomationRuleChannels.ts";
 import {
   automationRuleSchema,
   type AutomationRule,
@@ -415,12 +416,20 @@ describe("Automation persistence", () => {
       title: "🌱".repeat(1000),
     }));
     expect(automationRunSnapshotSchema.safeParse(large).success).toBe(false);
+    // The schema holds a run's expanded rule, one notify per channel, so
+    // its cap is 40; an authored rule holds five (#Q3613).
     expect(
       automationRuleSchema.safeParse({
         ...eventRule(),
-        actions: Array(6).fill(eventRule().actions[0]),
+        actions: Array(41).fill(eventRule().actions[0]),
       }).success,
     ).toBe(false);
+    expect(() =>
+      AutomationRuleChannels.normalize({
+        ...eventRule(),
+        actions: Array(6).fill(eventRule().actions[0]),
+      }),
+    ).toThrow("at most 5 actions");
     expect(
       automationRuleSchema.safeParse({
         ...eventRule(),

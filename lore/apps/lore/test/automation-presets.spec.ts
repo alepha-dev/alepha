@@ -152,9 +152,9 @@ describe("Stock automation presets", () => {
     expect(inbox).toMatchObject({
       enabled: false,
       presetKey: "feedback-created",
-      rule: { actions: [{ recipient: user.id, channel: "inbox" }] },
+      rule: { actions: [{ recipient: user.id, channels: ["inbox"] }] },
     });
-    expect(email.rule!.actions[0]).toMatchObject({ channel: "email" });
+    expect(email.rule!.actions[0]).toMatchObject({ channels: ["email"] });
     expect(await persistence.variables.count({ projectId: project.id })).toBe(
       0,
     );

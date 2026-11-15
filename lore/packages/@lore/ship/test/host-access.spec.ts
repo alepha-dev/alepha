@@ -8,8 +8,7 @@ import {
   RankService,
 } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
-import { DateTimeProvider } from "alepha/datetime";
-import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
+import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
@@ -25,8 +24,6 @@ import {
   BackupController,
   HostCommandController,
   HostController,
-  HostExpiryJobs,
-  HostService,
   LoreShipApi,
   ProjectHostController,
 } from "../src/api/index.ts";
@@ -419,44 +416,6 @@ describe("host access by the home project's rank", () => {
         { user: w.manager },
       ),
     ).rejects.toThrow(NotFoundError);
-  });
-
-  it("tells the people who can fix a host, and a host with no home its anchor", async ({
-    expect,
-  }) => {
-    const w = await world();
-    const service = alepha.inject(HostService);
-    const row = await repos.hosts.getById(w.host.id);
-
-    expect((await service.recipientsOf(row)).sort()).toEqual(
-      [w.owner.id, w.manager.id].sort(),
-    );
-
-    const loose = await repos.hosts.create({
-      ownerUserId: w.stranger.id,
-      createdBy: w.stranger.id,
-      type: "bay",
-      slug: "loose",
-    });
-    expect(await service.recipientsOf(loose)).toEqual([w.stranger.id]);
-
-    // The overdue notice: once per host, to each person who can act.
-    const dateTime = alepha.inject(DateTimeProvider);
-    await repos.hosts.updateById(w.host.id, {
-      expiresAt: new Date(dateTime.nowMillis() - 1000).toISOString(),
-    });
-    const sweep = alepha.inject(HostExpiryJobs);
-    expect(await sweep.sweep()).toBe(1);
-    expect(await sweep.sweep()).toBe(0);
-    const mail = alepha.inject(MemoryEmailProvider);
-    const deadline = Date.now() + 5000;
-    while (mail.records.length < 2 && Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    expect(mail.records.map((record) => record.to).sort()).toEqual([
-      "manager@example.com",
-      "owner@example.com",
-    ]);
   });
 
   it("pins the reads one host action costs", async ({ expect }) => {

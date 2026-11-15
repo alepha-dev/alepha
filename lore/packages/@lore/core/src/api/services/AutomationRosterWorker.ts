@@ -3,6 +3,7 @@ import { ConflictError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
 import { automationOutboxIdsSchema } from "../schemas/automationOutboxIdsSchema.ts";
+import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import type { AutomationRenderContext } from "./AutomationContextBuilder.ts";
@@ -53,7 +54,7 @@ export class AutomationRosterWorker {
       throw new ConflictError("Roster notification cannot be rendered");
     const frozen = await this.roster.freeze(occurrence.id, token, {
       index,
-      channels: [rendered.raw.channel],
+      channels: AutomationRuleChannels.of(rendered.raw),
       excludeUserId: publisherId,
     });
     if (frozen.status === "committed")

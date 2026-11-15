@@ -10,7 +10,7 @@ import type {
   AutomationVariableApproval,
 } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { appInstances, monitors } from "@lore/ship/schemas";
+import { appInstances, hosts, monitors } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { JobQueueProvider } from "alepha/api/jobs";
 import { ApiKeyService } from "alepha/api/keys";
@@ -48,6 +48,7 @@ class SetupRace extends AutomationService {
 class SetupRows {
   public readonly instances = $repository(appInstances);
   public readonly monitors = $repository(monitors);
+  public readonly hosts = $repository(hosts);
 }
 
 describe("Preset setup, explicit bindings and project pickers", () => {
@@ -128,8 +129,15 @@ describe("Preset setup, explicit bindings and project pickers", () => {
       statusSince: new Date(0).toISOString(),
       nextCheckAt: new Date(0).toISOString(),
     });
+    const host = await rows.hosts.create({
+      projectId: project.id,
+      ownerUserId: user.id,
+      type: "bay",
+      slug: "setup-host",
+    });
     const native: Record<string, string | number> = {
       monitor: monitor.id,
+      host: host.id,
       recipient: user.id,
       channel: "inbox",
       folio: folio.id,

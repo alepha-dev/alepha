@@ -7,6 +7,7 @@ import { useI18n } from "alepha/react/i18n";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppSettingsDelete from "./AppSettingsDelete.tsx";
 import AppSettingsHost from "./AppSettingsHost.tsx";
+import AppSettingsMonitor from "./AppSettingsMonitor.tsx";
 import AppSettingsRename from "./AppSettingsRename.tsx";
 import AppSettingsSigil from "./AppSettingsSigil.tsx";
 import AppSettingsSigilFeatures from "./AppSettingsSigilFeatures.tsx";
@@ -71,6 +72,9 @@ const AppSettings = () => {
         <AppSettingsRename key={`env-${instance.id}`} half="env" />
         <AppSettingsUrl key={`url-${instance.id}`} />
       </SettingsSection>
+
+      {/* Right below General, where the address it checks is set (#Q3684). */}
+      <AppSettingsMonitor key={`monitor-${instance.id}`} />
 
       <AppSettingsSigil />
 

@@ -1,3 +1,4 @@
+import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { currentProjectAtom, I18n } from "@lore/core/web";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
@@ -13,12 +14,10 @@ import {
   type MonitorListItem,
   monitorListItemSchema,
 } from "../src/api/schemas/monitorListItemSchema.ts";
+import { currentInstanceAtom } from "../src/web/app/atoms/currentInstanceAtom.ts";
 import AppDashboardUptime from "../src/web/app/components/project/apps/AppDashboardUptime.tsx";
-import {
-  monitorOfInstance,
-  monitorPrefill,
-} from "../src/web/app/components/project/uptime/instanceMonitors.ts";
-import MonitorFormDialog from "../src/web/app/components/project/uptime/MonitorFormDialog.tsx";
+import AppSettingsMonitor from "../src/web/app/components/project/apps/AppSettingsMonitor.tsx";
+import { monitorOfInstance } from "../src/web/app/components/project/uptime/instanceMonitors.ts";
 
 /**
  * Answers `listMonitors` with the monitors a case sets, and records every call.
@@ -61,7 +60,11 @@ const anInstance = (
     ...over,
   }) as AppInstanceResource;
 
-const aMonitor = (target: string, appInstanceId?: string): MonitorListItem =>
+const aMonitor = (
+  target: string,
+  appInstanceId?: string,
+  over: Partial<MonitorListItem> = {},
+): MonitorListItem =>
   monitorListItemSchema.parse({
     id: crypto.randomUUID(),
     version: 0,
@@ -83,6 +86,7 @@ const aMonitor = (target: string, appInstanceId?: string): MonitorListItem =>
     nextCheckAt: "2026-10-15T10:01:00Z",
     uptimePct: 99.5,
     beats: [],
+    ...over,
   });
 
 const boot = async (uptime: boolean) => {
@@ -120,102 +124,66 @@ describe("monitors owned by app copies", () => {
     expect(monitorOfInstance(instance, [sameAddress])).toBeUndefined();
   });
 
-  it("prefills a new monitor with the copy, its name and its address", ({
+  it("prefers the copy's HTTP check, the one its Monitor switch manages", ({
     expect,
   }) => {
-    const free = anInstance({ env: "staging", url: "https://s.example.test" });
-    const nowhere = anInstance({ env: "local", url: undefined });
-
-    expect(monitorPrefill(free)).toEqual({
-      appInstanceId: free.id,
-      name: "acme staging",
-      target: "https://s.example.test",
-    });
-    // A copy with no address still owns a push or a TCP check.
-    expect(monitorPrefill(nowhere)).toEqual({
-      appInstanceId: nowhere.id,
-      name: "acme local",
-      target: "",
-    });
+    const instance = anInstance();
+    const push = aMonitor("", instance.id, { kind: "push" });
+    const http = aMonitor("https://acme.example.test", instance.id);
+    expect(monitorOfInstance(instance, [push, http])).toBe(http);
+    expect(monitorOfInstance(instance, [push])).toBe(push);
   });
 });
 
-describe("adding a monitor from an app", () => {
+describe("the Overview's Uptime card", () => {
   beforeAll(() => {
     setupJsdomMocks();
   });
   afterEach(cleanup);
 
-  it("opens the dialog with the name and target filled in", async ({
-    expect,
-  }) => {
-    const { alepha } = await boot(true);
-    try {
-      const view = render(
-        <AlephaContext.Provider value={alepha}>
-          <MonitorFormDialog
-            projectId={1}
-            prefill={{
-              appInstanceId: crypto.randomUUID(),
-              name: "acme staging",
-              target: "https://s.example.test",
-            }}
-            onClose={() => {}}
-          />
-        </AlephaContext.Provider>,
-      );
-      expect(
-        ((await view.findByLabelText(/^Name/)) as HTMLInputElement).value,
-      ).toBe("acme staging");
-      expect(
-        (view.getByLabelText(/^Target/) as HTMLTextAreaElement).value,
-      ).toBe("https://s.example.test");
-    } finally {
-      await alepha.stop();
-    }
-  });
-
-  it("shows the app's monitor on its page, or an Add monitor action", async ({
+  it("summarises the copy's monitor while it is on, and offers no Add", async ({
     expect,
   }) => {
     const { alepha, links } = await boot(true);
     const instance = anInstance();
     try {
+      links.monitors = [aMonitor("https://acme.example.test", instance.id)];
       const view = render(
         <AlephaContext.Provider value={alepha}>
           <AppDashboardUptime instance={instance} />
         </AlephaContext.Provider>,
       );
-      fireEvent.click(await view.findByRole("button", { name: "Add monitor" }));
-      expect(
-        ((await view.findByLabelText(/^Target/)) as HTMLTextAreaElement).value,
-      ).toBe("https://acme.example.test");
-      // Saving creates the monitor ON this copy (#Q3657).
-      fireEvent.submit(view.getByLabelText(/^Target/).closest("form")!);
-      await waitFor(() =>
-        expect(links.bodies).toContainEqual(
-          expect.objectContaining({
-            action: "createMonitor",
-            appInstanceId: instance.id,
-          }),
-        ),
+      const link = await view.findByRole("link", { name: "Acme" });
+      expect(link.getAttribute("href")).toBe(
+        `/acme/uptime/${links.monitors[0]!.id}`,
       );
-      cleanup();
+      expect(view.getByText("Up")).toBeTruthy();
+      expect(view.queryByRole("button", { name: "Add monitor" })).toBeNull();
+    } finally {
+      await alepha.stop();
+    }
+  });
 
-      links.monitors = [aMonitor("https://acme.example.test", instance.id)];
-      const monitored = render(
+  it("is gone while Monitor is off (paused) or the copy has none", async ({
+    expect,
+  }) => {
+    const { alepha, links } = await boot(true);
+    const instance = anInstance();
+    try {
+      links.monitors = [
+        aMonitor("https://acme.example.test", instance.id, {
+          active: false,
+          status: "paused",
+        }),
+      ];
+      const view = render(
         <AlephaContext.Provider value={alepha}>
           <AppDashboardUptime instance={instance} />
         </AlephaContext.Provider>,
       );
-      const link = await monitored.findByRole("link", { name: "Acme" });
-      expect(link.getAttribute("href")).toBe(
-        `/acme/uptime/${links.monitors[0]!.id}`,
-      );
-      expect(monitored.getByText("Up")).toBeTruthy();
-      expect(
-        monitored.queryByRole("button", { name: "Add monitor" }),
-      ).toBeNull();
+      await waitFor(() => expect(links.calls).toContain("listMonitors"));
+      expect(view.container.innerHTML).toBe("");
+      expect(view.queryByRole("button", { name: "Add monitor" })).toBeNull();
     } finally {
       await alepha.stop();
     }
@@ -233,6 +201,117 @@ describe("adding a monitor from an app", () => {
       );
       await waitFor(() => expect(view.container.innerHTML).toBe(""));
       expect(links.calls).not.toContain("listMonitors");
+    } finally {
+      await alepha.stop();
+    }
+  });
+});
+
+/**
+ * The Monitor section of app settings (#Q3684): one switch, needing the
+ * address, that creates or resumes the copy's HTTP check.
+ */
+describe("app settings' Monitor", () => {
+  beforeAll(() => {
+    setupJsdomMocks();
+  });
+  afterEach(cleanup);
+
+  const mount = async (
+    instance: ReturnType<typeof anInstance>,
+    monitors: MonitorListItem[] = [],
+  ) => {
+    const { alepha, links } = await boot(true);
+    links.monitors = monitors;
+    alepha.store.set(currentInstanceAtom, instance as never);
+    const view = render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <AppSettingsMonitor />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    const toggle = (await view.findByTestId(
+      "app-monitor-toggle",
+    )) as HTMLElement;
+    // The list the section reads, before a case acts on the switch.
+    await view.findByText("Monitor this app");
+    return { alepha, links, view, toggle };
+  };
+
+  it("cannot be turned on without an address, and says so", async ({
+    expect,
+  }) => {
+    const { alepha, view, toggle } = await mount(
+      anInstance({ url: undefined }),
+    );
+    try {
+      await waitFor(() =>
+        expect(toggle.hasAttribute("data-disabled")).toBe(true),
+      );
+      expect(view.getByText(/Set the address above first/)).toBeTruthy();
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("creates the copy's HTTP check on its address when switched on", async ({
+    expect,
+  }) => {
+    const instance = anInstance();
+    const { alepha, links, toggle } = await mount(instance);
+    try {
+      await waitFor(() =>
+        expect(toggle.hasAttribute("data-disabled")).toBe(false),
+      );
+      expect(toggle.getAttribute("aria-checked")).toBe("false");
+      fireEvent.click(toggle);
+      await waitFor(() =>
+        expect(links.bodies).toContainEqual(
+          expect.objectContaining({
+            action: "createMonitor",
+            appInstanceId: instance.id,
+            kind: "http",
+            target: "https://acme.example.test",
+          }),
+        ),
+      );
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("resumes a paused check, and shows its settings with Edit while on", async ({
+    expect,
+  }) => {
+    const instance = anInstance();
+    const paused = aMonitor("https://acme.example.test", instance.id, {
+      active: false,
+      status: "paused",
+    });
+    const { alepha, links, toggle } = await mount(instance, [paused]);
+    try {
+      await waitFor(() =>
+        expect(toggle.hasAttribute("data-disabled")).toBe(false),
+      );
+      fireEvent.click(toggle);
+      await waitFor(() =>
+        expect(links.bodies).toContainEqual({
+          action: "setMonitorActive",
+          active: true,
+        }),
+      );
+      expect(links.calls).not.toContain("createMonitor");
+      cleanup();
+      await alepha.stop();
+
+      const on = await mount(instance, [
+        aMonitor("https://acme.example.test", instance.id),
+      ]);
+      const summary = await on.view.findByTestId("app-monitor-summary");
+      expect(summary.textContent).toContain("https://acme.example.test");
+      expect(on.view.getByRole("button", { name: "Edit" })).toBeTruthy();
+      await on.alepha.stop();
     } finally {
       await alepha.stop();
     }

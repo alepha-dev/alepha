@@ -38,7 +38,6 @@ import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { UptimeJobs } from "./jobs/UptimeJobs.ts";
 import { UptimeRetentionJobs } from "./jobs/UptimeRetentionJobs.ts";
-import { HostNotifications } from "./notifications/HostNotifications.ts";
 import { AppHealthMetric } from "./services/AppHealthMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
@@ -71,6 +70,9 @@ import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
 import { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
+import { HostAutomationEventSubjects } from "./services/HostAutomationEventSubjects.ts";
+import { HostAutomationPresets } from "./services/HostAutomationPresets.ts";
+import { HostAutomationReferences } from "./services/HostAutomationReferences.ts";
 import { HostCloudflareService } from "./services/HostCloudflareService.ts";
 import { HostCommandService } from "./services/HostCommandService.ts";
 import { HostCommandTransport } from "./services/HostCommandTransport.ts";
@@ -142,6 +144,9 @@ export const LoreShipApi = $module({
     DeployAutomationReferences,
     UptimeAutomationEventSubjects,
     UptimeAutomationPresets,
+    HostAutomationEventSubjects,
+    HostAutomationPresets,
+    HostAutomationReferences,
     UptimeAutomationReferences,
     DeployDashboardMetrics,
     ProjectErrorQuestHandBack,
@@ -177,7 +182,6 @@ export const LoreShipApi = $module({
     HostCommandJobs,
     HostCredentialJobs,
     HostExpiryJobs,
-    HostNotifications,
     QualityService,
     ArtifactTarReader,
     ArtifactDetailService,
@@ -319,7 +323,6 @@ export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
 export { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
-export { HostNotifications } from "./notifications/HostNotifications.ts";
 export { StackBundleReader } from "./services/StackBundleReader.ts";
 export { StackComposeParser } from "./services/StackComposeParser.ts";
 export { StackConsoleService } from "./services/StackConsoleService.ts";
