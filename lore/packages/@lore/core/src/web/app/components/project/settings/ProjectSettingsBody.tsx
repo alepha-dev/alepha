@@ -14,7 +14,9 @@ export interface ProjectSettingsBodyProps {
  *
  * A page of setting blocks reads in a centred `max-w-6xl` column; a tab that
  * declares `fullWidth` (Hosts' flat table, the Ranks matrix) gets the whole
- * body, and `min-h-full` so a table taking `flex-1` reaches the bottom edge.
+ * body, at exactly its height (`h-full`): a table taking `flex-1 min-h-0`
+ * reaches the bottom edge and scrolls inside, under a header that stays put
+ * (#Q3666).
  * The choice is the tab's, so widening one page never widens the others, the
  * regression 51e794e71 made by dropping the column for every tab at once.
  */
@@ -24,7 +26,7 @@ const ProjectSettingsBody = (props: ProjectSettingsBodyProps) => (
     data-full-width={props.fullWidth ? "true" : undefined}
     className={
       props.fullWidth
-        ? "flex min-h-full w-full flex-col gap-8 p-4 md:p-6"
+        ? "flex h-full w-full flex-col gap-8 p-4 md:p-6"
         : "mx-auto flex w-full max-w-6xl flex-col gap-8 p-4 md:p-6"
     }
   >

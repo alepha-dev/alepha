@@ -38,7 +38,7 @@ describe("ProjectSettingsBody", () => {
 
     const body = screen.getByTestId("settings-body");
     expect(body.className).not.toContain("max-w-6xl");
-    expect(body.className).toContain("min-h-full");
+    expect(body.className.split(/\s+/)).toContain("h-full");
     expect(body.dataset.fullWidth).toBe("true");
   });
 });

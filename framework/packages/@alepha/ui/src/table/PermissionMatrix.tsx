@@ -149,8 +149,14 @@ export const PermissionMatrix = (props: PermissionMatrixProps) => {
     rows.filter((row) => permissionChecked(column, row, granted)).length;
 
   return (
-    <div className={cn("w-full overflow-x-auto", props.className)}>
-      <Table>
+    // The matrix is its own scroll region, both axes, and the table's own
+    // wrapper does not scroll (#Q3666): a `sticky` header sticks to its
+    // nearest scrolling ancestor, and the wrapper's `overflow-x-auto` made
+    // that a box exactly as tall as the table, which never scrolls. Give the
+    // matrix a height (`min-h-0 flex-1` in a column) and its rank names stay
+    // put while the permissions scroll.
+    <div className={cn("w-full overflow-auto", props.className)}>
+      <Table containerClassName="overflow-visible">
         {/* The chrome surface, sticky, so a long matrix keeps its rank names
             while it scrolls. `bg-muted` fully opaque and the two inset lines
             are the same pair `DataTable`'s header wears, and for the same

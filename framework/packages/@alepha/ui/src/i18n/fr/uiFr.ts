@@ -1591,8 +1591,6 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "organizations.mine.title": "Mes organisations",
   "organizations.ranks.actions": "Actions de $1",
   "organizations.ranks.blank": "Rang vide",
-  "organizations.ranks.cache":
-    "Les changements de permissions peuvent prendre jusqu'à 30 secondes. Les rétrogradations de rang prennent effet immédiatement.",
   "organizations.ranks.cancel": "Annuler",
   "organizations.ranks.create": "Créer un rang",
   "organizations.ranks.createConfirm": "Créer",
@@ -1604,7 +1602,6 @@ export const uiFr: Record<string, DictionaryEntry> = {
     "Un rang attribué à un membre ne peut pas être supprimé.",
   "organizations.ranks.deleted": "Rang supprimé",
   "organizations.ranks.deleteTitle": "Supprimer $1 ?",
-  "organizations.ranks.description": "Choisissez les droits de chaque rang.",
   "organizations.ranks.empty": "Aucune permission à afficher.",
   "organizations.ranks.fromPreset": "Partir de $1",
   "organizations.ranks.holders": "$1 membres",
@@ -1613,7 +1610,6 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "organizations.ranks.renameTitle": "Renommer $1",
   "organizations.ranks.save": "Enregistrer les rangs",
   "organizations.ranks.saved": "Rangs enregistrés",
-  "organizations.ranks.title": "Rangs",
   "organizations.transfer.action": "Transférer la propriété",
   "organizations.transfer.confirm": "Transférer",
   "organizations.transfer.confirmDescription":
