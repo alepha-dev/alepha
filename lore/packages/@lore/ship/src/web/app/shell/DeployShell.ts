@@ -99,17 +99,19 @@ export class DeployShell {
           name === "projectStacks" || name === "projectStackEnvironment",
       },
       {
-        // ⚠️ Baseline, with no option: artifacts arrive from CI through
-        // `lore artifacts push`, not from anything an instance collects, so
-        // a project that watches nothing still has a build history and still
-        // needs the door to it. It moved under Apps on 2026-09-06 at the
-        // owner's request - an artifact is a build OF AN APP.
+        // Under the `deploy` option (#Q3631): an artifact is a build pushed
+        // TO BE DEPLOYED, so a project that does not deploy has no use for
+        // the page. It does not hang off `track`: artifacts arrive from CI
+        // through `lore artifacts push`, not from anything an instance
+        // collects. It moved under Apps on 2026-09-06 at the owner's
+        // request - an artifact is a build OF AN APP.
         route: "projectArtifacts",
         permission: "artifact:read",
         labelKey: "project.menu.artifacts",
         icon: Package,
         group: "ops",
         order: 20,
+        option: "deploy",
       },
       {
         // Offer an inbox for an app collecting crashes, or for retained
