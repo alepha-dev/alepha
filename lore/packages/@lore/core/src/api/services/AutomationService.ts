@@ -90,7 +90,9 @@ export class AutomationService {
     projectId: number,
     user: UserAccountToken,
     input: AutomationCreateBody,
-    preset?: string | { key: string; subscription?: boolean },
+    preset?:
+      | string
+      | { key: string; subscription?: boolean; subscriptionScope?: string },
     expectedVariables: readonly AutomationVariableApproval[] = [],
     nativeEffects?: (rule: Automation) => AutomationConfigurationExtension,
   ) {
@@ -101,6 +103,10 @@ export class AutomationService {
       const presetKey = typeof preset === "string" ? preset : preset?.key;
       const subscription =
         typeof preset === "object" && preset.subscription === true;
+      const subscriptionScope =
+        subscription && typeof preset === "object"
+          ? (preset.subscriptionScope ?? "")
+          : "";
       if (enabled && body.rule.compatibility)
         // The sentence `setEnabled` refuses with, for the same reason.
         throw new ForbiddenError(
@@ -128,6 +134,7 @@ export class AutomationService {
         activatedAt: now,
         ...(presetKey ? { presetKey } : {}),
         subscription,
+        subscriptionScope,
       } satisfies Automation;
       const prepared = await this.prepare(candidate);
       if (

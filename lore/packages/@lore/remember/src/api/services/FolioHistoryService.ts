@@ -269,11 +269,37 @@ export class FolioHistoryService {
   }
 
   /**
+   * {@link prepareRevision} for a table folio (#E144, #Q3513), whose body
+   * is its columns and rows rather than `content`: `previousContent`
+   * serialises the table as it stands, and is called only when a live row
+   * other than the open one has to be filled in. Inside a writing session
+   * the head is the open revision, so a row write reads nothing here; the
+   * table is read once, when a write opens a new revision.
+   */
+  public async prepareRevisionLazy(
+    folioId: string,
+    byUserId: string,
+    action: RevisionAction,
+    previousContent: () => Promise<string>,
+  ): Promise<RevisionPlan> {
+    const [open, live] = await Promise.all([
+      action === "revert"
+        ? undefined
+        : this.findOpenRevision(folioId, byUserId),
+      this.liveRevisionIds(folioId),
+    ]);
+    if (live.some((row) => row.id !== open?.id)) {
+      await this.fillLive(live, await previousContent(), open?.id);
+    }
+    return { action, open };
+  }
+
+  /**
    * The half of {@link appendRevision} that runs AFTER the folio write:
    * fold into the open revision or insert a new head, then enforce the
    * retention cap.
    */
-  protected revisionData(folio: Folio) {
+  protected revisionData(folio: Pick<Folio, "title" | "summary">) {
     return {
       at: this.dateTime.nowISOString(),
       contentSnapshot: "",
@@ -283,7 +309,7 @@ export class FolioHistoryService {
     };
   }
   public async recordRevision(
-    folio: Folio,
+    folio: Pick<Folio, "id" | "title" | "summary">,
     byUserId: string,
     plan: RevisionPlan,
   ): Promise<AppendedRevision> {

@@ -32,7 +32,7 @@ describe("Automation subscriptions (#Q3576)", () => {
   const get = async () =>
     (
       await api.getAutomationSubscription.fetch(
-        { params: { projectId: project.id, key } },
+        { params: { projectId: project.id }, query: { presets: key } },
         { user },
       )
     ).data;
@@ -40,8 +40,8 @@ describe("Automation subscriptions (#Q3576)", () => {
     (
       await api.setAutomationSubscription.fetch(
         {
-          params: { projectId: project.id, key },
-          body: { subscribed, ...(values ? { values } : {}) },
+          params: { projectId: project.id },
+          body: { presets: [key], subscribed, ...(values ? { values } : {}) },
         },
         { user },
       )
@@ -116,8 +116,8 @@ describe("Automation subscriptions (#Q3576)", () => {
     const channels = (subscribed: boolean, list: string[]) =>
       api.setAutomationSubscription.fetch(
         {
-          params: { projectId: project.id, key },
-          body: { subscribed, channels: list },
+          params: { projectId: project.id },
+          body: { presets: [key], subscribed, channels: list },
         },
         { user },
       );

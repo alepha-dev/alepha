@@ -50,6 +50,13 @@ export const automations = $entity({
      * and this flag. It stays an ordinary rule, listed and editable.
      */
     subscription: db.default(z.boolean(), false),
+    /**
+     * The subscription's scope (#Q3635), in the canonical form of
+     * `AutomationSubscriptionScope`: the setup values its bell binds, such
+     * as `monitor=<id>`. Empty for a list's bell, and for every rule that is
+     * not a subscription.
+     */
+    subscriptionScope: db.default(z.string().max(255), ""),
     nextRunAt: z.datetime().optional(),
     scheduleCron: z.string().max(128).optional(),
     baseline: automationSafeFieldsSchema.optional(),

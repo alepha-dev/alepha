@@ -173,10 +173,12 @@ export class AutomationCatalog {
         "event",
         "trigger.event",
       );
-      const values =
-        "app" in rule.trigger && rule.trigger.app !== undefined
-          ? { app: rule.trigger.app }
-          : {};
+      const values = {
+        ...(rule.trigger.app !== undefined ? { app: rule.trigger.app } : {}),
+        ...(rule.trigger.monitor !== undefined
+          ? { monitor: rule.trigger.monitor }
+          : {}),
+      };
       await this.slots(projectId, source, values, {}, variables, "trigger");
     } else {
       const resolvedCron = await this.value(

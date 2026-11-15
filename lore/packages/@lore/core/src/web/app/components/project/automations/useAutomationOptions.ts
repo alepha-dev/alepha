@@ -13,7 +13,8 @@ export type AutomationOptionKind =
   | "release"
   | "epic"
   | "feedback"
-  | "deployment";
+  | "deployment"
+  | "monitor";
 
 /**
  * Below a full page the picker filters what it already holds; a full page

@@ -96,6 +96,36 @@ describe("PlateLayout", () => {
   });
 
   /**
+   * A folder tile opens into the body, so the band draws no rule under the
+   * tabs unless a page asks for one with `tabsBorder`.
+   */
+  it("draws a rule under folder tabs only with tabsBorder", async () => {
+    // Whole class tokens: `border-border` contains `border-b` as text.
+    const band = (view: Awaited<ReturnType<typeof mount>>) =>
+      view.getByTestId("probe-tabs").parentElement!.className.split(/\s+/);
+
+    const plain = await mount(
+      <PlateLayout tabs={stateTabs} active="overview" tabsTestId="probe-tabs">
+        <p>body</p>
+      </PlateLayout>,
+    );
+    expect(band(plain)).not.toContain("border-b");
+    plain.unmount();
+
+    const ruled = await mount(
+      <PlateLayout
+        tabs={stateTabs}
+        active="overview"
+        tabsTestId="probe-tabs"
+        tabsBorder
+      >
+        <p>body</p>
+      </PlateLayout>,
+    );
+    expect(band(ruled)).toContain("border-b");
+  });
+
+  /**
    * `plate` has always been optional and had never been exercised, which is
    * how the tab bar's top rule came to be unconditional: with no plate it
    * drew a stray line immediately under the container's own top edge

@@ -1,0 +1,42 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c8294839-f3a4-43d7-96bc-ff433a71364a",
+  "prevIds": ["68392034-3195-479f-a159-c441f1b15cf9"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "automations",
+        "subscription_scope"
+      ],
+      "writes": [
+        "s|col|public.automations.subscription_scope",
+        "n|col|public.automations.subscription_scope",
+        "e|col|public.automations.subscription_scope"
+      ],
+      "reads": ["n|tbl|public.automations", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "automations",
+        "name": "subscription_scope",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "''",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

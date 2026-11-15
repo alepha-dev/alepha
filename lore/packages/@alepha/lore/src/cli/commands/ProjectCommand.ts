@@ -48,6 +48,26 @@ import {
  * `scripts/check-dts.ts` fails the build if one does.
  */
 export class ProjectCommand {
+  /**
+   * Whether the caller's rank here grants reads only, as a viewer's of an
+   * open project does: what MCP's `project_context` returns as `readOnly`,
+   * told the same way (every permission a `:read`, no wildcard).
+   */
+  protected readOnly(project: {
+    rank?: { key: string; name: string };
+    permissions?: string[];
+  }): boolean {
+    const permissions = project.permissions ?? [];
+    return (
+      !!project.rank &&
+      permissions.length > 0 &&
+      permissions.every(
+        (permission) =>
+          permission.endsWith(":read") && !permission.includes("*"),
+      )
+    );
+  }
+
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
   protected readonly refusals = $inject(LoreRefusals);
@@ -293,6 +313,7 @@ export class ProjectCommand {
             ["Title", found.title],
             ["Id", found.id],
             ["Rank", found.rank?.name],
+            ["Access", this.readOnly(found) ? "read-only" : undefined],
             ["Members", found.memberCount],
             [
               "Capabilities",
@@ -532,6 +553,7 @@ export class ProjectCommand {
             ["Title", found.title],
             ["Id", found.id],
             ["Rank", found.rank?.name],
+            ["Access", this.readOnly(found) ? "read-only" : undefined],
             ["Language", found.preferredLanguage],
             [
               "Capabilities",
