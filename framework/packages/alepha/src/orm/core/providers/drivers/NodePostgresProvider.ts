@@ -9,6 +9,16 @@ import {
 } from "./PostgresProvider.ts";
 
 export class NodePostgresProvider extends PostgresProvider {
+  /**
+   * A statement in flight is raced against its signal, never cancelled
+   * (#Q3746): the caller is released at once, the statement finishes alone.
+   * A Postgres cancel names a server process, not a statement, so one sent
+   * as a read ends interrupts whatever that connection runs next, another
+   * caller's statement included. The protocol has no safer cancel, whatever
+   * the client library.
+   */
+  protected override readonly racesStatementSignal: boolean = true;
+
   static readonly SSL_MODES = [
     "require",
     "allow",
@@ -182,8 +192,8 @@ export class NodePostgresProvider extends PostgresProvider {
 
     this.client = client;
     this.pg = drizzle({
-      // A read cancels in flight when its signal aborts (#E85).
-      client: this.cancellable(client),
+      // No in-flight cancel (#Q3746): see `racesStatementSignal`.
+      client,
       logger: {
         // forward logs
         logQuery: (query: string, params: unknown[]) => {
