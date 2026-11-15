@@ -202,7 +202,6 @@ describe("route guards on a capability", () => {
       ["projectAutomationGallery", {}],
       ["projectAutomationVariables", { query: {} }],
       ["projectAutomationRun", { params: { runId: "x" } }],
-      ["projectAutomationAdoption", {}],
       ["projectAutomationDetail", { params: { automationId: "x" } }],
     ] as const) {
       const run = async () => loaderOf(alepha, name)?.(args as never);

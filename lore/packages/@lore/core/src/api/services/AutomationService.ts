@@ -3,12 +3,7 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import {
-  ConflictError,
-  NotFoundError,
-  ForbiddenError,
-  BadRequestError,
-} from "alepha/server";
+import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import type { AutomationRun } from "../entities/automationRuns.ts";
 import { automations, type Automation } from "../entities/automations.ts";
@@ -86,8 +81,7 @@ export class AutomationService {
    * Create a rule, as a draft or enabled (#Q3573).
    *
    * ⚠️ **Enabled is one write, not create-then-enable.** The checks the
-   * Enable action runs (the author's permission, a compatibility rule's
-   * adoption, the inputs `prepare` validates, the shared-variable approval
+   * Enable action runs (the author's permission, the inputs `prepare` validates, the shared-variable approval
    * fence) run here first, and the rule is inserted enabled under the same
    * fence or not at all: a refusal leaves nothing half-made, where the old
    * two steps left a disabled rule behind a refused enable.
@@ -113,11 +107,6 @@ export class AutomationService {
         subscription && typeof preset === "object"
           ? (preset.subscriptionScope ?? "")
           : "";
-      if (enabled && body.rule.compatibility)
-        // The sentence `setEnabled` refuses with, for the same reason.
-        throw new ForbiddenError(
-          "Use explicit policy adoption before enabling this compatibility rule",
-        );
       const provenance = await this.access.provenance(user);
       const now = this.time.nowISOString();
       const id = this.crypto.randomUUID();
@@ -296,22 +285,6 @@ export class AutomationService {
   ) {
     return this.database.primary(async () => {
       const rule = await this.stored(projectId, id);
-      if (
-        enabled &&
-        rule.rule.compatibility &&
-        extension?.adopting !== rule.rule.compatibility &&
-        !(await this.persistence.adoptions.findOne({
-          where: {
-            projectId,
-            policy: rule.rule.compatibility,
-            automationId: id,
-            state: "adopted",
-          },
-        }))
-      )
-        throw new ForbiddenError(
-          "Use explicit policy adoption before enabling this compatibility rule",
-        );
       await this.access.assertMutation(
         rule,
         user,
@@ -718,7 +691,7 @@ export class AutomationService {
   /**
    * What {@link AutomationService.resource} reads beyond the rule, fetched
    * once for a page of rules of one project: their authors, the shared
-   * values they reference, and which compatibility rules are adopted.
+   * values they reference.
    */
   protected async lookups(
     projectId: number,
@@ -730,9 +703,6 @@ export class AutomationService {
         rules.flatMap((rule) => [...this.variables.references(rule.rule)]),
       ),
     ];
-    const compatible = rules
-      .filter((rule) => rule.rule.compatibility)
-      .map((rule) => rule.id);
     const authors = await this.bounds.collect(authorIds, (ids) =>
       this.userRows.findMany({
         where: { id: { inArray: ids } },
@@ -746,19 +716,9 @@ export class AutomationService {
         limit: batch.length,
       }),
     );
-    const adopted = await this.bounds.collect(compatible, (ids) =>
-      this.persistence.adoptions.findMany({
-        where: { projectId, automationId: { inArray: ids }, state: "adopted" },
-        columns: ["automationId", "policy"],
-        limit: ids.length * 2,
-      }),
-    );
     return {
       authors: new Map(authors.map((author) => [author.id, author])),
       variables: new Map(values.map((value) => [value.key, value])),
-      adopted: new Set(
-        adopted.map((row) => `${row.automationId}:${row.policy}`),
-      ),
       inspected: new Map(),
     };
   }
@@ -857,11 +817,7 @@ export class AutomationService {
           }
         : {}),
       canEdit: own && write,
-      canEnable:
-        own &&
-        write &&
-        (!rule.rule.compatibility ||
-          lookups.adopted.has(`${rule.id}:${rule.rule.compatibility}`)),
+      canEnable: own && write,
       canDisable: (own && write) || manage,
       canDelete: (own && write) || manage,
     });
@@ -875,10 +831,6 @@ export interface AutomationResourceLookups {
   >;
   variables: Map<string, AutomationVariable>;
   /**
-   * `automationId:policy` of each adopted compatibility rule on the page.
-   */
-  adopted: Set<string>;
-  /**
    * Whether each shared value is available to the caller, by variable id,
    * memoised across the rows of one page.
    */
@@ -889,5 +841,4 @@ export interface AutomationConfigurationExtension {
   condition?: SQLLike;
   statements: SQLLike[];
   changedTables: string[];
-  adopting?: "quest-reminders" | "release-notifications";
 }

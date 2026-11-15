@@ -122,7 +122,11 @@ const entityTables = async (): Promise<string[]> => {
  * Empty since the 2026-11-12 baseline (#Q3497): every sanctioned drop lived in
  * a migration the baseline replaced, and git history keeps their reasons.
  */
-const SANCTIONED_DROPS: Record<string, string[]> = {};
+const SANCTIONED_DROPS: Record<string, string[]> = {
+  // Adoption is gone (#Q3628): a leaf, referenced by nothing.
+  "20261115064301_automation_adoptions_dropped": ["automation_adoptions"],
+  "20261115064310_automation_adoptions_dropped": ["automation_adoptions"],
+};
 
 /**
  * Every applied migration, oldest first. `.archive/` (superseded
@@ -191,13 +195,102 @@ interface SnapshotDdl {
   }>;
 }
 
-const migrationSnapshot = (
+type SnapshotEntry = SnapshotDdl["ddl"][number] & { name?: string };
+
+/**
+ * One change of a drizzle-kit `diff` snapshot: the postgres folder keeps a
+ * full `ddl` in its baseline only, and every later snapshot as a list of
+ * these, keyed `<entityType>\0[schema, table, name?]`.
+ */
+interface SnapshotDelta {
+  op: string;
+  key?: string;
+  row?: SnapshotEntry;
+  set?: Record<string, unknown>;
+}
+
+const readSnapshot = (
   dir: string,
-  folder: Folder = "sqlite",
-): SnapshotDdl =>
+  folder: Folder,
+): { ddl?: SnapshotEntry[]; deltas?: SnapshotDelta[] } =>
   JSON.parse(
     readFileSync(join(FOLDERS[folder].path, dir, "snapshot.json"), "utf8"),
   );
+
+/**
+ * Replays the deltas of one `diff` snapshot onto the foreign keys before it:
+ * created, dropped, renamed and altered keys, renamed key columns, and
+ * renamed or dropped tables.
+ * Indexes and the rest are not this guard's concern.
+ */
+const replayForeignKeys = (
+  fks: SnapshotEntry[],
+  deltas: SnapshotDelta[],
+): SnapshotEntry[] => {
+  let next = fks.map((fk) => ({ ...fk }));
+  for (const delta of deltas) {
+    if (delta.op === "create") {
+      if (delta.row?.entityType === "fks") next.push({ ...delta.row });
+      continue;
+    }
+    const [kind, path] = (delta.key ?? "").split("\0");
+    if (!path) continue;
+    const [, table, name] = JSON.parse(path) as string[];
+    if (kind === "tables") {
+      if (delta.op === "drop")
+        next = next.filter((fk) => fk.table !== table && fk.tableTo !== table);
+      if (delta.op === "rename" && typeof delta.set?.name === "string") {
+        const renamed = delta.set.name;
+        for (const fk of next) {
+          if (fk.table === table) fk.table = renamed;
+          if (fk.tableTo === table) fk.tableTo = renamed;
+        }
+      }
+    }
+    if (
+      kind === "columns" &&
+      delta.op === "rename" &&
+      typeof delta.set?.name === "string"
+    ) {
+      const renamed = delta.set.name;
+      for (const fk of next)
+        if (fk.table === table)
+          fk.columns = fk.columns?.map((column) =>
+            column === name ? renamed : column,
+          );
+    }
+    if (kind === "fks") {
+      const match = (fk: SnapshotEntry) =>
+        fk.table === table && fk.name === name;
+      if (delta.op === "drop") next = next.filter((fk) => !match(fk));
+      if (delta.op === "rename" || delta.op === "alter")
+        for (const fk of next) if (match(fk)) Object.assign(fk, delta.set);
+    }
+  }
+  return next;
+};
+
+/**
+ * The foreign keys as they stand after `dir`. A sqlite snapshot carries its
+ * whole `ddl`; a postgres one after the baseline is a `diff`, so its folder is
+ * replayed from the last full snapshot up to `dir`.
+ */
+const migrationSnapshot = (
+  dir: string,
+  folder: Folder = "sqlite",
+): SnapshotDdl => {
+  const own = readSnapshot(dir, folder);
+  if (own.ddl) return { ddl: own.ddl };
+  const dirs = migrationDirs(folder);
+  let fks: SnapshotEntry[] = [];
+  for (const each of dirs.slice(0, dirs.indexOf(dir) + 1)) {
+    const snapshot = readSnapshot(each, folder);
+    fks = snapshot.ddl
+      ? snapshot.ddl.filter((entry) => entry.entityType === "fks")
+      : replayForeignKeys(fks, snapshot.deltas ?? []);
+  }
+  return { ddl: fks };
+};
 
 /**
  * Every table a migration drops, bare or inside drizzle-kit's rebuild pattern
@@ -398,6 +491,27 @@ describe("migration safety", () => {
       baseline,
     );
     expect(violation).toMatch(/^projects has children it would wipe or detach/);
+  });
+
+  it("replays a postgres diff snapshot to the same foreign keys as the sqlite folder", ({
+    expect,
+  }) => {
+    const keys = (folder: Folder) => {
+      const dirs = migrationDirs(folder);
+      return [
+        ...new Set(
+          migrationSnapshot(dirs[dirs.length - 1], folder)
+            .ddl.filter((entry) => entry.entityType === "fks")
+            .map(
+              (fk) =>
+                `${fk.table}.${(fk.columns ?? []).join(",")} -> ${fk.tableTo} (${fk.onDelete})`,
+            ),
+        ),
+      ].sort();
+    };
+    // Both folders describe one schema: a replay that missed a rename, a drop
+    // or a key added after the baseline would differ here.
+    expect(keys("postgres")).toEqual(keys("sqlite"));
   });
 
   describe("the cascade refusal", () => {

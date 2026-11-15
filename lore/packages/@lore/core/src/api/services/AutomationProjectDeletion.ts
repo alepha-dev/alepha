@@ -36,7 +36,7 @@ export class AutomationProjectDeletion {
         if (!any) return;
         // Hard deletes, soft-deleted rules included (`force`), and with no
         // RETURNING (`events: false`): the caches go below, table by table.
-        const { receipts, runs, adoptions, rules } = this.persistence;
+        const { receipts, runs, rules } = this.persistence;
         const scope = () => ({
           or: [
             { projectId: { eq: projectId } },
@@ -51,13 +51,11 @@ export class AutomationProjectDeletion {
         await this.database.batch([
           receipts.deleteStatement(scope(), quiet),
           runs.deleteStatement(scope(), quiet),
-          adoptions.deleteStatement(scope(), quiet),
           rules.deleteStatement({ projectId }, { ...quiet, force: true }),
         ]);
         for (const table of [
           "automation_receipts",
           "automation_runs",
-          "automation_adoptions",
           "automations",
         ])
           await this.cache.invalidateTable(table);

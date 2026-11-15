@@ -111,7 +111,6 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectAutomationVariables",
   "projectAutomationChannels",
   "projectAutomationRun",
-  "projectAutomationAdoption",
   "projectEpics",
   "projectEpic",
   "projectReleases",
@@ -199,7 +198,6 @@ export const SECTION_HREF_ROUTES: Record<
   projectQuestGraph: "projectQuests",
   projectKanban: "projectQuests",
   projectRelease: "projectReleases",
-  projectAutomationAdoption: "projectAutomations",
   projectAutomationGallery: "projectAutomations",
   projectAutomationDetail: "projectAutomations",
   projectAutomationVariables: "projectAutomations",
@@ -247,7 +245,6 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectAutomations: "project.settings.nav.automations",
   // Every page under Automations reads "Automations" and links back to the
   // list, as an app's tabs do with Apps: the page names itself in its header.
-  projectAutomationAdoption: "project.settings.nav.automations",
   projectAutomationGallery: "project.settings.nav.automations",
   projectAutomationDetail: "project.settings.nav.automations",
   projectAutomationVariables: "project.settings.nav.automations",

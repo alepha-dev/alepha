@@ -3,7 +3,6 @@ import { $tool } from "alepha/mcp";
 import { currentUserAtom } from "alepha/security";
 import { BadRequestError, UnauthorizedError, okSchema } from "alepha/server";
 
-import { automationAdoptionPreviewSchema } from "../../api/schemas/automationAdoptionPreviewSchema.ts";
 import { automationCatalogSchema } from "../../api/schemas/automationCatalogSchema.ts";
 import { automationChannelResourceSchema } from "../../api/schemas/automationChannelResourceSchema.ts";
 import { automationDependentPageSchema } from "../../api/schemas/automationDependentPageSchema.ts";
@@ -13,12 +12,9 @@ import { automationResourceSchema } from "../../api/schemas/automationResourceSc
 import { automationRunPageSchema } from "../../api/schemas/automationRunPageSchema.ts";
 import { automationVariablePageSchema } from "../../api/schemas/automationVariablePageSchema.ts";
 import { automationVariableSetResponseSchema } from "../../api/schemas/automationVariableSetResponseSchema.ts";
-import { AutomationAdoptionService } from "../../api/services/AutomationAdoptionService.ts";
 import { AutomationChannelService } from "../../api/services/AutomationChannelService.ts";
 import { AutomationService } from "../../api/services/AutomationService.ts";
 import { AutomationVariableService } from "../../api/services/AutomationVariableService.ts";
-import { automationAdoptionPreviewParamsSchema } from "../schemas/automationAdoptionPreviewParamsSchema.ts";
-import { automationAdoptParamsSchema } from "../schemas/automationAdoptParamsSchema.ts";
 import { automationCreateParamsSchema } from "../schemas/automationCreateParamsSchema.ts";
 import { automationDeleteParamsSchema } from "../schemas/automationDeleteParamsSchema.ts";
 import { automationGetParamsSchema } from "../schemas/automationGetParamsSchema.ts";
@@ -41,7 +37,6 @@ export class AutomationTools {
   protected readonly alepha = $inject(Alepha);
   protected readonly projects = $inject(ProjectTools);
   protected readonly service = $inject(AutomationService);
-  protected readonly adoption = $inject(AutomationAdoptionService);
   protected readonly variables = $inject(AutomationVariableService);
   protected readonly channelService = $inject(AutomationChannelService);
 
@@ -54,41 +49,6 @@ export class AutomationTools {
     return this.projects.resolveProjectId(input.project, input.project_name);
   }
 
-  automation_adoption_preview = $tool({
-    description:
-      "Preview explicit per-project compatibility adoption as the named caller: preserved state, recipients, channels, grants and permanent legacy cutover. No writes. No capabilities or grants are enabled automatically.",
-    annotations: { readOnlyHint: true, idempotentHint: true },
-    schema: {
-      params: automationAdoptionPreviewParamsSchema,
-      result: automationAdoptionPreviewSchema,
-    },
-    handler: async ({ params }) =>
-      this.adoption.preview(
-        await this.project(params),
-        params.policy,
-        this.user(),
-      ),
-  });
-  automation_adopt = $tool({
-    description:
-      "Explicitly consent as the immutable author to adopt release-notifications. Requires confirm=true and current grants/capabilities/channels. Resumes pending adoption. Optionally adopt your already configured compatible automationId with expectedRevision. The legacy marker survives disable/delete; repeating adoption never reenables an opted-out rule.",
-    annotations: { idempotentHint: true },
-    schema: {
-      params: automationAdoptParamsSchema,
-      result: automationAdoptionPreviewSchema,
-    },
-    handler: async ({ params }) =>
-      this.adoption.adopt(
-        await this.project(params),
-        params.policy,
-        this.user(),
-        {
-          confirm: params.confirm,
-          automationId: params.automationId,
-          expectedRevision: params.expectedRevision,
-        },
-      ),
-  });
   automation_create = $tool({
     description:
       "Create a typed automation as yourself. Discover slots with automation_catalog. With enabled=true the rule is created enabled in one atomic write, after the checks enabling runs; if they refuse, nothing is created and the refusal says why. Without it the rule is a draft, disabled until automation_update enables it. The author and credential are immutable. No AI executes inside a rule.",

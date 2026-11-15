@@ -237,15 +237,6 @@ describe("Automation persistence", () => {
     };
     const departing = await seed(author.id, "departing");
     const kept = await seed(project.createdBy, "kept");
-    await persistence.adoptions.create({
-      id: crypto.randomUUID(),
-      projectId: project.id,
-      policy: "quest-reminders",
-      automationId: departing.rule.id,
-      authorUserId: author.id,
-      state: "adopted",
-      adoptedAt: now,
-    });
     await expect(
       alepha.events.emit("user:delete:before", { userId: author.id }),
     ).rejects.toThrow("Delete your 1 authored automation(s)");
@@ -260,9 +251,6 @@ describe("Automation persistence", () => {
     expect(
       await persistence.receipts.findById(departing.receipt.id),
     ).toBeUndefined();
-    expect(await persistence.adoptions.count({ projectId: project.id })).toBe(
-      0,
-    );
     await entities.users.deleteById(author.id, { force: true });
     // Another author's deleted rule keeps its retained history.
     expect(
@@ -272,7 +260,7 @@ describe("Automation persistence", () => {
     expect(await persistence.receipts.findById(kept.receipt.id)).toBeDefined();
   });
 
-  it("hard-deletes a project whose automations carry runs, receipts and adoption markers", async ({
+  it("hard-deletes a project whose automations carry runs and receipts", async ({
     expect,
   }) => {
     const project = await createTestProject(alepha);
@@ -305,15 +293,6 @@ describe("Automation persistence", () => {
       occurredAt: now,
       replayUntil: now,
     });
-    await persistence.adoptions.create({
-      id: crypto.randomUUID(),
-      projectId: project.id,
-      policy: "release-notifications",
-      automationId: rule.id,
-      authorUserId: project.createdBy,
-      state: "adopted",
-      adoptedAt: now,
-    });
     const other = await createTestProject(alepha);
     const kept = await persistence.rules.create({
       projectId: other.id,
@@ -334,9 +313,6 @@ describe("Automation persistence", () => {
     expect(
       await persistence.receipts.findById("receipt:project"),
     ).toBeUndefined();
-    expect(await persistence.adoptions.count({ projectId: project.id })).toBe(
-      0,
-    );
     expect(await persistence.rules.findById(kept.id)).toBeDefined();
   });
 

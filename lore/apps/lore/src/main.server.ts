@@ -3,7 +3,6 @@ import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreCoreApi } from "@lore/core/api";
 import {
   AutomationNotificationSender,
-  AutomationLegacyJobProvider,
   LoreFileAccessProvider,
   LoreInboxRecipientProvider,
   LoreNotificationPreferences,
@@ -28,7 +27,6 @@ import { LoreShipMcp } from "@lore/ship/mcp";
 import { LoreShipWeb } from "@lore/ship/web";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
-import { JobProvider } from "alepha/api/jobs";
 import { jobConfig } from "alepha/api/jobs";
 import {
   NotificationInboxRecipientProvider,
@@ -183,8 +181,6 @@ alepha.with({
   provide: NotificationSenderService,
   use: AutomationNotificationSender,
 });
-
-alepha.with({ provide: JobProvider, use: AutomationLegacyJobProvider });
 
 // The `@lore/*` modules, core first. Every entry-level substitution above
 // comes before them: a substitution recorded after a module resolved what it

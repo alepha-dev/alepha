@@ -1,0 +1,121 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "5d61a940-58c5-4406-8517-3835659f904d",
+  "prevIds": ["d3e6359c-3262-4597-bc99-b103e2e6f6c9"],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "automation_adoptions"],
+      "writes": [
+        "s|tbl|public.automation_adoptions",
+        "n|tbl|public.automation_adoptions",
+        "e|tbl|public.automation_adoptions",
+        "n|rel|public.automation_adoptions",
+        "n|type|public.automation_adoptions"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_enum",
+      "statementTarget": ["enum", "public", "automation_adoptions_policy_enum"],
+      "writes": [
+        "s|enum|public.automation_adoptions_policy_enum",
+        "n|enum|public.automation_adoptions_policy_enum",
+        "e|enum|public.automation_adoptions_policy_enum",
+        "n|type|public.automation_adoptions_policy_enum"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_enum",
+      "statementTarget": ["enum", "public", "automation_adoptions_state_enum"],
+      "writes": [
+        "s|enum|public.automation_adoptions_state_enum",
+        "n|enum|public.automation_adoptions_state_enum",
+        "e|enum|public.automation_adoptions_state_enum",
+        "n|type|public.automation_adoptions_state_enum"
+      ],
+      "reads": ["n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"automation_adoptions\"]"
+    },
+    {
+      "op": "drop",
+      "key": "enums\u0000[\"public\",\"automation_adoptions_policy_enum\"]"
+    },
+    {
+      "op": "drop",
+      "key": "enums\u0000[\"public\",\"automation_adoptions_state_enum\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"policy\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"automation_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"author_user_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"state\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"adopted_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"version\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_adoptions\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_adoptions_project_id_policy_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_adoptions_automation_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automation_adoptions\",\"automation_adoptions_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automation_adoptions\",\"automation_adoptions_automation_id_automations_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automation_adoptions\",\"automation_adoptions_author_user_id_users_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"automation_adoptions\",\"automation_adoptions_pkey\"]"
+    }
+  ]
+}

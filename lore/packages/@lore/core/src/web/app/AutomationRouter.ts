@@ -72,16 +72,6 @@ export class AutomationRouter {
       return { runId: params.runId };
     },
   });
-  projectAutomationAdoption = $pageProject({
-    name: "projectAutomationAdoption",
-    path: "/automations/adoption",
-    lazy: () =>
-      import("./components/project/automations/AutomationAdoptionPage.tsx"),
-    loader: () => {
-      this.checkRead();
-      return {};
-    },
-  });
   projectAutomationDetail = $pageProject({
     name: "projectAutomationDetail",
     path: "/automations/:automationId",

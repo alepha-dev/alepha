@@ -3,7 +3,6 @@ import { NotificationInboxService } from "alepha/api/notifications";
 import { $repository, DbCacheProvider } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
-import { automationAdoptions } from "../entities/automationAdoptions.ts";
 import { automationReceipts } from "../entities/automationReceipts.ts";
 import { automationRuns } from "../entities/automationRuns.ts";
 import { automations } from "../entities/automations.ts";
@@ -54,7 +53,6 @@ export class UserDeletionHook {
   protected readonly automations = $repository(automations);
   protected readonly receipts = $repository(automationReceipts);
   protected readonly runs = $repository(automationRuns);
-  protected readonly adoptions = $repository(automationAdoptions);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly inbox = $inject(NotificationInboxService);
@@ -131,21 +129,11 @@ export class UserDeletionHook {
         quiet,
       ),
       this.runs.deleteStatement({ automationId: { inArray: rules() } }, quiet),
-      this.adoptions.deleteStatement(
-        {
-          or: [
-            { automationId: { inArray: rules() } },
-            { authorUserId: { eq: userId } },
-          ],
-        },
-        quiet,
-      ),
       this.automations.deleteStatement(deletedRules, { ...quiet, force: true }),
     ]);
     for (const table of [
       "automation_receipts",
       "automation_runs",
-      "automation_adoptions",
       "automations",
     ])
       await this.cache.invalidateTable(table);

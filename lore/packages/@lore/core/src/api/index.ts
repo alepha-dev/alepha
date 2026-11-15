@@ -62,8 +62,6 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
-import { AutomationAdoptionRegistry } from "./services/AutomationAdoptionRegistry.ts";
-import { AutomationAdoptionService } from "./services/AutomationAdoptionService.ts";
 import { AutomationApprovalFence } from "./services/AutomationApprovalFence.ts";
 import { AutomationAttentionNotifier } from "./services/AutomationAttentionNotifier.ts";
 import { AutomationAudience } from "./services/AutomationAudience.ts";
@@ -81,8 +79,6 @@ import { AutomationEvents } from "./services/AutomationEvents.ts";
 import { AutomationEventSubjects } from "./services/AutomationEventSubjects.ts";
 import { AutomationHealth } from "./services/AutomationHealth.ts";
 import { AutomationJobService } from "./services/AutomationJobService.ts";
-import { AutomationLegacyDispatch } from "./services/AutomationLegacyDispatch.ts";
-import { AutomationLegacyQueue } from "./services/AutomationLegacyQueue.ts";
 import { AutomationMutationAudit } from "./services/AutomationMutationAudit.ts";
 import { AutomationMutationContext } from "./services/AutomationMutationContext.ts";
 import { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
@@ -223,13 +219,8 @@ export const LoreCoreApi = $module({
     AutomationProjectDeletion,
     // Registers core's project merge step (#Q2782); nothing injects it.
     CoreProjectMerge,
-    AutomationAdoptionService,
     AutomationAudience,
     AutomationRosterWorker,
-
-    AutomationAdoptionRegistry,
-    AutomationLegacyQueue,
-    AutomationLegacyDispatch,
 
     AutomationOrigin,
     CoreAutomationReferences,
@@ -664,12 +655,5 @@ export { AutomationSubscriptionService } from "./services/AutomationSubscription
 
 export { AutomationSetupOptions } from "./services/AutomationSetupOptions.ts";
 
-export { AutomationAdoptionRegistry } from "./services/AutomationAdoptionRegistry.ts";
-export { AutomationLegacyQueue } from "./services/AutomationLegacyQueue.ts";
-export { AutomationLegacyDispatch } from "./services/AutomationLegacyDispatch.ts";
-export { AutomationLegacyJobProvider } from "./services/AutomationLegacyJobProvider.ts";
-
 export { AutomationAudience } from "./services/AutomationAudience.ts";
 export { AutomationRosterWorker } from "./services/AutomationRosterWorker.ts";
-
-export { AutomationAdoptionService } from "./services/AutomationAdoptionService.ts";

@@ -1,9 +1,6 @@
 import { $inject } from "alepha";
 import { $action, okSchema } from "alepha/server";
 
-import { automationAdoptionBodySchema } from "../schemas/automationAdoptionBodySchema.ts";
-import { automationAdoptionParamsSchema } from "../schemas/automationAdoptionParamsSchema.ts";
-import { automationAdoptionPreviewSchema } from "../schemas/automationAdoptionPreviewSchema.ts";
 import { automationCatalogSchema } from "../schemas/automationCatalogSchema.ts";
 import { automationCreateBodySchema } from "../schemas/automationCreateBodySchema.ts";
 import { automationDependentPageSchema } from "../schemas/automationDependentPageSchema.ts";
@@ -34,7 +31,6 @@ import { automationVariableParamsSchema } from "../schemas/automationVariablePar
 import { automationVariableSetBodySchema } from "../schemas/automationVariableSetBodySchema.ts";
 import { automationVariableSetResponseSchema } from "../schemas/automationVariableSetResponseSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
-import { AutomationAdoptionService } from "../services/AutomationAdoptionService.ts";
 import { AutomationPresetService } from "../services/AutomationPresetService.ts";
 import { AutomationService } from "../services/AutomationService.ts";
 import { AutomationSetupOptions } from "../services/AutomationSetupOptions.ts";
@@ -46,7 +42,6 @@ import { AutomationVariableService } from "../services/AutomationVariableService
  * remains in the same services called by MCP and trusted preset creation.
  */
 export class AutomationController {
-  protected readonly adoption = $inject(AutomationAdoptionService);
   protected readonly setupOptions = $inject(AutomationSetupOptions);
   protected readonly presets = $inject(AutomationPresetService);
   protected readonly service = $inject(AutomationService);
@@ -63,29 +58,6 @@ export class AutomationController {
       requires: permission,
     });
 
-  previewAutomationAdoption = $action({
-    use: [this.gate("automation:read")],
-    method: "GET",
-    path: "/projects/:projectId/automation-adoptions/:policy",
-    schema: {
-      params: automationAdoptionParamsSchema,
-      response: automationAdoptionPreviewSchema,
-    },
-    handler: ({ params, user }) =>
-      this.adoption.preview(params.projectId, params.policy, user),
-  });
-  adoptAutomationPolicy = $action({
-    use: [this.gate("automation:write")],
-    method: "POST",
-    path: "/projects/:projectId/automation-adoptions/:policy",
-    schema: {
-      params: automationAdoptionParamsSchema,
-      body: automationAdoptionBodySchema,
-      response: automationAdoptionPreviewSchema,
-    },
-    handler: ({ params, body, user }) =>
-      this.adoption.adopt(params.projectId, params.policy, user, body),
-  });
   getAutomationSetupOptions = $action({
     use: [this.gate("automation:read")],
     method: "GET",

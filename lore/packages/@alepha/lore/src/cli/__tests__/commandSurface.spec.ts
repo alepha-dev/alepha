@@ -138,8 +138,6 @@ describe("the Lore CLI command surface", () => {
         "runs",
         "catalog",
         "test",
-        "adoption",
-        "adopt",
         "variable",
         "channel",
       ],

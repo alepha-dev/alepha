@@ -16,7 +16,7 @@ import {
 
 /**
  * `lore automation`: a project's rules, their runs, their shared variables and
- * the adoption of the legacy policies.
+ * its channels.
  *
  * ```bash
  * lore automation catalog -p alepha
@@ -37,7 +37,7 @@ import {
  * caller would turn the fence off: a rule edited in between would be
  * overwritten by someone who never saw the edit.
  *
- * ## `catalog`, `test` and `adoption preview` print JSON whatever `--output`
+ * ## `catalog` and `test` print JSON whatever `--output`
  *
  * Each is one nested document made to be read in full, and a terse render
  * would hide the part that was asked for.
@@ -451,74 +451,6 @@ export class AutomationCommand {
     },
   });
 
-  public readonly adoptionPreview = $command({
-    name: "preview",
-    description:
-      "Preview adopting a legacy policy as yourself: state, recipients, grants and cutover. No writes",
-    args: AutomationCommand.POLICY_ARG,
-    flags: z.object({ ...AutomationCommand.PROJECT_FLAG }),
-    handler: async ({ args, flags, print }) => {
-      const context: LoreRefusalContext = {};
-      await this.refusals.guard(context, async () => {
-        const { projectId } = await this.projects.named(flags.project, context);
-        this.render.json(
-          print,
-          await this.api.previewAutomationAdoption({
-            params: { projectId, policy: args },
-          }),
-        );
-      });
-    },
-  });
-
-  public readonly adoption = $command({
-    name: "adoption",
-    description: "Moving a legacy policy onto automations: preview it",
-    children: [this.adoptionPreview],
-    handler: async ({ help }) => {
-      help();
-    },
-  });
-
-  public readonly adopt = $command({
-    name: "adopt",
-    description:
-      "Adopt a legacy policy as its immutable author. The cutover is permanent, so it needs --confirm",
-    args: AutomationCommand.POLICY_ARG,
-    flags: z.object({
-      ...AutomationCommand.PROJECT_FLAG,
-      confirm: z
-        .boolean()
-        .describe("Your explicit consent. Read adoption preview first."),
-      "automation-id": z
-        .uuid()
-        .describe("Adopt your already configured compatible rule.")
-        .optional(),
-      "expected-revision": z
-        .integer()
-        .min(0)
-        .describe("That rule's revision, with --automation-id.")
-        .optional(),
-    }),
-    handler: async ({ args, flags, print }) => {
-      const context: LoreRefusalContext = {};
-      await this.refusals.guard(context, async () => {
-        const { projectId } = await this.projects.named(flags.project, context);
-        this.render.json(
-          print,
-          await this.api.adoptAutomationPolicy({
-            params: { projectId, policy: args },
-            body: {
-              confirm: flags.confirm,
-              automationId: flags["automation-id"],
-              expectedRevision: flags["expected-revision"],
-            } as any,
-          }),
-        );
-      });
-    },
-  });
-
   public readonly variableList = $command({
     name: "list",
     description: "List the project's shared variables",
@@ -708,7 +640,7 @@ export class AutomationCommand {
   public readonly automation = $command({
     name: "automation",
     description:
-      "A project's automations: rules, runs, shared variables and policy adoption",
+      "A project's automations: rules, runs, shared variables and channels",
     children: [
       this.list,
       this.get,
@@ -718,8 +650,6 @@ export class AutomationCommand {
       this.runs,
       this.catalog,
       this.test,
-      this.adoption,
-      this.adopt,
       this.variable,
       this.channel,
     ],

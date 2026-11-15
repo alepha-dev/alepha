@@ -209,9 +209,3 @@ export {
   automationVariableApprovalSchema,
   type AutomationVariableApproval,
 } from "../api/schemas/automationVariableApprovalSchema.ts";
-
-export {
-  automationAdoptionPolicySchema,
-  type AutomationAdoptionPolicy,
-} from "../api/schemas/automationAdoptionPolicySchema.ts";
-export { type AutomationAdoptionPreview } from "../api/schemas/automationAdoptionPreviewSchema.ts";
