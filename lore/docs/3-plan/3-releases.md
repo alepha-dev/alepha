@@ -130,9 +130,10 @@ rewrite what `0.28.0` shipped.
 ⚠️ Publishing is one-way. Nothing can be attached to a published release or
 taken out of one.
 
-Publishing also announces the release to the project's members, the publisher
-aside, in their inbox and by email (see
-[Notifications](/lore/docs/project-notifications)).
+Publishing announces the release only to those who asked: the bell on the
+**Releases** page subscribes you, and the **Release published** preset can
+notify anyone or post to a Discord channel (see
+[Automations](/lore/docs/plan-automations)).
 
 **Reopen** is the single deliberate way back, for a release published by
 mistake. It clears everything publishing froze, and the release goes back to

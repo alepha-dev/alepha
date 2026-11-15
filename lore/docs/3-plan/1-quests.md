@@ -61,7 +61,8 @@ and ends.
 With the **Estimates** option on, a quest also says how long it should take.
 With **Timer**, it records how long it actually took, from a timer you start
 and pause on the quest. With **Reminders**, whoever holds the quest can ask for
-a daily, weekly or monthly email nudge. All three are switched in
+a daily, weekly or monthly nudge, sent by the project's **Quest reminders**
+automation (see [Automations](/lore/docs/plan-automations)). All three are switched in
 **Settings ▸ Plan ▸ Features**.
 
 ### Areas

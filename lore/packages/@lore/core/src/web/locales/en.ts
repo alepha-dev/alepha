@@ -2913,12 +2913,6 @@ export default {
   "account.notifications.category.tasks": "Quest reminders",
   "account.notifications.category.tasks.description":
     "Nudges about a quest you accepted and have not finished.",
-  "account.notifications.category.uptime": "Healthchecks",
-  "account.notifications.category.uptime.description":
-    "Confirmed outages and recoveries from your uptime monitors.",
-  "account.notifications.category.hosts": "Deploy credentials",
-  "account.notifications.category.hosts.description":
-    "A deploy credential you own has stopped working.",
   "inbox.empty.description": "Messages addressed to you show up here.",
   "inbox.noMatch": "No match",
   "inbox.noMatch.description": "Try adjusting or clearing the search.",

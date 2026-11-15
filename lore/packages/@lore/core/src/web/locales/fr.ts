@@ -2916,12 +2916,6 @@ export default {
   "account.notifications.category.tasks": "Rappels de quête",
   "account.notifications.category.tasks.description":
     "Rappels sur une quête que vous avez acceptée et pas terminée.",
-  "account.notifications.category.uptime": "Contrôles de santé",
-  "account.notifications.category.uptime.description":
-    "Incidents confirmés et rétablissements de vos moniteurs de disponibilité.",
-  "account.notifications.category.hosts": "Identifiants de déploiement",
-  "account.notifications.category.hosts.description":
-    "Un identifiant de déploiement que vous possédez a cessé de fonctionner.",
   "inbox.empty.description":
     "Les messages qui vous sont adressés apparaissent ici.",
   "inbox.noMatch": "Aucun résultat",

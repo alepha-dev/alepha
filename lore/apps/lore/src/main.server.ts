@@ -1,3 +1,4 @@
+import { DiscordTransport, MemoryDiscordTransport } from "@alepha/discord";
 import { AlephaSigil, SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreCoreApi } from "@lore/core/api";
@@ -99,6 +100,15 @@ if (alepha.env.EMAIL_HOST) {
 // Register if and only if TURNSTILE_SITE_KEY is present.
 if (alepha.env.TURNSTILE_SITE_KEY) {
   alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
+}
+
+// The e2e server posts to no real Discord (#Q3616): with
+// DISCORD_TRANSPORT=memory a channel's test post and every delivery stay in
+// memory, so Settings > Automations > Channels saves without discord.com and
+// a rule's run records the post. Before `LoreCoreApi`, whose binding is
+// optional so this one wins.
+if (alepha.env.DISCORD_TRANSPORT === "memory") {
+  alepha.with({ provide: DiscordTransport, use: MemoryDiscordTransport });
 }
 
 // Widen the framework's creator-only `/api/files/:id` policy with

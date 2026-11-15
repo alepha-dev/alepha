@@ -172,10 +172,10 @@ token**, in the host's drawer, and nothing is revealed after that either.
 
 Once a night Lore asks Cloudflare again about every Cloudflare host. If a
 token has stopped passing, the host shows as **credential invalid** with the
-reason, deploys to it are refused until the token is replaced, and every
-member of its home project whose rank grants `host:update` gets one email.
-So a token revoked or narrowed at Cloudflare is reported within a day, not by
-the first deploy that fails.
+reason, and deploys to it are refused until the token is replaced. A token
+revoked or narrowed at Cloudflare shows within a day, not at the first deploy
+that fails, and whoever turned on a host bell is told (see
+[Hosts](/lore/docs/ship-hosts#who-is-told)).
 
 **Check again**, in the host's drawer, does the same thing on demand, which
 is what you want right after widening a token at Cloudflare.
@@ -194,5 +194,5 @@ an account-owned one, and delete it there.
   who can manage it, deleting it.
 - [Deploying an app](/lore/docs/ship-deploying): pick the host and ship a
   build.
-- [Notifications](/lore/docs/project-notifications): how the email about a
-  failing token reaches you.
+- [Automations](/lore/docs/plan-automations): who is told about a failing
+  token.

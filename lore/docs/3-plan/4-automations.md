@@ -8,7 +8,7 @@ exactly what it says, every time. No AI runs inside it.
 Every project has automations, whatever its capabilities, with no switch of
 their own. What a rule can react to follows the project's capabilities (see
 [Capabilities](/lore/docs/project-capabilities)): quest, epic, release and
-feedback events need **Plan**, deploy and uptime events need **Ship**. That
+feedback events need **Plan**, deploy, uptime and host events need **Ship**. That
 grants nothing by itself. A rank also needs the **Automations** permissions, which only the owner
 holds by default (see [Members](/lore/docs/project-members)):
 
@@ -35,8 +35,7 @@ A rule is in one of four states:
 | **Broken**   | Something it needs is missing, such as a capability or a channel.                   |
 
 Click a row to open the rule. A row's menu enables, disables or deletes it. The
-page's buttons open **New automation**, **Shared variables** and **Built-in
-notifications**.
+page's buttons open **New automation** and **Shared variables**.
 
 ## Creating an automation
 
@@ -53,25 +52,44 @@ notifications**.
 
 The presets:
 
-| Preset                               | What it does                                                                                                 |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| **New feedback**                     | Emails or notifies one member when feedback is created, with its description and a link to the report.       |
-| **Nightly tagged quests**            | Sends one digest of the open quests carrying a chosen tag, at 00:00 UTC. An empty digest is skipped.         |
-| **Weekly report**                    | Sends the Reports summary of the last seven days to one member, every Monday at 08:00 UTC.                   |
-| **Epic completed**                   | Notifies one member when an epic in progress completes.                                                      |
-| **Coverage regression**              | Compares line coverage over the two last full UTC days, and alerts when it dropped by more than a threshold. |
-| **Open errors cross a threshold**    | Samples the number of open errors every five minutes, and alerts when it rises above a threshold.            |
-| **Publish release notes to a folio** | Appends a published release's changelog to a folio, then notifies one member. Each publication appends once. |
-| **Deployment failed**                | Notifies one member when a deployment of the chosen app fails, in any environment. Raw logs are left out.    |
+| Preset                               | What it does                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| **New feedback**                     | Emails or notifies one member when feedback is created, with its description and a link to the report.        |
+| **Nightly tagged quests**            | Sends one digest of the open quests carrying a chosen tag, at 00:00 UTC. An empty digest is skipped.          |
+| **Weekly report**                    | Sends the Reports summary of the last seven days to one member, every Monday at 08:00 UTC.                    |
+| **Epic completed**                   | Notifies one member when an epic in progress completes.                                                       |
+| **Coverage regression**              | Compares line coverage over the two last full UTC days, and alerts when it dropped by more than a threshold.  |
+| **Open errors cross a threshold**    | Samples the number of open errors every five minutes, and alerts when it rises above a threshold.             |
+| **Publish release notes to a folio** | Appends a published release's changelog to a folio, then notifies one member. Each publication appends once.  |
+| **Deployment failed**                | Notifies one member when a deployment of the chosen app fails, in any environment. Raw logs are left out.     |
+| **Release published**                | Notifies one member when a release is published, with its tag, title, number of quests and a link.            |
+| **Quest reminders**                  | Every hour, reminds each quest's assignee of a quest whose reminder is due, at the interval set on the quest. |
+| **Monitor down**                     | Notifies one member when a monitor's outage is confirmed, with its address, the cause and the error.          |
+| **Monitor recovered**                | Notifies one member when a monitor recovers from an outage, with how long it lasted.                          |
+| **Host token invalid**               | Notifies one member when the nightly check finds a Cloudflare host's token no longer works.                   |
+| **Host past its TTL**                | Notifies one member when a throwaway host passes its time to live. Lore stops and deletes nothing.            |
 
 Every input belongs to this rule alone unless you choose **Share with other
 automations**, which uses or creates a [shared variable](#shared-variables).
 
-A page can also offer a preset as a subscription of your own: the bell above
-the [feedback inbox](/lore/docs/plan-feedback) creates a **New feedback**
-rule that notifies you, and deletes it when you turn the bell off. The rule
-shows on the automations page like any other. If you disable it there, the bell
-reads as off, and turning it on again replaces it.
+### Subscribing with a bell
+
+A page can also offer a preset as a subscription of your own. Its bell creates
+a rule that notifies you, on the channel you pick, and deletes it when you turn
+the bell off. The rule shows on the automations page like any other. If you
+disable it there, the bell reads as off, and turning it on again replaces it.
+
+| Bell                                                 | What it subscribes you to                             |
+| ---------------------------------------------------- | ----------------------------------------------------- |
+| Above the [feedback inbox](/lore/docs/plan-feedback) | New feedback.                                         |
+| On the **Releases** page                             | Every published release.                              |
+| On an app's **Uptime** tab                           | That monitor going down and recovering.               |
+| On **Apps**                                          | Any monitor of the project going down and recovering. |
+| On a [host](/lore/docs/ship-hosts)'s console         | That host's token failing or its TTL passing.         |
+| On **Settings** > **Hosts**                          | The same, for every host of the project.              |
+
+A bell always notifies you, so it offers your own channels, In-app and Email.
+To post to a Discord channel, create the rule from its preset instead.
 
 ### Testing a rule
 
@@ -98,7 +116,8 @@ On a rule's page, **Edit** opens its four parts:
 | **4. Then**    | One to five actions, carried out in order.                                                                |
 
 The events are new feedback, a release published, an epic completed, a quest
-completed, and a deployment failed or succeeded. The actions are **Send a
+completed, a deployment failed or succeeded, a monitor down or recovered, and a
+host's token invalid or its TTL passed. The actions are **Send a
 notification**, **Append to a folio**, **Create a quest**, **Assign the quest to
 a release** and **Tag the quest**.
 
@@ -242,22 +261,52 @@ current record instead. Edits to a rule are also written to the project's
 audit history, which has its own limited retention, separate from the two
 windows above.
 
-## Reminders and release announcements
+## Channels
 
-Nothing is sent without a rule. Per-quest reminders and release announcements
-are presets like the others:
+**Settings** > **Automations** > **Channels** lists where a project's rules can
+deliver: **In-app** and **Email**, built in, then the Discord channels the
+project adds, as many as it needs. Adding, renaming and deleting a channel takes
+the permission to manage automations.
 
-- **Quest reminders** runs hourly, follows each quest's own interval and next
-  date, emails the quest's holder and writes the reminder in the quest's
-  history. A project holds at most one such rule, and it is the one rule not
-  held to 50 rows: it works through every reminder due.
-- **Release published** notifies you when a release of the project is
-  published. The bell on the Releases page creates it for you.
+To add a Discord channel:
 
-A project with neither rule sends no reminder and no release announcement.
+1. In Discord, open the channel's settings, then **Integrations** >
+   **Webhooks**, create a webhook and copy its URL.
+2. In Lore, click **Add a Discord channel**, give it a name such as `alerts`,
+   and paste the URL.
+3. Click **Save**. Lore posts a test message to the channel first, and saves
+   nothing if Discord refuses it.
 
-Inbox and email are the channels. Another channel appears in the pickers only
-when the instance has it configured: naming one in a rule does not create it.
+The URL is stored sealed and never shown again, in the app, the API, the CLI or
+an agent's tools. To change it, open the channel's menu and choose **Rename or
+replace URL**.
+
+A notification names one or more channels. In-app and Email reach its
+recipient, a member; a Discord channel is a room, nobody's in particular, so it
+needs no recipient and gets one post per run. A post is cut to Discord's 2000
+characters, and `@everyone` or a mention in a message pings no one.
+
+Deleting a channel removes it from every rule that names it. Those rules keep
+running on their other channels; a rule left with no channel at all is
+**Broken**, since it can send nothing.
+
+## What is an automation, and what stays personal
+
+Nothing project-wide is sent without a rule. Release announcements, quest
+reminders, uptime alerts, failed deployments, host alerts and new feedback are
+all automations: a project with no such rule sends none of them. A bell or a
+preset is how one starts.
+
+Messages addressed to one person stay outside automations, and reach them
+whatever the project's rules: a mention, an answer to a report they filed, an
+invitation, and the notice that one of their own rules was paused or broke. See
+[Notifications](/lore/docs/project-notifications).
+
+**Quest reminders** runs hourly, follows each quest's own interval and next
+date, emails the quest's holder and writes the reminder in the quest's history.
+A project holds at most one such rule, and it is the one rule not held to 50
+rows: it works through every reminder due. Since a reminder is for the quest's
+holder, it goes by In-app or Email, never to a Discord channel.
 
 ## From the command line
 
