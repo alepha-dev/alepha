@@ -3931,8 +3931,6 @@ export default {
   "permission.feedback.read": "Lire la boîte des retours",
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",
   "project.settings.nav.ranks": "Rangs",
-  "rank.preset.admin": "Administrateur",
-  "rank.preset.viewer": "Lecteur",
   "project.settings.join.title": "Qui peut rejoindre",
   "project.settings.join.description":
     "Invitez les personnes une à une, ou laissez toute personne connectée rejoindre ce projet d’elle-même, en lecture seule.",

@@ -14,11 +14,9 @@ import { ProjectViewerRankNotice } from "./ProjectViewerRankNotice.tsx";
 const ProjectSettingsRanksPage = () => {
   const presetApi = useClient<ProjectRankController>();
   const [project] = useStore(currentProjectAtom);
-  const { tr, lang } = useI18n<I18n, "en">();
+  const { tr } = useI18n<I18n, "en">();
   const projectId = project?.id;
-  // The preset names come back in the language this page is shown in, not
-  // the browser's `Accept-Language` (#Q3593): an English UI on a French
-  // browser pre-fills "Admin", not "Administrateur".
+  // The preset names are English whatever the page's language (#Q3744).
   const presets =
     useQuery(
       {
@@ -26,10 +24,9 @@ const ProjectSettingsRanksPage = () => {
         handler: () =>
           presetApi.getRankPresets({
             params: { projectId: projectId as number },
-            query: { language: lang },
           }),
       },
-      [presetApi, projectId, lang],
+      [presetApi, projectId],
     ).data?.items ?? [];
 
   if (!project) return null;

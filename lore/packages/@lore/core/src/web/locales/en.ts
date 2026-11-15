@@ -3921,8 +3921,6 @@ export default {
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",
   "project.settings.nav.ranks": "Ranks",
-  "rank.preset.admin": "Admin",
-  "rank.preset.viewer": "Viewer",
   "project.settings.join.title": "Who can join",
   "project.settings.join.description":
     "Invite people one by one, or let anyone signed in join this project by themselves, as a viewer.",

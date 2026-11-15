@@ -35,33 +35,14 @@ export class ProjectRankPresets {
   protected readonly capabilities = $inject(CapabilityRegistry);
 
   /**
-   * The two catalogues, read for their VALUES: a seeded rank's name is
-   * resolved once, at creation, in the creator's language.
-   *
-   * ⚠️ **Loaded with `import()`, and that is not a style choice.** A STATIC
-   * import here defeats the lazy dictionaries declared in `I18n.ts`: a
-   * module that is both statically and dynamically imported is hoisted into
-   * the static graph, and the dynamic import then resolves to the
-   * already-loaded copy. The two catalogues are 264 kB of source, and they
-   * were in the Worker's EAGER boot graph with no lazy chunk emitted at all -
-   * evaluated on every cold isolate to answer two rank names. The browser
-   * bundle never showed it, because `api/security` is not in the client
-   * graph.
-   *
-   * Memoised per catalogue, so a sweep seeding two hundred projects loads
-   * each one once.
+   * The names the two ranks are seeded under: English, whatever the
+   * creator's language (#Q3744). They were the creator's language from
+   * #Q3593 until the owner decided against it; a rank stays renamable, so a
+   * project that wants other names renames them.
    */
-  protected catalogues: Partial<
-    Record<"en" | "fr", Promise<Record<string, string>>>
-  > = {};
-
-  /**
-   * i18n keys for the two names, so a project is seeded in the creator's
-   * language rather than in English.
-   */
-  public static readonly LABEL_KEYS: Record<PresetKey, string> = {
-    admin: "rank.preset.admin",
-    viewer: "rank.preset.viewer",
+  public static readonly NAMES: Record<PresetKey, string> = {
+    admin: "Admin",
+    viewer: "Viewer",
   };
 
   /**
@@ -97,7 +78,6 @@ export class ProjectRankPresets {
     return [
       {
         key: "admin",
-        labelKey: ProjectRankPresets.LABEL_KEYS.admin,
         // NOT narrowed by the enabled capabilities (#Q3736): Admin holds
         // everything, so a capability switched on later is already covered.
         // A permission of a disabled capability grants nothing anyway, since
@@ -106,36 +86,17 @@ export class ProjectRankPresets {
       },
       {
         key: "viewer",
-        labelKey: ProjectRankPresets.LABEL_KEYS.viewer,
         permissions: this.narrow(ProjectRankPresets.VIEWER, enabled),
       },
     ];
   }
 
   /**
-   * The name a seeded rank is stored under, in the creator's language.
-   *
-   * ⚠️ Resolved ONCE, at creation, and then it is the owner's text: a rank is
-   * a thing people rename, so a name that kept following the reader's locale
-   * would quietly overwrite that rename. `en.ts` and `fr.ts` are plain
-   * objects, read here for their values.
-   *
-   * Falls back to English for any other `Accept-Language`, which is what the
-   * rest of the app does.
-   *
-   * ⚠️ Async because the catalogue is loaded on demand - see `catalogues`.
+   * The name a seeded rank is stored under: English (#Q3744). Stored once,
+   * and then it is the owner's text to rename.
    */
-  public async nameFor(
-    preset: ProjectRankPreset,
-    language?: string,
-  ): Promise<string> {
-    const locale = language?.startsWith("fr") ? "fr" : "en";
-    this.catalogues[locale] ??=
-      locale === "fr"
-        ? import("../../web/locales/fr.ts").then((m) => m.default)
-        : import("../../web/locales/en.ts").then((m) => m.default);
-    const catalogue = await this.catalogues[locale];
-    return catalogue[preset.labelKey] ?? preset.key;
+  public nameFor(preset: ProjectRankPreset): string {
+    return ProjectRankPresets.NAMES[preset.key];
   }
 
   /**
@@ -174,9 +135,8 @@ export interface ProjectRankPreset {
   /**
    * ⚠️ Also the rank's stored KEY when it is seeded, and therefore a stable
    * id: renaming a seeded rank must not move anybody's assignment. The name a
-   * person reads comes from {@link labelKey}.
+   * person reads comes from {@link ProjectRankPresets.nameFor}.
    */
   key: PresetKey;
-  labelKey: string;
   permissions: string[];
 }

@@ -40,15 +40,6 @@ export class ProjectRankController {
     path: "/projects/:projectId/rank-presets",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      query: z.object({
-        /**
-         * The language the page asking is shown in (#Q3593). Lore's UI
-         * language is its URL prefix, which an `/api` call does not carry,
-         * so the page sends it. `Accept-Language` is only the fallback for a
-         * caller that does not say.
-         */
-        language: z.text().max(35).optional(),
-      }),
       response: z.object({
         items: z.array(
           z.object({
@@ -59,11 +50,8 @@ export class ProjectRankController {
         ),
       }),
     },
-    handler: async ({ params, query }) => {
+    handler: async ({ params }) => {
       const enabled = await this.security.capabilitiesOf(params.projectId);
-      const language =
-        query.language ??
-        this.alepha.store.get("alepha.http.request")?.language;
       const held = await this.ranks.ranksOf(
         await this.security.organizationIdOf(params.projectId),
       );
@@ -84,10 +72,8 @@ export class ProjectRankController {
         if (!preset) continue;
         items.push({
           key,
-          // Resolved server-side for the same reason seeding does it there:
-          // `nameFor` reads the locale catalogues, and the name it produces
-          // is stored once and then belongs to whoever renamed it.
-          name: await this.presets.nameFor(preset, language),
+          // The name seeding would store: English (#Q3744).
+          name: this.presets.nameFor(preset),
           permissions: preset.permissions,
         });
       }

@@ -630,54 +630,38 @@ describe("Lore's rank resource", () => {
     ).rejects.toThrow("cannot change your own rank");
   });
 
-  it("names the presets in the UI's language, not the browser's Accept-Language", async ({
+  it("names the presets in English, whatever the language asking", async ({
     expect,
   }) => {
-    // #Q3593: an English UI on a fr-FR browser. Lore's UI language is its URL
-    // prefix, which an `/api` call does not carry, so the page sends it.
+    // #Q3744 reverses #Q3593: a French creator or a French page gets
+    // "Admin" and "Viewer", never "Administrateur" or "Lecteur".
     const account = await ctx.repos.users.create({});
     const user: UserAccountToken = { id: account.id, roles: ["user"] };
-    const created = await ctx.projects.createProject(
-      { body: { title: "English UI", capabilities: [{ key: "plan" }] } },
-      { user },
-    );
-    const rankApi = ctx.alepha.inject(ProjectRankController);
-    const admin = async (language?: string) =>
-      (
-        await rankApi.getRankPresets(
-          {
-            params: { projectId: created.id },
-            query: language ? { language } : {},
-          },
-          { user },
-        )
-      ).items.find((it) => it.key === "admin")?.name;
-
-    // The preset name is only computed where the project lacks the rank:
-    // a seeded Admin answers its stored name.
-    await ctx.repos.organizationRanks.deleteMany({
-      organizationId: { eq: await organizationIdOf(ctx, created.id) },
-      key: { eq: "admin" },
-    });
     ctx.alepha.store.set("alepha.http.request", {
       language: "fr-FR",
     } as never);
     try {
-      expect(await admin("en")).toBe("Admin");
-      expect(await admin("fr")).toBe("Administrateur");
-      // Accept-Language is only the fallback, for a caller that does not say.
-      expect(await admin()).toBe("Administrateur");
+      const created = await ctx.projects.createProject(
+        { body: { title: "French browser", capabilities: [{ key: "plan" }] } },
+        { user },
+      );
+      const organizationId = await organizationIdOf(ctx, created.id);
+      const ranks = await ctx.ranks.ranksOf(organizationId);
+      expect(ranks.find((it) => it.key === "admin")?.name).toBe("Admin");
+      expect(ranks.find((it) => it.key === "viewer")?.name).toBe("Viewer");
+
+      // And the editor's base for a missing rank.
+      await ctx.repos.organizationRanks.deleteMany({
+        organizationId: { eq: organizationId },
+        key: { eq: "admin" },
+      });
+      const { items } = await ctx.alepha
+        .inject(ProjectRankController)
+        .getRankPresets({ params: { projectId: created.id } }, { user });
+      expect(items.find((it) => it.key === "admin")?.name).toBe("Admin");
     } finally {
       ctx.alepha.store.set("alepha.http.request", undefined as never);
     }
-  });
-
-  it("names a seeded rank in the creator's language", async ({ expect }) => {
-    const [admin] = ctx.presets.presetsFor(["plan"]);
-    expect(await ctx.presets.nameFor(admin, "en")).toBe("Admin");
-    expect(await ctx.presets.nameFor(admin, "fr-FR")).toBe("Administrateur");
-    // Anything else falls back to English, like the rest of the app.
-    expect(await ctx.presets.nameFor(admin, "de")).toBe("Admin");
   });
 
   it("names the capability, not the rank, when a capability is what is off", async ({
