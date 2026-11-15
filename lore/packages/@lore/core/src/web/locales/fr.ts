@@ -3844,20 +3844,6 @@ export default {
   "uptime.ongoing": "En cours",
   "uptime.duration": "$1 secondes",
   "uptime.noIncidents": "Aucun incident enregistré.",
-  "uptime.emailAlerts": "Alertes par e-mail",
-  "uptime.emailAlertsDescription":
-    "Un e-mail au début d’un incident et un autre lors du rétablissement.",
-  "uptime.recipients": "Destinataires",
-  "uptime.recipientsDescription":
-    "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
-  "uptime.invalidRecipients":
-    "Saisissez 20 adresses e-mail valides au maximum.",
-  "uptime.suggestions.title": "Apps sans moniteur",
-  "uptime.suggestions.description":
-    "Ces copies ont une adresse que rien ne surveille. Ajoutez un moniteur avec son nom et son URL déjà remplis.",
-  "uptime.suggestions.add": "Ajouter un moniteur",
-  "uptime.suggestions.addFor": "Ajouter un moniteur pour $1",
-  "uptime.app.none": "Aucun moniteur ne surveille encore cette adresse.",
   "uptime.title": "Disponibilité",
   "project.capability.ship.option.uptime.label": "Superviser les applications",
   "project.capability.ship.option.uptime.description":

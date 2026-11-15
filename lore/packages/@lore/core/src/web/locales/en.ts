@@ -3839,19 +3839,6 @@ export default {
   "uptime.ongoing": "Ongoing",
   "uptime.duration": "$1 seconds",
   "uptime.noIncidents": "No incidents recorded.",
-  "uptime.emailAlerts": "Email alerts",
-  "uptime.emailAlertsDescription":
-    "One email when an incident opens and one when it recovers.",
-  "uptime.recipients": "Recipients",
-  "uptime.recipientsDescription":
-    "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
-  "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
-  "uptime.suggestions.title": "Apps without a monitor",
-  "uptime.suggestions.description":
-    "These copies have an address and nothing checking it. Add one with its name and URL filled in.",
-  "uptime.suggestions.add": "Add monitor",
-  "uptime.suggestions.addFor": "Add a monitor for $1",
-  "uptime.app.none": "No monitor checks this address yet.",
   "uptime.title": "Uptime",
   "project.capability.ship.option.uptime.label": "Monitor apps",
   "project.capability.ship.option.uptime.description":
