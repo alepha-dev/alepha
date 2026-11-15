@@ -154,13 +154,16 @@ describe("the Apps settings page", () => {
     expect(view.container.textContent).not.toMatch(/sg_/);
   });
 
-  it("lists Monitor apps beside Track apps and Deploy apps", async ({
+  it("lists Monitor apps beside Track apps and Deploy apps in General only (#Q3702)", async ({
     expect,
   }) => {
-    // Monitoring only (#Q3597): Track and Deploy off, Monitor on. The uptime
-    // option adds a sidebar entry, so General shows it too; this page lists
-    // it as the third thing a project does with its apps.
-    const { alepha, view } = await mount(<ProjectSettingsAppsPage />);
+    // Monitoring only (#Q3597): Track and Deploy off, Monitor on. General
+    // lists all three; Ship's own Features page lists none of them again.
+    const shipPage = await mount(<ProjectSettingsAppsPage />);
+    expect(shipPage.view.queryAllByRole("switch")).toHaveLength(0);
+    shipPage.view.unmount();
+
+    const { alepha, view } = await mount(<ProjectSettingsCapabilitiesPage />);
     alepha.store.set(
       currentProjectAtom,
       projectFixture({

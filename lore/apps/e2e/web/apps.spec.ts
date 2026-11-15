@@ -557,7 +557,8 @@ test.describe("Apps", () => {
        * capability - it cannot disappear for any reason this page has, so if
        * it goes, the permission set went with it.
        */
-      await page.goto(`/${projectSlug}/settings/apps`);
+      // The Ship switches are in General > Capabilities only (#Q3702).
+      await page.goto(`/${projectSlug}/settings/capabilities`);
       await page.waitForLoadState("networkidle");
 
       const sidebarQuests = page.locator(`a[href="/${projectSlug}/quests"]`);

@@ -11,6 +11,10 @@ import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection
  * nested under it (epics, releases, track). The options that only
  * change how a capability behaves stay on its own settings page.
  *
+ * Ship is the exception (#Q3702): its own Features page holds no switch
+ * any more, so every Ship option is listed here, Monitor apps included,
+ * rather than the same rows twice.
+ *
  * ⚠️ The masters live HERE and nowhere else (#Q2565). A capability that is
  * off leaves the sidebar, its settings section included, so the page that
  * turns it back on must be one that is always listed. General is.
@@ -24,7 +28,11 @@ const ProjectSettingsCapabilitiesPage = () => {
         <ProjectSettingsCapabilitySection
           key={key}
           capability={key}
-          options={shell.navOptions(key)}
+          options={
+            key === "ship"
+              ? [...shell.navOptions(key), ...shell.settingsOptions(key)]
+              : shell.navOptions(key)
+          }
         />
       ))}
     </div>

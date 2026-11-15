@@ -115,7 +115,8 @@ test.describe("deploying through Lore", () => {
     const envName = "production";
 
     await test.step("the deploy option is a real switch, not a Soon badge", async () => {
-      await page.goto(`/${slug}/settings/apps`);
+      // The Ship switches are in General > Capabilities only (#Q3702).
+      await page.goto(`/${slug}/settings/capabilities`);
       await page.waitForLoadState("networkidle");
 
       const deploy = page.getByRole("switch", { name: /^deploy apps$/i });
@@ -376,7 +377,8 @@ test.describe("deploying through Lore", () => {
     await test.step("turning the option back off takes both tabs away", async () => {
       // ⚠️ Disabling HIDES and never deletes: the variable set above survives,
       // which is what makes turning it back on safe.
-      await page.goto(`/${slug}/settings/apps`);
+      // The Ship switches are in General > Capabilities only (#Q3702).
+      await page.goto(`/${slug}/settings/capabilities`);
       await page.waitForLoadState("networkidle");
 
       const off = page.waitForResponse((res) =>
