@@ -130,6 +130,18 @@ export class HostCommand {
             "How long the server is meant to live (30m, 2h, 3d): past it the host shows overdue and you are told once. Lore stops nothing",
         })
         .optional(),
+      "stats-history": z
+        .boolean()
+        .describe(
+          "Keep a history of CPU and memory, as the console's switch does; --no-stats-history stops it",
+        )
+        .optional(),
+      "stats-interval": z
+        .text({
+          description:
+            "How often the machine reports CPU and memory (5m, 30m, 1h, up to 1d)",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -146,13 +158,15 @@ export class HostCommand {
         let deployAllowed = minted.deployAllowed ?? false;
         const ttlSeconds =
           flags.ttl === undefined ? undefined : this.ttlSecondsOf(flags.ttl);
-        if (flags["allow-deploys"] || typeof ttlSeconds === "number") {
+        const body = {
+          ...(flags["allow-deploys"] ? { deployAllowed: true } : {}),
+          ...(typeof ttlSeconds === "number" ? { ttlSeconds } : {}),
+          ...this.statsBody(flags),
+        };
+        if (Object.keys(body).length > 0) {
           const updated = await this.hosts.updateHost({
             params: { hostId: minted.id },
-            body: {
-              ...(flags["allow-deploys"] ? { deployAllowed: true } : {}),
-              ...(typeof ttlSeconds === "number" ? { ttlSeconds } : {}),
-            },
+            body,
           });
           deployAllowed = updated.deployAllowed ?? deployAllowed;
         }
@@ -682,7 +696,7 @@ export class HostCommand {
   public readonly update = $command({
     name: "update",
     description:
-      "Change a host of the project: whether it accepts deploys, its label and its expiry",
+      "Change a host of the project: whether it accepts deploys, its label, its expiry and its stats",
     args: z.text({
       title: "host",
       description:
@@ -705,6 +719,18 @@ export class HostCommand {
             "Extend the expiry to this long from now (30m, 2h, 3d), or none to clear it",
         })
         .optional(),
+      "stats-history": z
+        .boolean()
+        .describe(
+          "Keep a history of CPU and memory, as the console's switch does; --no-stats-history stops it",
+        )
+        .optional(),
+      "stats-interval": z
+        .text({
+          description:
+            "How often the machine reports CPU and memory (5m, 30m, 1h, up to 1d)",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -718,10 +744,11 @@ export class HostCommand {
           ...(flags.ttl === undefined
             ? {}
             : { ttlSeconds: this.ttlSecondsOf(flags.ttl) }),
+          ...this.statsBody(flags),
         };
         if (Object.keys(body).length === 0) {
           throw new UsageError(
-            "Nothing to change: pass --allow-deploys, --no-allow-deploys, --label or --ttl.",
+            "Nothing to change: pass --allow-deploys, --no-allow-deploys, --label, --ttl, --stats-history, --no-stats-history or --stats-interval.",
           );
         }
         const { project, projectId } = await this.projects.named(
@@ -737,7 +764,7 @@ export class HostCommand {
           print,
           flags.output,
           updated,
-          `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}${updated.label ? `, label "${updated.label}"` : ""}${updated.expiresAt ? `, expires ${updated.expiresAt}` : ""}`,
+          `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}${updated.label ? `, label "${updated.label}"` : ""}${updated.expiresAt ? `, expires ${updated.expiresAt}` : ""}${updated.statsIntervalSeconds ? `, stats every ${this.intervalLabel(updated.statsIntervalSeconds)}${updated.collectSeries ? " with history" : ""}` : ""}`,
         );
       });
     },
@@ -1047,24 +1074,82 @@ export class HostCommand {
   }
 
   /**
+   * The console's two stats switches as `updateHost` takes them (#Q3734):
+   * `--stats-history` is `collectSeries`, `--stats-interval` the gauge's
+   * interval, in the `--ttl` grammar and the console's range (5m to 1d).
+   */
+  protected statsBody(flags: {
+    "stats-history"?: boolean;
+    "stats-interval"?: string;
+  }): { collectSeries?: boolean; statsIntervalSeconds?: number } {
+    return {
+      ...(flags["stats-history"] === undefined
+        ? {}
+        : { collectSeries: flags["stats-history"] }),
+      ...(flags["stats-interval"] === undefined
+        ? {}
+        : {
+            statsIntervalSeconds: this.durationSecondsOf(
+              "--stats-interval",
+              flags["stats-interval"],
+              300,
+              86_400,
+              "5m and 1d",
+            ),
+          }),
+    };
+  }
+
+  /**
+   * An interval as a person reads it: `30m`, `1h`, `1d`.
+   */
+  protected intervalLabel(seconds: number): string {
+    if (seconds % 86_400 === 0) return `${seconds / 86_400}d`;
+    if (seconds % 3_600 === 0) return `${seconds / 3_600}h`;
+    if (seconds % 60 === 0) return `${seconds / 60}m`;
+    return `${seconds}s`;
+  }
+
+  /**
    * A TTL as `lore host add --ttl` takes it (#Q3138): a number and a unit,
    * `m`, `h` or `d` (`30m`, `2h`, `3d`), or `none` to clear the expiry.
    */
   protected ttlSecondsOf(raw: string): number | null {
-    const value = raw.trim().toLowerCase();
-    if (value === "none") {
+    if (raw.trim().toLowerCase() === "none") {
       return null;
     }
-    const match = /^(\d+)\s*([mhd])$/.exec(value);
+    return this.durationSecondsOf(
+      "--ttl",
+      raw,
+      60,
+      366 * 86_400,
+      "1m and 366d",
+      ", or none",
+    );
+  }
+
+  /**
+   * A duration in the `--ttl` grammar: a number and `m`, `h` or `d`,
+   * between `min` and `max` seconds.
+   */
+  protected durationSecondsOf(
+    flag: string,
+    raw: string,
+    min: number,
+    max: number,
+    range: string,
+    orElse = "",
+  ): number {
+    const match = /^(\d+)\s*([mhd])$/.exec(raw.trim().toLowerCase());
     if (!match) {
       throw new UsageError(
-        `--ttl ${raw}: write a number and m, h or d (30m, 2h, 3d), or none.`,
+        `${flag} ${raw}: write a number and m, h or d (30m, 2h, 3d)${orElse}.`,
       );
     }
     const unit = { m: 60, h: 3_600, d: 86_400 }[match[2] as "m" | "h" | "d"];
     const seconds = Number(match[1]) * unit;
-    if (seconds < 60 || seconds > 366 * 86_400) {
-      throw new UsageError(`--ttl ${raw}: between 1m and 366d.`);
+    if (seconds < min || seconds > max) {
+      throw new UsageError(`${flag} ${raw}: between ${range}.`);
     }
     return seconds;
   }

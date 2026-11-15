@@ -506,21 +506,21 @@ See [Artifacts](/lore/docs/ship-artifacts).
 
 A host is a machine a project deploys onto.
 
-| Command                   | What it does                                                                                                  | Flags                                                                                                 |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `lore host provision`     | Buy a server from a cloud provider, install Bay on it, enrol it as a host and wait until it is online.        | `--provider`, `--project` (required), `--name`, `--type`, `--zone`, `--no-allow-deploys`, `--timeout` |
-| `lore host add <slug>`    | Create a Bay host in the project, lend it there, and print the command to run on the machine.                 | `--label`, `--allow-deploys`, `--ttl`                                                                 |
-| `lore host list`          | The hosts the project can deploy onto: home or borrowed, connected or not, with current CPU and memory.       |                                                                                                       |
-| `lore host get <slug>`    | One host: home project, online or not, last seen, deploys, the projects it is lent to, what the machine runs. | `--home`                                                                                              |
-| `lore host wait <slug>`   | Block until a host is online. Exits `1` on timeout, with the last state seen.                                 | `--timeout` (seconds, default 120), `--home`                                                          |
-| `lore host stats <slug>`  | A host's CPU and memory: the current reading, then one mean per day.                                          | `--since` (an ISO date, default 30 days ago), `--home`                                                |
-| `lore host lend <slug>`   | Lend a host to `--project`, so its apps can deploy there. Needs `host:lend` in both projects.                 | `--home`                                                                                              |
-| `lore host unlend <slug>` | Withdraw a host's loan to `--project`. Refused while a copy there still deploys to it, naming the copies.     | `--home`                                                                                              |
-| `lore host update <slug>` | Change whether a host accepts deploys, its label or its expiry.                                               | `--allow-deploys` / `--no-allow-deploys`, `--label` (empty clears it), `--ttl`                        |
-| `lore host rotate <slug>` | Mint a new secret for a Bay host and print the connector command once.                                        | `--yes`                                                                                               |
-| `lore host move <slug>`   | Move a host to another project. Its slug, its machine and its loans stay.                                     | `--to` (required), `--yes`                                                                            |
-| `lore host assign <id>`   | For an instance admin: give a host a home project, by its id. Its loans do not change.                        | `--to` (required)                                                                                     |
-| `lore host delete <slug>` | Delete a host the project is the home of, never one it only borrows.                                          | `--yes`, `--keep-server`                                                                              |
+| Command                   | What it does                                                                                                  | Flags                                                                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lore host provision`     | Buy a server from a cloud provider, install Bay on it, enrol it as a host and wait until it is online.        | `--provider`, `--project` (required), `--name`, `--type`, `--zone`, `--no-allow-deploys`, `--timeout`                                        |
+| `lore host add <slug>`    | Create a Bay host in the project, lend it there, and print the command to run on the machine.                 | `--label`, `--allow-deploys`, `--ttl`, `--stats-history`, `--stats-interval`                                                                 |
+| `lore host list`          | The hosts the project can deploy onto: home or borrowed, connected or not, with current CPU and memory.       |                                                                                                                                              |
+| `lore host get <slug>`    | One host: home project, online or not, last seen, deploys, the projects it is lent to, what the machine runs. | `--home`                                                                                                                                     |
+| `lore host wait <slug>`   | Block until a host is online. Exits `1` on timeout, with the last state seen.                                 | `--timeout` (seconds, default 120), `--home`                                                                                                 |
+| `lore host stats <slug>`  | A host's CPU and memory: the current reading, then one mean per day.                                          | `--since` (an ISO date, default 30 days ago), `--home`                                                                                       |
+| `lore host lend <slug>`   | Lend a host to `--project`, so its apps can deploy there. Needs `host:lend` in both projects.                 | `--home`                                                                                                                                     |
+| `lore host unlend <slug>` | Withdraw a host's loan to `--project`. Refused while a copy there still deploys to it, naming the copies.     | `--home`                                                                                                                                     |
+| `lore host update <slug>` | Change whether a host accepts deploys, its label, its expiry or its stats.                                    | `--allow-deploys` / `--no-allow-deploys`, `--label` (empty clears it), `--ttl`, `--stats-history` / `--no-stats-history`, `--stats-interval` |
+| `lore host rotate <slug>` | Mint a new secret for a Bay host and print the connector command once.                                        | `--yes`                                                                                                                                      |
+| `lore host move <slug>`   | Move a host to another project. Its slug, its machine and its loans stay.                                     | `--to` (required), `--yes`                                                                                                                   |
+| `lore host assign <id>`   | For an instance admin: give a host a home project, by its id. Its loans do not change.                        | `--to` (required)                                                                                                                            |
+| `lore host delete <slug>` | Delete a host the project is the home of, never one it only borrows.                                          | `--yes`, `--keep-server`                                                                                                                     |
 
 **Provisioning.** `--provider scaleway` buys the server through the provider's
 own CLI: it needs `scw` installed and `scw login` done. Without `--provider`
@@ -541,6 +541,12 @@ working at once.
 **Expiry.** `--ttl` takes a duration such as `30m`, `2h` or `3d`. Past it the
 host shows as overdue and you are told once; Lore stops nothing. On
 `lore host update`, `--ttl` counts from now and `--ttl none` clears it.
+
+**Stats.** `--stats-history` keeps a history of CPU and memory, as the switch
+on the host's **Settings** tab does, and `--no-stats-history` stops it.
+`--stats-interval` sets how often the machine reports them, in the `--ttl`
+grammar, from `5m` to `1d`. Both work on `lore host add`, so one command sets
+up a monitored host.
 
 **Deleting.** `lore host delete` is refused while an app, a stack or a stack
 environment deploys to the host. A provisioned host's server is terminated

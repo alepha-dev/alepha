@@ -9,6 +9,7 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
+  HostController,
   HostStatsService,
   LoreShipApi,
   ProjectHostController,
@@ -143,5 +144,28 @@ describe("host MCP tools", () => {
       project: second.projectId,
     });
     expect(narrowed.collecting).toBe(false);
+  });
+
+  it("reports collecting once the CLI's --stats-history body is applied (#Q3734)", async ({
+    expect,
+  }) => {
+    const owner = await newUser();
+    const minted = await createTestHost(alepha, owner, { slug: "shell-box" });
+    expect((await stats(owner, { host: "shell-box" })).collecting).toBe(false);
+
+    // What `lore host update shell-box --stats-history --stats-interval 5m`
+    // sends.
+    const updated = await alepha.inject(HostController).updateHost(
+      {
+        params: { hostId: minted.id },
+        body: { collectSeries: true, statsIntervalSeconds: 300 },
+      },
+      { user: owner },
+    );
+    expect(updated).toMatchObject({
+      collectSeries: true,
+      statsIntervalSeconds: 300,
+    });
+    expect((await stats(owner, { host: "shell-box" })).collecting).toBe(true);
   });
 });

@@ -440,6 +440,53 @@ describe("lore host", () => {
     });
   });
 
+  describe("--stats-history and --stats-interval (#Q3734)", () => {
+    it("sends both with add, in the one update after the create", async ({
+      expect,
+    }) => {
+      const { run, calls } = create();
+      await run("add", "vps-ovh --stats-history --stats-interval 5m");
+      expect(calls[1]).toEqual({
+        name: "update",
+        request: {
+          params: { hostId: "e1" },
+          body: { collectSeries: true, statsIntervalSeconds: 300 },
+        },
+      });
+    });
+
+    it("turns history on and off with update, sets the interval, and prints both", async ({
+      expect,
+    }) => {
+      const { run, calls, printed } = create();
+      await run("update", "vps-ovh --stats-history --stats-interval 1h");
+      await run("update", "vps-ovh --no-stats-history");
+      expect(
+        calls.map((call) => (call.request as { body: object }).body),
+      ).toEqual([
+        { collectSeries: true, statsIntervalSeconds: 3600 },
+        { collectSeries: false },
+      ]);
+      expect(printed.join("\n")).toContain("stats every 1h with history");
+    });
+
+    it("refuses an interval outside the console's 5m to 1d, or malformed, and sends nothing", async ({
+      expect,
+    }) => {
+      const { run, calls } = create();
+      await expect(
+        run("update", "vps-ovh --stats-interval 1m"),
+      ).rejects.toThrow("--stats-interval 1m: between 5m and 1d.");
+      await expect(
+        run("update", "vps-ovh --stats-interval 2d"),
+      ).rejects.toThrow("between 5m and 1d");
+      await expect(
+        run("update", "vps-ovh --stats-interval 30"),
+      ).rejects.toThrow("write a number and m, h or d");
+      expect(calls).toEqual([]);
+    });
+  });
+
   describe("move and assign (#Q3282)", () => {
     it("moves a host of the project with --yes and prints the loans that stay", async ({
       expect,
