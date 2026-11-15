@@ -145,9 +145,12 @@ const AppAnalyticsLeaderboard = (props: AppAnalyticsLeaderboardProps) => {
   return (
     <Card data-testid={testId}>
       <CardHeader>
+        {/* `justify-self-start`, not `self-start`: `CardHeader` is a grid,
+            whose items stretch to the column's width, and `self-start` only
+            aligns on the block axis (#Q3671). */}
         <Segmented
           size="sm"
-          className="self-start"
+          className="justify-self-start"
           value={active}
           onChange={setActive}
           options={segments.map((segment) => ({
