@@ -36,6 +36,10 @@ export class FolioDeletion {
     await this.nameService.releaseByEntity(id);
     // `force`: `folios` is soft-deleted (#Q3698), so a plain delete would
     // only stamp `deletedAt`. This is the purge: the row goes.
-    await this.folios.deleteById(id, { force: true });
+    //
+    // `deleteMany`, not `deleteById`: two purges can race for one row (the
+    // nightly job and a person, or two isolates), and the second finding it
+    // gone has nothing left to do, so it must not throw.
+    await this.folios.deleteMany({ id: { eq: id } }, { force: true });
   }
 }
