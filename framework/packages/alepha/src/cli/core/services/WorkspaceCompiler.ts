@@ -150,7 +150,10 @@ export class WorkspaceCompiler {
             target: options.target ?? this.defaultBunTarget(),
           },
         ];
-    const binary = this.fs.join(dist, binaries[0].name);
+    const binary = this.fs.join(
+      dist,
+      this.binaryFileName(binaries[0].name, binaries[0].target),
+    );
     await this.fs.rm(stage, { recursive: true, force: true });
     try {
       await this.fs.mkdir(stage, { recursive: true });
@@ -172,17 +175,19 @@ export class WorkspaceCompiler {
           ),
           { root: stagedDist },
         );
-        const staged = this.fs.join(stagedDist, name);
+        const file = this.binaryFileName(name, target);
+        const staged = this.fs.join(stagedDist, file);
         if (!(await this.fs.exists(staged))) {
           throw new AlephaError(
-            `\`bun build --compile\` finished but wrote no '${name}' in ${stagedDist}.`,
+            `\`bun build --compile\` finished but wrote no '${file}' in ${stagedDist}.`,
           );
         }
       }
-      for (const { name } of binaries) {
-        const out = this.fs.join(dist, name);
+      for (const { name, target } of binaries) {
+        const file = this.binaryFileName(name, target);
+        const out = this.fs.join(dist, file);
         await this.fs.rm(out, { force: true });
-        await this.fs.cp(this.fs.join(stagedDist, name), out);
+        await this.fs.cp(this.fs.join(stagedDist, file), out);
       }
     } finally {
       await this.fs.rm(stage, { recursive: true, force: true });
@@ -198,10 +203,23 @@ export class WorkspaceCompiler {
       await this.copyMigrations(options.root, dist);
     }
 
-    for (const { name } of binaries) {
-      await this.logBinary(this.fs.join(dist, name));
+    for (const { name, target } of binaries) {
+      await this.logBinary(
+        this.fs.join(dist, this.binaryFileName(name, target)),
+      );
     }
     return binary;
+  }
+
+  /**
+   * The file `bun build --compile --outfile <name>` writes for a target: Bun
+   * appends `.exe` for a `bun-windows-*` target (#Q3729), on a Windows host
+   * and in a cross-compile alike, unless the name already ends so.
+   */
+  protected binaryFileName(name: string, target: string): string {
+    return target.includes("windows") && !name.toLowerCase().endsWith(".exe")
+      ? `${name}.exe`
+      : name;
   }
 
   /**
