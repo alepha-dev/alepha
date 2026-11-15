@@ -57,16 +57,16 @@ describe("HttpDiscordTransport", () => {
   it("refuses with the status alone: no url, no cause", async ({ expect }) => {
     const { transport, logs } = await setup();
     transport.answer = new Response("nope", { status: 404 });
-    const error = await transport
+    const error = (await transport
       .post(WEBHOOK, { content: "x" })
-      .catch((caught: unknown) => caught as Error);
+      .catch((caught: unknown) => caught)) as Error;
     expect(error.message).toContain("HTTP 404");
     expect(error.message).not.toContain("secret-token");
     expect(error.cause).toBeUndefined();
     transport.answer = new Error(`connect failed ${WEBHOOK}`);
-    const network = await transport
+    const network = (await transport
       .post(WEBHOOK, { content: "x" })
-      .catch((caught: unknown) => caught as Error);
+      .catch((caught: unknown) => caught)) as Error;
     expect(network.message).not.toContain("secret-token");
     expect(network.cause).toBeUndefined();
     expect(JSON.stringify(logs.logs)).not.toContain("secret-token");
