@@ -2966,8 +2966,6 @@ export default {
 
   // Admin → Dashboard: Lore's Projects tile.
   "admin.projectsTile.title": "Projects",
-  "admin.projectsTile.description":
-    "Projects on this instance, archived excluded, with creations against the week before.",
   "admin.projectsTile.tooltip":
     "Every project on this instance, archived projects excluded.",
   "admin.projectsTile.note": "Created in 7 days: $1",

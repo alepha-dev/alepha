@@ -241,19 +241,24 @@ describe("AdminRouter", () => {
     ).toThrow("share the id 'mine'");
   });
 
-  it("loads no layout, and no error, when the layout action is not offered", async () => {
+  it("declares its tiles in code: no stored layout, and the built-ins can be dropped", async () => {
+    // Set before the router reads it, as every app does (#Q3667).
     const alepha = Alepha.create().with(AlephaReactRouter);
+    alepha.set(adminRouterOptionsAtom, {
+      builtinDashboardCards: false,
+      dashboardCards: [{ id: "orders", title: "Orders", render: () => null }],
+    });
     const router = alepha.inject(AdminRouter);
     await alepha.start();
-    alepha.store.set("alepha.server.request.apiLinks", { actions: {} });
 
-    const loader = router.dashboard.options.loader as unknown as () => Promise<
-      Record<string, unknown>
-    >;
-    expect(await loader()).toEqual({});
+    expect(router.dashboard.options.loader).toBeUndefined();
+    const cards = (
+      router.dashboard.options.props as () => { cards: Array<{ id: string }> }
+    )().cards;
+    expect(cards.map((card) => card.id)).toEqual(["orders"]);
   });
 
-  it("names every built-in tile for the picker", async () => {
+  it("names every built-in tile, for its region's label", async () => {
     const alepha = Alepha.create().with(AlephaReactRouter);
     const router = alepha.inject(AdminRouter);
     await alepha.start();
