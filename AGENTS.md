@@ -39,7 +39,7 @@ A step's own `working-directory` is relative to the repository root, so it names
 
 ## The workflow
 
-The framework's rules apply to the whole repository: one branch and one worktree per quest, cut from the latest main; small commits staged by explicit path, each naming its quest as `#Q<n>`; a pull request into `main` with auto-merge on (`gh pr merge --auto --squash`), so CI runs before the merge and `main` receives one commit per quest. Nothing is pushed to `main` directly. See "The workflow" in `framework/AGENTS.md`.
+The framework's rules apply to the whole repository: one branch and one worktree per quest, cut from the latest main; small commits staged by explicit path, each naming its quest as `#Q<n>`; a pull request into `main` with auto-merge on (`gh pr merge --auto --squash`), so CI runs before the merge, the merge queue runs it again on top of `main`, and `main` receives one commit per quest. Nothing is pushed to `main` directly. See "The workflow" in `framework/AGENTS.md`.
 
 ## What the repository may name
 
