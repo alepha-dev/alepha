@@ -240,9 +240,13 @@ export class FolioTableController {
       }),
       response: z.object({ deleted: z.array(z.integer()) }),
     },
-    handler: async ({ body }) => {
+    handler: async ({ body, user }) => {
       const folio = this.owned.get<Folio>();
-      const deleted = await this.tables.deleteRows(folio, body.numbers);
+      const deleted = await this.tables.deleteRows(
+        folio,
+        body.numbers,
+        user.id,
+      );
       if (deleted.length) await this.touch(folio);
       return { deleted };
     },
@@ -261,11 +265,12 @@ export class FolioTableController {
       }),
       response: z.object({ columns: z.array(folioColumnResourceSchema) }),
     },
-    handler: async ({ body }) => {
+    handler: async ({ body, user }) => {
       const folio = this.owned.get<Folio>();
       const columns = await this.tables.applyColumnOperations(
         folio,
         body.operations,
+        user.id,
       );
       await this.touch(folio);
       return { columns };

@@ -14,6 +14,7 @@ import type { FolioColumnType } from "../schemas/folioColumnTypeSchema.ts";
 import type { FolioRowFilter } from "../schemas/folioRowFilterSchema.ts";
 import type { FolioRowResource } from "../schemas/folioRowResourceSchema.ts";
 import { FolioCellCodec } from "./FolioCellCodec.ts";
+import { FolioHistoryService } from "./FolioHistoryService.ts";
 
 /**
  * The folio a table operation acts on: enough of the row to check that it is
@@ -23,6 +24,33 @@ export interface FolioTableTarget {
   id: string;
   projectId: number;
   type: string;
+  /**
+   * What a revision of the write records beside the table. A write that
+   * carries an author and these is recorded in the folio's history.
+   */
+  title?: string;
+  summary?: string;
+}
+
+/**
+ * A table as a revision snapshot stores it, in `contentSnapshot` (#Q3513):
+ * versioned, read leniently by {@link FolioTableService.decodeSnapshot}.
+ */
+export interface FolioTableSnapshotData {
+  v: 1;
+  columns: Array<{
+    id: string;
+    position: number;
+    name: string;
+    type: string;
+    options: Record<string, unknown>;
+  }>;
+  rows: Array<{
+    id: string;
+    number: number;
+    position: number;
+    cells: Record<string, unknown>;
+  }>;
 }
 
 /**
@@ -69,6 +97,14 @@ export class FolioTableService {
   static readonly MAX_CHOICES = 50;
   static readonly MAX_BATCH = 100;
   static readonly MAX_CHOICE_LABEL = 100;
+  /**
+   * The largest snapshot a revision stores, in UTF-8 bytes: under D1's
+   * 2 MB limit on one value, with room for the row around it. A table past
+   * it is recorded as too large to snapshot (it reads as "this revision
+   * cannot be displayed") rather than failing the write that opened the
+   * revision.
+   */
+  static readonly MAX_SNAPSHOT_BYTES = 1_800_000;
 
   protected readonly columns = $repository(folioColumns);
   protected readonly rows = $repository(folioRows);
@@ -76,6 +112,7 @@ export class FolioTableService {
   protected readonly codec = $inject(FolioCellCodec);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly resources = $inject(ResourceRegistry);
+  protected readonly history = $inject(FolioHistoryService);
 
   /**
    * Per-folio row numbers. A `$sequence` counter is keyed on this property
@@ -223,7 +260,7 @@ export class FolioTableService {
    * no transaction on D1, so a refusal halfway leaves the earlier ones
    * applied, and the message names the operation refused.
    */
-  public async applyColumnOperations(
+  protected async writeApplyColumnOperations(
     folio: FolioTableTarget,
     operations: FolioColumnOperation[],
   ): Promise<FolioColumnResource[]> {
@@ -522,7 +559,7 @@ export class FolioTableService {
    * its column's type first, and the whole batch is refused, before anything
    * is written, when one cell cannot be.
    */
-  public async addRows(
+  protected async writeAddRows(
     folio: FolioTableTarget,
     inputs: FolioRowInput[],
     userId?: string,
@@ -597,7 +634,7 @@ export class FolioTableService {
    * read answers 409; without one the write is last-write-wins on the cells
    * named. `replaced` names the cells that held a value this overwrote.
    */
-  public async updateRow(
+  protected async writeUpdateRow(
     folio: FolioTableTarget,
     number: number,
     cells: Record<string, unknown>,
@@ -661,7 +698,7 @@ export class FolioTableService {
    * Move a row before or after another, by number. Only the moved row is
    * written: it takes the midpoint of its new neighbours.
    */
-  public async moveRow(
+  protected async writeMoveRow(
     folio: FolioTableTarget,
     number: number,
     to: { before?: number; after?: number },
@@ -708,7 +745,7 @@ export class FolioTableService {
    * Delete 1 to 100 rows by number, and answer the numbers deleted. A number
    * no row holds is skipped, so a retried delete is not an error.
    */
-  public async deleteRows(
+  protected async writeDeleteRows(
     folio: FolioTableTarget,
     numbers: number[],
   ): Promise<number[]> {
@@ -798,6 +835,267 @@ export class FolioTableService {
       folio,
       wanted.map((input) => ({ op: "add" as const, ...input })),
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // Writes, each recorded in the folio's history (#Q3513)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Apply a list of column operations in order, and answer the columns as
+   * they stand after the last. See {@link writeApplyColumnOperations}.
+   */
+  public async applyColumnOperations(
+    folio: FolioTableTarget,
+    operations: FolioColumnOperation[],
+    userId?: string,
+  ): Promise<FolioColumnResource[]> {
+    return this.recorded(folio, userId, () =>
+      this.writeApplyColumnOperations(folio, operations),
+    );
+  }
+
+  /**
+   * Add 1 to 100 rows. See {@link writeAddRows}.
+   */
+  public async addRows(
+    folio: FolioTableTarget,
+    inputs: FolioRowInput[],
+    userId?: string,
+  ): Promise<FolioRowResource[]> {
+    return this.recorded(folio, userId, () =>
+      this.writeAddRows(folio, inputs, userId),
+    );
+  }
+
+  /**
+   * Write some cells of one row. See {@link writeUpdateRow}.
+   */
+  public async updateRow(
+    folio: FolioTableTarget,
+    number: number,
+    cells: Record<string, unknown>,
+    opts: { version?: number; userId?: string } = {},
+  ): Promise<{ row: FolioRowResource; replaced: string[] }> {
+    return this.recorded(folio, opts.userId, () =>
+      this.writeUpdateRow(folio, number, cells, opts),
+    );
+  }
+
+  /**
+   * Move a row before or after another. See {@link writeMoveRow}.
+   */
+  public async moveRow(
+    folio: FolioTableTarget,
+    number: number,
+    to: { before?: number; after?: number },
+    userId?: string,
+  ): Promise<FolioRowResource> {
+    return this.recorded(folio, userId, () =>
+      this.writeMoveRow(folio, number, to, userId),
+    );
+  }
+
+  /**
+   * Delete 1 to 100 rows by number. See {@link writeDeleteRows}.
+   */
+  public async deleteRows(
+    folio: FolioTableTarget,
+    numbers: number[],
+    userId?: string,
+  ): Promise<number[]> {
+    return this.recorded(folio, userId, () =>
+      this.writeDeleteRows(folio, numbers),
+    );
+  }
+
+  /**
+   * Run a table write inside the folio's history, as a content write runs
+   * inside it (#Q3513): one revision per writing session, folded into while
+   * the session lasts.
+   *
+   * Before the write, a revision that is about to stop being the head is
+   * filled in with the table as it stood: that is the one read of the rows
+   * a session costs, and none inside it. After the write, the session's
+   * revision is folded into or a new one opened. A table write is an
+   * `edit`.
+   *
+   * A write without an author, or without the folio's title, records
+   * nothing: only service-level callers do that.
+   */
+  protected async recorded<T>(
+    folio: FolioTableTarget,
+    userId: string | undefined,
+    write: () => Promise<T>,
+  ): Promise<T> {
+    this.assertTable(folio);
+    if (!userId || folio.title === undefined) return write();
+    const plan = await this.history.prepareRevisionLazy(
+      folio.id,
+      userId,
+      "edit",
+      () => this.encodeSnapshot(folio.id),
+    );
+    const result = await write();
+    await this.history.recordRevision(
+      { id: folio.id, title: folio.title, summary: folio.summary ?? "" },
+      userId,
+      plan,
+    );
+    return result;
+  }
+
+  // -------------------------------------------------------------------------
+  // Snapshots (#Q3513)
+  // -------------------------------------------------------------------------
+
+  /**
+   * The table as it stands, serialised for a revision's `contentSnapshot`.
+   */
+  public async encodeSnapshot(folioId: string): Promise<string> {
+    const { columns, rows } = await this.snapshot(folioId);
+    const data: FolioTableSnapshotData = {
+      v: 1,
+      columns: columns.map((column) => ({
+        id: column.id,
+        position: column.position,
+        name: column.name,
+        type: column.type,
+        options: column.options ?? {},
+      })),
+      rows: rows.map((row) => ({
+        id: row.id,
+        number: row.number,
+        position: row.position,
+        cells: this.liveCells(columns, row.cells),
+      })),
+    };
+    const json = JSON.stringify(data);
+    const bytes = new TextEncoder().encode(json).length;
+    return bytes > FolioTableService.MAX_SNAPSHOT_BYTES
+      ? JSON.stringify({ v: 1, tooLarge: true, bytes })
+      : json;
+  }
+
+  /**
+   * A revision's snapshot, or `undefined` when it does not decode: an empty
+   * one (a table's first revision before any write), a version this build
+   * does not know, or a corrupt one. Never throws: a snapshot that cannot
+   * be read must not take the history with it.
+   */
+  public decodeSnapshot(raw: string): FolioTableSnapshotData | undefined {
+    if (!raw) return undefined;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return undefined;
+    }
+    const data = parsed as Partial<FolioTableSnapshotData> | null;
+    if (
+      !data ||
+      typeof data !== "object" ||
+      data.v !== 1 ||
+      !Array.isArray(data.columns) ||
+      !Array.isArray(data.rows)
+    ) {
+      return undefined;
+    }
+    const columns = data.columns.filter(
+      (column) =>
+        column &&
+        typeof column.id === "string" &&
+        typeof column.name === "string" &&
+        typeof column.type === "string" &&
+        Number.isFinite(column.position),
+    );
+    const rows = data.rows.filter(
+      (row) =>
+        row &&
+        typeof row.id === "string" &&
+        Number.isSafeInteger(row.number) &&
+        row.number > 0 &&
+        Number.isFinite(row.position),
+    );
+    return {
+      v: 1,
+      columns: columns.map((column) => ({
+        ...column,
+        options:
+          column.options && typeof column.options === "object"
+            ? column.options
+            : {},
+      })),
+      rows: rows.map((row) => ({
+        ...row,
+        cells: row.cells && typeof row.cells === "object" ? row.cells : {},
+      })),
+    };
+  }
+
+  /**
+   * Replace the table's columns and rows with a snapshot's, in one batch
+   * (#Q3513). Row numbers come back as they were; the folio's row sequence
+   * never moves backwards, so no number is reused after a revert. The
+   * caller records the revision.
+   */
+  public async restoreSnapshot(
+    folio: FolioTableTarget,
+    data: FolioTableSnapshotData,
+    userId?: string,
+  ): Promise<void> {
+    this.assertTable(folio);
+    const names = new Set<string>();
+    const columns = data.columns
+      .slice(0, FolioTableService.MAX_COLUMNS)
+      .filter((column) => {
+        const lower = column.name.toLowerCase();
+        if (names.has(lower)) return false;
+        names.add(lower);
+        return true;
+      });
+    const numbers = new Set<number>();
+    const rows = data.rows
+      .slice(0, FolioTableService.MAX_ROWS)
+      .filter((row) => {
+        if (numbers.has(row.number)) return false;
+        numbers.add(row.number);
+        return true;
+      });
+    const stored = columns.map((column) => ({
+      ...column,
+      folioId: folio.id,
+      lowerName: column.name.toLowerCase(),
+    })) as unknown as FolioColumn[];
+    await this.database.atomicBatch([
+      this.rows.deleteStatement({ folioId: { eq: folio.id } }),
+      this.columns.deleteStatement({ folioId: { eq: folio.id } }),
+      ...columns.map((column) =>
+        this.columns.insertStatement({
+          id: column.id,
+          folioId: folio.id,
+          position: column.position,
+          name: column.name,
+          lowerName: column.name.toLowerCase(),
+          type: column.type,
+          options: column.options,
+        }),
+      ),
+      ...rows.map((row) =>
+        this.rows.insertStatement({
+          id: row.id,
+          folioId: folio.id,
+          number: row.number,
+          position: row.position,
+          cells: row.cells,
+          searchText: this.searchTextOf(stored, row.cells),
+          updatedByUserId: userId,
+        }),
+      ),
+    ]);
+    const highest = Math.max(0, ...rows.map((row) => row.number));
+    const current = (await this.folioRowNumber.current(folio.id)) ?? 0;
+    if (highest > current) await this.folioRowNumber.reset(highest, folio.id);
   }
 
   // -------------------------------------------------------------------------
