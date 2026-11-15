@@ -17,4 +17,11 @@ export const folioListQuerySchema = z.object({
    * unrelated-order page would.
    */
   epicId: z.integer().optional(),
+  /**
+   * Answer each row's `content` (#Q3712). A listing reads none, and leaves
+   * it off: the body was half of a page's bytes. Defaults to on when `q` is
+   * given, since a search's callers cut a snippet out of the body, and an
+   * older CLI's `folio search` asks without the flag.
+   */
+  withContent: z.boolean().optional(),
 });

@@ -518,7 +518,7 @@ describe("FolioController history (#63)", () => {
     );
     const other = await createTestUser(ctx);
     await ctx.historyService.appendRevision(
-      { ...stored.data, content: "v2" },
+      { ...stored.data, searchText: "", content: "v2" },
       other.id,
       "edit",
       stored.data.content,

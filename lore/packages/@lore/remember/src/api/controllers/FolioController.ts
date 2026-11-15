@@ -74,6 +74,14 @@ type DirectoryRow = {
  */
 type DirectoryMapLoader = () => Promise<Map<string, DirectoryRow>>;
 
+/**
+ * A column `FolioController.list` may read: {@link FolioController.LIST_COLUMNS}
+ * and, when asked, `content`.
+ */
+type FolioListColumn =
+  | (typeof FolioController.LIST_COLUMNS)[number]
+  | "content";
+
 export class FolioController {
   protected readonly automationMutations = $inject(AutomationMutationContext);
   protected readonly automationRows = $inject(
@@ -202,8 +210,33 @@ export class FolioController {
   static readonly MAX_REF_IDS = 500;
 
   /**
+   * The columns `list` reads: every one {@link folioListEntrySchema}
+   * answers, `content` aside. Never `searchText`, which no response carries
+   * (#Q3712).
+   */
+  static readonly LIST_COLUMNS = [
+    "id",
+    "shortId",
+    "createdAt",
+    "updatedAt",
+    "version",
+    "projectId",
+    "title",
+    "type",
+    "protected",
+    "pinned",
+    "directoryId",
+    "trashedAt",
+    "summary",
+  ] as const;
+
+  /**
    * List folios in a project (project-shared — any member sees every
    * folio). Optional `q` runs `LIKE %q%` over `searchText`.
+   *
+   * No body unless `withContent`, which a search (`q`) turns on by default:
+   * a page of 50 on a large project was 770 KB, half of it bodies and half
+   * `searchText`, and only the search callers read a body (#Q3712).
    */
   list = $action({
     path: "/list",
@@ -227,9 +260,19 @@ export class FolioController {
       ];
       const limit = query.limit ?? 50;
       const offset = query.offset ?? 0;
+      const columns: FolioListColumn[] =
+        (query.withContent ?? !!query.q)
+          ? [...FolioController.LIST_COLUMNS, "content"]
+          : [...FolioController.LIST_COLUMNS];
       if (query.epicId == null && !query.q) {
         return this.withEpics(
-          await this.folios.findMany({ where, orderBy, limit, offset }),
+          await this.folios.findMany({
+            where,
+            columns,
+            orderBy,
+            limit,
+            offset,
+          }),
         );
       }
       if (query.epicId == null) {
@@ -237,10 +280,15 @@ export class FolioController {
         // own text matches, merged with the tables one of whose rows does,
         // each once, then paged.
         const [byText, byRow] = await Promise.all([
-          this.folios.findMany({ where, orderBy, limit: offset + limit }),
+          this.folios.findMany({
+            where,
+            columns,
+            orderBy,
+            limit: offset + limit,
+          }),
           this.tables.searchRows(query.projectId, query.q!, offset + limit),
         ]);
-        return this.withRowMatches(byText, byRow, offset, limit);
+        return this.withRowMatches(byText, byRow, offset, limit, columns);
       }
       // An epic's folios are its `filed` links in core's graph (#Q2626),
       // read in bounded batches and paged here: a folio does not know its
@@ -252,6 +300,7 @@ export class FolioController {
       const rows = await this.bound.collect(filed, (batch) =>
         this.folios.findMany({
           where: { ...where, id: { inArray: batch } },
+          columns,
           orderBy,
         }),
       );
@@ -260,7 +309,7 @@ export class FolioController {
         const byRow = (
           await this.tables.searchRows(query.projectId, query.q, 500)
         ).filter((hit) => inEpic.has(hit.folioId));
-        return this.withRowMatches(rows, byRow, offset, limit);
+        return this.withRowMatches(rows, byRow, offset, limit, columns);
       }
       rows.sort(this.byPinnedThenRecent);
       return this.withEpics(rows.slice(offset, offset + limit));
@@ -279,11 +328,14 @@ export class FolioController {
    * entry per folio, the row carried as `rowMatch`, pinned first then
    * newest, then paged.
    */
-  protected async withRowMatches(
-    byText: Folio[],
+  protected async withRowMatches<
+    T extends { id: string; pinned: boolean; updatedAt: string },
+  >(
+    byText: T[],
     byRow: Array<{ folioId: string; number: number; text: string }>,
     offset: number,
     limit: number,
+    columns: FolioListColumn[],
   ) {
     const rowOf = new Map(byRow.map((hit) => [hit.folioId, hit]));
     const known = new Set(byText.map((row) => row.id));
@@ -292,7 +344,7 @@ export class FolioController {
       .filter((id) => !known.has(id));
     const extra = missing.length
       ? await this.bound.collect(missing, (batch) =>
-          this.folios.findMany({ where: { id: { inArray: batch } } }),
+          this.folios.findMany({ where: { id: { inArray: batch } }, columns }),
         )
       : [];
     const merged = [...byText, ...extra].sort(this.byPinnedThenRecent);

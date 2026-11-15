@@ -51,7 +51,6 @@ const baseFolio = (overrides: Partial<Folio> = {}): Folio => ({
   pinned: false,
   directoryId: undefined,
   summary: "",
-  searchText: "",
   ...overrides,
 });
 

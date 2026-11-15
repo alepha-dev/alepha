@@ -4,7 +4,7 @@ import type { ResourceTabSubject, I18n } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { FolioResource } from "../../../../../api/schemas/folioResourceSchema.ts";
+import type { FolioListEntry } from "../../../../../api/schemas/folioListEntrySchema.ts";
 import EpicFoliosList from "./EpicFoliosList.tsx";
 import { useFiledFolios } from "./useFiledFolios.ts";
 
@@ -42,7 +42,7 @@ const EpicFoliosPanel = (props: EpicFoliosPanelProps) => {
     [filingApi, subject.id],
   );
 
-  const detach = useAction<[folio: FolioResource], void>(
+  const detach = useAction<[folio: FolioListEntry], void>(
     {
       handler: async (_ctx, folio) => {
         const ok = await dialog.confirm({

@@ -360,6 +360,8 @@ export class FolioTools {
           q: params.query,
           limit: params.limit ?? 10,
           projectId,
+          // The snippet is cut out of the body (#Q3712).
+          withContent: true,
         },
       });
       const epicRefs = await this.epicRefsFor(
@@ -374,7 +376,7 @@ export class FolioTools {
           // A table found by a row answers that row as its snippet (#Q3514).
           snippet: f.rowMatch
             ? `Row ${f.rowMatch.number}: ${f.rowMatch.text}`.slice(0, 240)
-            : buildSnippet(f.content, params.query),
+            : buildSnippet(f.content ?? "", params.query),
           updatedAt: f.updatedAt,
           epic: f.epicId != null ? epicRefs.get(f.epicId) : undefined,
         })),

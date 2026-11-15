@@ -133,9 +133,12 @@ test.describe("Protected folio", () => {
       // Hit the same list endpoint the layout loader uses; assert the
       // freshly-encrypted folio's content shape.
       const folios = (await page.evaluate(async (cid) => {
-        const r = await fetch(`/api/list?projectId=${cid}&limit=100`, {
-          credentials: "include",
-        });
+        const r = await fetch(
+          `/api/list?projectId=${cid}&limit=100&withContent=true`,
+          {
+            credentials: "include",
+          },
+        );
         if (!r.ok) throw new Error(`list: ${r.status}`);
         return (await r.json()) as Array<{
           shortId: number;

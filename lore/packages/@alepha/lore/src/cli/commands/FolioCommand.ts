@@ -504,7 +504,7 @@ export class FolioCommand {
         const { projectId } = await this.projects.named(flags.project, context);
 
         const folios = await this.folioApi.list({
-          query: { projectId, q: args, limit: flags.limit },
+          query: { projectId, q: args, limit: flags.limit, withContent: true },
         });
 
         if (flags.output === "json") {
@@ -521,7 +521,7 @@ export class FolioCommand {
           print(`F${folio.shortId}  ${folio.title}`);
           // A protected folio's content is ciphertext, never a snippet.
           if (!folio.protected) {
-            print(this.snippet(folio.content, args));
+            print(this.snippet(folio.content ?? "", args));
           }
         });
       });

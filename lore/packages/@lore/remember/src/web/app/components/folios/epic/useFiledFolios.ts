@@ -2,7 +2,7 @@ import type { ResourceTabSubject } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 
 import type { FolioController } from "../../../../../api/controllers/FolioController.ts";
-import type { FolioResource } from "../../../../../api/schemas/folioResourceSchema.ts";
+import type { FolioListEntry } from "../../../../../api/schemas/folioListEntrySchema.ts";
 
 /**
  * The folios filed under an epic, registered by `KnowledgeShell` as the
@@ -24,7 +24,7 @@ import type { FolioResource } from "../../../../../api/schemas/folioResourceSche
  */
 export const useFiledFolios = (
   subject: ResourceTabSubject,
-): { folios: FolioResource[] | null; count?: number; loading: boolean } => {
+): { folios: FolioListEntry[] | null; count?: number; loading: boolean } => {
   const folioApi = useClient<FolioController>();
 
   const query = useQuery(
