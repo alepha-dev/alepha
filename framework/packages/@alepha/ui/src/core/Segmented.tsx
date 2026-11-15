@@ -18,6 +18,11 @@ export interface SegmentedOption {
    */
   count?: React.ReactNode;
   disabled?: boolean;
+  /**
+   * The segment's accessible name and hover tooltip, for a segment whose
+   * `label` is an icon alone: without it an icon segment names nothing.
+   */
+  title?: string;
 }
 
 export interface SegmentedProps extends Omit<
@@ -314,6 +319,8 @@ export const Segmented = (props: SegmentedProps) => {
             disabled={itemDisabled}
             data-state={active ? "active" : "inactive"}
             data-slot="segmented-item"
+            aria-label={opt.title}
+            title={opt.title}
             name={name}
             value={opt.value}
             onClick={() => !itemDisabled && handleSelect(opt.value)}
