@@ -38,9 +38,6 @@ const NAV_ROUTE_NAMES = [
   // Sidebar + breadcrumbs — ProjectView.tsx
   "project",
   "projectQuests",
-  // Sidebar entry + the view bar's two links — ProjectView.tsx
-  "projectKanban",
-  // Opening a card — KanbanBoard.tsx
   "projectEpics",
   "projectEpic",
   "projectErrors",

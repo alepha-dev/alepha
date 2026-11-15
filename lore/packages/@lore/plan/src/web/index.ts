@@ -11,6 +11,8 @@ import { currentQuestAtom } from "./app/atoms/currentQuestAtom.ts";
 import { currentReleasesAtom } from "./app/atoms/currentReleasesAtom.ts";
 import { kanbanFiltersAtom } from "./app/atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "./app/atoms/kanbanReloadAtom.ts";
+import { questLogCollapsedAtom } from "./app/atoms/questLogCollapsedAtom.ts";
+import { questsViewAtom } from "./app/atoms/questsViewAtom.ts";
 import { WorkAccountSections } from "./app/components/account/feedback/WorkAccountSections.ts";
 import { WorkProjectLoader } from "./app/loaders/WorkProjectLoader.ts";
 import { WorkShell } from "./app/shell/WorkShell.ts";
@@ -40,6 +42,10 @@ export const LorePlanWeb = $module({
     currentQuestAtom,
     kanbanFiltersAtom,
     kanbanReloadAtom,
+    // Registered here, unlike most of the `current*` atoms, so the cookie
+    // value is hydrated before the first render that reads it.
+    questLogCollapsedAtom,
+    questsViewAtom,
   ],
   register(alepha) {
     // Injected rather than listed in `services`: a listed service is tagged

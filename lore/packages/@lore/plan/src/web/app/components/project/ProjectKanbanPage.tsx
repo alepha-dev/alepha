@@ -9,8 +9,8 @@ import KanbanBoardSkeleton from "../kanban/KanbanBoardSkeleton.tsx";
 import { preloadQuestView } from "./quest/LazyQuestView.tsx";
 
 /**
- * The Kanban board, the Board tab of the Quests page, at
- * `/:projectSlug/quests/board`.
+ * The Kanban board, the Board view of the Quests page at `/:projectSlug/quests`,
+ * shown when `questsViewAtom` says so (`ProjectQuestsView`).
  *
  * It was a *mode* of the Quests page until this route existed — no URL, no
  * sidebar entry, no way to link a card — which is what

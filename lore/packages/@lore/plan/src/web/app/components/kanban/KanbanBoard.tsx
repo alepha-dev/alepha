@@ -1,7 +1,8 @@
-import { FilterSlot, Button, useToast } from "@alepha/ui";
+import { FilterSlot, useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
@@ -17,20 +18,18 @@ import {
   useQuery,
   useStore,
 } from "alepha/react";
-import { useAuth } from "alepha/react/auth";
 import { useFieldValue, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   CalendarClock,
   ChevronDown,
+  LayoutList,
   MapPin,
   Plus,
   Rows3,
   Search,
   Tag,
-  User,
-  X,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -41,11 +40,13 @@ import { KanbanColumnConfig } from "../../../../api/schemas/KanbanColumnConfig.t
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
+import { kanbanCardStyleAtom } from "../../atoms/kanbanCardStyleAtom.ts";
 import { kanbanFiltersAtom } from "../../atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import { AREA_DOT_CLASS, AreaDotColor } from "../shared/areaColor.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { KanbanAging } from "./kanbanAging.ts";
+import KanbanCard from "./KanbanCard.tsx";
 import KanbanColumn, { type ColumnDescriptor } from "./KanbanColumn.tsx";
 import { KanbanGrouping } from "./kanbanGrouping.ts";
 import { KanbanLanes, type LaneMode } from "./kanbanLanes.ts";
@@ -99,11 +100,15 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       // mirroring effect below rather than by an inline onChange - so the
       // persisted shape and the reset button are unchanged.
       search: z.text(),
+      // The due select, a toggle button until it became a `Control` like the
+      // rest of the bar.
+      due: z.enum(["overdue", "week"]).optional(),
     }),
     initialValues: {
       areas: (seeded.areas ?? []) as string[],
       tags: (seeded.tags ?? []) as string[],
       search: seeded.search ?? "",
+      due: seeded.due,
     },
     handler: async () => {},
   });
@@ -115,8 +120,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   // The form is the live value, so a keystroke filters this render rather
   // than the one after the atom write lands.
   const search = (searchValue as string | undefined) ?? "";
-  const assigneeFilter = seeded.assignee;
-  const dueFilter = seeded.due;
+  const [dueValue] = useFieldValue(filterForm.input.due);
+  const dueFilter = (dueValue as "overdue" | "week" | undefined) || undefined;
 
   /**
    * One writer for the whole bar, so the stored shape can never hold half
@@ -128,7 +133,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       areas: areaFilter,
       tags: tagFilter,
       search,
-      assignee: assigneeFilter,
       due: dueFilter,
       ...patch,
     });
@@ -142,18 +146,54 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       storedFilters?.projectId === project.id &&
       JSON.stringify(storedFilters.areas) === JSON.stringify(areaFilter) &&
       JSON.stringify(storedFilters.tags) === JSON.stringify(tagFilter) &&
-      (storedFilters.search ?? "") === search
+      (storedFilters.search ?? "") === search &&
+      storedFilters.due === dueFilter
     ) {
       return;
     }
-    patchFilters({ areas: areaFilter, tags: tagFilter, search });
-  }, [areaFilter, tagFilter, search, project.id]);
+    patchFilters({});
+  }, [areaFilter, tagFilter, search, dueFilter, project.id]);
   // Board-local, not persisted: collapsing is a "get this out of my way for
   // a minute" gesture, and a column still folded away three days later
   // reads as a card that vanished.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [collapsedLanes, setCollapsedLanes] = useState<Set<string>>(new Set());
-  const [laneMode, setLaneMode] = useState<LaneMode>("none");
+  // The lanes the viewer has opened. Lanes start CLOSED, by area and by
+  // epic alike: a project has dozens of areas and epics, and every lane open
+  // at once is a wall of columns with nothing to choose between. Tracking
+  // the opened ones rather than the closed ones is what makes "all closed"
+  // the default without knowing the lane keys in advance (the epic titles
+  // load after the switch).
+  const [expandedLanes, setExpandedLanes] = useState<Set<string>>(new Set());
+  const [cardStyle, setCardStyle] = useStore(kanbanCardStyleAtom);
+  // How the board is laid out, as opposed to what it shows: lanes and the
+  // card style. A form of its own so both pickers are `Control`s like the
+  // filters. Lanes stay board-local (not persisted); the card style is
+  // written to its cookie by the effect below.
+  const viewForm = useForm({
+    schema: z.object({
+      lanes: z.enum(["none", "area", "epic"]),
+      style: z.enum(["clean", "compact"]),
+    }),
+    initialValues: { lanes: "none" as LaneMode, style: cardStyle.style },
+    handler: async () => {},
+    // From the change itself rather than an effect watching the value: a
+    // new grouping starts with every lane closed, and the card style is
+    // written to its cookie.
+    onChange: (key, next) => {
+      if (key.endsWith("lanes")) {
+        setExpandedLanes(new Set());
+      }
+      if (key.endsWith("style")) {
+        setCardStyle({ style: next === "compact" ? "compact" : "clean" });
+      }
+    },
+  });
+  const [laneValue] = useFieldValue(viewForm.input.lanes);
+  const laneMode = ((laneValue as LaneMode | undefined) ?? "none") as LaneMode;
+  // The card being dragged, drawn in the board's `DragOverlay` rather than
+  // translated inside its own column: a column body scrolls, so a card
+  // moved in place was clipped by it and dragged the body sideways with it.
+  const [dragged, setDragged] = useState<QuestResource | undefined>();
   const [reloadKey] = useStore(kanbanReloadAtom);
   // The open card is `projectQuest`'s overlay, a sheet over this board. The
   // board only has to keep its own row in step: `QuestView` writes every mutation into
@@ -167,7 +207,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const epicApi = useClient<EpicController>();
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const auth = useAuth();
   const dt = useInject(DateTimeProvider);
   const dndId = useId();
 
@@ -215,6 +254,17 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     () => new Map((epics ?? []).map((e) => [e.id, e.title])),
     [epics],
   );
+  // Grouped by epic, the board shows the epics still in play: a completed
+  // epic's lane is a wall of done cards, and a project accumulates dozens
+  // of them. Its quests leave the board with it; quests with no epic keep
+  // their own lane.
+  const doneEpicIds = useMemo(
+    () =>
+      new Set(
+        (epics ?? []).filter((e) => e.status === "completed").map((e) => e.id),
+      ),
+    [epics],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -245,10 +295,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           String(quest.shortId) === asNumber,
       );
     }
-    if (assigneeFilter) {
-      const target = assigneeFilter === "me" ? auth.user?.id : assigneeFilter;
-      out = out.filter((quest) => quest.acceptedBy === target);
-    }
     if (dueFilter) {
       const now = dt.now();
       out = out.filter((quest) => {
@@ -260,14 +306,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       });
     }
     return out;
-  }, [quests, areaFilter, tagFilter, search, assigneeFilter, dueFilter]);
-
-  const filtersActive =
-    areaFilter.length > 0 ||
-    tagFilter.length > 0 ||
-    Boolean(search.trim()) ||
-    Boolean(assigneeFilter) ||
-    Boolean(dueFilter);
+  }, [quests, areaFilter, tagFilter, search, dueFilter]);
 
   const subColumns = project.kanbanColumns ?? ["In Progress"];
   /**
@@ -338,9 +377,18 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     }));
   }, [project.kanbanColumns, project.kanbanColumnConfig, tr]);
 
+  const laneQuests = useMemo(
+    () =>
+      laneMode === "epic"
+        ? filteredQuests.filter(
+            (quest) => quest.epicId == null || !doneEpicIds.has(quest.epicId),
+          )
+        : filteredQuests,
+    [filteredQuests, laneMode, doneEpicIds],
+  );
   const lanes = useMemo(
-    () => swimlanes.build(filteredQuests, laneMode, epicTitles),
-    [filteredQuests, laneMode, epicTitles],
+    () => swimlanes.build(laneQuests, laneMode, epicTitles),
+    [laneQuests, laneMode, epicTitles],
   );
 
   /**
@@ -590,6 +638,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               icon={Search}
               placeholder={tr("kanban.filter.search")}
               inputProps={{
+                // The small height the selects get from `size="sm"`, so the
+                // whole bar is one row of h-7 controls.
+                className: "h-7 text-sm",
                 "aria-label": tr("kanban.filter.search"),
                 "data-testid": "kanban-search",
               }}
@@ -600,6 +651,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               <Control
                 input={filterForm.input.areas}
                 label=""
+                size="sm"
                 clearable
                 icon={MapPin}
                 clearLabel={tr("kanban.filter.allAreas")}
@@ -616,6 +668,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               <Control
                 input={filterForm.input.tags}
                 label=""
+                size="sm"
                 clearable
                 icon={Tag}
                 clearLabel={tr("kanban.filter.allTags")}
@@ -629,100 +682,77 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           )}
         </form>
 
-        <div className="flex flex-wrap items-center gap-1">
-          {/* "My cards" is the filter people reach for most and the only one
-              that needs no picker, so it gets a button of its own rather
-              than a row in the assignee menu. */}
-          <Button
-            variant={assigneeFilter === "me" ? "solid" : "minimal"}
-            intent="none"
-            size="sm"
-            className="h-7 text-xs"
-            aria-pressed={assigneeFilter === "me"}
-            data-testid="kanban-filter-mine"
-            onClick={() =>
-              patchFilters({
-                assignee: assigneeFilter === "me" ? undefined : "me",
-              })
-            }
-          >
-            <User className="size-3.5" />
-            {tr("kanban.filter.mine")}
-          </Button>
-
-          <Button
-            variant={dueFilter ? "solid" : "minimal"}
-            intent="none"
-            size="sm"
-            className="h-7 text-xs"
-            aria-pressed={Boolean(dueFilter)}
-            data-testid="kanban-filter-due"
-            onClick={() =>
-              patchFilters({
-                // Off → overdue → due this week → off. One button rather
-                // than a select: three states people cycle, not a taxonomy.
-                due:
-                  dueFilter === undefined
-                    ? "overdue"
-                    : dueFilter === "overdue"
-                      ? "week"
-                      : undefined,
-              })
-            }
-          >
-            <CalendarClock className="size-3.5" />
-            {dueFilter === "week"
-              ? tr("kanban.filter.dueWeek")
-              : tr("kanban.filter.overdue")}
-          </Button>
-
-          {/* Lanes: off → by area → by epic → off. A flat board stops being
-              readable past a hundred cards, and lanes put the shape of the
-              work back without changing what a column means. */}
-          <Button
-            variant={laneMode === "none" ? "minimal" : "solid"}
-            intent="none"
-            size="sm"
-            className="h-7 text-xs"
-            aria-pressed={laneMode !== "none"}
-            data-testid="kanban-lanes"
-            onClick={() =>
-              setLaneMode((mode) =>
-                mode === "none" ? "area" : mode === "area" ? "epic" : "none",
-              )
-            }
-          >
-            <Rows3 className="size-3.5" />
-            {laneMode === "area"
-              ? tr("kanban.lanes.byArea")
-              : laneMode === "epic"
-                ? tr("kanban.lanes.byEpic")
-                : tr("kanban.lanes.off")}
-          </Button>
-
-          {filtersActive && (
-            <Button
-              variant="minimal"
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The bar's second half, in the same widget as the first: a small
+              labelled select per choice. They were four toggle buttons that
+              cycled through hidden states ("Overdue" meant off, overdue or
+              due this week depending on how often it had been pressed), so
+              the label never said what the board was showing. A select
+              always names its current value. */}
+          <div className="w-40">
+            <Control
+              input={filterForm.input.due}
+              label=""
+              select
               size="sm"
-              className="text-muted-foreground h-7 text-xs"
-              data-testid="kanban-filter-reset"
-              onClick={() => {
-                // All three, and the form is the source for all three now.
-                filterForm.input.areas.set([]);
-                filterForm.input.tags.set([]);
-                filterForm.input.search.set("");
-                setStoredFilters({
-                  projectId: project.id,
-                  areas: [],
-                  tags: [],
-                  search: "",
-                });
+              clearable
+              icon={CalendarClock}
+              clearLabel={tr("kanban.filter.anyDue")}
+              placeholder={tr("kanban.filter.anyDue")}
+              triggerClassName="w-full"
+              items={[
+                { value: "overdue", label: tr("kanban.filter.overdue") },
+                { value: "week", label: tr("kanban.filter.dueWeek") },
+              ]}
+              inputProps={{
+                "aria-label": tr("kanban.filter.due"),
+                "data-testid": "kanban-filter-due",
               }}
-            >
-              <X className="size-3.5" />
-              {tr("kanban.filter.reset")}
-            </Button>
-          )}
+            />
+          </div>
+          {/* Lanes: a flat board stops being readable past a hundred cards,
+              and lanes put the shape of the work back without changing what
+              a column means. */}
+          <div className="w-40">
+            <Control
+              input={viewForm.input.lanes}
+              label=""
+              select
+              size="sm"
+              icon={Rows3}
+              triggerClassName="w-full"
+              items={[
+                { value: "none", label: tr("kanban.lanes.off") },
+                { value: "area", label: tr("kanban.lanes.byArea") },
+                { value: "epic", label: tr("kanban.lanes.byEpic") },
+              ]}
+              inputProps={{
+                "aria-label": tr("kanban.lanes.label"),
+                "data-testid": "kanban-lanes",
+              }}
+            />
+          </div>
+          {/* Card style: Clean (roomy, the title wraps) or Compact (one line
+              per fact). Per person and remembered in a cookie, like the
+              filters, so it holds across navigation and reloads. */}
+          <div className="w-32">
+            <Control
+              input={viewForm.input.style}
+              label=""
+              select
+              size="sm"
+              icon={LayoutList}
+              triggerClassName="w-full"
+              items={[
+                { value: "compact", label: tr("kanban.cards.compact") },
+                { value: "clean", label: tr("kanban.cards.clean") },
+              ]}
+              inputProps={{
+                "aria-label": tr("kanban.cards.style"),
+                "data-testid": "kanban-card-style",
+              }}
+            />
+          </div>
 
           <ToolbarSpinner loading={loading} className="size-3.5" />
         </div>
@@ -745,7 +775,14 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       <DndContext
         id={dndId}
         sensors={sensors}
-        onDragEnd={(event) => void move.run(event)}
+        onDragStart={(event) =>
+          setDragged(event.active.data.current?.quest as QuestResource)
+        }
+        onDragCancel={() => setDragged(undefined)}
+        onDragEnd={(event) => {
+          setDragged(undefined);
+          void move.run(event);
+        }}
       >
         {/*
           ⚠️ The lane stack scrolls, and ONLY when there are lanes.
@@ -777,7 +814,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           }
         >
           {laneGroups.map(({ lane, grouped: laneGrouped }, laneIndex) => {
-            const laneCollapsed = collapsedLanes.has(lane.key);
+            const laneCollapsed =
+              laneMode !== "none" && !expandedLanes.has(lane.key);
             return (
               <div
                 key={lane.key || "all"}
@@ -795,7 +833,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                     data-testid="kanban-lane-header"
                     aria-expanded={!laneCollapsed}
                     onClick={() =>
-                      setCollapsedLanes((prev) => {
+                      setExpandedLanes((prev) => {
                         const next = new Set(prev);
                         if (!next.delete(lane.key)) next.add(lane.key);
                         return next;
@@ -957,6 +995,24 @@ const KanbanBoard = (props: KanbanBoardProps) => {
             );
           })}
         </div>
+        <DragOverlay dropAnimation={null}>
+          {dragged && (
+            <KanbanCard
+              overlay
+              quest={dragged}
+              onSelect={() => {}}
+              areaDotClass={areaColor.dotClass(dragged.area)}
+              tagColors={project.tagColors}
+              blocked={blockedIds.has(dragged.id)}
+              assignee={
+                dragged.acceptedBy
+                  ? membersById.get(dragged.acceptedBy)
+                  : undefined
+              }
+              aging={aging.levelOf(dragged, dt)}
+            />
+          )}
+        </DragOverlay>
       </DndContext>
 
       {/*

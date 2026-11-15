@@ -106,4 +106,4 @@ export const HomeRecentProjects = (props: HomeRecentProjectsProps) => {
 /**
  * Rows the list shows before "Show more".
  */
-const RECENT = 8;
+const RECENT = 6;

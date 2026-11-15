@@ -102,7 +102,6 @@ export const ROUTES_FULL_WIDTH = new Set([
   // width the way it did beside the quest log it replaced.
   "projectQuests",
   "projectQuest",
-  "projectKanban",
   "projectAutomations",
   // Every page under Automations draws its own bordered header and scrolling
   // body (`AutomationPage`), as Uptime's monitor page does.
@@ -196,7 +195,6 @@ export const SECTION_HREF_ROUTES: Record<
   projectEpic: "projectEpics",
   projectQuest: "projectQuests",
   projectQuestGraph: "projectQuests",
-  projectKanban: "projectQuests",
   projectRelease: "projectReleases",
   projectAutomationGallery: "projectAutomations",
   projectAutomationDetail: "projectAutomations",
@@ -263,7 +261,6 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectQuestGraph: "project.menu.quests",
   // The Board tab of the Quests page: the trail reads "Quests", as the
   // sidebar's one entry does, and the tab says which view.
-  projectKanban: "project.menu.quests",
   projectEpics: "project.menu.epics",
   projectEpic: "project.menu.epics",
   projectReleases: "project.menu.releases",

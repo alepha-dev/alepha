@@ -198,9 +198,7 @@ const QuestView = (props: QuestViewProps) => {
    * The header arrow. The breadcrumb walks *up*; this walks *back*.
    *
    * `props.onClose` first, which is how each mount names its own way out:
-   * the card supplies a push to `projectKanban` (safe, and not a navigation
-   * out from under the board, because the board is that route's LAYOUT and
-   * stays mounted), and the questline dialog supplies its own dismiss.
+   * the questline dialog supplies its own dismiss.
    *
    * On the page mount there is no `onClose`, so `canGoBack` decides — read
    * here rather than during render, since this component renders on the
@@ -229,12 +227,8 @@ const QuestView = (props: QuestViewProps) => {
    * One definition, so the id and its muted separator cannot drift apart
    * between the mounts.
    */
-  const titleContent = (
-    <>
-      {formatReference("quest", quest.shortId)}{" "}
-      <span className="text-muted-foreground">-</span> {quest.title}
-    </>
-  );
+  // The title alone: the reference sits in the chip row above it.
+  const titleContent = <>{quest.title}</>;
   /*
    * The same text as a plain string, for the `title` attribute the two
    * elements carry. Every mount truncates - 28px on the page, 18px on the
@@ -535,7 +529,7 @@ const QuestView = (props: QuestViewProps) => {
           makes the rail beside it stand still while this scrolls. Below
           `lg` it owns no scroll at all and the root above does the work. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden lg:overflow-y-auto">
-        <div className="flex flex-1 flex-col gap-6 px-10 pt-7 pb-14">
+        <div className="flex flex-1 flex-col gap-6 px-10 pt-4 pb-14">
           {/* Chips: what this quest IS right now, above the title that says
               what it is about. Deliberately outside the sticky header below,
               so the one line worth pinning while the body scrolls stays one
@@ -549,10 +543,19 @@ const QuestView = (props: QuestViewProps) => {
               beneath the X. From `lg` the rail is the top-right corner
               instead and reserves the space itself. */}
           <div
-            className={`-mx-10 -mt-7 -mb-6 flex flex-wrap items-center gap-2 px-10 pt-7 ${
+            className={`-mx-10 -mt-4 -mb-6 flex flex-wrap items-center gap-2 px-10 pt-4 ${
               context === "dialog" ? "pr-14 lg:pr-10" : ""
             }`}
           >
+            {/* The reference leads the row rather than the title: it is
+                for citing and copying, and on the title line it pushed the
+                words people read into the cut. */}
+            <span
+              data-testid="quest-reference"
+              className="text-muted-foreground font-mono text-xs"
+            >
+              {formatReference("quest", quest.shortId)}
+            </span>
             <Badge variant="tint" tone={statusTone}>
               <CircleDot className="size-3" />
               {statusLabel}
@@ -586,7 +589,9 @@ const QuestView = (props: QuestViewProps) => {
             // #P2117 was about: the row must hold the title and the actions
             // and nothing the chips above it already said.
             data-testid="quest-header"
-            className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-center gap-3 border-b px-10 py-3"
+            // `items-start`: the title wraps now, and the actions line up with
+            // its first line rather than floating in the middle of three.
+            className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-start gap-3 border-b px-10 pt-1.5 pb-3"
           >
             {/* Card mount only. On the page the breadcrumb already walks up
                 and the arrow was redundant beside it, but in the kanban
@@ -631,16 +636,18 @@ const QuestView = (props: QuestViewProps) => {
                       shortId: String(quest.shortId),
                     },
                   })}
-                  className="truncate text-lg leading-tight font-bold"
+                  className="line-clamp-2 text-lg leading-snug font-bold break-words"
                   title={titleText}
                 >
                   {titleContent}
                 </Link>
               ) : (
                 <span
-                  className={`truncate leading-tight font-semibold ${
+                  // Wraps rather than truncating: a long title was cut with
+                  // its end readable only in the browser's tab title.
+                  className={`leading-tight font-semibold text-balance break-words ${
                     context === "page"
-                      ? "text-[28px] tracking-[-0.6px]"
+                      ? "text-2xl tracking-[-0.4px]"
                       : "text-lg font-bold"
                   }`}
                   title={titleText}

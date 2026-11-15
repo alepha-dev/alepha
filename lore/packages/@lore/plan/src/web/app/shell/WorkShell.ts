@@ -38,6 +38,7 @@ import { currentQuestCountAtom } from "../atoms/currentQuestCountAtom.ts";
 import { useDashboardEpicOptions } from "../components/project/epics/useDashboardEpicOptions.ts";
 import { useEpicReferences } from "../components/project/epics/useEpicReferences.ts";
 import { useFeedbackReferences } from "../components/project/feedback/useFeedbackReferences.ts";
+import ProjectQuestLogAside from "../components/project/ProjectQuestLogAside.tsx";
 import { useAuthoredQuestsDeletionLine } from "../components/project/quest/useAuthoredQuestsDeletionLine.ts";
 import { useDashboardQuestTags } from "../components/project/quest/useDashboardQuestTags.ts";
 import { useQuestElementImageUpload } from "../components/project/quest/useQuestElementImageUpload.ts";
@@ -118,7 +119,6 @@ export class WorkShell {
         // were deepest inside was the one that said where you were not.
         activeOn: (name) =>
           name === "projectQuests" ||
-          name === "projectKanban" ||
           name === "project" ||
           name === "projectQuest" ||
           name === "projectQuestGraph",
@@ -325,6 +325,21 @@ export class WorkShell {
           ? { label: area.name }
           : undefined;
       },
+    });
+
+    // The quest log: the viewer's open quests, grouped by area, beside
+    // `/quests` (list or board) and a quest page, so moving between quests needs no
+    // trip back to the list. Restored for testing after #Q3566 removed it;
+    // it collapses to a rail (`questLogCollapsedAtom`).
+    this.shell.registerAside({
+      key: "quest-log",
+      routes: ["projectQuests", "projectQuest"],
+      // Eager, unlike the other parts: the frame is small, and a lazy one
+      // rendered nothing until its chunk arrived, so every reload drew the
+      // page full width and then pushed it right when the pane landed. The
+      // frame reserves the pane's width at once; only the list inside it is
+      // lazy (`ProjectQuestLogAside`).
+      component: ProjectQuestLogAside,
     });
 
     // Picker order: after folios, and epics after quests because a project

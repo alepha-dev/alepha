@@ -198,6 +198,40 @@ export const setCapability = async (
 };
 
 /**
+ * Opens a project's board: `/quests`, then its Board tab. The board is a
+ * view of the Quests page, not a route of its own, so there is no URL to
+ * go to directly.
+ */
+export const openBoard = async (page: Page, projectSlug: string) => {
+  await page.goto(`/${projectSlug}/quests`);
+  await page
+    .getByTestId("quests-view-tabs")
+    .getByRole("tab", { name: "Board" })
+    .click();
+  await expect(page.getByTestId("kanban-board")).toBeVisible({
+    timeout: 15_000,
+  });
+};
+
+/**
+ * Picks an option in a `Control` select found by its trigger's test id, and
+ * waits out the `pointer-events: none` Base UI leaves on `<body>` when the
+ * listbox closes, so the next click is not swallowed.
+ */
+export const pickSelectOption = async (
+  page: Page,
+  testId: string,
+  option: string,
+) => {
+  await page.getByTestId(testId).click();
+  await page.getByRole("option", { name: option, exact: true }).click();
+  await expect(page.getByTestId(testId)).toContainText(option);
+  await page.waitForFunction(
+    () => document.body.style.pointerEvents !== "none",
+  );
+};
+
+/**
  * Add one sub-column to a project's Kanban band.
  *
  * A direct URL rather than `apiPost`, for the same reason
