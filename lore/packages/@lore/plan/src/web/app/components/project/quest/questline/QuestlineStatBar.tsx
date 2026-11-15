@@ -84,7 +84,9 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
     // dot and count and drop the word (still read by a screen reader and
     // shown on hover), so the bar stays one line on a 1280px screen with the
     // project rail beside it (#Q3374) instead of wrapping.
-    <div className="border-border bg-background/90 @container/statbar sticky top-0 z-10 flex flex-wrap items-center gap-x-3.5 gap-y-2 border-b px-6 py-3 backdrop-blur">
+    // The chrome surface (#Q3699), `bg-muted` and opaque like `DataTable`'s
+    // header, not the content's background under a blur.
+    <div className="border-border bg-muted @container/statbar sticky top-0 z-10 flex flex-wrap items-center gap-x-3.5 gap-y-2 border-b px-6 py-3">
       <span className="text-muted-foreground text-xs">
         <b className="text-foreground font-mono text-xs font-medium">
           {summary.total}
