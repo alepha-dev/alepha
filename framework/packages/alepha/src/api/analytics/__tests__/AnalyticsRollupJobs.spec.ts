@@ -441,6 +441,44 @@ describe("AnalyticsRollupJobs", () => {
     expect(brokenResult.rows).toEqual([{ hour: "2020-01-01T10", count: 1 }]);
   });
 
+  it("runs each dataset's sweep as its own queued job, so a stalled dataset cannot starve another (#Q3690)", async () => {
+    const alepha = makeApp(FlakyAnalyticsProvider);
+    const app = alepha.inject(TwoDatasets);
+    const jobs = alepha.inject(AnalyticsRollupJobs);
+    const dateTime = alepha.inject(DateTimeProvider);
+    await alepha.start();
+
+    dateTime.pause();
+    await app.broken.record({ app: "a", count: 1, hour: "2020-01-01T10" });
+    await app.ok.record({ app: "a", count: 1, hour: "2020-01-01T10" });
+
+    // The hourly run only queues: one execution per dataset, each with its
+    // own timeout, where it used to sweep every dataset under one.
+    await jobs.sweep.trigger();
+
+    await expect
+      .poll(
+        async () =>
+          (
+            await app.ok.query({
+              since: "2000-01-01",
+              groupBy: ["hour"],
+              select: { count: "sum" },
+            })
+          ).rows,
+      )
+      .toEqual([{ hour: "2020-01-01", count: 1 }]);
+    expect(
+      (
+        await app.broken.query({
+          since: "2000-01-01",
+          groupBy: ["hour"],
+          select: { count: "sum" },
+        })
+      ).rows,
+    ).toEqual([{ hour: "2020-01-01T10", count: 1 }]);
+  });
+
   it("warns at boot when a dataset declares retention but AlephaApiAnalyticsRollup is not imported", async () => {
     // Deliberately no `.with(AlephaApiAnalyticsRollup)` here — `AnalyticsRetentionGuard`
     // is wired into `AlephaApiAnalytics` unconditionally, so declaring `Views`

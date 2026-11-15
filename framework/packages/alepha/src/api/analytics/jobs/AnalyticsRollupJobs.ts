@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -67,15 +67,58 @@ export class AnalyticsRollupJobs {
    * Hourly, matching the cadence `SigilJobs.collapseAnalytics` already
    * proved on a Worker. Neither the rollup nor the prune pass is
    * time-critical to the hour.
+   *
+   * It only hands each dataset to {@link sweepOne}, one queued execution per
+   * dataset (#Q3690). Sweeping them all in this run put every dataset under
+   * one 30 s timeout: at Lore's 00:00 UTC run, where every other hourly and
+   * daily job of the scheduled event hits D1 at once, the first dataset's
+   * cold-forward insert stalled 16 s until D1 timed it out, and the 30 s ran
+   * out three datasets later. Apart, a stalled dataset costs its own run and
+   * no other's.
    */
   public readonly sweep = $job({
     name: "system.analytics.rollup",
     cron: "0 * * * *",
     description:
-      "Folds each analytics tier's buckets past its window into the next tier, then deletes the last tier's rows past its window.",
+      "Queues one sweep per analytics dataset, which folds each tier's buckets past its window into the next tier, then deletes the last tier's rows past its window.",
     timeout: [30, "seconds"],
-    handler: () => this.sweepNow(),
+    handler: () => this.enqueueSweeps(),
   });
+
+  /**
+   * One dataset's sweep, with its own 30 s (#Q3690). A name that no longer
+   * matches a declared dataset (a deploy that removed it while the
+   * execution waited) is skipped.
+   */
+  public readonly sweepOne = $job({
+    name: "system.analytics.rollup-dataset",
+    schema: z.object({ dataset: z.text() }),
+    description:
+      "Folds one analytics dataset's tiers past their window into the next tier, then deletes its last tier's rows past its window.",
+    timeout: [30, "seconds"],
+    handler: async ({ payload }) => {
+      const primitive = this.alepha
+        .primitives($analytics)
+        .find((it) => it.dataset.name === payload.dataset);
+      if (!primitive) return;
+      await this.sweepDataset(primitive.dataset, this.dateTime.nowMillis());
+    },
+  });
+
+  /**
+   * The hourly cron's work: one queued {@link sweepOne} per dataset that
+   * has anything to keep in a window, in one batched push.
+   */
+  public async enqueueSweeps(): Promise<void> {
+    const names = this.alepha
+      .primitives($analytics)
+      .filter((primitive) => AnalyticsTiers.of(primitive.dataset)[0].keep)
+      .map((primitive) => primitive.dataset.name);
+    if (names.length === 0) return;
+    await this.sweepOne.pushMany(
+      names.map((dataset) => ({ payload: { dataset } })),
+    );
+  }
 
   /**
    * Sweeps every dataset declared anywhere in the container.
