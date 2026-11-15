@@ -59,13 +59,16 @@ describe("questWorkPromptDefault", () => {
   /**
    * The standard flow (#Q3633): the agent opens a pull request, CI runs on
    * it, and the agent never merges to main itself. Auto-merge is the
-   * project's rule to grant, and the merge is a squash, one commit per quest.
+   * project's rule to grant, and the merge is a rebase of the quest's one
+   * commit (#Q3706), the method an epic's pull request needs too.
    */
   it("lands through a pull request the agent never merges itself", () => {
     expect(prompt).toContain("branch cut from the latest main");
     expect(prompt).toContain("Never merge it yourself, and never push to main");
     expect(prompt).toContain("lets an agent turn on auto-merge");
-    expect(prompt).toContain("squash");
+    expect(prompt).toContain("Commit it as one commit");
+    expect(prompt).toContain("as a rebase merge");
+    expect(prompt).not.toContain("squash");
     expect(prompt).not.toContain("merge the branch into main");
   });
 

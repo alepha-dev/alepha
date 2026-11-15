@@ -69,15 +69,18 @@ describe("epicActivatePromptDefault", () => {
     expect(prompt).toContain("quest_complete");
     // A skipped check is the failure mode this line exists to name.
     expect(prompt).toContain("A skipped check is a failure, not a pass");
+    // CI runs while the next quest is worked; a red run is fixed in the
+    // commit of the quest it belongs to (#Q3706).
     expect(prompt).toContain(
-      "Do not start the next quest while the current one is red",
+      "Do not wait for it before starting the next quest",
+    );
+    expect(prompt).toContain(
+      "fix a red one in the commit of the quest it belongs to",
     );
   });
 
-  it("closes once every pull request has merged, with an outcome folio", () => {
-    expect(prompt).toContain(
-      "Wait until every quest's pull request has merged",
-    );
+  it("closes once the pull request has merged, with an outcome folio", () => {
+    expect(prompt).toContain("Only once it has merged");
     expect(prompt).toContain("folio_create");
     expect(prompt).toContain("`epic_number` 41");
   });
@@ -91,29 +94,53 @@ describe("epicActivatePromptDefault", () => {
   });
 
   /**
-   * One branch and one pull request per quest, never a merge by the agent
-   * (#Q3633). It replaced the single epic branch merged once at the end, and
-   * with it #Q2640's local-check gate: CI on each pull request is the gate.
+   * One branch and one pull request for the whole epic, one commit per quest,
+   * rebase-merged, never merged by the agent (#Q3706). It replaced a pull
+   * request per quest (#Q3633), which made every quest wait for its own CI
+   * run and merge.
    */
-  it("lands each quest through its own pull request", () => {
-    expect(prompt).toContain("one branch and one pull request per quest");
-    expect(prompt).toContain("Cut a branch for it from the latest main");
-    expect(prompt).toContain("open a pull request into main");
-    expect(prompt).toContain("the run on the pull request");
+  it("lands the whole epic through one rebase-merged pull request", () => {
+    expect(prompt).toContain("in one pull request");
+    expect(prompt).toContain(
+      "one branch for the whole epic, cut from the latest main",
+    );
+    expect(prompt).toContain("one pull request holding one commit per quest");
+    expect(prompt).toContain("Commit it as one commit");
+    expect(prompt).toContain(
+      "open a pull request into main for the whole epic, as a draft",
+    );
+    expect(prompt).toContain(
+      "the pull request, and that run is the source of truth",
+    );
     expect(prompt).toContain("Never merge it yourself, and never push to main");
     expect(prompt).toContain("lets an agent turn on auto-merge");
-    expect(prompt).toContain(
-      "squash-merged, so main gets one commit per quest",
-    );
+    expect(prompt).toContain("as a rebase merge");
+    expect(prompt).toContain("Never merge main into it");
+    expect(prompt).not.toContain("squash-merged");
+    expect(prompt).not.toContain("one pull request per quest");
     expect(prompt).not.toContain("merge the branch into main");
-    // A quest completes on its merge, so `quest_complete` comes after it.
-    expect(prompt.indexOf("Only once it has merged")).toBeLessThan(
-      prompt.indexOf("then `quest_complete`"),
-    );
   });
 
-  it("requires the branches and the worktree to be cleaned up", () => {
-    expect(prompt).toContain("Delete the merged branches locally");
+  /**
+   * A quest completes once its commit is pushed, so a quest depending on it
+   * can be accepted; the last one waits for the merge, since completing it
+   * completes the epic. The shas are recorded after the rebase merge.
+   */
+  it("completes each quest on its push and the last one on the merge", () => {
+    expect(prompt.indexOf("Push the branch")).toBeLessThan(
+      prompt.indexOf("`quest_complete` it with a short note"),
+    );
+    expect(prompt).toContain(
+      "Keep the epic's last quest accepted until the pull request has merged",
+    );
+    expect(prompt.indexOf("Only once it has merged")).toBeLessThan(
+      prompt.indexOf("then `quest_complete` the last quest"),
+    );
+    expect(prompt).toContain("a rebase gives every commit a new sha");
+  });
+
+  it("requires the branch and the worktree to be cleaned up", () => {
+    expect(prompt).toContain("Delete the branch locally");
     expect(prompt).toContain("remove the worktree");
   });
 

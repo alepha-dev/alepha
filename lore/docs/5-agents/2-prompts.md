@@ -48,9 +48,9 @@ not ask again what is already answered. See
 [Reviewing an epic](/lore/docs/plan-epics#reviewing-an-epic).
 
 **Work on it** hands the whole epic over, quest by quest: accept, work, verify,
-commit and complete each quest in turn. It treats the epic's decisions as
-settled, and stops on a review question still open instead of answering it for
-you.
+commit and complete each quest in turn, all in one pull request. It treats the
+epic's decisions as settled, and stops on a review question still open instead
+of answering it for you.
 
 The prompt sets no status itself. The first quest the agent accepts is what
 moves a ready epic to in progress, and the last one it closes is what completes
@@ -64,7 +64,8 @@ ready or started epic changes nothing about the epic.
 ### On a quest or a feedback item
 
 **Work on it** on a quest is the narrow version: one quest, one branch, one
-pull request, and anything discovered beyond it is a comment, not extra scope.
+pull request, one commit, and anything discovered beyond it is a comment, not
+extra scope.
 
 **Work on it** on a feedback item starts before there is a quest: it accepts
 the report, creates the quest linked to it, does the work, and ends by telling
@@ -81,9 +82,9 @@ resolves the noise.
 
 **Work the loose quests** hands over every to-do quest that belongs to no epic,
 one at a time, under the same rules as an epic's **Work on it**: one branch and
-one pull request per quest, each quest accepted before its first commit, named
-in every commit and in its pull request's title, and completed when that pull
-request merges. A quest filed during the run is picked up, not missed.
+one pull request for the whole run, one commit per quest, each quest accepted
+before its commit and named in it. A quest filed during the run is picked up,
+not missed.
 
 **Write the weekly status** changes nothing: the agent reads the week's report,
 opens the section behind each figure that moved, and answers with what shipped,
@@ -92,25 +93,42 @@ what moved and what needs a decision. See
 
 ### How the work lands
 
-Every prompt that changes code lands it the same way, the usual pull request
-flow:
+Every prompt that changes code lands it through a pull request, and how many
+quests one pull request holds depends on how the work was handed over:
 
-1. A branch per quest, cut from the latest main, in a git worktree of the
-   agent's own. Never on main.
-2. The project's local checks, then commits that name the quest.
-3. A pull request into main, its title naming the quest and its description
-   linking it. Its link is posted on the quest.
+| Handed over as            | Pull requests          |
+| ------------------------- | ---------------------- |
+| an epic's **Work on it**  | one for the whole epic |
+| **Work the loose quests** | one for the whole run  |
+| any other **Work on it**  | one per quest          |
+
+Whatever the shape, one quest is one commit, and the pull request is merged by
+rebase, so main receives every quest's commit as it is and a bad quest can be
+reverted alone. The flow:
+
+1. A branch cut from the latest main, in a git worktree of the agent's own.
+   Never on main.
+2. For each quest, the project's local checks, then one commit that names it.
+   A later fix to a quest goes into that quest's commit, never into the next
+   one's.
+3. A pull request into main, its description linking the quests, and its link
+   posted on each of them. An epic or a run opens it as a draft after its first
+   quest and pushes after every quest, so CI runs while the next quest is
+   worked.
 4. CI on the pull request is the gate, when the project has CI. A green local
    check is not.
-5. The agent never merges it and never pushes to main. If the project's
-   `AGENTS.md` (or `CLAUDE.md`) lets an agent turn on auto-merge, it does, as a
-   squash merge. Otherwise the pull request waits for your review.
-6. The quest completes once the pull request has merged, with the commit main
-   received recorded on it. A squash merge gives main one commit per quest, so
-   an epic lands as one commit per quest.
+5. The agent never merges it, never pushes to main, and never merges main into
+   its branch: it rebases instead. If the project's `AGENTS.md` (or
+   `CLAUDE.md`) lets an agent turn on auto-merge, it does, as a rebase merge.
+   Otherwise the pull request waits for your review.
+6. A quest worked on its own completes once its pull request has merged. In an
+   epic or a run, a quest completes once its commit is pushed, so the quests
+   that depend on it can start; an epic's last quest waits for the merge, so
+   the epic completes only once it has landed. After the merge the agent
+   records on every quest the commit main received.
 
-A pull request still waiting for review when the agent stops leaves its quest
-accepted, and the agent says so in its reply.
+A pull request still waiting for review when the agent stops leaves its last
+quest accepted, and the agent says so in its reply.
 
 ## Writing your own
 
@@ -161,7 +179,8 @@ that happens to appear inside a value is never expanded: a quest titled
 ### A worked example
 
 An epic **Work on it** prompt for a project that verifies with one command and
-reviews a whole epic at once, in one pull request, rather than one per quest:
+reviews every quest on its own, one pull request per quest, rather than the
+whole epic at once:
 
 ```
 Work epic {{reference}} "{{title}}" of the Lore project "{{project}}" to
@@ -172,19 +191,17 @@ The epic: {{url}}
 Read it with `epic_get` (project_name "{{project}}", number {{number}}) and
 its quests with `quest_list` (`epic: {{id}}`, `detail: "full"`).
 
-Work in a git worktree, on one branch named after the epic, cut from the
-latest main. Never on main.
+Work in a git worktree. Never on main.
 
-For each quest: `quest_accept`, do the work, tick each objective with
-`quest_objective_set`, then run `make verify` and fix everything red before
-moving on. One commit per quest, naming it.
+For each quest: cut a branch from the latest main, `quest_accept`, do the
+work, tick each objective with `quest_objective_set`, then run `make verify`
+and fix everything red. One commit, naming the quest. Push the branch and open
+a pull request into main for that quest alone. Do NOT merge it: a reviewer
+merges each one. Start the next quest only once it has merged, and complete
+each quest with `quest_complete` once its pull request has merged.
 
-When every quest is done, run `make verify` once more, push the branch, and
-open one pull request into main for the epic. Do NOT merge it: this project
-merges by review, with a merge commit that keeps one commit per quest.
-Complete each quest with `quest_complete` once the pull request has merged,
-then file an outcome folio under the epic with `folio_create` and
-`epic_number` {{number}}.
+When the last one has merged, file an outcome folio under the epic with
+`folio_create` and `epic_number` {{number}}.
 ```
 
 That is the shape most edits take: the same skeleton, with the project's own
