@@ -1,6 +1,12 @@
 import { Alepha } from "alepha";
-import { AlephaServer, ServerProvider, versionOptions } from "alepha/server";
-import { describe, expect, it } from "vitest";
+import {
+  AlephaServer,
+  BUILD_HEADER,
+  buildToken,
+  ServerProvider,
+  versionOptions,
+} from "alepha/server";
+import { afterEach, describe, expect, it } from "vitest";
 
 /**
  * `GET /version` answers "what is running here?".
@@ -119,6 +125,65 @@ describe("ServerVersionProvider", () => {
 
       expect((await fetch(`${srv.hostname}/_version`)).status).toBe(200);
       expect((await fetch(`${srv.hostname}/version`)).status).toBe(404);
+    });
+  });
+
+  describe("build header", () => {
+    const built = {
+      name: "app",
+      version: "1.0.0",
+      commit: "6faea71",
+      framework: "1.0.0",
+      build: { runtime: "node", date: "2026-11-15T10:00:00.000Z" },
+    };
+
+    afterEach(() => {
+      delete (globalThis as Record<string, unknown>).__ALEPHA_META__;
+    });
+
+    it("should stamp the responses of a built app with its build", async () => {
+      (globalThis as Record<string, unknown>).__ALEPHA_META__ =
+        JSON.stringify(built);
+      const srv = await server();
+
+      const version = await fetch(`${srv.hostname}/version`);
+      const health = await fetch(`${srv.hostname}/health`);
+
+      const token = buildToken(built);
+      expect(token).toMatch(/^[0-9a-f]{8}$/);
+      expect(version.headers.get(BUILD_HEADER)).toBe(token);
+      expect(health.headers.get(BUILD_HEADER)).toBe(token);
+    });
+
+    it("should hold the build even when /version withholds it", async () => {
+      (globalThis as Record<string, unknown>).__ALEPHA_META__ =
+        JSON.stringify(built);
+      const srv = await server({ enabled: false });
+
+      const res = await fetch(`${srv.hostname}/health`);
+
+      expect(res.headers.get(BUILD_HEADER)).not.toContain("6faea71");
+      expect(res.headers.get(BUILD_HEADER)).toBe(buildToken(built));
+    });
+
+    it("should send no header in development", async () => {
+      const srv = await server();
+
+      const res = await fetch(`${srv.hostname}/health`);
+
+      expect(res.headers.get(BUILD_HEADER)).toBeNull();
+    });
+
+    it("should name another build after a rebuild", () => {
+      const rebuilt = {
+        ...built,
+        build: { ...built.build, date: "2026-11-15T11:00:00.000Z" },
+      };
+
+      expect(buildToken(rebuilt)).not.toBe(buildToken(built));
+      expect(buildToken({ build: { dev: true, date: built.build.date } })).toBe(
+        undefined,
+      );
     });
   });
 });
