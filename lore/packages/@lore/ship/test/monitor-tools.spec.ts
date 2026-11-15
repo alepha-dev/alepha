@@ -6,6 +6,7 @@ import { $repository } from "alepha/orm";
 import { currentUserAtom } from "alepha/security";
 import { afterEach, describe, it } from "vitest";
 
+import { appInstances } from "../src/api/entities/appInstances.ts";
 import { monitorHeartbeats } from "../src/api/entities/monitorHeartbeats.ts";
 import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { monitors } from "../src/api/entities/monitors.ts";
@@ -21,9 +22,13 @@ class Repositories extends DeployTestEntities {
   monitors = $repository(monitors);
   beats = $repository(monitorHeartbeats);
   incidents = $repository(monitorIncidents);
+  instances = $repository(appInstances);
 }
 
-type ToolName = Exclude<keyof MonitorTools, "monitors" | "projects" | "merge">;
+type ToolName = Exclude<
+  keyof MonitorTools,
+  "monitors" | "projects" | "apps" | "merge"
+>;
 
 /**
  * The `monitor_*` tools (#Q3591): one per `lore monitor` verb, over
@@ -57,6 +62,13 @@ describe("monitor MCP tools", () => {
     const project = await createTestProject(alepha, {
       capabilities: [{ key: "ship", options: { uptime: true } }],
     });
+    // The app copy every monitor here belongs to (#Q3657).
+    await repos.instances.create({
+      projectId: project.id,
+      app: "web",
+      env: "production",
+      url: "https://example.app",
+    });
     const user = { id: project.createdBy, roles: ["user"] };
     const call = (
       name: ToolName,
@@ -81,6 +93,8 @@ describe("monitor MCP tools", () => {
 
     const created = await ctx.call("monitor_create", {
       project: ctx.project.id,
+      app: "web",
+      env: "production",
       name: "Website",
       kind: "http",
       target: "https://example.app",
@@ -96,6 +110,8 @@ describe("monitor MCP tools", () => {
     expect(listed.monitors[0]).toMatchObject({
       id,
       name: "Website",
+      app: "web",
+      env: "production",
       uptimePct: null,
     });
     expect(listed.monitors[0]).not.toHaveProperty("beats");
@@ -130,6 +146,8 @@ describe("monitor MCP tools", () => {
     const ctx = await setup();
     const { monitor } = await ctx.call("monitor_create", {
       project_name: ctx.project.title,
+      app: "web",
+      env: "production",
       name: "Api",
       kind: "tcp",
       target: "example.app:443",
@@ -174,6 +192,8 @@ describe("monitor MCP tools", () => {
 
     const created = await ctx.call("monitor_create", {
       project: ctx.project.id,
+      app: "web",
+      env: "production",
       name: "Nightly backup",
       kind: "push",
       target: "",
@@ -197,6 +217,8 @@ describe("monitor MCP tools", () => {
     const ctx = await setup();
     const { monitor } = await ctx.call("monitor_create", {
       project: ctx.project.id,
+      app: "web",
+      env: "production",
       name: "Website",
       kind: "http",
       target: "https://example.app",
@@ -222,6 +244,8 @@ describe("monitor MCP tools", () => {
         "monitor_create",
         {
           project: off.id,
+          app: "web",
+          env: "production",
           name: "Website",
           kind: "http",
           target: "https://example.app",
@@ -230,5 +254,29 @@ describe("monitor MCP tools", () => {
       ),
     ).rejects.toThrow();
     expect(await ctx.repos.monitors.count()).toBe(1);
+  });
+
+  it("creates on an app copy, checking its address unless told otherwise", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const created = await ctx.call("monitor_create", {
+      project: ctx.project.id,
+      app: "web",
+      env: "production",
+      name: "Website",
+      kind: "http",
+    });
+    expect(created.monitor.target).toBe("https://example.app");
+    await expect(
+      ctx.call("monitor_create", {
+        project: ctx.project.id,
+        app: "nowhere",
+        env: "production",
+        name: "Website",
+        kind: "http",
+        target: "https://example.app",
+      }),
+    ).rejects.toThrow();
   });
 });

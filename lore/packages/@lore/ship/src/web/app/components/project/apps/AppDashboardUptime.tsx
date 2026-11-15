@@ -51,26 +51,33 @@ const AppDashboardUptime = (props: AppDashboardUptimeProps) => {
     [api, project?.id, enabled],
   );
 
-  if (!project || !enabled || !query.data) {
+  if (!project || !enabled) {
     return null;
   }
 
-  const monitor = monitorOfInstance(props.instance, query.data.items);
-  const prefill = monitorPrefill(props.instance);
+  // ⚠️ The dialog renders whether or not the list has loaded: creating a
+  // monitor invalidates that list, and a dialog inside the loaded branch
+  // would unmount during the refetch, losing a push monitor's one-time
+  // token and reopening empty.
+  const monitor = query.data
+    ? monitorOfInstance(props.instance, query.data.items ?? [])
+    : undefined;
 
   return (
     <>
-      <AppUptimeCard
-        monitor={monitor}
-        href={monitor ? `/${project.slug}/uptime/${monitor.id}` : undefined}
-        canAdd={Boolean(prefill) && canInProject(project, "app:manage")}
-        busy={adding}
-        onAdd={() => setAdding(true)}
-      />
-      {adding && prefill && (
+      {query.data && (
+        <AppUptimeCard
+          monitor={monitor}
+          href={monitor ? `/${project.slug}/uptime/${monitor.id}` : undefined}
+          canAdd={canInProject(project, "app:manage")}
+          busy={adding}
+          onAdd={() => setAdding(true)}
+        />
+      )}
+      {adding && (
         <MonitorFormDialog
           projectId={project.id}
-          prefill={prefill}
+          prefill={monitorPrefill(props.instance)}
           onClose={() => setAdding(false)}
         />
       )}

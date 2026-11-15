@@ -1,4 +1,4 @@
-import { projectParamsSchema } from "@lore/core/schemas";
+import { appNameSchema, projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
 
 import { monitorExpectSchema } from "../../api/schemas/monitorExpectSchema.ts";
@@ -77,6 +77,16 @@ const monitorSettingsParams = {
 // monitor_list
 // -----------------------------------------------------------------------------
 
+/**
+ * The app copy a monitor belongs to, as the app tools name it (#Q3657).
+ */
+const appCopyParams = {
+  app: appNameSchema.describe(
+    "The app the monitor belongs to, e.g. `acme`, as `app_instance_list` names it.",
+  ),
+  env: appNameSchema.describe("Which copy of that app, e.g. `production`."),
+};
+
 export const monitorListParamsSchema = projectParamsSchema.extend({
   window: windowSchema,
 });
@@ -84,6 +94,8 @@ export const monitorListParamsSchema = projectParamsSchema.extend({
 export const monitorListResultSchema = z.object({
   monitors: z.array(
     monitorResourceSchema.extend({
+      app: z.string().optional().describe("The app this monitor belongs to."),
+      env: z.string().optional().describe("Which copy of that app."),
       uptimePct: z
         .number()
         .nullable()
@@ -113,10 +125,16 @@ export const monitorGetResultSchema = z.object({
 // -----------------------------------------------------------------------------
 
 export const monitorCreateParamsSchema = projectParamsSchema.extend({
+  ...appCopyParams,
   ...monitorSettingsParams,
   name: monitorSettingsParams.name.unwrap(),
   kind: monitorSettingsParams.kind.unwrap(),
-  target: monitorSettingsParams.target.unwrap(),
+  target: monitorSettingsParams.target
+    .unwrap()
+    .describe(
+      "An http(s) URL for `http`, host:port for `tcp` and `cert`, empty for `push`. For `http`, defaults to the app copy's address.",
+    )
+    .optional(),
 });
 
 export const monitorCreateResultSchema = z.object({

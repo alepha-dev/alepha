@@ -8,11 +8,11 @@ operates a product turns on all three.
 
 ## The three capabilities
 
-| Capability   | Sidebar entries                         | What it is for                                                 |
-| ------------ | --------------------------------------- | -------------------------------------------------------------- |
-| **Plan**     | Quests, Epics, Releases, Feedback       | The work: what is planned, in progress, shipped and asked for. |
-| **Remember** | Folios                                  | The memory: linked notes, files and their history.             |
-| **Ship**     | Apps, Errors, Stacks, Artifacts, Uptime | What you run: deploys, analytics, errors and checks.           |
+| Capability   | Sidebar entries                   | What it is for                                                 |
+| ------------ | --------------------------------- | -------------------------------------------------------------- |
+| **Plan**     | Quests, Epics, Releases, Feedback | The work: what is planned, in progress, shipped and asked for. |
+| **Remember** | Folios                            | The memory: linked notes, files and their history.             |
+| **Ship**     | Apps, Errors, Stacks, Artifacts   | What you run: deploys, analytics, errors and checks.           |
 
 A capability is the pillar; the things inside it keep their own names. A quest
 is still a quest and a deploy is still a deploy: Ship is where deploys live.
@@ -62,8 +62,10 @@ A list of quests and a board are always there when Plan is on. See
 
 ## Turning one on or off
 
-Open **Settings ▸ General ▸ Capabilities**. Each capability is a switch, with its
-options beneath it.
+Open **Settings ▸ General ▸ Capabilities**. Each capability is a switch, with
+the options that add a sidebar entry beneath it. The others, such as **Track
+apps** and **Monitor apps**, are on the capability's own settings page:
+**Settings ▸ Apps** for Ship.
 
 ![The Capabilities tab of a project's settings](/screenshots/lore/capabilities-light.png)
 

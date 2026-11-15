@@ -84,10 +84,19 @@ describe("A monitoring-only project", () => {
     const prober = alepha.inject(MemoryProber);
     const mail = alepha.inject(MemoryEmailProvider);
 
+    // The app a monitor belongs to (#Q3657) needs no deploy and no sigil:
+    // a name and the address it checks.
+    const app = await repos.appInstances.create({
+      projectId: project.id,
+      app: "status",
+      env: "production",
+      url: "https://status.example.test",
+    });
     const created = await api.createMonitor.fetch(
       {
         params: { projectId: project.id },
         body: {
+          appInstanceId: app.id,
           name: "Status page",
           kind: "http",
           target: "https://status.example.test",
@@ -140,6 +149,7 @@ describe("A monitoring-only project", () => {
     expect(list.data.items[0]?.beats.length).toBeGreaterThanOrEqual(4);
 
     expect(await repos.sigils.count()).toBe(0);
-    expect(await repos.appInstances.count()).toBe(0);
+    expect(await repos.appInstances.count()).toBe(1);
+    expect((await repos.appInstances.getById(app.id)).sigilId).toBeUndefined();
   }, 30_000);
 });

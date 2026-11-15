@@ -3758,22 +3758,14 @@ export default {
     "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
   "uptime.invalidRecipients":
     "Saisissez 20 adresses e-mail valides au maximum.",
-  "uptime.suggestions.title": "Apps sans moniteur",
-  "uptime.suggestions.description":
-    "Ces copies ont une adresse que rien ne surveille. Ajoutez un moniteur avec son nom et son URL déjà remplis.",
-  "uptime.suggestions.add": "Ajouter un moniteur",
-  "uptime.suggestions.addFor": "Ajouter un moniteur pour $1",
   "uptime.app.none": "Aucun moniteur ne surveille encore cette adresse.",
   "uptime.title": "Disponibilité",
-  "uptime.empty": "Aucun moniteur pour le moment.",
   "project.capability.ship.option.uptime.label": "Superviser les applications",
   "project.capability.ship.option.uptime.description":
     "Vérifiez vos adresses à intervalles réguliers et gardez leur historique. Aucun sigil requis.",
   "project.capability.ship.option.stacks.label": "Stacks",
   "project.capability.ship.option.stacks.description":
     "Déployez ensemble des apps et des services depuis un seul compose.yml.",
-  "uptime.description":
-    "Surveillance des sites, ports, certificats et tâches planifiées.",
   "uptime.recentChecks": "Contrôles récents",
   "uptime.notMeasured": "Non mesuré",
   "uptime.beatTitle": "$1 : $2 ms, $3",

@@ -1,4 +1,4 @@
-import type { MonitorController } from "@lore/ship/api";
+import type { AppController, MonitorController } from "@lore/ship/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
@@ -61,6 +61,21 @@ export class MonitorCommand {
   protected readonly monitorApi = $client<MonitorController>(
     this.client.scope(),
   );
+  protected readonly appApi = $client<AppController>(this.client.scope());
+
+  /**
+   * The app copy a new monitor belongs to (#Q3657), named as `lore app`
+   * names it.
+   */
+  protected static readonly APP_FLAGS = {
+    app: z.text({
+      description: "The app the monitor belongs to, such as acme.",
+    }),
+    env: z.text({
+      aliases: ["e"],
+      description: "Which copy of it, such as production.",
+    }),
+  };
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -253,9 +268,10 @@ export class MonitorCommand {
   public readonly create = $command({
     name: "create",
     description:
-      "Add a monitor. A push monitor's token is printed once, and nothing can show it again",
+      "Add a monitor to an app copy (--app, --env). An http monitor checks the copy's address unless --target says otherwise. A push monitor's token is printed once, and nothing can show it again",
     flags: z.object({
       ...MonitorCommand.PROJECT_FLAG,
+      ...MonitorCommand.APP_FLAGS,
       ...MonitorCommand.SETTINGS_FLAGS,
       ...LoreOutput.FLAGS,
     }),
@@ -268,21 +284,36 @@ export class MonitorCommand {
             "A monitor needs --name and --kind (http, tcp, cert or push).",
           );
         }
-        if (kind !== "push" && !flags.target) {
-          throw new UsageError(
-            `A ${kind} monitor needs --target: ${kind === "http" ? "an http(s) URL" : "host:port"}.`,
-          );
+        if (kind !== "push" && kind !== "http" && !flags.target) {
+          throw new UsageError(`A ${kind} monitor needs --target: host:port.`);
         }
 
         const { projectId } = await this.projects.named(flags.project, context);
+        const copy = await this.appApi.getApp({
+          params: { projectId, app: flags.app, env: flags.env },
+        });
+        const address =
+          copy.url ??
+          (copy.sigil?.lastSeenHostname
+            ? `https://${copy.sigil.lastSeenHostname}`
+            : undefined);
+        const target = flags.target ?? (kind === "http" ? address : "");
+        if (kind === "http" && !target) {
+          throw new UsageError(
+            `${copy.app}/${copy.env} has no address: pass --target with an http(s) URL.`,
+          );
+        }
 
         const created = await this.monitorApi.createMonitor({
           params: { projectId },
-          body: this.config(flags, {
-            name: flags.name,
-            kind,
-            target: flags.target ?? "",
-          }),
+          body: {
+            ...this.config(flags, {
+              name: flags.name,
+              kind,
+              target: target ?? "",
+            }),
+            appInstanceId: copy.id,
+          },
         });
 
         this.render.written(

@@ -7,11 +7,10 @@ import { afterEach, describe, it } from "vitest";
 
 import { monitorListItemSchema } from "../src/api/schemas/monitorListItemSchema.ts";
 import MonitorDetailBody from "../src/web/app/components/project/uptime/MonitorDetailBody.tsx";
-import MonitorListRow from "../src/web/app/components/project/uptime/MonitorListRow.tsx";
 
-describe("Monitor list row", () => {
+describe("Monitor detail body", () => {
   afterEach(cleanup);
-  it("shows slow separately from down, renders uptime and beats, and disables every write while busy", async ({
+  it("renders its uptime windows, latency chart, incidents and certificate expiry", async ({
     expect,
   }) => {
     const alepha = Alepha.create()
@@ -50,42 +49,7 @@ describe("Monitor list row", () => {
         },
       ],
     });
-    // The same seeded monitor drives the complete detail body, including its chart.
-    const props = {
-      monitor,
-      canManage: true,
-      busy: false,
-      onEdit: () => {},
-      onToggle: () => {},
-      onDelete: () => {},
-      onRotate: () => {},
-    };
     try {
-      const view = render(
-        <AlephaContext.Provider value={alepha}>
-          <ul>
-            <MonitorListRow {...props} />
-          </ul>
-        </AlephaContext.Provider>,
-      );
-      expect(await view.findByText("Website")).toBeTruthy();
-      expect(view.getByText("Slow")).toBeTruthy();
-      expect(view.getByText("75%")).toBeTruthy();
-      expect(view.getByText("120 ms")).toBeTruthy();
-      expect(view.getByLabelText("Recent checks").children).toHaveLength(1);
-      view.rerender(
-        <AlephaContext.Provider value={alepha}>
-          <ul>
-            <MonitorListRow {...props} busy />
-          </ul>
-        </AlephaContext.Provider>,
-      );
-      expect(
-        view
-          .getAllByRole("button")
-          .every((button) => (button as HTMLButtonElement).disabled),
-      ).toBe(true);
-      cleanup();
       const detail = {
         monitor: { ...monitor, certExpiresAt: "2027-01-15T10:00:00Z" },
         beats: monitor.beats,

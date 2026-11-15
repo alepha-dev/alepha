@@ -18,7 +18,7 @@ describe("Uptime in the project sidebar", () => {
     });
     alepha.store.set(currentProjectAtom, project);
     const context = {
-      routeName: "projectUptime",
+      routeName: "projectMonitor",
       params: {},
       get: alepha.store.get.bind(alepha.store),
     };
@@ -30,30 +30,31 @@ describe("Uptime in the project sidebar", () => {
       shell.offeredNav(project, context).map((row) => row.route),
     ).toContain("projectErrors");
   });
-  it("hides when off or absent and appears without a sigil when enabled", ({
+  it("has no sidebar entry of its own: a monitor lives on its app", ({
     expect,
   }) => {
     const alepha = Alepha.create();
     alepha.inject(DeployShell);
     const shell = alepha.inject(ProjectShellRegistry);
     const context = {
-      routeName: "projectUptime",
+      routeName: "projectMonitor",
       params: {},
       get: () => undefined,
     };
-    const offered = (uptime: boolean) =>
-      shell
-        .offeredNav(
-          projectFixture({
-            capabilities: ["ship"],
-            options: { ship: { uptime, track: false } },
-          }),
-          context,
-        )
-        .map((entry) => entry.route);
+    const offered = shell.offeredNav(
+      projectFixture({
+        capabilities: ["ship"],
+        options: { ship: { uptime: true, track: false } },
+      }),
+      context,
+    );
     expect(shipCapabilityOptionsSchema.parse({}).uptime).toBe(false);
-    expect(offered(false)).not.toContain("projectUptime");
-    expect(offered(true)).toContain("projectUptime");
-    expect(shell.navOptions("ship")).toContain("uptime");
+    expect(offered.map((entry) => entry.route)).not.toContain("projectUptime");
+    // A monitor's page lights Apps (#Q3657).
+    const apps = offered.find((entry) => entry.route === "projectApps");
+    expect(apps?.activeOn?.("projectMonitor")).toBe(true);
+    // Its switch is on the Apps settings page, not in General.
+    expect(shell.navOptions("ship")).not.toContain("uptime");
+    expect(shell.settingsOptions("ship")).toContain("uptime");
   });
 });
