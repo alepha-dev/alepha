@@ -32,6 +32,12 @@ export interface SettingsTab {
    */
   requires?: string;
   /**
+   * A capability the tab needs besides its section's: a tab one package
+   * adds to another's section, such as Ship's Errors tab under Plan
+   * (#Q3703), listed only while that capability is on too.
+   */
+  capability?: CapabilityKey;
+  /**
    * The page runs the settings body's full width and height instead of the
    * centred, readable `max-w-6xl` column every page of setting blocks gets.
    * For a page that is one table or matrix wanting the room (Hosts, Ranks).
@@ -168,6 +174,7 @@ export const visibleSettingsTabs = (
       (!tab.option ||
         !section.capability ||
         capabilityOption(project, section.capability, tab.option)) &&
-      (!tab.requires || canInProject(project, tab.requires)),
+      (!tab.requires || canInProject(project, tab.requires)) &&
+      (!tab.capability || hasCapability(project, tab.capability)),
   );
 };

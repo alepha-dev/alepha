@@ -555,6 +555,20 @@ export class DeployRouter {
    * empty list is a normal state that says so in words. A tab of the Apps
    * section since #Q2565.
    */
+  /**
+   * Plan > Errors (#Q3703): the error Ignore rules. Ship's page, listed as a
+   * tab of Plan's settings section by `DeployShell`.
+   */
+  projectSettingsErrors = $pageProjectSettings({
+    name: "projectSettingsErrors",
+    path: "/errors",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Errors`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsErrorsPage.tsx"),
+  });
+
   projectSettingsHosts = $pageProjectSettings({
     name: "projectSettingsHosts",
     path: "/hosts",

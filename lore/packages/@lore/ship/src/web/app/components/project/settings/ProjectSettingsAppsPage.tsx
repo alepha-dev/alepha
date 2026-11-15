@@ -1,22 +1,15 @@
-import { Button } from "@alepha/ui";
-import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import {
   currentProjectAtom,
   ProjectShellRegistry,
-  type I18n,
   hasCapability,
   ProjectSettingsCapabilitySection,
 } from "@lore/core/web";
 import { useInject, useStore } from "alepha/react";
-import { useI18n } from "alepha/react/i18n";
-import { Ban } from "lucide-react";
-import { useState } from "react";
 
-import ProjectErrorRulesDialog from "../errors/ProjectErrorRulesDialog.tsx";
 import ProjectSettingsCoverageTarget from "./ProjectSettingsCoverageTarget.tsx";
 
 /**
- * Two blocks: the module switch and the ignore rules.
+ * The capability switches and the coverage target.
  *
  * The default environment was a third until #Q2135. It was project-wide while
  * the question it answered is per app, so a project set to `production` with
@@ -43,19 +36,15 @@ import ProjectSettingsCoverageTarget from "./ProjectSettingsCoverageTarget.tsx";
  * let the name move: the capability is `apps`, and `track` is the option that
  * carries what `sigils` actually gated.
  *
- * ## ⚠️ Ignore rules are why this page survives at all
+ * ## Ignore rules moved to Plan > Errors (#Q3703)
  *
- * `projectErrorIgnoreRules` is project-scoped **on purpose**: one rule mutes a noisy
- * error across every app the project owns, so it cannot follow a sigil down to
- * an instance. There is no Errors entry in the settings nav, which is how this
- * control landed here in the first place; errors arrive from apps, so the Apps
- * page is a defensible home. Giving Errors its own settings page is the
- * cleaner taxonomy and is deliberately not in this epic.
+ * `projectErrorIgnoreRules` is project-scoped on purpose: one rule mutes a
+ * noisy error across every app the project owns. It sat here because there
+ * was no Errors settings page; the Errors inbox is in the sidebar's Plan
+ * group, so its rules are now a Plan tab (`ProjectSettingsErrorsPage`).
  */
 const ProjectSettingsAppsPage = () => {
-  const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
-  const [rulesOpen, setRulesOpen] = useState(false);
   const shell = useInject(ProjectShellRegistry);
 
   const enabled = hasCapability(project, "ship");
@@ -85,38 +74,6 @@ const ProjectSettingsAppsPage = () => {
       />
 
       {enabled && <ProjectSettingsCoverageTarget />}
-
-      {enabled && (
-        <div className="flex flex-col gap-2">
-          {/* Ignore rules used to be a toolbar action on the Errors inbox.
-              They are standing configuration, not triage: the inbox is where
-              you decide about one failure that already happened, and a rule
-              decides what never lands at all. The move also fixes a
-              permissions mismatch — rule mutations are owner-only
-              server-side, so a member could open the dialog from the inbox
-              only to be refused. Keep this owner-facing; do not re-expose it
-              on the inbox. */}
-          {/* A `SettingsSection` like the capability rows above, so the
-              three cards of this page share one edge (#Q3373). */}
-          <SettingsSection>
-            <SettingsRow
-              label={tr("errors.rules.title")}
-              description={tr("errors.rules.settingsDescription")}
-            >
-              <Button variant="outlined" onClick={() => setRulesOpen(true)}>
-                <Ban className="size-4" />
-                {tr("errors.rules.manage")}
-              </Button>
-            </SettingsRow>
-          </SettingsSection>
-
-          <ProjectErrorRulesDialog
-            open={rulesOpen}
-            projectId={project.id}
-            onOpenChange={setRulesOpen}
-          />
-        </div>
-      )}
     </div>
   );
 };

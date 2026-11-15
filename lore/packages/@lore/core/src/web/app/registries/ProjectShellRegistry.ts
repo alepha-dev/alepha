@@ -106,6 +106,22 @@ export class ProjectShellRegistry {
   }
 
   /**
+   * A tab a module adds to a section it does not own (#Q3703): Ship's Errors
+   * tab under Plan. Appended after the section's own tabs; a section that is
+   * not registered (its package is not loaded) takes nothing.
+   */
+  public registerSettingsTab(sectionKey: string, tab: SettingsTab): void {
+    const section = this.sections.find((it) => it.key === sectionKey);
+    if (!section) return;
+    if (section.tabs.some((it) => it.route === tab.route)) {
+      throw new AlephaError(
+        `Settings tab '${tab.route}' is registered twice in '${sectionKey}'`,
+      );
+    }
+    section.tabs.push(tab);
+  }
+
+  /**
    * A card a module adds to a section's page it does not own: Work's quest
    * export on General.
    */

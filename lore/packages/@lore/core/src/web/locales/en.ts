@@ -1122,6 +1122,7 @@ export default {
   "project.settings.tab.details": "Details",
   "project.settings.tab.capabilities": "Capabilities",
   "project.settings.tab.features": "Features",
+  "project.settings.tab.errors": "Errors",
   "project.settings.tab.board": "Board",
   "project.settings.tab.prompts": "Agent prompts",
   "project.settings.tab.automations": "Automations",
