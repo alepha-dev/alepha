@@ -109,7 +109,7 @@ export class NotificationDeliveryService {
     createdAfter?: string;
     createdBefore?: string;
   }) {
-    query.sort ??= "-createdAt";
+    query.sort ??= "-createdAt,-id";
     const where = this.repo.createQueryWhere();
     if (query.status) {
       where.status = { eq: query.status };

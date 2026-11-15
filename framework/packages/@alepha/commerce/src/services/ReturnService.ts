@@ -143,7 +143,7 @@ export class ReturnService {
       where.status = { eq: query.status };
     }
     return this.repo.paginate(
-      { sort: "-createdAt", ...query },
+      { sort: "-createdAt,-id", ...query },
       { where },
       { count: true },
     );

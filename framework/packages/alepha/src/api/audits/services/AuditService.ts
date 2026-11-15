@@ -477,7 +477,7 @@ export class AuditService {
   public async find(query: AuditQuery = {}): Promise<Page<AuditEntity>> {
     this.log.trace("Finding audit entries", { query });
 
-    query.sort ??= "-createdAt";
+    query.sort ??= "-createdAt,-id";
 
     const where = this.repo.createQueryWhere();
 

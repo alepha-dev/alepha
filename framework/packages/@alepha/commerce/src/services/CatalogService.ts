@@ -269,7 +269,7 @@ export class CatalogService {
     // public listing skips it deliberately: a storefront never renders a total,
     // and the extra COUNT(*) is pure cost there.
     return this.repo.paginate(
-      { sort: "-createdAt", ...query },
+      { sort: "-createdAt,-id", ...query },
       { where },
       { count: true },
     );

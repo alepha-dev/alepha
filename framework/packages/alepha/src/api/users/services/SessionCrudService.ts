@@ -77,7 +77,7 @@ export class SessionCrudService {
     userRealmName?: string,
   ): Promise<Page<SessionView>> {
     this.log.trace("Finding sessions", { query: q, userRealmName });
-    q.sort ??= "-createdAt";
+    q.sort ??= "-createdAt,-id";
 
     const where = this.sessions(userRealmName).createQueryWhere();
 

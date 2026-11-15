@@ -113,7 +113,7 @@ export class NotificationSuppressionService {
     page?: number;
     size?: number;
   }) {
-    query.sort ??= "-createdAt";
+    query.sort ??= "-createdAt,-id";
     const where = this.repo.createQueryWhere();
     return await this.repo.paginate(query, { where }, { count: true });
   }

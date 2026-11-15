@@ -666,7 +666,7 @@ export class ApiKeyService {
     size?: number;
     sort?: string;
   }): Promise<Page<AdminApiKeyResource>> {
-    query.sort ??= "-createdAt";
+    query.sort ??= "-createdAt,-id";
 
     const where = this.repo.createQueryWhere();
 

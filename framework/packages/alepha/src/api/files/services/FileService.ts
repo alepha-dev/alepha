@@ -211,7 +211,7 @@ export class FileService {
    * @returns Paginated list of file entities
    */
   public async findFiles(q: FileQuery = {}): Promise<Page<FileEntity>> {
-    q.sort ??= "-createdAt";
+    q.sort ??= "-createdAt,-id";
 
     const where = this.fileRepository.createQueryWhere();
 
