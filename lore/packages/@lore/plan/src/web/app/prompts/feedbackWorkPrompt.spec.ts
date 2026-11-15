@@ -109,6 +109,9 @@ describe("feedbackWorkPromptDefault", () => {
     );
     expect(prompt).toContain("Never merge it yourself, and never push to main");
     expect(prompt).toContain("lets an agent turn on auto-merge");
+    // One commit, rebase-merged (#Q3706).
+    expect(prompt).toContain("Commit it as one commit");
+    expect(prompt).toContain("as a rebase merge");
     expect(prompt).not.toContain("merge the branch into main");
     expect(prompt.indexOf("Only once it has merged")).toBeLessThan(
       prompt.indexOf("tell the reporter"),

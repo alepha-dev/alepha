@@ -26,7 +26,7 @@ Workflows live in the root `.github/workflows/`, one set per product, each runni
 - **Verify Framework** (`verify-framework.yml`): `framework/**` and the shared root files. Green on `main`, it triggers **Deploy Framework** (`deploy-framework.yml`: ui.alepha.dev, shop.alepha.dev).
 - **Verify Lore** (`verify-lore.yml`): `lore/**`, `framework/**` and `bay/**`, since Lore builds on the framework's source and its e2e builds Bay. Green on `main`, it triggers **Deploy Lore** (`deploy-lore.yml`: lore.alepha.dev).
 - **Verify Bay** (`verify-bay.yml`): `bay/**`.
-- **The merge queue** (#Q3688): `main`'s ruleset requires it, with the four `gate (<product>)` jobs as its checks. A pull request green on its own joins the queue, and the four Verify workflows run again on `merge_group`, on top of `main` and of every pull request queued ahead; their `changes` job diffs the group's commits. A queue run's ref is `gh-readonly-queue/main/...`, so it deploys nothing.
+- **The merge queue** (#Q3688): `main`'s ruleset requires it, with the four `gate (<product>)` jobs as its checks, and merges by rebase (#Q3706). A pull request green on its own joins the queue, and the four Verify workflows run again on `merge_group`, on top of `main` and of every pull request queued ahead; their `changes` job diffs the group's commits. A queue run's ref is `gh-readonly-queue/main/...`, so it deploys nothing.
 - **Verify All** (`verify-all.yml`): the three above at once, by hand only (`gh workflow run verify-all.yml --ref <branch>`). It deploys nothing: the deploys follow the other three by name, and a called run is filed under "Verify All".
 - **Docs** (`docs.yml`): `docs/**` and every product's `docs/`. It deploys alepha.dev on `main`, each section from how its product ships (#Q2766): the framework and Bay from the latest release tag (`yarn pin`, then `DOCS_RELEASE_ROOT`), Lore from `main`. The same push deploys latest.alepha.dev, every section from `main`, for projects that vendor Alepha (#Q3028).
 
@@ -40,7 +40,7 @@ A step's own `working-directory` is relative to the repository root, so it names
 
 ## The workflow
 
-The framework's rules apply to the whole repository: one branch and one worktree per quest, cut from the latest main; small commits staged by explicit path, each naming its quest as `#Q<n>`; a pull request into `main` with auto-merge on (`gh pr merge --auto --squash`), so CI runs before the merge, the merge queue runs it again on top of `main`, and `main` receives one commit per quest. Nothing is pushed to `main` directly. See "The workflow" in `framework/AGENTS.md`.
+The framework's rules apply to the whole repository (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, staged by explicit path and naming its quest as `#Q<n>`; every pull request rebase-merged through the merge queue with auto-merge on (`gh pr merge --auto --rebase`), so CI runs before the merge and `main` receives one commit per quest. Nothing is pushed to `main` directly. See "The workflow" in `framework/AGENTS.md`.
 
 ## What the repository may name
 

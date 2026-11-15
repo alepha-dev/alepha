@@ -4,15 +4,20 @@
  * or absent.
  *
  * Narrower than {@link epicActivatePromptDefault} on purpose: one quest, one
- * branch, one pull request, and anything discovered beyond it is a comment
- * rather than extra scope.
+ * branch, one pull request, one commit, and anything discovered beyond it is
+ * a comment rather than extra scope. A quest worked on its own is the third
+ * of the three rules (#Q3706): an epic is one pull request, a run of loose
+ * quests is one pull request, and any other quest is a pull request of its
+ * own.
  *
  * ⚠️ **The agent opens a pull request and never merges it (#Q3633).** Until
  * then the prompt told it to merge the branch into main and push, so CI ran
  * after the change was already on main. Every default now takes the standard
  * route: a branch from the latest main, a pull request, CI on it, and a
- * squash merge that gives main one commit per quest. Whether an agent may
- * turn on auto-merge is the project's rule, read from its AGENTS.md, never
+ * rebase merge (#Q3706; a squash until then) of the quest's one commit.
+ * Rebase rather than squash because the same project merges an epic's pull
+ * request, one commit per quest, and one merge method serves both. Whether
+ * an agent may turn on auto-merge is the project's rule, read from its AGENTS.md, never
  * assumed. The quest completes when the pull request merges, not when it is
  * opened, and the sha recorded is the one main received.
  *
@@ -48,11 +53,11 @@ The quest: {{url}}
 2. \`quest_accept\` it.
 3. Do exactly what the quest and its objectives say. Tick each objective with \`quest_objective_set\` as it is met. Anything you discover beyond the quest is a comment (\`quest_comment_add\`), not extra scope.
 4. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
-5. Commit, every message naming {{reference}}. Several commits are fine: the pull request is squash-merged, so main gets one commit for the quest.
-6. Push the branch and open a pull request into main. Its title names {{reference}}, since a squash merge makes it the commit message on main, and its description links the quest. Post the pull request's link on the quest with \`quest_comment_add\`.
+5. Commit it as one commit, its message naming {{reference}}. One quest is one commit: the pull request is rebase-merged, so main receives its commits as they are. A later fix goes into that commit (amend it, then push with \`--force-with-lease\`).
+6. Push the branch and open a pull request into main. Its title names {{reference}}, and its description links the quest. Post the pull request's link on the quest with \`quest_comment_add\`.
 7. If the project verifies on CI, the run on the pull request is the source of truth and a green local check is not: wait for it, or carry on with something else and read it when it lands. Fix and push again until it is green.
-8. Never merge it yourself, and never push to main: the pull request is how the change lands. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a squash merge. Otherwise it waits for review.
-9. Only once it has merged: record the commit main received with \`quest_commit_add\` (a squash merge makes a new one), then \`quest_complete\` with a short note: what shipped, and what was left out and why. Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
+8. Never merge it yourself, and never push to main: the pull request is how the change lands. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge. Otherwise it waits for review.
+9. Only once it has merged: record the commit main received with \`quest_commit_add\` (a rebase merge gives it a new sha; find it in main's log by {{reference}}), then \`quest_complete\` with a short note: what shipped, and what was left out and why. Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
 If the pull request has not merged when you stop, leave the quest accepted and say so in your reply, with the pull request's link.
 

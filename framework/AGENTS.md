@@ -8,19 +8,27 @@ For verbose CLI output: `LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtoo
 
 ⚠️ **CI on the pull request is the gate. A green terminal is not. Nothing reaches `main` except through a pull request (#Q3633).**
 
-1. **One quest, one branch, one worktree.** Cut the branch from the latest main and name it after the quest: `git fetch && git worktree add -b q<n>-<slug> ../alepha-q<n> origin/main`. Never edit the primary checkout: parallel sessions share it.
-2. **Commit as you go, and name the quest.** Small commits, staged by explicit path (never `git add -A`), each naming its Lore quest as `#Q<n>` (see "Every commit belongs to a quest"). Several commits are fine: the pull request is squash-merged.
-3. **Push and open a pull request.** `gh pr create --base main`, its title in commit form (`feat(lore): ... #Q<n>`), since the squash merge makes it the one commit `main` receives, and its body linking the quest. Post the pull request's link on the quest with `quest_comment_add`.
-4. **Turn on auto-merge: `gh pr merge --auto --squash`.** Once the required checks are green the pull request joins the merge queue, which runs them again on top of `main` and of every pull request queued ahead of it, and merges only if that is green too (#Q3688): two pull requests green alone can be red together. A red run, on the pull request or in the queue: fix, push again, and the pull request waits. Never merge by hand past a red check, never update the branch just to catch up with `main` (the queue does that), and never push to `main`.
-5. **When it has merged, finish.** Record the squash commit on the quest with `quest_commit_add`, complete the quest, delete the local branch, remove the worktree. GitHub deletes the remote branch.
+**How many quests one pull request holds** (#Q3706):
 
-**An epic is one pull request per quest**, so it lands on `main` as one commit per quest. Cut each quest's branch from the latest main. A quest that builds on one whose pull request has not merged yet waits for that merge: work another quest meanwhile rather than stacking branches.
+| The work                         | Pull requests          | Branch         |
+| -------------------------------- | ---------------------- | -------------- |
+| an epic                          | one for the whole epic | `e<n>-<slug>`  |
+| a run of "Work the loose quests" | one for the whole run  | `loose-<date>` |
+| any other quest                  | one per quest          | `q<n>-<slug>`  |
+
+**One quest is one commit, always**, and every pull request is **rebase-merged**: `main` receives each quest's commit as it is, so a bad quest is reverted alone. Never squash an epic.
+
+1. **One branch, one worktree.** Cut the branch from the latest main: `git fetch && git worktree add -b <branch> ../alepha-<branch> origin/main`. Never edit the primary checkout: parallel sessions share it.
+2. **One commit per quest, naming it.** Staged by explicit path (never `git add -A`), its message in commit form naming the Lore quest as `#Q<n>` (and the epic as `#E<n>`, in an epic): see "Every commit belongs to a quest". A later fix to a quest goes into that quest's commit, never into the next one's: `git commit --fixup=<sha>` then `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash origin/main`, and push with `--force-with-lease`.
+3. **Push and open a pull request.** `gh pr create --base main`, its body linking the quest, or the epic and its quests. An epic or a run opens it **as a draft** (`--draft`) after its first quest and pushes after every quest, so CI runs while the next quest is worked; read each run as it lands and fix a red one before going on. Post the pull request's link on each quest with `quest_comment_add`.
+4. **Turn on auto-merge: `gh pr merge --auto --rebase`**, for an epic or a run only once its last quest is pushed and the draft is marked ready (`gh pr ready`). Once the required checks are green the pull request joins the merge queue, which runs them again on top of `main` and of every pull request queued ahead of it, and merges only if that is green too (#Q3688): two pull requests green alone can be red together. A red run, on the pull request or in the queue: fix, push again, and the pull request waits. Never merge by hand past a red check, never merge `main` into the branch (rebase it onto `origin/main` when it conflicts), never update it just to catch up with `main` (the queue does that), and never push to `main`.
+5. **Complete the quests.** A quest worked alone completes once its pull request has merged. In an epic or a run, a quest completes once its commit is pushed, so a quest that depends on it can be accepted; an epic's last quest waits for the merge, since completing it completes the epic. After the merge, a rebase has given every commit a new sha: record on each quest the commit `main` received (`git log origin/main --grep '#Q<n>'`) with `quest_commit_add`. Then delete the local branch and remove the worktree; GitHub deletes the remote branch.
 
 ### Small edits skip the quest, not the pull request
 
 A small edit needs no quest and no `#Q<n>`. Small means a few lines in one or two files, carrying no decision a later session would look for in Lore: a `.gitignore` entry, a typo, a comment, a sentence of this file. A reported bug fix, or anything you would want to explain, gets its quest however short. If you cannot tell, ask.
 
-It still lands through a pull request, on a branch of its own: run only the check that can see the change (see "Verifying"), push, `gh pr create --fill`, `gh pr merge --auto --squash`.
+It still lands through a pull request, on a branch of its own: run only the check that can see the change (see "Verifying"), push, `gh pr create --fill`, `gh pr merge --auto --rebase`.
 
 ### Verifying
 

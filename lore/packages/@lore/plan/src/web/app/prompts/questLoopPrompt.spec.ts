@@ -44,26 +44,29 @@ describe("questLoopPromptDefault", () => {
       expect(index, text).toBeGreaterThan(-1);
       return index;
     };
-    expect(prompt).toMatch(
-      /worktree of your own, with one branch and one pull request per quest/i,
+    // One branch and one pull request for the run, one commit per quest,
+    // rebase-merged (#Q3706); a pull request per quest until then (#Q3633).
+    expect(prompt).toContain("in one run and one pull request");
+    expect(prompt).toContain("one pull request holding one commit per quest");
+    expect(prompt).not.toContain("one pull request per quest");
+    // Accepted before its commit, completed once the commit is pushed, and
+    // main's sha recorded after the merge.
+    expect(at("`quest_accept` it before its first commit")).toBeLessThan(
+      at("Commit it as one commit"),
     );
-    // Accepted before the first commit, a pull request per quest, completed
-    // when that pull request merges (#Q3633).
-    expect(at("`quest_accept`")).toBeLessThan(at("Commit, naming the quest"));
-    expect(at("Commit, naming the quest")).toBeLessThan(
-      at("open a pull request into main"),
-    );
-    expect(at("open a pull request into main")).toBeLessThan(
-      at("Only once it has merged"),
-    );
+    expect(at("Commit it as one commit")).toBeLessThan(at("Push the branch"));
+    expect(at("Push the branch")).toBeLessThan(at("`quest_complete` it"));
+    expect(at("When none is left")).toBeLessThan(at("as a rebase merge"));
+    expect(at("as a rebase merge")).toBeLessThan(at("Only once it has merged"));
     expect(at("Only once it has merged")).toBeLessThan(
-      at("then `quest_complete`"),
+      at("`quest_commit_add`"),
     );
-    // The agent never merges to main itself.
+    // The agent never merges to main itself, nor main into its branch.
     expect(prompt).toContain("Never merge it yourself, and never push to main");
+    expect(prompt).toContain("Never merge main into it");
     expect(prompt).not.toMatch(/merge the branch into main/i);
     expect(at("When none is left")).toBeLessThan(
-      at("Delete the merged branches locally"),
+      at("Delete the branch locally"),
     );
   });
 
