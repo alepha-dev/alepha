@@ -246,7 +246,20 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
     (membersQuery.data ?? []).filter(
       (member) => (member.rank ?? "member") === key,
     ).length;
-  const columns: PermissionMatrixColumn[] = ranks.map((rank) => ({
+  // Most permissions first (#Q3701), so the presets read Owner, Admin,
+  // Member and a custom rank falls into place by how much it grants. Counted
+  // on the SAVED grants over the permissions the matrix shows, `*` holding
+  // them all: a column never moves under a click, only once the change is
+  // saved. Ties keep the server's order (`sort` is stable).
+  const shown = groups.flatMap((group) =>
+    group.permissions.map((permission) => permission.name),
+  );
+  const grants = (rank: (typeof ranks)[number]) =>
+    rank.permissions.includes("*")
+      ? shown.length
+      : shown.filter((name) => rank.permissions.includes(name)).length;
+  const ordered = [...ranks].sort((a, b) => grants(b) - grants(a));
+  const columns: PermissionMatrixColumn[] = ordered.map((rank) => ({
     key: rank.key,
     readOnly: !rank.editable,
     closed: props.closedPermission
