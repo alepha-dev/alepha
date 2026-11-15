@@ -40,7 +40,11 @@ on:
 # each other.
 concurrency:
   group: verify-lore-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push supersedes a branch run, never a main one (#Q3687): with
+  # pull requests merging every few minutes, cancelling on main left no
+  # run to finish, and the deploy that follows a green one never ran.
+  # GitHub keeps the main run going and only the newest one waiting.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Lore's work is tracked in project `alepha`, with the framework's and Bay's
 # (#E94): one project, the product told apart by area.
