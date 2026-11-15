@@ -38,6 +38,7 @@
     "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@alepha/discord": "workspace:*",
     "@tailwindcss/vite": "^4.3.5",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
