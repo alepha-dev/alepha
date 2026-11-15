@@ -326,7 +326,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
         <PermissionMatrix
           className="min-h-0 flex-1"
           header={
-            <span className="flex items-end justify-between gap-2">
+            <span className="flex items-center justify-between gap-2">
               {tr("organizations.ranks.permission", {
                 default: "Permission",
               })}

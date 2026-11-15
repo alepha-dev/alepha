@@ -166,7 +166,9 @@ export const PermissionMatrix = (props: PermissionMatrixProps) => {
             WebKit paints no `box-shadow` on a `<thead>`. */}
         <TableHeader className="bg-muted sticky top-0 z-10 [&_th]:shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]">
           <TableRow className="hover:bg-transparent">
-            <TableHead className="min-w-56 align-bottom">
+            {/* Centred against the column headers (#Q3700), which are taller:
+                a control here (Create rank) sat on their bottom line. */}
+            <TableHead className="min-w-56 align-middle">
               {props.header}
             </TableHead>
             {props.columns.map((column) => {
