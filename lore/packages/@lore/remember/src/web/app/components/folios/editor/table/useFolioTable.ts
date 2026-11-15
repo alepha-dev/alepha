@@ -1,5 +1,5 @@
 import { useAction, useClient, useQuery } from "alepha/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { FolioTableController } from "../../../../../../api/controllers/FolioTableController.ts";
 import type { FolioCellValue } from "../../../../../../api/schemas/folioCellValueSchema.ts";
@@ -85,13 +85,41 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
     setRows(query.data.rows);
   }
 
-  const merge = (written: FolioRowResource[]) =>
+  // What each row's version became after this tab wrote it, keyed by the
+  // version the write was based on. The grid can still hold that older copy
+  // when its next write is queued; sent as it is, it would be a conflict with
+  // the tab's own write. A row reloaded at any other version is sent as is,
+  // so a revert, which can lower a version, is never misread.
+  const versions = useRef(new Map<number, { from: number; to: number }>());
+  // Cell writes run one after another: `useAction` refuses a run while one
+  // is in flight, and a second cell committed before the first answered
+  // would otherwise be dropped without a word.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueue = <T>(work: () => Promise<T>): Promise<T> => {
+    const next = queue.current.then(work, work);
+    queue.current = next.catch(() => undefined);
+    return next;
+  };
+  const latest = (row: FolioRowResource): FolioRowResource => {
+    const known = versions.current.get(row.number);
+    return known && known.from === row.version
+      ? { ...row, version: known.to }
+      : row;
+  };
+  const wrote = (base: FolioRowResource, answer: FolioRowResource) =>
+    versions.current.set(answer.number, {
+      from: base.version,
+      to: answer.version,
+    });
+
+  const merge = (written: FolioRowResource[]) => {
     setRows((current) => {
       const byNumber = new Map(written.map((row) => [row.number, row]));
       const kept = current.map((row) => byNumber.get(row.number) ?? row);
       const known = new Set(current.map((row) => row.number));
       return [...kept, ...written.filter((row) => !known.has(row.number))];
     });
+  };
 
   const status = (error: unknown): number | undefined =>
     typeof error === "object" && error !== null
@@ -104,12 +132,14 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
     boolean
   >(
     {
-      handler: async (_ctx, row, columnId, value) => {
+      handler: async (_ctx, base, columnId, value) => {
+        const row = latest(base);
         try {
           const answer = await api.updateFolioRow({
             params: { id: folioId, number: row.number },
             body: { cells: { [columnId]: value }, version: row.version },
           });
+          wrote(base, answer.row);
           merge([answer.row]);
           setConflicts((current) =>
             current.filter(
@@ -164,8 +194,9 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
         for (const edit of edits) {
           const answer = await api.updateFolioRow({
             params: { id: folioId, number: edit.row.number },
-            body: { cells: edit.cells, version: edit.row.version },
+            body: { cells: edit.cells, version: latest(edit.row).version },
           });
+          wrote(edit.row, answer.row);
           written.push(answer.row);
         }
         merge(written);
@@ -276,11 +307,13 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
     conflicts,
     writing,
     writeCell: async (row, columnId, value) => {
-      const result = await writeCellAction.run(row, columnId, value);
+      const result = await enqueue(() =>
+        writeCellAction.run(row, columnId, value),
+      );
       return result.ok ? result.value : false;
     },
     writeCells: async (edits) => {
-      await writeCellsAction.run(edits);
+      await enqueue(() => writeCellsAction.run(edits));
     },
     addRows: async (input) => {
       const result = await addRowsAction.run(input);
