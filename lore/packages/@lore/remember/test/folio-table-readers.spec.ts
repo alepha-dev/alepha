@@ -17,6 +17,7 @@ import {
 } from "../src/api/index.ts";
 import { FolioTools, LoreRememberMcp } from "../src/mcp/index.ts";
 
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
 /**
  * The rest of Lore meets a table folio (#E144, #Q3514): search, links, pin,
  * encrypt, export, the index.
@@ -135,17 +136,19 @@ describe("table folios and the readers of a folio", () => {
       expect(entries.map((e) => e.name)).toEqual(["Hosting"]);
     });
 
-    it("scopes the row query to the project's tables by index", async ({
-      expect,
-    }) => {
-      const database = alepha.inject(DatabaseProvider);
-      const plan = (await database.execute(
-        sql`EXPLAIN QUERY PLAN SELECT * FROM folio_rows WHERE folio_id IN (${"a"}, ${"b"}) AND search_text LIKE ${"%x%"} ORDER BY position`,
-      )) as Array<{ detail: string }>;
-      const detail = plan.map((row) => row.detail).join(" | ");
-      expect(detail).toMatch(/USING INDEX folio_rows_folio_id/);
-      expect(detail).not.toMatch(/SCAN folio_rows(?! USING)/);
-    });
+    // SQLite only on purpose: it reads SQLite's EXPLAIN QUERY PLAN.
+    it.skipIf(onPostgres)(
+      "scopes the row query to the project's tables by index",
+      async ({ expect }) => {
+        const database = alepha.inject(DatabaseProvider);
+        const plan = (await database.execute(
+          sql`EXPLAIN QUERY PLAN SELECT * FROM folio_rows WHERE folio_id IN (${"a"}, ${"b"}) AND search_text LIKE ${"%x%"} ORDER BY position`,
+        )) as Array<{ detail: string }>;
+        const detail = plan.map((row) => row.detail).join(" | ");
+        expect(detail).toMatch(/USING INDEX folio_rows_folio_id/);
+        expect(detail).not.toMatch(/SCAN folio_rows(?! USING)/);
+      },
+    );
   });
 
   describe("links", () => {
