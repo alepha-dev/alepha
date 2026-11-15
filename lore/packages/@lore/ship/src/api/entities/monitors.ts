@@ -5,9 +5,17 @@ import { $entity, db } from "alepha/orm";
 import { monitorExpectSchema } from "../schemas/monitorExpectSchema.ts";
 import { monitorNotificationSettingsSchema } from "../schemas/monitorNotificationSettingsSchema.ts";
 import { probeResultSchema } from "../schemas/probeResultSchema.ts";
+import { appInstances } from "./appInstances.ts";
 
 /**
- * Independent uptime targets. No app or sigil is required.
+ * An uptime check, owned by one app copy (#Q3657).
+ *
+ * The copy may have no deploy and no sigil: a project that only pings one
+ * API creates an app with that address, and its monitor belongs there.
+ * {@link appInstanceId} is optional in the column only for the monitors made
+ * before the link existed; `UptimeMonitorOwners.adopt` gives each of them an
+ * owner the first time the project's monitors or apps are read, and the API
+ * creates no monitor without one.
  */
 export const monitors = $entity({
   name: "monitors",
@@ -18,6 +26,13 @@ export const monitors = $entity({
       onDelete: "cascade",
     }),
     createdAt: db.createdAt(),
+    /**
+     * The app copy this monitor watches. Deleting the copy deletes its
+     * monitor.
+     */
+    appInstanceId: db.ref(z.uuid().optional(), () => appInstances.cols.id, {
+      onDelete: "cascade",
+    }),
     name: z.string().min(1).max(200),
     kind: z.enum(["http", "tcp", "cert", "push"]),
     target: z.string().max(2048),
@@ -45,6 +60,7 @@ export const monitors = $entity({
   indexes: [
     { columns: ["pushTokenHash"], unique: true },
     { columns: ["projectId"] },
+    { columns: ["appInstanceId"] },
     { columns: ["active", "nextCheckAt"] },
   ],
 });

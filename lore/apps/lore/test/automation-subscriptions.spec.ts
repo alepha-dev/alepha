@@ -88,7 +88,7 @@ describe("Automation subscriptions (#Q3576)", () => {
       enabled: true,
       subscription: true,
       authorUserId: user.id,
-      rule: { actions: [{ recipient: user.id, channel: "email" }] },
+      rule: { actions: [{ recipient: user.id, channels: ["email"] }] },
     });
 
     // A reload asks the server again: the state is not the client's.
@@ -132,7 +132,10 @@ describe("Automation subscriptions (#Q3576)", () => {
     expect(rules.every((rule) => rule.enabled && rule.subscription)).toBe(true);
     expect(
       rules
-        .map((rule) => (rule.rule.actions[0] as { channel: string }).channel)
+        .map(
+          (rule) =>
+            (rule.rule.actions[0] as { channels: string[] }).channels[0],
+        )
         .sort(),
     ).toEqual(["email", "inbox"]);
     // Reopening reads the same channels back.

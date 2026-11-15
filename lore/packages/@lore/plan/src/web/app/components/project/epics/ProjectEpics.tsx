@@ -37,6 +37,7 @@ import {
   Play,
   Plus,
   Trash2,
+  OctagonAlert,
   TriangleAlert,
   Undo2,
   Wrench,
@@ -880,8 +881,21 @@ const ProjectEpics = () => {
                       is open: past ready they are a record, not a to-do. On
                       the title's line, so the row is no taller for them, and
                       `shrink-0` so the title truncates first (#Q3296). */}
+                  {/* A blocker always wins the slot (#Q3634): red, ahead of
+                      the amber questions, because it stops the plan. */}
                   {(epic.status === "draft" || epic.status === "ready") &&
-                  (epic.openQuestions ?? 0) > 0 ? (
+                  (epic.openBlockers ?? 0) > 0 ? (
+                    <span
+                      className="text-danger-text ml-auto inline-flex shrink-0 items-center gap-1 text-xs"
+                      data-testid={`epic-open-blockers-${epic.number}`}
+                    >
+                      <OctagonAlert aria-hidden="true" className="size-3" />
+                      {tr("epic.list.openBlockers", {
+                        args: [String(epic.openBlockers)],
+                      })}
+                    </span>
+                  ) : (epic.status === "draft" || epic.status === "ready") &&
+                    (epic.openQuestions ?? 0) > 0 ? (
                     <span
                       className="text-warning-text ml-auto inline-flex shrink-0 items-center gap-1 text-xs"
                       data-testid={`epic-open-questions-${epic.number}`}

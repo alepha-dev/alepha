@@ -1,0 +1,29 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f1577489-b4fa-41c6-87eb-25aafdde8820",
+  "prevIds": ["c8294839-f3a4-43d7-96bc-ff433a71364a"],
+  "footprints": [
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "hosts", "project_id"],
+      "writes": ["s|colprop|public.hosts.project_id.notNull"],
+      "reads": [
+        "n|tbl|public.hosts",
+        "n|sch|public",
+        "n|col|public.hosts.project_id"
+      ],
+      "sqlHash": "ac6ed9053e7098ce"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"hosts\",\"project_id\"]",
+      "set": {
+        "notNull": true
+      }
+    }
+  ]
+}

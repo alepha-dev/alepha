@@ -587,30 +587,6 @@ export class HostService {
   }
 
   /**
-   * What an account deletion takes with it, for the confirmation dialog: the
-   * hosts with no home anchored on the account, which go with it, and how
-   * many projects lose a deploy destination when they go. A homed host
-   * outlives the account, so it is not counted.
-   */
-  async countOwned(
-    userId: string,
-  ): Promise<{ hosts: number; projects: number }> {
-    const owned = await this.hosts.findMany({
-      where: { ownerUserId: { eq: userId }, projectId: { isNull: true } },
-    });
-    if (owned.length === 0) {
-      return { hosts: 0, projects: 0 };
-    }
-    const grants = await this.grants.findMany({
-      where: { hostId: { inArray: owned.map((host) => host.id) } },
-    });
-    return {
-      hosts: owned.length,
-      projects: new Set(grants.map((grant) => grant.projectId)).size,
-    };
-  }
-
-  /**
    * Normalises a slug and proves it is free in this home project.
    */
   async claimSlug(projectId: number, raw: string): Promise<string> {
@@ -695,8 +671,7 @@ export class HostService {
     const moved = await this.hosts.updateMany(
       {
         id: { eq: host.id },
-        projectId:
-          host.projectId == null ? { isNull: true } : { eq: host.projectId },
+        projectId: { eq: host.projectId },
       },
       { projectId: targetProjectId, ownerUserId: anchor },
     );
@@ -707,7 +682,7 @@ export class HostService {
     }
     return {
       host: await this.hosts.getById(host.id),
-      ...(host.projectId == null ? {} : { from: host.projectId }),
+      from: host.projectId,
     };
   }
 
@@ -853,37 +828,16 @@ export class HostService {
   /**
    * The page a message about this host links to, as a path from the app's
    * root: a `bay` host's console under its home project, a `cloudflare`
-   * one's row in that project's hosts list (it has no console), and the
-   * admin's hosts page for a host with no home, the only place it can be
-   * opened. Hosts have no account page since #E126.
+   * one's row in that project's hosts list (it has no console). Hosts have
+   * no account page since #E126, and every host has a home since #Q3627.
    */
   async pagePath(host: Host): Promise<string> {
-    const home =
-      host.projectId == null
-        ? undefined
-        : await this.projects.findById(host.projectId);
+    const home = await this.projects.findById(host.projectId);
     if (!home?.slug) {
       return "/admin/hosts";
     }
     return host.type === "bay"
       ? `/${home.slug}/hosts/${host.slug}`
       : `/${home.slug}/settings/hosts`;
-  }
-
-  /**
-   * Who is told when something about a host needs fixing (a credential
-   * failing, a server overdue): every member of its home project whose rank
-   * grants `host:update`, the owner always among them. A host with no
-   * home tells its anchor, the person who created it, until the admin
-   * assigns it.
-   */
-  async recipientsOf(host: Host): Promise<string[]> {
-    if (host.projectId == null) {
-      return [host.ownerUserId];
-    }
-    const organizationId = await this.projectSecurity.organizationIdOf(
-      host.projectId,
-    );
-    return this.ranks.holdersOf(organizationId, "host:update");
   }
 }

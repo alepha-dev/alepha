@@ -27,9 +27,6 @@ export class LoreAdminDashboard {
     id: "lore-projects",
     title: "Projects",
     titleKey: "admin.projectsTile.title",
-    description:
-      "Projects on this instance, archived excluded, with creations against the week before.",
-    descriptionKey: "admin.projectsTile.description",
     order: 100,
     can: () => this.projectApi.findProjects.can(),
     render: () => <AdminProjectsTile id="lore-projects" />,

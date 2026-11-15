@@ -894,7 +894,9 @@ read access and resolves each actual recipient under current source authority.
 roster/chunk receipts resume the full roster in runs of at most 100 deliveries.
 Run evidence aggregates native outbox IDs, while public outcome reads remain
 bounded and distinguish enqueue from live delivery. Ordinary row selection still
-stops at 50. Only quest-reminders compatibility follows due-selector cursors,
+stops at 50. Only a quest reminders rule (selector `quests.remindersDue`, the Quest
+reminders preset since #Q3626, at most one per project) follows due-selector
+cursors,
 with the original evaluation time and a durable page witness; each due-state
 identity couples one email enqueue to one interval/history update.
 

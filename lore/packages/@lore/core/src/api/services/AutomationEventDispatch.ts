@@ -47,7 +47,7 @@ export class AutomationEventDispatch {
         rules.flatMap((rule) => {
           const trigger = rule.rule.trigger;
           if (trigger.kind !== "event") return [];
-          return (["app", "monitor"] as const).flatMap((name) => {
+          return (["app", "monitor", "host"] as const).flatMap((name) => {
             const value = trigger[name];
             const key = value ? this.tokens.whole(value) : undefined;
             return key ? [key] : [];
@@ -77,7 +77,7 @@ export class AutomationEventDispatch {
       try {
         const trigger = rule.rule.trigger;
         let skip = false;
-        for (const name of ["app", "monitor"] as const) {
+        for (const name of ["app", "monitor", "host"] as const) {
           const filter = trigger[name];
           if (filter === undefined) continue;
           let resolved: unknown;
@@ -95,7 +95,9 @@ export class AutomationEventDispatch {
           const field =
             name === "monitor"
               ? event.payload.fields.monitor_id
-              : event.payload.fields.app;
+              : name === "host"
+                ? event.payload.fields.host_id
+                : event.payload.fields.app;
           if (resolved !== undefined && resolved !== field) skip = true;
         }
         if (skip) continue;

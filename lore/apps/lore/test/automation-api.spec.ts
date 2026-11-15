@@ -94,7 +94,7 @@ describe("Shared automation application service and HTTP actions", () => {
       {
         kind: "notify",
         recipient: user.id,
-        channel: "inbox",
+        channels: ["inbox"],
         title: "Quest",
         text: "{{title}}",
         category: "automations",
@@ -428,7 +428,7 @@ describe("Shared automation application service and HTTP actions", () => {
         ...rule.actions[0],
         kind: "notify",
         recipient: user.id,
-        channel: "inbox",
+        channels: ["inbox"],
         title: "Quest",
         text: "{{message}}",
         category: "automations",
@@ -864,7 +864,7 @@ describe("Shared automation application service and HTTP actions", () => {
       {
         kind: "notify",
         recipient: user.id,
-        channel: "inbox",
+        channels: ["inbox"],
         title: "Quest",
         text: "{{message}}",
         category: "automations",
@@ -911,7 +911,7 @@ describe("Shared automation application service and HTTP actions", () => {
       {
         kind: "notify",
         recipient: user.id,
-        channel: "inbox",
+        channels: ["inbox"],
         title: "Quest",
         text: "{{message}}",
         category: "automations",

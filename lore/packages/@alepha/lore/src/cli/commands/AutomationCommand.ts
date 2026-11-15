@@ -88,7 +88,7 @@ export class AutomationCommand {
   });
 
   protected static readonly POLICY_ARG = z
-    .enum(["quest-reminders", "release-notifications"])
+    .enum(["release-notifications"])
     .meta({ title: "policy" });
 
   protected static readonly RULE_FLAG = {

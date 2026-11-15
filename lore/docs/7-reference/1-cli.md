@@ -175,18 +175,18 @@ See [Quests](/lore/docs/plan-quests) for the statuses and rules behind these.
 
 ## Epics
 
-| Command                         | What it does                                                                      | Flags                                                                                   |
-| ------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `lore epic list`                | Every epic, whatever its status.                                                  |                                                                                         |
-| `lore epic get <ref>`           | One epic: status, progress, plan, folios, open review questions and log.          |                                                                                         |
-| `lore epic create`              | Create an epic, as a draft: its quests stay out of the backlog until it is ready. | `--title` (required), `--description`, `--depends-on`                                   |
-| `lore epic update <ref>`        | Change an epic's title, plan or predecessor.                                      | `--title`, `--description`, `--depends-on` (`0` clears it)                              |
-| `lore epic set status <ref>`    | Set an epic to draft or ready. The other statuses follow from its quests.         | `--status draft` or `--status ready` (required)                                         |
-| `lore epic shelve <ref>`        | Set an epic and its open quests aside.                                            |                                                                                         |
-| `lore epic unshelve <ref>`      | Bring a shelved epic back, with the quests its shelving took.                     |                                                                                         |
-| `lore epic delete <ref>`        | Delete a draft or ready epic **and every quest in it**, for good.                 | `--yes` (required)                                                                      |
-| `lore epic review create <ref>` | File a review of a draft or ready epic: its questions, decisions and changes.     | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
-| `lore epic review answer <ref>` | Record the owner's answer to one review item.                                     | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
+| Command                         | What it does                                                                            | Flags                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `lore epic list`                | Every epic, whatever its status.                                                        |                                                                                         |
+| `lore epic get <ref>`           | One epic: status, progress, plan, folios, open review blockers and questions, and log.  |                                                                                         |
+| `lore epic create`              | Create an epic, as a draft: its quests stay out of the backlog until it is ready.       | `--title` (required), `--description`, `--depends-on`                                   |
+| `lore epic update <ref>`        | Change an epic's title, plan or predecessor.                                            | `--title`, `--description`, `--depends-on` (`0` clears it)                              |
+| `lore epic set status <ref>`    | Set an epic to draft or ready. The other statuses follow from its quests.               | `--status draft` or `--status ready` (required)                                         |
+| `lore epic shelve <ref>`        | Set an epic and its open quests aside.                                                  |                                                                                         |
+| `lore epic unshelve <ref>`      | Bring a shelved epic back, with the quests its shelving took.                           |                                                                                         |
+| `lore epic delete <ref>`        | Delete a draft or ready epic **and every quest in it**, for good.                       | `--yes` (required)                                                                      |
+| `lore epic review create <ref>` | File a review of a draft or ready epic: its blockers, questions, decisions and changes. | `--items` (required: a JSON array, usually `@file` or `@-`), `--summary`                |
+| `lore epic review answer <ref>` | Record the owner's answer to one review item.                                           | `--item <number>` (required), then one of `--answer`, `--suggestion <index>`, `--waive` |
 
 See [Epics](/lore/docs/plan-epics), and
 [Reviewing an epic](/lore/docs/plan-epics#reviewing-an-epic) for what a review
@@ -429,36 +429,38 @@ revoke a leaked token, use `rotate`: `delete` throws the history away.
 
 ## Monitors
 
-A monitor checks one target on an interval, or waits for a job to push. See
-[Healthchecks](/lore/docs/ship-healthchecks). A monitor is named by its id, as
-`lore monitor list` prints it, so only `list` and `create` take `--project`.
+A monitor checks one target on an interval, or waits for a job to push, and
+belongs to one app copy. See [Healthchecks](/lore/docs/ship-healthchecks). A
+monitor is named by its id, as `lore monitor list` prints it, so only `list`
+and `create` take `--project`.
 
-| Command                    | What it does                                                                    | Flags                                        |
-| -------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
-| `lore monitor list`        | Every monitor, down first, with its status and uptime.                          | `--window` (`24h`, `7d`, `30d`)              |
-| `lore monitor get <id>`    | One monitor: settings, uptime over 24h, 7d and 30d, incidents, its last checks. |                                              |
-| `lore monitor create`      | Add a monitor. A push monitor's token is printed once.                          | `--name`, `--kind`, `--target`, the settings |
-| `lore monitor update <id>` | Change the settings passed, and keep the rest.                                  | The settings                                 |
-| `lore monitor pause <id>`  | Stop its checks, keeping its history.                                           |                                              |
-| `lore monitor resume <id>` | Start its checks again.                                                         |                                              |
-| `lore monitor delete <id>` | Remove it with its checks and incidents. This cannot be undone.                 | `--yes` (required)                           |
+| Command                    | What it does                                                                    | Flags                                                          |
+| -------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `lore monitor list`        | Every monitor, down first, with its status and uptime.                          | `--window` (`24h`, `7d`, `30d`)                                |
+| `lore monitor get <id>`    | One monitor: settings, uptime over 24h, 7d and 30d, incidents, its last checks. |                                                                |
+| `lore monitor create`      | Add a monitor to an app copy. A push monitor's token is printed once.           | `--app`, `--env`, `--name`, `--kind`, `--target`, the settings |
+| `lore monitor update <id>` | Change the settings passed, and keep the rest.                                  | The settings                                                   |
+| `lore monitor pause <id>`  | Stop its checks, keeping its history.                                           |                                                                |
+| `lore monitor resume <id>` | Start its checks again.                                                         |                                                                |
+| `lore monitor delete <id>` | Remove it with its checks and incidents. This cannot be undone.                 | `--yes` (required)                                             |
 
-| Setting               | Values                                                                             |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| `--kind`              | `http`, `tcp` (host:port), `cert` (a certificate's expiry at host:port) or `push`. |
-| `--interval-secs`     | Seconds between checks, a multiple of 60. For a push monitor, the longest gap.     |
-| `--timeout-secs`      | Seconds before a check gives up, 1 to 30.                                          |
-| `--confirmations`     | Failed checks in a row before the monitor goes down.                               |
-| `--expect-status`     | The HTTP status a passing check answers.                                           |
-| `--keyword`           | Text a passing check's body contains.                                              |
-| `--latency-budget`    | Milliseconds over which a check counts as failed.                                  |
-| `--cert-warning-days` | Days before a certificate's expiry that count as failing.                          |
-| `--no-email`          | Do not mail the project's members on an outage.                                    |
-| `--recipient`         | An extra address to mail, repeated for several. On `update`, it replaces the list. |
+| Setting               | Values                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `--app`, `--env`      | The app copy the monitor belongs to, on `create`. An `http` monitor checks its address unless `--target` is given. |
+| `--kind`              | `http`, `tcp` (host:port), `cert` (a certificate's expiry at host:port) or `push`.                                 |
+| `--interval-secs`     | Seconds between checks, a multiple of 60. For a push monitor, the longest gap.                                     |
+| `--timeout-secs`      | Seconds before a check gives up, 1 to 30.                                                                          |
+| `--confirmations`     | Failed checks in a row before the monitor goes down.                                                               |
+| `--expect-status`     | The HTTP status a passing check answers.                                                                           |
+| `--keyword`           | Text a passing check's body contains.                                                                              |
+| `--latency-budget`    | Milliseconds over which a check counts as failed.                                                                  |
+| `--cert-warning-days` | Days before a certificate's expiry that count as failing.                                                          |
+| `--no-email`          | Do not mail the project's members on an outage.                                                                    |
+| `--recipient`         | An extra address to mail, repeated for several. On `update`, it replaces the list.                                 |
 
 ```bash
-lore monitor create --name Website --kind http --target https://example.app --expect-status 200
-lore monitor create --name "Nightly backup" --kind push --interval-secs 86400
+lore monitor create --app acme --env production --name Website --kind http --expect-status 200
+lore monitor create --app backups --env production --name "Nightly backup" --kind push --interval-secs 86400
 ```
 
 ## Secrets

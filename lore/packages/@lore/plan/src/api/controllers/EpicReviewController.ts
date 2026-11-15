@@ -87,6 +87,7 @@ export class EpicReviewController {
         items.filter((item) => item.kind === kind).length;
       await this.log("review", epic, user, {
         review: review.id,
+        blockers: count("blocker"),
         questions: count("question"),
         decisions: count("decision"),
         changes: count("change"),

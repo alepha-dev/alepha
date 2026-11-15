@@ -712,7 +712,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       const adoption = alepha.inject(AutomationAdoptionService);
       const adopted = await adoption.adopt(
         adoptionProject.id,
-        "quest-reminders",
+        "release-notifications",
         adoptionAuthor,
         { confirm: true },
       );
@@ -721,7 +721,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       expect(
         await alepha
           .inject(AutomationLegacyQueue)
-          .adopted(adoptionProject.id, "quest-reminders"),
+          .adopted(adoptionProject.id, "release-notifications"),
       ).toBe(true);
       const disabled = await application.setEnabled(
         adoptionProject.id,
@@ -734,7 +734,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         (
           await adoption.adopt(
             adoptionProject.id,
-            "quest-reminders",
+            "release-notifications",
             adoptionAuthor,
             { confirm: true },
           )
@@ -750,7 +750,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         (
           await adoption.preview(
             adoptionProject.id,
-            "quest-reminders",
+            "release-notifications",
             adoptionAuthor,
           )
         ).state,

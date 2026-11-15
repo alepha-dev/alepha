@@ -346,7 +346,8 @@ export const quests = $entity({
     /**
      * Timestamp at which the next reminder email should fire. Maintained
      * by `setQuestReminder` (set to now + interval on enable) and the
-     * `QuestJobs` reminder sweep (advanced by interval after each send).
+     * project's Quest reminders automation (#Q3626), which advances it by
+     * the interval after each send.
      * `undefined` when no reminder is configured or when the quest is
      * completed/abandoned.
      */

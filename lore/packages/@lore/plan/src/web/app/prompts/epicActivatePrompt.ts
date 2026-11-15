@@ -55,7 +55,7 @@ The epic: {{url}}
 
 - Work in a git worktree of your own, with one branch and one pull request per quest. Never on main.
 - Read the epic with \`epic_get\` (project_name "{{project}}", number {{number}}) and its quests with \`quest_list\` (\`epic: {{id}}\`, \`detail: "full"\`). Read the folios \`epic_get\` lists, and its \`review.log\`: together they hold the decisions already taken, and the log is binding.
-- If \`epic_get\` lists any \`review.openQuestions\`, they are the owner's: stop and report them in your reply, numbered as the review numbered them, rather than answering one yourself or working around it.
+- If \`epic_get\` lists any \`review.openBlockers\` or \`review.openQuestions\`, they are the owner's: stop and report them in your reply, blockers first, numbered as the review numbered them, rather than answering one yourself or working around it.
 - The epic must be \`ready\` or \`in_progress\`. If it is still a \`draft\`, stop and say so: its plan is not finished, and marking it ready is the owner's call, not yours.
 - Your first \`quest_accept\` starts the epic, and from then on its quest set is frozen. Anything you discover is an objective on a quest in the epic (\`quest_update\`) or a comment (\`quest_comment_add\`), never a new quest.
 - Order the quests by their dependencies and by the order the epic's description gives.

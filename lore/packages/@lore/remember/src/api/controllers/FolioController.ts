@@ -46,6 +46,7 @@ import {
   folioTreeEntrySchema,
 } from "../schemas/folioTreeEntrySchema.ts";
 import { FolioAttachmentService } from "../services/FolioAttachmentService.ts";
+import { FolioDeletion } from "../services/FolioDeletion.ts";
 import {
   FolioHistoryService,
   type RevisionPlan,
@@ -53,6 +54,7 @@ import {
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
 import { FolioTableService } from "../services/FolioTableService.ts";
+import { FolioTrashService } from "../services/FolioTrashService.ts";
 
 /**
  * The columns of `folio_directories` any ancestor walk needs — the tree
@@ -90,6 +92,8 @@ export class FolioController {
   protected readonly linkService = $inject(ResourceLinkService);
   protected readonly bound = $inject(BoundParameters);
   protected readonly attachmentService = $inject(FolioAttachmentService);
+  protected readonly deletion = $inject(FolioDeletion);
+  protected readonly trash = $inject(FolioTrashService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
   protected readonly crypto = $inject(CryptoProvider);
@@ -1317,6 +1321,15 @@ export class FolioController {
           summary,
           // `null` means "move to the root": `save()` writes it as NULL.
           directoryId: directoryId as string | undefined,
+          // Into the trash stamps it, out of it clears it (#Q3659).
+          ...(body.directoryId === undefined
+            ? {}
+            : {
+                trashedAt: ((await this.trash.trashedAtFor(
+                  directoryId ?? undefined,
+                  existing.trashedAt,
+                )) ?? undefined) as string | undefined,
+              }),
           protected: isProtected,
           pinned,
           searchText: isProtected
@@ -1438,23 +1451,9 @@ export class FolioController {
       // link FROM a folio that still exists TO one that no longer does is
       // a broken reference, which the reader renders as such; deleting it
       // would silently rewrite what the author wrote.
-      await this.linkService.deleteLinksFrom({ kind: "folio", id: params.id });
-      // And its filing: a deleted folio is filed under no epic (#Q2626).
-      await this.linkService.unfileTargets("folio", [params.id]);
-      /*
-       * Before the folio row, not after. `folio_blobs.folioId` cascades, so
-       * the moment the folio is gone so is the only record of which files
-       * belonged to it - and those files, and their bytes, are in a bucket
-       * nothing else references. Every folio deleted before this left its
-       * attachments there, paid for and unreachable.
-       */
-      await this.attachmentService.deleteByFolio(params.id);
-      // Hand the name back to the folder. `folio_names` has no foreign
-      // key to `folios` (it discriminates by `kind`), so nothing frees
-      // it on cascade - the reservation would outlive the folio and
-      // block the name forever.
-      await this.nameService.releaseByEntity(params.id);
-      await this.folios.deleteById(params.id);
+      // Links, filing, attachments and name, then the row: one place for
+      // it, shared with the trash's purge (#Q3659).
+      await this.deletion.delete(params.id);
       await this.logFolio("delete", folio, user);
       return { ok: true };
     },

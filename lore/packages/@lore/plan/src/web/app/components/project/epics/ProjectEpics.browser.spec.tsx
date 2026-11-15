@@ -266,6 +266,28 @@ describe("ProjectEpics - the status filter", () => {
     ).toContain("Quiet epic");
   });
 
+  it("shows open blockers in red in place of the question count (#Q3634)", async () => {
+    await mount(
+      [],
+      [
+        {
+          ...epicOf(1, "Draft epic", "draft"),
+          openQuestions: 3,
+          openBlockers: 2,
+        },
+        { ...epicOf(2, "Asked epic", "ready"), openQuestions: 1 },
+      ],
+    );
+
+    const blockers = screen.getByTestId("epic-open-blockers-1");
+    expect(blockers.textContent).toBe("2 review blockers open");
+    expect(blockers.className).toContain("text-danger-text");
+    expect(screen.queryByTestId("epic-open-questions-1")).toBeNull();
+    expect(screen.getByTestId("epic-open-questions-2").textContent).toBe(
+      "1 review questions open",
+    );
+  });
+
   /**
    * The Reviews column (#Q3311): off until asked for, and what tells an epic
    * never reviewed from one whose questions are all answered.

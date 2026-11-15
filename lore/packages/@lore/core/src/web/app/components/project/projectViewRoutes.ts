@@ -78,7 +78,6 @@ const ROUTES_SETTINGS = [
 ];
 
 export const ROUTES_FULL_WIDTH = new Set([
-  "projectUptime",
   "projectMonitor",
   // Stacks (#E79): tables of services, deploys and revisions, laid out from
   // the space they are given.
@@ -185,7 +184,6 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectQuests"
   | "projectApps"
   | "projectArtifacts"
-  | "projectUptime"
   | "projectStacks"
   | "projectReleases"
   | "projectAutomations"
@@ -204,7 +202,8 @@ export const SECTION_HREF_ROUTES: Record<
   projectAutomationDetail: "projectAutomations",
   projectAutomationVariables: "projectAutomations",
   projectAutomationRun: "projectAutomations",
-  projectMonitor: "projectUptime",
+  // A monitor belongs to an app (#Q3657): its crumb climbs to Apps.
+  projectMonitor: "projectApps",
   // A stack environment's crumb climbs back to the Stacks list (#E79).
   projectStackEnvironment: "projectStacks",
   projectApp: "projectApps",
@@ -226,8 +225,9 @@ export const SECTION_HREF_ROUTES: Record<
 };
 
 export const SECTION_LABEL_KEYS: Record<string, string> = {
-  projectUptime: "uptime.title",
-  projectMonitor: "uptime.title",
+  // `/uptime` only redirects to Apps now (#Q3657).
+  projectUptime: "project.menu.apps",
+  projectMonitor: "project.menu.apps",
   projectStacks: "stacks.title",
   projectStackEnvironment: "stacks.title",
   // ⚠️ A leaf and the whole section, so it is deliberately absent from

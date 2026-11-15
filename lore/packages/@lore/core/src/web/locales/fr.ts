@@ -89,6 +89,8 @@ export default {
   "automation.event.epicCompleted": "Épopée terminée",
   "automation.event.deployFailed": "Déploiement en échec",
   "automation.event.deploySucceeded": "Déploiement réussi",
+  "automation.event.hostCredentialInvalid": "Jeton d'hôte invalide",
+  "automation.event.hostExpired": "Hôte expiré",
   "automation.event.monitorDown": "Moniteur en panne",
   "automation.event.monitorUp": "Moniteur rétabli",
   "automation.event.questCompleted": "Quête terminée",
@@ -124,11 +126,34 @@ export default {
     "Mesurer le nombre total d’erreurs ouvertes toutes les cinq minutes. Le premier relevé fixe une référence ; un retour au seuil ou en dessous réarme l’alerte.",
   "automation.setup.folio": "Folio",
   "automation.setup.app": "Application",
+  "automation.setup.channels": "Canaux",
+  "automation.setup.host": "Hôte",
   "automation.setup.monitor": "Moniteur",
   "automation.preset.release-to-folio.title":
     "Publier les notes de version dans un folio",
   "automation.preset.release-to-folio.description":
     "Ajouter le changelog publié à un folio choisi, puis notifier un membre. Chaque publication est ajoutée une seule fois.",
+  "automation.preset.quest-reminders.title": "Rappels de quête",
+  "automation.preset.quest-reminders.description":
+    "Toutes les heures, rappelle à la personne assignée chaque quête dont le rappel est dû, à l'intervalle choisi sur la quête.",
+  "hosts.subscription.label":
+    "M'avertir quand cet hôte demande une intervention",
+  "hosts.subscription.description":
+    "Une règle à votre nom vous avertira quand cet hôte dépasse sa durée de vie ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "hosts.subscription.offDescription":
+    "Vous ne serez plus averti au sujet de cet hôte.",
+  "hosts.subscription.allLabel":
+    "M'avertir quand un hôte demande une intervention",
+  "hosts.subscription.allDescription":
+    "Une règle à votre nom vous avertira quand un hôte de ce projet dépasse sa durée de vie ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "hosts.subscription.allOffDescription":
+    "Vous ne serez plus averti au sujet des hôtes de ce projet.",
+  "automation.preset.host-credential-invalid.title": "Jeton d'hôte invalide",
+  "automation.preset.host-credential-invalid.description":
+    "Avertit un membre quand la vérification nocturne constate que le jeton Cloudflare d'un hôte ne fonctionne plus. Les déploiements par cet hôte sont refusés tant qu'il n'est pas remplacé.",
+  "automation.preset.host-expired.title": "Hôte expiré",
+  "automation.preset.host-expired.description":
+    "Avertit un membre quand un hôte jetable dépasse sa durée de vie. Lore n'arrête et ne supprime rien.",
   "automation.preset.deploy-failed.title": "Échec du déploiement",
   "automation.preset.deploy-failed.description":
     "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",
@@ -399,8 +424,15 @@ export default {
   "folios.mode.edit": "Éditer",
   "folios.mode.view": "Lire",
   "folios.mode.both": "Les deux",
+  "folios.editor.root.title": "Folios",
+  "folios.editor.root.description":
+    "Ouvrez un folio dans l’arbre, commencez-en un nouveau, ou cherchez parmi tous.",
+  "folios.editor.root.new": "Nouveau folio",
+  "folios.editor.root.search": "Chercher des folios",
 
   "folios.editor.tree.title": "Folios",
+  "folios.editor.tree.move-group-refused":
+    "Un dossier ne peut pas aller dans lui-même : rien n’a été déplacé.",
   "folios.editor.tree.new-folio": "Nouveau folio",
   "folios.editor.tree.new-directory": "Nouveau dossier",
   "folios.editor.tree.refresh": "Actualiser l\u2019arborescence",
@@ -412,6 +444,9 @@ export default {
   "folios.editor.tree.open": "Ouvrir",
   "folios.editor.tree.open-new-tab": "Ouvrir dans un nouvel onglet",
   "folios.editor.tree.rename": "Renommer",
+  "folios.editor.tree.trash-retention": "30 jours",
+  "folios.editor.tree.trash-hint":
+    "Les éléments de la corbeille sont supprimés définitivement après 30 jours. Déplacez-en un pour le restaurer.",
   "folios.editor.tree.copy-wiki-link": "Copier le lien wiki",
   "folios.editor.tree.encrypt": "Chiffrer",
   "folios.editor.tree.confirm-delete-directory-title": "Supprimer ce dossier ?",
@@ -520,6 +555,11 @@ export default {
   "artifact.builds.title": "Builds de $1",
   "artifact.builds.this": "$1 (ce build)",
   "artifact.deployments.empty": "Ce tag n'a pas été déployé.",
+  "artifact.deployments.column.copy": "Copie",
+  "artifact.deployments.column.status": "Statut",
+  "artifact.deployments.column.commit": "Commit",
+  "artifact.deployments.column.when": "Quand",
+  "artifact.deployments.column.author": "Auteur",
   "artifact.deploy.action": "Déployer",
   "artifact.deploy.newCopy": "Nouvelle copie",
   "artifact.newCopy.title": "Nouvelle copie depuis $1",
@@ -1540,6 +1580,18 @@ export default {
   "project.settings.kanban.columns.wip.none": "Sans limite",
   "project.settings.kanban.columns.delete": "Supprimer",
   "project.settings.kanban.columns.reorder": "Réordonner la colonne",
+  "project.settings.reminderRule.title": "Rappels de quête",
+  "project.settings.reminderRule.description":
+    "Les rappels définis sur une quête sont envoyés par une automatisation, toutes les heures, à la personne assignée.",
+  "project.settings.reminderRule.label": "Automatisation des rappels",
+  "project.settings.reminderRule.on":
+    "Active : les rappels dus sont envoyés toutes les heures.",
+  "project.settings.reminderRule.disabled":
+    "Désactivée : aucun rappel n'est envoyé tant qu'elle n'est pas réactivée.",
+  "project.settings.reminderRule.none":
+    "Aucune pour le moment : les rappels définis sur les quêtes ne sont pas envoyés.",
+  "project.settings.reminderRule.open": "Ouvrir l'automatisation",
+  "project.settings.reminderRule.create": "Créer l'automatisation des rappels",
   "project.settings.roadmap.title": "Feuille de route",
   "project.settings.roadmap.description":
     "Une page en lecture seule listant vos versions ouvertes et les épopées qu’elles contiennent. Ni quêtes, ni noms, ni backlog.",
@@ -1842,6 +1894,8 @@ export default {
   "quest.view.reminder.daily": "Quotidien",
   "quest.view.reminder.weekly": "Hebdomadaire",
   "quest.view.reminder.monthly": "Mensuel",
+  "quest.view.reminder.noRule":
+    "Aucune automatisation de rappel ne tourne dans ce projet : les rappels ne sont pas envoyés. Un gestionnaire l'active dans Paramètres > Plan.",
   "quest.view.reminder.none":
     "Aucun rappel configuré. Aucun e-mail ne vous sera envoyé.",
   "quest.view.reminder.next": "Prochain e-mail $1.",
@@ -1960,6 +2014,9 @@ export default {
   "apps.create.env": "Environnement",
   "apps.create.envDescription":
     "Quelle copie : production, staging, east-production. Texte libre, rien ne l’interprète.",
+  "apps.create.url": "Adresse",
+  "apps.create.urlDescription":
+    "Facultative. Là où cette copie répond, par exemple https://acme.example ; les réglages peuvent la définir plus tard.",
   "apps.create.withSigil": "Créer aussi un sigil",
   "apps.create.withSigilDescription":
     "Génère la clé avec laquelle cette copie remonte ses données, affichée une seule fois. Vous pourrez toujours en ajouter un plus tard depuis son onglet Réglages.",
@@ -2206,6 +2263,18 @@ export default {
   "app.settings.url.detected":
     "Utilise $1, l\u2019adresse depuis laquelle cette copie a remonté ses dernières données. Saisissez une URL pour en afficher une autre, ou videz le champ pour revenir à l\u2019adresse détectée.",
   "app.settings.url.save": "Enregistrer",
+  "app.settings.monitor.title": "Surveillance",
+  "app.settings.monitor.description":
+    "Vérifier l'adresse de cette copie depuis l'extérieur, chaque minute par défaut, et alerter en cas de panne.",
+  "app.settings.monitor.label": "Surveiller cette app",
+  "app.settings.monitor.rowDescription":
+    "Activée, une carte Disponibilité apparaît dans l'Aperçu. Désactivée, la vérification est en pause et son historique est conservé.",
+  "app.settings.monitor.needsAddress":
+    "Renseignez d'abord l'adresse ci-dessus : c'est elle que la vérification interroge.",
+  "app.settings.monitor.check": "Vérification",
+  "app.settings.monitor.checkDescription":
+    "Ce que fait la vérification. Modifier la change ; sa cible suit l'adresse.",
+  "app.settings.monitor.anySuccess": "Tout 2xx",
   "app.settings.url.saved": "Adresse enregistrée",
   "app.settings.host.title": "Hôte",
   "app.settings.host.description":
@@ -2318,7 +2387,6 @@ export default {
     "D'où viennent les visites. Seule la première page d'une visite porte un référent, donc Direct couvre aussi la navigation interne.",
   "insights.topReferrers.direct": "Direct",
   "insights.empty": "Aucune page vue enregistrée sur cette période.",
-  "insights.backToOverview": "Retour à la vue d'ensemble",
   "insights.dimension.value": "Valeur",
   "insights.dimension.count": "Nombre",
   "insights.dimension.share": "Part",
@@ -2732,10 +2800,6 @@ export default {
   "account.hosts.delete.confirm": "Supprimer",
   "account.hosts.toast.rotated": "Secret changé",
   "account.hosts.toast.deleted": "Hôte supprimé",
-  "account.delete.hosts.one":
-    "1 hôte qui n'appartient à aucun projet est encore rattaché à votre compte : il sera supprimé avec lui et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
-  "account.delete.hosts.many":
-    "$1 hôtes qui n'appartiennent à aucun projet sont encore rattachés à votre compte : ils seront supprimés avec lui et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
 
   "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",
@@ -2923,8 +2987,6 @@ export default {
 
   // Admin → Dashboard: Lore's Projects tile.
   "admin.projectsTile.title": "Projets",
-  "admin.projectsTile.description":
-    "Projets de cette instance, archivés exclus, avec les créations comparées à la semaine précédente.",
   "admin.projectsTile.tooltip":
     "Tous les projets de cette instance, projets archivés exclus.",
   "admin.projectsTile.note": "Créés en 7 jours : $1",
@@ -3069,6 +3131,10 @@ export default {
     "Marquer $1 comme prête place ses quêtes dans le backlog alors que sa revue reste sans réponse. Les réponses se donnent dans l’onglet Revue ; vous pouvez aussi la marquer prête maintenant et les laisser ouvertes.",
   "epic.ready.openQuestions.anyway": "Marquer comme prête quand même",
   "epic.ready.openQuestions.review": "Ouvrir l’onglet Revue",
+  "epic.ready.openBlockers.title": "$1 blocages de revue sont encore ouverts",
+  "epic.ready.openBlockers.title.one": "1 blocage de revue est encore ouvert",
+  "epic.ready.openBlockers.confirm":
+    "La revue a trouvé des problèmes qui bloquent le plan de $1 tel qu’il est écrit. Résolvez-les dans l’onglet Revue avant que ses quêtes n’arrivent dans le backlog, ou marquez-la prête quand même.",
   "epic.start.blocked": "Bloquée par l'épopée $1",
   "epic.status.actions.markReady": "Marquer comme prête",
   "epic.status.actions.backToDraft": "Repasser en brouillon",
@@ -3102,10 +3168,13 @@ export default {
   "epic.tab.activity": "Activité",
   "epic.tab.review": "Revue",
   "epic.list.openQuestions": "$1 questions de revue ouvertes",
+  "epic.list.openBlockers": "$1 blocages de revue ouverts",
   "epic.review.empty":
     "Aucune revue n’a encore été déposée pour cette épopée. Lancez « Relire l’épopée » depuis les prompts d’agent pour en déposer une.",
   "epic.review.open": "Questions ouvertes ($1)",
   "epic.review.open.none": "Aucune question de revue n’est ouverte.",
+  "epic.review.openWithBlockers": "Blocages ($1) et questions ($2) ouverts",
+  "epic.review.blocker": "Blocage",
   "epic.review.recommended": "Recommandé",
   "epic.review.pick": "Choisir",
   "epic.review.write": "Écrire une réponse",
@@ -3118,6 +3187,7 @@ export default {
   "epic.review.log.empty": "Rien n’a encore été décidé.",
   "epic.review.kind.question": "question",
   "epic.review.kind.decision": "décision",
+  "epic.review.kind.blocker": "blocage",
   "epic.review.answered": "Réponse :",
   "epic.review.replaces": "Remplace la décision $1",
   "epic.review.overturn": "Renverser",
@@ -3370,7 +3440,6 @@ export default {
     "Écrivez en markdown. Tous ceux qui lisent le tableau le verront.",
   "dashboard.edit": "Modifier",
   "dashboard.save": "Enregistrer",
-  "dashboard.customize": "Personnaliser",
   "dashboard.menu": "Options du tableau",
   "dashboard.reset": "Revenir au tableau par défaut",
   "dashboard.reset.confirm": "Revenir au tableau par défaut ?",
@@ -3762,22 +3831,13 @@ export default {
     "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
   "uptime.invalidRecipients":
     "Saisissez 20 adresses e-mail valides au maximum.",
-  "uptime.suggestions.title": "Apps sans moniteur",
-  "uptime.suggestions.description":
-    "Ces copies ont une adresse que rien ne surveille. Ajoutez un moniteur avec son nom et son URL déjà remplis.",
-  "uptime.suggestions.add": "Ajouter un moniteur",
-  "uptime.suggestions.addFor": "Ajouter un moniteur pour $1",
-  "uptime.app.none": "Aucun moniteur ne surveille encore cette adresse.",
   "uptime.title": "Disponibilité",
-  "uptime.empty": "Aucun moniteur pour le moment.",
   "project.capability.ship.option.uptime.label": "Superviser les applications",
   "project.capability.ship.option.uptime.description":
     "Vérifiez vos adresses à intervalles réguliers et gardez leur historique. Aucun sigil requis.",
   "project.capability.ship.option.stacks.label": "Stacks",
   "project.capability.ship.option.stacks.description":
     "Déployez ensemble des apps et des services depuis un seul compose.yml.",
-  "uptime.description":
-    "Surveillance des sites, ports, certificats et tâches planifiées.",
   "uptime.recentChecks": "Contrôles récents",
   "uptime.notMeasured": "Non mesuré",
   "uptime.beatTitle": "$1 : $2 ms, $3",
@@ -3931,6 +3991,8 @@ export default {
   "automation.source.quest.completed": "Quête terminée",
   "automation.source.deploy.failed": "Déploiement échoué",
   "automation.source.deploy.succeeded": "Déploiement réussi",
+  "automation.source.host.credential_invalid": "Jeton d'hôte invalide",
+  "automation.source.host.expired": "Hôte expiré",
   "automation.source.monitor.down": "Moniteur en panne",
   "automation.source.monitor.up": "Moniteur rétabli",
   "automation.source.quests.open": "Quêtes ouvertes, une exécution chacune",

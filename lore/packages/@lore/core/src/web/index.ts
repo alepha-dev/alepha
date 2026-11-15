@@ -99,6 +99,7 @@ export const LoreCoreWeb = $module({
 export { $pageProject, $pageProjectSettings } from "./app/$pageProject.ts";
 export { CoreRouter } from "./app/CoreRouter.ts";
 export { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
+export { spotlightOpenAtom } from "./app/atoms/spotlightOpenAtom.ts";
 export { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.ts";
 export {
   type ProjectNavEntry,

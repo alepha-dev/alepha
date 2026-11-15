@@ -7,6 +7,7 @@ import { folioAttachments } from "../entities/folioAttachments.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
 import { FolioDirectoryService } from "../services/FolioDirectoryService.ts";
+import { FolioTrashService } from "../services/FolioTrashService.ts";
 
 /**
  * REST surface for the Folio directory tree. Every endpoint is member-gated,
@@ -18,6 +19,7 @@ export class DirectoryController {
   protected readonly folios = $repository(folios);
   protected readonly attachments = $repository(folioAttachments);
   protected readonly directoryService = $inject(FolioDirectoryService);
+  protected readonly trash = $inject(FolioTrashService);
 
   /**
    * The two gates this controller needs, declared above the actions: a
@@ -275,10 +277,16 @@ export class DirectoryController {
           shortId: z.integer(),
           name: z.string(),
           parentId: z.uuid().optional(),
+          /**
+           * `trash` on the project's trash (#Q3659), which this read makes
+           * if the project has none yet.
+           */
+          system: z.enum(["trash"]).optional(),
         }),
       ),
     },
     handler: async ({ params }) => {
+      await this.trash.ensure(params.projectId);
       const rows = await this.directories.findMany({
         where: { projectId: { eq: params.projectId } },
         orderBy: [{ column: "name", direction: "asc" }],
@@ -289,6 +297,7 @@ export class DirectoryController {
         shortId: d.shortId,
         name: d.name,
         parentId: d.parentId,
+        ...(d.system ? { system: d.system } : {}),
       }));
     },
   });

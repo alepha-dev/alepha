@@ -101,18 +101,22 @@ const AppCreateDialog = (props: AppCreateDialogProps) => {
     schema: z.object({
       app: z.string().min(1).max(APP_NAME_MAX_LENGTH),
       env: z.string().min(1).max(APP_NAME_MAX_LENGTH),
+      // Optional, and validated by the server exactly as Settings' Address
+      // is (#Q3683): empty creates the copy with none, as before.
+      url: z.string().max(2048).optional(),
     }),
-    initialValues: { app: "", env: "production" },
+    initialValues: { app: "", env: "production", url: "" },
     handler: async (input) => {
       if (!project) return;
       const app = input.app.trim().toLowerCase();
       const env = input.env.trim().toLowerCase();
+      const url = (input.url ?? "").trim();
       setError(undefined);
 
       try {
         const instance = await appApi.createApp({
           params: { projectId: project.id },
-          body: { app, env },
+          body: { app, env, ...(url ? { url } : {}) },
         });
         // A new array, not a mutation: the table reads this atom as static
         // data and re-renders on identity.
@@ -221,6 +225,11 @@ const AppCreateDialog = (props: AppCreateDialogProps) => {
               input={form.input.env}
               label={tr("apps.create.env")}
               description={tr("apps.create.envDescription")}
+            />
+            <Control
+              input={form.input.url}
+              label={tr("apps.create.url")}
+              description={tr("apps.create.urlDescription")}
             />
 
             <Label className="flex items-start gap-2 font-normal">

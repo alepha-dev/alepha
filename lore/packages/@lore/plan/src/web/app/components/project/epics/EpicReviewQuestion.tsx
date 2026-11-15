@@ -47,13 +47,34 @@ const EpicReviewQuestion = (props: EpicReviewQuestionProps) => {
   };
 
   return (
-    <Card data-testid={`epic-review-question-${item.number}`}>
+    <Card
+      data-testid={`epic-review-question-${item.number}`}
+      data-kind={item.kind}
+      // A blocker is drawn in red (#Q3634): it stops the plan.
+      className={item.kind === "blocker" ? "ring-danger/60" : undefined}
+    >
       <CardContent className="space-y-3">
         <div className="flex items-start gap-3">
           <Badge variant="secondary" className="font-mono tabular-nums">
             {item.number}
           </Badge>
-          <p className="font-medium">{item.title}</p>
+          {item.kind === "blocker" && (
+            <Badge
+              variant="destructive"
+              data-testid={`epic-review-blocker-${item.number}`}
+            >
+              {tr("epic.review.blocker")}
+            </Badge>
+          )}
+          <p
+            className={
+              item.kind === "blocker"
+                ? "text-danger-text font-medium"
+                : "font-medium"
+            }
+          >
+            {item.title}
+          </p>
         </div>
         {item.context && (
           <div className="text-muted-foreground text-sm">

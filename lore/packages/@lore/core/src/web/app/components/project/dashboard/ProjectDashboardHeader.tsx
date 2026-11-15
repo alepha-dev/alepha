@@ -1,6 +1,6 @@
 import { Button } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
-import { Check, LayoutGrid, Pencil, Plus } from "lucide-react";
+import { Check, Pencil, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { I18n } from "../../../services/I18n.ts";
@@ -16,8 +16,8 @@ export interface ProjectDashboardHeaderProps {
   lead?: ReactNode;
   /**
    * Whether this is the project's first dashboard, the only one with a
-   * default: Customize and "Reset to default" are offered there alone
-   * (#Q3300), since the Reset confirmation promises the computed board.
+   * default: "Reset to default" is offered there alone (#Q3300), since its
+   * confirmation promises the computed board.
    */
   first?: boolean;
   /**
@@ -26,8 +26,10 @@ export interface ProjectDashboardHeaderProps {
    */
   canEdit: boolean;
   /**
-   * Whether the reader is looking at the computed default board (#Q2652),
-   * which has no edit mode: it is not stored, so there is nothing to edit.
+   * Whether the reader is looking at the computed default board (#Q2652).
+   * It offers Edit and Add card like a stored one (#Q3675): the first of them
+   * stores it, which the page does, so the reader never meets the
+   * distinction. Only "Reset to default" waits for a stored board.
    */
   computed?: boolean;
   /**
@@ -40,10 +42,6 @@ export interface ProjectDashboardHeaderProps {
    */
   onToggleEditing: () => void;
   onAdd: () => void;
-  /**
-   * Copy the computed board into stored cards and open edit mode (#Q2660).
-   */
-  onCustomize: () => void;
   /**
    * Delete the stored cards, back to the computed board (#Q2660).
    */
@@ -80,6 +78,7 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
     // own gutter, so the bar's ends line up with the tiles'.
     <div
       data-testid="dashboard-header"
+      data-computed={props.computed ? "true" : undefined}
       className="[&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background chrome flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2"
     >
       {props.lead && <div className="min-w-0 px-1">{props.lead}</div>}
@@ -87,21 +86,9 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
       <div className="w-40 shrink-0">
         <ProjectDashboardWindow onChange={props.onWindowChange} />
       </div>
-      {/* The computed board is not stored, so it is not edited: it is
-          customized, which copies it, once (#Q2660). */}
-      {props.canEdit && props.first !== false && props.computed && (
-        <Button
-          variant="outlined"
-          onClick={props.onCustomize}
-          disabled={props.busy}
-          data-testid="dashboard-customize"
-          className="h-9 shrink-0 px-3"
-        >
-          <LayoutGrid className="size-4" />
-          {tr("dashboard.customize")}
-        </Button>
-      )}
-      {props.canEdit && !props.computed && (
+      {/* No Customize step (#Q3675): Add card and Edit are offered on the
+          computed board too, and the page stores it on the first. */}
+      {props.canEdit && (
         <Button
           variant="outlined"
           onClick={props.onAdd}
@@ -116,7 +103,7 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
       {/* Save leaves edit mode. Every edit is already stored as it is made
           (a move, a resize, an added card), so there is nothing to flush:
           the button names the moment the reader is done. */}
-      {props.canEdit && !props.computed && (
+      {props.canEdit && (
         <Button
           variant={props.editing ? "solid" : "outlined"}
           onClick={props.onToggleEditing}

@@ -27,6 +27,7 @@ import {
   DeployedBuildService,
 } from "../services/DeployedBuildService.ts";
 import { TeardownService } from "../services/TeardownService.ts";
+import { UptimeMonitorOwners } from "../services/UptimeMonitorOwners.ts";
 
 export type { AppInstanceResource };
 
@@ -62,6 +63,7 @@ export class AppController {
   protected builds = $inject(DeployedBuildService);
   protected artifacts = $inject(ArtifactService);
   protected readonly teardown = $inject(TeardownService);
+  protected readonly monitorOwners = $inject(UptimeMonitorOwners);
   protected readonly bay = $inject(BayRemovalService);
   protected readonly log = $logger();
   protected audits = $inject(LoreAudits);
@@ -90,6 +92,9 @@ export class AppController {
       }),
     },
     handler: async ({ params, user }) => {
+      // A monitor made before monitors belonged to an app gets one first, so
+      // an app made for it is in this list (#Q3657).
+      await this.monitorOwners.adopt(params.projectId);
       const rows = await this.instances.findMany({
         where: { projectId: { eq: params.projectId } },
         orderBy: [
@@ -298,7 +303,13 @@ export class AppController {
         });
       }
       if (body.url !== undefined) {
+        // The copy's monitor checks this address (#Q3684): clearing it while
+        // Monitor is on is refused, and a new one moves the check with it.
+        if (body.url.trim() === "") {
+          await this.monitorOwners.assertAddressCanClear(instance);
+        }
         instance = await this.service.setUrl(instance, body.url);
+        await this.monitorOwners.followAddress(instance);
       }
       if (body.hostId !== undefined) {
         instance = await this.service.setHost(instance, body.hostId);

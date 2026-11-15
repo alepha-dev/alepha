@@ -12,7 +12,7 @@ Epics are the **Epics** option of the **Plan** capability: see
 ## The epic list and the epic page
 
 **Epics** in the sidebar lists every epic with its status, its progress, its
-release, the epic it depends on and its open review questions. Click a row to
+release, the epic it depends on and its open review blockers or questions. Click a row to
 open the epic.
 
 ![An epic's page, with its quests and its progress](/screenshots/lore/epic-light.png)
@@ -22,7 +22,7 @@ An epic's page is split into tabs:
 - **Overview**: its description.
 - **Quests**: the quests in it.
 - **Flow**: a map of how those quests depend on each other.
-- **Review**: the questions and decisions of its reviews (see
+- **Review**: the blockers, questions and decisions of its reviews (see
   [Reviewing an epic](#reviewing-an-epic)).
 - **Folios**: the [folios](/lore/docs/remember-folios) filed under it, such as
   a spec or an outcome note. They can be attached and detached in every status.
@@ -158,8 +158,12 @@ The epic's folios are kept: they are unfiled from it, never deleted.
 A plan is usually reviewed before anyone works it, often by an agent you hand
 the epic's **Review Epic** prompt to (see
 [Agent prompts](/lore/docs/agents-prompts)). Each review is kept on the epic's
-**Review** tab, as numbered items of three kinds:
+**Review** tab, as numbered items of four kinds:
 
+- **Blockers**: problems that stop the plan as written, such as a premise the
+  code contradicts or a dependency that is gone. They are shaped like
+  questions, answered the same way, and drawn in red, listed before the
+  questions.
 - **Questions** for you to answer. Each one comes with its context (what the
   plan says against what the code does) and two or three suggestions, each with
   its cost, the reviewer's pick marked **Recommended**.
@@ -167,7 +171,7 @@ the epic's **Review Epic** prompt to (see
 - **Changes** the review made: an edit to the epic's description, a quest
   created or sharpened, linked to what it touched.
 
-Answer a question with **Take this** on one of its suggestions, or **Write an
+Answer a blocker or a question with **Take this** on one of its suggestions, or **Write an
 answer** of your own, or **Waive** it to set it aside. A decision you disagree
 with is overturned with **Overturn**: you write the decision that replaces it,
 and the old one leaves the log.
@@ -176,10 +180,10 @@ Items are numbered per epic, and the numbers continue from one review to the
 next, so "answer 3: take B" means the same item in a chat with the agent and on
 the Review tab.
 
-The answered questions and the decisions that stand are the epic's **Decision
-log**. The next review reads it before asking anything, and an agent working
-the epic treats it as settled. A question still open is yours: the agent stops
-and reports it instead of answering it.
+The answered blockers and questions and the decisions that stand are the
+epic's **Decision log**. The next review reads it before asking anything, and an
+agent working the epic treats it as settled. A blocker or question still open
+is yours: the agent stops and reports it instead of answering it.
 
 A review with nothing in it is valid: it records that the plan was read and
 nothing needed asking. Each review and each answer shows on the **Activity**
@@ -189,11 +193,13 @@ Reviews are written only while the epic is draft or ready. Once its first
 quest is accepted, they lock with the plan: what was answered stays answered,
 and a question still open stays open in the record.
 
-### Marking it ready with questions open
+### Marking it ready with blockers or questions open
 
-The epic list and the Review tab count the questions still open. Marking an
-epic ready while some are open asks first, naming how many, and offers **Open
-the Review tab** as the way out. You can still choose **Mark as ready anyway**:
+The epic list and the Review tab count the blockers and the questions still
+open; on the list, open blockers show in red and take the place of the
+question count. Marking an epic ready while some are open asks first, naming
+the blockers before the questions, and offers **Open the Review tab** as the
+way out. You can still choose **Mark as ready anyway**:
 whether the plan is done is your call, so nothing refuses.
 
 ## The roadmap

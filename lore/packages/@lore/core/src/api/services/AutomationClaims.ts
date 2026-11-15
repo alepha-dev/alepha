@@ -11,6 +11,7 @@ import {
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
+import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationApprovalFence } from "./AutomationApprovalFence.ts";
@@ -272,7 +273,10 @@ export class AutomationClaims {
       if (
         prepared.snapshot.rule &&
         (await this.identity.hash(prepared.snapshot.rule)) !==
-          (await this.identity.hash(current.rule.rule))
+          // A snapshot holds the expanded rule, one notify per channel.
+          (await this.identity.hash(
+            AutomationRuleChannels.expand(current.rule.rule),
+          ))
       )
         throw new ConflictError(
           "Prepared rule differs from the reserved revision",
@@ -399,7 +403,7 @@ export class AutomationClaims {
         if (
           input.prepared.snapshot.rule &&
           (await this.identity.hash(input.prepared.snapshot.rule)) !==
-            (await this.identity.hash(rule.rule))
+            (await this.identity.hash(AutomationRuleChannels.expand(rule.rule)))
         )
           throw new ConflictError(
             "Prepared rule differs from the claimed revision",
@@ -1091,7 +1095,8 @@ export class AutomationClaims {
   }
 
   /**
-   * Compatibility reminders alone advance to another bounded due page.
+   * Reminder rules alone (`quests.remindersDue`, #Q3626) advance to another
+   * bounded due page.
    * The original evaluation time and native page witness survive interruption.
    */
   public async continueReminderSelection(
@@ -1101,12 +1106,12 @@ export class AutomationClaims {
   ): Promise<AutomationReceipt> {
     const occurrence = await this.lease(id, token);
     if (
-      occurrence.snapshot?.rule?.compatibility !== "quest-reminders" ||
+      occurrence.snapshot?.rule?.select?.key !== "quests.remindersDue" ||
       !occurrence.snapshot.selectionNext ||
       occurrence.cursor < occurrence.snapshot.actions.length
     )
       throw new ConflictError(
-        "Reminder continuation requires a finished compatibility page",
+        "Reminder continuation requires a finished reminder page",
       );
     const chunkId = await this.identity.hash([
       "reminder-selection",

@@ -455,10 +455,12 @@ test.describe("Folio workspace", () => {
     // The empty state keeps the menubar (#138) — the workspace should not
     // lose its identity on the surface you land on — but not the formatting
     // toolbar, which would be icon buttons that format nothing. The document
-    // pane lists the project root instead of an editor (#Q3289).
+    // pane offers a new folio or the search instead of an editor, not a
+    // listing of the root the tree already shows (#Q3655).
+    await expect(page.getByTestId("folio-root-prompt")).toBeVisible();
     await expect(
       page.locator('[data-slot="folio-directory-listing"]'),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(page.locator('[data-slot="folio-menubar"]')).toBeVisible();
     await expect(page.locator('[data-slot="folio-toolbar"]')).toHaveCount(0);
     // By role, not by class: MDXEditor gives its popup container and its
@@ -1821,16 +1823,12 @@ test.describe("Folio workspace", () => {
     await page.waitForURL(urlOf(`/${projectSlug}/folios`), {
       timeout: 15_000,
     });
-    await expect(
-      page.locator('[data-slot="folio-directory-listing"]'),
-    ).toBeVisible({ timeout: 15_000 });
-    // The directory listing's own button, after the tree header's icon
+    await expect(page.getByTestId("folio-root-prompt")).toBeVisible({
+      timeout: 15_000,
+    });
+    // The root prompt's own button (#Q3655), not the tree header's icon
     // button. It opens the create page, where the tree's creates inline.
-    await page
-      .getByRole("main")
-      .getByRole("button", { name: /^new folio$/i })
-      .last()
-      .click();
+    await page.getByTestId("folio-root-new").click();
     await page.waitForURL(urlOf(`/${projectSlug}/folios/new`), {
       timeout: 15_000,
     });

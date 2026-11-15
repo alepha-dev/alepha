@@ -2,35 +2,42 @@
 
 A healthcheck asks from outside whether something is up: a website, a port, a
 TLS certificate, or a scheduled job that should have reported in. It works for
-any address, whatever the stack behind it, and needs no sigil and no app in
-Lore.
+any address, whatever the stack behind it, and needs no sigil.
 
-Healthchecks are the **Monitor apps** option of the **Ship**
-capability, off by default, in **Settings ▸ General ▸ Capabilities** and
-**Settings ▸ Ship**. Turning it on adds **Uptime** to the sidebar. It works on
-its own: a project can keep **Track apps** and **Deploy apps** off and still
-watch any address, with its history and its alerts. See
-[Capabilities](/lore/docs/project-capabilities).
+A monitor belongs to an app: one copy of it, such as `acme` in `production`.
+The app needs no deploy and no sigil, so a project that only wants to ping one
+API creates an app with that address and turns its monitor on.
 
-## The Uptime page
+Healthchecks are the **Monitor apps** option of the **Ship** capability, off by
+default, in **Settings ▸ Apps**. It works on its own: a project can keep
+**Track apps** and **Deploy apps** off and still watch any address, with its
+history and its alerts. See [Capabilities](/lore/docs/project-capabilities).
 
-**Uptime** lists every monitor of the project with its status, its uptime, its
-last latency and a strip of its recent checks. The **Window** selector reads
-the uptime over **24 hours**, **7 days** or **30 days**.
+## Where uptime shows
 
-![The Uptime page, listing monitors with their status and recent checks](/screenshots/lore/healthchecks-light.png)
+The **Apps** page is the overview: its **Uptime** column shows each copy's
+uptime over the last 24 hours and a strip of its recent checks, and a hover
+tells more. While its monitor is on, an app's **Overview** tab shows it in a
+card, with a link to the monitor's page.
 
-## Adding a monitor
+## Turning a monitor on
 
-1. Choose **Add monitor**.
-2. Give it a name and pick its kind. The kind cannot change afterwards: create
-   a new monitor instead.
-3. Enter the target and adjust the settings below.
-4. Choose **Create monitor**.
+1. Open the app's **Settings**, and set its **Address** under **General** if it
+   has none: the check requests that address, and the switch stays off
+   without it.
+2. Under **Monitor**, turn on **Monitor this app**. Lore creates an HTTP(S)
+   check on the address with the default settings below.
+3. The check's settings are listed under the switch. Choose **Edit** to change
+   them: its name, kind-specific options, interval and alerts.
 
-When an app instance has an address and nothing checking it, the page offers
-it under **Apps without a monitor**, and **Add monitor** beside it fills in the
-name and the URL. Ephemeral instances are not offered.
+The check follows the address: change the address and the check requests the
+new one. Clearing the address while the monitor is on is refused; turn it off
+first. Turning the monitor off pauses it and keeps its history and its
+settings; turning it on again resumes the same monitor.
+
+A TCP, certificate or push monitor is created from the command line or by an
+agent (see below), on the app it belongs to; the same switch pauses and
+resumes it.
 
 | Kind            | Target                                 | Up means                                                                                                           |
 | --------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -62,7 +69,8 @@ fails every check with a message saying so. HTTP and push monitors work on both.
 A push monitor watches something that runs on its own schedule, such as a backup
 or a cron job. It is the one kind Lore does not call: the job calls Lore.
 
-Creating one shows a private URL, **once**. Copy it then:
+Creating one (`lore monitor create --kind push`) prints a private URL,
+**once**. Copy it then:
 
 ```bash
 curl -fsS https://lore.alepha.dev/uptime/push/up_...
@@ -74,7 +82,8 @@ so an interval of 3600 means an hour of allowed silence, not an hourly check.
 
 The URL can do one thing, which is record a receipt for that monitor, and Lore
 does not keep it in a readable form. If it leaks or is lost, **Rotate push
-URL** replaces it, and the old one stops working.
+URL** in the app's **Settings ▸ Monitor** replaces it, and the old one stops
+working.
 
 ## From failures to an outage
 
@@ -121,7 +130,8 @@ so a recipient with an account can turn them off.
 
 ## Reading a monitor
 
-Opening a monitor from the list shows:
+Opening a monitor from its app shows, over the **Window** you pick (24 hours,
+7 days or 30 days):
 
 - **Uptime** over 24 hours, 7 days and 30 days, from hourly totals.
 - **Mean latency**, over successful checks only. A gap means no successful
@@ -134,16 +144,15 @@ Lore keeps the newest 100 individual checks per monitor, and hourly totals for
 the charts. Where those totals are sampled, the page says the numbers are
 estimated.
 
-An app instance shows the HTTP monitor on its address on its **Overview** tab.
-The match is on the URL and nothing else, so a monitor added by hand for the
-same address counts.
-
 ## Changing and deleting
 
-Each row of the list has **Edit**, **Pause** or **Resume**, and **Delete**.
+The app's **Settings ▸ Monitor** turns a monitor off and on, and has
+**Edit**, and **Rotate push URL** for a push monitor. A monitor's page also has
+**Delete**.
 
 **Delete** removes the monitor, its checks and its incidents. The hourly totals
-are kept, and an error still open stays for you to resolve.
+are kept, and an error still open stays for you to resolve. Deleting an app
+deletes its monitor.
 
 Reading monitors needs the `app:read` permission, which the default Member rank
 holds. Creating, editing, pausing and deleting them needs `app:manage`, which
@@ -159,13 +168,15 @@ same permissions as the page:
 
 ```bash
 lore monitor list --window 7d
-lore monitor create --name Website --kind http --target https://example.app
+lore monitor create --app acme --env production --name Website --kind http
 lore monitor pause <id>
 ```
 
-`monitor_list` and `monitor_get` read status, uptime and incidents;
-`monitor_create`, `monitor_update`, `monitor_pause`, `monitor_resume` and
-`monitor_delete` change them. See [The lore CLI](/lore/docs/reference-cli#monitors)
+`monitor_list` and `monitor_get` read status, uptime and incidents, and name
+the app each monitor belongs to; `monitor_create`, `monitor_update`,
+`monitor_pause`, `monitor_resume` and `monitor_delete` change them. Creating
+takes the app and its environment, and an HTTP monitor checks the app's
+address unless given a target. See [The lore CLI](/lore/docs/reference-cli#monitors)
 and [MCP tools](/lore/docs/reference-mcp-tools#uptime).
 
 An outage also reaches an agent as an error: `error_list` shows it under the

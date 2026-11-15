@@ -58,6 +58,63 @@ export class WorkAutomationPresets {
       (values) => this.weekly(values),
       "0 8 * * 1",
     );
+    this.reminders();
+  }
+  /**
+   * Quest reminders (#Q3626): hourly, every quest whose reminder is due,
+   * one notification to its assignee. Not a `compatibility` rule: the
+   * worker recognises it by its `quests.remindersDue` selector, keeps each
+   * quest's interval and next due time, and records `reminder_sent`.
+   *
+   * No recipient slot, since a reminder goes to the quest's assignee, and no
+   * bell: whoever clicks is not who is reminded. A project holds at most one
+   * such rule (`AutomationService`), so two clicks cannot remind twice.
+   */
+  protected reminders() {
+    const entry = this.vocabulary.find("quests.remindersDue")!;
+    this.presets.register(
+      {
+        key: "quest-reminders",
+        title: "Quest reminders",
+        description:
+          "Every hour, remind each quest's assignee of a quest whose reminder is due, at the interval set on the quest.",
+        source: entry.key,
+        schedule: "0 * * * *",
+        fields: entry.fields,
+        needs: [{ capability: "plan" }, ...entry.needs],
+        permissions: [
+          ...new Set(["automation:write", "member:read", ...entry.permissions]),
+        ],
+        slots: {
+          channel: {
+            kind: "channel",
+            bindable: true,
+            required: true,
+            default: "email",
+            values: ["inbox", "email"],
+          },
+        },
+      },
+      (values, bindings) => this.reminder({ ...values, ...bindings }),
+    );
+  }
+  protected reminder(values: AutomationPresetValues): AutomationRule {
+    return {
+      version: 1,
+      trigger: { kind: "schedule", cron: "0 * * * *" },
+      select: { kind: "rows", key: "quests.remindersDue", filters: {} },
+      guard: null,
+      actions: [
+        {
+          kind: "notify",
+          recipient: "{{assignee_id}}",
+          channel: String(values.channel),
+          category: "reminders",
+          title: "Quest reminder",
+          text: "{{project}}: {{title}} (#Q{{shortId}}) is still open. Open quest: {{url}}. Change the cadence or turn reminders off in the quest Settings panel.",
+        },
+      ],
+    };
   }
   protected register(
     key: string,

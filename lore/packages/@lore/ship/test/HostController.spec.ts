@@ -623,26 +623,6 @@ describe("HostController, ownership and switches", () => {
     expect((await ctx.controller.listMyHosts({}, { user })).items).toEqual([]);
   });
 
-  it("counts only the hosts with no home an account deletion would take", async ({
-    expect,
-  }) => {
-    const user = await createUser(ctx);
-    // Homed: it outlives the account, so it is not counted.
-    await createHost(ctx, user, "ovh-1");
-    // No home, anchored on the account: it goes with it.
-    await ctx.repos.hosts.create({
-      ownerUserId: user.id,
-      createdBy: user.id,
-      type: "bay",
-      slug: "loose",
-    });
-
-    expect(await ctx.controller.countMyHosts({}, { user })).toEqual({
-      hosts: 1,
-      projects: 0,
-    });
-  });
-
   it("cascades an account deletion to its hosts, the one exception to refusing", async ({
     expect,
   }) => {

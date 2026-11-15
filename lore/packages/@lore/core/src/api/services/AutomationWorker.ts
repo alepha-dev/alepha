@@ -136,7 +136,8 @@ export class AutomationWorker {
           if (!planned) {
             await this.evidence.finish(occurrence.runId!);
             if (
-              occurrence.snapshot!.rule!.compatibility === "quest-reminders" &&
+              occurrence.snapshot!.rule!.select?.key ===
+                "quests.remindersDue" &&
               occurrence.snapshot!.selectionNext
             ) {
               const rule = await this.persistence.rules.getById(
@@ -194,7 +195,7 @@ export class AutomationWorker {
           );
           const reminderDeliveryKey =
             ast.kind === "notify" &&
-            occurrence.snapshot!.rule!.compatibility === "quest-reminders"
+            occurrence.snapshot!.rule!.select?.key === "quests.remindersDue"
               ? `reminder:${context.values.quest_id}:${context.values.reminder_next_at}`
               : undefined;
           const identity = await this.claims.actionIdentity(occurrence, {
@@ -245,7 +246,8 @@ export class AutomationWorker {
                     context,
                     ...(reminderDeliveryKey &&
                     rendered.raw.kind === "notify" &&
-                    rendered.raw.recipient
+                    rendered.raw.recipient &&
+                    rendered.raw.channel !== undefined
                       ? {
                           delivery: {
                             recipient: rendered.raw.recipient,
@@ -345,7 +347,7 @@ export class AutomationWorker {
             const committed = await this.persistence.receipts.findById(
               await this.claims.actionIdentity(latest, {
                 ...planned,
-                ...(latest.snapshot?.rule?.compatibility === "quest-reminders"
+                ...(latest.snapshot?.rule?.select?.key === "quests.remindersDue"
                   ? {
                       deliveryKey: `reminder:${this.context(latest.snapshot!, planned.row).values.quest_id}:${this.context(latest.snapshot!, planned.row).values.reminder_next_at}`,
                     }

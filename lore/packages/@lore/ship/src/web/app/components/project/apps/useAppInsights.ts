@@ -67,7 +67,7 @@ export const APP_INSIGHTS_ROW_FILTER: Record<
  *
  * Split out of {@link useAppInsights} because two callers need the state
  * without the payload: `AppLayout` carries it across the tab bar, and the
- * dimension detail page carries it into its own query and back out again on a
+ * leaderboard dialog reads it for its own query and writes one value back on a
  * row click. Neither wants a second copy of the insights request.
  */
 export const useAppInsightsFilters = () => {
@@ -92,6 +92,11 @@ export const useAppInsightsFilters = () => {
     range,
     traffic,
     filters,
+    /**
+     * The leaderboard open in its dialog, or `undefined`. Unvalidated here:
+     * the dialog names only a dimension it knows.
+     */
+    leaderboard: params.leaderboard,
     /**
      * Rewrite the whole state. Passing the full object is deliberate: a merge
      * helper would make "clear this one filter" ambiguous between an absent
@@ -126,7 +131,8 @@ export const useAppInsights = () => {
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
   const sigil = instance?.sigil;
-  const { range, traffic, filters, setFilters } = useAppInsightsFilters();
+  const { range, traffic, filters, setFilters, leaderboard } =
+    useAppInsightsFilters();
 
   // The instance's own capability, not the project's and not the app's: Beacon
   // off - or no sigil at all - means there is nothing collected to ask for, and
@@ -171,5 +177,14 @@ export const useAppInsights = () => {
     [project?.id, sigil?.id, range, traffic, filterKey, enabled],
   );
 
-  return { data, loading, error, range, traffic, filters, setFilters };
+  return {
+    data,
+    loading,
+    error,
+    range,
+    traffic,
+    filters,
+    setFilters,
+    leaderboard,
+  };
 };

@@ -1,9 +1,14 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { ConflictError, NotFoundError, ForbiddenError } from "alepha/server";
+import {
+  ConflictError,
+  NotFoundError,
+  ForbiddenError,
+  BadRequestError,
+} from "alepha/server";
 
 import type { AutomationRun } from "../entities/automationRuns.ts";
 import { automations, type Automation } from "../entities/automations.ts";
@@ -24,6 +29,7 @@ import {
   type AutomationPageQuery,
 } from "../schemas/automationPageQuerySchema.ts";
 import { automationResourceSchema } from "../schemas/automationResourceSchema.ts";
+import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import { automationRunResourceSchema } from "../schemas/automationRunResourceSchema.ts";
 import type { AutomationTestSource } from "../schemas/automationTestSourceSchema.ts";
 import type { AutomationVariableApproval } from "../schemas/automationVariableApprovalSchema.ts";
@@ -98,7 +104,7 @@ export class AutomationService {
   ) {
     return this.database.primary(async () => {
       await this.access.assert(projectId, user, "automation:write");
-      const body = automationCreateBodySchema.parse(input);
+      const body = this.authored(automationCreateBodySchema.parse(input));
       const enabled = body.enabled === true;
       const presetKey = typeof preset === "string" ? preset : preset?.key;
       const subscription =
@@ -203,7 +209,7 @@ export class AutomationService {
       const rule = await this.stored(projectId, id);
       await this.access.assertMutation(rule, user, "edit");
       this.revision(rule, expectedRevision);
-      const body = automationWriteBodySchema.parse(input);
+      const body = this.authored(automationWriteBodySchema.parse(input));
       const provenance = await this.access.provenance(user);
       const candidate: Automation = {
         ...rule,
@@ -602,9 +608,23 @@ export class AutomationService {
       throw new NotFoundError("Automation is not in this project");
     return rule;
   }
+  /**
+   * The authored form of a rule (#Q3613): every notify carries `channels`,
+   * and at most five actions.
+   */
+  protected authored<T extends { rule: Automation["rule"] }>(body: T): T {
+    try {
+      return { ...body, rule: AutomationRuleChannels.normalize(body.rule) };
+    } catch (error) {
+      if (error instanceof AlephaError)
+        throw new BadRequestError(error.message);
+      throw error;
+    }
+  }
   protected async prepare(rule: Automation) {
     const author = await this.access.author(rule);
     await this.access.assert(rule.projectId, author, "automation:write");
+    await this.assertSingleReminderRule(rule);
     const values = await this.variables.snapshot(rule, author, {
       transition: false,
     });
@@ -623,6 +643,25 @@ export class AutomationService {
       approved: this.approvals.capture(values),
       scheduleCron: compiled.scheduleCron,
     };
+  }
+  /**
+   * A project holds at most one quest reminder rule (#Q3626): two would
+   * process every due reminder twice. Counted whether enabled or not, since
+   * a draft is one click from running.
+   */
+  protected async assertSingleReminderRule(rule: Automation) {
+    if (rule.rule.select?.key !== "quests.remindersDue") return;
+    const others = await this.persistence.rules.findMany({
+      where: { projectId: rule.projectId, id: { ne: rule.id } },
+      columns: ["id", "rule"],
+      limit: 500,
+    });
+    if (
+      others.some((other) => other.rule.select?.key === "quests.remindersDue")
+    )
+      throw new ConflictError(
+        "This project already has a quest reminders automation",
+      );
   }
   protected revision(rule: Automation, expected: number) {
     if (!Number.isSafeInteger(expected) || expected !== rule.revision)

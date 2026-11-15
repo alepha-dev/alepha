@@ -16,6 +16,7 @@ import { MonitorCommand } from "../commands/MonitorCommand.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
 const MONITOR_ID = "01900000-0000-7000-8000-000000000001";
+const APP_ID = "01900000-0000-7000-8000-000000000002";
 
 const stored = {
   id: MONITOR_ID,
@@ -66,6 +67,18 @@ describe("lore monitor", () => {
         return answer(request);
       };
     Object.assign(command as unknown as Record<string, unknown>, {
+      // The app copy a new monitor belongs to (#Q3657). `bare` has no address.
+      appApi: {
+        getApp: record("getApp", (request) => ({
+          id: APP_ID,
+          app: request.params.app,
+          env: request.params.env,
+          url:
+            request.params.app === "bare"
+              ? undefined
+              : "https://acme.example.app",
+        })),
+      },
       monitorApi: {
         listMonitors: record("listMonitors", () => ({
           items: [{ ...stored, uptimePct: 99.5, beats: [] }],
@@ -142,23 +155,52 @@ describe("lore monitor", () => {
     ]);
   });
 
-  it("refuses a create without a target before calling Lore", async ({
+  it("refuses a tcp create without a target before calling Lore", async ({
     expect,
   }) => {
     const { run, sent } = create();
-    await expect(run("create", "--name Website --kind http")).rejects.toThrow(
-      "needs --target",
-    );
+    await expect(
+      run("create", "--app acme --env production --name Db --kind tcp"),
+    ).rejects.toThrow("needs --target");
     expect(sent).toEqual([]);
+  });
+
+  it("creates an http monitor on the app copy, checking its address", async ({
+    expect,
+  }) => {
+    const { run, sent } = create();
+    await run("create", "--app acme --env production --name Site --kind http");
+    expect(sent[1]).toEqual([
+      "createMonitor",
+      {
+        params: { projectId: 7 },
+        body: expect.objectContaining({
+          appInstanceId: APP_ID,
+          name: "Site",
+          kind: "http",
+          target: "https://acme.example.app",
+        }),
+      },
+    ]);
+  });
+
+  it("refuses an http monitor on a copy with no address and no --target", async ({
+    expect,
+  }) => {
+    const { run, sent } = create();
+    await expect(
+      run("create", "--app bare --env production --name Site --kind http"),
+    ).rejects.toThrow("has no address");
+    expect(sent.map(([name]) => name)).toEqual(["getApp"]);
   });
 
   it("prints a push monitor's token once", async ({ expect }) => {
     const { run, printed, sent } = create();
     await run(
       "create",
-      "--name Backup --kind push --interval-secs 86400 --recipient a@example.app --recipient b@example.app",
+      "--app acme --env production --name Backup --kind push --interval-secs 86400 --recipient a@example.app --recipient b@example.app",
     );
-    expect(sent[0]).toEqual([
+    expect(sent[1]).toEqual([
       "createMonitor",
       {
         params: { projectId: 7 },
@@ -172,6 +214,7 @@ describe("lore monitor", () => {
             email: true,
             recipients: ["a@example.app", "b@example.app"],
           },
+          appInstanceId: APP_ID,
         },
       },
     ]);

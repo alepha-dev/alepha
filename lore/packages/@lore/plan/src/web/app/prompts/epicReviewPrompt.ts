@@ -69,6 +69,7 @@ Check the plan against the code as it actually is, not as the spec describes it.
 
 Then file the review itself with ONE \`epic_review_create\` call (project_name "{{project}}", number {{number}}), holding every item:
 
+- a \`blocker\` for each problem that stops the plan as written (a premise the code contradicts, a dependency that is gone, a quest that cannot be done in this epic): shaped like a question, with its \`context\` and \`suggestions\`. File a blocker rather than a question when the epic should not be marked ready until it is resolved; a question is for a choice the plan can go either way on;
 - a \`question\` for each one the owner has to answer: its title in one sentence, its \`context\`, its \`suggestions\` (each with its cost) and the one you \`recommended\`;
 - a \`decision\` for each call you took alone, with its reason in \`context\`;
 - a \`change\` for each edit above (the epic description, a quest created or sharpened), with its \`target\`.
@@ -77,7 +78,7 @@ The call returns the number each item was given. Numbers are per epic and contin
 
 ## Then put every open question in your reply
 
-Filing them is not the report. The person who asked for this review is reading your answer, not the epic, and a bare list of questions hands the whole job straight back to them. End your reply with one numbered block per open question, and for each one:
+Filing them is not the report. The person who asked for this review is reading your answer, not the epic, and a bare list of questions hands the whole job straight back to them. End your reply with one numbered block per open blocker, then per open question, blockers first and marked as such, and for each one:
 
 - **The question**, in a single sentence.
 - **Context**: what the spec says, what the code actually does today, and why the two together do not settle it. Name the files.

@@ -66,6 +66,11 @@ export const folios = $entity({
       onDelete: "cascade",
     }),
     /**
+     * When this folio was moved into the project's trash (#Q3659); cleared
+     * when it is moved out. The purge deletes it 30 days after.
+     */
+    trashedAt: z.datetime().optional(),
+    /**
      * 1-2 sentence agent-readable summary (~200 chars). Filled by MCP tools
      * (`folio_create` / `folio_update`) so `project_context` can return a
      * meaningful index without forcing agents to `folio_get` every entry.

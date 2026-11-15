@@ -7,21 +7,21 @@ import {
 } from "@alepha/ui/table";
 import type { AdminHostController } from "@lore/ship/api";
 import type { AdminHostResource } from "@lore/ship/schemas";
-import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { FolderInput, Home, Trash2 } from "lucide-react";
+import { FolderInput, Pencil, Trash2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import AdminHostAssignDialog from "./AdminHostAssignDialog.tsx";
+import AdminHostRenameDialog from "./AdminHostRenameDialog.tsx";
 
 /**
  * Instance-wide hosts list, mounted into the shared admin shell by
  * `LoreAdminRouter` (#1838).
  *
  * The backstop for a host whose owner is gone or unresponsive. An admin
- * sees every host and can delete one; an admin can never read a
+ * sees every host and can rename (#Q3664), assign or delete one; an admin can never read a
  * credential, and this page has no column for one. The delete confirmation
  * says what deleting does not do, for the same reason the owner's does:
  * nothing is undeployed, and a `cloudflare` credential is not revoked at
@@ -38,16 +38,9 @@ export const AdminHosts = () => {
       placeholder: "Search hosts…",
       control: { inputProps: { "aria-label": "Search hosts by slug" } },
     },
-    // The hosts the migration could not place (#E126): the ones to assign.
-    home: {
-      schema: z.array(z.string()),
-      label: "Home",
-      icon: Home,
-      items: [{ value: "none", label: "No home" }],
-      control: { clearLabel: "Any home" },
-    },
   } satisfies DataTableFilterFields;
   const [assigning, setAssigning] = useState<AdminHostResource>();
+  const [renaming, setRenaming] = useState<AdminHostResource>();
   const refreshRef = useRef<() => void>(() => {});
 
   const fetcher = useCallback(
@@ -63,7 +56,6 @@ export const AdminHosts = () => {
           size: params.size,
           sort: params.sort,
           search: params.filters?.search || undefined,
-          ...(params.filters?.home?.includes("none") ? { homeless: true } : {}),
         },
       });
     },
@@ -95,6 +87,18 @@ export const AdminHosts = () => {
         fetch={fetcher}
         filters={{ fields: filterFields }}
         rowActions={(host) => [
+          {
+            // Moderation (#Q3664): fix a name without deleting the host.
+            label: "Rename",
+            icon: Pencil,
+            onClick: (
+              _host: AdminHostResource,
+              { refresh }: { refresh: () => void },
+            ) => {
+              refreshRef.current = refresh;
+              setRenaming(host);
+            },
+          },
           {
             label: "Assign to project",
             icon: FolderInput,
@@ -138,11 +142,8 @@ export const AdminHosts = () => {
           project: {
             label: "Project",
             cell: (host) =>
-              host.project ? (
-                <span>{host.project.title}</span>
-              ) : (
-                <Badge variant="destructive">No home</Badge>
-              ),
+              // Every host has a home since #Q3627.
+              host.project ? <span>{host.project.title}</span> : null,
           },
           creator: {
             label: "Created by",
@@ -230,6 +231,14 @@ export const AdminHosts = () => {
           if (!open) setAssigning(undefined);
         }}
         onAssigned={() => refreshRef.current()}
+      />
+      <AdminHostRenameDialog
+        key={`rename-${renaming?.id ?? "none"}`}
+        host={renaming}
+        onOpenChange={(open) => {
+          if (!open) setRenaming(undefined);
+        }}
+        onRenamed={() => refreshRef.current()}
       />
     </AdminPage>
   );

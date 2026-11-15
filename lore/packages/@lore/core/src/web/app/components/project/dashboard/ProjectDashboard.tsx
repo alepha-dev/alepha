@@ -70,8 +70,8 @@ export interface ProjectDashboardProps {
  *
  * `/:project` and `/:project/dashboards/:dashboardSlug` both render this
  * page. The selector on the left of the header switches by navigating, and
- * every card write names the dashboard on screen; Customize and Reset to
- * default exist on the first only, the one dashboard with a default.
+ * every card write names the dashboard on screen; Reset to default exists on
+ * the first only, the one dashboard with a default.
  *
  * ## One resolve, no polling
  *
@@ -151,8 +151,8 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
    */
   const cards = mine ? board.cards : [];
   /**
-   * The computed default board (#Q2652): read-only for everyone, no card
-   * menu, no drag. Curation starts from Customize.
+   * The computed default board (#Q2652): not stored, so it has no card menu
+   * and no drag of its own. Edit or Add card stores it first (#Q3675).
    */
   const computed = mine && !!board.computed;
   const values = mine ? board.values : undefined;
@@ -175,9 +175,9 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
   /**
    * Whether the board is being curated: the card menus (on hover, the way
    * Cloudflare's dashboards show them) and drag, and the tiles that have
-   * nothing to show (#Q2649). Turned on by Edit, Customize or adding a card,
-   * off by Save. The computed board is never in it: it is read-only until
-   * Customize copies it (#Q2660).
+   * nothing to show (#Q2649). Turned on by Edit or adding a card, off by
+   * Save. The computed board is never in it: Edit stores it first, and edit
+   * mode opens on the stored copy (#Q3675).
    */
   const editMode = editOn && canEdit && !computed;
 
@@ -446,8 +446,10 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
   );
 
   /**
-   * "Customize" (#Q2660): copy the computed tiles into stored cards in one
-   * write, then open edit mode on them.
+   * Store the computed board (#Q2660): copy its tiles into stored cards in
+   * one write, then open edit mode on them. No longer a step of its own
+   * (#Q3675): Edit and Add card run it first on a computed board, so the
+   * reader edits the board they see and never meets the distinction.
    */
   const customizeAction = useAction<[], void>(
     {
@@ -699,9 +701,16 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
           first={first}
           computed={computed}
           editing={editMode}
-          onToggleEditing={() => setEditOn((on) => !on)}
-          onAdd={openCatalogue}
-          onCustomize={() => void customizeAction.run()}
+          onToggleEditing={() =>
+            computed ? void customizeAction.run() : setEditOn((on) => !on)
+          }
+          onAdd={() =>
+            computed
+              ? void customizeAction.run().then((result) => {
+                  if (result.ok) openCatalogue();
+                })
+              : openCatalogue()
+          }
           onWindowChange={(days) => {
             // One resolve per change, never an interval (folio #1057).
             alepha.store.set(dashboardWindowAtom, { days });

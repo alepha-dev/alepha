@@ -13,7 +13,11 @@ import {
   type TreeNode,
   type TreeRow,
 } from "./treeModel.ts";
-import { type TreeViewFacade, TreeViewRow } from "./TreeViewRow.tsx";
+import {
+  type TreeSelectOptions,
+  type TreeViewFacade,
+  TreeViewRow,
+} from "./TreeViewRow.tsx";
 
 /**
  * A controlled tree: rows in, gestures out.
@@ -89,11 +93,19 @@ export interface TreeViewProps<T = undefined> {
    */
   selectedId?: string;
   /**
+   * More selected rows, drawn as selected beside {@link selectedId}: a
+   * range picked with shift (#Q3654). Like `selectedId`, the consumer owns
+   * it; the tree only reports the shift on {@link onSelect}. Setting it
+   * marks the tree `aria-multiselectable`.
+   */
+  selectedIds?: ReadonlySet<string>;
+  /**
    * A row was activated: a plain click, or Enter / Space on a focused row.
    * ⚠️ A real double click fires click, click, dblclick, so the row guards
-   * on `e.detail > 1` and this fires once per burst (#Q1939).
+   * on `e.detail > 1` and this fires once per burst (#Q1939). `options.shift`
+   * says Shift was held, for a tree that selects a range.
    */
-  onSelect: (node: TreeNode<T>) => void;
+  onSelect: (node: TreeNode<T>, options?: TreeSelectOptions) => void;
   /**
    * The disclosure of a branch row was clicked. The consumer owns the
    * collapsed set, so the tree reports rather than resolves.
@@ -309,7 +321,7 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
 
   const facade = useMemo<TreeViewFacade<T>>(
     () => ({
-      select: (node) => implRef.current.onSelect(node),
+      select: (node, options) => implRef.current.onSelect(node, options),
       toggle: (id) => implRef.current.onToggle(id),
       renderIcon: (node, state) => implRef.current.renderIcon?.(node, state),
       renderLabel: (node, state) =>
@@ -369,6 +381,7 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
     <div
       role="tree"
       aria-label={props.label}
+      aria-multiselectable={props.selectedIds ? true : undefined}
       className={props.className}
       onKeyDown={onKeyDown}
     >
@@ -379,7 +392,10 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
           depth={row.depth}
           facade={facade}
           isCollapsed={props.collapsed.has(row.node.id)}
-          isSelected={props.selectedId === row.node.id}
+          isSelected={
+            props.selectedId === row.node.id ||
+            props.selectedIds?.has(row.node.id) === true
+          }
           isRenaming={props.renamingId === row.node.id}
           isDragging={props.dragId === row.node.id}
           isDraggable={props.draggable === true}

@@ -5,6 +5,7 @@ import {
   type RowActionEntry,
 } from "@alepha/ui/table";
 import {
+  AutomationSubscriptionBell,
   currentProjectAtom,
   useRank,
   type I18n,
@@ -234,6 +235,17 @@ const ProjectSettingsHostsPage = () => {
           flat
           data={rows}
           rowKey={(row) => row.id}
+          // Every host's alerts (#Q3627): a Cloudflare host has no page of
+          // its own, so this list is where its token alert is subscribed to.
+          toolbar={
+            <AutomationSubscriptionBell
+              presets={["host-credential-invalid", "host-expired"]}
+              label={tr("hosts.subscription.allLabel")}
+              description={tr("hosts.subscription.allDescription")}
+              offDescription={tr("hosts.subscription.allOffDescription")}
+              testId="hosts-subscription-bell"
+            />
+          }
           defaultSize={100}
           // Disabled rather than hidden for a rank without `host:lend`: the
           // server refuses it anyway, and a missing button would leave them

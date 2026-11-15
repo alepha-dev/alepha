@@ -66,6 +66,7 @@ import { AutomationAttentionNotifier } from "./services/AutomationAttentionNotif
 import { AutomationAudience } from "./services/AutomationAudience.ts";
 import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
+import { AutomationChannelRemoval } from "./services/AutomationChannelRemoval.ts";
 import { AutomationClaims } from "./services/AutomationClaims.ts";
 import { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
 import { AutomationDependencies } from "./services/AutomationDependencies.ts";
@@ -238,6 +239,7 @@ export const LoreCoreApi = $module({
     AutomationMutationAudit,
     AutomationApprovalFence,
     AutomationDependencies,
+    AutomationChannelRemoval,
     AutomationHealth,
     AutomationEventSubjects,
     AutomationEvaluator,
@@ -581,7 +583,10 @@ export { AutomationNotificationSender } from "./services/AutomationNotificationS
 export {
   AutomationChannels,
   type AutomationChannelAdapter,
+  type AutomationChannelInstance,
+  type AutomationChannelInstanceSource,
 } from "./services/AutomationChannels.ts";
+export { AutomationChannelRemoval } from "./services/AutomationChannelRemoval.ts";
 
 export {
   AutomationMutationContext,

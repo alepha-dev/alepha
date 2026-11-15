@@ -66,7 +66,11 @@ concurrency:
   # Per branch, so two agents pushing two branches never cancel each other -
   # only a newer push to the SAME branch does.
   group: verify-framework-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push supersedes a branch run, never a main one (#Q3687): with
+  # pull requests merging every few minutes, cancelling on main left no
+  # run to finish, and the deploy that follows a green one never ran.
+  # GitHub keeps the main run going and only the newest one waiting.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # ⚠️ **Nothing in this workflow runs a `lore` command any more** - those went
 # to `deploy-framework.yml` with the deploy jobs, then left with Lore's own

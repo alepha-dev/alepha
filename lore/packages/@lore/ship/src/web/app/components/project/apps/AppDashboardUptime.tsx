@@ -1,18 +1,9 @@
-import {
-  canInProject,
-  capabilityOption,
-  currentProjectAtom,
-} from "@lore/core/web";
+import { capabilityOption, currentProjectAtom } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
-import { useState } from "react";
 
 import type { MonitorController } from "../../../../../api/controllers/MonitorController.ts";
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
-import {
-  monitorOfInstance,
-  monitorPrefill,
-} from "../uptime/instanceMonitors.ts";
-import MonitorFormDialog from "../uptime/MonitorFormDialog.tsx";
+import { monitorOfInstance } from "../uptime/instanceMonitors.ts";
 import AppUptimeCard from "./AppUptimeCard.tsx";
 
 export interface AppDashboardUptimeProps {
@@ -20,8 +11,8 @@ export interface AppDashboardUptimeProps {
 }
 
 /**
- * Loads the project's monitors and shows this instance's one, or offers to add
- * it prefilled (#Q2680).
+ * Loads the project's monitors and summarises this copy's, while Monitor is on
+ * in its settings (#Q3684). Turning it on happens there, not here.
  *
  * ⚠️ Rendered only when the Apps `uptime` option is on, like every other
  * uptime surface; the query is not even issued otherwise. Its key is the one
@@ -31,7 +22,6 @@ export interface AppDashboardUptimeProps {
 const AppDashboardUptime = (props: AppDashboardUptimeProps) => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<MonitorController>();
-  const [adding, setAdding] = useState(false);
   const enabled = Boolean(
     project && capabilityOption(project, "ship", "uptime"),
   );
@@ -55,26 +45,19 @@ const AppDashboardUptime = (props: AppDashboardUptimeProps) => {
     return null;
   }
 
-  const monitor = monitorOfInstance(props.instance, query.data.items);
-  const prefill = monitorPrefill(props.instance);
+  // Only while Monitor is on in the app's settings (#Q3684): a paused
+  // monitor keeps its history but leaves the Overview, and nothing here
+  // offers to add one.
+  const monitor = monitorOfInstance(props.instance, query.data.items ?? []);
+  if (!monitor?.active) {
+    return null;
+  }
 
   return (
-    <>
-      <AppUptimeCard
-        monitor={monitor}
-        href={monitor ? `/${project.slug}/uptime/${monitor.id}` : undefined}
-        canAdd={Boolean(prefill) && canInProject(project, "app:manage")}
-        busy={adding}
-        onAdd={() => setAdding(true)}
-      />
-      {adding && prefill && (
-        <MonitorFormDialog
-          projectId={project.id}
-          prefill={prefill}
-          onClose={() => setAdding(false)}
-        />
-      )}
-    </>
+    <AppUptimeCard
+      monitor={monitor}
+      href={`/${project.slug}/uptime/${monitor.id}`}
+    />
   );
 };
 
