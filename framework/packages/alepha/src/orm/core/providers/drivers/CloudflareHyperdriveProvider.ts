@@ -24,6 +24,16 @@ const HYPERDRIVE_DB_ALS_KEY = "alepha.orm.hyperdrive.db";
  */
 export class CloudflareHyperdriveProvider extends DatabaseProvider {
   /**
+   * A statement in flight is raced against its signal, never cancelled
+   * (#Q3746): the caller is released at once, the statement finishes alone.
+   * A Postgres cancel names a server process, not a statement, so one sent
+   * as a read ends interrupts whatever that connection runs next, another
+   * caller's statement included. The protocol has no safer cancel, whatever
+   * the client library.
+   */
+  protected override readonly racesStatementSignal: boolean = true;
+
+  /**
    * @internal Driver plumbing, outside semver.
    */
   protected readonly builder = $inject(PostgresModelBuilder);
@@ -129,9 +139,8 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
     // silently open a *new*, unconfigured connection instead of reusing
     // this one.
     const db = this.drizzleFn({
-      // postgres.js, as on Node: a read cancels in flight when its signal
-      // aborts (#E85), as far as Hyperdrive's pooler forwards the cancel.
-      client: this.cancellable(client),
+      // No in-flight cancel, as on Node (#Q3746): see `racesStatementSignal`.
+      client,
     }) as unknown as PgAsyncDatabase<any>;
 
     if (this.als.exists()) {

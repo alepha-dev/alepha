@@ -61,7 +61,7 @@ describe("ORM timeout", () => {
   };
 
   describe("PostgreSQL (postgres.js)", () => {
-    it("fails a slow read with DbTimeoutError under travel(), and postgres stops running it", async ({
+    it("fails a slow read with DbTimeoutError under travel(), and lets postgres finish it", async ({
       expect,
     }) => {
       const { alepha, app, time } = await boot(
@@ -70,10 +70,10 @@ describe("ORM timeout", () => {
       await app.notes.create({ title: "slow" });
 
       const read = app.notes
-        .count(sql`pg_sleep(4.1) is not null`, { timeout: [1, "seconds"] })
+        .count(sql`pg_sleep(1.5) is not null`, { timeout: [1, "seconds"] })
         .catch((error: unknown) => error);
       expect(
-        await until(async () => (await running(alepha, "%pg_sleep(4.1)%")) > 0),
+        await until(async () => (await running(alepha, "%pg_sleep(1.5)%")) > 0),
       ).toBe(true);
       await time.travel([1, "seconds"]);
 
@@ -81,11 +81,8 @@ describe("ORM timeout", () => {
       expect(error).toBeInstanceOf(DbTimeoutError);
       expect((error as DbTimeoutError).status).toBe(503);
       expect((error as Error).cause).toBeInstanceOf(TimeoutError);
-      expect(
-        await until(
-          async () => (await running(alepha, "%pg_sleep(4.1)%")) === 0,
-        ),
-      ).toBe(true);
+      // The caller is released, the statement is never cancelled (#Q3746).
+      expect(await running(alepha, "%pg_sleep(1.5)%")).toBe(1);
     });
 
     it("reads DATABASE_TIMEOUT as the default, and a statement's own timeout wins", async ({

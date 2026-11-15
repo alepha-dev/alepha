@@ -316,9 +316,10 @@ export abstract class DatabaseProvider {
    *   already fired still refuses the statement.
    *
    * A statement whose signal already fired is refused before it is sent,
-   * with the signal's reason. In flight, a driver that can cancel a running
-   * statement does (postgres.js; `Bun.sql` only while the query is still
-   * queued); the others let it finish.
+   * with the signal's reason. In flight, postgres.js and D1 release the
+   * caller at once and let the statement finish; `Bun.sql` cancels a query
+   * still queued; SQLite lets it finish. No driver cancels a running
+   * Postgres statement (#Q3746).
    */
   public async statement<R>(
     kind: "read" | "write",
@@ -372,9 +373,11 @@ export abstract class DatabaseProvider {
    * `DATABASE_TIMEOUT_SCOPE` is `reads` and this is a write. `undefined`
    * for none.
    *
-   * What it stops depends on the driver: postgres.js cancels the running
-   * statement; a driver that cannot cancel (SQLite) refuses a
-   * statement whose deadline already passed and lets a started one finish.
+   * What it stops depends on the driver: postgres.js and D1 release the
+   * caller at the deadline and let the statement finish on the server;
+   * SQLite refuses a statement whose deadline already passed and lets a
+   * started one finish. A bound the server enforces is the database's own
+   * `statement_timeout`.
    */
   protected statementTimeout(
     kind: "read" | "write",
@@ -484,10 +487,13 @@ export abstract class DatabaseProvider {
   }
 
   /**
-   * Wrap a postgres.js or `Bun.sql` client so that a statement sent under a
-   * statement signal (see {@link statement}) is cancelled when it aborts.
+   * Wrap a `Bun.sql` client so that a statement sent under a statement
+   * signal (see {@link statement}) is cancelled when it aborts, which
+   * `Bun.sql` does only while the query is still queued, so nothing reaches
+   * the server. Never used for postgres.js, whose cancel would reach the
+   * server and could hit another caller's statement (#Q3746).
    *
-   * The query objects both drivers return run lazily, on their first
+   * The query objects `Bun.sql` returns run lazily, on their first
    * `then`, and drizzle chains `.values()` on them before awaiting. So the
    * listener is attached without calling `then`, and removed by the first
    * `then` call, which is when the query actually runs and settles.

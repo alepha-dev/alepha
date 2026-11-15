@@ -3328,8 +3328,9 @@ export interface StatementOptions {
   tx?: DbTransaction | null;
 
   /**
-   * Abort this statement: refused before it is sent once the signal fired,
-   * cancelled in flight where the driver can (postgres.js).
+   * Abort this statement: refused before it is sent once the signal fired.
+   * In flight, the caller is released and the statement finishes on the
+   * server (`Bun.sql` drops one still queued).
    *
    * A read outside a transaction already inherits the ambient signal
    * (`alepha.context.signal`, a request's or a job run's) and composes it
@@ -3344,8 +3345,8 @@ export interface StatementOptions {
    * (503, the `TimeoutError` as its cause). Wins over `DATABASE_TIMEOUT`, the
    * default (5 s on serverless, off elsewhere); `false` or `0`: none.
    *
-   * Postgres cancels the running statement. Cloudflare D1 cannot abort, so
-   * the call rejects and the statement finishes on its own. SQLite runs a
+   * On Postgres and Cloudflare D1 the call rejects and the statement
+   * finishes on the server: neither is sent a cancel. SQLite runs a
    * statement synchronously: the timeout only refuses one not yet sent.
    * Inside a transaction no timeout applies: a transaction is never cut
    * short.

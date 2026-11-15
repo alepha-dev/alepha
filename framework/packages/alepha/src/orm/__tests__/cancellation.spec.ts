@@ -66,7 +66,7 @@ describe("ORM cancellation", () => {
       expect(app.reads).toBe(0);
     });
 
-    it("cancels a running read on abort, and Postgres stops running it", async ({
+    it("releases a running read's caller on abort, and lets Postgres finish the statement", async ({
       expect,
     }) => {
       const { alepha, app } = await postgres();
@@ -76,29 +76,60 @@ describe("ORM cancellation", () => {
 
       const startedAt = performance.now();
       const read = alepha.context.run(
-        () => app.notes.count(sql`pg_sleep(3) is not null`),
+        () => app.notes.count(sql`pg_sleep(1.25) is not null`),
         { signal: unit.signal },
       );
       const reason = new AbortedError("client gone");
       setTimeout(() => unit.abort(reason), 200);
 
       await expect(read).rejects.toBe(reason);
-      expect(performance.now() - startedAt).toBeLessThan(2000);
+      expect(performance.now() - startedAt).toBeLessThan(1000);
 
-      // The statement itself is gone from the server, not just abandoned.
-      const deadline = Date.now() + 1500;
-      let running = 1;
-      while (Date.now() < deadline) {
-        const rows = await alepha
-          .inject(DatabaseProvider)
-          .execute(
-            sql`select count(*)::int as n from pg_stat_activity where state = 'active' and query like '%pg_sleep(3)%' and pid <> pg_backend_pid()`,
-          );
-        running = Number(rows[0].n);
-        if (running === 0) break;
-        await new Promise((r) => setTimeout(r, 50));
+      // Never cancelled (#Q3746): the statement is still running, alone.
+      const rows = await alepha
+        .inject(DatabaseProvider)
+        .execute(
+          sql`select count(*)::int as n from pg_stat_activity where state = 'active' and query like '%pg_sleep(1.25)%' and pid <> pg_backend_pid()`,
+        );
+      expect(Number(rows[0].n)).toBe(1);
+    });
+
+    it("never lets an aborted read's cancel land on the next statement of its connection", async ({
+      expect,
+    }) => {
+      // One connection, so the next statement is always on the backend an
+      // abort used to cancel. A Postgres cancel names a backend, not a
+      // statement: sent as the read ended, it interrupted whatever that
+      // backend ran next, with 57014 (#Q3746).
+      const alepha = Alepha.create({ env: { POOL_MAX: 1 } }).with(
+        AlephaOrmTestPostgres,
+      );
+      const app = alepha.inject(App);
+      await alepha.start();
+      await app.notes.create({ title: "row" });
+
+      let stray = 0;
+      for (let i = 0; i < 150; i++) {
+        const unit = new AbortController();
+        const read = alepha.context.run(
+          () => app.notes.count(sql`pg_sleep(0.005) is not null`),
+          { signal: unit.signal },
+        );
+        // Around the moment the read ends: sometimes before, sometimes after.
+        const timer = setTimeout(
+          () => unit.abort(new AbortedError("client gone")),
+          3 + Math.random() * 6,
+        );
+        await read.catch(() => undefined);
+        clearTimeout(timer);
+
+        // The next statement, under no signal at all: nothing may fail it.
+        await app.notes.count(sql`pg_sleep(0.005) is not null`).catch(() => {
+          stray++;
+        });
       }
-      expect(running).toBe(0);
+
+      expect(stray).toBe(0);
     });
 
     it("lets a read run to completion when nothing aborts", async ({

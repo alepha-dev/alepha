@@ -670,7 +670,7 @@ All repository methods accept `{ tx }` in their options parameter to participate
 - `force`: include soft-deleted rows.
 - `for`: a row lock taken by the SELECT. `{ for: "update" }` (or `"no key update"`, `"share"`, `"key share"`), or `{ for: { mode: "update", onLocked: "skip" } }` for `SKIP LOCKED` (`"nowait"` for `NOWAIT`). PostgreSQL only: SQLite and D1 have no row locks, and a read given `for` throws an `AlephaError` there.
 - `now`: override the timestamp used for `updatedAt`.
-- `signal`: an `AbortSignal` that refuses the statement once it fired, and cancels it in flight where the driver can. A read outside a transaction already inherits the request's or job's signal (see [Cancellation](/docs/guides-core-cancellation)); a write only takes one given here, so a client that left never cuts a write sequence in half.
+- `signal`: an `AbortSignal` that refuses the statement once it fired; one already running is abandoned, never cancelled, and finishes on the server. A read outside a transaction already inherits the request's or job's signal (see [Cancellation](/docs/guides-core-cancellation)); a write only takes one given here, so a client that left never cuts a write sequence in half.
 - `timeout`: how long the statement may run before it fails with `DbTimeoutError` (503). It wins over `DATABASE_TIMEOUT`; `false` or `0` means none. No timeout applies inside a transaction.
 - `cache`: see [Query cache](#query-cache).
 

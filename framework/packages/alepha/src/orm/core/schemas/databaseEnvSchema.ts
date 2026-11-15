@@ -59,9 +59,9 @@ export const databaseEnvSchema = z.object({
    * (503), on every driver. `0` disables it. Defaults to 5000 on serverless,
    * off elsewhere. A statement's own `timeout` wins.
    *
-   * What a timeout stops depends on the driver: postgres cancels the running
-   * statement, D1 abandons it (it cannot abort), and SQLite, which runs a
-   * statement synchronously, only refuses one not yet sent.
+   * What a timeout stops depends on the driver: postgres and D1 abandon the
+   * running statement, which finishes on the server, and SQLite, which runs
+   * a statement synchronously, only refuses one not yet sent.
    */
   DATABASE_TIMEOUT: z
     .number()

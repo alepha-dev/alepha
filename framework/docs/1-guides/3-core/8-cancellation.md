@@ -74,9 +74,13 @@ Without anyone passing a signal:
   caller has gone, so one visitor leaving never fails another's call.
 - **`ShellProvider`** kills its child process.
 - **`$proxy`** stops the upstream call.
-- **The ORM** refuses a read whose signal already fired, and cancels a running
-  one where the driver can (postgres.js: Node and Hyperdrive). `Bun.sql`,
-  SQLite and D1 refuse before sending but let a started query finish.
+- **The ORM** refuses a read whose signal already fired. A read already
+  running is never cancelled on Postgres: the caller stops waiting at once and
+  the statement finishes on the server, since a Postgres cancel interrupts
+  whatever that connection runs when it arrives, which may be another
+  caller's statement. `Bun.sql` drops a read still queued, SQLite lets a
+  started one finish, and D1 releases its caller as Postgres does. For a
+  bound the database enforces itself, set its `statement_timeout`.
 - **SSR** stops rendering a page for a visitor who left.
 
 An explicit `signal` still wins, and composes with the ambient one: either can
@@ -297,15 +301,16 @@ What a timeout stops depends on the driver:
 
 | Driver                   | A timed-out statement                                     |
 | ------------------------ | --------------------------------------------------------- |
-| PostgreSQL (postgres.js) | is cancelled on the server                                |
+| PostgreSQL (postgres.js) | is abandoned: it finishes on the server, never cancelled  |
 | Cloudflare D1            | is abandoned: D1 cannot abort, it finishes on its own     |
 | SQLite (Node, Bun)       | runs to completion if it started: SQLite is synchronous   |
 | `Bun.sql`                | runs to completion if it started; refused if not yet sent |
 
 Except under SQLite, whose running statement holds the whole process, the
-caller is released at the deadline. Postgres
-`statement_timeout` is not used: the client-side cancel already stops the
-statement, without a round trip per query.
+caller is released at the deadline. Postgres is never sent a cancel: one
+names the connection's server process, not a statement, so it can land on the
+next statement that connection runs, another caller's. For a bound the server
+enforces, set Postgres's own `statement_timeout`.
 
 ## In the browser
 
