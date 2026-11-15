@@ -175,6 +175,23 @@ export class EpicController {
    */
   protected epicNumber = $sequence();
 
+  /**
+   * How many characters of a description `getEpics` answers with `brief`.
+   * The epic list draws it as one truncated line, so a little more than the
+   * widest row shows.
+   */
+  static readonly BRIEF_DESCRIPTION_LENGTH = 240;
+
+  /**
+   * Every epic of the project, with its rollup.
+   *
+   * `brief` cuts each `description` to its first
+   * {@link EpicController.BRIEF_DESCRIPTION_LENGTH} characters, whitespace
+   * collapsed, for a list that shows one line of it (#Q3713). On a project
+   * of 147 epics the full list was 1 MB, 94% of it descriptions. Off by
+   * default, so the MCP tools and the CLI answer what they always did. A
+   * page that only names epics reads {@link getEpicRefs} instead.
+   */
   getEpics = $action({
     path: "/getEpics/:projectId",
     method: "GET",
@@ -183,9 +200,12 @@ export class EpicController {
       params: z.object({
         projectId: z.integer(),
       }),
+      query: z.object({
+        brief: z.boolean().optional(),
+      }),
       response: z.array(epicResourceSchema),
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, query }) => {
       // One aggregate for the whole page rather than four counts per row.
       // The list used to fan a per-epic rollup out over every epic, which is
       // where `GET /api/getEpics/1` got its 89 D1 round trips. Keyed on the
@@ -212,17 +232,31 @@ export class EpicController {
       // project), so this reads off the rows in hand.
       const byId = new Map(allEpics.map((epic) => [epic.id, epic]));
 
-      return allEpics.map((epic) =>
-        this.toEpicResource(
+      return allEpics.map((epic) => {
+        const resource = this.toEpicResource(
           epic,
           progress.get(epic.id) ?? this.zeroProgress(),
           epic.dependsOn != null ? byId.get(epic.dependsOn) : undefined,
           open.get(epic.id) ?? { questions: 0, blockers: 0 },
           reviewed.get(epic.id) ?? 0,
-        ),
-      );
+        );
+        return query.brief
+          ? { ...resource, description: this.briefOf(resource.description) }
+          : resource;
+      });
     },
   });
+
+  /**
+   * The start of a description, as one line: whitespace runs collapse to a
+   * space, and a text past {@link EpicController.BRIEF_DESCRIPTION_LENGTH}
+   * is cut there with an ellipsis.
+   */
+  protected briefOf(description: string): string {
+    const line = description.replace(/\s+/g, " ").trim();
+    const max = EpicController.BRIEF_DESCRIPTION_LENGTH;
+    return line.length > max ? `${line.slice(0, max)}…` : line;
+  }
 
   /**
    * Every epic in the project, reduced to the four fields another list needs

@@ -201,10 +201,12 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   // Only when the grouping actually needs them: the board payload carries
   // `epicId` but no title, and a board nobody is grouping by epic must not
   // pay for the lookup. Quiet: a lane without its title still groups.
+  // The refs, not `getEpics`: a lane reads a title, never a description
+  // (#Q3713).
   const epics = useQuery(
     {
       enabled: laneMode === "epic",
-      handler: () => epicApi.getEpics({ params: { projectId: project.id } }),
+      handler: () => epicApi.getEpicRefs({ params: { projectId: project.id } }),
       onError: () => {},
     },
     [epicApi, project.id, laneMode],

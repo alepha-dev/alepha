@@ -258,6 +258,40 @@ describe("EpicController", () => {
     });
   });
 
+  it("cuts each description to one line with brief, and keeps it whole without", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const long = `## Goal\n\nShip   the ${"amber ".repeat(80)}`;
+    await createTestEpic(ctx.alepha, project, { description: long });
+    await createTestEpic(ctx.alepha, project, { description: "Short\nplan" });
+
+    const whole = await ctx.controller.getEpics(
+      { params: { projectId: project.id } },
+      { user },
+    );
+    expect(whole.map((epic) => epic.description)).toEqual([
+      long,
+      "Short\nplan",
+    ]);
+
+    // #Q3713: the epic list draws one truncated line of it, and the whole
+    // list of a large project was 1 MB, 94% of it descriptions.
+    const brief = await ctx.controller.getEpics(
+      { params: { projectId: project.id }, query: { brief: true } },
+      { user },
+    );
+    const cut = long.replace(/\s+/g, " ").trim().slice(0, 240);
+    expect(brief.map((epic) => epic.description)).toEqual([
+      `${cut}…`,
+      "Short plan",
+    ]);
+    expect(brief.map((epic) => epic.progress)).toEqual(
+      whole.map((epic) => epic.progress),
+    );
+  });
+
   it("reads the quests table a constant number of times per listing", async ({
     expect,
   }) => {

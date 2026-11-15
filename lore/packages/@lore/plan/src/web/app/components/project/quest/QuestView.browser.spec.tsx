@@ -47,7 +47,7 @@ class FakeLinkProvider extends LinkProvider {
       listQuestAttachments: async () => [],
       getProjectUsers: async () => [],
       listQuestTags: async () => [],
-      getEpics: async () => [],
+      getEpicRefs: async () => [],
     });
   }
 
