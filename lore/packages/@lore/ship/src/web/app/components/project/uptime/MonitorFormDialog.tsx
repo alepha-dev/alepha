@@ -19,7 +19,6 @@ import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
 import type { MonitorController } from "../../../../../api/controllers/MonitorController.ts";
-import { monitorNotificationSettingsSchema } from "../../../../../api/schemas/monitorNotificationSettingsSchema.ts";
 import type { MonitorResource } from "../../../../../api/schemas/monitorResourceSchema.ts";
 import { MonitorTarget } from "../../../../../api/schemas/MonitorTarget.ts";
 import { monitorFormSchema } from "./monitorFormSchema.ts";
@@ -70,8 +69,6 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
       keyword: monitor?.expect.keyword,
       latencyBudgetMs: monitor?.expect.latencyBudgetMs,
       certWarningDays: monitor?.expect.certWarningDays ?? 14,
-      emailAlerts: monitor?.notifications.email ?? true,
-      recipients: monitor?.notifications.recipients.join(", ") ?? "",
     },
     onError: () => {},
     handler: async (values) => {
@@ -82,20 +79,7 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
           path: "/target",
         });
       }
-      const notifications = monitorNotificationSettingsSchema.safeParse({
-        email: values.emailAlerts,
-        recipients: (values.recipients ?? "")
-          .split(/[,;\n]/)
-          .map((value) => value.trim())
-          .filter(Boolean),
-      });
-      if (!notifications.success)
-        throw new FormValidationError({
-          path: "/recipients",
-          message: tr("uptime.invalidRecipients"),
-        });
       const body = {
-        notifications: notifications.data,
         name: values.name,
         kind: values.kind,
         target: values.target,
@@ -250,21 +234,10 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
                 disabled={loading}
               />
             )}
-            <div className="border-t pt-4">
-              <Control
-                input={form.input.emailAlerts}
-                label={tr("uptime.emailAlerts")}
-                description={tr("uptime.emailAlertsDescription")}
-                disabled={loading}
-              />
-              <Control
-                input={form.input.recipients}
-                rows={2}
-                label={tr("uptime.recipients")}
-                description={tr("uptime.recipientsDescription")}
-                disabled={loading}
-              />
-            </div>
+            {/* Alerts are automations since #Q3612: the monitor's bell. */}
+            <p className="text-muted-foreground border-t pt-4 text-sm">
+              {tr("uptime.alertsByBell")}
+            </p>
             {error && (
               <p role="alert" className="text-danger-text text-sm">
                 {error.message}

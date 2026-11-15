@@ -141,7 +141,6 @@ export class MonitorTools {
           timeoutSecs: params.timeout_secs,
           confirmations: params.confirmations,
           expect: params.expect,
-          notifications: params.notifications,
         } as MonitorCreateBody,
       });
     },
@@ -150,7 +149,7 @@ export class MonitorTools {
   monitor_update = $tool({
     title: "Update an uptime monitor",
     description:
-      "Change a monitor's settings. Only the fields passed change; `expect` and `notifications` are replaced whole when passed. Changing the target or the kind does not reset its history. Needs `app:manage` and the Ship capability's `uptime` option.",
+      "Change a monitor's settings. Only the fields passed change; `expect` is replaced whole when passed. Alerts are automations: the monitor's bell, or a Monitor down / Monitor recovered rule. Changing the target or the kind does not reset its history. Needs `app:manage` and the Ship capability's `uptime` option.",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
       params: monitorUpdateParamsSchema,
@@ -228,7 +227,6 @@ export class MonitorTools {
       timeout_secs?: number;
       confirmations?: number;
       expect?: MonitorResource["expect"];
-      notifications?: MonitorResource["notifications"];
     },
   ): MonitorConfig {
     return {
@@ -239,7 +237,6 @@ export class MonitorTools {
       timeoutSecs: params.timeout_secs ?? monitor.timeoutSecs,
       confirmations: params.confirmations ?? monitor.confirmations,
       expect: params.expect ?? monitor.expect,
-      notifications: params.notifications ?? monitor.notifications,
     };
   }
 }

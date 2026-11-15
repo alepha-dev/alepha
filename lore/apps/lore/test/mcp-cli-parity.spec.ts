@@ -82,9 +82,9 @@ const NOT_A_FLAG: Record<string, string[]> = {
   // `--parent`, as on `directory create`.
   directory_move: ["new_parent_shortId"],
   // One flag per key instead (#Q3591): `--expect-status`, `--keyword`,
-  // `--latency-budget`, `--cert-warning-days`, `--email`, `--recipient`.
-  monitor_create: ["expect", "notifications"],
-  monitor_update: ["expect", "notifications"],
+  // `--latency-budget`, `--cert-warning-days`.
+  monitor_create: ["expect"],
+  monitor_update: ["expect"],
 };
 
 const tools = (): any[] => {
