@@ -393,42 +393,53 @@ describe("$job — lease renewal for long-running jobs", () => {
       .with(AlephaOrmTestPostgres)
       .with(AlephaApiJobs)
       .with(AlephaApiJobsQueue);
+    // No job timeout: a timeout ends the run, whatever the handler does, and
+    // a 1 s one left the heartbeat (666 ms) a 333 ms window to land in, which
+    // a loaded runner missed. `runTimeout` is the crash threshold of a job
+    // without one: 1.5 s, so a renewal every 500 ms, for as long as the run
+    // lasts (#Q3725).
+    alepha.store.mut(jobConfig, (c) => ({ ...c, runTimeout: 1500 }));
+    let release!: () => void;
+    const released = new Promise<void>((r) => {
+      release = r;
+    });
     class SlowApp {
       executions = $repository(jobExecutionEntity);
-      // timeout 1s → crash threshold 2s → heartbeat ~666ms. The handler
-      // outlives several heartbeat ticks (it ignores the abort signal): with
-      // 1.5 s and a 1.4 s wait, a runner loaded by coverage saw no renewal
-      // before the handler finished (Nightly 41801800967).
       work = $job({
         name: "slow-app.work",
         description: "A job under test.",
         schema: z.object({ v: z.integer() }),
-        timeout: [1, "second"],
+        // Runs until the spec has seen a renewal: the wait below spans ten
+        // heartbeats, not a third of one.
         handler: async () => {
-          await sleep(4000);
+          await released;
         },
       });
     }
     const app = alepha.inject(SlowApp);
     await alepha.start();
 
-    const id = await app.work.push({ v: 1 });
-    const running = await waitFor(
-      () => app.executions.findMany({ where: { id: { eq: id } } }),
-      (r) => r.length === 1 && r[0].status === "running",
-      { label: "row reaches status=running" },
-    );
-    const leaseAtClaim = running[0].updatedAt;
+    try {
+      const id = await app.work.push({ v: 1 });
+      const running = await waitFor(
+        () => app.executions.findMany({ where: { id: { eq: id } } }),
+        (r) => r.length === 1 && r[0].status === "running",
+        { label: "row reaches status=running" },
+      );
+      const leaseAtClaim = running[0].updatedAt;
 
-    const renewed = await waitFor(
-      () => app.executions.findMany({ where: { id: { eq: id } } }),
-      (r) =>
-        r.length === 1 &&
-        r[0].status === "running" &&
-        r[0].updatedAt > leaseAtClaim,
-      { label: "lease renewed while running", timeout: 3500 },
-    );
-    expect(renewed[0].updatedAt > leaseAtClaim).toBe(true);
+      const renewed = await waitFor(
+        () => app.executions.findMany({ where: { id: { eq: id } } }),
+        (r) =>
+          r.length === 1 &&
+          r[0].status === "running" &&
+          r[0].updatedAt > leaseAtClaim,
+        { label: "lease renewed while running", timeout: 5000 },
+      );
+      expect(renewed[0].updatedAt > leaseAtClaim).toBe(true);
+    } finally {
+      release();
+    }
   });
 });
 
