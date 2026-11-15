@@ -24,29 +24,10 @@ import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
 import { currentHostAtom } from "./atoms/currentHostAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
+import { ANALYTICS_DIMENSIONS } from "./components/project/apps/analyticsDimensions.ts";
+import { appInsightsFiltersSchema } from "./components/project/apps/appInsightsFiltersSchema.ts";
 
-/**
- * The leaderboards that have a detail page, which is exactly the set
- * `InsightsController.getInsightsDimension` accepts.
- *
- * Duplicated deliberately rather than imported from the controller: this file
- * ships to the browser, and importing a controller module would pull the
- * repositories and the database provider into the client bundle. `entryPath`
- * is in the list and is not a dataset dimension - it groups by `path` and
- * differs only in the measure, which is the distinction that makes a landing
- * page report possible at all.
- */
-export const ANALYTICS_DIMENSIONS = new Set([
-  "country",
-  "path",
-  "entryPath",
-  "campaign",
-  "device",
-  "referrer",
-  "browser",
-  "os",
-  "auth",
-]);
+export { ANALYTICS_DIMENSIONS };
 
 /**
  * Deploy's pages (#E75): apps and their tabs, artifacts, errors, the Bay console, Reports' Quality tab and the Apps and Hosts settings tabs.
@@ -597,19 +578,32 @@ export class DeployRouter {
       params: z.object({
         analyticsDimension: z.string(),
       }),
+      query: appInsightsFiltersSchema,
     },
-    head: (props, previous) => {
-      const dimension = (props as { dimension?: string } | undefined)
-        ?.dimension;
-      return { title: `${previous?.title ?? ""} › ${dimension ?? "Detail"}` };
-    },
-    lazy: () => import("./components/project/apps/AppAnalyticsDimension.tsx"),
-    loader: async ({ params }) => {
+    // A leaderboard's full list is a dialog over the Analytics tab now
+    // (#Q3674): this URL, from a bookmark or an old link, lands on the tab
+    // with that dialog open and the same window and filters.
+    component: RedirectPage,
+    loader: async ({ params, query }): Promise<void> => {
       this.assertBeacon();
       if (!ANALYTICS_DIMENSIONS.has(params.analyticsDimension)) {
         throw new NotFoundError("No such leaderboard");
       }
-      return { dimension: params.analyticsDimension };
+      const instance = this.alepha.store.get(currentInstanceAtom);
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!instance || !project) {
+        throw new NotFoundError("App not found");
+      }
+      throw new Redirection({
+        redirect: this.router.path("appAnalytics", {
+          params: {
+            projectSlug: project.slug,
+            app: instance.app,
+            env: instance.env,
+          },
+          query: { ...query, leaderboard: params.analyticsDimension },
+        }),
+      });
     },
     errorHandler: (error) => {
       if (isHttpError(error, 404)) {

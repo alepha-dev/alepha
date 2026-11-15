@@ -1279,44 +1279,53 @@ test.describe("Apps", () => {
       await expect(page.getByTestId("insights-filters")).toHaveCount(0);
     });
 
-    await test.step("a card's More link opens that leaderboard in full", async () => {
+    await test.step("a card's More opens that leaderboard in full, in a dialog over the tab", async () => {
       await page
         .getByTestId("insights-countries")
-        .getByRole("link", { name: "More", exact: true })
+        .getByRole("button", { name: "More", exact: true })
         .click();
 
-      await expect(page).toHaveURL(/\/analytics\/country/, {
+      // Over the tab, not a page of its own (#Q3674), and named in the URL.
+      await expect(page).toHaveURL(/\/analytics\?.*leaderboard=country/, {
         timeout: 15_000,
       });
-      await expect(page.getByTestId("insights-dimension-table")).toBeVisible({
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByTestId("insights-dimension-table")).toBeVisible({
         timeout: 15_000,
       });
 
-      await page.goBack();
-      await page.waitForLoadState("networkidle");
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("insights-dimension-table")).toHaveCount(0);
+      await expect(page).not.toHaveURL(/leaderboard=/);
     });
 
-    await test.step("a leaderboard's detail page filters the overview and returns", async () => {
-      // Reached by URL rather than by a More link, which the overview does not
-      // grow until the Umami-shaped rebuild. The loop this asserts is the one
-      // the page exists for: leaderboard row -> filter -> overview.
+    await test.step("the old leaderboard URL opens its dialog, and a row filters the tab", async () => {
+      // The page it used to be redirects to the tab with the dialog open
+      // (#Q3674). The loop this asserts: leaderboard row -> filter -> tab.
       await page.goto(
         `/${projectSlug}/apps/${appName}/${envName}/analytics/path`,
       );
       await page.waitForLoadState("networkidle");
+      await expect(page).toHaveURL(/\/analytics\?.*leaderboard=path/, {
+        timeout: 15_000,
+      });
 
-      const table = page.getByTestId("insights-dimension-table");
+      const table = page
+        .getByRole("dialog")
+        .getByTestId("insights-dimension-table");
       await expect(table.getByText("/checkout")).toBeVisible({
         timeout: 15_000,
       });
 
       await table.getByText("/checkout").click();
 
-      // Back on the overview, narrowed, with the filter in the URL so it
-      // survives a reload and travels in a link.
+      // The dialog closes on the tab, narrowed, with the filter in the URL so
+      // it survives a reload and travels in a link.
       await expect(page).toHaveURL(/\/analytics\?.*path=%2Fcheckout/, {
         timeout: 15_000,
       });
+      await expect(page).not.toHaveURL(/leaderboard=/);
+      await expect(page.getByRole("dialog")).toHaveCount(0);
       const topPaths = page.getByTestId("insights-top-paths");
       await expect(topPaths.getByText("/checkout")).toBeVisible({
         timeout: 15_000,
@@ -1336,8 +1345,8 @@ test.describe("Apps", () => {
     });
 
     await test.step("the Vitals tab reports a range, a sample count and no rating", async () => {
-      // Back to the app page: the two steps above left the browser on a
-      // detail URL, and the tab bar is what the rest of this flow drives.
+      // Back to the app page: the steps above left the browser on the
+      // Analytics tab, and the tab bar is what the rest of this flow drives.
       await page.goto(`/${projectSlug}/apps/${appName}/${envName}`);
       await page.waitForLoadState("networkidle");
 
