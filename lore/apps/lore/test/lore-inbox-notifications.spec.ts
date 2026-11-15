@@ -229,7 +229,6 @@ describe("Lore's inbox notifications", () => {
       "&lt;img src=x onerror=&quot;alert(&#39;1&#39;)&quot;&gt;&amp;",
     );
 
-
     await alepha.stop();
   });
 
