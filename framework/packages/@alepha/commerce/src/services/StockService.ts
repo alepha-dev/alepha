@@ -666,7 +666,7 @@ export class StockService {
     query: { size?: number; page?: number; sort?: string } = {},
   ): Promise<Page<StockMovementEntity>> {
     return this.movements.paginate(
-      { sort: "-createdAt", ...query },
+      { sort: "-createdAt,-id", ...query },
       { where: { productId: { eq: productId } } },
       { count: true },
     );

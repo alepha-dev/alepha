@@ -253,20 +253,28 @@ describe("alepha/api/users - AdminIdentityController", () => {
       roles: ["user"],
     });
 
+    // One `createdAt` for all three, which back-to-back inserts get often
+    // enough (a millisecond stamp) to have failed CI: the order must not rest
+    // on `createdAt` alone (#Q3732).
+    const createdAt = "2026-01-01T00:00:00.000Z";
+
     const identity1 = await identityService.identities().create({
       userId: user.id,
       provider: "google",
       providerUserId: "google-sort-1",
+      createdAt,
     });
     const identity2 = await identityService.identities().create({
       userId: user.id,
       provider: "github",
       providerUserId: "github-sort-1",
+      createdAt,
     });
     const identity3 = await identityService.identities().create({
       userId: user.id,
       provider: "apple",
       providerUserId: "apple-sort-1",
+      createdAt,
     });
 
     const result = await controller.findIdentities(

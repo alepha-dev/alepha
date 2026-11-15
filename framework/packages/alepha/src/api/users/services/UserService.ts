@@ -246,7 +246,7 @@ export class UserService {
     userRealmName?: string,
   ): Promise<Page<UserEntity>> {
     this.log.trace("Finding users", { query: q, userRealmName });
-    q.sort ??= "-createdAt";
+    q.sort ??= "-createdAt,-id";
 
     const where = this.users(userRealmName).createQueryWhere();
 

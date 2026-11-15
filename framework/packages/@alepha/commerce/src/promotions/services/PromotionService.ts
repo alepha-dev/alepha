@@ -92,7 +92,7 @@ export class PromotionService {
     query: { size?: number; page?: number } = {},
   ): Promise<Page<PromotionEntity>> {
     return this.repo.paginate(
-      { sort: "-createdAt", ...query },
+      { sort: "-createdAt,-id", ...query },
       {},
       { count: true },
     );

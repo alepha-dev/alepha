@@ -843,7 +843,7 @@ export class OrderService {
     query: { size?: number; page?: number } = {},
   ): Promise<Page<OrderEntity>> {
     return this.orderRepo.paginate(
-      { sort: "-createdAt", ...query },
+      { sort: "-createdAt,-id", ...query },
       { where: { userId: { eq: userId } } },
       { count: true },
     );
@@ -873,7 +873,7 @@ export class OrderService {
       where.number = { contains: query.q };
     }
     return this.orderRepo.paginate(
-      { sort: "-createdAt", ...query },
+      { sort: "-createdAt,-id", ...query },
       { where },
       { count: true },
     );
@@ -1011,7 +1011,7 @@ export class OrderService {
     query: { size?: number; page?: number } = {},
   ): Promise<Page<ProductOrderLine>> {
     const page = await this.itemRepo.paginate(
-      { sort: "-createdAt", ...query },
+      { sort: "-createdAt,-id", ...query },
       { where: { productId: { eq: productId } } },
       { count: true },
     );

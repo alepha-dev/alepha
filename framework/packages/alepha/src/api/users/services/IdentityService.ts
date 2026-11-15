@@ -36,7 +36,7 @@ export class IdentityService {
     userRealmName?: string,
   ): Promise<Page<IdentityEntity>> {
     this.log.trace("Finding identities", { query: q, userRealmName });
-    q.sort ??= "-createdAt";
+    q.sort ??= "-createdAt,-id";
 
     const where = this.identities(userRealmName).createQueryWhere();
 
