@@ -4,6 +4,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { I18nCheckService } from "../services/I18nCheckService.ts";
 
+/**
+ * Reaches the protected matcher, the way AGENTS.md says a spec reaches one.
+ */
+class TestI18nCheckService extends I18nCheckService {
+  public testIsExcluded = this.isExcluded.bind(this);
+}
+
 describe("I18nCheckService", () => {
   const ROOT = "/proj";
 
@@ -108,6 +115,31 @@ ${body}
     });
 
     expect(result.unused).toEqual(["home.title"]);
+  });
+
+  it("excludes node_modules, dist and tests from a Windows path too (#Q3728)", () => {
+    const service = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .inject(TestI18nCheckService);
+    const excludes = ["/node_modules/", "/dist/", "/__tests__/", "/.alepha/"];
+
+    for (const path of [
+      "C:\\app\\node_modules\\pkg\\index.ts",
+      "C:\\app\\dist\\index.ts",
+      "C:\\app\\src\\__tests__\\a.ts",
+      "C:\\app\\.alepha\\gen.ts",
+    ]) {
+      expect(service.testIsExcluded(path, excludes)).toBe(true);
+    }
+    expect(service.testIsExcluded("C:\\app\\src\\a.ts", excludes)).toBe(false);
+    // A configured exclude written with `/` matches a Windows path, and one
+    // written with `\\` a POSIX one.
+    expect(
+      service.testIsExcluded("C:\\app\\src\\gen\\x.ts", ["src/gen/"]),
+    ).toBe(true);
+    expect(service.testIsExcluded("/app/src/gen/x.ts", ["src\\gen\\"])).toBe(
+      true,
+    );
   });
 
   it("extracts keys from lazily-imported per-language files", async () => {

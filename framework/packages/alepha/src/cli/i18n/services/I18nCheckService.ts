@@ -214,6 +214,17 @@ export class I18nCheckService {
    * remaining source files for a quoted-literal occurrence of each key.
    * Anything matching a `dynamicPrefixes` entry is exempted.
    */
+  /**
+   * Whether a file is left out of the scan: a built-in or configured
+   * exclude found in its path. Both sides are compared with `/` separators,
+   * so a Windows path (`C:\\app\\node_modules\\x.ts`) matches `/node_modules/`
+   * and an `exclude` written with `/` as well.
+   */
+  protected isExcluded(abs: string, excludes: string[]): boolean {
+    const path = abs.replaceAll("\\", "/");
+    return excludes.some((sub) => path.includes(sub.replaceAll("\\", "/")));
+  }
+
   async check(options: I18nCheckOptions): Promise<I18nCheckResult> {
     const { root, scan, dynamicPrefixes, exclude } = options;
     const excludes = [...this.defaultExcludes, ...exclude];
@@ -232,7 +243,7 @@ export class I18nCheckService {
       for (const rel of entries) {
         const abs = this.fs.join(absDir, rel);
         if (!this.scanExts.some((ext) => abs.endsWith(ext))) continue;
-        if (excludes.some((sub) => abs.includes(sub))) continue;
+        if (this.isExcluded(abs, excludes)) continue;
         allFiles.push(abs);
       }
     }
