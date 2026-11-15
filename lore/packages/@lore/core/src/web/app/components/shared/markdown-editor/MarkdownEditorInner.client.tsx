@@ -204,13 +204,27 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
     if (props.mode === "edit") return editor;
     // Both (#Q3653): the raw text and what it renders to, side by side, the
     // preview following the draft. Stacked on a narrow pane.
+    // Bare, the two columns have no frame of their own, so a 1px rule on the
+    // preview's leading edge, full height, divides them (#Q3691); stacked on
+    // a narrow pane, the gap alone does. Framed, each column is its own box.
     return (
       <div
         data-slot="markdown-both"
-        className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2"
+        className={
+          bare
+            ? "grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-0"
+            : "grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2"
+        }
       >
-        {editor}
-        <div className={`lore-md-view min-w-0 ${frame}`.trim()}>
+        {bare ? <div className="min-w-0 lg:pe-6">{editor}</div> : editor}
+        <div
+          data-slot="markdown-both-preview"
+          className={
+            bare
+              ? "lore-md-view border-border min-w-0 lg:border-s lg:ps-6"
+              : `lore-md-view min-w-0 ${frame}`.trim()
+          }
+        >
           <MarkdownView content={props.viewContent ?? props.value} />
         </div>
       </div>
