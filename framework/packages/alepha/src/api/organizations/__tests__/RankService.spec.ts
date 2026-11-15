@@ -196,11 +196,7 @@ describe("alepha/api/organizations - RankService", () => {
       (rank) => rank.key === "locked",
     );
     expect(locked?.permissions).toEqual([ORG_READ]);
-    expect(guard.seen).toEqual([
-      "save locked",
-      "save locked",
-      "delete locked",
-    ]);
+    expect(guard.seen).toEqual(["save locked", "save locked", "delete locked"]);
   });
 
   it("saves a rank without widening beyond the writer", async ({ expect }) => {
