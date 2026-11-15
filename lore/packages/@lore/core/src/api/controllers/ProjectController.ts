@@ -59,6 +59,7 @@ import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
 import { AssignedWorkRegistry } from "../services/AssignedWorkRegistry.ts";
 import { CoreBuckets } from "../services/CoreBuckets.ts";
+import { DefaultRankService } from "../services/DefaultRankService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
@@ -140,6 +141,7 @@ export class ProjectController {
   recency = $inject(ProjectRecencyService);
   projectPermissions = $inject(ProjectPermissions);
   ranks = $inject(RankService);
+  defaultRanks = $inject(DefaultRankService);
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -415,12 +417,26 @@ export class ProjectController {
         throw error;
       }
 
-      // ⚠️ No preset ranks. A project starts with the two built-ins, `owner`
-      // and `member`, and nothing else: Admin, Contributor and Viewer are
-      // offered by Settings > Ranks > Create rank (`getRankPresets`), where
-      // somebody asks for them on purpose (#Q2511, the GitHub model). This
-      // used to seed all three here, and a nightly sweep refilled any project
-      // left without them (#Q2001, for feedback #P2122); both are gone.
+      // The default ranks, Admin and Viewer, beside the `owner` and `member`
+      // built-ins (#Q3661, reversing #Q2511). AFTER the capability rows: a
+      // preset is a function of the enabled capability set, and seeded any
+      // earlier both would come out empty.
+      //
+      // Non-fatal, deliberately. A project whose seeding failed works on its
+      // built-ins, and the nightly `DefaultRankJobs` sweep adds what is
+      // missing; destroying a usable project over it would be the wrong trade.
+      await this.defaultRanks
+        .seed(
+          projectId,
+          user,
+          this.alepha.store.get("alepha.http.request")?.language,
+        )
+        .catch((error: unknown) => {
+          this.log.warn(
+            "createProject: default ranks were not seeded; the nightly sweep will add them",
+            { projectId, error },
+          );
+        });
 
       await this.audits.project.logSuccess("create", {
         ...this.audits.actor(user),

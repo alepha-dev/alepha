@@ -3,7 +3,6 @@ import { AutomationPersistence } from "@lore/core/api";
 import { DashboardMetricRegistry } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
 import { DashboardMetricCatalog } from "@lore/core/schemas";
-import { createPresetRanks } from "@lore/core/testing";
 import { $hook, Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import type { UserAccountToken } from "alepha/security";
@@ -473,9 +472,24 @@ describe("Automation catalogue", () => {
   it("does not mistake a rank name for source permission", async ({
     expect,
   }) => {
-    await createPresetRanks(alepha, project.id);
+    // A reading rank that holds automations: Viewer did until #Q3661
+    // narrowed it to the open-project allowlist.
+    await alepha.inject(RankService).save(
+      project.organizationId!,
+      {
+        key: "reader",
+        name: "Reader",
+        permissions: [
+          "project:read",
+          "folio:read",
+          "feedback:read",
+          "automation:read",
+        ],
+      },
+      { id: project.createdBy, roles: ["user"] } as UserAccountToken,
+    );
     const reader = await entities.users.create({ roles: ["user"] });
-    await createTestMember(alepha, project, reader.id, { rank: "viewer" });
+    await createTestMember(alepha, project, reader.id, { rank: "reader" });
     const result = await catalog.describe(project.id, {
       id: reader.id,
       roles: ["user"],

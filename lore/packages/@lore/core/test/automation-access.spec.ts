@@ -62,16 +62,14 @@ describe("Automation access", () => {
         .optionsOf("plan", { automations: false }),
     ).not.toHaveProperty("automations");
     const presets = alepha.inject(ProjectRankPresets).presetsFor(["plan"]);
+    // Viewer holds no automation permission since #Q3661 (the allowlist),
+    // and there is no Contributor preset any more.
     expect(
       presets
         .find((p) => p.key === "viewer")
         ?.permissions.filter((p) => p.startsWith("automation:")),
-    ).toEqual(["automation:read"]);
-    expect(
-      presets
-        .find((p) => p.key === "contributor")
-        ?.permissions.filter((p) => p.startsWith("automation:")),
-    ).toEqual(["automation:read", "automation:write"]);
+    ).toEqual([]);
+    expect(presets.map((p) => p.key)).toEqual(["admin", "viewer"]);
     expect(presets.find((p) => p.key === "admin")?.permissions).toEqual(
       expect.arrayContaining([
         "automation:read",
@@ -109,6 +107,33 @@ describe("Automation access", () => {
     });
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     await createPresetRanks(alepha, project.id);
+    // A rank holding `automation:read` only. Viewer held it until #Q3661
+    // narrowed it to the allowlist, and is refused even the read now.
+    await alepha.inject(RankService).save(
+      project.organizationId!,
+      {
+        key: "watcher",
+        name: "Watcher",
+        permissions: ["project:read", "automation:read"],
+      },
+      { id: project.createdBy, roles: ["user"] } as UserAccountToken,
+    );
+    const watcher = await entities.users.create({ roles: ["user"] });
+    await createTestMember(alepha, project, watcher.id, { rank: "watcher" });
+    await expect(
+      access.assert(
+        project.id,
+        { id: watcher.id, roles: ["user"] } as UserAccountToken,
+        "automation:read",
+      ),
+    ).resolves.toBeUndefined();
+    await expect(
+      access.assert(
+        project.id,
+        { id: watcher.id, roles: ["user"] } as UserAccountToken,
+        "automation:write",
+      ),
+    ).rejects.toThrow("automation:write");
     const viewer = await entities.users.create({ roles: ["user"] });
     await createTestMember(alepha, project, viewer.id, { rank: "viewer" });
     await expect(
@@ -117,14 +142,7 @@ describe("Automation access", () => {
         { id: viewer.id, roles: ["user"] } as UserAccountToken,
         "automation:read",
       ),
-    ).resolves.toBeUndefined();
-    await expect(
-      access.assert(
-        project.id,
-        { id: viewer.id, roles: ["user"] } as UserAccountToken,
-        "automation:write",
-      ),
-    ).rejects.toThrow("automation:write");
+    ).rejects.toThrow("automation:read");
     const key = {
       id: project.createdBy,
       roles: ["user"],

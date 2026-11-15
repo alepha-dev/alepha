@@ -3,7 +3,6 @@ import {
   apiPath,
   apiPost,
   createProjectViaWizard,
-  createRankFromPreset,
   newUserContext,
   openAccount,
   registerAndVerify,
@@ -76,16 +75,13 @@ test.describe("Members settings page", () => {
     const member = await newUserContext(browser, baseURL!, "leaver");
 
     try {
-      await createRankFromPreset(page, slug, "Contributor");
       await page.goto(`/${slug}/settings/members`);
       await page.waitForLoadState("networkidle");
       await page.getByRole("button", { name: /^invite$/i }).click();
       await page.getByPlaceholder("user@example.com").fill(member.email);
       await page.getByTestId("invite-rank").click();
-      await page.getByRole("option", { name: /^contributor$/i }).click();
-      await expect(
-        page.getByRole("option", { name: /^contributor$/i }),
-      ).toBeHidden();
+      await page.getByRole("option", { name: /^admin$/i }).click();
+      await expect(page.getByRole("option", { name: /^admin$/i })).toBeHidden();
       const invited = page.waitForResponse(
         (response) =>
           response.request().method() === "POST" &&

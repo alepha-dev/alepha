@@ -3,21 +3,20 @@ import { $inject } from "alepha";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import { LorePermissions } from "./LorePermissions.ts";
+import { LoreViewerAllowlist } from "./LoreViewerAllowlist.ts";
 
 /**
- * The three ranks a new project starts with, computed from the capabilities it
- * actually has.
+ * The two ranks a project is seeded with beside the `owner` and `member`
+ * built-ins, computed from the capabilities it actually has (#Q3661, epic
+ * #E151).
  *
- * ## Why they are templates rather than built-ins
- *
- * A built-in lives in code and cannot be edited (that is what makes it a
- * built-in), so a project whose owner wants "Contributor, but also allowed to
- * publish releases" would have to start from nothing. A preset is a starting
- * POINT: seeded once as an ordinary custom rank, and the owner's from then on.
+ * Every project starts with four ranks: owner, admin, member and viewer.
+ * Admin and Viewer are seeded as ordinary custom ranks under STABLE keys
+ * (`admin`, `viewer`), because an open project's joiners land on the rank
+ * keyed `viewer`, found by its key and never by its name.
  *
  * ## Why they are a function of the enabled capability set
  *
- * A Contributor of a Remember-only project should not carry `quest:create`.
  * A permission whose group belongs to a capability the project does not have
  * is a checkbox in the matrix that grants nothing and explains nothing, and
  * once seeded it stays there after the capability is turned on, so the
@@ -26,6 +25,10 @@ import { LorePermissions } from "./LorePermissions.ts";
  * That is also why `createProject` seeds AFTER writing the capability rows and
  * not after the membership row: seeded any earlier, every preset would be
  * computed against a project that has no capabilities yet and come out empty.
+ *
+ * There is no Contributor any more: Member, the built-in holding
+ * `LorePermissions.MEMBER_DEFAULT`, covers it. A project that already holds a
+ * rank keyed `contributor` keeps it as a custom rank.
  */
 export class ProjectRankPresets {
   protected readonly capabilities = $inject(CapabilityRegistry);
@@ -40,7 +43,7 @@ export class ProjectRankPresets {
    * the static graph, and the dynamic import then resolves to the
    * already-loaded copy. The two catalogues are 264 kB of source, and they
    * were in the Worker's EAGER boot graph with no lazy chunk emitted at all -
-   * evaluated on every cold isolate to answer three rank names. The browser
+   * evaluated on every cold isolate to answer two rank names. The browser
    * bundle never showed it, because `api/security` is not in the client
    * graph.
    *
@@ -52,12 +55,11 @@ export class ProjectRankPresets {
   > = {};
 
   /**
-   * i18n keys for the three names, so a project is seeded in the creator's
+   * i18n keys for the two names, so a project is seeded in the creator's
    * language rather than in English.
    */
   public static readonly LABEL_KEYS: Record<PresetKey, string> = {
     admin: "rank.preset.admin",
-    contributor: "rank.preset.contributor",
     viewer: "rank.preset.viewer",
   };
 
@@ -70,64 +72,21 @@ export class ProjectRankPresets {
   protected static readonly ADMIN_EXCLUDES = LorePermissions.OWNER_ONLY;
 
   /**
-   * Contributor writes the work and touches no configuration: no members, no
-   * ranks, no settings, no triage.
-   */
-  protected static readonly CONTRIBUTOR: string[] = [
-    "project:read",
-    "member:read",
-    "stats:read",
-    "quest:read",
-    "quest:create",
-    "quest:update",
-    "quest:delete",
-    "epic:read",
-    "epic:write",
-    "release:read",
-    "area:read",
-    "folio:read",
-    "folio:write",
-    "app:read",
-    "artifact:read",
-    "artifact:push",
-    "error:read",
-    "quality:read",
-    "quality:push",
-    "host:read",
-    "feedback:read",
-    "automation:read",
-    "automation:write",
-  ];
-
-  /**
-   * Viewer reads. Every `:read` in the vocabulary and nothing else, which is
-   * what makes it the rank the epic's own e2e drives: a Viewer who can see a
-   * single write control is a bug the whole client half exists to prevent.
+   * Viewer reads the project's memory and nothing else: the allowlist an
+   * open project's joiners are held to (folio "Open projects: safety
+   * contract"). Automations, apps, errors, hosts, members' records, reports
+   * and feedback are all outside it.
    */
   protected static readonly VIEWER: string[] = [
-    "project:read",
-    "member:read",
-    "stats:read",
-    "quest:read",
-    "epic:read",
-    "release:read",
-    "area:read",
-    "folio:read",
-    "app:read",
-    "artifact:read",
-    "error:read",
-    "quality:read",
-    "host:read",
-    "feedback:read",
-    "automation:read",
+    ...LoreViewerAllowlist.PERMISSIONS,
   ];
 
   /**
-   * The three presets for a project with this capability set.
+   * The two presets for a project with this capability set.
    *
-   * One place, called by both the matrix page's "create from a preset" and by
-   * project creation, so the two can never drift into offering different
-   * Contributors.
+   * One place, called by project creation, by the backfill sweep and by the
+   * matrix page's "Start from" when the project lacks the rank, so the three
+   * can never drift into offering different Viewers.
    */
   public presetsFor(enabled: CapabilityKey[]): ProjectRankPreset[] {
     return [
@@ -141,11 +100,6 @@ export class ProjectRankPresets {
           ].filter((it) => !ProjectRankPresets.ADMIN_EXCLUDES.includes(it)),
           enabled,
         ),
-      },
-      {
-        key: "contributor",
-        labelKey: ProjectRankPresets.LABEL_KEYS.contributor,
-        permissions: this.narrow(ProjectRankPresets.CONTRIBUTOR, enabled),
       },
       {
         key: "viewer",
@@ -211,7 +165,7 @@ export class ProjectRankPresets {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type PresetKey = "admin" | "contributor" | "viewer";
+export type PresetKey = "admin" | "viewer";
 
 export interface ProjectRankPreset {
   /**

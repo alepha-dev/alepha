@@ -42,6 +42,11 @@ export interface OrganizationRankPreset {
 export interface OrganizationRanksProps {
   organizationId: string;
   presets?: OrganizationRankPreset[];
+  /**
+   * Whether "Create rank" offers a blank rank beside the presets. On by
+   * default; an app whose every rank starts from a base turns it off.
+   */
+  blank?: boolean;
   filterPermission?: (
     permission: CataloguePermission,
     group: CatalogueGroup,
@@ -289,13 +294,17 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
             {tr("organizations.ranks.create", { default: "Create rank" })}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              disabled={saving}
-              onClick={() => void create.run(undefined)}
-            >
-              {tr("organizations.ranks.blank", { default: "Blank rank" })}
-            </DropdownMenuItem>
-            {!!props.presets?.length && <DropdownMenuSeparator />}
+            {props.blank !== false && (
+              <DropdownMenuItem
+                disabled={saving}
+                onClick={() => void create.run(undefined)}
+              >
+                {tr("organizations.ranks.blank", { default: "Blank rank" })}
+              </DropdownMenuItem>
+            )}
+            {props.blank !== false && !!props.presets?.length && (
+              <DropdownMenuSeparator />
+            )}
             {props.presets?.map((preset) => (
               <DropdownMenuItem
                 key={preset.key}

@@ -4,7 +4,7 @@ import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
   createProjectViaWizard,
-  createRankFromPreset,
+  saveRank,
   newUserContext,
   openAccount,
   registerAndVerify,
@@ -1071,7 +1071,7 @@ test.describe("Automations", () => {
     }
   });
 
-  test("refuses foreign-author edits and removes write controls after an owner assigns Viewer", async ({
+  test("refuses foreign-author edits and removes write controls after an owner assigns a read-only rank", async ({
     page,
     browser,
     baseURL,
@@ -1086,8 +1086,41 @@ test.describe("Automations", () => {
     await setCapability(page, project.id, "plan", {
       options: {},
     });
-    await createRankFromPreset(page, project.slug, "Contributor");
-    await createRankFromPreset(page, project.slug, "Viewer");
+    // A writer of automations, and a rank that only reads them. Neither is a
+    // default rank: Member writes no automation, and Viewer, held to the
+    // open-project allowlist, reads none.
+    await saveRank(page, project.organizationId, "contributor", "Contributor", [
+      "project:read",
+      "member:read",
+      "stats:read",
+      "quest:read",
+      "quest:create",
+      "quest:update",
+      "quest:delete",
+      "epic:read",
+      "epic:write",
+      "release:read",
+      "area:read",
+      "folio:read",
+      "folio:write",
+      "feedback:read",
+      "automation:read",
+      "automation:write",
+    ]);
+    // Every read of the project, automations included: what Viewer held
+    // before #Q3661 narrowed it.
+    await saveRank(page, project.organizationId, "watcher", "Watcher", [
+      "project:read",
+      "member:read",
+      "stats:read",
+      "quest:read",
+      "epic:read",
+      "release:read",
+      "area:read",
+      "folio:read",
+      "feedback:read",
+      "automation:read",
+    ]);
     const member = await newUserContext(browser, baseURL!, "automation-writer");
     try {
       await page.goto(`/${project.slug}/settings/members`);
@@ -1172,7 +1205,7 @@ test.describe("Automations", () => {
       );
       const ranks = await (await page.request.get(ranksPath)).json();
       const viewer = ranks.items.find(
-        (rank: { name: string }) => rank.name === "Viewer",
+        (rank: { name: string }) => rank.name === "Watcher",
       );
       const memberUser = await (
         await member.page.request.get("/api/users/me")
@@ -1215,7 +1248,7 @@ test.describe("Automations", () => {
           exact: true,
         }),
       ).toHaveCount(0);
-      // Enable, Disable and Delete live in the row menu, which a Viewer
+      // Enable, Disable and Delete live in the row menu, which a reader
       // is not offered at all.
       await expect(
         ownerRow.getByRole("button", { name: "Open row actions" }),

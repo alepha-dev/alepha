@@ -3,7 +3,6 @@ import {
   apiPath,
   apiPost,
   createProjectViaWizard,
-  createRankFromPreset,
   newUserContext,
   openAccount,
   registerAndVerify,
@@ -369,11 +368,9 @@ test.describe("Project dashboard", () => {
 
     const reader = await newUserContext(browser, baseURL!, "pbreader");
     try {
-      const contributorKey = await createRankFromPreset(
-        page,
-        slug,
-        "Contributor",
-      );
+      // Member: the built-in rank, which covers what the Contributor preset
+      // did before #Q3661, and holds no `project:update`.
+      const contributorKey = "member";
       await test.step("the owner fills the board and invites a reader", async () => {
         await page.goto(`/${slug}`);
         await page.waitForLoadState("networkidle");
@@ -421,7 +418,7 @@ test.describe("Project dashboard", () => {
         expect((await created).ok()).toBe(true);
       });
 
-      await test.step("the reader joins and is put on the Contributor rank", async () => {
+      await test.step("the reader joins and is put on the Member rank", async () => {
         await openAccount(reader.page, "invitations");
         await reader.page.waitForLoadState("domcontentloaded");
         const accepted = reader.page.waitForResponse(
@@ -436,9 +433,7 @@ test.describe("Project dashboard", () => {
         // ⚠️ The rank is assigned through the module's REST route rather than
         // the members page's picker. Driving a Base UI select here would test
         // the picker, which `members.spec.ts` owns; what this spec is about
-        // is what the BOARD does for somebody holding that rank. The preset
-        // was created from Settings > Ranks above, so its key names a real
-        // definition.
+        // is what the BOARD does for somebody holding that rank.
         // Both URLs come from the action registry rather than being written
         // out here: an `$action` path is no more typecheck-protected than a
         // `$page` name, so a hand-written one rots silently.
