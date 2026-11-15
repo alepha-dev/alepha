@@ -1,15 +1,11 @@
-import {
-  currentProjectAtom,
-  ProjectShellRegistry,
-  hasCapability,
-  ProjectSettingsCapabilitySection,
-} from "@lore/core/web";
-import { useInject, useStore } from "alepha/react";
+import { currentProjectAtom, hasCapability } from "@lore/core/web";
+import { useStore } from "alepha/react";
 
 import ProjectSettingsCoverageTarget from "./ProjectSettingsCoverageTarget.tsx";
 
 /**
- * The capability switches and the coverage target.
+ * Ship > Features: the coverage target. The capability switches are in
+ * General > Capabilities only (#Q3702).
  *
  * The default environment was a third until #Q2135. It was project-wide while
  * the question it answered is per app, so a project set to `production` with
@@ -45,7 +41,6 @@ import ProjectSettingsCoverageTarget from "./ProjectSettingsCoverageTarget.tsx";
  */
 const ProjectSettingsAppsPage = () => {
   const [project] = useStore(currentProjectAtom);
-  const shell = useInject(ProjectShellRegistry);
 
   const enabled = hasCapability(project, "ship");
 
@@ -53,26 +48,10 @@ const ProjectSettingsAppsPage = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* The master is in General > Capabilities since #Q2565, with every
-          option that adds a sidebar entry. `uptime`, Monitor apps, is the
-          third thing a project does with its apps (#Q3597), listed last
-          beside Track and Deploy; since monitors belong to apps it adds no
-          sidebar entry and lives here only (#Q3657). `deploy` adds one
-          (Artifacts, #Q3631) and is listed here too, as Deploy apps, where
-          it always was, and in General: both switches write the same row.
-          `stacks` stays in General only. */}
-      <ProjectSettingsCapabilitySection
-        capability="ship"
-        master={false}
-        options={[
-          ...shell
-            .settingsOptions("ship")
-            .filter((option) => option !== "uptime"),
-          "deploy",
-          "uptime",
-        ]}
-      />
-
+      {/* Every Ship switch, Track, Deploy and Monitor apps included, is in
+          General > Capabilities only (#Q3702): this page listed the same
+          rows a second time. What is left is Ship's one setting that is not
+          a switch, the coverage target, and the tab stays for it. */}
       {enabled && <ProjectSettingsCoverageTarget />}
     </div>
   );

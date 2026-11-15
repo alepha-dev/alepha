@@ -26,7 +26,7 @@ const createApp = async (
 };
 
 test.describe("Uptime healthchecks", () => {
-  test("Uptime has no sidebar entry, its switch is on the Apps settings, and /uptime opens Apps", async ({
+  test("Uptime has no sidebar entry, its switch is in General > Capabilities, and /uptime opens Apps", async ({
     page,
   }) => {
     await registerAndVerify(
@@ -38,7 +38,8 @@ test.describe("Uptime healthchecks", () => {
       capabilities: ["ship"],
     });
     const nav = page.locator(`a[href="/${slug}/uptime"]`);
-    await page.goto(`/${slug}/settings/apps`);
+    // In General > Capabilities only since #Q3702.
+    await page.goto(`/${slug}/settings/capabilities`);
     const toggle = page.getByRole("switch", {
       name: "Monitor apps",
       exact: true,
