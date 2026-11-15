@@ -29,6 +29,7 @@ import { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsContro
 import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
+import { ProjectJoinController } from "./controllers/ProjectJoinController.ts";
 import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
@@ -327,6 +328,7 @@ export const LoreCoreApi = $module({
     HomeController,
     ProjectCapabilityController,
     ProjectRankController,
+    ProjectJoinController,
     ProjectPromptController,
     ResourceFilingController,
     InvitationController,
@@ -408,6 +410,7 @@ export { ProjectCapabilityController } from "./controllers/ProjectCapabilityCont
 export { ProjectController } from "./controllers/ProjectController.ts";
 export { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
 export { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
+export { ProjectJoinController } from "./controllers/ProjectJoinController.ts";
 export { ProjectRankController } from "./controllers/ProjectRankController.ts";
 export { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 export { SearchController } from "./controllers/SearchController.ts";
@@ -434,6 +437,7 @@ export { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 export { AssignedWorkRegistry } from "./services/AssignedWorkRegistry.ts";
 export { BestEffort } from "./services/BestEffort.ts";
 export { DefaultRankService } from "./services/DefaultRankService.ts";
+export { ProjectExclusions } from "./services/ProjectExclusions.ts";
 export { ProjectJoinPolicy } from "./services/ProjectJoinPolicy.ts";
 export { BoundParameters } from "./services/BoundParameters.ts";
 export { DashboardCardService } from "./services/DashboardCardService.ts";
