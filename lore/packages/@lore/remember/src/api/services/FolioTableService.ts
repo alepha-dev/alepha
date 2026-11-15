@@ -112,6 +112,13 @@ export class FolioTableService {
    * revision.
    */
   static readonly MAX_SNAPSHOT_BYTES = 1_800_000;
+  /**
+   * The most a table's cells may weigh, as JSON (#Q3708): under
+   * `MAX_SNAPSHOT_BYTES` with room for the columns, so every revision can
+   * snapshot the table. A write past it is refused only when it grows the
+   * table, so an over-budget table can always be trimmed back.
+   */
+  static readonly MAX_TABLE_BYTES = 1_500_000;
 
   protected readonly columns = $repository(folioColumns);
   protected readonly rows = $repository(folioRows);
@@ -600,6 +607,11 @@ export class FolioTableService {
         cells: input.cells,
       })),
     );
+    const sizes = prepared.map((cells) => this.bytesOf(cells));
+    await this.assertBudget(
+      folio.id,
+      sizes.reduce((sum, size) => sum + size, 0),
+    );
 
     // Positions: at the bottom, or between the row named and the next one.
     // Several rows placed after the same row keep the order they came in.
@@ -634,6 +646,7 @@ export class FolioTableService {
         position: positions[index],
         cells,
         searchText: this.searchTextOf(columns, cells),
+        bytes: sizes[index],
         updatedByUserId: userId,
       })),
     );
@@ -679,10 +692,16 @@ export class FolioTableService {
         if (value === null) delete next[columnId];
         else next[columnId] = value;
       }
+      const bytes = this.bytesOf(next);
+      // Only a write that grows the row can be refused: one that shortens
+      // a cell or empties it always lands.
+      if (bytes > row.bytes)
+        await this.assertBudget(folio.id, bytes - row.bytes);
       const updated: FolioRowRecord = {
         ...row,
         cells: next,
         searchText: this.searchTextOf(columns, next),
+        bytes,
         updatedByUserId: opts.userId ?? row.updatedByUserId,
       };
       try {
@@ -816,6 +835,7 @@ export class FolioTableService {
             position: row.position,
             cells,
             searchText: row.searchText,
+            bytes: this.bytesOf(cells),
             updatedByUserId: row.updatedByUserId,
           };
         }),
@@ -1230,6 +1250,13 @@ export class FolioTableService {
       folioId: folio.id,
       lowerName: column.name.toLowerCase(),
     })) as unknown as FolioColumn[];
+    // A revert replaces every row, so it is measured whole: refused only
+    // when it would leave the table past the budget AND larger than now.
+    const sizes = rows.map((row) => this.bytesOf(row.cells));
+    const total = sizes.reduce((sum, size) => sum + size, 0);
+    const weighs = await this.tableBytes(folio.id);
+    if (total > weighs)
+      await this.assertBudget(folio.id, total - weighs, weighs);
     await this.database.atomicBatch([
       this.rows.deleteStatement({ folioId: { eq: folio.id } }),
       this.columns.deleteStatement({ folioId: { eq: folio.id } }),
@@ -1252,6 +1279,7 @@ export class FolioTableService {
           position: row.position,
           cells: row.cells,
           searchText: this.searchTextOf(stored, row.cells),
+          bytes: sizes[rows.indexOf(row)],
           updatedByUserId: userId,
         }),
       ),
@@ -1455,6 +1483,46 @@ export class FolioTableService {
    * The stored cells whose column still exists: what a write starts from, so
    * a removed column's key is dropped by the row's next write.
    */
+  /**
+   * The UTF-8 length of cells as JSON: what a row weighs in a snapshot
+   * (#Q3708).
+   */
+  public bytesOf(cells: Record<string, unknown>): number {
+    return new TextEncoder().encode(JSON.stringify(cells)).length;
+  }
+
+  /**
+   * What a table's cells weigh, from `folio_rows.bytes`: one `SUM`, no row
+   * read (#Q3708).
+   */
+  public async tableBytes(folioId: string): Promise<number> {
+    const [total] = await this.rows.aggregate({
+      select: { bytes: { sum: true } },
+      where: { folioId: { eq: folioId } },
+    });
+    return Number(total?.bytes.sum ?? 0);
+  }
+
+  /**
+   * Refuse a write that adds `added` bytes when the table would end past
+   * `MAX_TABLE_BYTES`, saying how big the table is, what the write adds and
+   * the budget. `current` skips the read when the caller has it.
+   */
+  protected async assertBudget(
+    folioId: string,
+    added: number,
+    current?: number,
+  ): Promise<void> {
+    if (added <= 0) return;
+    const before = current ?? (await this.tableBytes(folioId));
+    if (before + added <= FolioTableService.MAX_TABLE_BYTES) return;
+    const kb = (bytes: number) =>
+      `${Math.ceil(bytes / 1000).toLocaleString("en-US")} KB`;
+    throw new BadRequestError(
+      `A table holds at most ${kb(FolioTableService.MAX_TABLE_BYTES)} of cells, so every revision can keep a copy of it: this one holds ${kb(before)}, and this write adds ${kb(added)}. Delete rows or shorten cells first.`,
+    );
+  }
+
   protected liveCells(
     columns: FolioColumn[],
     stored: Record<string, unknown>,
@@ -1581,16 +1649,19 @@ export class FolioTableService {
   ): Promise<void> {
     const rows = await this.rows.findMany({
       where: { folioId: { eq: folioId } },
-      columns: ["id", "cells", "searchText"],
+      columns: ["id", "cells", "searchText", "bytes"],
     });
     const statements = rows.flatMap((row) => {
       const text = this.searchTextOf(columns, row.cells ?? {});
-      return text === row.searchText
+      // A removed column's cells leave the live cells, so the row's size
+      // drops with it (#Q3708).
+      const bytes = this.bytesOf(this.liveCells(columns, row.cells ?? {}));
+      return text === row.searchText && bytes === row.bytes
         ? []
         : [
             this.rows.updateStatement(
               { id: { eq: row.id } },
-              { searchText: text },
+              { searchText: text, bytes },
               { touch: false, version: false, returning: false },
             ),
           ];

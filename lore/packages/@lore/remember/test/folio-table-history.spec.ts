@@ -8,6 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { folioRevisions } from "../src/api/entities/folioRevisions.ts";
+import { folioRows } from "../src/api/entities/folioRows.ts";
 import type { Folio } from "../src/api/entities/folios.ts";
 import {
   FolioController,
@@ -23,6 +24,7 @@ import {
 
 class RevisionRepo {
   revisions = $repository(folioRevisions);
+  rows = $repository(folioRows);
 }
 
 /**
@@ -265,7 +267,7 @@ describe("table folio history", () => {
     expect,
   }) => {
     const { folio, userId } = await createTable();
-    await tables().applyColumnOperations(
+    const columns = await tables().applyColumnOperations(
       folio,
       Array.from({ length: 2 }, (_, i) => ({
         op: "add" as const,
@@ -273,14 +275,20 @@ describe("table folio history", () => {
         type: "text" as const,
       })),
     );
-    for (let batch = 0; batch < 5; batch += 1) {
-      await tables().addRows(
-        folio,
-        Array.from({ length: 100 }, () => ({
-          cells: { "Long 0": "x".repeat(2000), "Long 1": "y".repeat(2000) },
-        })),
-      );
-    }
+    // A table this size cannot be written any more (#Q3708): the rows go in
+    // straight, as a table written before the byte budget would hold them.
+    // `tooLarge` stays as the net for it.
+    const [long0, long1] = columns.slice(-2).map((column) => column.id);
+    const cells = { [long0]: "x".repeat(2000), [long1]: "y".repeat(2000) };
+    await repo.rows.createMany(
+      Array.from({ length: 500 }, (_, i) => ({
+        folioId: folio.id,
+        // Clear of the numbers the row sequence hands out next.
+        number: 1000 + i,
+        position: i + 1,
+        cells,
+      })),
+    );
     await alepha.inject(DateTimeProvider).travel(2 * hour);
 
     await tables().addRows(folio, [{ cells: { Host: "after" } }], userId);

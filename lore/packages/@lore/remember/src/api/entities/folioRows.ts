@@ -47,6 +47,13 @@ export const folioRows = $entity({
      * reference by its code (`#Q12`), a checkbox not at all.
      */
     searchText: db.default(z.string(), ""),
+    /**
+     * The UTF-8 length of the row's live cells as JSON, what a revision's
+     * snapshot stores of it (#Q3708). Written with every row write and
+     * refreshed by a column change's reindex, so a table's size is one
+     * `SUM` and never a read of its rows.
+     */
+    bytes: db.default(z.integer().min(0), 0),
     updatedByUserId: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),
