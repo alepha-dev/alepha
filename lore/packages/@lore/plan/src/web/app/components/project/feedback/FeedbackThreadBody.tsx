@@ -63,6 +63,10 @@ const FeedbackThreadBody = (props: FeedbackThreadBodyProps) => {
   if (props.markdown) {
     return (
       <LoreViewer
+        // The author line's gap alone sets the space above (#Q3660), as for
+        // a reporter's plain-text body: the first and last prose blocks
+        // carry their own `my-3`, which added to it.
+        className="[&>:first-child]:mt-0 [&>:last-child]:mb-0"
         element={{
           kind: "feedback",
           projectId: props.markdown.projectId,

@@ -95,12 +95,16 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
             <TimeAgo value={entry.at} />
           </span>
         </div>
-        <div className="border-border bg-muted/40 rounded-md border px-3 py-3">
+        <div className="border-border bg-muted/40 rounded-md border px-4 py-3">
           {/* Through the shared viewer, so `[[#F12]]` and `[[#Q12]]`
             resolve exactly as they do in a description — with the two
             conversation-only shapes (`#Q1204`, `@member`) expanded into it
             first. The stored body is never rewritten. */}
           <LoreViewer
+            // The box's padding alone sets its edges (#Q3660): the first and
+            // last prose blocks carry their own `my-3`, which doubled it on top
+            // and bottom.
+            className="[&>:first-child]:mt-0 [&>:last-child]:mb-0"
             element={{
               // `projectId` addresses the API, `projectSlug` the links the
               // rewrite produces, and `id` is the element itself. Passing the
