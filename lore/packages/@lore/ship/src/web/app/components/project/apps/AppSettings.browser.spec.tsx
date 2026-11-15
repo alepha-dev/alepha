@@ -115,7 +115,12 @@ describe("the instance Settings tab", () => {
     {
       owner = true,
       permissions = ["project:read", "app:read"],
-    }: { owner?: boolean; permissions?: string[] } = {},
+      project,
+    }: {
+      owner?: boolean;
+      permissions?: string[];
+      project?: ReturnType<typeof projectFixture>;
+    } = {},
   ) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
@@ -135,14 +140,15 @@ describe("the instance Settings tab", () => {
     // `useRank().can(...)`, which reads the effective set the server computed.
     alepha.store.set(
       currentProjectAtom,
-      (owner
-        ? aProject
-        : projectFixture({
-            title: "Alepha",
-            slug: "alepha",
-            permissions,
-            rank: { key: "member", name: "Member" },
-          })) as never,
+      (project ??
+        (owner
+          ? aProject
+          : projectFixture({
+              title: "Alepha",
+              slug: "alepha",
+              permissions,
+              rank: { key: "member", name: "Member" },
+            }))) as never,
     );
     alepha.store.set(currentProjectMemberAtom, {
       id: "00000000-0000-4000-8000-000000000003",
@@ -273,6 +279,47 @@ describe("the instance Settings tab", () => {
     await waitFor(() => expect(document.body.textContent).toContain("ovh-1"));
     // The clear row is there too: pointing nowhere is a real state.
     expect(screen.getByRole("option", { name: "None" })).toBeTruthy();
+  });
+
+  /**
+   * Each section follows the Ship option it belongs to (#Q3632): the
+   * credential is a sigil, which only Track collects with, and the host is
+   * where a Deploy goes.
+   */
+  it("hides Credential with Track off and Host with Deploy off", async ({
+    expect,
+  }) => {
+    const shipWith = (options: Record<string, boolean>) =>
+      projectFixture({
+        title: "Alepha",
+        slug: "alepha",
+        options: { ship: options },
+      });
+
+    const trackOff = await mount(
+      anInstance(),
+      {},
+      {
+        project: shipWith({ track: false, deploy: true }),
+      },
+    );
+    await waitFor(() =>
+      expect(trackOff.view.container.querySelector("#host")).not.toBeNull(),
+    );
+    expect(trackOff.view.container.querySelector("#sigil")).toBeNull();
+    trackOff.view.unmount();
+
+    const deployOff = await mount(
+      anInstance(),
+      {},
+      {
+        project: shipWith({ track: true, deploy: false }),
+      },
+    );
+    await waitFor(() =>
+      expect(deployOff.view.container.querySelector("#sigil")).not.toBeNull(),
+    );
+    expect(deployOff.view.container.querySelector("#host")).toBeNull();
   });
 
   it("says so and links out when nothing is lent", async ({ expect }) => {
