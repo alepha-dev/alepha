@@ -50,6 +50,10 @@ export interface DataTableToolbarProps<T> {
    */
   canResetFilters: boolean;
   /**
+   * The table's `headerPopup`: column filters stay off the bar.
+   */
+  headerPopup?: boolean;
+  /**
    * The table's `leading` slot, drawn first on the row.
    */
   leading?: ReactNode;
@@ -126,7 +130,9 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
         fields={dataTableFilterBarFields(
           props.filters.fields,
           props.filterDefinition,
-        )}
+          // Under `headerPopup` a column's filter lives in its header alone:
+          // not on the bar, not in « + », not in the phone dialog.
+        ).filter((field) => !(props.headerPopup && field.column))}
         shown={props.shownFilters}
         onShownChange={props.onShownFiltersChange}
         variant={variant}

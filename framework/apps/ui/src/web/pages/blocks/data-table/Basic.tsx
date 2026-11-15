@@ -39,6 +39,10 @@ const KNOBS = z.object({
     .meta({ title: "Page size" }),
   selectable: z.boolean().default(true).meta({ title: "Row selection" }),
   filters: z.boolean().default(true).meta({ title: "Filter toolbar" }),
+  headerPopup: z
+    .boolean()
+    .default(false)
+    .meta({ title: "Header popup (sort and filter per column)" }),
   // Both empty states, reachable from the panel. "No match" is not faked: it
   // seeds the search box with a term the fixture cannot match, so the state
   // is produced by the same filter detection a reader's own typing would go
@@ -216,6 +220,7 @@ const Basic = () => {
         emptyState: "Off",
         fullHeight: true,
         light: false,
+        headerPopup: false,
       }}
     >
       {(v) => (
@@ -225,7 +230,8 @@ const Basic = () => {
           // key or the switch moves and the table does not. `fullHeight` is
           // deliberately absent: it feeds a class, and remounting on it would
           // throw the fetch away to change a style.
-          key={`${v.pageSize}-${v.selectable}-${v.filters}-${v.emptyState}-${v.light}`}
+          key={`${v.pageSize}-${v.selectable}-${v.filters}-${v.emptyState}-${v.light}-${v.headerPopup}`}
+          headerPopup={v.headerPopup}
           className={cn("min-h-0", v.fullHeight && "flex-1")}
           // Dropped while an empty state is forced. Persistence would
           // otherwise decide which of the two states appears: a search left in

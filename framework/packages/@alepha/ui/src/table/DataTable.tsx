@@ -19,6 +19,7 @@ import type { DataTableFilterBarField } from "./DataTableFilterBar.tsx";
 import { dataTableFilterBarFields } from "./dataTableFilterFields.ts";
 import { DataTableFooter, PAGE_SIZES } from "./DataTableFooter.tsx";
 import { DataTableHeaderFilter } from "./DataTableHeaderFilter.tsx";
+import { DataTableHeaderPopup } from "./DataTableHeaderPopup.tsx";
 import { DataTableHeaderRow } from "./DataTableHeaderRow.tsx";
 import {
   persistedColumns,
@@ -141,6 +142,9 @@ export const DataTable = <
   // caller's `filters.render` owns where its filters go, and the bar's rule
   // that a set filter shows on it is what makes a header filter safe.
   const headerFilters: Record<string, DataTableFilterBarField> = {};
+  // Under `headerPopup`, every field naming a column, so a `min` / `max`
+  // pair lands in one popup.
+  const popupFilters: Record<string, DataTableFilterBarField[]> = {};
   if (untyped.filters && !untyped.filters.render && filterDefinition) {
     for (const field of dataTableFilterBarFields(
       untyped.filters.fields,
@@ -148,8 +152,31 @@ export const DataTable = <
     )) {
       if (!field.column || field.hidden) continue;
       if (!(field.column in headerFilters)) headerFilters[field.column] = field;
+      const fields = (popupFilters[field.column] ??= []);
+      const ranged = field.range !== undefined;
+      if (fields.length === 0 || (ranged && fields.every((f) => f.range))) {
+        fields.push(field);
+      }
     }
   }
+  const headerPopup = props.headerPopup
+    ? (columnKey: string, def: ColumnDef<T>) => {
+        const fields = form ? (popupFilters[columnKey] ?? []) : [];
+        if (fields.length === 0 && !def.sortable) return undefined;
+        const field = def.sortKey ?? columnKey;
+        return (
+          <DataTableHeaderPopup
+            form={form ?? undefined}
+            label={def.label}
+            hinted={Boolean(def.hint)}
+            fields={fields}
+            sortable={Boolean(def.sortable)}
+            sorted={sort?.field === field ? sort.direction : null}
+            onSort={(direction) => setSortTo(columnKey, def, direction)}
+          />
+        );
+      }
+    : undefined;
   const headerFilter = (columnKey: string) => {
     const field = headerFilters[columnKey];
     if (!field || !form) return undefined;
@@ -600,6 +627,7 @@ export const DataTable = <
           form={form}
           filterDefinition={filterDefinition}
           shownFilters={filterVisibility.shown}
+          headerPopup={props.headerPopup}
           onShownFiltersChange={filterVisibility.setShown}
           canResetFilters={canResetFilters}
           leading={props.leading}
@@ -733,6 +761,7 @@ export const DataTable = <
               moveColumn={moveColumn}
               toggleColumn={toggleColumn}
               headerFilter={headerFilter}
+              headerPopup={headerPopup}
             />
           </TableHeader>
           <DataTableBody<T>
