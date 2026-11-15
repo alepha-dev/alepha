@@ -2,6 +2,7 @@ import { $inject } from "alepha";
 
 import type { Automation } from "../entities/automations.ts";
 import { AutomationDependencyError } from "../errors/AutomationDependencyError.ts";
+import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
@@ -88,21 +89,25 @@ export class AutomationDependencies {
     const channels = await this.channels.all(rule.projectId);
     for (const action of rule.rule.actions) {
       if (action.kind !== "notify") continue;
-      const variable = variables.find(
-        (value) => `{{${value.key}}}` === action.channel,
-      );
-      const channel =
-        variable?.value.kind === "channel"
-          ? variable.value.value
-          : action.channel;
-      if (
-        typeof channel === "string" &&
-        !channel.includes("{{") &&
-        !channels.some((value) => value.key === channel && value.available)
-      )
+      const named = AutomationRuleChannels.of(action);
+      // A rule left with no channel at all can send nothing (#Q3613).
+      if (named.length === 0)
         throw new AutomationDependencyError(
-          `Automation channel '${channel}' is unavailable`,
+          "This automation notifies no channel any more",
         );
+      for (const name of named) {
+        const variable = variables.find((value) => `{{${value.key}}}` === name);
+        const channel =
+          variable?.value.kind === "channel" ? variable.value.value : name;
+        if (
+          typeof channel === "string" &&
+          !channel.includes("{{") &&
+          !channels.some((value) => value.key === channel && value.available)
+        )
+          throw new AutomationDependencyError(
+            `Automation channel '${channel}' is unavailable`,
+          );
+      }
     }
   }
 }

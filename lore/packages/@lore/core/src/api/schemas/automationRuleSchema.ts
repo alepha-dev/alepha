@@ -13,7 +13,9 @@ export const automationRuleSchema = z
     trigger: automationTriggerSchema,
     select: automationSelectionSchema.nullable(),
     guard: automationGuardSchema.nullable(),
-    actions: z.array(automationActionSchema).min(1).max(5),
+    // Five authored actions (`AutomationRuleChannels.MAX_ACTIONS`); a run's
+    // snapshot holds the expanded form, one notify per channel (#Q3613).
+    actions: z.array(automationActionSchema).min(1).max(40),
   })
   .strict()
   .refine(

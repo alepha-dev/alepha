@@ -6,6 +6,7 @@ import { BadRequestError, ForbiddenError } from "alepha/server";
 import type { Automation } from "../entities/automations.ts";
 import type { AutomationAudiencePreview } from "../schemas/automationAudiencePreviewSchema.ts";
 import { automationEvaluationReportSchema } from "../schemas/automationEvaluationReportSchema.ts";
+import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import type { AutomationSourceProvenance } from "../schemas/automationSourceProvenanceSchema.ts";
@@ -101,8 +102,13 @@ export class AutomationEvaluator {
   }): Promise<AutomationEvaluation> {
     return this.database.primary(async () => {
       const evaluatedAt = input.evaluatedAt ?? this.time.nowISOString();
+      // One notify per channel (#Q3613): the snapshot, its planned
+      // positions and every step after hold the expanded rule.
       const base: AutomationEvaluation = {
-        rule: input.rule,
+        rule: {
+          ...input.rule,
+          rule: AutomationRuleChannels.expand(input.rule.rule),
+        },
         evaluatedAt,
         variables: [],
         selected: [],
@@ -246,7 +252,7 @@ export class AutomationEvaluator {
             continue;
           base.matched +=
             selected.kind === "collection" ? selected.items.length : 1;
-          for (const [index, action] of input.rule.rule.actions.entries()) {
+          for (const [index, action] of base.rule.rule.actions.entries()) {
             const position = {
               index,
               ...(selected.kind === "rows" ? { row } : {}),

@@ -41,23 +41,68 @@ export class AutomationChannels {
       },
     ],
   ]);
-  public register(name: string, adapter: AutomationChannelAdapter): void {
-    if (this.adapters.has(name))
-      throw new AlephaError(`Automation channel '${name}' is registered twice`);
-    this.adapters.set(name, adapter);
+  protected readonly sources: AutomationChannelInstanceSource[] = [];
+  /**
+   * Register the adapter for one channel `kind` (#Q3613): `inbox` and
+   * `email` are built in; a module adds `discord`. A kind's adapter serves
+   * every instance of that kind.
+   */
+  public register(kind: string, adapter: AutomationChannelAdapter): void {
+    if (this.adapters.has(kind))
+      throw new AlephaError(`Automation channel '${kind}' is registered twice`);
+    this.adapters.set(kind, adapter);
   }
-  public async adapter(projectId: number, name: string) {
-    const adapter = this.adapters.get(name);
-    if (!adapter || !(await this.available(projectId, name, adapter)))
+  /**
+   * Register where a project's configured channels come from (#Q3613),
+   * such as its Discord channels. Each instance is resolved to its adapter
+   * by `kind`.
+   */
+  public registerInstances(source: AutomationChannelInstanceSource): void {
+    this.sources.push(source);
+  }
+  /**
+   * A project's channel instances: Inbox and Email (built in, their id is
+   * their kind), then every channel the project configures. A rule's notify
+   * names instance ids.
+   */
+  public async instances(
+    projectId: number,
+  ): Promise<AutomationChannelInstance[]> {
+    const configured = (
+      await Promise.all(this.sources.map((source) => source(projectId)))
+    ).flat();
+    return [
+      { id: "inbox", kind: "inbox", name: "In-app" },
+      { id: "email", kind: "email", name: "Email" },
+      ...configured,
+    ];
+  }
+  /**
+   * The instance a channel id names in this project, or undefined.
+   */
+  public async instance(
+    projectId: number,
+    id: string,
+  ): Promise<AutomationChannelInstance | undefined> {
+    return (await this.instances(projectId)).find((entry) => entry.id === id);
+  }
+  public async adapter(projectId: number, id: string) {
+    const instance = await this.instance(projectId, id);
+    const adapter = instance ? this.adapters.get(instance.kind) : undefined;
+    if (
+      !instance ||
+      !adapter ||
+      !(await this.available(projectId, instance.kind, adapter))
+    )
       throw new AlephaError("Automation channel is not configured");
-    return adapter;
+    return { ...adapter, kind: instance.kind, instance };
   }
   protected async available(
     projectId: number,
-    key: string,
+    kind: string,
     adapter: AutomationChannelAdapter,
   ) {
-    const channel = this.channels.find(key);
+    const channel = this.channels.find(kind);
     if (
       !channel ||
       channel.addressable !== adapter.addressable ||
@@ -71,17 +116,26 @@ export class AutomationChannels {
       return (
         template?.options.category ===
           (category === "reminders" ? "tasks" : category) &&
-        !!(template.options as unknown as Record<string, unknown>)[key]
+        !!(template.options as unknown as Record<string, unknown>)[kind]
       );
     });
   }
+  /**
+   * Every channel instance of the project, as the gallery, the editor and
+   * the dependency checks read them: `key` is the instance id.
+   */
   public async all(projectId: number) {
     const result = await Promise.all(
-      [...this.adapters].map(async ([key, adapter]) => {
-        const available = await this.available(projectId, key, adapter);
+      (await this.instances(projectId)).map(async (instance) => {
+        const adapter = this.adapters.get(instance.kind);
+        const available =
+          !!adapter &&
+          (await this.available(projectId, instance.kind, adapter));
         return {
-          key,
-          addressable: adapter.addressable,
+          key: instance.id,
+          kind: instance.kind,
+          name: instance.name,
+          addressable: adapter?.addressable ?? false,
           available,
           ...(!available
             ? {
@@ -89,7 +143,7 @@ export class AutomationChannels {
                   "Channel transport, template or destination is not configured",
               }
             : {}),
-          required: adapter.required,
+          required: adapter?.required ?? false,
         };
       }),
     );
@@ -98,6 +152,21 @@ export class AutomationChannels {
       .map(({ required: _required, ...entry }) => entry);
   }
 }
+
+/**
+ * One channel a project can notify (#Q3613): a built-in (`inbox`, `email`)
+ * or one it configured, such as a Discord channel. `id` is what a rule's
+ * notify names, at most 64 characters; `kind` picks the adapter.
+ */
+export interface AutomationChannelInstance {
+  id: string;
+  kind: string;
+  name: string;
+}
+
+export type AutomationChannelInstanceSource = (
+  projectId: number,
+) => Promise<AutomationChannelInstance[]>;
 
 export interface AutomationChannelAdapter {
   required?: boolean;

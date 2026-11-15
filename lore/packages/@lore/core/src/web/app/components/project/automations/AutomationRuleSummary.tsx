@@ -1,6 +1,7 @@
 import { useI18n } from "alepha/react/i18n";
 
 import type { AutomationResource } from "../../../../../api/schemas/automationResourceSchema.ts";
+import { AutomationRuleChannels } from "../../../../../api/schemas/AutomationRuleChannels.ts";
 import { AutomationTemplateTokens } from "../../../../../api/schemas/AutomationTemplateTokens.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
@@ -152,7 +153,9 @@ const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
                         action.audience
                           ? tr("automation.adoption.roster")
                           : named(action.recipient, members),
-                        channel(action.channel),
+                        AutomationRuleChannels.of(action)
+                          .map((name) => channel(name))
+                          .join(", "),
                       ],
                     })
                   : action.kind === "appendFolio"
