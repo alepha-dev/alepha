@@ -481,6 +481,8 @@ export default {
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.move-group-refused":
     "Un dossier ne peut pas aller dans lui-même : rien n’a été déplacé.",
+  "folios.editor.tree.move-group-pending": "Déplacement de $1 éléments…",
+  "folios.editor.tree.move-group-done": "$1 déplacés.",
   "folios.editor.tree.new-text": "Nouveau doc",
   "folios.editor.tree.new-table": "Nouveau tableau",
   "folios.editor.tree.new-calendar": "Nouveau calendrier",

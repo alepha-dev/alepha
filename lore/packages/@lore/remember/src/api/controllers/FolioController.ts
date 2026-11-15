@@ -48,6 +48,7 @@ import {
 } from "../schemas/folioTreeEntrySchema.ts";
 import { FolioAttachmentService } from "../services/FolioAttachmentService.ts";
 import { FolioDeletion } from "../services/FolioDeletion.ts";
+import { FolioDirectoryService } from "../services/FolioDirectoryService.ts";
 import {
   FolioHistoryService,
   type RevisionPlan,
@@ -103,6 +104,7 @@ export class FolioController {
   protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly deletion = $inject(FolioDeletion);
   protected readonly trash = $inject(FolioTrashService);
+  protected readonly directoryService = $inject(FolioDirectoryService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
   protected readonly crypto = $inject(CryptoProvider);
@@ -1541,6 +1543,132 @@ export class FolioController {
         ...stamped,
         revisionsChanged: purged || appended?.created === true,
       };
+    },
+  });
+
+  /**
+   * Move a selection of folios and directories into one directory, or the
+   * root, in one request (#Q3697): the tree's multi-row drop used to send
+   * one full folio update per row, each a heavy round trip.
+   *
+   * A folio's move is its name claimed in the new directory (suffixed when
+   * taken, as a single move does) and its row written; it records no
+   * revision and syncs no link, since neither the body nor its links moved.
+   * A directory moves through `FolioDirectoryService.move`, which refuses
+   * one dropped into itself or anything under it. Rows already in the
+   * target are left alone. A refused row stops the request: the rows before
+   * it have moved, and the answer is the refusal.
+   */
+  moveFolioItems = $action({
+    method: "POST",
+    path: "/folios/move",
+    use: [this.ownsProjectFromBodyForKnowledge("folio:write")],
+    description:
+      "Move several folios and directories into one directory, or the project root, in one request.",
+    schema: {
+      body: z.object({
+        projectId: z.integer(),
+        folioIds: z.array(z.uuid()).max(500),
+        directoryIds: z.array(z.uuid()).max(500),
+        /**
+         * The directory they land in; `null` is the project root.
+         */
+        parentId: z.uuid().nullable(),
+      }),
+      response: z.object({
+        folios: z.array(
+          z.object({
+            id: z.uuid(),
+            title: z.string(),
+            directoryId: z.uuid().optional(),
+          }),
+        ),
+        directories: z.array(
+          z.object({
+            id: z.uuid(),
+            name: z.string(),
+            parentId: z.uuid().optional(),
+          }),
+        ),
+      }),
+    },
+    handler: async ({ body, user }) => {
+      const parentId = await this.resolveDirectoryId(
+        body.parentId,
+        body.projectId,
+      );
+      const moved = {
+        folios: [] as Array<{
+          id: string;
+          title: string;
+          directoryId?: string;
+        }>,
+        directories: [] as Array<{
+          id: string;
+          name: string;
+          parentId?: string;
+        }>,
+      };
+      if (body.directoryIds.length) {
+        const owned = await this.directories.findMany({
+          where: {
+            id: { inArray: body.directoryIds },
+            projectId: { eq: body.projectId },
+          },
+        });
+        for (const directory of owned) {
+          if (directory.parentId === parentId) continue;
+          const after = await this.directoryService.move(
+            directory.id,
+            parentId,
+          );
+          moved.directories.push({
+            id: after.id,
+            name: after.name,
+            parentId: after.parentId ?? undefined,
+          });
+        }
+      }
+      const folios = body.folioIds.length
+        ? await this.folios.findMany({
+            where: {
+              id: { inArray: body.folioIds },
+              projectId: { eq: body.projectId },
+            },
+          })
+        : [];
+      for (const existing of folios) {
+        if (existing.directoryId === parentId) continue;
+        const title = await this.reserveTitle(
+          existing.id,
+          existing,
+          existing.title,
+          parentId ?? null,
+        );
+        const updated: Folio = {
+          ...existing,
+          title,
+          directoryId: (parentId ?? null) as string | undefined,
+          trashedAt: ((await this.trash.trashedAtFor(
+            parentId,
+            existing.trashedAt,
+          )) ?? undefined) as string | undefined,
+        };
+        await this.automationMutations.save(
+          {
+            repository: this.automationRows,
+            entity: updated,
+            audit: {
+              type: "folio",
+              action: "update",
+              ...this.audits.resource("folio", updated, user, {}),
+            },
+          },
+          () => this.folios.save(updated),
+        );
+        moved.folios.push({ id: updated.id, title, directoryId: parentId });
+      }
+      return moved;
     },
   });
 
