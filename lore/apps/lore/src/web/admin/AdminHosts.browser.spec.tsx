@@ -18,6 +18,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import AdminHostAssignDialog from "./AdminHostAssignDialog.tsx";
+import AdminHostRenameDialog from "./AdminHostRenameDialog.tsx";
 import { AdminHosts } from "./AdminHosts.tsx";
 
 /**
@@ -26,6 +27,7 @@ import { AdminHosts } from "./AdminHosts.tsx";
 class AdminLinks extends LinkProvider {
   public calls: Array<{ action: string; request: unknown }> = [];
   public rows: AdminHostResource[] = [];
+  public refuseRename?: string;
 
   override client(): any {
     return new Proxy(
@@ -53,6 +55,11 @@ class AdminLinks extends LinkProvider {
                   ],
                   page: { number: 0, size: 100, totalElements: 2 },
                 };
+              }
+              if (action === "adminRenameHost") {
+                if (this.refuseRename) throw new Error(this.refuseRename);
+                const body = (request as { body: { slug: string } }).body;
+                return { slug: body.slug };
               }
               if (action === "assignHost") {
                 return { project: { id: 9, title: "Shop" }, loans: [] };
@@ -153,6 +160,55 @@ describe("AdminHosts", () => {
       (fetched.at(-1)!.request as { query: Record<string, unknown> }).query,
     ).toMatchObject({ homeless: true });
     window.localStorage.removeItem("lore.admin.hosts.filters");
+  });
+
+  /**
+   * The admin's rename, as moderation (#Q3664): the dialog opens on the
+   * host's names, sends both, and keeps a refusal in place.
+   */
+  it("renames a host from its current names, and shows a refusal in place", async ({
+    expect,
+  }) => {
+    const links = await boot();
+    let renamed = 0;
+    const host = { ...HOMELESS, label: "Loose box" };
+    render(
+      <AlephaContext.Provider value={alepha!}>
+        <AdminHostRenameDialog
+          host={host}
+          onOpenChange={() => {}}
+          onRenamed={() => {
+            renamed += 1;
+          }}
+        />
+      </AlephaContext.Provider>,
+    );
+
+    const slug = (await screen.findByTestId(
+      "admin-host-rename-slug",
+    )) as HTMLInputElement;
+    expect(slug.value).toBe("loose");
+    expect(
+      (screen.getByTestId("admin-host-rename-label") as HTMLInputElement).value,
+    ).toBe("Loose box");
+
+    links.refuseRename = 'Shop already has a host named "taken"';
+    fireEvent.change(slug, { target: { value: "taken" } });
+    fireEvent.click(screen.getByTestId("admin-host-rename-submit"));
+    expect(
+      (await screen.findByTestId("admin-host-rename-error")).textContent,
+    ).toContain("already has a host");
+    expect(renamed).toBe(0);
+
+    links.refuseRename = undefined;
+    fireEvent.change(slug, { target: { value: "paris-1" } });
+    fireEvent.click(screen.getByTestId("admin-host-rename-submit"));
+    await waitFor(() => expect(renamed).toBe(1));
+    const calls = links.calls.filter((it) => it.action === "adminRenameHost");
+    expect(calls.at(-1)?.request).toEqual({
+      params: { id: HOMELESS.id },
+      body: { slug: "paris-1", label: "Loose box" },
+    });
   });
 
   it("preselects the project of the oldest loan, and assigns there", async ({

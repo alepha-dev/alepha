@@ -331,6 +331,8 @@ export class LoreAudits {
       // (#Q3280).
       "move",
       "assign",
+      // A host renamed by the instance admin, as moderation (#Q3664).
+      "rename",
     ],
     retentionDays: 730,
   });
