@@ -86,6 +86,8 @@ export default {
   "automation.event.deploySucceeded": "Deployment succeeded",
   "automation.event.hostCredentialInvalid": "Host token invalid",
   "automation.event.hostExpired": "Host past its TTL",
+  "automation.event.hostOffline": "Host offline",
+  "automation.event.hostOnline": "Host back online",
   "automation.event.monitorDown": "Monitor down",
   "automation.event.monitorUp": "Monitor recovered",
   "automation.event.questCompleted": "Quest completed",
@@ -154,12 +156,12 @@ export default {
     "Notify one member when a monitor recovers from an outage, with how long it lasted.",
   "hosts.subscription.label": "Notify me when this host needs attention",
   "hosts.subscription.description":
-    "A rule of your own will notify you when this host passes its TTL or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
+    "A rule of your own will notify you when this host passes its TTL, goes offline or comes back, or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
   "hosts.subscription.offDescription":
     "You will no longer be notified about this host.",
   "hosts.subscription.allLabel": "Notify me when any host needs attention",
   "hosts.subscription.allDescription":
-    "A rule of your own will notify you when any host of this project passes its TTL or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
+    "A rule of your own will notify you when any host of this project passes its TTL, goes offline or comes back, or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
   "hosts.subscription.allOffDescription":
     "You will no longer be notified about this project's hosts.",
   "automation.preset.host-credential-invalid.title": "Host token invalid",
@@ -168,6 +170,12 @@ export default {
   "automation.preset.host-expired.title": "Host past its TTL",
   "automation.preset.host-expired.description":
     "Notify one member when a throwaway host passes its time to live. Lore stops and deletes nothing.",
+  "automation.preset.host-offline.title": "Host offline",
+  "automation.preset.host-offline.description":
+    "Notify one member when a Bay host has stopped reporting for five minutes. A restart that reconnects sooner raises nothing.",
+  "automation.preset.host-online.title": "Host back online",
+  "automation.preset.host-online.description":
+    "Notify one member when a Bay host reported offline reconnects.",
   "project.settings.tab.automationChannels": "Channels",
   "automation.channels.title": "Channels",
   "automation.channels.description":
@@ -4166,6 +4174,8 @@ export default {
   "automation.source.deploy.succeeded": "Deployment succeeded",
   "automation.source.host.credential_invalid": "Host token invalid",
   "automation.source.host.expired": "Host past its TTL",
+  "automation.source.host.offline": "Host offline",
+  "automation.source.host.online": "Host back online",
   "automation.source.monitor.down": "Monitor down",
   "automation.source.monitor.up": "Monitor recovered",
   "automation.source.quests.open": "Open quests, one run each",

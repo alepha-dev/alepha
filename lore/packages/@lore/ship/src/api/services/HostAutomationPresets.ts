@@ -6,8 +6,18 @@ import { AutomationVocabulary, type AutomationRule } from "@lore/core/schemas";
 import { $inject } from "alepha";
 
 /**
+ * The `host.*` events a preset listens to.
+ */
+type HostAlertEvent =
+  | "host.credential_invalid"
+  | "host.expired"
+  | "host.offline"
+  | "host.online";
+
+/**
  * Host alert presets (#Q3627): **Host token invalid** and **Host past its
- * TTL**, which replace `HostNotifications`. `host` is optional: set, one
+ * TTL**, which replace `HostNotifications`, and **Host offline** with its
+ * **Host back online** (#Q3733). `host` is optional: set, one
  * host (that host's bell binds it); unset, every host of the project.
  */
 export class HostAutomationPresets {
@@ -34,12 +44,32 @@ export class HostAutomationPresets {
         text: "{{project}}: host {{host}} passed its TTL ({{since}}). Delete it, then delete the server with its provider, or extend it.\n{{url}}",
       },
     );
+    this.register(
+      "host-offline",
+      "Host offline",
+      "Notify one member when a Bay host has stopped reporting for five minutes. A restart that reconnects sooner raises nothing.",
+      "host.offline",
+      {
+        title: "{{host}} is offline",
+        text: "{{project}}: host {{host}} stopped reporting ({{since}}). Its apps may be down, and deploys to it wait until it reconnects.\n{{url}}",
+      },
+    );
+    this.register(
+      "host-online",
+      "Host back online",
+      "Notify one member when a Bay host reported offline reconnects.",
+      "host.online",
+      {
+        title: "{{host}} is back online",
+        text: "{{project}}: host {{host}}, offline since {{since}}, has reconnected.\n{{url}}",
+      },
+    );
   }
   protected register(
     key: string,
     title: string,
     description: string,
-    event: "host.credential_invalid" | "host.expired",
+    event: HostAlertEvent,
     message: { title: string; text: string },
   ) {
     const source = this.vocabulary.find(event)!;
@@ -77,7 +107,7 @@ export class HostAutomationPresets {
     );
   }
   protected build(
-    event: "host.credential_invalid" | "host.expired",
+    event: HostAlertEvent,
     message: { title: string; text: string },
     values: AutomationPresetValues,
   ): AutomationRule {

@@ -239,7 +239,12 @@ const ProjectSettingsHostsPage = () => {
           // its own, so this list is where its token alert is subscribed to.
           toolbar={
             <AutomationSubscriptionBell
-              presets={["host-credential-invalid", "host-expired"]}
+              presets={[
+                "host-credential-invalid",
+                "host-expired",
+                "host-offline",
+                "host-online",
+              ]}
               label={tr("hosts.subscription.allLabel")}
               description={tr("hosts.subscription.allDescription")}
               offDescription={tr("hosts.subscription.allOffDescription")}

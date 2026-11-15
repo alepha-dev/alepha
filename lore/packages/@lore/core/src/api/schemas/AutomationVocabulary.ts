@@ -101,9 +101,15 @@ export class AutomationVocabulary {
       );
     }
     // Hosts (#Q3627): a Cloudflare token the nightly check found invalid,
-    // and a throwaway host past its TTL. Raised in the host's home project.
+    // and a throwaway host past its TTL; a Bay host gone past its grace period,
+    // and its return (#Q3733). Raised in the host's home project.
     // Safe fields only: never the credential.
-    for (const key of ["host.credential_invalid", "host.expired"]) {
+    for (const key of [
+      "host.credential_invalid",
+      "host.expired",
+      "host.offline",
+      "host.online",
+    ]) {
       this.event(
         key,
         { host_id: "text", host: "text", kind: "text", since: "text" },

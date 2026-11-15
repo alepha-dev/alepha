@@ -34,6 +34,7 @@ import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
 import { HostCredentialJobs } from "./jobs/HostCredentialJobs.ts";
 import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
+import { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 import { ProjectErrorJobs } from "./jobs/ProjectErrorJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
@@ -182,6 +183,7 @@ export const LoreShipApi = $module({
     HostCommandJobs,
     HostCredentialJobs,
     HostExpiryJobs,
+    HostOfflineJobs,
     QualityService,
     ArtifactTarReader,
     ArtifactDetailService,
@@ -323,6 +325,7 @@ export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
 export { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
+export { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 export { StackBundleReader } from "./services/StackBundleReader.ts";
 export { StackComposeParser } from "./services/StackComposeParser.ts";
 export { StackConsoleService } from "./services/StackConsoleService.ts";

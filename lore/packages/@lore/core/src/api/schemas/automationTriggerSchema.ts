@@ -15,6 +15,8 @@ export const automationTriggerSchema = z.union([
         "monitor.up",
         "host.credential_invalid",
         "host.expired",
+        "host.offline",
+        "host.online",
       ]),
       app: z.string().max(255).optional(),
       /**

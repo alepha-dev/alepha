@@ -21,6 +21,8 @@ export const useAutomationLabels = () => {
     "monitor.up": tr("automation.event.monitorUp"),
     "host.credential_invalid": tr("automation.event.hostCredentialInvalid"),
     "host.expired": tr("automation.event.hostExpired"),
+    "host.offline": tr("automation.event.hostOffline"),
+    "host.online": tr("automation.event.hostOnline"),
   };
   const states: Record<AutomationResource["displayState"], string> = {
     disabled: tr("automation.state.disabled"),

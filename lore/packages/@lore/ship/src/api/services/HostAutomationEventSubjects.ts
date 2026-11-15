@@ -5,10 +5,13 @@ import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { hosts } from "../entities/hosts.ts";
-import { HostAutomationFields } from "./HostAutomationFields.ts";
+import {
+  type HostAlertKind,
+  HostAutomationFields,
+} from "./HostAutomationFields.ts";
 
 /**
- * The subject a `host.*` rule is previewed against (#Q3627): a host of the
+ * The subject a `host.*` rule is previewed against (#Q3627, #Q3733): a host of the
  * project, by id.
  */
 export class HostAutomationEventSubjects {
@@ -17,7 +20,12 @@ export class HostAutomationEventSubjects {
   protected readonly hosts = $repository(hosts);
   protected readonly fields = $inject(HostAutomationFields);
   constructor() {
-    for (const kind of ["credential_invalid", "expired"] as const)
+    for (const kind of [
+      "credential_invalid",
+      "expired",
+      "offline",
+      "online",
+    ] as const)
       this.registry.register(`host.${kind}`, (projectId, id) =>
         this.subject(projectId, id, kind),
       );
@@ -25,7 +33,7 @@ export class HostAutomationEventSubjects {
   protected async subject(
     projectId: number,
     id: string | number,
-    kind: "credential_invalid" | "expired",
+    kind: HostAlertKind,
   ) {
     if (typeof id !== "string")
       throw new BadRequestError("Host subjects require a host UUID");
@@ -34,7 +42,9 @@ export class HostAutomationEventSubjects {
     const since =
       kind === "expired"
         ? (host.expiresAt ?? host.updatedAt)
-        : (host.credentialCheckedAt ?? host.updatedAt);
+        : kind === "credential_invalid"
+          ? (host.credentialCheckedAt ?? host.updatedAt)
+          : (host.offlineSince ?? host.disconnectedAt ?? host.updatedAt);
     return this.fields.build(project, host, kind, since);
   }
 }
