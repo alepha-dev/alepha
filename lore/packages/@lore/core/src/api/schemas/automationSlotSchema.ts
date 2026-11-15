@@ -9,7 +9,7 @@ export const automationSlotSchema = z
     required: z.boolean(),
     template: z.boolean().optional(),
     bindable: z.boolean().optional(),
-    resource: z.enum(["app", "quest", "area", "monitor"]).optional(),
+    resource: z.enum(["app", "quest", "area", "monitor", "host"]).optional(),
     values: z.array(automationFilterValueSchema).max(32).optional(),
     default: automationFilterValueSchema.optional(),
     min: z.number().optional(),

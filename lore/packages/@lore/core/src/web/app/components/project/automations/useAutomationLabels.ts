@@ -19,6 +19,8 @@ export const useAutomationLabels = () => {
     "quest.completed": tr("automation.event.questCompleted"),
     "monitor.down": tr("automation.event.monitorDown"),
     "monitor.up": tr("automation.event.monitorUp"),
+    "host.credential_invalid": tr("automation.event.hostCredentialInvalid"),
+    "host.expired": tr("automation.event.hostExpired"),
   };
   const states: Record<AutomationResource["displayState"], string> = {
     disabled: tr("automation.state.disabled"),

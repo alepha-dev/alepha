@@ -431,33 +431,6 @@ describe("ProjectHostController, detaching", () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("counts the hosts with no home an account takes with it, and their loans", async ({
-    expect,
-  }) => {
-    const ada = await createUser(ctx, "ada");
-    const first = await createProject(ctx, ada);
-    const second = await createProject(ctx, ada);
-    // Homed: outlives the account, not counted.
-    await mintHost(ctx, ada, "ovh-1");
-    const loose = await ctx.repos.hosts.create({
-      ownerUserId: ada.id,
-      createdBy: ada.id,
-      type: "bay",
-      slug: "loose",
-    });
-    for (const project of [first, second]) {
-      await ctx.repos.grants.create({
-        hostId: loose.id,
-        projectId: project.id,
-      });
-    }
-
-    expect(await ctx.service.countOwned(ada.id)).toEqual({
-      hosts: 1,
-      projects: 2,
-    });
-  });
-
   /**
    * Only the host half is asserted here. A project soft-deletes, so its
    * grants survive until `ProjectDeletionService` reclaims the row, and the

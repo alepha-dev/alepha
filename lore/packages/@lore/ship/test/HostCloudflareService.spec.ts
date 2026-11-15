@@ -14,7 +14,7 @@ import {
   HostCloudflareService,
 } from "../src/api/index.ts";
 import { type Host, hosts } from "../src/schemas/index.ts";
-import { DeployTestEntities } from "../src/testing/index.ts";
+import { createTestProject, DeployTestEntities } from "../src/testing/index.ts";
 import { MemoryCloudflareProbeService } from "../src/testing/index.ts";
 
 class HostRepositories {
@@ -253,6 +253,7 @@ describe("HostCloudflareService, recheck and status", () => {
       ownerUserId: (
         await ctx.alepha.inject(DeployTestEntities).users.create({})
       ).id,
+      projectId: (await createTestProject(ctx.alepha)).id,
       type: "cloudflare",
       slug,
       accountId: ACCOUNT,

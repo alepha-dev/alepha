@@ -24,11 +24,10 @@ export interface AdminHostAssignDialogProps {
 }
 
 /**
- * Give a host a home project (#Q3280, #Q3281): the step a host the
- * migration could not place needs, normally to the project it is lent to.
- * The projects it is lent to come first, the one of its oldest loan
- * preselected for a host with no home; the dialog says what assigning
- * does, and shows a refusal (Apps off, a slug already used) in place.
+ * Move a host to another home project (#Q3280, #Q3281), normally to a
+ * project it is lent to. The projects it is lent to come first, the one of
+ * its oldest loan preselected; the dialog says what assigning does, and
+ * shows a refusal (Apps off, a slug already used) in place.
  *
  * Literal English, like the rest of the Lore admin.
  */
@@ -67,7 +66,11 @@ const AdminHostAssignDialog = (props: AdminHostAssignDialogProps) => {
   // The oldest loan, for a host with no home: where it is normally
   // assigned.
   const [initialValues] = useState(() => ({
-    projectId: host && !host.project && loans[0] ? String(loans[0].id) : "",
+    // The oldest loan that is not already its home (#Q3627: every host has
+    // one, so this is always a move).
+    projectId: String(
+      loans.find((loan) => loan.id !== host?.project?.id)?.id ?? "",
+    ),
   }));
   const form = useForm({
     schema: adminHostAssignFormSchema,

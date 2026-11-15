@@ -49,10 +49,6 @@ export class AdminHostController {
     schema: {
       query: pageQuerySchema.extend({
         search: z.string().optional(),
-        /**
-         * Only the hosts with no home project: the ones to assign.
-         */
-        homeless: z.boolean().optional(),
       }),
       response: db.page(adminHostResourceSchema),
     },
@@ -60,9 +56,6 @@ export class AdminHostController {
       const where = this.hosts.createQueryWhere();
       if (query.search) {
         where.slug = { ilike: `%${query.search}%` };
-      }
-      if (query.homeless) {
-        where.projectId = { isNull: true };
       }
       query.sort ??= "-createdAt";
 
@@ -96,9 +89,7 @@ export class AdminHostController {
       const projectIds = [
         ...new Set([
           ...grants.map((grant) => grant.projectId),
-          ...result.content.flatMap((host) =>
-            host.projectId == null ? [] : [host.projectId],
-          ),
+          ...result.content.map((host) => host.projectId),
         ]),
       ];
       const named = projectIds.length
@@ -124,8 +115,7 @@ export class AdminHostController {
       return {
         ...result,
         content: result.content.map((host) => {
-          const home =
-            host.projectId == null ? undefined : projectOf(host.projectId);
+          const home = projectOf(host.projectId);
           const creatorName = host.createdBy
             ? names.get(host.createdBy)
             : undefined;

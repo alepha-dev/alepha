@@ -138,37 +138,6 @@ describe("AdminHostController", () => {
     ).toHaveLength(1);
   });
 
-  it("filters the hosts with no home, naming their creator and their loans", async ({
-    expect,
-  }) => {
-    const dan = await createUser(ctx, "dan");
-    const project = await createTestProject(ctx.alepha);
-    await createTestHost(ctx.alepha, dan, { slug: "homed" });
-    // What the migration leaves for a host lent only to somebody else's
-    // project: no home, anchored on its creator.
-    const loose = await ctx.repos.hosts.create({
-      ownerUserId: dan.id,
-      createdBy: dan.id,
-      type: "bay",
-      slug: "loose",
-    });
-    await ctx.repos.grants.create({
-      hostId: loose.id,
-      projectId: project.id,
-    });
-
-    const result = await ctx.admin.findHosts(
-      { query: { ...page, homeless: true } },
-      { user: adminToken() },
-    );
-    expect(result.content.map((item) => item.slug)).toEqual(["loose"]);
-    expect(result.content[0]).toMatchObject({
-      creator: { id: dan.id, name: "dan" },
-      loans: [{ id: project.id }],
-    });
-    expect(result.content[0]).not.toHaveProperty("project");
-  });
-
   it("narrows by slug", async ({ expect }) => {
     const alice = await createUser(ctx, "alice");
     await createTestHost(ctx.alepha, alice, { slug: "ovh-1" });

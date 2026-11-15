@@ -73,10 +73,12 @@ class AdminLinks extends LinkProvider {
   }
 }
 
-const HOMELESS: AdminHostResource = {
+const LOOSE: AdminHostResource = {
   id: "00000000-0000-4000-8000-0000000000e1",
   slug: "loose",
   type: "bay",
+  // Every host has a home since #Q3627.
+  project: { id: 2, title: "Ops" },
   online: false,
   deployAllowed: true,
   createdAt: "2026-09-01T10:00:00.000Z",
@@ -88,9 +90,9 @@ const HOMELESS: AdminHostResource = {
 };
 
 /**
- * The admin's hosts page (#Q3281): where a host the migration could not
- * home gets one. Its row says it has no home, who created it and where it is
- * lent, and the assign dialog offers the project of its oldest loan first.
+ * The admin's hosts page (#Q3281): every host, its home, who created it and
+ * where it is lent, and the assign dialog that moves it, offering the project
+ * of its oldest loan first.
  */
 describe("AdminHosts", () => {
   beforeAll(() => {
@@ -117,11 +119,9 @@ describe("AdminHosts", () => {
     return alepha.inject(LinkProvider) as AdminLinks;
   };
 
-  it("names a homeless host's creator and its loans, and says it has no home", async ({
-    expect,
-  }) => {
+  it("names a host's home, its creator and its loans", async ({ expect }) => {
     const links = await boot();
-    links.rows = [HOMELESS];
+    links.rows = [LOOSE];
     render(
       <AlephaContext.Provider value={alepha!}>
         <DialogProvider>
@@ -131,35 +131,9 @@ describe("AdminHosts", () => {
     );
 
     await waitFor(() => expect(screen.getByText("loose")).toBeTruthy());
-    expect(screen.getByText("No home")).toBeTruthy();
+    expect(screen.queryByText("No home")).toBeNull();
     expect(screen.getByText("Dan")).toBeTruthy();
     expect(screen.getByText("Shop, Blog")).toBeTruthy();
-  });
-
-  it("asks the server for the hosts with no home when the filter says so", async ({
-    expect,
-  }) => {
-    // The filter as the table restores it: chosen once, persisted.
-    window.localStorage.setItem(
-      "lore.admin.hosts.filters",
-      JSON.stringify({ home: ["none"] }),
-    );
-    const links = await boot();
-    links.rows = [HOMELESS];
-    render(
-      <AlephaContext.Provider value={alepha!}>
-        <DialogProvider>
-          <AdminHosts />
-        </DialogProvider>
-      </AlephaContext.Provider>,
-    );
-
-    await waitFor(() => expect(screen.getByText("loose")).toBeTruthy());
-    const fetched = links.calls.filter((it) => it.action === "findHosts");
-    expect(
-      (fetched.at(-1)!.request as { query: Record<string, unknown> }).query,
-    ).toMatchObject({ homeless: true });
-    window.localStorage.removeItem("lore.admin.hosts.filters");
   });
 
   /**
@@ -171,7 +145,7 @@ describe("AdminHosts", () => {
   }) => {
     const links = await boot();
     let renamed = 0;
-    const host = { ...HOMELESS, label: "Loose box" };
+    const host = { ...LOOSE, label: "Loose box" };
     render(
       <AlephaContext.Provider value={alepha!}>
         <AdminHostRenameDialog
@@ -206,7 +180,7 @@ describe("AdminHosts", () => {
     await waitFor(() => expect(renamed).toBe(1));
     const calls = links.calls.filter((it) => it.action === "adminRenameHost");
     expect(calls.at(-1)?.request).toEqual({
-      params: { id: HOMELESS.id },
+      params: { id: LOOSE.id },
       body: { slug: "paris-1", label: "Loose box" },
     });
   });
@@ -219,7 +193,7 @@ describe("AdminHosts", () => {
     render(
       <AlephaContext.Provider value={alepha!}>
         <AdminHostAssignDialog
-          host={HOMELESS}
+          host={LOOSE}
           onOpenChange={() => {}}
           onAssigned={() => {
             assigned = true;
@@ -236,7 +210,7 @@ describe("AdminHosts", () => {
     await waitFor(() => expect(assigned).toBe(true));
     const call = links.calls.find((it) => it.action === "assignHost");
     expect(call?.request).toEqual({
-      params: { id: HOMELESS.id },
+      params: { id: LOOSE.id },
       body: { projectId: 9 },
     });
   });
