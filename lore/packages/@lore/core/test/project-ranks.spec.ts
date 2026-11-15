@@ -623,7 +623,8 @@ describe("Lore's rank resource", () => {
     ).rejects.toThrow("does not have");
 
     // And when the rank really is the reason, the refusal names the RANK, the
-    // PERMISSION and the FIX. Three layers can refuse a call and the fixes are
+    // PERMISSION and the FIX. A viewer is read-only since #Q3661, so it gets
+    // the read-only wording of #Q3647. Three layers can refuse a call and the fixes are
     // different: turn the capability on (Settings), ask the owner for a
     // better rank, or nothing the owner can do at all. A message that only
     // said "forbidden" would leave an agent with nowhere to go.
@@ -637,7 +638,7 @@ describe("Lore's rank resource", () => {
         },
       ),
     ).rejects.toThrow(
-      "Your rank (Viewer) does not grant member:manage. Ask the project owner.",
+      "You are read-only in this project: your rank (viewer) grants reads only, not member:manage. Ask a project admin to move you to another rank.",
     );
   });
 });
