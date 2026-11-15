@@ -1135,7 +1135,7 @@ export const docsCorpus: DocsSection[] = [
     section: "Where uptime shows",
     url: "https://alepha.dev/lore/docs/ship-healthchecks#where-uptime-shows",
     capability: "ship",
-    text: "The **Apps** page is the overview: its **Uptime** column shows each copy's\nuptime over the last 24 hours and a strip of its recent checks, and a hover\ntells more. While its monitor is on, an app's **Overview** tab shows it in a\ncard, with a link to the monitor's page.",
+    text: "The **Apps** page is the overview: its **Uptime** column shows each copy's\nuptime over the last 24 hours and a strip of its recent checks, and a hover\ntells more. While its monitor is on, an app has an **Uptime** tab, and its\n**Overview** tab shows the monitor in a card that links there.",
   },
   {
     guide: "Healthchecks",
@@ -1163,14 +1163,14 @@ export const docsCorpus: DocsSection[] = [
     section: "Reading a monitor",
     url: "https://alepha.dev/lore/docs/ship-healthchecks#reading-a-monitor",
     capability: "ship",
-    text: "Opening a monitor from its app shows, over the **Window** you pick (24 hours,\n7 days or 30 days):\n\n- **Uptime** over 24 hours, 7 days and 30 days, from hourly totals.\n- **Mean latency**, over successful checks only. A gap means no successful\n  sample, never zero.\n- **Recent checks**: the last 50, each with its result.\n- **Incident history**: the latest 100, with exact durations.\n- The certificate's expiry, where one was seen.\n\nLore keeps the newest 100 individual checks per monitor, and hourly totals for\nthe charts. Where those totals are sampled, the page says the numbers are\nestimated.",
+    text: "An app's **Uptime** tab shows its monitor, over the **Window** you pick (24\nhours, 7 days or 30 days). It reads and watches; the check is changed in the\napp's settings.\n\n- **Uptime** over 24 hours, 7 days and 30 days, from hourly totals.\n- **Mean latency**, over successful checks only. A gap means no successful\n  sample, never zero.\n- **Recent checks**: the last 50, each with its result.\n- **Incident history**: the latest 100, with exact durations.\n- The certificate's expiry, where one was seen.\n\nLore keeps the newest 100 individual checks per monitor, and hourly totals for\nthe charts. Where those totals are sampled, the page says the numbers are\nestimated.",
   },
   {
     guide: "Healthchecks",
     section: "Changing and deleting",
     url: "https://alepha.dev/lore/docs/ship-healthchecks#changing-and-deleting",
     capability: "ship",
-    text: "The app's **Settings ▸ Monitor** turns a monitor off and on, and has\n**Edit**, and **Rotate push URL** for a push monitor. A monitor's page also has\n**Delete**.\n\n**Delete** removes the monitor, its checks and its incidents. The hourly totals\nare kept, and an error still open stays for you to resolve. Deleting an app\ndeletes its monitor.\n\nReading monitors needs the `app:read` permission, which the default Member rank\nholds. Creating, editing, pausing and deleting them needs `app:manage`, which\nthe owner holds and a [rank](/lore/docs/project-members) can be given.\n\nWith the **Monitor apps** option off, no check runs, every push is refused and\nmonitors cannot be changed, but nothing is deleted.",
+    text: "The app's **Settings ▸ Monitor** turns a monitor off and on, and has\n**Edit**, and **Rotate push URL** for a push monitor. Turning it off hides the\n**Uptime** tab and the Overview card, and keeps the monitor and its history.\n\nDeleting a monitor (`lore monitor delete`, or `monitor_delete` from an agent)\nremoves it, its checks and its incidents. The hourly totals are kept, and an\nerror still open stays for you to resolve. Deleting an app deletes its\nmonitor.\n\nReading monitors needs the `app:read` permission, which the default Member rank\nholds. Creating, editing, pausing and deleting them needs `app:manage`, which\nthe owner holds and a [rank](/lore/docs/project-members) can be given.\n\nWith the **Monitor apps** option off, no check runs, every push is refused and\nmonitors cannot be changed, but nothing is deleted.",
   },
   {
     guide: "Healthchecks",

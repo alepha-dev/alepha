@@ -56,7 +56,7 @@ const AppDashboardUptime = (props: AppDashboardUptimeProps) => {
   return (
     <AppUptimeCard
       monitor={monitor}
-      href={`/${project.slug}/uptime/${monitor.id}`}
+      href={`/${project.slug}/apps/${props.instance.app}/${props.instance.env}/uptime`}
     />
   );
 };

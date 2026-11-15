@@ -46,6 +46,34 @@ export class UptimeMonitorOwners {
   }
 
   /**
+   * Each copy's monitor, by copy id: its HTTP check when it has one, else
+   * whichever it owns (the rule the web's `monitorOfInstance` follows).
+   */
+  public async ofCopies(
+    appInstanceIds: string[],
+  ): Promise<Map<string, { id: string; active: boolean }>> {
+    const chosen = new Map<string, Monitor>();
+    if (appInstanceIds.length > 0) {
+      const rows = await this.monitors.findMany({
+        where: { appInstanceId: { inArray: appInstanceIds } },
+      });
+      for (const row of rows) {
+        if (!row.appInstanceId) continue;
+        const held = chosen.get(row.appInstanceId);
+        if (!held || (row.kind === "http" && held.kind !== "http")) {
+          chosen.set(row.appInstanceId, row);
+        }
+      }
+    }
+    return new Map(
+      [...chosen].map(([copy, row]) => [
+        copy,
+        { id: row.id, active: row.active },
+      ]),
+    );
+  }
+
+  /**
    * Refuses clearing a copy's address while its HTTP monitor is on (#Q3684):
    * the check would be left with nothing to request.
    */

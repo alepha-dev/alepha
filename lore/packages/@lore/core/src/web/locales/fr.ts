@@ -2024,6 +2024,7 @@ export default {
   "apps.table.host": "Déploie sur",
   "apps.table.created": "Créée",
   "app.tab.overview": "Aperçu",
+  "app.tab.uptime": "Disponibilité",
   "app.tab.analytics": "Audience",
   "app.tab.vitals": "Vitals",
   "app.tab.errors": "Erreurs",
@@ -3852,9 +3853,6 @@ export default {
   "uptime.cell.noIncident": "Aucun enregistré",
   "uptime.latencyValue": "$1 ms",
   "uptime.edit": "Modifier",
-  "uptime.pause": "Suspendre",
-  "uptime.resume": "Reprendre",
-  "uptime.delete": "Supprimer",
   "uptime.rotate": "Renouveler l’URL",
   "uptime.editTitle": "Modifier le moniteur",
   "uptime.createTitle": "Ajouter un moniteur",
@@ -3884,9 +3882,6 @@ export default {
   "uptime.copied": "URL copiée",
   "uptime.done": "Terminé",
   "uptime.pushUrl": "URL de réception",
-  "uptime.deleteTitle": "Supprimer le moniteur ?",
-  "uptime.deleteDescription":
-    "Cette action supprime le moniteur et son historique.",
   "uptime.rotateDescription":
     "L’ancienne URL cessera de fonctionner. Copiez la nouvelle et mettez à jour la tâche qui l’appelle.",
   "uptime.windowLabel": "Période",

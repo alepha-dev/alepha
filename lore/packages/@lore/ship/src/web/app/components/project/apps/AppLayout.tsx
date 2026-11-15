@@ -82,6 +82,7 @@ const AppLayout = () => {
     ? appTabsFor(instance, {
         track: capabilityOption(project, "ship", "track"),
         deploy: capabilityOption(project, "ship", "deploy"),
+        uptime: capabilityOption(project, "ship", "uptime"),
       })
     : [];
   const slug = project?.slug;
