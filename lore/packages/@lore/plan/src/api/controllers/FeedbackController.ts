@@ -572,9 +572,20 @@ export class FeedbackController {
    * `feedback_attachment_get` MCP tool, which wraps the bytes into an MCP
    * `image` content block so an agent can actually see the screenshot. The
    * 5 MB upload cap bounds the base64 payload (~6.7 MB).
+   *
+   * ⚠️ Gated on `feedback:triage`, not `feedback:read` alone: an attachment
+   * is the end user's own data (a screenshot of their screen), read to
+   * triage the report, and it is the same rule the file route applies to
+   * this bucket (`WorkFileAccess`). Reading the report's text stays
+   * `feedback:read`.
    */
   getFeedbackAttachment = $action({
-    use: [$ownsProject({ param: "projectId", requires: "feedback:read" })],
+    use: [
+      $ownsProject({
+        param: "projectId",
+        requires: ["feedback:read", "feedback:triage"],
+      }),
+    ],
     method: "GET",
     path: "/projects/:projectId/feedback/:feedbackId/attachments/:attachmentId",
     schema: {

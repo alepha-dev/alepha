@@ -408,6 +408,7 @@ export { SearchPreview } from "./resources/SearchPreview.ts";
 export { orderSearchHits } from "./searchRanking.ts";
 export { $ownsProject } from "./security/$ownsProject.ts";
 export { LoreOAuthScopes } from "./security/LoreOAuthScopes.ts";
+export { LoreViewerAllowlist } from "./security/LoreViewerAllowlist.ts";
 export { LorePermissions } from "./security/LorePermissions.ts";
 export { ProjectPermissions } from "./security/ProjectPermissions.ts";
 export { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
