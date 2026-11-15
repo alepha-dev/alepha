@@ -30,6 +30,16 @@ export interface FolioTableCellEditorProps {
    * `[[#` picker lists (folios, quests, epics), each by its code.
    */
   referenceSuggestions?: Array<{ token: string; label: string }>;
+  /**
+   * Take the focus on mount. True in the grid, false in a form of several
+   * cells (the calendar's row sheet).
+   */
+  autoFocus?: boolean;
+  /**
+   * Stay open after a commit, so the same field writes again on the next
+   * change: the row sheet's fields. The grid's editor closes on commit.
+   */
+  persistent?: boolean;
 }
 
 /**
@@ -58,12 +68,14 @@ const FolioTableCellEditor = (
   // control cannot be opened without a mouse.
   useEffect(() => {
     const element = root.current;
+    if (props.autoFocus === false) return;
     if (!element || element.contains(document.activeElement)) return;
     element
       .querySelector<HTMLElement>(
         "input:not([type=hidden]), button, [tabindex]:not([tabindex='-1'])",
       )
       ?.focus();
+    // On mount only: a later render must not pull the focus back.
   }, []);
 
   const form = useForm({
@@ -85,7 +97,7 @@ const FolioTableCellEditor = (
 
   const finish = (value: string, move: "down" | "right" | "none") => {
     if (done.current) return;
-    done.current = true;
+    if (!props.persistent) done.current = true;
     props.onCommit(value, move);
   };
 
@@ -97,7 +109,7 @@ const FolioTableCellEditor = (
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      done.current = true;
+      if (!props.persistent) done.current = true;
       props.onCancel();
     } else if (event.key === "Enter" && !event.shiftKey) {
       // In a select, a date or a reference, Enter opens the list or picks
@@ -124,7 +136,7 @@ const FolioTableCellEditor = (
   const common = {
     input: form.input.value,
     label: "",
-    autoFocus: true,
+    autoFocus: props.autoFocus ?? true,
     inputProps: { "aria-label": label, "data-testid": "folio-cell-editor" },
   };
 

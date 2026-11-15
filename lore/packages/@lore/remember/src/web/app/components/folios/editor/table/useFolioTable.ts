@@ -6,6 +6,7 @@ import type { FolioCellValue } from "../../../../../../api/schemas/folioCellValu
 import type { FolioColumnOperation } from "../../../../../../api/schemas/folioColumnOperationSchema.ts";
 import type { FolioColumnResource } from "../../../../../../api/schemas/folioColumnResourceSchema.ts";
 import type { FolioRowResource } from "../../../../../../api/schemas/folioRowResourceSchema.ts";
+import type { FolioTableView } from "../../../../../../api/schemas/folioTableViewSchema.ts";
 
 /**
  * A cell whose write was refused because its row changed since it was read
@@ -23,6 +24,15 @@ export interface UseFolioTableResult {
   columns: FolioColumnResource[];
   rows: FolioRowResource[];
   conflicts: FolioCellConflict[];
+  /**
+   * How the folio is read (#Q3518): grid or calendar, and its columns.
+   */
+  view: FolioTableView;
+  /**
+   * Switch the view; remembered on the folio when `remember` (a writer),
+   * for this reader only otherwise.
+   */
+  setView: (view: FolioTableView, remember: boolean) => Promise<void>;
   /**
    * True while any write is in flight: every control of the grid that
    * writes is disabled on it, page-wide.
@@ -66,6 +76,7 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
   const [columns, setColumnsState] = useState<FolioColumnResource[]>([]);
   const [rows, setRows] = useState<FolioRowResource[]>([]);
   const [conflicts, setConflicts] = useState<FolioCellConflict[]>([]);
+  const [view, setViewState] = useState<FolioTableView>({ kind: "grid" });
 
   const query = useQuery(
     {
@@ -83,6 +94,7 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
     setLoaded(query.data);
     setColumnsState(query.data.columns);
     setRows(query.data.rows);
+    setViewState(query.data.view);
   }
 
   // What each row's version became after this tab wrote it, keyed by the
@@ -263,14 +275,27 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
           body: { operations },
         });
         setColumnsState(answer.columns);
-        // A retype or a removal changes how every row reads: re-read once.
+        // A retype, an addition or a removal changes how rows read and
+        // which columns a calendar can use: re-read once.
         if (operations.some((op) => op.op !== "rename" && op.op !== "move")) {
           const table = await api.getFolioTable({
             params: { id: folioId },
             query: { limit: 2000 },
           });
           setRows(table.rows);
+          setViewState(table.view);
         }
+      },
+    },
+    [api, folioId],
+  );
+
+  const viewAction = useAction<[view: FolioTableView], void>(
+    {
+      handler: async (_ctx, next) => {
+        setViewState(
+          await api.setFolioView({ params: { id: folioId }, body: next }),
+        );
       },
     },
     [api, folioId],
@@ -305,6 +330,11 @@ export const useFolioTable = (folioId: string): UseFolioTableResult => {
     columns,
     rows,
     conflicts,
+    view,
+    setView: async (next, remember) => {
+      setViewState(next);
+      if (remember) await viewAction.run(next);
+    },
     writing,
     writeCell: async (row, columnId, value) => {
       const result = await enqueue(() =>

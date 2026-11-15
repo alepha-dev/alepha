@@ -13,6 +13,7 @@ import { folioColumnTypeSchema } from "../schemas/folioColumnTypeSchema.ts";
 import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
 import { folioRowFilterSchema } from "../schemas/folioRowFilterSchema.ts";
 import { folioRowResourceSchema } from "../schemas/folioRowResourceSchema.ts";
+import { folioTableViewSchema } from "../schemas/folioTableViewSchema.ts";
 import { FolioTableService } from "../services/FolioTableService.ts";
 
 /**
@@ -58,6 +59,11 @@ export class FolioTableController {
     columns: z.array(folioColumnResourceSchema),
     rowCount: z.integer(),
     rows: z.array(folioRowResourceSchema),
+    /**
+     * How the folio is read: grid or calendar, and the columns the
+     * calendar uses (#Q3518).
+     */
+    view: folioTableViewSchema,
   });
 
   protected readonly listQuerySchema = z.object({
@@ -313,6 +319,25 @@ export class FolioTableController {
 
   protected readonly csv = new FolioCsv();
 
+  setFolioView = $action({
+    method: "POST",
+    path: "/folios/:id/view",
+    use: [this.ownsFolioForKnowledge("folio:write")],
+    description:
+      "Remember how a table folio is read: grid or calendar, the date column a calendar lays rows out by, and the column that titles an entry.",
+    schema: {
+      params: folioIdParamsSchema,
+      body: z.object({
+        kind: z.enum(["grid", "calendar"]),
+        dateColumnId: z.string().optional(),
+        titleColumnId: z.string().optional(),
+      }),
+      response: folioTableViewSchema,
+    },
+    handler: async ({ body }) =>
+      this.tables.setView(this.owned.get<Folio>(), body),
+  });
+
   previewFolioColumnRetype = $action({
     method: "GET",
     path: "/folios/:id/columns/:column/retype-preview",
@@ -351,6 +376,7 @@ export class FolioTableController {
       columns: columns.map((column) => this.tables.columnResource(column)),
       rowCount: total,
       rows,
+      view: await this.tables.viewOf(folio.id, columns),
     };
   }
 

@@ -11,6 +11,7 @@ import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 import { type FolioColumn, folioColumns } from "../entities/folioColumns.ts";
 import { type FolioRowRecord, folioRows } from "../entities/folioRows.ts";
 import { folios } from "../entities/folios.ts";
+import { folioViews } from "../entities/folioViews.ts";
 import type { FolioCellValue } from "../schemas/folioCellValueSchema.ts";
 import type { FolioColumnInputOptions } from "../schemas/folioColumnInputOptionsSchema.ts";
 import type { FolioColumnOperation } from "../schemas/folioColumnOperationSchema.ts";
@@ -18,6 +19,7 @@ import type { FolioColumnResource } from "../schemas/folioColumnResourceSchema.t
 import type { FolioColumnType } from "../schemas/folioColumnTypeSchema.ts";
 import type { FolioRowFilter } from "../schemas/folioRowFilterSchema.ts";
 import type { FolioRowResource } from "../schemas/folioRowResourceSchema.ts";
+import type { FolioTableView } from "../schemas/folioTableViewSchema.ts";
 import { FolioCellCodec } from "./FolioCellCodec.ts";
 import { FolioHistoryService } from "./FolioHistoryService.ts";
 
@@ -121,6 +123,7 @@ export class FolioTableService {
   protected readonly links = $inject(ResourceLinkService);
   protected readonly bound = $inject(BoundParameters);
   protected readonly folios = $repository(folios);
+  protected readonly views = $repository(folioViews);
 
   /**
    * Per-folio row numbers. A `$sequence` counter is keyed on this property
@@ -1242,6 +1245,91 @@ export class FolioTableService {
     const current = (await this.folioRowNumber.current(folio.id)) ?? 0;
     if (highest > current) await this.folioRowNumber.reset(highest, folio.id);
     await this.syncReferenceLinks(folio);
+  }
+
+  // -------------------------------------------------------------------------
+  // The view (#Q3518)
+  // -------------------------------------------------------------------------
+
+  /**
+   * How the folio is read, resolved against its columns and read leniently:
+   * a date column that no longer exists falls back to the first date column,
+   * and a table with none is a grid. The title column falls back to the
+   * first text column, then to the first column.
+   */
+  public async viewOf(
+    folioId: string,
+    columns?: FolioColumn[],
+  ): Promise<FolioTableView> {
+    const [stored, all] = await Promise.all([
+      this.views.findOne({ where: { folioId: { eq: folioId } } }),
+      columns ? Promise.resolve(columns) : this.columnsOf(folioId),
+    ]);
+    return this.resolveView(all, stored ?? undefined);
+  }
+
+  /**
+   * The view a stored row (or none) resolves to against these columns.
+   */
+  public resolveView(
+    columns: FolioColumn[],
+    stored?: { kind?: string; dateColumnId?: string; titleColumnId?: string },
+  ): FolioTableView {
+    const dates = columns.filter((c) => this.codec.typeOf(c) === "date");
+    const date = dates.find((c) => c.id === stored?.dateColumnId) ?? dates[0];
+    const title =
+      columns.find((c) => c.id === stored?.titleColumnId) ??
+      columns.find((c) => this.codec.typeOf(c) === "text") ??
+      columns[0];
+    return {
+      kind: date && stored?.kind === "calendar" ? "calendar" : "grid",
+      ...(date ? { dateColumnId: date.id } : {}),
+      ...(title ? { titleColumnId: title.id } : {}),
+    };
+  }
+
+  /**
+   * Remember how the folio is read. Column ids are checked against the
+   * table, so a stored view never names a column of another folio.
+   */
+  public async setView(
+    folio: FolioTableTarget,
+    input: {
+      kind: "grid" | "calendar";
+      dateColumnId?: string;
+      titleColumnId?: string;
+    },
+  ): Promise<FolioTableView> {
+    this.assertTable(folio);
+    const columns = await this.columnsOf(folio.id);
+    for (const ref of [input.dateColumnId, input.titleColumnId]) {
+      if (ref !== undefined) this.resolveColumn(columns, ref);
+    }
+    if (
+      input.dateColumnId !== undefined &&
+      this.codec.typeOf(this.resolveColumn(columns, input.dateColumnId)) !==
+        "date"
+    ) {
+      throw new BadRequestError("A calendar reads a date column.");
+    }
+    const data = {
+      kind: input.kind,
+      dateColumnId: input.dateColumnId
+        ? this.resolveColumn(columns, input.dateColumnId).id
+        : undefined,
+      titleColumnId: input.titleColumnId
+        ? this.resolveColumn(columns, input.titleColumnId).id
+        : undefined,
+    };
+    const existing = await this.views.findOne({
+      where: { folioId: { eq: folio.id } },
+    });
+    if (existing) {
+      await this.views.updateById(existing.id, data);
+    } else {
+      await this.views.create({ folioId: folio.id, ...data });
+    }
+    return this.resolveView(columns, data);
   }
 
   // -------------------------------------------------------------------------

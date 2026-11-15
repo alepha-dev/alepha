@@ -1,0 +1,219 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "aba04f73-1e32-4fc2-9dee-fc10e1cd54f2",
+  "prevIds": ["9882b082-e494-49d6-b5c8-cc1f6b3b63e5"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "folio_views"],
+      "writes": [
+        "s|tbl|public.folio_views",
+        "n|tbl|public.folio_views",
+        "e|tbl|public.folio_views",
+        "n|rel|public.folio_views",
+        "n|type|public.folio_views",
+        "n|rel|public.folio_views_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "folio_views",
+        "folio_views_folio_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.folio_views_folio_id_idx",
+        "n|idx|public.folio_views_folio_id_idx",
+        "e|idx|public.folio_views_folio_id_idx",
+        "n|rel|public.folio_views_folio_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.folio_views",
+        "n|sch|public",
+        "n|col|public.folio_views.folio_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "folio_views"],
+      "writes": [
+        "s|fk|public.folio_views.folio_views_folio_id_folios_id_fkey",
+        "n|fk|public.folio_views.folio_views_folio_id_folios_id_fkey",
+        "e|fk|public.folio_views.folio_views_folio_id_folios_id_fkey",
+        "n|con|public.folio_views.folio_views_folio_id_folios_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.folio_views",
+        "n|sch|public",
+        "n|tbl|public.folios",
+        "n|sch|public",
+        "n|col|public.folio_views.folio_id",
+        "n|col|public.folios.id",
+        "e|uniqueness|public.folios.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "folio_views",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_views",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_views",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_views",
+        "name": "folio_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_views",
+        "name": "kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_views",
+        "name": "date_column_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_views",
+        "name": "title_column_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_views",
+        "name": "folio_views_folio_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "folio_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_views",
+        "name": "folio_views_folio_id_folios_id_fkey",
+        "nameExplicit": false,
+        "columns": ["folio_id"],
+        "schemaTo": "public",
+        "tableTo": "folios",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "folio_views",
+        "name": "folio_views_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

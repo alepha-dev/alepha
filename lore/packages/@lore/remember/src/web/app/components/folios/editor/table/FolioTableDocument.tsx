@@ -9,7 +9,8 @@ import {
   WikiLinkHoverProvider,
 } from "@lore/core/web";
 import { z } from "alepha";
-import { useStore } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useInject, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useQueryParams } from "alepha/react/router";
@@ -26,7 +27,16 @@ import {
 
 import type { FolioCellValue } from "../../../../../../api/schemas/folioCellValueSchema.ts";
 import type { FolioRowResource } from "../../../../../../api/schemas/folioRowResourceSchema.ts";
+import { folioDayKey, folioMoveToDay } from "./calendar/folioCalendarModel.ts";
 import FolioTableColumnMenu from "./FolioTableColumnMenu.tsx";
+import FolioTableRowSheet from "./FolioTableRowSheet.tsx";
+
+/**
+ * The calendar, a lazy chunk of its own (#Q3518).
+ */
+const FolioTableCalendar = lazy(
+  () => import("./calendar/FolioTableCalendar.tsx"),
+);
 
 /**
  * Folio ▸ Import rows… (#Q3517), loaded when it opens.
@@ -67,6 +77,7 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
   const dialog = useDialog();
   const toaster = useToast();
   const [project] = useStore(currentProjectAtom);
+  const dateTime = useInject(DateTimeProvider);
   const table = useFolioTable(props.folioId);
   const findRef = useRef<HTMLDivElement>(null);
   const element = useMemo<ElementRef>(
@@ -82,12 +93,16 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
   // lookups the Markdown editor makes, so both offer the same items.
   const links = useElementLinks(element, "");
   const [importing, setImporting] = useState(false);
+  const [openRowNumber, setOpenRowNumber] = useState<number | undefined>(
+    undefined,
+  );
 
   const [view, setView] = useQueryParams(
     z.object({
       find: z.string().optional(),
       sort: z.string().optional(),
       dir: z.enum(["asc", "desc"]).optional(),
+      month: z.string().optional(),
     }),
     { format: "querystring" },
   );
@@ -194,6 +209,13 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
     if (ok) await table.deleteRows(chosen.map((row) => row.number));
   };
 
+  const hasDates = table.columns.some((column) => column.type === "date");
+  const showCalendar = hasDates && table.view.kind === "calendar";
+  const month = /^\d{4}-\d{2}$/.test(view.month ?? "")
+    ? (view.month as string)
+    : folioDayKey(new Date(dateTime.nowMillis())).slice(0, 7);
+  const openRow = rows.find((row) => row.number === openRowNumber);
+
   if (table.loading) {
     return (
       <div className="text-muted-foreground px-8 py-10 text-sm">
@@ -244,7 +266,62 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
         )}
       </div>
 
-      {table.columns.length === 0 ? (
+      {hasDates && (
+        <div
+          role="tablist"
+          aria-label={tr("folios.table.view")}
+          className="bg-muted/40 flex w-fit gap-0.5 rounded-md p-0.5"
+        >
+          {(["grid", "calendar"] as const).map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              role="tab"
+              aria-selected={showCalendar === (kind === "calendar")}
+              className={
+                showCalendar === (kind === "calendar")
+                  ? "bg-background rounded px-3 py-1 text-xs font-medium shadow-sm"
+                  : "text-muted-foreground rounded px-3 py-1 text-xs"
+              }
+              onClick={() =>
+                void table.setView({ ...table.view, kind }, !props.readOnly)
+              }
+            >
+              {kind === "calendar"
+                ? tr("folios.table.view.calendar")
+                : tr("folios.table.view.grid")}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showCalendar && table.view.dateColumnId ? (
+        <Suspense fallback={null}>
+          <FolioTableCalendar
+            columns={table.columns}
+            rows={rows}
+            dateColumnId={table.view.dateColumnId}
+            titleColumnId={table.view.titleColumnId}
+            readOnly={props.readOnly}
+            writing={table.writing}
+            month={month}
+            onMonth={(next) => setView({ ...view, month: next } as never)}
+            onOpenRow={(row) => setOpenRowNumber(row.number)}
+            onAddOnDay={(day) =>
+              void table.addRows([
+                { cells: { [table.view.dateColumnId!]: day } },
+              ])
+            }
+            onMoveToDay={(row, day) => {
+              const before = row.cells[table.view.dateColumnId!];
+              const next = folioMoveToDay(before, day);
+              if (next !== before) {
+                void writeCell(row, table.view.dateColumnId!, next);
+              }
+            }}
+          />
+        </Suspense>
+      ) : table.columns.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           {tr("folios.table.no-columns")}
         </p>
@@ -316,6 +393,17 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
             : tr("folios.table.empty")}
         </p>
       )}
+      <FolioTableRowSheet
+        columns={table.columns}
+        referenceSuggestions={links.suggestions}
+        row={openRow}
+        readOnly={props.readOnly}
+        onClose={() => setOpenRowNumber(undefined)}
+        onWriteCell={(row, columnId, text) =>
+          void writeCell(row, columnId, text)
+        }
+      />
+
       {importing && (
         <Suspense fallback={null}>
           <FolioCsvImportDialog
