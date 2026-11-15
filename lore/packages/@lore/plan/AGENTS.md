@@ -400,14 +400,9 @@ create button) and the quest's reminder control (`getQuestReminderRule`) say.
 The live option remains plan.reminder; frozen projects.features.questReminder
 remains decodable.
 
-`WorkAutomationAdoptions` registers one explicit policy through core.
-
-Release announcements retain the current roster except publisher, inbox/email,
-releases preferences and no folio prerequisite. The compatibility audience uses
-core's bounded durable roster continuation. `ReleaseNotifier` remains the fallback
-for unadopted policies, using publication identity in its native legacy receipt.
-Plan also registers queued-template project resolvers: release scope identifies
-the project, new reminders carry projectId, and old reminders resolve questUrl's
-slug. Unknown queued provenance fails closed. Adoption changes neither ordinary
-mention/default/workflow code nor project grants, and opt-out never restores
-fallback. Global deletion of legacy code is a later explicit retirement decision.
+Release mail is an automation since #Q3625: the **Release published** preset
+(`release-published`, `WorkAutomationPresets`), which the Releases page's bell
+subscribes its viewer to. `ReleaseNotifier`, `inboxReleasePublished` and the
+`release-notifications` adoption policy are gone, and with them the last
+adoption policy (`WorkAutomationAdoptions` is deleted); #Q3628 removes the
+adoption engine from core.

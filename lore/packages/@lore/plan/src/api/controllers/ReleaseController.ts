@@ -1,5 +1,4 @@
 import { $ownsProject, LoreAudits, ProjectLimits } from "@lore/core/api";
-import { type Project } from "@lore/core/schemas";
 import { RELEASE_TAG_PATTERN, releaseTagSchema } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, type Infer, z } from "alepha";

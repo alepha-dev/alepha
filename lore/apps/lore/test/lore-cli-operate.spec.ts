@@ -545,9 +545,6 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     const runs = await lore.json("automation runs", [created.id]);
     expect(runs.items[0].automationId).toBe(created.id);
     expect(await lore.run("automation test", [created.id])).toContain("{");
-    expect(
-      await lore.run("automation adoption preview", ["release-notifications"]),
-    ).toContain("{");
 
     await lore.run("automation variable set", [
       "THRESHOLD",

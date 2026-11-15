@@ -3,9 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  AutomationAdoptionService,
   AutomationLegacyJobProvider,
-  AutomationLegacyQueue,
   AutomationAtomic,
   AutomationService,
   AutomationVariableService,
@@ -696,68 +694,6 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       ).toEqual([
         { id: shared.variable.id, key: "native_message", version: 1 },
       ]);
-
-      const adoptionProject = await createTestProject(alepha, {
-        capabilities: [
-          {
-            key: "plan",
-            options: { reminder: true, releases: true },
-          },
-        ],
-      });
-      await entities.users.updateById(adoptionProject.createdBy, {
-        roles: ["user"],
-      });
-      const adoptionAuthor = { id: adoptionProject.createdBy, roles: ["user"] };
-      const adoption = alepha.inject(AutomationAdoptionService);
-      const adopted = await adoption.adopt(
-        adoptionProject.id,
-        "release-notifications",
-        adoptionAuthor,
-        { confirm: true },
-      );
-      expect(adopted.state).toBe("adopted");
-      expect(adopted.candidate?.enabled).toBe(true);
-      expect(
-        await alepha
-          .inject(AutomationLegacyQueue)
-          .adopted(adoptionProject.id, "release-notifications"),
-      ).toBe(true);
-      const disabled = await application.setEnabled(
-        adoptionProject.id,
-        adopted.replacementId!,
-        adoptionAuthor,
-        false,
-        adopted.candidate!.revision,
-      );
-      expect(
-        (
-          await adoption.adopt(
-            adoptionProject.id,
-            "release-notifications",
-            adoptionAuthor,
-            { confirm: true },
-          )
-        ).state,
-      ).toBe("opted_out");
-      await application.remove(
-        adoptionProject.id,
-        disabled.id,
-        adoptionAuthor,
-        disabled.revision,
-      );
-      expect(
-        (
-          await adoption.preview(
-            adoptionProject.id,
-            "release-notifications",
-            adoptionAuthor,
-          )
-        ).state,
-      ).toBe("opted_out");
-      expect(
-        await persistence.adoptions.count({ projectId: adoptionProject.id }),
-      ).toBe(1);
 
       await entities.organizationMembers.deleteMany({
         organizationId: project.organizationId!,

@@ -89,13 +89,10 @@ describe("Lore's inbox notifications", () => {
    * written into ninety days of receipts. A rename refactor must not be able
    * to change it silently.
    */
-  it("names both templates explicitly", async ({ expect }) => {
+  it("names its template explicitly", async ({ expect }) => {
     const { alepha, templates } = await setup();
 
     expect(templates.inboxMention.name).toBe("lore:inbox:mention");
-    expect(templates.inboxReleasePublished.name).toBe(
-      "lore:inbox:release-published",
-    );
 
     await alepha.stop();
   });
@@ -144,43 +141,6 @@ describe("Lore's inbox notifications", () => {
     expect(mail.last?.body).toContain(
       "https://lore.alepha.dev/alepha/quests/402",
     );
-
-    await alepha.stop();
-  });
-
-  it("files a published release the same way", async ({ expect }) => {
-    const { alepha, mail, rows, templates } = await setup();
-
-    const user = await rows.users.create({
-      username: "nfo",
-      email: "Member@Example.com",
-    });
-
-    await rows.projects.create({ id: 1, title: "Alepha", createdBy: user.id });
-
-    await templates.inboxReleasePublished.push({
-      contact: "member@example.com",
-      lang: "en",
-      variables: {
-        releaseTag: "0.30.0",
-        releaseTitle: "Lore Inbox",
-        projectTitle: "Alepha",
-        questCount: 19,
-        href: "/alepha/releases/0.30.0",
-        url: "https://lore.alepha.dev/alepha/releases/0.30.0",
-        scope: "project:1",
-      },
-      inline: true,
-    });
-
-    const [row] = await rows.inbox.findMany({});
-    expect(row).toMatchObject({
-      title: "Alepha released 0.30.0",
-      body: "Lore Inbox",
-      scopeLabel: "Alepha",
-      category: "releases",
-    });
-    expect(mail.last?.body).toContain("It ships 19 quests.");
 
     await alepha.stop();
   });

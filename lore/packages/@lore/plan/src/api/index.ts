@@ -70,7 +70,6 @@ import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 import { WorkAssignedWork } from "./services/WorkAssignedWork.ts";
 import { WorkAttentionSources } from "./services/WorkAttentionSources.ts";
 import { WorkAutomationActions } from "./services/WorkAutomationActions.ts";
-import { WorkAutomationAdoptions } from "./services/WorkAutomationAdoptions.ts";
 import { WorkAutomationCollections } from "./services/WorkAutomationCollections.ts";
 import { WorkAutomationEventSubjects } from "./services/WorkAutomationEventSubjects.ts";
 import { WorkAutomationPresets } from "./services/WorkAutomationPresets.ts";
@@ -108,7 +107,6 @@ export const LorePlanApi = $module({
     // by name, and the controllers that use one stay pure (#Q3404).
     WorkBuckets,
     WorkAutomationPresets,
-    WorkAutomationAdoptions,
     WorkAutomationEventSubjects,
     WorkAutomationActions,
     QuestEditAccess,
