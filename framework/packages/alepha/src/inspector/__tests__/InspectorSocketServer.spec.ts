@@ -49,7 +49,7 @@ const call = (
     req.end();
   });
 
-class Win32SocketServer extends InspectorSocketServer {
+class Win32Registry extends InspectorRegistry {
   protected override readonly platform = "win32" as const;
 }
 
@@ -206,18 +206,40 @@ describe("InspectorSocketServer", () => {
     await alepha.stop();
   });
 
-  it("skips itself on Windows, and announces nothing", async ({ expect }) => {
+  // A real pipe needs Windows: the Nightly's Windows job runs `alepha dev`
+  // and `alepha mcp` against each other (#Q3730). Here, only the address.
+  it("addresses a run on Windows as the named pipe of its socket name", async ({
+    expect,
+  }) => {
+    const dir = runDir();
     const alepha = Alepha.create({
-      env: { ALEPHA_INSPECT: "1", ALEPHA_RUN_DIR: runDir() },
-    })
-      .with({ provide: InspectorSocketServer, use: Win32SocketServer })
-      .with(AlephaInspector);
-    await alepha.start();
+      env: { ALEPHA_RUN_DIR: dir },
+    }).with({ provide: InspectorRegistry, use: Win32Registry });
+    const registry = alepha.inject(InspectorRegistry);
+    const fs = alepha.inject(FileSystemProvider);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      fs.join(dir, "abcd1234.json"),
+      JSON.stringify({
+        runId: "abcd1234",
+        pid: 1,
+        name: "app",
+        cwd: "C:\\app",
+        mode: "development",
+        alephaVersion: "0.0.0",
+        protocol: 1,
+        startedAt: new Date(0).toISOString(),
+        socket: "abcd1234.sock",
+      }),
+    );
 
-    expect(alepha.inject(InspectorSocketServer).listening).toBe(false);
-    expect(alepha.inject(InspectorRunProvider).file).toBeUndefined();
-
-    await alepha.stop();
+    expect(registry.usesPipes).toBe(true);
+    expect(registry.socketAddress(dir, "abcd1234.sock")).toBe(
+      "\\\\.\\pipe\\alepha-abcd1234.sock",
+    );
+    const [run] = await registry.list();
+    expect(run?.socketPath).toBe("\\\\.\\pipe\\alepha-abcd1234.sock");
+    expect(run?.status).toBe("dead");
   });
 
   it("never opens a socket under test without an explicit ALEPHA_RUN_DIR", async ({

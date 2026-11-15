@@ -36,6 +36,32 @@ export class InspectorRegistry {
   protected readonly connectTimeoutMs = 500;
 
   /**
+   * The platform, read once, so a spec can stand in for another one.
+   */
+  protected readonly platform: NodeJS.Platform = process.platform;
+
+  /**
+   * Whether a run listens on a Windows named pipe rather than a Unix socket
+   * file. Windows has no Unix socket a Node server can bind, and a pipe is
+   * what Node's `net` and `http` take there with the same `path` option.
+   */
+  public get usesPipes(): boolean {
+    return this.platform === "win32";
+  }
+
+  /**
+   * Where the run named `name` (`<runId>.sock`) listens: that file in the
+   * run directory, or on Windows the pipe `\\.\pipe\alepha-<name>`. A pipe
+   * lives in one namespace for the whole machine, not in a directory; the
+   * run id is random, so two run directories never pick the same name.
+   */
+  public socketAddress(dir: string, name: string): string {
+    return this.usesPipes
+      ? `\\\\.\\pipe\\alepha-${name}`
+      : this.fs.join(dir, name);
+  }
+
+  /**
    * Whether `ALEPHA_RUN_DIR` names the directory, rather than the default.
    */
   public get explicitDirectory(): boolean {
@@ -103,7 +129,7 @@ export class InspectorRegistry {
       if (!entry) continue;
       // The writer's own absolute path means nothing here when the writer
       // was a container: only the name is trusted, against this directory.
-      const socketPath = this.fs.join(dir, this.basename(entry.socket));
+      const socketPath = this.socketAddress(dir, this.basename(entry.socket));
       runs.push({ ...entry, file, socketPath, status: "dead" });
     }
 
@@ -128,7 +154,10 @@ export class InspectorRegistry {
       if (run.status === "live" || (await this.retains(run, runs))) continue;
       if ((await this.probe(run)) !== "refused") continue;
       await this.fs.rm(run.file, { force: true }).catch(() => undefined);
-      await rm(run.socketPath, { force: true }).catch(() => undefined);
+      // A pipe is no file: it is gone with the process that held it.
+      if (!this.usesPipes) {
+        await rm(run.socketPath, { force: true }).catch(() => undefined);
+      }
     }
   }
 
@@ -185,7 +214,7 @@ export class InspectorRegistry {
     const run: InspectorRun = {
       ...entry,
       file,
-      socketPath: this.fs.join(dir, this.basename(entry.socket)),
+      socketPath: this.socketAddress(dir, this.basename(entry.socket)),
       status: "dead",
     };
     run.status = (await this.probe(run)) === "live" ? "live" : "dead";
