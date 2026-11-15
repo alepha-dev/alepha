@@ -137,7 +137,6 @@ describe("FolioTree", () => {
     title,
     content: "",
     summary: "",
-    searchText: "",
     directoryId,
     pinned: false,
     type: "text" as const,

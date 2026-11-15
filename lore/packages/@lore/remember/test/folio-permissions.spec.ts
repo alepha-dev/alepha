@@ -272,8 +272,8 @@ describe("FolioController per-project visibility (post #65 refactor)", () => {
     expect(seenByB.data.protected).toBe(true);
     // Content remains the opaque ciphertext — server never decrypts.
     expect(seenByB.data.content).toBe(ciphertext);
-    // Search blob stays empty for protected folios — no leak via LIKE.
-    expect(seenByB.data.searchText).toBe("");
+    // The search blob never crosses the wire (#Q3712), protected or not.
+    expect(seenByB.data).not.toHaveProperty("searchText");
   });
 
   it("resolves cross-author wiki-links via folio_links re-sync on next edit", async ({

@@ -166,3 +166,82 @@ describe("FolioController.tree", () => {
     ).rejects.toThrow();
   });
 });
+
+/**
+ * #Q3712: a page of 50 on a large project was 770 KB, half of it bodies and
+ * half `searchText`, the lowercased copy of them `LIKE` runs over. The list
+ * answers neither unless a caller asks for the body, and a search asks by
+ * default, since its callers cut a snippet out of it.
+ */
+describe("FolioController.list", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  const seed = async () => {
+    const owner = await createTestUser(ctx);
+    const created = await ctx.projectController.createProject.fetch(
+      { body: { title: "List without bodies" } },
+      { user: owner },
+    );
+    const projectId = created.data.id;
+    await ctx.folioController.create.fetch(
+      {
+        body: {
+          projectId,
+          title: "Amber",
+          summary: "a summary",
+          content: "the amber body",
+        },
+      },
+      { user: owner },
+    );
+    return { owner, projectId };
+  };
+
+  it("answers no body and no searchText by default", async ({ expect }) => {
+    const { owner, projectId } = await seed();
+
+    const page = await ctx.folioController.list.fetch(
+      { query: { projectId } },
+      { user: owner },
+    );
+
+    expect(page.data).toHaveLength(1);
+    expect(page.data[0].title).toBe("Amber");
+    expect(page.data[0].summary).toBe("a summary");
+    expect(page.data[0]).not.toHaveProperty("content");
+    expect(page.data[0]).not.toHaveProperty("searchText");
+  });
+
+  it("answers the body when asked, and for a search", async ({ expect }) => {
+    const { owner, projectId } = await seed();
+
+    const asked = await ctx.folioController.list.fetch(
+      { query: { projectId, withContent: true } },
+      { user: owner },
+    );
+    expect(asked.data[0].content).toBe("the amber body");
+    expect(asked.data[0]).not.toHaveProperty("searchText");
+
+    const searched = await ctx.folioController.list.fetch(
+      { query: { projectId, q: "AMBER" } },
+      { user: owner },
+    );
+    expect(searched.data).toHaveLength(1);
+    expect(searched.data[0].content).toBe("the amber body");
+    expect(searched.data[0]).not.toHaveProperty("searchText");
+
+    const searchedBare = await ctx.folioController.list.fetch(
+      { query: { projectId, q: "amber", withContent: false } },
+      { user: owner },
+    );
+    expect(searchedBare.data[0]).not.toHaveProperty("content");
+  });
+});
