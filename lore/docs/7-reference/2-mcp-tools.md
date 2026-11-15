@@ -139,14 +139,19 @@ See [Folios](/lore/docs/remember-folios) and
 
 | Tool                      | What it does                                                      |
 | ------------------------- | ----------------------------------------------------------------- |
-| `folio_list`              | The index: pinned first, then newest.                             |
-| `folio_search`            | Search title, summary and content.                                |
-| `folio_get`               | One folio with its inbound and outbound links.                    |
-| `folio_create`            | Create a folio. Always set `summary`.                             |
-| `folio_update`            | Change a folio. Omitted fields stay.                              |
+| `folio_list`              | The index, each with its `type`: pinned first, then newest.       |
+| `folio_search`            | Search title, summary, content and a table's rows.                |
+| `folio_get`               | One folio with its links; a table's columns and first 50 rows.    |
+| `folio_create`            | Create a folio, or a table with `type` and `columns`.             |
+| `folio_update`            | Change a folio. Omitted fields stay. Not a table's rows.          |
 | `folio_delete`            | Delete a folio. This cannot be undone.                            |
 | `folio_history`           | Its revisions, newest first.                                      |
 | `folio_revert`            | Write a new revision from an old one.                             |
+| `folio_row_list`          | A table's rows, filtered, sorted and paged.                       |
+| `folio_row_add`           | Add 1 to 100 rows to a table, cells by column name.               |
+| `folio_row_update`        | Change some cells of one row, against its version if given.       |
+| `folio_row_delete`        | Delete rows of a table by number.                                 |
+| `folio_column_set`        | Change a table's columns with an ordered list of operations.      |
 | `folio_attachment_add`    | How to attach a file: answers the CLI command.                    |
 | `folio_attachment_list`   | One folio's attachments.                                          |
 | `folio_attachment_rename` | Rename one, with a suffix on collision.                           |
