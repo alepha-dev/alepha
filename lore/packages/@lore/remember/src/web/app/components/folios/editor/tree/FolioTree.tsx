@@ -208,7 +208,10 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           rows={tree.rows}
           collapsed={tree.collapsed}
           selectedId={tree.selectedId}
-          onSelect={(node) => commands.select(asFolioNode(node))}
+          selectedIds={tree.selectedIds}
+          onSelect={(node, options) =>
+            commands.select(asFolioNode(node), options)
+          }
           onToggle={commands.toggle}
           renderIcon={(node, state) => {
             const folio = asFolioNode(node);

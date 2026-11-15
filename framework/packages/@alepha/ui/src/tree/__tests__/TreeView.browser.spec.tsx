@@ -248,6 +248,35 @@ describe("TreeView", () => {
     expect(selected).toEqual(["leaf", "leaf"]);
   });
 
+  it("draws selectedIds as selected, multiselectable, and reports the shift (#Q3654)", () => {
+    const selected: Array<[string, boolean | undefined]> = [];
+    render(
+      <TreeView
+        label="Files"
+        rows={flattenTree(NODES, new Set())}
+        collapsed={new Set()}
+        selectedId="leaf"
+        selectedIds={new Set(["d-0"])}
+        onSelect={(node, options) => selected.push([node.id, options?.shift])}
+        onToggle={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole("tree").getAttribute("aria-multiselectable")).toBe(
+      "true",
+    );
+    expect(rowOf("Level0").getAttribute("aria-selected")).toBe("true");
+    expect(rowOf("Leaf").getAttribute("aria-selected")).toBe("true");
+    expect(rowOf("Other").getAttribute("aria-selected")).toBeNull();
+
+    fireEvent.click(rowOf("Other"), { shiftKey: true });
+    fireEvent.click(rowOf("Other"));
+    expect(selected).toEqual([
+      ["other", true],
+      ["other", false],
+    ]);
+  });
+
   it("exports a memoised row", () => {
     expect((TreeViewRow as { $$typeof?: symbol }).$$typeof).toBe(
       Symbol.for("react.memo"),

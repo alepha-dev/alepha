@@ -397,6 +397,8 @@ export default {
   "folios.editor.listing.empty": "Ce dossier est vide.",
 
   "folios.editor.tree.title": "Folios",
+  "folios.editor.tree.move-group-refused":
+    "Un dossier ne peut pas aller dans lui-même : rien n’a été déplacé.",
   "folios.editor.tree.new-folio": "Nouveau folio",
   "folios.editor.tree.new-directory": "Nouveau dossier",
   "folios.editor.tree.refresh": "Actualiser l\u2019arborescence",

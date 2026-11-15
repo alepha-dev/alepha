@@ -1,7 +1,9 @@
-import { useDialog } from "@alepha/ui";
+import { useDialog, useToast } from "@alepha/ui";
 import {
+  nodeHolds,
   type TreeDropPosition,
   resolveDrop,
+  type TreeSelectOptions,
   type TreeStateCommands,
   useTreeState,
 } from "@alepha/ui/tree";
@@ -71,7 +73,11 @@ export interface UseFolioTreeModelInput {
  * in the hook for how both are true at once.
  */
 export interface FolioTreeVerbs {
-  select: (node: FolioTreeNode) => void;
+  /**
+   * A row was activated. With `shift`, extend the selection from its anchor
+   * to this row instead of opening it (#Q3654).
+   */
+  select: (node: FolioTreeNode, options?: TreeSelectOptions) => void;
   createFolio: (parentId?: string) => Promise<void>;
   createDirectory: (parentId?: string) => Promise<void>;
   remove: (node: FolioTreeNode) => Promise<void>;
@@ -122,6 +128,11 @@ export interface FolioTreeState {
   loading: boolean;
   collapsed: ReadonlySet<string>;
   selectedId?: string;
+  /**
+   * The range a shift-click selected (#Q3654), drawn beside `selectedId`.
+   * Absent for a single selection. Dragging any of its rows moves them all.
+   */
+  selectedIds?: ReadonlySet<string>;
   renamingId?: string;
   dragId?: string;
   drop?: { id: string; position: TreeDropPosition };
@@ -221,6 +232,7 @@ export const useFolioTreeModel = (
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
   const dialog = useDialog();
+  const toast = useToast();
   const folioApi = useClient<FolioController>();
   const cryptoProvider = useInject(CryptoProvider);
   const directoryApi = useClient<DirectoryController>();
@@ -511,7 +523,30 @@ export const useFolioTreeModel = (
 
   const { toggle, expandOne } = state.commands;
 
-  const select = (node: FolioTreeNode): void => {
+  // A range picked with shift (#Q3654): its anchor and every row in it.
+  // Empty means the single selection, which the URL owns.
+  const [range, setRange] = useState<{
+    anchorId?: string;
+    ids: ReadonlySet<string>;
+  }>({ ids: new Set() });
+
+  const select = (node: FolioTreeNode, options?: TreeSelectOptions): void => {
+    const anchorId =
+      range.anchorId ?? input.currentFolioId ?? revealedDirectoryId;
+    if (options?.shift && anchorId !== undefined) {
+      // Every VISIBLE row between the anchor and this one, either way up,
+      // as a file manager does. Shift does not open anything.
+      const order = rows.map((row) => row.node.id);
+      const from = order.indexOf(anchorId);
+      const to = order.indexOf(node.id);
+      if (from !== -1 && to !== -1) {
+        const [low, high] = from < to ? [from, to] : [to, from];
+        setRange({ anchorId, ids: new Set(order.slice(low, high + 1)) });
+        return;
+      }
+    }
+    // A plain click is a single selection again, anchored here.
+    setRange({ anchorId: node.id, ids: new Set() });
     if (node.data.kind === "directory") {
       toggle(node.id);
       return;
@@ -616,12 +651,110 @@ export const useFolioTreeModel = (
   );
 
   /**
+   * Move a shift-selected range into one directory (#Q3654): one drop, every
+   * row of the range, then one write of each atom.
+   *
+   * The destination is where the dragged row would land: the directory it
+   * was dropped inside, or the parent of the row it was dropped beside. A
+   * row whose ancestor is also selected travels with that ancestor, so it is
+   * not moved on its own; a row already there is left alone. If any selected
+   * directory would end up inside itself, the whole move is refused.
+   */
+  const moveGroupAction = useAction<
+    [items: FolioTreeNode[], parentId: string | undefined],
+    void
+  >(
+    {
+      handler: async (_ctx, items, parentId) => {
+        let nextFolios = folios;
+        let nextDirectories = directories;
+        for (const item of items) {
+          if (item.data.kind === "directory") {
+            const updated = await directoryApi.moveDirectory({
+              params: { id: item.id },
+              body: { parentId },
+            });
+            nextDirectories = nextDirectories.map((d) =>
+              d.id === item.id
+                ? { ...d, parentId: updated.parentId, name: updated.name }
+                : d,
+            );
+          } else {
+            const updated = await folioApi.update({
+              params: { id: item.id },
+              body: { directoryId: parentId ?? null },
+            });
+            nextFolios = nextFolios.map((f) =>
+              f.id === item.id ? { ...f, ...updated } : f,
+            );
+          }
+        }
+        setFolios(nextFolios);
+        setDirectories(nextDirectories);
+        setRange({ anchorId: range.anchorId, ids: new Set() });
+      },
+      invalidates: [["folioTree", input.projectId]],
+    },
+    [
+      folios,
+      directories,
+      setFolios,
+      setDirectories,
+      folioApi,
+      directoryApi,
+      input.projectId,
+      range.anchorId,
+    ],
+  );
+
+  const moveGroup = (targetId: string, position: TreeDropPosition): void => {
+    const target = findFolioNode(tree, targetId);
+    if (!target) return;
+    if (position === "inside" && target.data.kind !== "directory") return;
+    const parentId = position === "inside" ? target.id : target.parentId;
+
+    const selected = [...range.ids]
+      .map((id) => findFolioNode(tree, id))
+      .filter((node): node is FolioTreeNode => node !== undefined);
+    // A directory dropped into itself or anything under it: refused for
+    // the whole range rather than moving the rest.
+    if (
+      parentId !== undefined &&
+      selected.some(
+        (node) => node.data.kind === "directory" && nodeHolds(node, parentId),
+      )
+    ) {
+      toast.error(tr("folios.editor.tree.move-group-refused"));
+      return;
+    }
+    const items = selected.filter(
+      (node) =>
+        // Carried by a selected ancestor.
+        !selected.some(
+          (other) =>
+            other.id !== node.id &&
+            other.data.kind === "directory" &&
+            nodeHolds(other, node.id),
+        ) &&
+        // Already there.
+        (node.declaredParentId ?? node.parentId) !== parentId,
+    );
+    if (items.length === 0) return;
+    void moveGroupAction.run(items, parentId);
+  };
+
+  /**
    * What a drop MEANS here. `useTreeState` owns the gesture and the guard
    * that the marker and the dropped-on row agree; resolving the move is
    * ours, because only this hook knows a directory from a folio and which
    * of the two endpoints writes the change.
    */
   moveRef.current = (currentDragId, targetId, position) => {
+    // A row of a range moves the whole range (#Q3654).
+    if (range.ids.size > 1 && range.ids.has(currentDragId)) {
+      moveGroup(targetId, position);
+      return;
+    }
     const target = resolveDrop(tree, currentDragId, targetId, position);
     // `undefined` covers BOTH an illegal drop (into your own subtree) AND
     // a true no-op (already at that parent) — see `resolveDrop`'s own
@@ -1013,7 +1146,7 @@ export const useFolioTreeModel = (
       // The generic half, already stable for the life of `useTreeState`.
       ...state.commands,
       // Lore's own verbs, through this hook's facade for the same reason.
-      select: (node) => implRef.current.select(node),
+      select: (node, options) => implRef.current.select(node, options),
       createFolio: (parentId) => implRef.current.createFolio(parentId),
       createDirectory: (parentId) => implRef.current.createDirectory(parentId),
       remove: (node) => implRef.current.remove(node),
@@ -1035,6 +1168,7 @@ export const useFolioTreeModel = (
     // The open folio wins: a `?dir=` that survives into a folio navigation
     // must not keep highlighting the folder instead of the document.
     selectedId: input.currentFolioId ?? revealedDirectoryId,
+    selectedIds: range.ids.size > 0 ? range.ids : undefined,
     renamingId,
     dragId,
     drop,

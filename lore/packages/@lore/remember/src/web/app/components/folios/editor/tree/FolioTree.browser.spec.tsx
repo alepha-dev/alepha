@@ -465,6 +465,105 @@ describe("FolioTree", () => {
     expect(screen.getByRole("tree", { name: "Folios" })).not.toBeNull();
   });
 
+  /**
+   * Shift-click selects a range, and dragging a row of it moves the whole
+   * range into the drop directory (#Q3654).
+   */
+  describe("a shift-selected range", () => {
+    const AT_ROOT = "44444444-4444-4444-8444-444444444444";
+
+    /**
+     * jsdom has no `DragEvent` and lays nothing out: a `MouseEvent` named
+     * like the drag event carries `clientY`, and the row gets a 20px rect,
+     * so the middle of a directory row is its "inside" zone.
+     */
+    const drag = (
+      row: HTMLElement,
+      type: "dragstart" | "dragover" | "drop",
+    ): void => {
+      row.getBoundingClientRect = () => ({ top: 0, height: 20 }) as DOMRect;
+      const event = new MouseEvent(type, {
+        clientY: 10,
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "dataTransfer", {
+        value: {
+          types: [],
+          dropEffect: "",
+          effectAllowed: "",
+          setData: () => {},
+        },
+      });
+      fireEvent(row, event);
+    };
+
+    const shiftClick = async (el: Element) => {
+      await act(async () => {
+        fireEvent.click(el, { shiftKey: true });
+      });
+    };
+
+    it("selects every visible row between the anchor and the shift-clicked one", async () => {
+      await mount();
+      // A plain click opens the folio and anchors the range there.
+      await click(rowFor("At the root"));
+      await shiftClick(rowFor("Lore"));
+
+      expect(rowFor("Lore").getAttribute("aria-selected")).toBe("true");
+      expect(rowFor("At the root").getAttribute("aria-selected")).toBe("true");
+      expect(rowFor("Framework").getAttribute("aria-selected")).toBeNull();
+      expect(
+        screen.getByRole("tree").getAttribute("aria-multiselectable"),
+      ).toBe("true");
+      // Shift opens nothing: no navigation, no toggle.
+      expect(calls.filter((c) => c.name === "update")).toEqual([]);
+    });
+
+    it("moves the whole range into the directory a row of it is dropped on", async () => {
+      await mount();
+      await click(rowFor("At the root"));
+      await shiftClick(rowFor("Lore"));
+
+      // One step at a time: the drop reads the marker the drag-over set.
+      await act(async () => drag(rowFor("At the root"), "dragstart"));
+      await act(async () => drag(rowFor("Framework"), "dragover"));
+      await act(async () => drag(rowFor("Framework"), "drop"));
+
+      await waitFor(() =>
+        expect(
+          calls
+            .filter((c) => c.name === "moveDirectory" || c.name === "update")
+            .map((c) => [c.name, c.input.params.id]),
+        ).toEqual([
+          ["moveDirectory", DIR_B],
+          ["update", AT_ROOT],
+        ]),
+      );
+      const moved = calls.filter(
+        (c) => c.name === "moveDirectory" || c.name === "update",
+      );
+      expect(moved[0]!.input.body).toEqual({ parentId: DIR_A });
+      expect(moved[1]!.input.body).toEqual({ directoryId: DIR_A });
+    });
+
+    it("refuses the whole range when a directory would land inside itself", async () => {
+      await mount();
+      await click(rowFor("At the root"));
+      await shiftClick(rowFor("Lore"));
+
+      // One step at a time: the drop reads the marker the drag-over set.
+      await act(async () => drag(rowFor("At the root"), "dragstart"));
+      await act(async () => drag(rowFor("Lore"), "dragover"));
+      await act(async () => drag(rowFor("Lore"), "drop"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(
+        calls.filter((c) => c.name === "moveDirectory" || c.name === "update"),
+      ).toEqual([]);
+    });
+  });
+
   describe("the refresh button", () => {
     const INSIDE_A = "33333333-3333-4333-8333-333333333333";
 

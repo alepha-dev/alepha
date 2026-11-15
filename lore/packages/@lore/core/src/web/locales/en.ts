@@ -397,6 +397,8 @@ export default {
   "folios.editor.listing.empty": "This directory is empty.",
 
   "folios.editor.tree.title": "Folios",
+  "folios.editor.tree.move-group-refused":
+    "A directory cannot move into itself: nothing was moved.",
   "folios.editor.tree.new-folio": "New folio",
   "folios.editor.tree.new-directory": "New directory",
   "folios.editor.tree.refresh": "Refresh the tree",
