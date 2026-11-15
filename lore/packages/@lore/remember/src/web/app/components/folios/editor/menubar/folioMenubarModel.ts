@@ -12,6 +12,7 @@ export type FolioActionId =
   | "folio.move"
   | "folio.pin"
   | "folio.export"
+  | "folio.importRows"
   | "folio.encrypt"
   | "folio.delete"
   | "edit.bold"
@@ -163,6 +164,9 @@ export const FOLIO_MENUS: FolioMenu[] = [
       },
       sep,
       { id: "folio.export", labelKey: "folios.editor.action.export" },
+      // A table's own (#E144, #Q3517): rows from a CSV whose header names
+      // its columns.
+      { id: "folio.importRows", labelKey: "folios.editor.action.import-rows" },
       {
         id: "folio.encrypt",
         labelKey: "folios.editor.action.encrypt",
@@ -505,7 +509,11 @@ export const folioActionDisabledReason = (
 /**
  * Actions only a table folio takes (#E144).
  */
-const ONLY_FOR_TABLE = new Set<FolioActionId>(["insert.row", "insert.column"]);
+const ONLY_FOR_TABLE = new Set<FolioActionId>([
+  "insert.row",
+  "insert.column",
+  "folio.importRows",
+]);
 
 /**
  * Actions a table folio has no use for: it has no Markdown to format and

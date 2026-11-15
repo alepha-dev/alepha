@@ -177,6 +177,7 @@ const FolioWorkspaceContent = (
     insertRow: () => void;
     insertColumn: () => void;
     find: () => void;
+    importRows: () => void;
   } | null>(null);
   const isTable = props.folio?.type === "table";
 

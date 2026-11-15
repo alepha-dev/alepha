@@ -115,6 +115,7 @@ export interface UseFolioActionsInput {
       insertRow: () => void;
       insertColumn: () => void;
       find: () => void;
+      importRows: () => void;
     } | null;
   };
 }
@@ -1217,6 +1218,7 @@ export const useFolioActions = (
     "insert.diagram": () => input.format.run("insert.diagram"),
     "insert.divider": () => input.format.run("insert.divider"),
     "insert.row": () => input.table?.current?.insertRow(),
+    "folio.importRows": () => input.table?.current?.importRows(),
     "insert.column": () => input.table?.current?.insertColumn(),
     "edit.find": () =>
       input.table?.current ? input.table.current.find() : input.find.show(),

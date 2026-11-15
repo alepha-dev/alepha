@@ -545,6 +545,25 @@ export default {
     "Cette révision ne peut pas être affichée.",
   "folios.table.create.title": "Nouveau tableau",
   "folios.table.create.submit": "Créer le tableau",
+  "folios.editor.tree.import-csv": "Importer un CSV…",
+  "folios.editor.action.import-rows": "Importer des lignes…",
+  "folios.table.import.title-new": "Importer un CSV en tableau",
+  "folios.table.import.title-into": "Importer des lignes depuis un CSV",
+  "folios.table.import.description":
+    "Séparé par des virgules, des points-virgules ou des tabulations, en UTF-8. Rien n'est écrit avant l'import.",
+  "folios.table.import.file": "Fichier CSV",
+  "folios.table.import.header": "La première ligne nomme les colonnes",
+  "folios.table.import.over-caps":
+    "Ce fichier a $1 lignes et $2 colonnes ; un tableau en contient au plus 2000 et 50. Rien n'a été écrit.",
+  "folios.table.import.skipped":
+    "Aucune colonne de ce tableau ne s'appelle : $1. Ces colonnes sont ignorées.",
+  "folios.table.import.type-of": "Type de $1",
+  "folios.table.import.progress": "$1 lignes importées sur $2",
+  "folios.table.import.failed":
+    "Arrêt à la ligne $1 du fichier : $2. Les $3 lignes importées avant restent.",
+  "folios.table.import.cancel": "Annuler",
+  "folios.table.import.submit": "Importer $1 lignes",
+  "folios.table.docs": "Comment fonctionnent les tableaux",
   "folios.editor.tree.new-folio": "Nouveau folio",
   "folios.editor.tree.new-directory": "Nouveau dossier",
   "folios.editor.tree.refresh": "Actualiser l\u2019arborescence",

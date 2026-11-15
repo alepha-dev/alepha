@@ -11,6 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import {
   FilePlus,
   FileText,
+  FileUp,
   Table2,
   FolderPlus,
   Lock,
@@ -18,13 +19,21 @@ import {
   Pin,
   RefreshCw,
 } from "lucide-react";
-import { type ReactElement, useEffect } from "react";
+import { lazy, type ReactElement, Suspense, useEffect, useState } from "react";
 
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
 import { asFolioNode, type FolioTreeData } from "./folioTree.ts";
 import FolioTreeContextMenu from "./FolioTreeContextMenu.tsx";
 import FolioTreeDirectoryIcon from "./FolioTreeDirectoryIcon.tsx";
 import FolioTreeRootContextMenu from "./FolioTreeRootContextMenu.tsx";
+
+/**
+ * The CSV import dialog (#Q3517), a lazy chunk: the tree loads it only
+ * once someone imports.
+ */
+const FolioCsvImportDialog = lazy(
+  () => import("../table/FolioCsvImportDialog.tsx"),
+);
 import { useFolioTreeModel } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeProps {
@@ -114,6 +123,29 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
   // shared row's memo hold removed the need for the workaround too.
   const { onActions } = props;
   const { commands, canWrite } = tree;
+
+  // A CSV import (#Q3517): from the New menu, or a `.csv` dropped on the
+  // tree (a directory row imports into it, a folio row into its directory,
+  // the empty pane into the root).
+  const [importing, setImporting] = useState<
+    { directoryId?: string; file?: File } | undefined
+  >(undefined);
+  const csvOf = (files: File[]) =>
+    files.find((file) => /\.csv$/i.test(file.name) || file.type === "text/csv");
+  const dropFiles = (id: string | undefined, files: File[]) => {
+    const file = csvOf(files);
+    if (!file || !canWrite) return;
+    const node = id
+      ? tree.rows.find((row) => row.node.id === id)?.node
+      : undefined;
+    const directoryId =
+      node === undefined
+        ? undefined
+        : node.data.kind === "directory"
+          ? node.id
+          : node.parentId;
+    setImporting({ directoryId, file });
+  };
   useEffect(() => {
     onActions?.({
       createFolio: (parentId) => void commands.createFolio(parentId),
@@ -126,6 +158,17 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
       data-slot="folio-tree"
       style={{ width: props.width }}
       className="border-border flex h-full min-h-0 flex-none flex-col overflow-hidden border-r"
+      onDragOver={(event) => {
+        if (canWrite && [...event.dataTransfer.types].includes("Files")) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={(event) => {
+        if (![...event.dataTransfer.types].includes("Files")) return;
+        event.preventDefault();
+        dropFiles(undefined, [...event.dataTransfer.files]);
+      }}
     >
       {/* No visible title (#Q3656): the pane is the folio tree wherever it
           opens, so the strip holds only its actions, centred. The tree
@@ -185,6 +228,10 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
                 <DropdownMenuItem onClick={() => commands.createTable()}>
                   <Table2 className="size-4" />
                   {tr("folios.editor.tree.new-table")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setImporting({})}>
+                  <FileUp className="size-4" />
+                  {tr("folios.editor.tree.import-csv")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -295,6 +342,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           onDragStart={commands.onDragStart}
           onDragOver={commands.onDragOver}
           onDrop={commands.onDrop}
+          onFilesDrop={canWrite ? dropFiles : undefined}
           onDragEnd={commands.onDragEnd}
           renamingId={tree.renamingId}
           onCommitRename={commands.commitRename}
@@ -312,6 +360,19 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           uses (#Q2114). `requireConfirm` and the encrypt strings come with
           it, including the warning that there is no recovery - which is the
           one thing this flow must not restate in its own words. */}
+      {importing && (
+        <Suspense fallback={null}>
+          <FolioCsvImportDialog
+            open
+            onOpenChange={(open) => {
+              if (!open) setImporting(undefined);
+            }}
+            target={{ kind: "new", directoryId: importing.directoryId }}
+            file={importing.file}
+          />
+        </Suspense>
+      )}
+
       <FolioPassphraseDialog
         open={tree.encryptingTitle !== undefined}
         onOpenChange={(open) => {
