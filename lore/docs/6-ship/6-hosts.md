@@ -327,6 +327,7 @@ lore host wait my-vps --timeout 120       # exit 0 once online, 1 on timeout
 lore host list                            # home or borrowed, and their state
 lore host get my-vps                      # one host, and what it runs
 lore host update my-vps --allow-deploys   # or --no-allow-deploys, --label
+lore host update my-vps --stats-history   # keep CPU and memory, --stats-interval 5m
 lore host rotate my-vps                   # a new secret, shown once
 lore host lend my-vps --project shop      # unlend withdraws the loan
 lore host move my-vps --to platform --yes
