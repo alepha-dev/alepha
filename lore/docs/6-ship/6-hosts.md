@@ -289,36 +289,28 @@ invalid**, and deploys are refused until it is replaced.
 
 ## Who is told
 
-Two events are announced to the people who can fix them, every member of the
-host's home project whose rank grants `host:update`, the owner among them:
+Two events are recorded in the host's home project, once each, never in the
+projects it is lent to:
 
 - a Cloudflare token stops working;
 - a host is past its expiry. A server meant to be temporary can be given
   one from the command line (`lore host add --ttl 2h`, or `lore host
-  update --ttl`). Past it the host shows **overdue** and its managers are
-  told once. Lore stops nothing and deletes nothing.
+  update --ttl`). Past it the host shows **overdue**. Lore stops nothing and
+  deletes nothing.
 
-See [Notifications](/lore/docs/project-notifications).
+Nobody is told until someone asks: the bell on a host's console subscribes you
+to that host, the one on **Settings** > **Hosts** to every host of the project,
+and the **Host token invalid** and **Host past its TTL** presets can notify
+anyone or post to a Discord channel. See
+[Automations](/lore/docs/plan-automations).
 
 ## For an instance admin
 
 The admin area's **Hosts** page lists every host of the instance, with its
 home project, who created it, and the projects it is lent to. An admin can
-delete one, and give one a home: **Assign to project** offers the projects it
-is lent to first. Assigning touches no loan, and the admin still reads no
-credential.
-
-A host can have **no home**. Nobody but an admin can open it, and it keeps
-deploying through its loans.
-
-⚠️ A host with no home is still tied to the account of the person who
-created it: deleting that account deletes the host, and the account deletion
-dialog says so. Assigning the host a home ends both.
-
-An instance upgraded from an older version of Lore can hold such hosts. After
-the upgrade, once: open the admin area's **Hosts** page, filter on **No
-home**, and assign each host listed, normally to the project it is lent to.
-That project's owner then manages it.
+delete one, and move one to another home: **Assign to project** offers the
+projects it is lent to first. Assigning touches no loan, and the admin still
+reads no credential. Every host has a home project.
 
 ## From the command line
 

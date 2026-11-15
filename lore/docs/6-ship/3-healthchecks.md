@@ -28,7 +28,8 @@ tells more. While its monitor is on, an app has an **Uptime** tab, and its
 2. Under **Monitor**, turn on **Monitor this app**. Lore creates an HTTP(S)
    check on the address with the default settings below.
 3. The check's settings are listed under the switch. Choose **Edit** to change
-   them: its name, kind-specific options, interval and alerts.
+   them: its name, kind-specific options and interval. Alerts are a bell: see
+   [Who is alerted](#who-is-alerted).
 
 The check follows the address: change the address and the check requests the
 new one. Clearing the address while the monitor is on is refused; turn it off

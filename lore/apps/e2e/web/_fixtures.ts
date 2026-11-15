@@ -87,6 +87,8 @@ export const test = base.extend<{}, { loreServer: LoreServer }>({
           TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
           REGISTRATION_IP_MAX_ATTEMPTS: "1000",
           EMAIL_ENABLED: "true",
+          // Discord channels post to memory, never discord.com (#Q3616).
+          DISCORD_TRANSPORT: "memory",
           ADMIN_EMAIL,
           LOG_LEVEL: "warn",
           LOG_FORMAT: "json",
