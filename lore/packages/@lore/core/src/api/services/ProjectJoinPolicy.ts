@@ -79,6 +79,31 @@ export class ProjectJoinPolicy {
   }
 
   /**
+   * What the settings page needs to say about opening this project: whether
+   * the gate is on, and the Viewer rank with what it holds beyond the
+   * allowlist (#Q3645).
+   */
+  public async settingsOf(organizationId: string): Promise<{
+    launched: boolean;
+    viewer?: { name: string; extras: string[] };
+  }> {
+    const viewer = (await this.ranks.ranksOf(organizationId)).find(
+      (rank) => rank.key === ProjectJoinPolicy.VIEWER_KEY,
+    );
+    return {
+      launched: this.launched(),
+      ...(viewer
+        ? {
+            viewer: {
+              name: viewer.name,
+              extras: LoreViewerAllowlist.extrasOf(viewer.permissions),
+            },
+          }
+        : {}),
+    };
+  }
+
+  /**
    * Refuse a stored Viewer that holds more than the allowlist: at a join.
    */
   public async assertViewerFits(organizationId: string): Promise<void> {

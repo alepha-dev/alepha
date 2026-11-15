@@ -3766,6 +3766,27 @@ export default {
   "project.settings.nav.ranks": "Rangs",
   "rank.preset.admin": "Administrateur",
   "rank.preset.viewer": "Lecteur",
+  "project.settings.join.title": "Qui peut rejoindre",
+  "project.settings.join.description":
+    "Invitez les personnes une à une, ou laissez toute personne connectée rejoindre ce projet d’elle-même, en lecture seule.",
+  "project.settings.join.policy.label": "Adhésion",
+  "project.settings.join.invite": "Sur invitation",
+  "project.settings.join.open":
+    "Ouvert : toute personne connectée peut rejoindre, en lecture seule",
+  "project.settings.join.viewers":
+    "Les lecteurs lisent les quêtes, épopées, folios et versions, et ne modifient rien. Pour donner davantage à quelqu’un, changez-le de rang.",
+  "project.settings.join.unavailable":
+    "Les projets ouverts ne sont pas encore disponibles sur ce Lore.",
+  "project.settings.join.noViewer":
+    "Ce projet n’a pas de rang Lecteur, le rang que reçoivent les personnes qui le rejoignent",
+  "project.settings.join.toRanks": "Ouvrir les rangs",
+  "project.settings.join.openConfirm.title": "Ouvrir ce projet ?",
+  "project.settings.join.openConfirm.description":
+    "Toute personne ayant un compte pourra alors le rejoindre d’elle-même, en lecture seule, et lire ses quêtes, épopées, folios et versions.",
+  "project.settings.join.openConfirm.confirm": "Ouvrir le projet",
+  "project.settings.join.url.label": "Lien à partager",
+  "project.settings.join.url.copy": "Copier le lien",
+  "project.settings.join.url.copied": "Lien copié",
   "rank.viewer.wider.title": "$1 accorde plus qu’un lecteur ne peut avoir",
   "rank.viewer.wider.description":
     "Il accorde aussi $1. Un projet ne peut pas être ouvert à toute personne connectée tant que son rang Lecteur ne donne pas uniquement la lecture des quêtes, épopées, folios, versions et domaines.",

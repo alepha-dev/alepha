@@ -3761,6 +3761,26 @@ export default {
   "project.settings.nav.ranks": "Ranks",
   "rank.preset.admin": "Admin",
   "rank.preset.viewer": "Viewer",
+  "project.settings.join.title": "Who can join",
+  "project.settings.join.description":
+    "Invite people one by one, or let anyone signed in join this project by themselves, as a viewer.",
+  "project.settings.join.policy.label": "Joining",
+  "project.settings.join.invite": "Invite only",
+  "project.settings.join.open": "Open: anyone signed in can join, as a viewer",
+  "project.settings.join.viewers":
+    "Viewers read quests, epics, folios and releases, and change nothing. To give someone more, move them to another rank.",
+  "project.settings.join.unavailable":
+    "Open projects are not available on this Lore yet.",
+  "project.settings.join.noViewer":
+    "This project has no Viewer rank, the rank people who join get",
+  "project.settings.join.toRanks": "Open the ranks",
+  "project.settings.join.openConfirm.title": "Open this project?",
+  "project.settings.join.openConfirm.description":
+    "Anyone with an account can then join it by themselves, as a viewer, and read its quests, epics, folios and releases.",
+  "project.settings.join.openConfirm.confirm": "Open the project",
+  "project.settings.join.url.label": "Link to share",
+  "project.settings.join.url.copy": "Copy the link",
+  "project.settings.join.url.copied": "Link copied",
   "rank.viewer.wider.title": "$1 holds more than a viewer may",
   "rank.viewer.wider.description":
     "It also grants $1. A project cannot be opened to everyone signed in until its Viewer rank holds only reads of quests, epics, folios, releases and areas.",

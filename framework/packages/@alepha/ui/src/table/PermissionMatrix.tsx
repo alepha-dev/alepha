@@ -290,4 +290,11 @@ export interface PermissionMatrixColumn {
    * such a column exists at all until it is handed one.
    */
   readOnly?: boolean;
+
+  /**
+   * Whether this column may not be given a permission, though the row is
+   * editable in other columns: such an unchecked cell is closed. A checked one stays
+   * editable, so the column can always be narrowed back inside its bounds.
+   */
+  closed?: (permission: string) => boolean;
 }

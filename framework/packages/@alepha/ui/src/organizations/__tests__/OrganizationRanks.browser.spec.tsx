@@ -90,7 +90,12 @@ describe("OrganizationRanks", () => {
     alepha = undefined;
   });
 
-  const mount = async (options: { blank?: boolean } = {}) => {
+  const mount = async (
+    options: {
+      blank?: boolean;
+      closedPermission?: (rank: { key: string }, permission: string) => boolean;
+    } = {},
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with({ provide: LinkProvider, use: Links })
@@ -111,6 +116,7 @@ describe("OrganizationRanks", () => {
               permission.name === "document:edit" ? "off" : undefined
             }
             blank={options.blank}
+            closedPermission={options.closedPermission}
             presets={[
               {
                 key: "reviewer",
@@ -210,6 +216,17 @@ describe("OrganizationRanks", () => {
 
     await waitFor(() => expect(links.saved).toHaveLength(1));
     expect(links.saved[0].body).toEqual({ name: "Triage", permissions: [] });
+  });
+
+  it("closes a cell an application rule keeps one rank from holding", async () => {
+    const { view } = await mount({
+      closedPermission: (rank, permission) =>
+        rank.key === "member" && permission === "document:read",
+    });
+
+    const read = view.getAllByLabelText("document:read");
+    // Owner, then Member: Member's unchecked cell is closed.
+    expect(read[1].hasAttribute("data-disabled")).toBe(true);
   });
 
   it("offers presets only when blank is off", async () => {

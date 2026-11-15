@@ -56,6 +56,12 @@ export interface OrganizationRanksProps {
     group: CatalogueGroup,
   ) => "on" | "off" | undefined;
   label?: (key: string | undefined, fallback: string) => string;
+  /**
+   * Whether a given rank may not be given a permission right now, on top of
+   * `lockPermission`: an application rule about one rank (a rank kept
+   * narrow while some state holds). Such an unchecked cell is closed.
+   */
+  closedPermission?: (rank: { key: string }, permission: string) => boolean;
 }
 
 export const OrganizationRanks = (props: OrganizationRanksProps) => {
@@ -243,6 +249,9 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
   const columns: PermissionMatrixColumn[] = ranks.map((rank) => ({
     key: rank.key,
     readOnly: !rank.editable,
+    closed: props.closedPermission
+      ? (permission: string) => props.closedPermission!(rank, permission)
+      : undefined,
     description: tr("organizations.ranks.holders", {
       default: "$1 members",
       args: [String(holdersOf(rank.key))],

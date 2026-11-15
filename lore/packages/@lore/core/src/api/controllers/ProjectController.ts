@@ -1013,6 +1013,30 @@ export class ProjectController {
     );
   }
 
+  /**
+   * What the "Who can join" settings need (#Q3645): whether open projects
+   * are available on this Lore yet, and whether the Viewer rank fits the
+   * allowlist. Behind `project:update`, the permission that changes it.
+   */
+  getProjectJoinSettings = $action({
+    method: "GET",
+    path: "/projects/:id/join-settings",
+    use: [this.ownsProject("project:update")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: z.object({
+        launched: z.boolean(),
+        viewer: z
+          .object({ name: z.text(), extras: z.array(z.text()) })
+          .optional(),
+      }),
+    },
+    handler: async ({ params }) =>
+      this.joinPolicy.settingsOf(
+        await this.projectSecurity.organizationIdOf(params.id),
+      ),
+  });
+
   updateProjectById = $action({
     method: "POST",
     path: "/updateProjectById/:id",
