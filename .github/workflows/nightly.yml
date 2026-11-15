@@ -188,3 +188,54 @@ jobs:
         run: yarn alepha test --dialect postgres
         env:
           VITEST_ARGS: --hookTimeout=60000 --testTimeout=60000
+
+  # The Alepha CLI on Windows (#Q3726): the packed tarball installed into a
+  # scaffolded project, then init, dev, test, build and run, as a Windows user
+  # gets them. Nothing else in CI runs on Windows since 203e74c7f5, and
+  # `cli.e2e.spec.ts` still carries its Windows handling (`alepha.cmd`, longer
+  # timeouts, no detached spawn). Nightly only: nothing waits on it, and a
+  # Windows runner is slow.
+  #
+  # The same build as Verify Framework's `e2e-cli`. Only `cli.e2e.spec.ts`:
+  # the other specs need Docker, Redis or a service container, which a
+  # Windows runner does not have.
+  cli-windows:
+    runs-on: windows-latest
+    # A hang detector, not a budget, like the jobs above.
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: framework
+        shell: bash
+    steps:
+      # Before the checkout: the runner's Git turns LF into CRLF otherwise,
+      # and oxfmt and the spec would read other bytes than the Linux jobs.
+      - name: Keep LF Line Endings
+        run: git config --global core.autocrlf false
+        working-directory: .
+
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
+
+      # The tarball carries `dist/`.
+      - name: Build Project
+        run: yarn build
+
+      # The spec serves the node build under Deno and fails without it.
+      - name: Setup Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+
+      - name: Run CLI E2E Tests on Windows
+        timeout-minutes: 45
+        run: yarn w e2e-cli test src/cli.e2e.spec.ts

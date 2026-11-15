@@ -503,7 +503,11 @@ describe("Alepha CLI E2E", () => {
       expect(index.stdout).not.toContain("@alepha/ui@");
       expect(index.stdout).not.toContain(String.fromCharCode(27));
 
-      const entity = await run(`"${CLI}" docs '$entity'`, PROJECT_DIR);
+      // `run` goes through the platform's shell: `sh` would expand a bare
+      // `$entity`, and `cmd.exe` keeps single quotes as part of the argument
+      // while leaving `$` alone (#Q3726).
+      const entityArg = isWindows ? "$entity" : "'$entity'";
+      const entity = await run(`"${CLI}" docs ${entityArg}`, PROJECT_DIR);
       expect(entity.exitCode).toBe(0);
       expect(entity.stdout).toMatch(/^# \$entity\n/);
 
