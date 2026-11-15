@@ -153,7 +153,11 @@ describe("Automation subscriptions with a scope (#Q3635)", () => {
     const on = await set(true, { app: "site" });
     expect(on).toMatchObject({ subscribed: true });
     const rules = await live();
-    expect(rules.map((rule) => rule.presetKey).sort()).toEqual(presets);
+    expect(
+      rules
+        .map((rule) => rule.presetKey)
+        .sort((a, b) => String(a).localeCompare(String(b))),
+    ).toEqual(presets);
     for (const rule of rules) {
       expect(rule.subscriptionScope).toBe("app=site");
       expect(rule.rule.trigger).toMatchObject({ app: "site" });
