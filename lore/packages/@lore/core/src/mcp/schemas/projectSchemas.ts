@@ -98,7 +98,14 @@ export const projectInfoResultSchema = z.object({
    * owner - listing an owner permission by permission would leave them behind
    * every time a new one is declared.
    */
-  permissions: z.array(z.text()),
+  permissions: z.array(z.text()) /**
+   * `true` when the caller's rank here grants reads only, as a viewer of an
+   * open project's does: every write tool will be refused in this project,
+   * with "read-only in this project". Plan around it rather than trying.
+   * One account can be admin in one project and read-only in another, so
+   * the tool list itself is not narrowed.
+   */,
+  readOnly: z.boolean(),
 });
 
 // -----------------------------------------------------------------------------
@@ -287,6 +294,14 @@ export const projectContextResultSchema = z.object({
    * why this replaced `isOwner`.
    */
   permissions: z.array(z.text()),
+  /**
+   * `true` when the caller's rank here grants reads only, as a viewer of an
+   * open project's does: every write tool will be refused in this project,
+   * with "read-only in this project". Plan around it rather than trying.
+   * One account can be admin in one project and read-only in another, so
+   * the tool list itself is not narrowed.
+   */
+  readOnly: z.boolean(),
   /**
    * ISO 639-1 code (e.g. "fr", "ja") the owner picked as the preferred
    * language for AI-generated content. When set, agents should write
