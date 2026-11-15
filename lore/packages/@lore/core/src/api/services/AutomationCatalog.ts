@@ -179,6 +179,7 @@ export class AutomationCatalog {
         ...(rule.trigger.monitor !== undefined
           ? { monitor: rule.trigger.monitor }
           : {}),
+        ...(rule.trigger.host !== undefined ? { host: rule.trigger.host } : {}),
       };
       await this.slots(projectId, source, values, {}, variables, "trigger");
     } else {

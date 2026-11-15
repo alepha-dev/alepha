@@ -25,7 +25,11 @@ on:
 # branch's push run, nor the other way round.
 concurrency:
   group: verify-bay-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push supersedes a branch run, never a main one (#Q3687): with
+  # pull requests merging every few minutes, cancelling on main left no
+  # run to finish, and the deploy that follows a green one never ran.
+  # GitHub keeps the main run going and only the newest one waiting.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read

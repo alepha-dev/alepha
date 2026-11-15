@@ -5,10 +5,7 @@ import type { FileController } from "alepha/api/files";
 import type { AdminJobController } from "alepha/api/jobs";
 import type { AdminApiKeyController } from "alepha/api/keys";
 import type { AdminNotificationController } from "alepha/api/notifications";
-import type {
-  AdminDashboardLayoutController,
-  AdminParameterController,
-} from "alepha/api/parameters";
+import type { AdminParameterController } from "alepha/api/parameters";
 import type { AdminPaymentController } from "alepha/api/payments";
 import type {
   AdminSessionController,
@@ -37,7 +34,7 @@ import { $pageNav } from "../shell/$pageNav.tsx";
 import { AdminConnectedTile } from "./AdminConnectedTile.tsx";
 import type { AdminDashboardProps } from "./AdminDashboard.tsx";
 import type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
-import { adminDashboardCatalog } from "./adminDashboardLayout.ts";
+import { adminDashboardCatalog } from "./adminDashboardCards.ts";
 import { AdminFailedAuditsTile } from "./AdminFailedAuditsTile.tsx";
 import { adminRouterOptionsAtom } from "./AdminRouterOptions.tsx";
 import { AdminUsersTile } from "./AdminUsersTile.tsx";
@@ -183,12 +180,6 @@ export class AdminRouter {
   protected readonly auditApi = $client<AdminAuditController>();
   protected readonly fileApi = $client<FileController>();
   protected readonly parameterApi = $client<AdminParameterController>();
-  /**
-   * The dashboard layout's two actions, served by the parameters module. A
-   * type-only import like every other API here: no server code reaches the
-   * browser, and without the module both actions report `can()` false.
-   */
-  protected readonly layoutApi = $client<AdminDashboardLayoutController>();
   protected readonly paymentApi = $client<AdminPaymentController>();
   protected readonly analyticsApi = $client<AdminAnalyticsController>();
   protected readonly webhookApi = $client<AdminWebhookController>();
@@ -283,9 +274,6 @@ export class AdminRouter {
     props: (): Partial<AdminDashboardProps> => ({
       cards: this.dashboardCatalog(),
     }),
-    // The stored layout, before the first render: the server renders the
-    // final grid, and the browser never moves tiles after mount.
-    loader: () => this.loadDashboardLayout(),
   });
 
   /**
@@ -298,37 +286,15 @@ export class AdminRouter {
   }
 
   /**
-   * The deployment's layout and its version, or nothing.
-   *
-   * Nothing (the code defaults) when the parameters module is absent or this
-   * admin may not read the layout, and when the read fails: a dashboard
-   * still renders, in its default order, rather than an error page.
-   */
-  protected async loadDashboardLayout(): Promise<
-    Pick<AdminDashboardProps, "layout" | "layoutVersion">
-  > {
-    if (!this.layoutApi.getAdminDashboardLayout.can()) {
-      return {};
-    }
-    try {
-      const read = await this.layoutApi.getAdminDashboardLayout();
-      return { layout: read.layout, layoutVersion: read.version };
-    } catch {
-      return {};
-    }
-  }
-
-  /**
    * The built-in tiles, then the application's.
    *
    * Three, each a number an operator acts on and each opening its list
    * filtered to that same number: **Users** (every account, with sign-ups
    * against the week before), **Connected** (distinct users signed in or
    * refreshed in 24 hours) and **Failed sign-ins** (7 days, warning above a
-   * threshold). This reverses the earlier "exactly one built-in card" rule:
-   * with a layout an admin edits, a framework tile nobody wants is hidden in
-   * a click rather than a deploy, so shipping useful defaults no longer
-   * decides an application's landing page for it.
+   * threshold). An application that wants none of them sets
+   * `builtinDashboardCards: false`; the tiles are code, never a stored
+   * layout (#Q3667).
    *
    * The rest of the contract stands. Each tile is gated on the action it
    * reads, never a permission, so it disappears with its module; and they
@@ -336,13 +302,15 @@ export class AdminRouter {
    * declare no `order`, still lead.
    */
   protected dashboardCards(): AdminDashboardCard[] {
+    const own = this.options.dashboardCards ?? [];
+    if (this.options.builtinDashboardCards === false) {
+      return own;
+    }
     return [
       {
         id: "users",
         title: "Users",
         titleKey: "admin.nav.users",
-        description: "Every account, with sign-ups against the week before.",
-        descriptionKey: "admin.dashboard.usersDescription",
         order: 1000,
         can: () => this.userApi.getUserStats.can(),
         render: () => createElement(AdminUsersTile, { id: "users" }),
@@ -351,8 +319,6 @@ export class AdminRouter {
         id: "connected",
         title: "Connected",
         titleKey: "admin.dashboard.connected",
-        description: "Distinct users signed in or refreshed in 24 hours.",
-        descriptionKey: "admin.dashboard.connectedDescription",
         order: 1010,
         can: () => this.userApi.getUserStats.can(),
         render: () => createElement(AdminConnectedTile, { id: "connected" }),
@@ -361,8 +327,6 @@ export class AdminRouter {
         id: "failed-audits",
         title: "Failed audits",
         titleKey: "admin.dashboard.failedAudits",
-        description: "Failed audits of every type over 7 days.",
-        descriptionKey: "admin.dashboard.failedAuditsDescription",
         order: 1020,
         can: () => this.auditApi.findAudits.can(),
         render: () =>
@@ -371,7 +335,7 @@ export class AdminRouter {
             alertThreshold: this.options.failedAuditsAlertThreshold,
           }),
       },
-      ...(this.options.dashboardCards ?? []),
+      ...own,
     ];
   }
 

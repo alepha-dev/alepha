@@ -126,6 +126,7 @@ describe("Lore MCP - deploys", () => {
       const { alepha, probe, project, instance, owner, users } = world;
 
       const host = await probe.hosts.create({
+        projectId: project.id,
         ownerUserId: owner.id,
         type: "bay",
         slug: "bay-shipyard",

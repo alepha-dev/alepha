@@ -40,6 +40,14 @@ const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
         : [],
     ),
   );
+  const hosts = useAutomationOptionLabels(
+    "host",
+    rule?.trigger.kind === "event" &&
+      rule.trigger.host &&
+      literal(rule.trigger.host)
+      ? [rule.trigger.host]
+      : [],
+  );
   const monitors = useAutomationOptionLabels(
     "monitor",
     rule?.trigger.kind === "event" &&
@@ -89,6 +97,14 @@ const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
         </dt>
         <dd>
           {labels.trigger(rule)}
+          {rule.trigger.kind === "event" && rule.trigger.host && (
+            <span className="text-muted-foreground">
+              {" "}
+              {tr("automation.summary.forApp", {
+                args: [named(rule.trigger.host, hosts)],
+              })}
+            </span>
+          )}
           {rule.trigger.kind === "event" && rule.trigger.monitor && (
             <span className="text-muted-foreground">
               {" "}

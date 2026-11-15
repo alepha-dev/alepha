@@ -382,6 +382,7 @@ describe("AppController", () => {
     const owner = await ctx.alepha.inject(DeployTestEntities).users.create({});
     const host = await ctx.repos.hosts.create({
       ownerUserId: owner.id,
+      projectId: (await createTestProject(ctx.alepha)).id,
       type: "bay",
       slug: "ovh-1",
     });
@@ -431,6 +432,7 @@ describe("AppController", () => {
     const owner = await ctx.alepha.inject(DeployTestEntities).users.create({});
     const host = await ctx.repos.hosts.create({
       ownerUserId: owner.id,
+      projectId: project.id,
       type: "bay",
       slug: "ovh-clear",
     });

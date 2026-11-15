@@ -7,11 +7,10 @@ import {
 } from "@alepha/ui/table";
 import type { AdminHostController } from "@lore/ship/api";
 import type { AdminHostResource } from "@lore/ship/schemas";
-import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { FolderInput, Home, Pencil, Trash2 } from "lucide-react";
+import { FolderInput, Pencil, Trash2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import AdminHostAssignDialog from "./AdminHostAssignDialog.tsx";
@@ -39,14 +38,6 @@ export const AdminHosts = () => {
       placeholder: "Search hosts…",
       control: { inputProps: { "aria-label": "Search hosts by slug" } },
     },
-    // The hosts the migration could not place (#E126): the ones to assign.
-    home: {
-      schema: z.array(z.string()),
-      label: "Home",
-      icon: Home,
-      items: [{ value: "none", label: "No home" }],
-      control: { clearLabel: "Any home" },
-    },
   } satisfies DataTableFilterFields;
   const [assigning, setAssigning] = useState<AdminHostResource>();
   const [renaming, setRenaming] = useState<AdminHostResource>();
@@ -65,7 +56,6 @@ export const AdminHosts = () => {
           size: params.size,
           sort: params.sort,
           search: params.filters?.search || undefined,
-          ...(params.filters?.home?.includes("none") ? { homeless: true } : {}),
         },
       });
     },
@@ -152,11 +142,8 @@ export const AdminHosts = () => {
           project: {
             label: "Project",
             cell: (host) =>
-              host.project ? (
-                <span>{host.project.title}</span>
-              ) : (
-                <Badge variant="destructive">No home</Badge>
-              ),
+              // Every host has a home since #Q3627.
+              host.project ? <span>{host.project.title}</span> : null,
           },
           creator: {
             label: "Created by",

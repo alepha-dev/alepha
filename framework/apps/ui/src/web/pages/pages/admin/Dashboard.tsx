@@ -49,7 +49,6 @@ const Dashboard = () => {
   ): AdminDashboardCard => ({
     id,
     title: label,
-    description,
     order,
     render: () => (
       <AdminStatTile

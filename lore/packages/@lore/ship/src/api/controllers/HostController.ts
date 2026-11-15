@@ -776,26 +776,4 @@ export class HostController {
       return { ok: true };
     },
   });
-
-  /**
-   * What deleting the caller's account would take with it.
-   *
-   * A question beside `UserDeletionHook.countMyAuthoredQuests`, for the same
-   * dialog: a host with no home is still anchored on the account of the
-   * person who created it, and goes with it (the deliberate exception to the
-   * refuse-while-referenced rule, because an account deletion must not be
-   * blockable by other people's projects). A homed host outlives it. So
-   * only the first kind is counted, before the click rather than after.
-   */
-  countMyHosts = $action({
-    use: [$secure()],
-    method: "GET",
-    path: "/users/me/hosts",
-    description:
-      "How many hosts with no project go with the caller's account, and how many projects they are lent to",
-    schema: {
-      response: z.object({ hosts: z.integer(), projects: z.integer() }),
-    },
-    handler: async ({ user }) => this.service.countOwned(user.id),
-  });
 }

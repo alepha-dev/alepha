@@ -11,8 +11,8 @@
  * list filtered to the same number: Users, Connected and Failed audits ship
  * built in, and an app adds its own with `AdminStatTile` through
  * `AdminRouterOptions.dashboardCards`. Which tiles show, and in what order, is
- * one layout per deployment that admins edit from Customize mode, stored as a
- * parameter by `alepha/api/parameters`.
+ * declared in code: each card's `order` and `can`, and
+ * `AdminRouterOptions.builtinDashboardCards` to drop the built-in ones.
  *
  * @module alepha.ui.admin
  */
@@ -32,13 +32,9 @@ export type { AdminDashboardCard } from "./AdminDashboardCard.tsx";
 export {
   ADMIN_BUILTIN_DASHBOARD_CARD_IDS,
   adminDashboardCardIdProblem,
-  type AdminDashboardLayoutEntry,
-  type AdminDashboardLayoutTile,
   adminDashboardCatalog,
-  adminDashboardLayoutEntries,
-  adminDashboardLayoutOf,
-  resolveAdminDashboardLayout,
-} from "./adminDashboardLayout.ts";
+  visibleAdminDashboardCards,
+} from "./adminDashboardCards.ts";
 export {
   AdminConnectedTile,
   type AdminConnectedTileProps,

@@ -2,7 +2,6 @@ import {
   ROUTES_APP,
   ROUTES_HOST,
   lazyPart,
-  AccountDeletionRegistry,
   ProjectBlockerRegistry,
   AgentPromptRegistry,
   DashboardPickerRegistry,
@@ -22,7 +21,6 @@ import { currentErrorCountAtom } from "../atoms/currentErrorCountAtom.ts";
 import { currentHostAtom } from "../atoms/currentHostAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
-import { useOwnedHostsDeletionLine } from "../components/account/useOwnedHostsDeletionLine.ts";
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
 import { useHomeHostsBlocker } from "../components/project/settings/useHomeHostsBlocker.ts";
@@ -40,7 +38,6 @@ export class DeployShell {
   protected readonly tabs = $inject(ResourceTabRegistry);
   protected readonly prompts = $inject(AgentPromptRegistry);
   protected readonly pickers = $inject(DashboardPickerRegistry);
-  protected readonly deletion = $inject(AccountDeletionRegistry);
   protected readonly blockers = $inject(ProjectBlockerRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
   protected readonly suggestions = $inject(AssistantSuggestionRegistry);
@@ -295,13 +292,6 @@ export class DeployShell {
     });
 
     this.pickers.registerApps({ useApps: useDashboardApps });
-
-    // What deleting an account takes with it from this module.
-    this.deletion.register({
-      key: "owned-hosts",
-      order: 20,
-      useLine: useOwnedHostsDeletionLine,
-    });
 
     // A project that is the home of a host is not deleted and keeps Apps
     // (#Q3280); the page says so before the click (#Q3281).

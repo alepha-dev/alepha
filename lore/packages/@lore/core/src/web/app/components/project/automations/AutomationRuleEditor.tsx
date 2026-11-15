@@ -302,7 +302,7 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
               // (monitor.*, #Q3610), stored on the trigger under its name.
               value={
                 draft.trigger.kind === "event" &&
-                (key === "app" || key === "monitor")
+                (key === "app" || key === "monitor" || key === "host")
                   ? draft.trigger[key]
                   : undefined
               }

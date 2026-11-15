@@ -14,7 +14,8 @@ export type AutomationOptionKind =
   | "epic"
   | "feedback"
   | "deployment"
-  | "monitor";
+  | "monitor"
+  | "host";
 
 /**
  * Below a full page the picker filters what it already holds; a full page
