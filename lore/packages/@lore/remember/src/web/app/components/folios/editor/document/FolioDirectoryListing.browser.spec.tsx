@@ -44,6 +44,7 @@ const folioOf = (
   summary: extra.summary ?? "",
   directoryId,
   pinned: extra.pinned ?? false,
+  type: "text" as const,
   protected: false,
   createdAt: "2026-09-04T10:00:00.000Z",
   updatedAt: extra.updatedAt ?? "2026-09-04T10:00:00.000Z",

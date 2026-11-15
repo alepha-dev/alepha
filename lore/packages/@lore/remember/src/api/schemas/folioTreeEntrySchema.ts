@@ -19,6 +19,7 @@ export const folioTreeEntrySchema = folios.schema
     updatedAt: true,
     projectId: true,
     title: true,
+    type: true,
     protected: true,
     pinned: true,
     directoryId: true,

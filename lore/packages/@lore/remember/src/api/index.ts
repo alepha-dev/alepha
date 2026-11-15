@@ -8,6 +8,7 @@ import { KnowledgeReportsController } from "./controllers/KnowledgeReportsContro
 import { DirectoryResourceKind } from "./resources/DirectoryResourceKind.ts";
 import { FolioResourceKind } from "./resources/FolioResourceKind.ts";
 import { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
+import { FolioCellCodec } from "./services/FolioCellCodec.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
@@ -22,6 +23,7 @@ import { FolioNameService } from "./services/FolioNameService.ts";
  * @module
  */ import { FoliosByDirectoryMetric } from "./services/FoliosByDirectoryMetric.ts";
 import { FoliosThisMonthMetric } from "./services/FoliosThisMonthMetric.ts";
+import { FolioTableService } from "./services/FolioTableService.ts";
 import { KnowledgeAutomationActions } from "./services/KnowledgeAutomationActions.ts";
 import { KnowledgeAutomationReferences } from "./services/KnowledgeAutomationReferences.ts";
 import { KnowledgeBuckets } from "./services/KnowledgeBuckets.ts";
@@ -51,6 +53,9 @@ export const LoreRememberApi = $module({
     FolioDirectoryService,
     FolioAttachmentService,
     FolioHistoryService,
+    // Table folios (#E144): the cell codec and the service over their rows.
+    FolioCellCodec,
+    FolioTableService,
     FolioResourceKind,
     DirectoryResourceKind,
     KnowledgeFileAccess,
@@ -83,4 +88,12 @@ export {
   FolioHistoryService,
 } from "./services/FolioHistoryService.ts";
 export { FolioNameService } from "./services/FolioNameService.ts";
+export { FolioCellCodec } from "./services/FolioCellCodec.ts";
+export {
+  type FolioRowInput,
+  type FolioRowQuery,
+  type FolioTableSnapshot,
+  type FolioTableTarget,
+  FolioTableService,
+} from "./services/FolioTableService.ts";
 export { PinnedFolioFolder } from "./services/PinnedFolioFolder.ts";
