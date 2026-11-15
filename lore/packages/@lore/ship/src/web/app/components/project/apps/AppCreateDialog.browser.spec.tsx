@@ -163,6 +163,27 @@ describe("AppCreateDialog", () => {
     );
   });
 
+  it("sends the optional address when one is typed (#Q3683)", async ({
+    expect,
+  }) => {
+    const { links, view } = await mount([], {
+      createApp: anInstance("acme", "production"),
+    });
+
+    await pickApp("acme");
+    const address = view.getByLabelText("Address");
+    fireEvent.change(address, { target: { value: " https://acme.example " } });
+    fireEvent.click(view.getByRole("button", { name: "Create" }));
+
+    await waitFor(() => expect(links.calls).toHaveLength(1));
+    // Trimmed; the server validates it as Settings' Address does.
+    expect(links.calls[0].body).toEqual({
+      app: "acme",
+      env: "production",
+      url: "https://acme.example",
+    });
+  });
+
   it("normalises both halves the way the server does", async ({ expect }) => {
     // Trimmed and lowercased before the round trip, so an operator learns the
     // rule without paying for a request. The server's check is the real one.
