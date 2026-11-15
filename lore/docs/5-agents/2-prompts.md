@@ -111,10 +111,11 @@ reverted alone. The flow:
 2. For each quest, the project's local checks, then one commit that names it.
    A later fix to a quest goes into that quest's commit, never into the next
    one's.
-3. A pull request into main, its description linking the quests, and its link
-   posted on each of them. An epic or a run opens it as a draft after its first
-   quest and pushes after every quest, so CI runs while the next quest is
-   worked.
+3. A pull request into main, its description linking the quests, and the pull
+   request recorded in Lore: once on the epic for an epic, on each quest
+   otherwise, so it shows in each quest's side rail. An epic or a run opens it
+   as a draft after its first quest and pushes after every quest, so CI runs
+   while the next quest is worked.
 4. CI on the pull request is the gate, when the project has CI. A green local
    check is not.
 5. The agent never merges it, never pushes to main, and never merges main into

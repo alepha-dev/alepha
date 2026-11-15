@@ -28,8 +28,8 @@ An epic's page is split into tabs:
   a spec or an outcome note. They can be attached and detached in every status.
 - **Activity**: what happened to it.
 
-The side panel shows its status, its release, its progress and the areas it
-touches. An epic is written `#E4`, and `[[#E4]]` links to it from any Markdown.
+The side panel shows its status, its release, its pull requests, its progress
+and the areas it touches. An epic is written `#E4`, and `[[#E4]]` links to it from any Markdown.
 
 ## Creating an epic
 
@@ -230,6 +230,7 @@ started yet.
 lore epic create --title "Billing v2" --description "..."
 lore epic set status 22 --status ready
 lore epic shelve 22
+lore epic pull-request add 22 --url https://github.com/acme/crm/pull/118 --pr-number 118
 ```
 
 See [The lore CLI](/lore/docs/reference-cli) for every command.
@@ -249,6 +250,10 @@ epic, so an agent knows what happened.
   log.
 - There is no call to complete an epic: it completes with the request that
   resolves its last open quest.
+- `epic_pull_request_add` records the epic's pull request, in any status. An
+  epic lands as one pull request, so it is recorded once on the epic, and every
+  quest of the epic with none of its own shows it. `epic_get` returns them, and
+  `quest_get` returns them as `epicPullRequests` on such a quest.
 
 `quest_list` hides a draft epic's quests, as the Quests page does. Pass the
 epic's id as `epic` to read one epic's quests whatever its status, or

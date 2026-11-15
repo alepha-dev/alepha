@@ -349,7 +349,7 @@ What this package holds, with the notes that are not obvious from the code. Move
 
 **Services (6)** - `FeedbackRateLimiter`, `QuestCsvFormatter`, `QuestDeletionService` (the one quest delete, shared by `deleteQuest` and `deleteEpic`), `QuestResourceMapper`, `QuestService`, `QuestShelvingService` (the quest shelve and unshelve writes, shared with the epic shelve).
 
-**MCP tools (4)** - `EpicTools` (`epic_review_create` / `_answer` and the `review` block on `epic_get` since #E121), `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`).
+**MCP tools (4)** - `EpicTools` (`epic_review_create` / `_answer` and the `review` block on `epic_get` since #E121, `epic_pull_request_add` since #Q3707), `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, `quest_pull_request_add` (#Q3707: a quest in an epic with none of its own gets the epic's as `epicPullRequests` on `quest_get`, from the same `getEpicRefs` read), and the discussion inlined on `quest_get`).
 
 ## Stock automation presets (#E43, #Q2041)
 

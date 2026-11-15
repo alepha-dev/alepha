@@ -3,6 +3,12 @@ import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
 
+import {
+  pullRequestBodyOf,
+  pullRequestFlags,
+  pullRequestLabelOf,
+  pullRequestLineOf,
+} from "../schemas/pullRequestFlags.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
@@ -103,7 +109,7 @@ export class EpicCommand {
   public readonly get = $command({
     name: "get",
     description:
-      "Show one epic: its status, progress, plan and the folios filed under it",
+      "Show one epic: its status, progress, plan, pull requests and the folios filed under it",
     args: EpicCommand.REF_ARG,
     flags: z.object({ ...EpicCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
     handler: async ({ args, flags, print }) => {
@@ -174,6 +180,14 @@ export class EpicCommand {
                     lines: epic.folios.map(
                       (folio) => `F${folio.shortId}  ${folio.title}`,
                     ),
+                  },
+                ]
+              : []),
+            ...(epic.pullRequests?.length
+              ? [
+                  {
+                    title: "Pull requests",
+                    lines: epic.pullRequests.map(pullRequestLineOf),
                   },
                 ]
               : []),
@@ -362,6 +376,49 @@ export class EpicCommand {
             : `E${number} is now ${updated.status}`,
         );
       });
+    },
+  });
+
+  public readonly pullRequestAdd = $command({
+    name: "add",
+    description:
+      "Record a pull request against an epic, in any status: every quest of the epic with none of its own shows it",
+    args: EpicCommand.REF_ARG,
+    flags: z.object({
+      ...EpicCommand.PROJECT_FLAG,
+      ...pullRequestFlags,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const number = this.refs.epic(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const target = await this.epicApi.getEpicByNumber({
+          params: { projectId, number },
+        });
+        const updated = await this.epicApi.addEpicPullRequest({
+          params: { id: target.id },
+          body: pullRequestBodyOf(flags),
+        });
+
+        this.render.written(
+          print,
+          flags.output,
+          updated,
+          `Recorded ${pullRequestLabelOf(flags)} on E${number}`,
+        );
+      });
+    },
+  });
+
+  public readonly pullRequest = $command({
+    name: "pull-request",
+    description: "What an epic shipped through: record a pull request",
+    children: [this.pullRequestAdd],
+    handler: async ({ help }) => {
+      help();
     },
   });
 
@@ -636,6 +693,7 @@ export class EpicCommand {
       this.unshelve,
       this.delete,
       this.review,
+      this.pullRequest,
     ],
     handler: async ({ help }) => {
       help();

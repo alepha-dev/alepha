@@ -2,6 +2,7 @@ import { $inject, Alepha } from "alepha";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import type { EpicResource } from "../../api/schemas/epicResourceSchema.ts";
+import type { PullRequest } from "../../api/schemas/pullRequestSchema.ts";
 
 /**
  * The epic stamped on a quest or folio row over MCP: the `number` an agent
@@ -57,6 +58,26 @@ export class EpicRefService {
         { number: epic.number, title: epic.title, status: epic.status },
       ]),
     );
+  }
+
+  /**
+   * The ref of one epic and the pull requests recorded on it (#Q3707), from
+   * the same one read as {@link refFor}: `quest_get` shows a quest the
+   * epic's pull requests when it has none of its own.
+   */
+  async refWithPullRequestsFor(
+    projectId: number,
+    epicId: number | null | undefined,
+  ): Promise<{ ref?: EpicRef; pullRequests: PullRequest[] }> {
+    if (epicId == null) return { pullRequests: [] };
+    const epic = (
+      await this.epicController().getEpicRefs({ params: { projectId } })
+    ).find((row) => row.id === epicId);
+    if (!epic) return { pullRequests: [] };
+    return {
+      ref: { number: epic.number, title: epic.title, status: epic.status },
+      pullRequests: epic.pullRequests ?? [],
+    };
   }
 
   /**

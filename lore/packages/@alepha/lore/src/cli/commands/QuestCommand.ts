@@ -8,6 +8,12 @@ import { $command, CommandError, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 
+import {
+  pullRequestBodyOf,
+  pullRequestFlags,
+  pullRequestLabelOf,
+  pullRequestLineOf,
+} from "../schemas/pullRequestFlags.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
@@ -245,9 +251,25 @@ export class QuestCommand {
         const attachments = await this.questApi.listQuestAttachments({
           params: { id: quest.id },
         });
+        // A quest in an epic with no pull request of its own shows the
+        // epic's, as `quest_get` does (#Q3707).
+        const epicPullRequests =
+          !quest.pullRequests?.length && quest.epicId != null
+            ? ((await this.epicApi.getEpicRefs({ params: { projectId } })).find(
+                (epic) => epic.id === quest.epicId,
+              )?.pullRequests ?? [])
+            : [];
+        const pullRequests = quest.pullRequests?.length
+          ? quest.pullRequests
+          : epicPullRequests;
 
         if (flags.output === "json") {
-          this.render.json(print, { ...quest, comments, attachments });
+          this.render.json(print, {
+            ...quest,
+            ...(epicPullRequests.length ? { epicPullRequests } : {}),
+            comments,
+            attachments,
+          });
           return;
         }
 
@@ -293,6 +315,17 @@ export class QuestCommand {
                       (commit) =>
                         `${commit.sha.slice(0, 9)}  ${commit.message ?? ""}`,
                     ),
+                  },
+                ]
+              : []),
+            ...(pullRequests.length
+              ? [
+                  {
+                    title:
+                      pullRequests === quest.pullRequests
+                        ? "Pull requests"
+                        : "Pull requests (the epic's)",
+                    lines: pullRequests.map(pullRequestLineOf),
                   },
                 ]
               : []),
@@ -947,6 +980,49 @@ export class QuestCommand {
     },
   });
 
+  public readonly pullRequestAdd = $command({
+    name: "add",
+    description:
+      "Record a pull request against a quest, completed ones included. A quest in an epic shows the epic's instead",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({
+      ...QuestCommand.PROJECT_FLAG,
+      ...pullRequestFlags,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const shortId = this.refs.quest(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const quest = await this.questApi.getQuestByShortId({
+          params: { projectId, shortId },
+        });
+        const updated = await this.questApi.addQuestPullRequest({
+          params: { id: quest.id },
+          body: pullRequestBodyOf(flags),
+        });
+
+        this.render.written(
+          print,
+          flags.output,
+          updated,
+          `Recorded ${pullRequestLabelOf(flags)} on Q${quest.shortId}`,
+        );
+      });
+    },
+  });
+
+  public readonly pullRequest = $command({
+    name: "pull-request",
+    description: "What a quest shipped through: record a pull request",
+    children: [this.pullRequestAdd],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
   public readonly hold = $command({
     name: "hold",
     description: "Put a quest on hold: it is blocked on something outside it",
@@ -1145,7 +1221,7 @@ export class QuestCommand {
   public readonly quest = $command({
     name: "quest",
     description:
-      "A project's quests: list, read, create, update, accept, tick, comment, hold, shelve, complete and delete them",
+      "A project's quests: list, read, create, update, accept, tick, comment, record commits and pull requests, hold, shelve, complete and delete them",
     children: [
       this.list,
       this.get,
@@ -1155,6 +1231,7 @@ export class QuestCommand {
       this.objective,
       this.comment,
       this.commit,
+      this.pullRequest,
       this.hold,
       this.unhold,
       this.shelve,

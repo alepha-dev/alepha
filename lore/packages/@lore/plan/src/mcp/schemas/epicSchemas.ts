@@ -10,6 +10,10 @@ import { epicManualStatusSchema } from "../../api/schemas/epicManualStatusSchema
 import { epicReviewItemInputSchema } from "../../api/schemas/epicReviewItemInputSchema.ts";
 import { epicReviewItemKindSchema } from "../../api/schemas/epicReviewItemKindSchema.ts";
 import { epicReviewSuggestionSchema } from "../../api/schemas/epicReviewSuggestionSchema.ts";
+import {
+  pullRequestParamsShape,
+  pullRequestRefSchema,
+} from "./pullRequestSchemas.ts";
 
 /**
  * Epic reference for MCP tools. Unlike quests (`id` / `shortId`) and
@@ -158,6 +162,11 @@ export const epicGetResultSchema = z.object({
       updatedAt: z.string(),
     }),
   ),
+  pullRequests: z
+    .array(pullRequestRefSchema)
+    .describe(
+      "The pull requests recorded on this epic with `epic_pull_request_add`. Every quest of the epic with none of its own shows these.",
+    ),
   review: epicGetReviewSchema.describe(
     "What the epic's plan reviews left: the questions still open, and the decision log. Read it before reviewing or working the epic.",
   ),
@@ -357,4 +366,18 @@ export const epicReviewAnswerToolResultSchema = z.object({
     .integer()
     .describe("On an overturn: the number of the decision filed in its place.")
     .optional(),
+});
+
+// -----------------------------------------------------------------------------
+// epic_pull_request_add
+// -----------------------------------------------------------------------------
+
+export const epicPullRequestAddParamsSchema = epicRefSchema.extend(
+  pullRequestParamsShape,
+);
+
+export const epicPullRequestAddResultSchema = z.object({
+  id: z.integer(),
+  number: z.integer(),
+  pullRequests: z.array(pullRequestRefSchema),
 });

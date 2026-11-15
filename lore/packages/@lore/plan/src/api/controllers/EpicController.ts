@@ -10,6 +10,7 @@ import { type Project } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
@@ -29,6 +30,10 @@ import {
   epicResourceSchema,
 } from "../schemas/epicResourceSchema.ts";
 import { epicShelveResultSchema } from "../schemas/epicShelveResultSchema.ts";
+import {
+  appendPullRequests,
+  pullRequestInputSchema,
+} from "../schemas/pullRequestSchema.ts";
 import {
   type ReleaseCascade,
   releaseCascadeSchema,
@@ -100,6 +105,7 @@ export class EpicController {
   shelving = $inject(QuestShelvingService);
   reviews = $inject(EpicReviewService);
   protected readonly ranks = $inject(RankService);
+  protected readonly dt = $inject(DateTimeProvider);
 
   /**
    * One project-layer audit row for something that happened to an epic.
@@ -260,7 +266,8 @@ export class EpicController {
 
   /**
    * Every epic in the project, reduced to the four fields another list needs
-   * in order to NAME one. Feeds the project route, which turns it into both
+   * in order to NAME one, plus its pull requests, which a quest with none of
+   * its own shows (#Q3707). Feeds the project route, which turns it into both
    * the sidebar's draft-epic badge and the map the quests table's Epic
    * column resolves against.
    *
@@ -288,7 +295,7 @@ export class EpicController {
     path: "/getEpicRefs/:projectId",
     method: "GET",
     description:
-      "Every epic of a project, as id, number, title and status, sorted by number: the index to find an epic by name or status. Read one with its number for its description and quests.",
+      "Every epic of a project, as id, number, title, status and the pull requests recorded on it, sorted by number: the index to find an epic by name or status. Read one with its number for its description and quests.",
     use: [this.ownsProject("epic:read")],
     schema: {
       params: z.object({
@@ -301,7 +308,7 @@ export class EpicController {
         where: {
           projectId: { eq: params.projectId },
         },
-        columns: ["id", "number", "title", "status"],
+        columns: ["id", "number", "title", "status", "pullRequests"],
         orderBy: [{ column: "number", direction: "asc" }],
       });
     },
@@ -437,6 +444,41 @@ export class EpicController {
       await this.logEpic("create", epic, user);
 
       return await this.buildEpicResource(epic);
+    },
+  });
+
+  /**
+   * Record a pull request an epic shipped through (#Q3707), deduped on the
+   * URL. Every quest of the epic with none of its own shows it, so the
+   * epic's one pull request is one write rather than one per quest.
+   *
+   * Allowed in every status, `completed` included: a pull request is often
+   * recorded after the merge that completed the epic, and the record is
+   * project memory, not plan.
+   */
+  addEpicPullRequest = $action({
+    method: "POST",
+    path: "/addEpicPullRequest/:id",
+    use: [this.ownsEpicForWork("epic:write")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: pullRequestInputSchema,
+      response: epicResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const epic = this.owned.get<Epic>();
+
+      const updated = await this.epics.updateById(params.id, {
+        pullRequests: appendPullRequests(
+          epic.pullRequests,
+          [body],
+          user.id,
+          this.dt.nowISOString(),
+        ),
+      });
+      await this.logEpic("pull_request", updated, user, { url: body.url });
+
+      return await this.buildEpicResource(updated);
     },
   });
 

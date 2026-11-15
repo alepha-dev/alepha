@@ -25,6 +25,10 @@
  *
  * See {@link epicReviewPromptDefault} for why this text is English and
  * carries no secrets.
+ *
+ * The pull request is recorded with `quest_pull_request_add` on each quest, not posted as a link with
+ * `quest_comment_add` (#Q3707): a link in the discussion is found by
+ * scrolling, a record shows on each quest's rail.
  */
 export const questLoopPromptDefault = `Work every loose quest of the Lore project "{{project}}", one at a time, in one run and one pull request: every quest in \`todo\` that belongs to no epic.
 
@@ -50,7 +54,7 @@ Take the next one by priority, then by what the others depend on.
 3. Do the work. Tick each objective with \`quest_objective_set\` as it is met, not at the end.
 4. Run the project's local checks and fix everything red. A skipped check is a failure, not a pass.
 5. Commit it as one commit, naming the quest in its message. One quest is one commit: a later fix to this quest goes into its commit (a fixup, squashed into it before you push), never into another quest's.
-6. Push the branch. After the first quest, open a pull request into main for the run, as a draft: its title says it is a run of loose quests, and its description lists each quest with its link, kept up to date as the run goes. Post the pull request's link on each quest with \`quest_comment_add\`.
+6. Push the branch. After the first quest, open a pull request into main for the run, as a draft: its title says it is a run of loose quests, and its description lists each quest with its link, kept up to date as the run goes. Record it on each quest with \`quest_pull_request_add\` (its URL, number and title) as you reach it, rather than posting its link as a comment.
 7. \`quest_complete\` it with a short note: what shipped, and what was left out. A quest that depends on it can then be accepted.
 
 If the project verifies on CI, every push runs it on the pull request, and that run is the source of truth: a green local check is not. Do not wait for it before starting the next quest, but read each run as it lands, and fix a red one in the commit of the quest it belongs to before going on.

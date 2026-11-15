@@ -85,6 +85,14 @@ describe("questLoopPromptDefault", () => {
     }
   });
 
+  // #Q3707: the run's one pull request is recorded on each of its quests.
+  it("records the pull request on each quest, not as a comment", () => {
+    expect(prompt).toContain(
+      "Record it on each quest with `quest_pull_request_add`",
+    );
+    expect(prompt).not.toMatch(/Post the pull request's link/i);
+  });
+
   it("ends on a report that lists what was blocked", () => {
     expect(prompt).toMatch(/could not do as written/i);
   });

@@ -1,0 +1,63 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2839c729-0ebf-41be-9366-65b1f309f950",
+  "prevIds": ["aba04f73-1e32-4fc2-9dee-fc10e1cd54f2"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "epics", "pull_requests"],
+      "writes": [
+        "s|col|public.epics.pull_requests",
+        "n|col|public.epics.pull_requests",
+        "e|col|public.epics.pull_requests"
+      ],
+      "reads": ["n|tbl|public.epics", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quests", "pull_requests"],
+      "writes": [
+        "s|col|public.quests.pull_requests",
+        "n|col|public.quests.pull_requests",
+        "e|col|public.quests.pull_requests"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "epics",
+        "name": "pull_requests",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "pull_requests",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

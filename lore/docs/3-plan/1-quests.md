@@ -82,7 +82,7 @@ the existing names.
 
 A quest's page has its description and objectives in the middle, the
 **Discussion** underneath, and a side rail with its status, assignee, priority,
-size, due date, area, epic, release, commits and tags.
+size, due date, area, epic, release, commits, pull requests and tags.
 
 ![A quest's page, with its objectives, its discussion and its side rail](/screenshots/lore/quest-light.png)
 
@@ -210,6 +210,23 @@ quest is completed. A commit already recorded is not added twice, and one can
 still be added to a completed quest, since the final sha is often known only
 after the merge.
 
+## Pull requests
+
+A pull request is recorded on a quest the same way: its URL, and its number and
+title when you have them. The rail lists them under **Pull requests**, linked to
+the URL as recorded. A pull request already recorded is not added twice, and one
+can still be added to a completed quest.
+
+A quest in an epic usually has none of its own: an epic lands as one pull
+request, recorded once on the epic, and each of its quests shows it in its rail,
+marked **From the epic**. A quest that records its own shows that one instead.
+Lore does not read a pull request's state from your forge: what is recorded is
+what was written, like a commit.
+
+```bash
+lore quest pull-request add 12 --url https://github.com/acme/crm/pull/118 --pr-number 118
+```
+
 ## From the command line
 
 ```bash
@@ -228,7 +245,9 @@ An agent connected over MCP works quests under the same rules as a person. It
 starts with `project_context` (the areas, the epics, its active quests and the
 folio index in one call), accepts a quest with `quest_accept` before its first
 commit, ticks objectives with `quest_objective_set` as they are met, and closes
-with `quest_complete`, passing a `message` and its `commits`.
+with `quest_complete`, passing a `message` and its `commits`. It records the
+pull request it opened with `quest_pull_request_add`, or with
+`epic_pull_request_add` when the quest is part of an epic.
 
 The full list is in [MCP tools](/lore/docs/reference-mcp-tools). To hand a
 quest to an agent from the browser, see

@@ -3,6 +3,7 @@ import { epicStatusSchema } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { pullRequestSchema } from "../schemas/pullRequestSchema.ts";
 import { releases } from "./releases.ts";
 
 /**
@@ -165,6 +166,17 @@ export const epics = $entity({
     dependsOn: db.ref(z.integer().optional(), () => epics.cols.id, {
       onDelete: "set null",
     }),
+    /**
+     * The pull requests this epic shipped through (#Q3707). An epic lands as
+     * one, so this is usually one entry; a list because a large epic may be
+     * split, or reopened after a revert. Every quest of the epic that has no
+     * pull request of its own shows these.
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`: a rebuild of `epics` would fire
+     * SET NULL on `quests.epicId` and `folios`, as `dependsOn` warns above.
+     */
+    pullRequests: z.array(pullRequestSchema).optional(),
   }),
   indexes: [
     { columns: ["projectId", "number"], unique: true },

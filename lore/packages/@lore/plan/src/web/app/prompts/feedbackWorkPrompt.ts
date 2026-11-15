@@ -29,6 +29,10 @@
  *
  * See {@link epicReviewPromptDefault} for why this text is English and
  * carries no secrets.
+ *
+ * The pull request is recorded with `quest_pull_request_add`, not posted as a link with
+ * `quest_comment_add` (#Q3707): a link in the discussion is found by
+ * scrolling, a record shows on the quest's rail.
  */
 export const feedbackWorkPromptDefault = `Handle feedback {{reference}} "{{title}}" of the Lore project "{{project}}".
 
@@ -46,7 +50,7 @@ The report: {{url}}
 3. Work in a git worktree of your own, on a branch cut from the latest main and named after the quest. Never on main.
 4. Do the work. Tick objectives with \`quest_objective_set\`. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
 5. Commit it as one commit, its message naming the quest and {{reference}}. One quest is one commit: the pull request is rebase-merged, so main receives its commits as they are. A later fix goes into that commit (amend it, then push with \`--force-with-lease\`).
-6. Push the branch and open a pull request into main. Its title names the quest and {{reference}}, and its description links the quest. Post the pull request's link on the quest with \`quest_comment_add\`.
+6. Push the branch and open a pull request into main. Its title names the quest and {{reference}}, and its description links the quest. Record it on the quest with \`quest_pull_request_add\` (its URL, number and title), rather than posting its link as a comment.
 7. If the project verifies on CI, the run on the pull request is the source of truth and a green local check is not: fix and push again until it is green.
 8. Never merge it yourself, and never push to main: the pull request is how the change lands. If the project's AGENTS.md or CLAUDE.md lets an agent turn on auto-merge, turn it on, as a rebase merge. Otherwise it waits for review.
 9. Only once it has merged: record the commit main received with \`quest_commit_add\` (a rebase merge gives it a new sha; find it in main's log by the quest's reference), \`quest_complete\` with a short note, then tell the reporter in the feedback's discussion what shipped, in one or two sentences. Delete the branch locally, and on the remote if the merge did not, and remove the worktree.

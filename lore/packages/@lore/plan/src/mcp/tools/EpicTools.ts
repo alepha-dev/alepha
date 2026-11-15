@@ -20,6 +20,8 @@ import {
   epicGetResultSchema,
   epicListParamsSchema,
   epicListResultSchema,
+  epicPullRequestAddParamsSchema,
+  epicPullRequestAddResultSchema,
   epicReviewAnswerParamsSchema,
   epicReviewAnswerToolResultSchema,
   epicReviewCreateParamsSchema,
@@ -31,6 +33,10 @@ import {
   epicUpdateParamsSchema,
   epicUpdateResultSchema,
 } from "../schemas/epicSchemas.ts";
+import {
+  pullRequestBodyOf,
+  pullRequestRefsOf,
+} from "../schemas/pullRequestSchemas.ts";
 
 /**
  * MCP tools for epic operations.
@@ -151,6 +157,7 @@ export class EpicTools {
           summary: folio.summary?.trim() ? folio.summary : undefined,
           updatedAt: folio.updatedAt ?? "",
         })),
+        pullRequests: pullRequestRefsOf(epic.pullRequests),
         review: this.reviewBlock(epic.reviews),
       };
     },
@@ -382,6 +389,45 @@ export class EpicTools {
         title: epic.title,
         updatedAt: epic.updatedAt,
         ...this.diagrams.warn(params.description),
+      };
+    },
+  });
+
+  /**
+   * Record a pull request an epic shipped through (#Q3707).
+   */
+  epic_pull_request_add = $tool({
+    description:
+      "Record a pull request against an epic: an epic lands as one pull request, and every quest of the epic with none of its own shows it, so one call covers all of them. Use it when you open the pull request, and pass its number and title too. " +
+      "Deduped on the URL, so recording the same pull request twice is a no-op. Allowed in every status, 'completed' included. A list rather than one value: a large epic may be split, or reopened after a revert. Lore never reads the pull request's state from the forge: the record is what you write, like a commit.",
+    title: "Record a pull request on an epic",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: epicPullRequestAddParamsSchema,
+      result: epicPullRequestAddResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      const target = await this.epicController.getEpicByNumber({
+        params: { projectId, number: params.number },
+      });
+
+      const epic = await this.epicController.addEpicPullRequest({
+        params: { id: target.id },
+        body: pullRequestBodyOf(params),
+      });
+
+      return {
+        id: epic.id,
+        number: epic.number,
+        pullRequests: pullRequestRefsOf(epic.pullRequests),
       };
     },
   });

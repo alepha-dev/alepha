@@ -41,6 +41,10 @@ import {
   REMINDER_INTERVAL_VALUES,
 } from "../entities/quests.ts";
 import { type Release, releases } from "../entities/releases.ts";
+import {
+  appendPullRequests,
+  pullRequestInputSchema,
+} from "../schemas/pullRequestSchema.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import { QUEST_EPIC_NONE } from "../schemas/questEpicFilter.ts";
@@ -751,6 +755,42 @@ export class QuestController {
         ),
       });
       await this.logQuest("commit", updated, user, { sha: body.sha });
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+
+  /**
+   * Record a pull request a quest shipped through (#Q3707), deduped on the
+   * URL.
+   *
+   * Allowed on completed quests, like `addQuestCommit`: a pull request is
+   * often recorded after the fact. A quest in an epic usually needs none,
+   * since it shows the epic's (`EpicController.addEpicPullRequest`).
+   */
+  addQuestPullRequest = $action({
+    method: "POST",
+    path: "/addQuestPullRequest/:id",
+    use: [this.ownsQuestForWork("quest:update")],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      body: pullRequestInputSchema,
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = this.owned.get<Quest>();
+
+      const updated = await this.quests.updateById(params.id, {
+        pullRequests: appendPullRequests(
+          quest.pullRequests,
+          [body],
+          user.id,
+          this.dt.nowISOString(),
+        ),
+      });
+      await this.logQuest("pull_request", updated, user, { url: body.url });
 
       return this.mapQuestToResource(updated);
     },

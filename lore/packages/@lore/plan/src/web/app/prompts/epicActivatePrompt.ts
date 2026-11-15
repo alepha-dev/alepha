@@ -58,6 +58,10 @@
  *
  * See {@link epicReviewPromptDefault} for why this text is English and
  * carries no secrets.
+ *
+ * The pull request is recorded with `epic_pull_request_add`, once,, not posted as a link with
+ * `quest_comment_add` (#Q3707): a link in the discussion is found by
+ * scrolling, a record shows on the epic page and the rail of every quest of the epic.
  */
 export const epicActivatePromptDefault = `Work epic {{reference}} "{{title}}" of the Lore project "{{project}}" to completion, quest by quest, in one pull request.
 
@@ -78,7 +82,7 @@ The epic: {{url}}
 2. Do the work. Tick each objective with \`quest_objective_set\` as it is met, not at the end.
 3. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red before moving on. A skipped check is a failure, not a pass.
 4. Commit it as one commit, its message naming the quest and {{reference}}. One quest is one commit: a later fix to this quest goes into its commit (a fixup, squashed into it before you push), never into another quest's.
-5. Push the branch. After the first quest, open a pull request into main for the whole epic, as a draft: its title names {{reference}}, and its description links the epic and lists its quests. Post the pull request's link on each quest with \`quest_comment_add\` as you reach it.
+5. Push the branch. After the first quest, open a pull request into main for the whole epic, as a draft: its title names {{reference}}, and its description links the epic and lists its quests. Record it once on the epic with \`epic_pull_request_add\` (project_name "{{project}}", number {{number}}, its URL, number and title): every quest of the epic shows the epic's pull request, so it is never posted on each quest.
 6. \`quest_complete\` it with a short note: what shipped, and anything the next quest needs to know. A quest that depends on it can then be accepted. Keep the epic's last quest accepted until the pull request has merged: completing it completes the epic, and the epic has not landed yet.
 
 If the project verifies on CI, every push runs it on the pull request, and that run is the source of truth: a green local check is not. Do not wait for it before starting the next quest, but read each run as it lands, and fix a red one in the commit of the quest it belongs to before going on.

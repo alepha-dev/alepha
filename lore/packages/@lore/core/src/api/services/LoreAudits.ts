@@ -162,6 +162,7 @@ export class LoreAudits {
       "comment",
       "attachment",
       "commit",
+      "pull_request",
     ],
     // A session editing one resource repeatedly is the everyday case here -
     // an MCP agent, or somebody working through a form - so `update` folds
@@ -176,6 +177,7 @@ export class LoreAudits {
     description: "Epic lifecycle",
     // `review` and `answer` are epic reviews (#E121): one row per filed
     // review and one per answer, waive or overturn. Neither coalesces.
+    // `pull_request` is one recorded on the epic (#Q3707).
     actions: [
       "create",
       "update",
@@ -185,6 +187,7 @@ export class LoreAudits {
       "detach",
       "review",
       "answer",
+      "pull_request",
     ],
     // A session editing one resource repeatedly is the everyday case here -
     // an MCP agent, or somebody working through a form - so `update` folds
