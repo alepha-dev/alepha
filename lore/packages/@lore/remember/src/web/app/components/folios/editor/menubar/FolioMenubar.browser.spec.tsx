@@ -92,3 +92,32 @@ describe("the folio menubar's reading size", () => {
     ]);
   });
 });
+
+describe("the folio menubar on a table", () => {
+  it("names the export for what a table leaves as", async ({ expect }) => {
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n)
+      .with(I18n);
+    await alepha.start();
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <FolioMenubar
+          handlers={noHandlers}
+          state={{ ...anOpenFolio, isTable: true }}
+          mode="view"
+        />
+      </AlephaContext.Provider>,
+    );
+    const folio = await screen.findByRole("menuitem", { name: "Folio" });
+    fireEvent.keyDown(folio, { key: "ArrowDown" });
+    expect(
+      await screen.findByRole("menuitem", { name: "Export as .csv" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("menuitem", { name: "Export as .md" }),
+    ).toBeNull();
+  });
+});
