@@ -7,6 +7,7 @@ import {
   type RowActionEntry,
 } from "@alepha/ui/table";
 import {
+  AutomationSubscriptionBell,
   currentProjectAtom,
   loreDocsUrl,
   type I18n,
@@ -361,6 +362,17 @@ const ProjectReleases = () => {
         }}
         refreshSignal={reload}
         filters={{ fields: filterFields }}
+        // Release mail is an automation since #Q3625: the bell subscribes its
+        // viewer to the Release published preset.
+        toolbar={
+          <AutomationSubscriptionBell
+            presets={["release-published"]}
+            label={tr("release.subscription.label")}
+            description={tr("release.subscription.description")}
+            offDescription={tr("release.subscription.offDescription")}
+            testId="release-subscription-bell"
+          />
+        }
         fetch={fetchReleases}
         onRowClick={(release) =>
           release.tag &&

@@ -32,7 +32,6 @@ import {
   type ReleaseContents,
   ReleaseContentService,
 } from "../services/ReleaseContentService.ts";
-import { ReleaseNotifier } from "../services/ReleaseNotifier.ts";
 import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
 
 export class ReleaseController {
@@ -77,7 +76,6 @@ export class ReleaseController {
     });
   }
   owned = $inject(OwnedResourceProvider);
-  releaseNotifier = $inject(ReleaseNotifier);
   protected readonly log = $logger();
 
   /**
@@ -439,17 +437,6 @@ export class ReleaseController {
       if (release.defaultSince) {
         await this.handDefaultOn(published, user);
       }
-
-      // After the write AND the audit row, deliberately: a notification for a
-      // release that failed to persist is the one failure mode worse than a
-      // missing notification. The count comes off the `contents` already read
-      // above, never a third query.
-      await this.releaseNotifier.published({
-        release: published,
-        project: this.owned.authority<Project>(),
-        publisherId: user.id,
-        questCount: contents.quests.length,
-      });
 
       return published;
     },

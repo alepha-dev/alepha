@@ -60,7 +60,6 @@ import { RecentlyShippedMetric } from "./services/RecentlyShippedMetric.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { ReleaseForecast } from "./services/ReleaseForecast.ts";
-import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
 import { ReleaseOutlookMetric } from "./services/ReleaseOutlookMetric.ts";
 import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
 import { ReleasesToPublishMetric } from "./services/ReleasesToPublishMetric.ts";
@@ -164,7 +163,6 @@ export const LorePlanApi = $module({
     // feedback comment controllers.
     MentionNotifier,
     // The release fan-out. Publish only; reopen notifies nobody.
-    ReleaseNotifier,
     FeedbackRateLimiter,
     QuestCsvFormatter,
     QuestService,

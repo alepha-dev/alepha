@@ -132,6 +132,9 @@ export default {
   "automation.preset.quest-reminders.title": "Rappels de quête",
   "automation.preset.quest-reminders.description":
     "Toutes les heures, rappelle à la personne assignée chaque quête dont le rappel est dû, à l'intervalle choisi sur la quête.",
+  "automation.preset.release-published.title": "Version publiée",
+  "automation.preset.release-published.description":
+    "Avertit un membre quand une version est publiée, avec son tag, son titre, son nombre de quêtes et un lien.",
   "automation.preset.deploy-failed.title": "Échec du déploiement",
   "automation.preset.deploy-failed.description":
     "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",
@@ -2766,6 +2769,11 @@ export default {
     "Les retours refusés sont conservés ici comme trace.",
   "feedback.empty.detail.openForm": "Ouvrir le formulaire de retour",
   "feedback.back": "Retour",
+  "release.subscription.label": "M'avertir à chaque version publiée",
+  "release.subscription.description":
+    "Une règle à votre nom vous avertira de chaque version publiée dans ce projet. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+  "release.subscription.offDescription":
+    "Vous ne serez plus averti quand une version est publiée.",
   "feedback.subscription.label": "Me notifier des nouveaux retours",
   "feedback.subscription.description":
     "Une règle vous notifiera de chaque nouveau retour dans ce projet.",
