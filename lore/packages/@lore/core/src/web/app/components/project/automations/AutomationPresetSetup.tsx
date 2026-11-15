@@ -76,6 +76,11 @@ const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
       preset={props.preset}
       choices={choices}
       variables={variables.data?.items ?? []}
+      variablesLoading={
+        slots.some((slot) => slot.bindable) &&
+        !variables.data &&
+        !variables.error
+      }
       canManageVariables={canInProject(project, "automation:manage")}
       onCreateShared={async (key, value) => {
         const result = await api.setAutomationVariable({
