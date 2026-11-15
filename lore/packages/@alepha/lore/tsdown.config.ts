@@ -65,6 +65,18 @@ export default defineConfig([
     dts: true,
     deps,
   },
+  // CSV in and out of a table folio, shared by Lore and the CLI. Imports
+  // nothing, so it runs in a browser, Node and a Worker alike.
+  {
+    entry: "src/csv/index.ts",
+    format: ["esm"],
+    platform: "neutral",
+    sourcemap: true,
+    fixedExtension: false,
+    outDir: "dist/csv",
+    dts: true,
+    deps,
+  },
   // The `lore` binary. `dts: false` is load-bearing rather than an
   // optimisation: a bin has no consumers, so its types are dead weight, and
   // emitting them hands `scripts/check-dts.ts` a new `.d.ts` to walk for the

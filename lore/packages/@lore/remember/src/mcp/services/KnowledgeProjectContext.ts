@@ -70,6 +70,7 @@ export class KnowledgeProjectContext {
     const items = shown.map((folio) => ({
       shortId: folio.shortId,
       title: folio.title,
+      type: folio.type ?? "text",
       updatedAt: folio.updatedAt,
       // Omit when empty so agents seeing the field always trust it. The
       // schema field is optional; consumers fall back to title.
@@ -84,7 +85,7 @@ export class KnowledgeProjectContext {
     // spinning the MCP transport.
     const { pinnedFolios, pinnedFoliosTruncated } = this.pinnedFolder.fold(
       folios
-        .filter((f) => f.pinned && !f.protected)
+        .filter((f) => f.pinned && !f.protected && f.type !== "table")
         // The controller already sorts (pinned DESC, updatedAt DESC), so
         // this slice is already newest-first.
         .map((f) => ({

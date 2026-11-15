@@ -135,6 +135,11 @@ export const projectContextParamsSchema = projectParamsSchema;
 const folioIndexEntrySchema = z.object({
   shortId: z.integer(),
   title: z.string(),
+  /**
+   * `text` (Markdown) or `table` (typed rows, read with the row tools), so
+   * an agent knows which one it is before opening it.
+   */
+  type: z.enum(["text", "table"]),
   updatedAt: z.string(),
   summary: z.string().optional(),
   /**

@@ -1,3 +1,4 @@
+import { FolioCsv } from "@alepha/lore/csv";
 import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $repository, DatabaseProvider } from "alepha/orm";
@@ -276,6 +277,31 @@ export class FolioTableController {
       return { columns };
     },
   });
+
+  exportFolioTable = $action({
+    method: "GET",
+    path: "/folios/:id/table/csv",
+    use: [this.ownsFolio("folio:read")],
+    description:
+      "A table folio as CSV: every row in position order, a header line, each cell as stored (a select by its label, a reference by its code, a date as ISO, a checkbox as true or false). UTF-8 with a byte order mark.",
+    schema: {
+      params: folioIdParamsSchema,
+      response: z.object({ csv: z.string(), rowCount: z.integer() }),
+    },
+    handler: async () => {
+      const folio = this.owned.get<Folio>();
+      const { columns, rows, total } = await this.tables.listRows(folio);
+      return {
+        csv: this.csv.fromTable({
+          columns: columns.map((column) => this.tables.columnResource(column)),
+          rows,
+        }),
+        rowCount: total,
+      };
+    },
+  });
+
+  protected readonly csv = new FolioCsv();
 
   /**
    * The table's columns, its row count and its first rows.

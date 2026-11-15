@@ -33,6 +33,11 @@ export interface FolioTreeData {
    * root and never lets anyone rename, move or delete.
    */
   system?: "trash";
+  /**
+   * A table folio (#E144): drawn with a table icon, and offered neither Pin
+   * nor Encrypt.
+   */
+  table?: boolean;
 }
 
 /**
@@ -66,6 +71,7 @@ interface BuildFolioTreeInput {
     directoryId?: string;
     pinned?: boolean;
     protected?: boolean;
+    type?: "text" | "table";
   }[];
 }
 
@@ -97,6 +103,7 @@ export const buildFolioTree = (input: BuildFolioTreeInput): FolioTreeNode[] => {
         kind: (f.protected ? "protected" : "folio") as FolioTreeKind,
         shortId: f.shortId,
         pinned: f.pinned,
+        ...(f.type === "table" ? { table: true } : {}),
       },
     })),
   ]) as FolioTreeNode[];

@@ -50,12 +50,19 @@ export const folioZipEntries = (input: {
    * Base filename, no extension — from `folioExportFilename`.
    */
   filename: string;
+  /**
+   * The folio's body: its Markdown, or a table's CSV.
+   */
   markdown: string;
+  /**
+   * `md` for a text folio, `csv` for a table (#Q3514).
+   */
+  extension?: "md" | "csv";
   attachments: FolioZipAttachment[];
 }): ZipEntry[] => {
   const entries: ZipEntry[] = [
     {
-      name: `${input.filename}.md`,
+      name: `${input.filename}.${input.extension ?? "md"}`,
       data: new TextEncoder().encode(input.markdown),
       // Markdown deflates by roughly 70%; it is the one entry worth it.
       method: "deflate",

@@ -34,6 +34,7 @@ import { knowledgeRelations } from "../relations/knowledgeRelations.ts";
 import { folioColumnInputOptionsSchema } from "../schemas/folioColumnInputOptionsSchema.ts";
 import { folioColumnTypeSchema } from "../schemas/folioColumnTypeSchema.ts";
 import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
+import { folioListEntrySchema } from "../schemas/folioListEntrySchema.ts";
 import { folioListQuerySchema } from "../schemas/folioListQuerySchema.ts";
 import {
   folioLinksSchema,
@@ -211,7 +212,7 @@ export class FolioController {
     description: "List the project's folios (newest first).",
     schema: {
       query: folioListQuerySchema,
-      response: z.array(folioRowSchema),
+      response: z.array(folioListEntrySchema),
     },
     handler: async ({ query }) => {
       const where: Record<string, unknown> = {
@@ -224,15 +225,22 @@ export class FolioController {
         { column: "pinned" as const, direction: "desc" as const },
         { column: "updatedAt" as const, direction: "desc" as const },
       ];
-      if (query.epicId == null) {
+      const limit = query.limit ?? 50;
+      const offset = query.offset ?? 0;
+      if (query.epicId == null && !query.q) {
         return this.withEpics(
-          await this.folios.findMany({
-            where,
-            orderBy,
-            limit: query.limit ?? 50,
-            offset: query.offset ?? 0,
-          }),
+          await this.folios.findMany({ where, orderBy, limit, offset }),
         );
+      }
+      if (query.epicId == null) {
+        // A search also finds a table by its rows (#Q3514): the folios whose
+        // own text matches, merged with the tables one of whose rows does,
+        // each once, then paged.
+        const [byText, byRow] = await Promise.all([
+          this.folios.findMany({ where, orderBy, limit: offset + limit }),
+          this.tables.searchRows(query.projectId, query.q!, offset + limit),
+        ]);
+        return this.withRowMatches(byText, byRow, offset, limit);
       }
       // An epic's folios are its `filed` links in core's graph (#Q2626),
       // read in bounded batches and paged here: a folio does not know its
@@ -247,15 +255,55 @@ export class FolioController {
           orderBy,
         }),
       );
-      rows.sort(
-        (a, b) =>
-          Number(b.pinned) - Number(a.pinned) ||
-          (b.updatedAt > a.updatedAt ? 1 : b.updatedAt < a.updatedAt ? -1 : 0),
-      );
-      const offset = query.offset ?? 0;
-      return this.withEpics(rows.slice(offset, offset + (query.limit ?? 50)));
+      if (query.q) {
+        const inEpic = new Set(filed);
+        const byRow = (
+          await this.tables.searchRows(query.projectId, query.q, 500)
+        ).filter((hit) => inEpic.has(hit.folioId));
+        return this.withRowMatches(rows, byRow, offset, limit);
+      }
+      rows.sort(this.byPinnedThenRecent);
+      return this.withEpics(rows.slice(offset, offset + limit));
     },
   });
+
+  protected readonly byPinnedThenRecent = (
+    a: { pinned: boolean; updatedAt: string },
+    b: { pinned: boolean; updatedAt: string },
+  ) =>
+    Number(b.pinned) - Number(a.pinned) ||
+    (b.updatedAt > a.updatedAt ? 1 : b.updatedAt < a.updatedAt ? -1 : 0);
+
+  /**
+   * Folios found by their own text, merged with tables found by a row: one
+   * entry per folio, the row carried as `rowMatch`, pinned first then
+   * newest, then paged.
+   */
+  protected async withRowMatches(
+    byText: Folio[],
+    byRow: Array<{ folioId: string; number: number; text: string }>,
+    offset: number,
+    limit: number,
+  ) {
+    const rowOf = new Map(byRow.map((hit) => [hit.folioId, hit]));
+    const known = new Set(byText.map((row) => row.id));
+    const missing = byRow
+      .map((hit) => hit.folioId)
+      .filter((id) => !known.has(id));
+    const extra = missing.length
+      ? await this.bound.collect(missing, (batch) =>
+          this.folios.findMany({ where: { id: { inArray: batch } } }),
+        )
+      : [];
+    const merged = [...byText, ...extra].sort(this.byPinnedThenRecent);
+    const page = await this.withEpics(merged.slice(offset, offset + limit));
+    return page.map((row) => {
+      const hit = rowOf.get(row.id);
+      return hit
+        ? { ...row, rowMatch: { number: hit.number, text: hit.text } }
+        : row;
+    });
+  }
 
   /**
    * The folios a document names, as `{ shortId, title }`, for the wiki-link
@@ -1052,8 +1100,9 @@ export class FolioController {
       // failure here leaves a table with no columns, which the grid offers
       // to fill, and is reported rather than swallowed.
       if (isTable) {
-        if (source) await this.tables.copyTable(source.id, created.id);
-        else await this.tables.seedColumns(created, body.columns ?? []);
+        if (source) {
+          await this.tables.copyTable(source.id, created.id, created.projectId);
+        } else await this.tables.seedColumns(created, body.columns ?? []);
       }
       // Everything below follows the committed row, and is best effort
       // (#Q2555): a failure is logged as an error, never a 500 that invites
@@ -1147,6 +1196,20 @@ export class FolioController {
       ) {
         throw new BadRequestError(
           "This folio is a table: it has no Markdown content. Change its rows and columns instead.",
+        );
+      }
+      // Neither is possible for a table yet (#Q3514): pinning inlines a
+      // folio's Markdown into every agent's context, which a table has none
+      // of, and its rows are queried on the server, which a client-side
+      // passphrase cannot allow.
+      if (existing.type === "table" && body.pinned === true) {
+        throw new BadRequestError(
+          "A table folio cannot be pinned to context yet: pinning puts a folio's text in every agent's context, and a table's rows are not text.",
+        );
+      }
+      if (existing.type === "table" && body.protected === true) {
+        throw new BadRequestError(
+          "A table folio cannot be encrypted: its rows are searched and filtered on the server, which a passphrase only you hold cannot allow.",
         );
       }
       if (

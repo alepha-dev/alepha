@@ -477,6 +477,24 @@ const NEEDS_WRITE = new Set<FolioActionId>([
   "folio.delete",
 ]);
 
+/**
+ * Actions a table folio cannot take yet (#E144), with the reason the menu
+ * shows beside each.
+ */
+const NOT_FOR_TABLE = new Map<FolioActionId, string>([
+  ["folio.pin", "folios.editor.table.pin-disabled"],
+  ["folio.encrypt", "folios.editor.table.encrypt-disabled"],
+]);
+
+/**
+ * Why an action is unavailable, as an i18n key, when the reason is worth
+ * saying (a table cannot be pinned or encrypted); `undefined` otherwise.
+ */
+export const folioActionDisabledReason = (
+  id: FolioActionId,
+  state: FolioActionState,
+): string | undefined => (state.isTable ? NOT_FOR_TABLE.get(id) : undefined);
+
 const NEEDS_EDIT_MODE = new Set<FolioActionId>([
   "edit.bold",
   "edit.italic",
@@ -535,6 +553,11 @@ export interface FolioActionState {
    * are untouched - a Viewer opens folios, that is the point of the rank.
    */
   readOnly?: boolean;
+  /**
+   * The folio is a table (#E144): Pin and Encrypt are unavailable, with
+   * their reason ({@link folioActionDisabledReason}).
+   */
+  isTable?: boolean;
 }
 
 export const isFolioActionEnabled = (
@@ -547,6 +570,7 @@ export const isFolioActionEnabled = (
   // Ahead of `noFolio`: a rank that cannot write cannot write on the empty
   // state either, where `folio.new` is otherwise available.
   if (state.readOnly && NEEDS_WRITE.has(id)) return false;
+  if (state.isTable && NOT_FOR_TABLE.has(id)) return false;
   if (state.noFolio) return item?.availableWithoutFolio === true;
   if (!state.editing && NEEDS_EDIT_MODE.has(id)) return false;
   if (state.isNew && NEEDS_SAVED_FOLIO.has(id)) return false;

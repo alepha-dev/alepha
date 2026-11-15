@@ -1,4 +1,8 @@
-import { ResourceRegistry } from "@lore/core/api";
+import {
+  BoundParameters,
+  ResourceLinkService,
+  ResourceRegistry,
+} from "@lore/core/api";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository, $sequence, DatabaseProvider } from "alepha/orm";
@@ -6,6 +10,7 @@ import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { type FolioColumn, folioColumns } from "../entities/folioColumns.ts";
 import { type FolioRowRecord, folioRows } from "../entities/folioRows.ts";
+import { folios } from "../entities/folios.ts";
 import type { FolioCellValue } from "../schemas/folioCellValueSchema.ts";
 import type { FolioColumnInputOptions } from "../schemas/folioColumnInputOptionsSchema.ts";
 import type { FolioColumnOperation } from "../schemas/folioColumnOperationSchema.ts";
@@ -113,6 +118,9 @@ export class FolioTableService {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly history = $inject(FolioHistoryService);
+  protected readonly links = $inject(ResourceLinkService);
+  protected readonly bound = $inject(BoundParameters);
+  protected readonly folios = $repository(folios);
 
   /**
    * Per-folio row numbers. A `$sequence` counter is keyed on this property
@@ -773,6 +781,7 @@ export class FolioTableService {
   public async copyTable(
     fromFolioId: string,
     toFolioId: string,
+    projectId?: number,
   ): Promise<void> {
     const { columns, rows } = await this.snapshot(fromFolioId);
     const ids = new Map<string, string>();
@@ -814,6 +823,13 @@ export class FolioTableService {
       (await this.folioRowNumber.current(fromFolioId)) ?? 0,
     );
     if (highest > 0) await this.folioRowNumber.reset(highest, toFolioId);
+    if (projectId !== undefined) {
+      await this.syncReferenceLinks({
+        id: toFolioId,
+        projectId,
+        type: "table",
+      });
+    }
   }
 
   /**
@@ -850,8 +866,11 @@ export class FolioTableService {
     operations: FolioColumnOperation[],
     userId?: string,
   ): Promise<FolioColumnResource[]> {
-    return this.recorded(folio, userId, () =>
-      this.writeApplyColumnOperations(folio, operations),
+    return this.recorded(
+      folio,
+      userId,
+      () => this.writeApplyColumnOperations(folio, operations),
+      "always",
     );
   }
 
@@ -927,9 +946,14 @@ export class FolioTableService {
     folio: FolioTableTarget,
     userId: string | undefined,
     write: () => Promise<T>,
+    links: "always" | "ifReference" = "ifReference",
   ): Promise<T> {
     this.assertTable(folio);
-    if (!userId || folio.title === undefined) return write();
+    if (!userId || folio.title === undefined) {
+      const result = await write();
+      await this.syncReferenceLinks(folio, links);
+      return result;
+    }
     const plan = await this.history.prepareRevisionLazy(
       folio.id,
       userId,
@@ -937,12 +961,133 @@ export class FolioTableService {
       () => this.encodeSnapshot(folio.id),
     );
     const result = await write();
-    await this.history.recordRevision(
-      { id: folio.id, title: folio.title, summary: folio.summary ?? "" },
-      userId,
-      plan,
-    );
+    await Promise.all([
+      this.history.recordRevision(
+        { id: folio.id, title: folio.title, summary: folio.summary ?? "" },
+        userId,
+        plan,
+      ),
+      this.syncReferenceLinks(folio, links),
+    ]);
     return result;
+  }
+
+  /**
+   * Re-sync the folio's outbound links from its reference cells (#Q3514),
+   * by the same sync a text folio's save runs: a reference cell is a link,
+   * and the quest or folio it names lists the table among its backlinks.
+   *
+   * `ifReference` skips a table with no reference column, which is what a
+   * row write on most tables is; a column operation passes `always`, since
+   * removing or retyping the last reference column must clear its links.
+   */
+  public async syncReferenceLinks(
+    folio: FolioTableTarget,
+    mode: "always" | "ifReference" = "always",
+  ): Promise<void> {
+    const columns = (await this.columnsOf(folio.id)).filter(
+      (column) => this.codec.typeOf(column) === "reference",
+    );
+    if (columns.length === 0 && mode === "ifReference") return;
+    const codes = new Set<string>();
+    if (columns.length) {
+      const rows = await this.rows.findMany({
+        where: { folioId: { eq: folio.id } },
+        columns: ["cells"],
+      });
+      for (const row of rows) {
+        for (const column of columns) {
+          const value = this.codec.read(column, row.cells?.[column.id]);
+          if (typeof value === "string") codes.add(value);
+        }
+      }
+    }
+    await this.links.syncLinks(
+      { kind: "folio", id: folio.id, projectId: folio.projectId },
+      [...codes].map((code) => `[[${code}]]`).join(" "),
+    );
+  }
+
+  /**
+   * The table rows of a project whose text holds `needle`, one per folio
+   * (the first in position order), with the row as text (#Q3514).
+   *
+   * Scoped to the project in SQL: the project's unprotected table folios
+   * first, by the `(projectId, ...)` indexes of `folios`, then their rows by
+   * `(folioId, position)`. It never reads a row of another project.
+   */
+  public async searchRows(
+    projectId: number,
+    needle: string,
+    limit = 50,
+  ): Promise<Array<{ folioId: string; number: number; text: string }>> {
+    const lower = needle.trim().toLowerCase();
+    if (!lower) return [];
+    const tableIds = (
+      await this.folios.findMany({
+        where: {
+          projectId: { eq: projectId },
+          type: { eq: "table" },
+          protected: { eq: false },
+        },
+        columns: ["id"],
+      })
+    ).map((row) => row.id);
+    if (tableIds.length === 0) return [];
+    const matched = await this.bound.collect(tableIds, (batch) =>
+      this.rows.findMany({
+        where: {
+          folioId: { inArray: batch },
+          searchText: { like: `%${lower}%` },
+        },
+        orderBy: [{ column: "position", direction: "asc" }],
+      }),
+    );
+    const first = new Map<string, FolioRowRecord>();
+    for (const row of matched) {
+      if (!first.has(row.folioId)) first.set(row.folioId, row);
+    }
+    const hits = [...first.values()].slice(0, limit);
+    if (hits.length === 0) return [];
+    const columns = await this.bound.collect(
+      hits.map((row) => row.folioId),
+      (batch) =>
+        this.columns.findMany({
+          where: { folioId: { inArray: batch } },
+          orderBy: [{ column: "position", direction: "asc" }],
+        }),
+    );
+    return hits.map((row) => {
+      const own = columns.filter((column) => column.folioId === row.folioId);
+      return {
+        folioId: row.folioId,
+        number: row.number,
+        text: this.rowText(own, row.cells),
+      };
+    });
+  }
+
+  /**
+   * A row's cells as one line of text, `Column: value` joined by ` · `,
+   * empty cells left out: what a search snippet shows.
+   */
+  public rowText(
+    columns: FolioColumn[],
+    stored: Record<string, unknown>,
+  ): string {
+    return columns
+      .flatMap((column) => {
+        const value = this.codec.read(column, stored?.[column.id]);
+        if (value === null) return [];
+        const text =
+          this.codec.typeOf(column) === "checkbox"
+            ? value
+              ? "yes"
+              : "no"
+            : this.codec.displayText(column, value);
+        return text ? [`${column.name}: ${text}`] : [];
+      })
+      .join(" · ");
   }
 
   // -------------------------------------------------------------------------
@@ -1096,6 +1241,7 @@ export class FolioTableService {
     const highest = Math.max(0, ...rows.map((row) => row.number));
     const current = (await this.folioRowNumber.current(folio.id)) ?? 0;
     if (highest > current) await this.folioRowNumber.reset(highest, folio.id);
+    await this.syncReferenceLinks(folio);
   }
 
   // -------------------------------------------------------------------------

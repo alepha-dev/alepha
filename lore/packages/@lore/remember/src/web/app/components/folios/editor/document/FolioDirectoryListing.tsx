@@ -11,6 +11,7 @@ import {
   CornerLeftUp,
   FilePlus,
   FileText,
+  Table2,
   FolderPlus,
   Lock,
   Pin,
@@ -259,7 +260,11 @@ const FolioDirectoryListing = (
         })}
 
         {childFolios.map((f) => {
-          const Icon = f.protected ? Lock : FileText;
+          const Icon = f.protected
+            ? Lock
+            : f.type === "table"
+              ? Table2
+              : FileText;
           const updated = dateTime.of(f.updatedAt);
           return (
             <Link
