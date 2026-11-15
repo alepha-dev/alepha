@@ -16,7 +16,8 @@ import { InspectorRunProvider } from "./InspectorRunProvider.ts";
 
 /**
  * Serves the inspector's route table as HTTP over a per-process Unix socket,
- * `<runDir>/<runId>.sock`, mode `0600`.
+ * `<runDir>/<runId>.sock`, mode `0600`. On Windows, over the named pipe
+ * `\\.\pipe\alepha-<runId>.sock` (see `InspectorRegistry.socketAddress`).
  *
  * A socket rather than a TCP port: no port to pick or collide on, no CORS, and
  * nothing reachable from the network. The unauthenticated routes that read
@@ -79,12 +80,6 @@ export class InspectorSocketServer {
   // -------------------------------------------------------------------------------------------------------------------
 
   protected async listen(): Promise<void> {
-    if (this.platform === "win32") {
-      // Out of scope, like workerd: no Unix socket, and no fallback transport.
-      this.log.debug("Inspector disabled on Windows");
-      return;
-    }
-
     if (this.alepha.isTest() && !this.registry.explicitDirectory) {
       // A test that opted into the inspector still never announces itself in
       // the developer's real run directory: devtools would list every suite.
@@ -95,9 +90,14 @@ export class InspectorSocketServer {
     }
 
     const dir = this.registry.directory();
-    const path = this.fs.join(dir, `${this.run.runId}.sock`);
+    const path = this.registry.socketAddress(dir, `${this.run.runId}.sock`);
+    // On Windows a named pipe (#Q3730): no file, so no stale file to remove,
+    // no mode to set and no `sun_path` limit. A pipe's default ACL gives full
+    // control to its creator, the administrators and SYSTEM, and read access
+    // to everyone else, which cannot send a request.
+    const pipe = this.registry.usesPipes;
 
-    if (Buffer.byteLength(path) > this.maxPathBytes) {
+    if (!pipe && Buffer.byteLength(path) > this.maxPathBytes) {
       this.log.error(
         `Inspector socket path is too long for ${this.platform} (${Buffer.byteLength(path)} > ${this.maxPathBytes} bytes): ${path}. Set ALEPHA_RUN_DIR to a shorter directory. This app will not be visible to devtools.`,
       );
@@ -109,7 +109,7 @@ export class InspectorSocketServer {
       // A socket file left behind by a process that died without unlinking
       // it makes `listen` fail with EADDRINUSE. The run id is fresh, so
       // whatever sits at this path is stale by construction.
-      await rm(path, { force: true });
+      if (!pipe) await rm(path, { force: true });
 
       const server = createServer((req, res) => {
         void this.handle(req, res);
@@ -123,7 +123,7 @@ export class InspectorSocketServer {
       });
       // The directory is already `0700`, which alone keeps other users out;
       // the socket's own mode says the same thing on its own.
-      await chmod(path, 0o600);
+      if (!pipe) await chmod(path, 0o600);
 
       this.server = server;
       this.path = path;
@@ -144,7 +144,7 @@ export class InspectorSocketServer {
       server.closeAllConnections?.();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
-    if (path) {
+    if (path && !this.registry.usesPipes) {
       await rm(path, { force: true }).catch(() => undefined);
     }
   }

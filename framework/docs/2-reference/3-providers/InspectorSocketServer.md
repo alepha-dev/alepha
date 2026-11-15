@@ -9,7 +9,8 @@ import { InspectorSocketServer } from "alepha/inspector";
 ## Overview
 
 Serves the inspector's route table as HTTP over a per-process Unix socket,
-`<runDir>/<runId>.sock`, mode `0600`.
+`<runDir>/<runId>.sock`, mode `0600`. On Windows, over the named pipe
+`\\.\pipe\alepha-<runId>.sock` (see `InspectorRegistry.socketAddress`).
 
 A socket rather than a TCP port: no port to pick or collide on, no CORS, and
 nothing reachable from the network. The unauthenticated routes that read
