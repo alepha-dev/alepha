@@ -456,4 +456,31 @@ test.describe("Feedback", () => {
       page.getByRole("button", { name: /^submit feedback$/i }),
     ).toHaveCount(0);
   });
+
+  /**
+   * The request page server-renders for an anonymous visitor (the sign-in
+   * card), and hydrates over it (#Q3757). Any console error fails it, a
+   * hydration mismatch first: production saw React #418 there on every load,
+   * because the server, failing its render (#Q3792), streamed an error
+   * sentence into `#root` and the browser drew the real page over it.
+   */
+  test("an anonymous load of the request page logs no console error", async ({
+    context,
+    page,
+  }) => {
+    await context.clearCookies();
+    const errors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") errors.push(msg.text());
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+
+    await page.goto("/acme/request", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("html[data-alepha-hydrated='true']");
+    await expect(
+      page.getByRole("button", { name: /sign in/i }).first(),
+    ).toBeVisible();
+
+    expect(errors).toEqual([]);
+  });
 });
