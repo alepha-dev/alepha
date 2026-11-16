@@ -14,6 +14,7 @@ import {
   notificationInboxEntity,
   NotificationInboxRecipientProvider,
   NotificationSenderService,
+  NotificationSettings,
 } from "../index.ts";
 
 const KNOWN = "MEMBER@Example.com";
@@ -63,6 +64,20 @@ class Templates {
     },
   });
 
+  /**
+   * A body that renders past the 255 characters of a plain `z.text()`,
+   * the way a long comment or release note does.
+   */
+  readonly long = $notification({
+    name: "inbox-long",
+    schema: z.object({ text: z.text({ maxLength: 10_000 }) }),
+    inbox: {
+      title: "A long message",
+      body: (v) => v.text,
+      href: "/",
+    },
+  });
+
   readonly rows = $repository(notificationInboxEntity);
 }
 
@@ -88,6 +103,7 @@ const boot = async () => {
     recipients: alepha.inject(TestRecipients),
     sender: alepha.inject(NotificationSenderService),
     deliveries: alepha.inject(NotificationDeliveryService),
+    settings: alepha.inject(NotificationSettings),
   };
 };
 
@@ -115,6 +131,35 @@ describe("the inbox channel", () => {
       category: "mentions",
     });
     expect(rows[0].readAt ?? null).toBeNull();
+
+    await alepha.stop();
+  });
+
+  it("keeps a body longer than 255 characters, on the row and the receipt", async ({
+    expect,
+  }) => {
+    const { alepha, deliveries, sender, settings, templates } = await boot();
+    await settings.parameter.set({
+      ...settings.current,
+      storeRenderedBody: true,
+    });
+    const text = "a".repeat(2000);
+
+    const result = await sender.send(
+      {
+        type: "inbox",
+        template: "inbox-long",
+        contact: KNOWN,
+        variables: { text },
+      },
+      { executionId: "inbox-exec-long" },
+    );
+
+    expect(result).not.toHaveProperty("skipped");
+    const [row] = await templates.rows.findMany({});
+    expect(row.body).toBe(text);
+    const [receipt] = await deliveries.list({});
+    expect(receipt).toMatchObject({ status: "sent", body: text });
 
     await alepha.stop();
   });
