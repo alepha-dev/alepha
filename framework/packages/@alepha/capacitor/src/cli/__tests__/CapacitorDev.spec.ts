@@ -466,6 +466,22 @@ describe("alepha capacitor dev", () => {
     expect(shell.wasCalledMatching(/--target sim-1/)).toBe(true);
   });
 
+  it("picks a running emulator over the AVD cap also lists for it", async ({
+    expect,
+  }) => {
+    const { shell, run } = await setup(
+      [
+        { id: "emulator-5554", name: "Google sdk_gphone64_arm64" },
+        { id: "Medium_Phone_API_36", name: "Medium Phone API 36 (emulator)" },
+      ],
+      "android",
+    );
+
+    await run("android");
+
+    expect(shell.wasCalledMatching(/--target emulator-5554/)).toBe(true);
+  });
+
   it("never writes a build record", async ({ expect }) => {
     const { fs, run } = await setup();
 

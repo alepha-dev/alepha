@@ -211,13 +211,18 @@ export class CapacitorDev {
       }
       return found;
     }
-    if (all.length === 1) {
-      return all[0];
+    // A running Android emulator is one of the bootable AVDs cap also lists:
+    // while one runs, those AVD entries are not a second choice.
+    const choices = all.some((target) => target.id.startsWith("emulator-"))
+      ? all.filter((target) => !target.name.endsWith("(emulator)"))
+      : all;
+    if (choices.length === 1) {
+      return choices[0];
     }
     throw new AlephaError(
-      all.length === 0
+      choices.length === 0
         ? `No ${platform} device or ${platform === "ios" ? "simulator" : "emulator"} is available.`
-        : `Several ${platform} targets are available; name one with --target:\n${this.describe(all)}`,
+        : `Several ${platform} targets are available; name one with --target:\n${this.describe(choices)}`,
     );
   }
 
