@@ -19,12 +19,19 @@ import { bootLore } from "./bootLore.ts";
 
 /**
  * A project for Plan's Requirements scenarios (#E153): every capability on,
- * Plan with `epics`, `releases` and `requirements`, an owner, a way to seat
+ * Plan with `epics`, `releases` and `requirements`, Ship with `track`, an owner, a way to seat
  * a member or a viewer, and an MCP caller with an API key. Over HTTP, with
  * real tokens, as `viewer-reads.spec.ts` does.
  */
 export const requirementsProject = async (
-  options: { requirements?: boolean; plan?: Record<string, boolean> } = {},
+  options: {
+    requirements?: boolean;
+    plan?: Record<string, boolean>;
+    /**
+     * Classes to construct before `start()`: a spec's repository probe.
+     */
+    probes?: Array<new () => object>;
+  } = {},
 ) => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
@@ -37,6 +44,7 @@ export const requirementsProject = async (
   alepha.with(AlephaMcp);
   bootLore(alepha, ["api", "mcp"]);
   const repos = alepha.inject(CoreTestEntities);
+  for (const probe of options.probes ?? []) alepha.inject(probe);
   await alepha.start();
 
   const baseUrl = alepha.inject(NodeHttpServerProvider).hostname;
@@ -71,7 +79,9 @@ export const requirementsProject = async (
           .map((it) =>
             it.key === "plan"
               ? { key: it.key, options: planOptions }
-              : { key: it.key },
+              : it.key === "ship"
+                ? { key: it.key, options: { track: true } }
+                : { key: it.key },
           ),
       } as never,
     },

@@ -22,11 +22,19 @@ import {
   groupUseCases,
   type UseCaseGrouping,
 } from "../usecases/groupUseCases.ts";
+import RunStateBadge from "../usecases/RunStateBadge.tsx";
 import { USE_CASE_STATUS_LABEL_KEYS } from "../usecases/useCaseLabels.ts";
 import UseCaseSheet from "../usecases/UseCaseSheet.tsx";
 import UseCaseStatusBadge from "../usecases/UseCaseStatusBadge.tsx";
 
 const STATUSES = ["draft", "ready", "validated", "deprecated"] as const;
+
+const RUN_COUNTER_KEYS = {
+  passed: "requirements.run.state.passed",
+  failed: "requirements.run.state.failed",
+  in_development: "requirements.run.state.in_development",
+  never_run: "requirements.run.state.never_run",
+} as const;
 
 const GROUP_LABEL_KEYS = {
   epic: "requirements.usecase.groupBy.epic",
@@ -88,10 +96,12 @@ const UseCasesTab = () => {
       all.flatMap((it) => it.actors).map((a) => [a.number, a]),
     ).values(),
   ].sort((a, b) => a.number - b.number);
-  const status = values.counter !== "all" ? values.counter : values.status;
+  const counter = values.counter ?? "all";
   const rows = all.filter(
     (it) =>
-      (!status || it.status === status) &&
+      (counter === "all" ||
+        (counter === "stale" ? it.stale : it.state === counter)) &&
+      (!values.status || it.status === values.status) &&
       (!values.persona ||
         it.actors.some((a) => String(a.number) === values.persona)),
   );
@@ -105,11 +115,18 @@ const UseCasesTab = () => {
       label: tr("requirements.usecase.counter.all"),
       count: all.length,
     },
-    ...STATUSES.map((it) => ({
-      key: it,
-      label: tr(USE_CASE_STATUS_LABEL_KEYS[it]),
-      count: all.filter((row) => row.status === it).length,
-    })),
+    ...(["passed", "failed", "in_development", "never_run"] as const).map(
+      (it) => ({
+        key: it,
+        label: tr(RUN_COUNTER_KEYS[it]),
+        count: all.filter((row) => row.state === it).length,
+      }),
+    ),
+    {
+      key: "stale",
+      label: tr("requirements.run.stale"),
+      count: all.filter((row) => row.stale).length,
+    },
   ];
   const canWrite = canInProject(project, "usecase:write");
   const hrefOf = (row: UseCaseResource) =>
@@ -211,6 +228,9 @@ const UseCasesTab = () => {
                 <th className="py-2 font-medium">
                   {tr("requirements.usecase.col.development")}
                 </th>
+                <th className="py-2 font-medium">
+                  {tr("requirements.run.lastResult")}
+                </th>
               </tr>
             </thead>
             {groups.map((group) => {
@@ -219,7 +239,7 @@ const UseCasesTab = () => {
                 <tbody key={group.key} data-testid="use-case-group">
                   {group.kind !== "none" ? (
                     <tr className="bg-muted/40 border-b">
-                      <td colSpan={4} className="py-1.5">
+                      <td colSpan={5} className="py-1.5">
                         <button
                           type="button"
                           className="flex items-center gap-1.5 text-xs font-semibold"
@@ -308,6 +328,12 @@ const UseCasesTab = () => {
                                   {tr("requirements.usecase.noEpic")}
                                 </span>
                               )}
+                            </td>
+                            <td className="py-2">
+                              <RunStateBadge
+                                state={row.state}
+                                stale={row.stale}
+                              />
                             </td>
                           </tr>
                         );

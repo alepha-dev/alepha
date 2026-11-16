@@ -5,14 +5,18 @@ import { $module } from "alepha";
 
 import { PersonaController } from "./controllers/PersonaController.ts";
 import { RequirementController } from "./controllers/RequirementController.ts";
+import { RunController } from "./controllers/RunController.ts";
 import { UseCaseController } from "./controllers/UseCaseController.ts";
 import { PersonaResourceKind } from "./resources/PersonaResourceKind.ts";
 import { RequirementResourceKind } from "./resources/RequirementResourceKind.ts";
 import { UseCaseResourceKind } from "./resources/UseCaseResourceKind.ts";
+import { RequirementsBuckets } from "./services/RequirementsBuckets.ts";
 import { RequirementsCommentService } from "./services/RequirementsCommentService.ts";
 import { RequirementService } from "./services/RequirementService.ts";
+import { RequirementsFileAccess } from "./services/RequirementsFileAccess.ts";
 import { RequirementSourceWatcher } from "./services/RequirementSourceWatcher.ts";
 import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts";
+import { RunService } from "./services/RunService.ts";
 import { SourceSectionService } from "./services/SourceSectionService.ts";
 import { UseCaseService } from "./services/UseCaseService.ts";
 
@@ -36,6 +40,10 @@ export const LorePlanRequirementsApi = $module({
   // What it builds on first: booting this module alone boots them.
   imports: [LorePlanApi, LoreRememberApi, LoreShipApi],
   services: [
+    // Every bucket of the package, at boot, and who reads each.
+    RequirementsBuckets,
+    RequirementsFileAccess,
+    RunService,
     RequirementsCommentService,
     UseCaseService,
     RequirementService,
@@ -53,6 +61,7 @@ export const LorePlanRequirementsApi = $module({
     PersonaController,
     UseCaseController,
     RequirementController,
+    RunController,
   ],
 });
 
@@ -61,3 +70,5 @@ export const LorePlanRequirementsApi = $module({
 export { PersonaController } from "./controllers/PersonaController.ts";
 export { UseCaseController } from "./controllers/UseCaseController.ts";
 export { RequirementController } from "./controllers/RequirementController.ts";
+export { RunController } from "./controllers/RunController.ts";
+export { RequirementsBuckets } from "./services/RequirementsBuckets.ts";

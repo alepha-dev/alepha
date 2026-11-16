@@ -11,6 +11,7 @@ import { useCaseCriteria } from "../entities/useCaseCriteria.ts";
 import { useCases } from "../entities/useCases.ts";
 import type { ReleaseMove } from "../schemas/releaseMoveSchema.ts";
 import type { RequirementResource } from "../schemas/requirementResourceSchema.ts";
+import { RunService } from "./RunService.ts";
 
 /**
  * What a requirement is verified by, covered by and shipped in (#E153):
@@ -34,6 +35,7 @@ export class RequirementService {
   protected readonly epics = $repository(epics);
   protected readonly releases = $repository(releases);
   protected readonly links = $inject(ResourceLinkService);
+  protected readonly runService = $inject(RunService);
 
   /**
    * Every requirement of `rows` as a resource, in a fixed number of reads.
@@ -61,6 +63,10 @@ export class RequirementService {
           })
         : [],
       this.links.relationsTo("covers", "usecase", useCaseIds.map(String)),
+    ]);
+    const [latest, development] = await Promise.all([
+      this.runService.latestOf(useCaseIds),
+      this.runService.developmentOf(useCaseIds),
     ]);
     const epicIds = [...new Set(covers.map((it) => Number(it.fromId)))];
     const personaIds = [...new Set(actors.map((it) => it.personaId))];
@@ -129,6 +135,9 @@ export class RequirementService {
       return {
         ...rest,
         criteria: mine.map((c) => ({
+          result: latest
+            .get(c.useCaseId)
+            ?.results.find((r) => r.criterionKey === c.key)?.result,
           useCaseId: c.useCaseId,
           useCaseNumber: useCase.get(c.useCaseId)?.number ?? 0,
           useCaseTitle: useCase.get(c.useCaseId)?.title ?? "",
@@ -156,11 +165,43 @@ export class RequirementService {
               mode: auto ? ("auto" as const) : ("by_hand" as const),
             }
           : undefined,
-        // Until runs exist, a requirement is covered when a criterion
-        // verifies it; the runs quest reads the latest results.
-        status: mine.length ? ("covered" as const) : ("not_covered" as const),
+        status: this.statusOf(mine, latest, development),
       };
     });
+  }
+
+  /**
+   * A requirement's status from the latest result of each criterion
+   * verifying it (#Q3770): not covered without one; failing when one failed
+   * and its use case's quests are all done, in development while they are
+   * not; verified when every one passed; covered otherwise (never run).
+   */
+  protected statusOf(
+    criteria: Array<{ useCaseId: number; key: string }>,
+    latest: Map<
+      number,
+      { results: Array<{ criterionKey: string; result: string }> }
+    >,
+    development: Map<number, { done: boolean }>,
+  ): RequirementResource["status"] {
+    if (criteria.length === 0) return "not_covered";
+    const results = criteria.map(
+      (c) =>
+        [
+          c,
+          latest.get(c.useCaseId)?.results.find((r) => r.criterionKey === c.key)
+            ?.result,
+        ] as const,
+    );
+    const failed = results.filter(([, result]) => result === "failed");
+    if (failed.length) {
+      return failed.some(([c]) => development.get(c.useCaseId)?.done)
+        ? "failing"
+        : "in_development";
+    }
+    return results.every(([, result]) => result === "passed")
+      ? "verified"
+      : "covered";
   }
 
   /**

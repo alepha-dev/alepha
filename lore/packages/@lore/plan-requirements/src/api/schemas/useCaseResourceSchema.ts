@@ -5,6 +5,9 @@ import { useCaseAlternatives } from "../entities/useCaseAlternatives.ts";
 import { useCaseCriteria } from "../entities/useCaseCriteria.ts";
 import { useCases } from "../entities/useCases.ts";
 import { useCaseSteps } from "../entities/useCaseSteps.ts";
+import { criterionResultSchema } from "./criterionResultSchema.ts";
+import { runBySchema } from "./runBySchema.ts";
+import { useCaseRunStateSchema } from "./useCaseRunStateSchema.ts";
 
 /**
  * A use case as every surface reads it (#E153): the row, its actors with
@@ -39,6 +42,29 @@ export const useCaseResourceSchema = useCases.schema
         requirementNumber: z.integer().optional(),
       }),
     ),
+    /**
+     * Where the use case stands from its latest run (#Q3770), and whether
+     * that run is stale.
+     */
+    state: useCaseRunStateSchema,
+    stale: z.boolean(),
+    lastRun: z
+      .object({
+        id: z.integer(),
+        ranAt: z.datetime(),
+        by: runBySchema,
+        client: z.string().optional(),
+        app: z.string().optional(),
+        env: z.string().optional(),
+        results: z.array(
+          z.object({
+            key: z.string(),
+            result: criterionResultSchema,
+            note: z.string().optional(),
+          }),
+        ),
+      })
+      .optional(),
     coveredBy: z.array(
       z.object({
         id: z.integer(),

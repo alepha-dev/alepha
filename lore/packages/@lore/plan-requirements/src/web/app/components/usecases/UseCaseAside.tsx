@@ -4,6 +4,7 @@ import { formatReference, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
+import RunStateBadge from "./RunStateBadge.tsx";
 import {
   ACTOR_ROLE_LABEL_KEYS,
   USE_CASE_PRIORITY_LABEL_KEYS,
@@ -123,6 +124,21 @@ const UseCaseAside = (props: UseCaseAsideProps) => {
           },
         ]
       : []),
+    {
+      label: tr("requirements.run.lastResult"),
+      value: (
+        <span className="flex flex-col gap-1">
+          <RunStateBadge state={useCase.state} stale={useCase.stale} />
+          {useCase.lastRun ? (
+            <span className="text-muted-foreground text-xs">
+              {useCase.lastRun.app
+                ? `${useCase.lastRun.app}${useCase.lastRun.env ? `/${useCase.lastRun.env}` : ""}`
+                : (useCase.lastRun.env ?? "local")}
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
     ...(useCase.startingData
       ? [
           {

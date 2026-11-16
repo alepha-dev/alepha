@@ -53,10 +53,20 @@ export const projectErrors = $entity({
     message: z.string().max(2_000),
     stack: db.default(z.string().max(4_096), ""),
     sourceUrl: db.default(z.string().max(2_000), ""),
+    /**
+     * Where it came from: a sigil's `client` or `server`, or a `run` of a use
+     * case whose criterion failed (#E153). `mode: "text"`: code-only.
+     */
     origin: db.default(
-      z.enum(["client", "server"]).meta({ mode: "text" }),
+      z.enum(["client", "server", "run"]).meta({ mode: "text" }),
       "client",
     ),
+    /**
+     * For a `run` error: the newest failing run and the criterion's key
+     * (`C2`). Plain values: Ship never reads the run tables.
+     */
+    useCaseRunId: z.integer().optional(),
+    criterionKey: z.string().max(10).optional(),
     firstSeenAt: z.string(),
     lastSeenAt: z.string(),
     /**

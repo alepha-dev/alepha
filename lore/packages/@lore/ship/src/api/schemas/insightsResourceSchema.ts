@@ -323,7 +323,7 @@ export const insightsResourceSchema = z.object({
        * reporting app, so it is a claim like every other field here - but a
        * closed two-value one, unlike `name` and `message`.
        */
-      origin: z.enum(["client", "server"]),
+      origin: z.enum(["client", "server", "run"]),
       /**
        * Occurrences in this app, summed across every batch.
        *

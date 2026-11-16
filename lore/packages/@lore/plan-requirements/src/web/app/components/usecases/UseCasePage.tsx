@@ -11,6 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   CircleCheck,
+  PlayCircle,
   FileText,
   History,
   ListTree,
@@ -27,6 +28,7 @@ import { currentUseCaseAtom } from "../../atoms/currentUseCaseAtom.ts";
 import UseCaseAside from "./UseCaseAside.tsx";
 import UseCaseCoverage from "./UseCaseCoverage.tsx";
 import UseCaseCriteria from "./UseCaseCriteria.tsx";
+import UseCaseRuns from "./UseCaseRuns.tsx";
 import UseCaseScenario from "./UseCaseScenario.tsx";
 import UseCaseSheet from "./UseCaseSheet.tsx";
 
@@ -34,7 +36,7 @@ export interface UseCasePageProps {
   useCase: UseCaseResource;
 }
 
-type TabKey = "scenario" | "coverage" | "activity";
+type TabKey = "scenario" | "coverage" | "runs" | "activity";
 
 /**
  * A use case's page (#E153): a full page outside the Requirements layout,
@@ -140,6 +142,11 @@ const UseCasePage = (props: UseCasePageProps) => {
       label: tr("requirements.usecase.tab.coverage"),
     },
     {
+      value: "runs",
+      icon: PlayCircle,
+      label: tr("requirements.usecase.tab.runs"),
+    },
+    {
       value: "activity",
       icon: History,
       label: tr("requirements.persona.tab.activity"),
@@ -214,6 +221,14 @@ const UseCasePage = (props: UseCasePageProps) => {
         </>
       }
     >
+      {useCase.stale && useCase.lastRun ? (
+        <div
+          className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950"
+          data-testid="stale-banner"
+        >
+          {tr("requirements.run.staleBanner")}
+        </div>
+      ) : null}
       {tab === "scenario" ? (
         <div className="grid gap-4 xl:grid-cols-2">
           <UseCaseScenario useCase={useCase} />
@@ -221,6 +236,8 @@ const UseCasePage = (props: UseCasePageProps) => {
         </div>
       ) : tab === "coverage" ? (
         <UseCaseCoverage projectId={project.id} useCase={useCase} />
+      ) : tab === "runs" ? (
+        <UseCaseRuns projectId={project.id} number={useCase.number} />
       ) : (
         <LazyProjectActivityPage
           resource={{ type: "usecase", id: String(useCase.number) }}

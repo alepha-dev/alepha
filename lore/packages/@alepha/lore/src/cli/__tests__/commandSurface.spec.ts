@@ -189,6 +189,7 @@ describe("the Lore CLI command surface", () => {
         "comment",
         "link",
         "validate",
+        "run",
       ],
       monitor: ["list", "get", "create", "update", "pause", "resume", "delete"],
       project: [

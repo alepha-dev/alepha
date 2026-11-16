@@ -48,6 +48,11 @@
       "import": "./src/csv/index.ts",
       "default": "./src/csv/index.ts"
     },
+    "./playwright": {
+      "types": "./src/playwright/index.ts",
+      "import": "./src/playwright/index.ts",
+      "default": "./src/playwright/index.ts"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -76,6 +81,11 @@
         "import": "./dist/csv/index.js",
         "default": "./dist/csv/index.js"
       },
+      "./playwright": {
+        "types": "./dist/playwright/index.d.ts",
+        "import": "./dist/playwright/index.js",
+        "default": "./dist/playwright/index.js"
+      },
       "./package.json": "./package.json"
     }
   },
@@ -86,6 +96,7 @@
     "build": "tsdown && node scripts/check-dts.ts && node scripts/check-bin.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/bun": "^1.4.4",
@@ -107,6 +118,7 @@
     "@lore/plan-requirements": "*",
     "@lore/remember": "*",
     "@lore/ship": "*",
+    "@playwright/test": ">=1.42",
     "alepha": ">=0.37.0",
     "react": "*",
     "react-dom": "*"
@@ -125,6 +137,9 @@
       "optional": true
     },
     "@lore/ship": {
+      "optional": true
+    },
+    "@playwright/test": {
       "optional": true
     },
     "alepha": {
