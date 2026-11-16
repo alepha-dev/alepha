@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -509,6 +510,15 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	if cmd.Artifact == nil || len(cmd.Artifact.SHA256) != 64 {
 		return "failed", "", connector.ErrNoArtifact.Error()
 	}
+	// Checked before anything is fetched: a list that cannot be served is
+	// refused, never half-applied after a download.
+	var domains []string
+	if cmd.Domains != nil {
+		var err error
+		if domains, err = normalizeDomains(*cmd.Domains); err != nil {
+			return "failed", "", err.Error()
+		}
+	}
 	cfg, ok, err := connector.NewStore(a.s.root).Load()
 	if err != nil || !ok {
 		return "failed", "", "no connector is configured on this bay, so there is nothing to pull from"
@@ -559,6 +569,9 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 	}
 	out, derr := a.s.deployArtifact(ctx, deployArtifactOptions{
 		Artifact: dest, Name: instanceName(cmd), Env: cmd.Environment,
+		// Empty keeps the stored list (deploy.Run), which is what an absent
+		// `domains` means.
+		Domains:     domains,
 		SecretsFile: secretsFile,
 		// A console deploy pushes an artifact, which carries no backup policy.
 		KeepBackupPolicy:   true,
@@ -878,4 +891,37 @@ func (a *actions) stackDeploy(ctx context.Context, cmd connector.Command, send f
 	}
 	a.s.log.Info("lore stack deploy served", "command", cmd.ID, "stack", cmd.Stack+"/"+cmd.Environment, "revision", out.Revision)
 	return "done", "", ""
+}
+
+// hostPattern is a bare host name: dot-separated labels of letters, digits
+// and inner hyphens, with at least one dot. No scheme, port, path or
+// wildcard, since each entry becomes a route and a certificate.
+var hostPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
+
+/*
+normalizeDomains checks the domains a connector deploy carries, the way
+`--domain` takes them: each trimmed and lowercased, duplicates dropped with
+the first kept (it is the canonical one), and the whole list refused when one
+entry is not a bare host or when nothing is left. Present means "replace",
+so an empty list would leave the copy answering nowhere.
+*/
+func normalizeDomains(raw []string) ([]string, error) {
+	out := make([]string, 0, len(raw))
+	seen := map[string]bool{}
+	for _, entry := range raw {
+		host := strings.ToLower(strings.TrimSpace(entry))
+		host = strings.TrimSuffix(host, ".")
+		if len(host) > 253 || !hostPattern.MatchString(host) {
+			return nil, fmt.Errorf("domain %q is not a bare host name (no scheme, port, path or wildcard)", entry)
+		}
+		if seen[host] {
+			continue
+		}
+		seen[host] = true
+		out = append(out, host)
+	}
+	if len(out) == 0 {
+		return nil, errors.New("domains is present but empty: send at least one host, or leave it out to keep the copy's domains")
+	}
+	return out, nil
 }

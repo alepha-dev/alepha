@@ -602,3 +602,68 @@ func TestInstanceNameOfAStackMember(t *testing.T) {
 		}
 	})
 }
+
+// A connector deploy's `domains` replaces the copy's list, canonical first,
+// and the terminal ack names the new canonical domain; a later deploy that
+// sends none keeps it (#Q3795).
+func TestDeployDomainsReplaceTheCopysListAndAbsentKeepsIt(t *testing.T) {
+	sink := newDeploySink(t, deployableArtifact(t))
+	f, acts := deployReady(t, sink, true)
+
+	first := &ackRecorder{}
+	acts.Command(context.Background(), deployCommand("dom-1", sink), first.send)
+	composed, ok := f.server.store.Get("demo/production")
+	if !ok || composed.Domain() == "" {
+		t.Fatalf("the first deploy must compose a domain, got %+v", composed)
+	}
+
+	cmd := deployCommand("dom-2", sink)
+	cmd.Domains = &[]string{" App.Example.com ", "www.example.com", "app.example.com"}
+	rec := &ackRecorder{}
+	acts.Command(context.Background(), cmd, rec.send)
+
+	app, _ := f.server.store.Get("demo/production")
+	if want := []string{"app.example.com", "www.example.com"}; !equalStrings(app.Domains, want) {
+		t.Fatalf("domains = %v, want %v", app.Domains, want)
+	}
+	last := rec.acks[len(rec.acks)-1]
+	if last.Status != "done" || last.URL != "https://app.example.com/" {
+		t.Fatalf("terminal ack = %+v, want done at the new canonical domain", last)
+	}
+
+	again := &ackRecorder{}
+	acts.Command(context.Background(), deployCommand("dom-3", sink), again.send)
+	kept, _ := f.server.store.Get("demo/production")
+	if !equalStrings(kept.Domains, app.Domains) {
+		t.Fatalf("a deploy without domains must keep %v, got %v", app.Domains, kept.Domains)
+	}
+}
+
+func TestDeployRefusesDomainsThatAreNotBareHosts(t *testing.T) {
+	for _, domains := range [][]string{
+		{"https://app.example.com"},
+		{"app.example.com:8443"},
+		{"app.example.com/path"},
+		{"*.example.com"},
+		{"localhost"},
+		{"  "},
+		{},
+	} {
+		sink := newDeploySink(t, deployableArtifact(t))
+		f, acts := deployReady(t, sink, true)
+		cmd := deployCommand("dom-bad", sink)
+		list := domains
+		cmd.Domains = &list
+		rec := &ackRecorder{}
+
+		acts.Command(context.Background(), cmd, rec.send)
+
+		last := rec.acks[len(rec.acks)-1]
+		if last.Status != "failed" || last.Reason == "" {
+			t.Fatalf("domains %q: terminal ack = %+v, want failed with a reason", domains, last)
+		}
+		if f.runner.starts != 0 {
+			t.Fatalf("domains %q: nothing may start on a refused list", domains)
+		}
+	}
+}
