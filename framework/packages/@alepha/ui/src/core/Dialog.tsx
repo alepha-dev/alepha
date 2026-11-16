@@ -147,7 +147,7 @@ const DialogDescription = (props: DialogDescriptionProps) => {
     <DialogPrimitive.Description
       data-slot="dialog-description"
       className={cn(
-        "text-muted-foreground *:[a]:hover:text-foreground text-sm *:[a]:underline *:[a]:underline-offset-3",
+        "text-muted-foreground *:[a]:hover:text-foreground text-sm *:[a]:underline *:[a]:decoration-current/40 *:[a]:decoration-[0.5px] *:[a]:underline-offset-4 *:[a]:transition-colors *:[a]:hover:decoration-current *:[a]:hover:decoration-1",
         className,
       )}
       {...rest}

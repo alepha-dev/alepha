@@ -99,198 +99,6 @@
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * The animated Lore sprite (`LoreLogoAnimated`): wings beat from their
- * root, the orb breathes, bubbles rise, the star twinkles. Still under
- * reduced motion.
- * ──────────────────────────────────────────────────────────────────────── */
-
-.lore-logo-body {
-  animation: floating 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-}
-
-/* Following the pointer (`follow`): the sprite drifts and tilts toward it,
- * a few units at most, and eases there slowly so it reads as curiosity
- * rather than tracking. `--lore-x` / `--lore-y` / `--lore-near` are written
- * by the component. */
-.lore-logo-lean {
-  transform-box: view-box;
-  transform-origin: 50% 56%;
-  transform: translate(
-      calc(var(--lore-x, 0) * 7px),
-      calc(var(--lore-y, 0) * 5px)
-    )
-    rotate(calc(var(--lore-x, 0) * 6deg));
-  transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.lore-logo-glow {
-  opacity: calc(var(--lore-near, 0) * 0.9);
-  transition: opacity 0.9s ease-out;
-}
-
-.lore-logo-wing {
-  transform-box: fill-box;
-  animation: 3.2s ease-in-out infinite;
-}
-
-/* Each wing turns about its root, beside the orb. */
-.lore-logo-wing-left {
-  transform-origin: 100% 100%;
-  animation-name: lore-logo-flap-left;
-}
-
-.lore-logo-wing-right {
-  transform-origin: 0% 100%;
-  animation-name: lore-logo-flap-right;
-}
-
-.lore-logo-wing-low-left {
-  transform-origin: 100% 0%;
-  animation-name: lore-logo-flap-right;
-}
-
-.lore-logo-wing-low-right {
-  transform-origin: 0% 0%;
-  animation-name: lore-logo-flap-left;
-}
-
-.lore-logo-orb,
-.lore-logo-halo {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: lore-logo-breathe 3.2s ease-in-out infinite;
-}
-
-.lore-logo-bubble {
-  transform-box: fill-box;
-  animation: lore-logo-rise 4.2s ease-in infinite;
-}
-
-.lore-logo-bubble-2 {
-  animation-delay: 1.4s;
-}
-
-.lore-logo-bubble-3 {
-  animation-delay: 2.1s;
-}
-
-.lore-logo-bubble-4 {
-  animation-delay: 3.1s;
-}
-
-.lore-logo-star {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: lore-logo-twinkle 2.4s ease-in-out infinite;
-}
-
-@keyframes lore-logo-flap-left {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  50% {
-    transform: rotate(-9deg);
-  }
-}
-
-@keyframes lore-logo-flap-right {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  50% {
-    transform: rotate(9deg);
-  }
-}
-
-@keyframes lore-logo-breathe {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(0.94);
-  }
-}
-
-@keyframes lore-logo-rise {
-  0% {
-    transform: translateY(0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-10px, -34px);
-    opacity: 0;
-  }
-}
-
-@keyframes lore-logo-twinkle {
-  0%,
-  100% {
-    transform: scale(0.6) rotate(0deg);
-    opacity: 0.4;
-  }
-  50% {
-    transform: scale(1.15) rotate(45deg);
-    opacity: 1;
-  }
-}
-
-/* ────────────────────────────────────────────────────────────────────────
- * The welcome page's pillar drawings (`HomeWelcomePillarArt`): dashes drift
- * along their path and stars twinkle, slow enough to read as ambient.
- * ──────────────────────────────────────────────────────────────────────── */
-
-.lore-art-drift {
-  stroke-dasharray: 4 5;
-  animation: lore-art-drift 14s linear infinite;
-}
-
-.lore-art-twinkle {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: lore-art-twinkle 7s ease-in-out infinite;
-}
-
-.lore-art-later {
-  animation-delay: 3.5s;
-}
-
-@keyframes lore-art-drift {
-  to {
-    stroke-dashoffset: -36;
-  }
-}
-
-@keyframes lore-art-twinkle {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.35;
-    transform: scale(0.75);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lore-art * {
-    animation: none !important;
-  }
-
-  .lore-logo * {
-    animation: none !important;
-  }
-}
-
-/* ────────────────────────────────────────────────────────────────────────
  * Discreet scrollbars — thin, neutral, fade-on-hover.
  * Applied globally so every scroll container picks them up.
  * ──────────────────────────────────────────────────────────────────────── */
@@ -453,11 +261,35 @@ body::before {
 :root {
   --folio-tree-directory: oklch(0.66 0.145 72);
   --folio-tree-folio: oklch(0.58 0.105 232);
+  --home-momentum: var(--sidebar-primary);
 }
 
 .dark {
   --folio-tree-directory: oklch(0.8 0.135 78);
   --folio-tree-folio: oklch(0.72 0.105 232);
+  --home-momentum: oklch(0.8 0 0);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Home's momentum bars.
+ *
+ * The theme's accent, `--sidebar-primary`, in every theme and mode but one:
+ * the default theme's dark mode, where `@alepha/ui` sets it to a saturated
+ * blue while its light mode is a neutral near-black. There the bars take a
+ * neutral grey instead, so both modes of the default theme read alike. A
+ * named theme's dark block sets the token back to its own accent, since
+ * `.dark` above would otherwise reach it too.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.dark.theme-forest,
+.theme-forest.dark,
+.dark.theme-lavandula,
+.theme-lavandula.dark,
+.dark.theme-winter,
+.theme-winter.dark,
+.dark.theme-tangor,
+.theme-tangor.dark {
+  --home-momentum: var(--sidebar-primary);
 }
 
 /**
@@ -934,8 +766,17 @@ body::before {
  * to the default they stay pinned to the viewport and the texture appears
  * to slide under the text.
  */
+/*
+ * The page's dot grid. The two modes carry different alphas on purpose:
+ * 5% white on near-black is a clear lightness step, while 4% black on
+ * near-white was below what the eye reads as a pattern, so the light mode
+ * needs nearly three times the alpha (11%) to look the same.
+ */
 .lore-page-dots {
-  background-image: radial-gradient(oklch(0.145 0 0 / 4%) 1px, transparent 1px);
+  background-image: radial-gradient(
+    oklch(0.145 0 0 / 11%) 1px,
+    transparent 1px
+  );
   background-size: 16px 16px;
   background-attachment: local;
 }

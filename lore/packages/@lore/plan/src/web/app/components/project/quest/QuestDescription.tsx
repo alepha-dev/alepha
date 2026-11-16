@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { currentProjectAtom, LoreViewer } from "@lore/core/web";
 import { useStore } from "alepha/react";
 
@@ -34,7 +35,10 @@ const QuestDescription = (props: QuestDescriptionProps) => {
         <button
           type="button"
           onClick={props.onEdit}
-          className="text-muted-foreground text-sm italic hover:underline"
+          className={cn(
+            textLinkUnderlineClassName,
+            "hover:text-foreground text-muted-foreground text-sm italic",
+          )}
         >
           (no description)
         </button>

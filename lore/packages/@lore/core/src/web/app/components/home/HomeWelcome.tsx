@@ -3,6 +3,7 @@ import { Bot, Server, Workflow } from "lucide-react";
 
 import type { I18n } from "../../services/I18n.ts";
 import LoreLogoAnimated from "../shared/LoreLogoAnimated.tsx";
+import HomeWelcomeCorners from "./HomeWelcomeCorners.tsx";
 import HomeWelcomeCta, { type HomeWelcomeCtaProps } from "./HomeWelcomeCta.tsx";
 import HomeWelcomeFeature from "./HomeWelcomeFeature.tsx";
 import HomeWelcomeHeader from "./HomeWelcomeHeader.tsx";
@@ -22,7 +23,7 @@ export interface HomeWelcomeProps {
  * at the gutters, a line under the header and one above the footer. The
  * pillars are a band ruled rail to rail; under them, a thinner band of three
  * small features that are not modules (agents, automations, self-hosting),
- * each linking to its guide; and the column lines run on down to the footer. On a phone the pillars stack and the button moves to a bar
+ * each linking to its guide, as each pillar does; and the column lines run on down to the footer. On a phone the pillars stack and the button moves to a bar
  * pinned to the bottom of the screen.
  */
 const HomeWelcome = (props: HomeWelcomeProps) => {
@@ -43,10 +44,14 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
         <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-4 px-4 pt-10 pb-10 text-center md:flex-row md:gap-12 md:px-8 md:pt-16 md:pb-14 md:text-left">
           <LoreLogoAnimated follow className="size-36 shrink-0 md:size-60" />
           <div className="flex flex-col items-center gap-4 md:items-start">
-            <h1 className="text-2xl font-semibold tracking-tight md:text-4xl">
+            {/*
+              The headline catches the light: full foreground at the top,
+              falling to 65% at the foot, tightly tracked.
+            */}
+            <h1 className="from-foreground to-foreground/65 bg-linear-to-b bg-clip-text pb-1 text-3xl font-semibold tracking-[-0.03em] text-balance text-transparent md:text-5xl">
               {tr("home.welcome.title")}
             </h1>
-            <p className="text-muted-foreground max-w-xl text-base md:text-lg">
+            <p className="text-muted-foreground max-w-xl text-base text-balance md:text-lg">
               {tr("home.welcome.subtitle")}
             </p>
             <div className="mt-2 hidden md:block">
@@ -54,50 +59,56 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
             </div>
           </div>
         </div>
-        {/*
+        <div className="relative shrink-0">
+          {/*
           The band: a rule above and below it from rail to rail, and the
           three cells between column rules.
         */}
-        <div className="shrink-0 border-y">
-          <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-3 md:divide-x md:divide-y-0">
-            <HomeWelcomePillar
-              pillar="plan"
-              title={tr("home.pillar.plan.title")}
-              description={tr("home.pillar.plan.description")}
-            />
-            <HomeWelcomePillar
-              pillar="remember"
-              title={tr("home.pillar.remember.title")}
-              description={tr("home.pillar.remember.description")}
-            />
-            <HomeWelcomePillar
-              pillar="ship"
-              title={tr("home.pillar.ship.title")}
-              description={tr("home.pillar.ship.description")}
-            />
+          <div className="shrink-0 border-y">
+            <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-3 md:divide-x md:divide-y-0">
+              <HomeWelcomePillar
+                pillar="plan"
+                title={tr("home.pillar.plan.title")}
+                description={tr("home.pillar.plan.description")}
+                href={`${HomeWelcome.docs}/docs/plan-quests`}
+              />
+              <HomeWelcomePillar
+                pillar="remember"
+                title={tr("home.pillar.remember.title")}
+                description={tr("home.pillar.remember.description")}
+                href={`${HomeWelcome.docs}/docs/remember-folios`}
+              />
+              <HomeWelcomePillar
+                pillar="ship"
+                title={tr("home.pillar.ship.title")}
+                description={tr("home.pillar.ship.description")}
+                href={`${HomeWelcome.docs}/docs/ship-instances`}
+              />
+            </div>
           </div>
-        </div>
-        <div className="shrink-0 border-b">
-          <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-3 md:divide-x md:divide-y-0">
-            <HomeWelcomeFeature
-              icon={Bot}
-              title={tr("home.feature.agents.title")}
-              description={tr("home.feature.agents.description")}
-              href={`${HomeWelcome.docs}/docs/agents-connecting`}
-            />
-            <HomeWelcomeFeature
-              icon={Workflow}
-              title={tr("home.feature.automations.title")}
-              description={tr("home.feature.automations.description")}
-              href={`${HomeWelcome.docs}/docs/plan-automations`}
-            />
-            <HomeWelcomeFeature
-              icon={Server}
-              title={tr("home.feature.selfHost.title")}
-              description={tr("home.feature.selfHost.description")}
-              href={`${HomeWelcome.docs}/docs/start-self-hosting`}
-            />
+          <div className="shrink-0 border-b">
+            <div className="divide-border mx-auto grid max-w-5xl divide-y border-x md:grid-cols-3 md:divide-x md:divide-y-0">
+              <HomeWelcomeFeature
+                icon={Bot}
+                title={tr("home.feature.agents.title")}
+                description={tr("home.feature.agents.description")}
+                href={`${HomeWelcome.docs}/docs/agents-connecting`}
+              />
+              <HomeWelcomeFeature
+                icon={Workflow}
+                title={tr("home.feature.automations.title")}
+                description={tr("home.feature.automations.description")}
+                href={`${HomeWelcome.docs}/docs/plan-automations`}
+              />
+              <HomeWelcomeFeature
+                icon={Server}
+                title={tr("home.feature.selfHost.title")}
+                description={tr("home.feature.selfHost.description")}
+                href={`${HomeWelcome.docs}/docs/start-self-hosting`}
+              />
+            </div>
           </div>
+          <HomeWelcomeCorners />
         </div>
         {/*
           The column rules carried on below the band to the footer, from

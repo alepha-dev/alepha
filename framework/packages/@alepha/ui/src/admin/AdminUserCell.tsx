@@ -4,6 +4,9 @@ void React;
 
 import { Link } from "alepha/react/router";
 
+import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
+import { cn } from "../core/utils.ts";
+
 export interface AdminUserCellProps {
   /**
    * The user's id — the link target. Without it the cell renders unlinked:
@@ -58,7 +61,7 @@ export const AdminUserCell = (props: AdminUserCellProps) => {
   return (
     <Link
       href={`/admin/users/${props.userId}`}
-      className="hover:text-foreground underline-offset-4 hover:underline"
+      className={cn(textLinkUnderlineClassName, "hover:text-foreground")}
     >
       {label ?? (
         <code className="text-muted-foreground font-mono text-xs">

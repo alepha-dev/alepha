@@ -288,7 +288,6 @@ export default {
   // The landing page for a signed-in reader with projects: the table and
   // its columns.
   "home.wordmark": "Alepha Lore",
-  "home.greeting": "What's the next quest?",
   "home.search.placeholder": "Search quests, folios and projects",
   "home.search.searching": "Searching...",
   "home.search.empty": "Nothing found",
@@ -310,8 +309,7 @@ export default {
   "home.table.open.epics": "$1 draft epics",
   "home.table.open.errors": "$1 open errors",
   "home.table.open.feedback": "$1 pending feedback",
-  "auth.register.intent.createProject":
-    "Before creating a project, create an account.",
+  "auth.register.intent.createProject": "Create an account to continue.",
   "auth.register.intent.invitation":
     "You were invited to $1. Create your account to join.",
   // Six ways an invite link can fail to open the form, each with its own

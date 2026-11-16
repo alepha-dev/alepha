@@ -2,6 +2,7 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 
+import { textLinkUnderlineClassName } from "./TextLink.tsx";
 import { cn } from "./utils.ts";
 
 const badgeVariants = cva(
@@ -31,7 +32,7 @@ const badgeVariants = cva(
          */
         tint: "text-foreground border",
         ghost: "hover:bg-hover hover:text-muted-foreground dark:hover:bg-hover",
-        link: "text-primary underline-offset-4 hover:underline",
+        link: `text-primary ${textLinkUnderlineClassName}`,
       },
       /**
        * The hue of a `tint` badge: a near-transparent fill and a matching

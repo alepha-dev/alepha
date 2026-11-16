@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@alepha/ui";
+import { Card, CardContent, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import {
   type ChartConfig,
   ChartContainer,
@@ -87,7 +87,10 @@ const BayStatsChart = () => {
               {tr("bay.chart.off")}
             </p>
             <a
-              className="text-sm underline-offset-4 hover:underline"
+              className={cn(
+                textLinkUnderlineClassName,
+                "hover:text-foreground text-sm",
+              )}
               href={router.path("baySettings", {
                 params: {
                   projectSlug: host.project?.slug ?? "",

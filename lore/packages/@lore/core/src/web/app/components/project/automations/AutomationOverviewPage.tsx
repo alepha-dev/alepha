@@ -1,4 +1,11 @@
-import { Badge, Button, TimeAgo, useDialog } from "@alepha/ui";
+import {
+  Badge,
+  Button,
+  TimeAgo,
+  useDialog,
+  cn,
+  textLinkUnderlineClassName,
+} from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import {
@@ -247,7 +254,10 @@ const AutomationOverviewPage = () => {
               )}
               <OutboundLink
                 href={loreDocsUrl("plan-automations")}
-                className="text-muted-foreground text-sm underline underline-offset-4"
+                className={cn(
+                  textLinkUnderlineClassName,
+                  "hover:text-foreground text-muted-foreground text-sm",
+                )}
               >
                 {tr("automation.guide")}
               </OutboundLink>

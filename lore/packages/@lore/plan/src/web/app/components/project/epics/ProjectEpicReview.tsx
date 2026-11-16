@@ -6,6 +6,8 @@ import {
   CardHeader,
   CardTitle,
   useDialog,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import { currentProjectAtom, formatReference, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
@@ -103,7 +105,10 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
     return (
       <Link
         href={href}
-        className="text-primary ml-2 text-xs underline-offset-2 hover:underline"
+        className={cn(
+          textLinkUnderlineClassName,
+          "hover:text-foreground ml-2 text-xs",
+        )}
       >
         {formatReference(item.target.kind, item.target.number)}
       </Link>

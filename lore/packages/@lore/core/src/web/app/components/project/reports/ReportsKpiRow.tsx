@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { useRouter } from "alepha/react/router";
 
 import ReportsDefinition from "./ReportsDefinition.tsx";
@@ -42,7 +43,10 @@ const ReportsKpiRow = (props: ReportsKpiRowProps) => {
             {kpi.href ? (
               <a
                 {...router.anchor(kpi.href as `/${string}`)}
-                className="hover:underline"
+                className={cn(
+                  textLinkUnderlineClassName,
+                  "hover:text-foreground",
+                )}
               >
                 {kpi.label}
               </a>

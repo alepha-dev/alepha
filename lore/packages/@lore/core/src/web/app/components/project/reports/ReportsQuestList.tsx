@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { useRouter } from "alepha/react/router";
 
 export interface ReportsQuestListProps {
@@ -32,7 +33,10 @@ const ReportsQuestList = (props: ReportsQuestListProps) => {
                 shortId: String(quest.shortId),
               },
             })}
-            className="min-w-0 flex-1 truncate hover:underline"
+            className={cn(
+              textLinkUnderlineClassName,
+              "hover:text-foreground min-w-0 flex-1 truncate",
+            )}
           >
             #{quest.shortId} {quest.title}
           </a>

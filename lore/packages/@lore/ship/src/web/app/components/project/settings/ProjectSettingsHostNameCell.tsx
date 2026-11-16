@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -45,7 +46,10 @@ const ProjectSettingsHostNameCell = (
         href={router.path("bay", {
           params: { projectSlug: homeSlug, hostSlug: props.row.slug },
         })}
-        className="truncate hover:underline"
+        className={cn(
+          textLinkUnderlineClassName,
+          "hover:text-foreground truncate",
+        )}
         onClick={(event) => event.stopPropagation()}
       >
         {props.row.slug}
@@ -53,7 +57,10 @@ const ProjectSettingsHostNameCell = (
     ) : props.row.origin === "home" ? (
       <button
         type="button"
-        className="truncate hover:underline"
+        className={cn(
+          textLinkUnderlineClassName,
+          "hover:text-foreground truncate",
+        )}
         onClick={() => props.onOpen(props.row)}
         data-testid="home-host-open"
       >

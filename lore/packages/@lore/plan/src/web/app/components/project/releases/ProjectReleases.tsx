@@ -1,4 +1,4 @@
-import { Badge, Button } from "@alepha/ui";
+import { Badge, Button, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import {
   DataTable,
   type DataTableFilterFields,
@@ -348,7 +348,10 @@ const ProjectReleases = () => {
                   #P2142). */}
               <OutboundLink
                 href={loreDocsUrl("plan-releases")}
-                className="text-muted-foreground text-sm underline underline-offset-4"
+                className={cn(
+                  textLinkUnderlineClassName,
+                  "hover:text-foreground text-muted-foreground text-sm",
+                )}
                 data-testid="releases-empty-docs"
               >
                 {tr("release.empty.docs")}

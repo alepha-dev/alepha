@@ -7,6 +7,8 @@ import {
   SheetTitle,
   useDialog,
   useToast,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import {
   currentProjectAtom,
@@ -289,7 +291,10 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                             }
                           : undefined
                       }
-                      className="inline-flex items-center gap-2 text-sm hover:underline"
+                      className={cn(
+                        textLinkUnderlineClassName,
+                        "hover:text-foreground inline-flex items-center gap-2 text-sm",
+                      )}
                     >
                       <Paperclip className="size-3.5" />
                       {/* Reporter-supplied, and escaped text. A preview must

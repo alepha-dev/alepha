@@ -1,4 +1,4 @@
-import { Button } from "@alepha/ui";
+import { Button, cn, textLinkClassName } from "@alepha/ui";
 import { Link } from "alepha/react/router";
 import { LogIn, Plus } from "lucide-react";
 
@@ -65,7 +65,7 @@ const HomeWelcomeCta = (props: HomeWelcomeCtaProps) => {
       {props.loginPath && (
         <Link
           href={props.loginPath}
-          className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
+          className={cn(textLinkClassName, "text-sm")}
         >
           {props.alreadyRegistered}
         </Link>

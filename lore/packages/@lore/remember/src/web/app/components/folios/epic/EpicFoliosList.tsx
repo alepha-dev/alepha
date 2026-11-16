@@ -1,4 +1,12 @@
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  cn,
+  textLinkUnderlineClassName,
+} from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -80,7 +88,10 @@ const EpicFoliosList = (props: EpicFoliosListProps) => {
                         shortId: folio.shortId,
                       },
                     })}
-                    className="min-w-0 flex-1 truncate text-sm hover:underline"
+                    className={cn(
+                      textLinkUnderlineClassName,
+                      "hover:text-foreground min-w-0 flex-1 truncate text-sm",
+                    )}
                   >
                     {folio.title}
                   </Link>

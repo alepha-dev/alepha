@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { currentProjectAtom, type I18n, formatReference } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -97,14 +98,20 @@ const QuestViewQuestline = (props: QuestViewQuestlineProps) => {
       <span className="shrink-0">{label}</span>
       <Link
         href={questHref(shortId)}
-        className="bg-background/40 shrink-0 rounded-sm px-1.5 py-0.5 font-mono text-xs hover:underline"
+        className={cn(
+          textLinkUnderlineClassName,
+          "hover:text-foreground bg-background/40 shrink-0 rounded-sm px-1.5 py-0.5 font-mono text-xs",
+        )}
       >
         {formatReference("quest", shortId)}
       </Link>
       <span className="text-muted-foreground min-w-0 truncate">{title}</span>
       <Link
         href={questlineHref}
-        className="text-muted-foreground hover:text-foreground ml-auto shrink-0 text-xs hover:underline"
+        className={cn(
+          textLinkUnderlineClassName,
+          "text-muted-foreground hover:text-foreground ml-auto shrink-0 text-xs",
+        )}
       >
         {tr("quest.view.questline.open")}
       </Link>

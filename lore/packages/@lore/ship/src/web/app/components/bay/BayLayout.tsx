@@ -1,4 +1,4 @@
-import { Badge } from "@alepha/ui";
+import { Badge, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { PlateLayout } from "@alepha/ui/shell";
 import { AutomationSubscriptionBell, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
@@ -126,7 +126,10 @@ const BayLayout = () => {
                     href={router.path("projectSettingsHosts", {
                       params: { projectSlug: host.project.slug },
                     })}
-                    className="hover:text-foreground underline-offset-4 hover:underline"
+                    className={cn(
+                      textLinkUnderlineClassName,
+                      "hover:text-foreground",
+                    )}
                   >
                     {tr("bay.home", { args: [host.project.title] })}
                   </Link>

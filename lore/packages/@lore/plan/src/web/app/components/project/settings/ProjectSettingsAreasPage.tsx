@@ -12,6 +12,8 @@ import {
   TableRow,
   useDialog,
   useToast,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
 import { descriptionSnippet, type I18n } from "@lore/core/web";
@@ -188,7 +190,10 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
                             areaId: area.id,
                           },
                         })}
-                        className="hover:underline"
+                        className={cn(
+                          textLinkUnderlineClassName,
+                          "hover:text-foreground",
+                        )}
                       >
                         {area.name}
                       </Link>

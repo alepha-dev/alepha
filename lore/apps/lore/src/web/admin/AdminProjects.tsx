@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
   DataTable,
@@ -207,7 +208,10 @@ export const AdminProjects = () => {
             cell: (project) => (
               <Link
                 href={`/admin/users/${project.createdBy}`}
-                className="hover:text-foreground underline-offset-4 hover:underline"
+                className={cn(
+                  textLinkUnderlineClassName,
+                  "hover:text-foreground",
+                )}
               >
                 {project.ownerUsername ?? (
                   <code className="text-muted-foreground text-xs">

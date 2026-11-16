@@ -11,6 +11,8 @@ import {
   Switch,
   useDialog,
   useToast,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import { type I18n, OutboundLink } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
@@ -443,7 +445,10 @@ const HostDrawer = (props: HostDrawerProps) => {
                   <span className="text-muted-foreground text-xs">
                     <OutboundLink
                       href={cloudflareTokenTemplateUrl()}
-                      className="underline underline-offset-4"
+                      className={cn(
+                        textLinkUnderlineClassName,
+                        "hover:text-foreground",
+                      )}
                       data-testid="my-host-token-mint"
                     >
                       {tr("hosts.cloudflare.mint")}
@@ -505,7 +510,10 @@ const HostDrawer = (props: HostDrawerProps) => {
                       href={router.path("projectSettingsHosts", {
                         params: { projectSlug: loan.slug },
                       })}
-                      className="truncate underline-offset-4 hover:underline"
+                      className={cn(
+                        textLinkUnderlineClassName,
+                        "hover:text-foreground truncate",
+                      )}
                     >
                       {loan.title}
                     </Link>

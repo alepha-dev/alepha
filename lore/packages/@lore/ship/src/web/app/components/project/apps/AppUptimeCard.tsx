@@ -1,4 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  cn,
+  textLinkUnderlineClassName,
+} from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
@@ -40,7 +47,13 @@ const AppUptimeCard = (props: AppUptimeCardProps) => {
         <div className="min-w-0">
           <div className="font-medium">
             {props.href ? (
-              <a className="hover:underline" href={props.href}>
+              <a
+                className={cn(
+                  textLinkUnderlineClassName,
+                  "hover:text-foreground",
+                )}
+                href={props.href}
+              >
                 {monitor.name}
               </a>
             ) : (

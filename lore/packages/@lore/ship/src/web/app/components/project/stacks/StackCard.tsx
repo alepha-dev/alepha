@@ -5,6 +5,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import { type I18n, useRank } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
@@ -77,7 +79,10 @@ const StackCard = (props: StackCardProps) => {
                 <tr key={environment.id} className="border-t">
                   <td className="py-2">
                     <Link
-                      className="text-primary underline-offset-4 hover:underline"
+                      className={cn(
+                        textLinkUnderlineClassName,
+                        "hover:text-foreground",
+                      )}
                       href={`/${props.projectSlug}/stacks/${props.stack.name}/${environment.env}`}
                       data-testid={`stack-environment-link-${environment.env}`}
                     >

@@ -245,14 +245,15 @@ export const AuthRegisterFormPhase = (props: AuthRegisterFormPhaseProps) => {
               </Button>
             );
           })}
-          <p className="text-muted-foreground text-center text-sm">
+          <AuthLink
+            href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
+            className="self-center text-center text-sm"
+          >
             {tr("auth.register.haveAccount", {
               default: "Already have an account?",
             })}{" "}
-            <AuthLink href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}>
-              {tr("auth.register.signIn", { default: "Sign in" })}
-            </AuthLink>
-          </p>
+            {tr("auth.register.signIn", { default: "Sign in" })}
+          </AuthLink>
         </>
       )}
     </>

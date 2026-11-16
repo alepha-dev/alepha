@@ -1,4 +1,11 @@
-import { Badge, Card, CardContent, formatBytes } from "@alepha/ui";
+import {
+  Badge,
+  Card,
+  CardContent,
+  formatBytes,
+  cn,
+  textLinkUnderlineClassName,
+} from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import type { I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
@@ -83,7 +90,10 @@ const BayInstance = () => {
               // ⚠️ `projectSlug` explicitly: this route holds the HOME
               // project's, and the copy may belong to a borrowing project.
               <a
-                className="text-sm underline-offset-4 hover:underline"
+                className={cn(
+                  textLinkUnderlineClassName,
+                  "hover:text-foreground text-sm",
+                )}
                 href={router.path("app", {
                   params: {
                     projectSlug: row.project.slug,

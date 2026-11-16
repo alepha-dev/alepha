@@ -33,6 +33,7 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from "../otp/InputOTP.tsx";
+import { AuthCardFrame } from "./AuthCardFrame.tsx";
 import { AuthRegisterCentered } from "./AuthRegisterCentered.tsx";
 import { AuthRegisterFormPhase } from "./AuthRegisterFormPhase.tsx";
 import { AuthRegisterRealmLogo } from "./AuthRegisterRealmLogo.tsx";
@@ -360,141 +361,145 @@ export const AuthRegister = (props: AuthRegisterProps) => {
           realmName={props.realmConfig.realmName}
         />
       )}
-      <Card className="w-full">
-        <CardContent
-          className="overflow-hidden p-0 transition-[height] duration-300 ease-out"
-          style={
-            contentHeight !== undefined ? { height: contentHeight } : undefined
-          }
-        >
-          <div ref={contentRef}>
-            <div
-              key={state.phase}
-              className="animate-in fade-in flex flex-col gap-4 px-6 duration-300"
-            >
-              {isVerifying ? (
-                <>
-                  <h2 className="text-center text-lg font-semibold">
-                    {tr("auth.register.verifyTitle", {
-                      default: "Verify your account",
-                    })}
-                  </h2>
-                  <p className="text-muted-foreground text-center text-sm">
-                    {tr("auth.register.verifyHint", {
-                      default:
-                        "Please enter each verification code sent to you.",
-                    })}
-                  </p>
-                  {verifyError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="size-4" />
-                      <AlertDescription>{verifyError}</AlertDescription>
-                    </Alert>
-                  )}
-                  {state.intent!.expectEmailVerification && (
-                    <div className="flex flex-col items-center gap-2">
-                      <Label htmlFor="emailCode">
-                        {tr("auth.register.emailCode", {
-                          default: "Email verification code",
-                        })}
-                      </Label>
-                      <InputOTP
-                        id="emailCode"
-                        maxLength={6}
-                        autoComplete="one-time-code"
+      <AuthCardFrame>
+        <Card className="w-full">
+          <CardContent
+            className="overflow-hidden p-0 transition-[height] duration-300 ease-out"
+            style={
+              contentHeight !== undefined
+                ? { height: contentHeight }
+                : undefined
+            }
+          >
+            <div ref={contentRef}>
+              <div
+                key={state.phase}
+                className="animate-in fade-in flex flex-col gap-4 px-6 duration-300"
+              >
+                {isVerifying ? (
+                  <>
+                    <h2 className="text-center text-lg font-semibold">
+                      {tr("auth.register.verifyTitle", {
+                        default: "Verify your account",
+                      })}
+                    </h2>
+                    <p className="text-muted-foreground text-center text-sm">
+                      {tr("auth.register.verifyHint", {
+                        default:
+                          "Please enter each verification code sent to you.",
+                      })}
+                    </p>
+                    {verifyError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="size-4" />
+                        <AlertDescription>{verifyError}</AlertDescription>
+                      </Alert>
+                    )}
+                    {state.intent!.expectEmailVerification && (
+                      <div className="flex flex-col items-center gap-2">
+                        <Label htmlFor="emailCode">
+                          {tr("auth.register.emailCode", {
+                            default: "Email verification code",
+                          })}
+                        </Label>
+                        <InputOTP
+                          id="emailCode"
+                          maxLength={6}
+                          autoComplete="one-time-code"
 
-                        value={emailCode}
-                        onChange={setEmailCode}
-                      >
-                        <InputOTPGroup>
-                          <InputOTPSlot index={0} />
-                          <InputOTPSlot index={1} />
-                          <InputOTPSlot index={2} />
-                        </InputOTPGroup>
-                        <InputOTPSeparator />
-                        <InputOTPGroup>
-                          <InputOTPSlot index={3} />
-                          <InputOTPSlot index={4} />
-                          <InputOTPSlot index={5} />
-                        </InputOTPGroup>
-                      </InputOTP>
-                    </div>
-                  )}
-                  {state.intent!.expectPhoneVerification && (
-                    <div className="flex flex-col items-center gap-2">
-                      <Label htmlFor="phoneCode">
-                        {tr("auth.register.phoneCode", {
-                          default: "Phone verification code",
-                        })}
-                      </Label>
-                      <InputOTP
-                        id="phoneCode"
-                        maxLength={6}
-                        autoComplete="one-time-code"
+                          value={emailCode}
+                          onChange={setEmailCode}
+                        >
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                          </InputOTPGroup>
+                          <InputOTPSeparator />
+                          <InputOTPGroup>
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+                    )}
+                    {state.intent!.expectPhoneVerification && (
+                      <div className="flex flex-col items-center gap-2">
+                        <Label htmlFor="phoneCode">
+                          {tr("auth.register.phoneCode", {
+                            default: "Phone verification code",
+                          })}
+                        </Label>
+                        <InputOTP
+                          id="phoneCode"
+                          maxLength={6}
+                          autoComplete="one-time-code"
 
-                        value={phoneCode}
-                        onChange={setPhoneCode}
-                      >
-                        <InputOTPGroup>
-                          <InputOTPSlot index={0} />
-                          <InputOTPSlot index={1} />
-                          <InputOTPSlot index={2} />
-                        </InputOTPGroup>
-                        <InputOTPSeparator />
-                        <InputOTPGroup>
-                          <InputOTPSlot index={3} />
-                          <InputOTPSlot index={4} />
-                          <InputOTPSlot index={5} />
-                        </InputOTPGroup>
-                      </InputOTP>
-                    </div>
-                  )}
-                  <Button
-                    onClick={handleVerify}
-                    loading={submitting}
-                    disabled={!canSubmitVerify}
-                  >
-                    {tr("auth.register.verifySubmit", {
-                      default: "Complete registration",
-                    })}
-                  </Button>
-                  <Button
-                    variant="minimal"
-                    onClick={() => setState({ phase: "form" })}
-                  >
-                    {tr("auth.register.verifyBack", {
-                      default: "Back to registration",
-                    })}
-                  </Button>
-                </>
-              ) : (
-                <AuthRegisterFormPhase
-                  allowed={allowed}
-                  form={form}
-                  formError={formError ?? queryError}
-                  loading={formState.loading}
-                  passwordValue={passwordValue}
-                  settings={settings}
-                  realmName={props.realmConfig.realmName}
-                  credentialsProvider={credentialsProvider}
-                  externalMethods={externalMethods}
-                  showDivider={showDivider}
-                  redirect={redirect}
-                  loginPath={props.loginPath}
-                  realmQuery={realmQuery}
-                  auth={auth}
-                  captchaSiteKey={captchaSiteKey}
-                  captchaToken={captchaToken}
-                  captchaRef={captchaRef}
-                  onCaptchaToken={setCaptchaToken}
-                  message={props.message}
-                  lockedEmail={props.lockedEmail}
-                />
-              )}
+                          value={phoneCode}
+                          onChange={setPhoneCode}
+                        >
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                          </InputOTPGroup>
+                          <InputOTPSeparator />
+                          <InputOTPGroup>
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+                    )}
+                    <Button
+                      onClick={handleVerify}
+                      loading={submitting}
+                      disabled={!canSubmitVerify}
+                    >
+                      {tr("auth.register.verifySubmit", {
+                        default: "Complete registration",
+                      })}
+                    </Button>
+                    <Button
+                      variant="minimal"
+                      onClick={() => setState({ phase: "form" })}
+                    >
+                      {tr("auth.register.verifyBack", {
+                        default: "Back to registration",
+                      })}
+                    </Button>
+                  </>
+                ) : (
+                  <AuthRegisterFormPhase
+                    allowed={allowed}
+                    form={form}
+                    formError={formError ?? queryError}
+                    loading={formState.loading}
+                    passwordValue={passwordValue}
+                    settings={settings}
+                    realmName={props.realmConfig.realmName}
+                    credentialsProvider={credentialsProvider}
+                    externalMethods={externalMethods}
+                    showDivider={showDivider}
+                    redirect={redirect}
+                    loginPath={props.loginPath}
+                    realmQuery={realmQuery}
+                    auth={auth}
+                    captchaSiteKey={captchaSiteKey}
+                    captchaToken={captchaToken}
+                    captchaRef={captchaRef}
+                    onCaptchaToken={setCaptchaToken}
+                    message={props.message}
+                    lockedEmail={props.lockedEmail}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </AuthCardFrame>
       {!isVerifying && props.cancelPath !== false && (
         <Button
           variant="minimal"

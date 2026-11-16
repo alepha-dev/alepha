@@ -6,6 +6,8 @@ import {
   CardContent,
   useToast,
   UserAvatar,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import {
@@ -776,7 +778,10 @@ const ProjectFeedbackRequest = () => {
                     href="/?account=feedback"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
+                    className={cn(
+                      textLinkUnderlineClassName,
+                      "text-muted-foreground hover:text-foreground text-xs",
+                    )}
                   >
                     {tr("feedback.request.myFeedbackLink")}
                   </a>

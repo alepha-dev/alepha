@@ -26,7 +26,9 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
+import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
 import { useToast } from "../core/useToast.tsx";
+import { cn } from "../core/utils.ts";
 import { DataTable } from "../table/DataTable.tsx";
 import type {
   DataTableFilterFields,
@@ -278,7 +280,10 @@ export const AdminAudits = () => {
       type="button"
       title={label}
       onClick={() => router.push(href)}
-      className="hover:text-primary inline-flex items-center gap-1.5 truncate text-start text-xs underline-offset-2 hover:underline"
+      className={cn(
+        textLinkUnderlineClassName,
+        "hover:text-foreground inline-flex items-center gap-1.5 truncate text-start text-xs",
+      )}
     >
       {icon}
       <span className="truncate">{label}</span>

@@ -1,4 +1,4 @@
-import { Badge } from "@alepha/ui";
+import { Badge, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
   DataTable,
@@ -155,7 +155,10 @@ export const AdminHosts = () => {
               host.creator ? (
                 <Link
                   href={`/admin/users/${host.creator.id}`}
-                  className="hover:text-foreground underline-offset-4 hover:underline"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground",
+                  )}
                 >
                   {host.creator.name}
                 </Link>

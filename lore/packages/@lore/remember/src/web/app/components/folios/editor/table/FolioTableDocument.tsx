@@ -1,4 +1,10 @@
-import { Button, useDialog, useToast } from "@alepha/ui";
+import {
+  Button,
+  useDialog,
+  useToast,
+  cn,
+  textLinkUnderlineClassName,
+} from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import {
   currentProjectAtom,
@@ -246,7 +252,7 @@ const FolioTableDocument = (props: FolioTableDocumentProps): ReactElement => {
         href={loreDocsUrl("remember-tables")}
         target="_blank"
         rel="noreferrer"
-        className="text-primary-text hover:underline"
+        className={cn(textLinkUnderlineClassName, "hover:text-foreground")}
       >
         {tr("folios.table.docs")}
       </a>

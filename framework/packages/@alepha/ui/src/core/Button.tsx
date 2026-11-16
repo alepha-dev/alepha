@@ -3,6 +3,7 @@ import { Link } from "alepha/react/router";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2Icon } from "lucide-react";
 
+import { textLinkUnderlineClassName } from "./TextLink.tsx";
 import { cn } from "./utils.ts";
 
 /*
@@ -120,7 +121,7 @@ const buttonCva = cva(
           "bg-linear-to-b from-white/15 to-transparent shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_1px_2px_rgb(0_0_0/0.15)]",
         minimal: "",
         outlined: "bg-transparent",
-        link: "underline-offset-4 hover:underline",
+        link: textLinkUnderlineClassName,
       },
       intent: {
         none: "",

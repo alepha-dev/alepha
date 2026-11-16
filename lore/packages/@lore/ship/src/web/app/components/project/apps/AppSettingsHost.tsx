@@ -1,4 +1,4 @@
-import { useToast } from "@alepha/ui";
+import { useToast, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
 import {
@@ -181,7 +181,10 @@ const AppSettingsHost = () => {
       >
         {hosts.length === 0 ? (
           <Link
-            className="text-primary text-sm underline-offset-4 hover:underline"
+            className={cn(
+              textLinkUnderlineClassName,
+              "hover:text-foreground text-sm",
+            )}
             href={`/${project.slug}/settings/hosts`}
           >
             {tr("app.settings.host.manage")}

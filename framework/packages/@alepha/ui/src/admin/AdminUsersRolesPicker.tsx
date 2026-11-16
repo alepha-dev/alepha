@@ -7,6 +7,8 @@ import { useState } from "react";
 
 import { Checkbox } from "../core/Checkbox.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "../core/Popover.tsx";
+import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
+import { cn } from "../core/utils.ts";
 
 export interface RoleMeta {
   name: string;
@@ -77,7 +79,10 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
         render={
           <button
             type="button"
-            className="text-start text-sm hover:underline focus:outline-none focus-visible:underline"
+            className={cn(
+              textLinkUnderlineClassName,
+              "hover:text-foreground text-start text-sm focus:outline-none focus-visible:decoration-current focus-visible:decoration-1",
+            )}
           />
         }
       >

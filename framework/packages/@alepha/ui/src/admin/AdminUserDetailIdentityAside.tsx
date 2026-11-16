@@ -8,6 +8,8 @@ import { ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "../core/Badge.tsx";
+import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
+import { cn } from "../core/utils.ts";
 import { DetailAside, type DetailAsideRow } from "../shell/DetailAside.tsx";
 import { AdminUsersStatusBadge } from "./AdminUsersStatusBadge.tsx";
 
@@ -61,7 +63,10 @@ export const AdminUserDetailIdentityAside = (
       value: (
         <a
           href={`mailto:${user.email}`}
-          className="text-primary-text block truncate hover:underline"
+          className={cn(
+            textLinkUnderlineClassName,
+            "hover:text-foreground block truncate",
+          )}
           title={user.email}
         >
           {user.email}
@@ -75,7 +80,10 @@ export const AdminUserDetailIdentityAside = (
       value: (
         <a
           href={`tel:${user.phoneNumber}`}
-          className="text-primary-text block truncate font-mono hover:underline"
+          className={cn(
+            textLinkUnderlineClassName,
+            "hover:text-foreground block truncate font-mono",
+          )}
         >
           {user.phoneNumber}
         </a>

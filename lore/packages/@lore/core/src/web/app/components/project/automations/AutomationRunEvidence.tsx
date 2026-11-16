@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AutomationRunResource } from "../../../../../api/schemas/automationRunResourceSchema.ts";
@@ -87,7 +88,10 @@ const AutomationRunEvidence = (props: AutomationRunEvidenceProps) => {
             )
             .map((notification) => (
               <a
-                className="text-sm underline"
+                className={cn(
+                  textLinkUnderlineClassName,
+                  "hover:text-foreground text-sm",
+                )}
                 href={`#delivery-${notification.outboxId}`}
                 key={notification.outboxId}
               >

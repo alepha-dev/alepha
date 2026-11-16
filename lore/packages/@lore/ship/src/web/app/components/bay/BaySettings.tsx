@@ -7,6 +7,8 @@ import {
   TimeAgo,
   useDialog,
   useToast,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
@@ -319,7 +321,10 @@ const BaySettings = () => {
                       href={router.path("projectSettingsHosts", {
                         params: { projectSlug: loan.slug },
                       })}
-                      className="truncate underline-offset-4 hover:underline"
+                      className={cn(
+                        textLinkUnderlineClassName,
+                        "hover:text-foreground truncate",
+                      )}
                     >
                       {loan.title}
                     </Link>

@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { formatReference } from "@lore/core/web";
 import { Link } from "alepha/react/router";
 
@@ -38,7 +39,7 @@ const QuestViewRailEpicLink = (props: QuestViewRailEpicLinkProps) => {
 
   return (
     <Link
-      className="hover:underline"
+      className={cn(textLinkUnderlineClassName, "hover:text-foreground")}
       title={props.title}
       aria-label={`${reference} ${props.title}`}
       href={props.href}
