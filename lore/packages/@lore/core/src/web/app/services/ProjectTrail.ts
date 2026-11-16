@@ -95,7 +95,13 @@ export class ProjectTrail {
             params: { projectSlug, ...routeParams },
           }),
       });
-      if (crumb) crumbs.push(crumb);
+      if (crumb) {
+        crumbs.push(
+          "labelKey" in crumb
+            ? { label: tr(crumb.labelKey), href: crumb.href }
+            : crumb,
+        );
+      }
     }
     // The leaf a page named for itself once its own read answered
     // (`usePageCrumb`), for the open page only.

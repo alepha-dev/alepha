@@ -1,11 +1,15 @@
 import {
+  canInProject,
+  capabilityOption,
   ElementReferenceRegistry,
+  formatReference,
   lazyPart,
   ProjectShellRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, UsersRound } from "lucide-react";
 
+import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
 import { REQUIREMENTS_ROUTES } from "../components/layout/requirementsTabs.ts";
 import { usePersonaReferences } from "../components/personas/usePersonaReferences.ts";
 
@@ -49,6 +53,47 @@ export class RequirementsShell {
         activeOn: (name) => REQUIREMENTS_ROUTES.includes(name),
       },
     ]);
+
+    // New persona, from the header's "+" menu, after Feedback.
+    this.shell.registerCreate({
+      key: "persona",
+      order: 70,
+      labelKey: "project.menu.create-persona",
+      icon: UsersRound,
+      enabled: (project) =>
+        capabilityOption(project, "plan", "requirements") &&
+        canInProject(project, "persona:write"),
+      dialog: lazyPart(
+        () => import("../components/personas/PersonaCreateMenuSheet.tsx"),
+      ),
+    });
+
+    // A persona's page reads "Acme › Requirements › Personas › #A2 Léa":
+    // the tab, linked, then the persona as the inert leaf.
+    this.shell.registerCrumb({
+      order: 50,
+      crumb: (ctx) =>
+        ctx.routeName === "projectPersona"
+          ? {
+              labelKey: "requirements.tab.personas",
+              href: ctx.path("projectPersonas", {
+                projectSlug: ctx.projectSlug,
+              }),
+            }
+          : undefined,
+    });
+    this.shell.registerCrumb({
+      order: 51,
+      reads: [currentPersonaAtom],
+      crumb: (ctx) => {
+        const persona = ctx.get(currentPersonaAtom);
+        return ctx.routeName === "projectPersona" && persona
+          ? {
+              label: `${formatReference("persona", persona.number)} ${persona.name}`,
+            }
+          : undefined;
+      },
+    });
 
     // `[[#A2]]`: a persona, after the kinds a body names more often.
     this.references.register({
