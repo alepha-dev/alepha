@@ -4,7 +4,8 @@ import { type Infer, z } from "alepha";
  * What a `[[#Q12]]` reference can point AT: any element (folio, quest,
  * epic), plus `feedback` and `release`, which have a per-project number and
  * a title but no body of their own to link FROM. One literal per letter of
- * the grammar: `F`, `Q`, `E`, `P`, `R`.
+ * the grammar: `F`, `Q`, `E`, `P`, `R`, and Plan's Requirements (#E153):
+ * `A` a persona, `U` a use case, `S` a requirement.
  *
  * A superset of {@link elementKindSchema} on purpose: feedback and releases
  * are targets and never sources. Keeping the two unions apart is what stops
@@ -26,6 +27,9 @@ export const linkTargetKindSchema = z.enum([
   "epic",
   "feedback",
   "release",
+  "persona",
+  "usecase",
+  "requirement",
 ]);
 
 export type LinkTargetKind = Infer<typeof linkTargetKindSchema>;

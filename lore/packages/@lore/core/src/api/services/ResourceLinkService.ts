@@ -7,6 +7,7 @@ import {
   ResourceRegistry,
   type ResourceRef,
 } from "../resources/ResourceRegistry.ts";
+import type { LinkRelation } from "../schemas/linkRelationSchema.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { BoundParameters } from "./BoundParameters.ts";
@@ -293,6 +294,90 @@ export class ResourceLinkService {
       relation: "filed",
     });
     return true;
+  }
+
+  /**
+   * Rewrite the MIRROR rows of `relation` that point at one target: after
+   * this, exactly `sourceIds` of `sourceKind` hold a `relation` row onto it
+   * (#E153). Plan's Requirements keeps the truth in its own tables (a use
+   * case's actors, its covering epics) and calls this after writing them, so
+   * backlinks and `[[#U7]]` reads see the edge.
+   *
+   * Not atomic (D1): a delete then an insert. The caller runs it after its
+   * main write through `BestEffort`, and every save of the source rewrites
+   * it, so a failure here heals on the next save.
+   */
+  public async mirrorInbound(
+    relation: Exclude<LinkRelation, "filed">,
+    target: { kind: LinkTargetKind; id: string | number },
+    sourceKind: LinkSourceKind,
+    sourceIds: readonly (string | number)[],
+  ): Promise<void> {
+    await this.links.deleteMany({
+      fromType: { eq: sourceKind },
+      targetType: { eq: target.kind },
+      toId: { eq: String(target.id) },
+      relation: { eq: relation },
+    });
+    const ids = [...new Set(sourceIds.map(String))];
+    if (ids.length === 0) return;
+    await this.links.createMany(
+      ids.map((fromId) => ({
+        fromType: sourceKind,
+        fromId,
+        targetType: target.kind,
+        toId: String(target.id),
+        relation,
+      })),
+    );
+  }
+
+  /**
+   * Rewrite the MIRROR rows of `relation` one source holds: after this, it
+   * points at exactly `targetIds` of `targetKind` (#E153: a requirement's
+   * `source` folio). Same order and same healing as {@link mirrorInbound}.
+   */
+  public async mirrorOutbound(
+    relation: Exclude<LinkRelation, "filed">,
+    source: { kind: LinkSourceKind; id: string | number },
+    targetKind: LinkTargetKind,
+    targetIds: readonly (string | number)[],
+  ): Promise<void> {
+    await this.links.deleteMany({
+      fromType: { eq: source.kind },
+      fromId: { eq: String(source.id) },
+      targetType: { eq: targetKind },
+      relation: { eq: relation },
+    });
+    const ids = [...new Set(targetIds.map(String))];
+    if (ids.length === 0) return;
+    await this.links.createMany(
+      ids.map((toId) => ({
+        fromType: source.kind,
+        fromId: String(source.id),
+        targetType: targetKind,
+        toId,
+        relation,
+      })),
+    );
+  }
+
+  /**
+   * Drop every link row pointing at targets that are being deleted, mirror
+   * and mention alike, whatever the source: a deleted use case is covered by
+   * no epic. Mentions of it read as broken links where they are written.
+   */
+  public async deleteMirrorsTo(
+    targetKind: LinkTargetKind,
+    targetIds: readonly (string | number)[],
+  ): Promise<void> {
+    for (const batch of this.bound.chunk([...targetIds].map(String))) {
+      await this.links.deleteMany({
+        targetType: { eq: targetKind },
+        toId: { inArray: batch },
+        relation: { inArray: ["actor", "covers", "source"] },
+      });
+    }
   }
 
   /**

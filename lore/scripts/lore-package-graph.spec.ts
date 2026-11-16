@@ -7,6 +7,7 @@ const exports = {
   plan: ["api", "mcp", "web", "schemas"],
   remember: ["api", "mcp", "web", "schemas"],
   ship: ["api", "mcp", "web", "schemas"],
+  "plan-requirements": ["api", "mcp", "web", "schemas", "testing"],
 };
 
 const graph = new LorePackageGraph(exports);
@@ -38,6 +39,36 @@ describe("LorePackageGraph", () => {
     );
     expect(violations[0]).toContain('"@lore/plan/api"');
     expect(violations[0]).toContain("@lore/remember -> @lore/plan");
+  });
+
+  it("lets plan-requirements import core, plan, remember and ship (#E153)", ({
+    expect,
+  }) => {
+    const source = [
+      'import { LoreCoreApi } from "@lore/core/api";',
+      'import { LorePlanApi } from "@lore/plan/api";',
+      'import { LoreRememberApi } from "@lore/remember/api";',
+      'import { LoreShipApi } from "@lore/ship/api";',
+    ].join("\n");
+
+    expect(
+      graph.check("packages/@lore/plan-requirements/src/api/index.ts", source),
+    ).toEqual([]);
+  });
+
+  it("refuses plan, remember and ship importing plan-requirements: the edge goes one way", ({
+    expect,
+  }) => {
+    for (const from of ["plan", "remember", "ship", "core"]) {
+      const violations = graph.check(
+        `packages/@lore/${from}/src/api/index.ts`,
+        'import { LorePlanRequirementsApi } from "@lore/plan-requirements/api";',
+      );
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain(
+        `@lore/${from} -> @lore/plan-requirements`,
+      );
+    }
   });
 
   it("refuses core importing a feature module", ({ expect }) => {

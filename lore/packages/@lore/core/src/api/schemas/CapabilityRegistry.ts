@@ -235,6 +235,18 @@ export class CapabilityRegistry {
           wizard: true,
           preselected: false,
         },
+        {
+          // Personas, use cases and requirements (#E153): a part of Plan, not
+          // a capability of its own, whose code lives in
+          // `@lore/plan-requirements`. Offered in the wizard and never
+          // preselected, like Epics.
+          key: "requirements",
+          labelKey: "project.capability.plan.option.requirements.label",
+          descriptionKey:
+            "project.capability.plan.option.requirements.description",
+          wizard: true,
+          preselected: false,
+        },
         // Automations were an option here until #Q3594, and a baseline of
         // Plan until #Q3629: they are Core now. A stored `automations` key is
         // stripped on read by the lax options schema and dropped on the row's

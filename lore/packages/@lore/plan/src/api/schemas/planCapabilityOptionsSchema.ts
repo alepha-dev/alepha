@@ -10,6 +10,8 @@ import { type Infer, z } from "alepha";
  * surfaces the other options decide the existence of, and its templates are
  * edited on this same Settings page. `feedback` is the request form and the
  * triage inbox, a capability of its own (Support) until #E143 folded it in.
+ * `requirements` is personas, use cases and requirements (#E153), whose code
+ * lives in `@lore/plan-requirements` and registers under Plan.
  * Automations are not an option: they are part of Plan wherever Plan is on
  * (#Q3594).
  *
@@ -38,6 +40,7 @@ export const planCapabilityOptionsSchema = z.object({
   reminder: z.boolean().default(false),
   agentPrompts: z.boolean().default(false),
   feedback: z.boolean().default(false),
+  requirements: z.boolean().default(false),
 });
 
 export type PlanCapabilityOptions = Infer<typeof planCapabilityOptionsSchema>;

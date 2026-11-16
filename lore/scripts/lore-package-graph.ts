@@ -11,6 +11,7 @@ import { dirname, join, normalize } from "node:path";
  * | `plan`      | Lore as Jira     | `core`      |
  * | `remember`  | Lore as Obsidian | `core`      |
  * | `ship`      | Lore as Vercel   | `core`      |
+ * | `plan-requirements` | Plan's Requirements | `core`, `plan`, `remember`, `ship` |
  *
  * A feature module never imports another one. A feature that spans two of
  * them (an epic files folios, an error is forwarded to a quest, a release
@@ -42,6 +43,11 @@ export class LorePackageGraph {
     plan: ["core"],
     remember: ["core"],
     ship: ["core"],
+    // Plan's Requirements (#E153): the first package with sibling edges,
+    // because it writes Ship's errors, reads Ship's telemetry and Remember's
+    // folio revisions. One way only: none of the three imports it, and what
+    // they ask of it goes through a registry or a hook it subscribes to.
+    "plan-requirements": ["core", "plan", "remember", "ship"],
   };
 
   /**

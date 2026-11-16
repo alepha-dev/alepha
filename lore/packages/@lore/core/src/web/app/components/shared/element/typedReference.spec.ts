@@ -19,6 +19,10 @@ describe("typedReference", () => {
     expect(formatReference("folio", 42)).toBe("#F42");
     expect(formatReference("feedback", 120)).toBe("#P120");
     expect(formatReference("release", 7)).toBe("#R7");
+    // Plan's Requirements (#E153, answer 71).
+    expect(formatReference("persona", 2)).toBe("#A2");
+    expect(formatReference("usecase", 7)).toBe("#U7");
+    expect(formatReference("requirement", 15)).toBe("#S15");
   });
 
   it("reads back what it wrote, for every letter", () => {

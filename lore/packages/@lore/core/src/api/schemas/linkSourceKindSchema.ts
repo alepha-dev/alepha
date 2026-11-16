@@ -17,6 +17,11 @@ import { type Infer, z } from "alepha";
  * a discriminator whose literals are already persisted is a data
  * migration.
  *
+ * `persona` and `requirement` (#E153) are the sources of two mirror
+ * relations, `actor` (a persona plays a use case) and `source` (a requirement
+ * comes from a folio): rows written by `@lore/plan-requirements` after its
+ * own tables, never parsed out of a body.
+ *
  * Distinct again from {@link linkTargetKindSchema}, which adds `feedback`
  * and `release`: both can be pointed at but contain nothing, so they are targets and never
  * a source.
@@ -26,6 +31,8 @@ export const linkSourceKindSchema = z.enum([
   "quest",
   "epic",
   "comment",
+  "persona",
+  "requirement",
 ]);
 
 export type LinkSourceKind = Infer<typeof linkSourceKindSchema>;

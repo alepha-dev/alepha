@@ -75,7 +75,9 @@ export const folioLinks = $entity({
     ),
     /**
      * `undefined` for a mention, derived from the source's body and
-     * rewritten on every save of it; `filed` for an explicit filing, which
+     * rewritten on every save of it; `filed` for an explicit filing, or a
+     * mirror of a Requirements table (`actor`, `covers`, `source`, #E153),
+     * which
      * a body save never touches (see {@link linkRelationSchema}).
      *
      * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain

@@ -12,6 +12,9 @@ import {
 import { LoreCoreMcp } from "@lore/core/mcp";
 import { LoreCoreWeb } from "@lore/core/web";
 import { ProjectScopeGrants } from "@lore/core/web";
+import { LorePlanRequirementsApi } from "@lore/plan-requirements/api";
+import { LorePlanRequirementsMcp } from "@lore/plan-requirements/mcp";
+import { LorePlanRequirementsWeb } from "@lore/plan-requirements/web";
 import { LorePlanApi } from "@lore/plan/api";
 import { LorePlanMcp } from "@lore/plan/mcp";
 import { LorePlanWeb } from "@lore/plan/web";
@@ -199,10 +202,13 @@ alepha.with(LoreCoreApi);
 alepha.with(LorePlanApi);
 alepha.with(LoreRememberApi);
 alepha.with(LoreShipApi);
+// Plan's Requirements (#E153), after the four it builds on.
+alepha.with(LorePlanRequirementsApi);
 alepha.with(LoreCoreMcp);
 alepha.with(LorePlanMcp);
 alepha.with(LoreRememberMcp);
 alepha.with(LoreShipMcp);
+alepha.with(LorePlanRequirementsMcp);
 
 // The in-app assistant (#E120), after every module: its tools are theirs.
 // Always registered, so its tables are in every schema; `AI_ASSISTANT_ENABLED`
@@ -227,6 +233,7 @@ alepha.with(LoreCoreWeb);
 alepha.with(LorePlanWeb);
 alepha.with(LoreRememberWeb);
 alepha.with(LoreShipWeb);
+alepha.with(LorePlanRequirementsWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.
 alepha.with(LoreAssistantWeb);
 alepha.with(AlephaSigil);
