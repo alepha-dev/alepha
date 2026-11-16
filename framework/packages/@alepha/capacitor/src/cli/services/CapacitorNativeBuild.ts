@@ -25,11 +25,14 @@ import { NativeGuard } from "./NativeGuard.ts";
  *   a `debug-overrides` network security config); on iOS an `.app` from
  *   `xcodebuild`, for the simulator, or with `--device` for a phone signed by
  *   `iosTeamId` (a free personal team is enough, the signature lasts 7 days);
- * - **release** (`--release`), through `cap build` with explicit signing: on
- *   Android a signed AAB or APK from a keystore named in the environment; on
- *   iOS an IPA, exported with `--export-method` (`debugging` by default, NOT
- *   cap's own `app-store-connect`, so the free-account path never tries a
- *   store export).
+ * - **release** (`--release`), with explicit signing: on Android a signed AAB
+ *   or APK from a keystore named in the environment, through `cap build`; on
+ *   iOS an IPA from `xcodebuild archive` then `-exportArchive`, exported with
+ *   `--export-method` (`debugging` by default, NOT `app-store-connect`, so the
+ *   free-account path never tries a store export). Both run with
+ *   `-allowProvisioningUpdates`, so Xcode creates the team's certificate and
+ *   profile when they do not exist yet: `cap build ios` cannot pass that flag,
+ *   and a new team could not build a release at all.
  *
  * Nothing is submitted to a store. A successful build appends its record to
  * `capacitor.builds.json`; the build number comes from the native project,
@@ -297,30 +300,81 @@ export class CapacitorNativeBuild {
       return `ios/App/build/Build/Products/Debug-${sdk}/App.app`;
     }
 
+    const appDir = this.fs.join(root, "ios", "App");
+    const exportOptions = this.fs.join(appDir, "build", "ExportOptions.plist");
+    await this.fs.mkdir(this.fs.join(appDir, "build"), { recursive: true });
+    await this.fs.writeFile(
+      exportOptions,
+      this.exportOptions(
+        opts.exportMethod ?? "debugging",
+        options.iosTeamId as string,
+      ),
+    );
+    const team = `DEVELOPMENT_TEAM=${options.iosTeamId}`;
     await run({
-      name: "cap build ios",
+      name: "xcodebuild archive",
       handler: async () => {
         await this.shell.run(
           [
-            "cap",
-            "build",
-            "ios",
-            "--scheme",
+            "xcodebuild",
+            "-project",
+            "App.xcodeproj",
+            "-scheme",
             "App",
-            "--configuration",
+            "-configuration",
             "Release",
-            "--xcode-team-id",
-            options.iosTeamId as string,
-            "--xcode-signing-style",
-            "automatic",
-            "--xcode-export-method",
-            opts.exportMethod ?? "debugging",
+            "-destination",
+            "generic/platform=iOS",
+            "-archivePath",
+            "build/App.xcarchive",
+            "-allowProvisioningUpdates",
+            team,
+            "CODE_SIGN_STYLE=Automatic",
+            "archive",
           ],
-          { root, resolve: true },
+          { root: appDir },
+        );
+      },
+    });
+    await run({
+      name: "xcodebuild -exportArchive",
+      handler: async () => {
+        await this.shell.run(
+          [
+            "xcodebuild",
+            "-exportArchive",
+            "-archivePath",
+            "build/App.xcarchive",
+            "-exportPath",
+            "output",
+            "-exportOptionsPlist",
+            "build/ExportOptions.plist",
+            "-allowProvisioningUpdates",
+          ],
+          { root: appDir },
         );
       },
     });
     return "ios/App/output/App.ipa";
+  }
+
+  /**
+   * The ExportOptions plist of an iOS release: the export method, the team,
+   * and automatic signing, so Xcode picks or makes the matching profile.
+   */
+  protected exportOptions(method: string, teamId: string): string {
+    return [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+      '<plist version="1.0">',
+      "<dict>",
+      `  <key>method</key><string>${method}</string>`,
+      `  <key>teamID</key><string>${teamId}</string>`,
+      "  <key>signingStyle</key><string>automatic</string>",
+      "</dict>",
+      "</plist>",
+      "",
+    ].join("\n");
   }
 }
 
