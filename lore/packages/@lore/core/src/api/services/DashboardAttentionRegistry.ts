@@ -50,6 +50,12 @@ export interface DashboardAttentionSource {
    * a project without it.
    */
   needs?: DashboardMetricRequirement;
+  /**
+   * The project permission that reads what the source lists (#Q3794): it is
+   * not asked at all for a reader whose rank lacks it. Required, so a new
+   * source cannot reach every member by omission.
+   */
+  requires: string;
   read(
     project: Project,
     context: { viewerId?: string; windowDays: number },
@@ -76,10 +82,15 @@ export class DashboardAttentionRegistry {
   }
 
   /**
-   * The sources a project's capabilities allow, by its capability rows.
+   * The sources a project's capabilities allow, by its capability rows,
+   * and the reader's rank reads, by `grants`.
    */
-  for(rows: ProjectCapability[]): DashboardAttentionSource[] {
+  for(
+    rows: ProjectCapability[],
+    grants: (permission: string) => boolean,
+  ): DashboardAttentionSource[] {
     return this.sources.filter((source) => {
+      if (!grants(source.requires)) return false;
       const needs = source.needs;
       if (!needs) return true;
       const row = rows.find((it) => it.key === needs.capability);

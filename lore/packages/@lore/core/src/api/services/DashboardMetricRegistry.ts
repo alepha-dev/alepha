@@ -1,5 +1,4 @@
 import { $inject, AlephaError } from "alepha";
-import { RankService } from "alepha/api/organizations";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
 
@@ -22,6 +21,7 @@ import {
   DashboardScopeService,
   type ResolvedDashboardScope,
 } from "./DashboardScopeService.ts";
+import { ProjectReaderPermissions } from "./ProjectReaderPermissions.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
@@ -64,7 +64,7 @@ export class DashboardMetricRegistry {
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly registry = $inject(CapabilityRegistry);
-  protected readonly ranks = $inject(RankService);
+  protected readonly readers = $inject(ProjectReaderPermissions);
 
   /**
    * The window a board resolves over when the caller names none (#E77).
@@ -225,21 +225,26 @@ export class DashboardMetricRegistry {
         visible.map((project) => project.id),
       ));
 
-    // The permission gate (#Q2653), once per permission for the board: a
-    // metric that `requires` one the reader lacks answers `noAccess` and is
-    // never resolved. Only a project board has one organization to ask.
-    const granted = new Map<string, boolean>();
-    const organizationId =
-      board === "project" ? visible[0]?.organizationId : undefined;
-    for (const card of cards) {
-      const permission = this.catalog.find(card.metric)?.requires;
-      if (!permission || granted.has(permission)) continue;
-      granted.set(
-        permission,
-        !!organizationId &&
-          (await this.ranks.can(organizationId, permission, user)),
-      );
-    }
+    // The permission gate (#Q2653, #Q3794): what the reader's rank holds in
+    // each project of the board, in two reads for the whole board. A metric
+    // that `requires` a permission counts only the projects where the reader
+    // holds it, and answers `noAccess`, unresolved, when that is none of
+    // them. Membership alone is not enough: anyone can join an open project
+    // as a viewer.
+    const held = await this.readers.of(user, visible);
+    const permits = (
+      descriptor: DashboardMetricDescriptor,
+      projectId: number,
+    ) =>
+      !descriptor.requires ||
+      this.readers.grants(held.get(projectId) ?? [], descriptor.requires);
+    const noAccess = (card: DashboardCardResource): DashboardCardValue => ({
+      cardId: card.id,
+      ok: true,
+      empty: "noAccess",
+      detail: {},
+      scopeNames: [],
+    });
 
     // Group first, resolve second. Each card's scope is proven here, once —
     // a resolver never sees an id the caller may not read.
@@ -262,20 +267,24 @@ export class DashboardMetricRegistry {
         continue;
       }
 
-      if (descriptor.requires && !granted.get(descriptor.requires)) {
-        values.set(card.id, {
-          cardId: card.id,
-          ok: true,
-          empty: "noAccess",
-          detail: {},
-          scopeNames: [],
-        });
+      if (
+        visible.length > 0 &&
+        !visible.some((project) => permits(descriptor, project.id))
+      ) {
+        values.set(card.id, noAccess(card));
         continue;
       }
 
       try {
         const proven = await this.scopes.resolve(card.scope, user, visible);
-        const scope = this.narrow(descriptor, proven, capabilities);
+        const permitted = this.keep(proven, (projectId) =>
+          permits(descriptor, projectId),
+        );
+        if (proven.projects.length > 0 && permitted.projects.length === 0) {
+          values.set(card.id, noAccess(card));
+          continue;
+        }
+        const scope = this.narrow(descriptor, permitted, capabilities);
         const group = byMetric.get(card.metric) ?? [];
         group.push({
           card,
@@ -284,6 +293,7 @@ export class DashboardMetricRegistry {
           windowDays,
           evaluatedAt,
           reads,
+          permissions: held,
         });
         byMetric.set(card.metric, group);
       } catch (error) {
@@ -360,9 +370,24 @@ export class DashboardMetricRegistry {
       return scope;
     }
 
-    const projects = scope.projects.filter((project) =>
-      this.answers(descriptor, project.id, capabilities),
+    return this.keep(scope, (projectId) =>
+      this.answers(descriptor, projectId, capabilities),
     );
+  }
+
+  /**
+   * A proven scope without the projects `kept` refuses, and without the
+   * subjects that belong to them: the one narrowing both the capability
+   * gate and the permission gate apply.
+   */
+  protected keep(
+    scope: ResolvedDashboardScope,
+    kept: (projectId: number) => boolean,
+  ): ResolvedDashboardScope {
+    const projects = scope.projects.filter((project) => kept(project.id));
+    if (projects.length === scope.projects.length) {
+      return scope;
+    }
     const projectIds = new Set(projects.map((project) => project.id));
     // ⚠️ Subjects are dropped WITH their project rather than carried through
     // it. An epic card added while `plan.epics` was on must resolve to zero

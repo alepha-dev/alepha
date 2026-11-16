@@ -7,7 +7,7 @@ import {
   DatabaseProvider,
   SqlExpressionProvider,
 } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { $secure, type UserAccountToken } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
@@ -15,6 +15,7 @@ import { coreRelations } from "../relations/coreRelations.ts";
 import { homeBoardSchema } from "../schemas/homeBoardSchema.ts";
 import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectMomentumService } from "../services/ProjectMomentumService.ts";
+import { ProjectReaderPermissions } from "../services/ProjectReaderPermissions.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 
 /**
@@ -49,6 +50,7 @@ export class HomeController {
 
   auditRows = $repository(audits);
   counts = $inject(ProjectCountRegistry);
+  protected readonly readers = $inject(ProjectReaderPermissions);
   usersWith = $repository(coreRelations, "users");
   /**
    * The bars' read, shared with the dashboard's momentum tile (#Q2659).
@@ -116,7 +118,7 @@ export class HomeController {
           days,
         ),
         this.recency.lastActivity(projects),
-        this.openCounts(projects.map((project) => project.id)),
+        this.openCounts(projects, user),
       ]);
 
       return { days, momentum, lastActivity, openCounts };
@@ -126,9 +128,14 @@ export class HomeController {
   /**
    * The projects the viewer belongs to, most recently updated first.
    */
-  protected async memberProjects(
-    userId: string,
-  ): Promise<Array<{ id: number; title: string; updatedAt: string }>> {
+  protected async memberProjects(userId: string): Promise<
+    Array<{
+      id: number;
+      title: string;
+      updatedAt: string;
+      organizationId?: string | null;
+    }>
+  > {
     const me = await this.usersWith.findById(userId, {
       include: {
         projects: {
@@ -147,8 +154,15 @@ export class HomeController {
    *
    * Each count is what the project's sidebar badge counts, so the two never
    * disagree.
+   *
+   * A count is zero for a reader whose rank does not read what it counts
+   * (#Q3794): Home is behind membership alone, and a viewer of an open
+   * project reads neither its errors nor its feedback.
    */
-  protected async openCounts(projectIds: number[]): Promise<
+  protected async openCounts(
+    projects: Array<{ id: number; organizationId?: string | null }>,
+    user: UserAccountToken,
+  ): Promise<
     Array<{
       projectId: number;
       epics: number;
@@ -156,18 +170,28 @@ export class HomeController {
       feedback: number;
     }>
   > {
-    const counts = await this.counts.countMany(
-      ["draftEpics", "openErrors", "pendingFeedback"],
-      projectIds,
-    );
+    const projectIds = projects.map((project) => project.id);
+    const [counts, held] = await Promise.all([
+      this.counts.countMany(
+        ["draftEpics", "openErrors", "pendingFeedback"],
+        projectIds,
+      ),
+      this.readers.of(user, projects),
+    ]);
+    const reads = (projectId: number, permission: string) =>
+      this.readers.grants(held.get(projectId) ?? [], permission);
     const epics = counts.get("draftEpics") ?? new Map<number, number>();
     const projectErrors = counts.get("openErrors") ?? new Map<number, number>();
     const feedback = counts.get("pendingFeedback") ?? new Map<number, number>();
     return projectIds.map((projectId) => ({
       projectId,
-      epics: epics.get(projectId) ?? 0,
-      projectErrors: projectErrors.get(projectId) ?? 0,
-      feedback: feedback.get(projectId) ?? 0,
+      epics: reads(projectId, "epic:read") ? (epics.get(projectId) ?? 0) : 0,
+      projectErrors: reads(projectId, "error:read")
+        ? (projectErrors.get(projectId) ?? 0)
+        : 0,
+      feedback: reads(projectId, "feedback:read")
+        ? (feedback.get(projectId) ?? 0)
+        : 0,
     }));
   }
 

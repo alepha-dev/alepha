@@ -35,6 +35,7 @@ export class WorkYourDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "yourQuests",
+      requires: "quest:read",
       order: 11,
       labelKey: "dashboard.metric.yourQuests",
       hintKey: "dashboard.metric.yourQuests.hint",
@@ -46,6 +47,7 @@ export class WorkYourDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "remindersDue",
+      requires: "quest:read",
       order: 12,
       labelKey: "dashboard.metric.remindersDue",
       hintKey: "dashboard.metric.remindersDue.hint",
@@ -58,6 +60,7 @@ export class WorkYourDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "dueSoon",
+      requires: "quest:read",
       order: 13,
       labelKey: "dashboard.metric.dueSoon",
       hintKey: "dashboard.metric.dueSoon.hint",
@@ -69,6 +72,7 @@ export class WorkYourDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "recentlyShipped",
+      requires: "quest:read",
       order: 14,
       labelKey: "dashboard.metric.recentlyShipped",
       hintKey: "dashboard.metric.recentlyShipped.hint",

@@ -19,6 +19,7 @@ export class DeployDashboardMetrics {
   constructor() {
     this.catalog.register({
       key: "openErrors",
+      requires: "error:read",
       automation: {
         kind: "number",
         requires: "error:read",
@@ -61,6 +62,7 @@ export class DeployDashboardMetrics {
 
     this.catalog.register({
       key: "uniqueVisitors",
+      requires: "app:read",
       automation: {
         kind: "number",
         requires: "app:read",

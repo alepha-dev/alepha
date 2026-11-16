@@ -46,8 +46,11 @@ const BUDGET = {
   // (the bound backend in test mode is `MemoryAnalyticsProvider`) and none on
   // production either, where the hot tier is Analytics Engine. What it cost
   // was never the statement anyway - it was the 13,428 audit rows that one
-  // statement had to read.
-  getHomeBoard: 3,
+  // statement had to read. 3 -> 5 for the reader's rank (#Q3794): the
+  // counts of errors and feedback are zeroed for a rank that does not read
+  // them, which takes the reader's membership rows and those projects' rank
+  // definitions, one statement each for the whole list.
+  getHomeBoard: 5,
 };
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };

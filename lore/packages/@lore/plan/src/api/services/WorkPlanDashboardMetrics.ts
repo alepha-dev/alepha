@@ -27,6 +27,7 @@ export class WorkPlanDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "releaseOutlook",
+      requires: "release:read",
       order: 41,
       labelKey: "dashboard.metric.releaseOutlook",
       hintKey: "dashboard.metric.releaseOutlook.hint",
@@ -48,6 +49,7 @@ export class WorkPlanDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "releasesToPublish",
+      requires: "release:read",
       order: 42,
       labelKey: "dashboard.metric.releasesToPublish",
       hintKey: "dashboard.metric.releasesToPublish.hint",
@@ -66,6 +68,7 @@ export class WorkPlanDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "epicsInFlight",
+      requires: "epic:read",
       order: 31,
       labelKey: "dashboard.metric.epicsInFlight",
       hintKey: "dashboard.metric.epicsInFlight.hint",
@@ -84,6 +87,7 @@ export class WorkPlanDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "draftEpics",
+      requires: "epic:read",
       order: 32,
       labelKey: "dashboard.metric.draftEpics",
       hintKey: "dashboard.metric.draftEpics.hint",

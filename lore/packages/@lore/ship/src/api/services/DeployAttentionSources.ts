@@ -21,6 +21,7 @@ export class DeployAttentionSources {
     this.attention.register({
       key: "errors",
       needs: { capability: "ship", option: "track" },
+      requires: "error:read",
       read: (project) => this.projectErrorsOf(project),
     });
   }

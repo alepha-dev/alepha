@@ -8,6 +8,7 @@ import type {
   DashboardMetricResolver,
   DashboardResolvable,
 } from "./DashboardMetricResolver.ts";
+import { ProjectReaderPermissions } from "./ProjectReaderPermissions.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
@@ -27,6 +28,7 @@ export class NeedsYouMetric implements DashboardMetricResolver {
   protected readonly attention = $inject(DashboardAttentionRegistry);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly catalog = $inject(DashboardMetricCatalog);
+  protected readonly readers = $inject(ProjectReaderPermissions);
 
   constructor() {
     this.dashboard.register(this);
@@ -58,7 +60,11 @@ export class NeedsYouMetric implements DashboardMetricResolver {
         out.set(entry.card.id, { empty: "noData", detail: {} });
         continue;
       }
-      const sources = this.attention.for(capabilities.get(project.id) ?? []);
+      const held = entry.permissions?.get(project.id) ?? [];
+      const sources = this.attention.for(
+        capabilities.get(project.id) ?? [],
+        (permission) => this.readers.grants(held, permission),
+      );
       const answers = await Promise.all(
         sources.map(async (source) => ({
           source,

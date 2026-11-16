@@ -36,11 +36,13 @@ export class WorkAttentionSources {
     this.attention.register({
       key: "quests",
       needs: { capability: "plan" },
+      requires: "quest:read",
       read: (project) => this.questsOf(project),
     });
     this.attention.register({
       key: "feedback",
       needs: { capability: "plan", option: "feedback" },
+      requires: "feedback:read",
       read: (project) => this.feedbackOf(project),
     });
   }
