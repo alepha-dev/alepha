@@ -11,6 +11,7 @@ import { $inject } from "alepha";
 import { $repository, type SQLLike } from "alepha/orm";
 
 import { personas } from "../entities/personas.ts";
+import { requirements } from "../entities/requirements.ts";
 import { requirementsComments } from "../entities/requirementsComments.ts";
 import { useCases } from "../entities/useCases.ts";
 
@@ -28,6 +29,7 @@ export class RequirementsProjectMerge {
   protected readonly personas = $repository(personas);
   protected readonly comments = $repository(requirementsComments);
   protected readonly useCases = $repository(useCases);
+  protected readonly requirements = $repository(requirements);
 
   constructor() {
     this.merge.registerStep({
@@ -35,7 +37,14 @@ export class RequirementsProjectMerge {
       name: "requirements",
       // Steps, alternatives, criteria and actors hang off a use case by its
       // id, which does not change, so they follow it.
-      tables: ["personas", "use_cases", "requirements_comments"],
+      // A requirement's target release (a by-hand value) names a release of
+      // the source project, which Plan's step joins or moves by its id.
+      tables: [
+        "personas",
+        "use_cases",
+        "requirements",
+        "requirements_comments",
+      ],
       plan: (context) => this.plan(context),
       rewrite: (context, rewriter) => this.rewrite(context, rewriter),
     });
@@ -56,6 +65,12 @@ export class RequirementsProjectMerge {
         repository: this.useCases,
         sequence: "useCaseNumber",
         table: "use_cases",
+      },
+      {
+        kind: "requirement",
+        repository: this.requirements,
+        sequence: "requirementNumber",
+        table: "requirements",
       },
     ] as const;
     const plan = {

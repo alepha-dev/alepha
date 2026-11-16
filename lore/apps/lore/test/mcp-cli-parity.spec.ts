@@ -39,6 +39,8 @@ const ALIASES: Record<string, string> = {
   // as two levels (#Q3707).
   quest_pull_request_add: "quest pull-request add",
   epic_pull_request_add: "epic pull-request add",
+  // `verify` is the Alepha CLI's own verb, never a Lore command (#E153).
+  criterion_verify_link: "criterion link",
 };
 
 const GAPS: string[] = [];

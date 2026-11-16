@@ -28,6 +28,7 @@ import { useCaseInputSchema } from "../schemas/useCaseInputSchema.ts";
 import { useCaseResourceSchema } from "../schemas/useCaseResourceSchema.ts";
 import { useCaseStatusSchema } from "../schemas/useCaseStatusSchema.ts";
 import { RequirementsCommentService } from "../services/RequirementsCommentService.ts";
+import { RequirementService } from "../services/RequirementService.ts";
 import { UseCaseService } from "../services/UseCaseService.ts";
 
 /**
@@ -41,6 +42,7 @@ export class UseCaseController {
   protected readonly useCases = $repository(useCases);
   protected readonly quests = $repository(quests);
   protected readonly scenario = $inject(UseCaseService);
+  protected readonly requirementService = $inject(RequirementService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly owned = $inject(OwnedResourceProvider);
   protected readonly comments = $inject(RequirementsCommentService);
@@ -254,6 +256,17 @@ export class UseCaseController {
         { kind: "epic", id: epicId },
         { kind: "usecase", id: String(useCase.id) },
         body.linked,
+      );
+      // A requirement this use case verifies may now pull the epic into its
+      // by-hand release, or be cleared by the epic's own (#Q3768).
+      await this.bestEffort.run(
+        "linkUseCaseEpic: requirement releases",
+        async () =>
+          this.requirementService.reconcile(
+            await this.requirementService.requirementIdsOfUseCases([
+              useCase.id,
+            ]),
+          ),
       );
       await this.log(body.linked ? "cover" : "uncover", useCase, user, {
         epic: body.epicNumber,

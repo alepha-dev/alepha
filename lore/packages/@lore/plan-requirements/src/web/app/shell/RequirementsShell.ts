@@ -13,6 +13,7 @@ import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "../atoms/currentUseCaseAtom.ts";
 import { REQUIREMENTS_ROUTES } from "../components/layout/requirementsTabs.ts";
 import { usePersonaReferences } from "../components/personas/usePersonaReferences.ts";
+import { useRequirementReferences } from "../components/requirements/useRequirementReferences.ts";
 import { useUseCaseReferences } from "../components/usecases/useUseCaseReferences.ts";
 
 /**
@@ -171,6 +172,25 @@ export class RequirementsShell {
         () => import("../components/usecases/UseCaseReferencePreview.tsx"),
       ),
       useReferences: useUseCaseReferences,
+    });
+    // `[[#S15]]`: a requirement, which opens the Requirements tab on it.
+    this.references.register({
+      kind: "requirement",
+      order: 62,
+      brokenKey: "folios.wikilink.broken.requirementNotFound",
+      href: (projectSlug, ref) =>
+        `/${projectSlug}/requirements?requirement=${ref.number}`,
+      match: (path, projectSlug) =>
+        RequirementsShell.matchPage(
+          path,
+          projectSlug,
+          /^\/([^/]+)\/requirements\?requirement=(\d+)(?:[#&]|$)/,
+        ),
+      preview: lazyPart(
+        () =>
+          import("../components/requirements/RequirementReferencePreview.tsx"),
+      ),
+      useReferences: useRequirementReferences,
     });
   }
 }

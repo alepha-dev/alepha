@@ -111,6 +111,8 @@ export class LorePermissions {
     "persona:write",
     "usecase:read",
     "usecase:write",
+    "requirement:read",
+    "requirement:write",
   ];
 
   /**
@@ -591,6 +593,19 @@ export class LorePermissions {
    * Validated / Changes requested on a use case: not "owner only", a
    * permission the owner and the built-in Admin hold (#Q3767).
    */
+  requirementRead = $permission({
+    group: "requirement",
+    name: "read",
+    label: "permission.requirement.read",
+    groupLabel: "permission.group.requirement",
+    groupOrder: 16,
+  });
+  requirementWrite = $permission({
+    group: "requirement",
+    name: "write",
+    label: "permission.requirement.write",
+  });
+
   usecaseValidate = $permission({
     group: "usecase",
     name: "validate",

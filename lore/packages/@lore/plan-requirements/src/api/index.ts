@@ -4,10 +4,13 @@ import { LoreShipApi } from "@lore/ship/api";
 import { $module } from "alepha";
 
 import { PersonaController } from "./controllers/PersonaController.ts";
+import { RequirementController } from "./controllers/RequirementController.ts";
 import { UseCaseController } from "./controllers/UseCaseController.ts";
 import { PersonaResourceKind } from "./resources/PersonaResourceKind.ts";
+import { RequirementResourceKind } from "./resources/RequirementResourceKind.ts";
 import { UseCaseResourceKind } from "./resources/UseCaseResourceKind.ts";
 import { RequirementsCommentService } from "./services/RequirementsCommentService.ts";
+import { RequirementService } from "./services/RequirementService.ts";
 import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts";
 import { UseCaseService } from "./services/UseCaseService.ts";
 
@@ -33,15 +36,18 @@ export const LorePlanRequirementsApi = $module({
   services: [
     RequirementsCommentService,
     UseCaseService,
+    RequirementService,
     // The resource kinds on core's `ResourceRegistry`: listed, because
     // nothing injects them.
     PersonaResourceKind,
     UseCaseResourceKind,
+    RequirementResourceKind,
     // Its step of a project merge, on core's `ProjectMergeService`.
     RequirementsProjectMerge,
     // Controllers
     PersonaController,
     UseCaseController,
+    RequirementController,
   ],
 });
 
@@ -49,3 +55,4 @@ export const LorePlanRequirementsApi = $module({
 
 export { PersonaController } from "./controllers/PersonaController.ts";
 export { UseCaseController } from "./controllers/UseCaseController.ts";
+export { RequirementController } from "./controllers/RequirementController.ts";
