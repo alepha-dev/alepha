@@ -990,11 +990,12 @@ const ProjectEpics = () => {
           // Whether the epic was reviewed, and how many times (#Q3311). The
           // open questions count beside the title is silent both for an epic
           // never reviewed and for one whose questions are all answered; this
-          // column tells them apart. Hidden by default, like "Depends on".
+          // column tells them apart. Shown by default (#Q3782): whether an
+          // epic was reviewed is read at a glance; a reader who hid it keeps
+          // that choice.
           reviewCount: {
             label: tr("epic.list.column.reviews"),
             sortable: true,
-            defaultHidden: true,
             className: "w-24",
             cell: (epic) =>
               (epic.reviewCount ?? 0) > 0 ? (

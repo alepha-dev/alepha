@@ -297,10 +297,10 @@ describe("ProjectEpics - the status filter", () => {
   });
 
   /**
-   * The Reviews column (#Q3311): off until asked for, and what tells an epic
-   * never reviewed from one whose questions are all answered.
+   * The Reviews column (#Q3311): on by default (#Q3782), and what tells an
+   * epic never reviewed from one whose questions are all answered.
    */
-  it("offers a Reviews column, hidden by default, that counts and sorts", async () => {
+  it("shows a Reviews column by default, that counts and sorts", async () => {
     const view = await mount(
       [],
       [
@@ -318,14 +318,9 @@ describe("ProjectEpics - the status filter", () => {
         .map((a) => a.textContent ?? "")
         .filter((text) => text.startsWith("#E"));
 
-    expect(headers()).not.toContain("Reviews");
-    expect(screen.queryByTestId("epic-review-count-1")).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle columns" }));
-    fireEvent.click(
-      await screen.findByRole("menuitemcheckbox", { name: "Reviews" }),
-    );
+    // Visible without opening the column picker; "Depends on" stays hidden.
     await waitFor(() => expect(headers()).toContain("Reviews"));
+    expect(headers()).not.toContain("Depends on");
 
     expect(screen.getByTestId("epic-review-count-1").textContent).toBe("1");
     expect(screen.getByTestId("epic-review-count-3").textContent).toBe("3");
