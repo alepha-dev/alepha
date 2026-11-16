@@ -20,10 +20,12 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import type { EpicRefResource } from "../../../../../api/schemas/epicRefResourceSchema.ts";
 import {
   type QuestResource,
   questResourceSchema,
 } from "../../../../../api/schemas/questResourceSchema.ts";
+import { currentEpicsAtom } from "../../../atoms/currentEpicsAtom.ts";
 import { WorkShell } from "../../../shell/WorkShell.ts";
 import QuestView from "./QuestView.tsx";
 
@@ -34,6 +36,12 @@ class FakeLinkProvider extends LinkProvider {
   protected readonly faker = $inject(FakeProvider);
 
   shelveCalls = 0;
+
+  /**
+   * What the server answers for the project's epics, so a spec can make it
+   * disagree with the loader's snapshot in `currentEpicsAtom`.
+   */
+  epicRefs: EpicRefResource[] = [];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -47,7 +55,7 @@ class FakeLinkProvider extends LinkProvider {
       listQuestAttachments: async () => [],
       getProjectUsers: async () => [],
       listQuestTags: async () => [],
-      getEpicRefs: async () => [],
+      getEpicRefs: async () => this.epicRefs,
     });
   }
 
@@ -155,5 +163,99 @@ describe("QuestView", () => {
     expect(fake.shelveCalls).toBe(1);
     // Refused, so the rail still offers Shelve rather than Unshelve.
     expect(screen.getByRole("button", { name: "Shelve" })).toBeTruthy();
+  });
+  it("enables Accept on a quest whose epic was readied after the project loaded", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with(AlephaFake)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(Routes);
+    alepha.inject(I18n);
+    alepha.inject(WorkShell);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture());
+    // The loader's snapshot, taken while epic 7 was still a draft (#Q3759).
+    alepha.store.set(currentEpicsAtom, [
+      { id: 7, number: 7, title: "Plan", status: "draft" },
+    ]);
+    const fake = alepha.inject(FakeLinkProvider);
+    // Readied since: the server says so.
+    fake.epicRefs = [{ id: 7, number: 7, title: "Plan", status: "ready" }];
+    const quest = fake.quest();
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <QuestView
+            quest={{
+              ...quest,
+              epicId: 7,
+              acceptedAt: undefined,
+              metadata: { ...quest.metadata, status: "todo" },
+            }}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const accept = await screen.findByRole("button", {
+      name: "Accept the quest",
+    });
+    await waitFor(() =>
+      expect((accept as HTMLButtonElement).disabled).toBe(false),
+    );
+    expect(accept.getAttribute("title")).toBeNull();
+    // The snapshot is refreshed too, so the other readers agree.
+    expect(alepha.store.get(currentEpicsAtom)?.[0]?.status).toBe("ready");
+  });
+
+  it("still withholds Accept while the server reads the epic as a draft", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with(AlephaFake)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(Routes);
+    alepha.inject(I18n);
+    alepha.inject(WorkShell);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture());
+    const fake = alepha.inject(FakeLinkProvider);
+    fake.epicRefs = [{ id: 7, number: 7, title: "Plan", status: "draft" }];
+    const quest = fake.quest();
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <QuestView
+            quest={{
+              ...quest,
+              epicId: 7,
+              acceptedAt: undefined,
+              metadata: { ...quest.metadata, status: "todo" },
+            }}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const accept = await screen.findByRole("button", {
+      name: "Accept the quest",
+    });
+    await waitFor(() =>
+      expect(accept.getAttribute("title")).toBe(
+        "Epic 7 is not ready for development yet.",
+      ),
+    );
+    expect((accept as HTMLButtonElement).disabled).toBe(true);
   });
 });
