@@ -4,13 +4,14 @@ import { MemoryDestinationProvider } from "alepha/logger";
 import { $entity, Repository, db, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
-import { AlephaApiAnalytics } from "../index.workerd.ts";
+import { $analytics, AlephaApiAnalytics } from "../index.workerd.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "../providers/OrmAnalyticsProvider.ts";
 import { WaeAnalyticsProvider } from "../providers/WaeAnalyticsProvider.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type { AnalyticsQuery } from "../schemas/analyticsQuerySchema.ts";
+import { AdminAnalyticsService } from "../services/AdminAnalyticsService.ts";
 import { analyticsConformance } from "./analyticsConformance.ts";
 import { FakeAnalyticsEngine } from "./FakeAnalyticsEngine.ts";
 
@@ -303,15 +304,72 @@ describe("WaeAnalyticsProvider", () => {
     }
   });
 
-  it("refuses a from/to window with a clear error", async () => {
+  it("answers a from/to window with the hours it overlaps (#Q3756)", async () => {
     const { alepha, provider } = await build();
     try {
-      await expect(
-        provider.query(dataset, {
-          from: "2026-08-01T08:00:00Z",
-          select: { count: "sum" },
-        }),
-      ).rejects.toThrow(/whole-day windows only/);
+      await provider.record(dataset, [
+        { hour: "2026-08-01T07", appId: "a", path: "/x", count: 1 },
+        { hour: "2026-08-01T08", appId: "a", path: "/x", count: 2 },
+        { hour: "2026-08-01T09", appId: "a", path: "/x", count: 4 },
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 8 },
+      ]);
+
+      // [08:00, 10:00) is two whole hours: 08 and 09.
+      const whole = await provider.query(dataset, {
+        from: "2026-08-01T08:00:00Z",
+        to: "2026-08-01T10:00:00Z",
+        select: { count: "sum" },
+      });
+      expect(whole.rows).toEqual([{ count: 6 }]);
+      expect(whole.coarsened).toBeUndefined();
+
+      // An offset is honoured: 12:30+04:00 is 08:30Z, so the 08 hour
+      // straddles the bound, is read whole, and the result says so.
+      const straddling = await provider.query(dataset, {
+        from: "2026-08-01T12:30:00+04:00",
+        groupBy: ["hour"],
+        select: { count: "sum" },
+        orderBy: { key: "hour", direction: "asc" },
+      });
+      expect(straddling.rows).toEqual([
+        { hour: "2026-08-01T08", count: 2 },
+        { hour: "2026-08-01T09", count: 4 },
+        { hour: "2026-08-01T10", count: 8 },
+      ]);
+      expect(straddling.coarsened).toBe(true);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("merges a from/to window reaching into cold, which answers the instants itself", async () => {
+    const { alepha, provider, engine } = await build();
+    try {
+      await provider.record(dataset, [
+        { hour: "2026-07-31T10", appId: "a", path: "/x", count: 1000 },
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 4 },
+        { hour: "2026-08-01T20", appId: "a", path: "/x", count: 100 },
+      ]);
+      await provider.rollup(dataset, 0, "2026-08-02");
+      await provider.record(dataset, [
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 7 },
+      ]);
+      // The forwarded points have aged out of Analytics Engine, which now
+      // reports only the new one: the old part of the total needs `cold`.
+      engine.answer([{ count: "7" }]);
+
+      const result = await provider.query(dataset, {
+        from: "2026-08-01T09:00:00Z",
+        to: "2026-08-10T00:00:00Z",
+        select: { count: "sum" },
+      });
+
+      // `cold` folded August 1st into a day, so the day straddling `from`
+      // is read whole (4 + 100) and flagged, while July 31st, before it,
+      // stays out: `cold` applied the instant, not an open window.
+      expect(result.rows).toEqual([{ count: 111 }]);
+      expect(result.coarsened).toBe(true);
+      expect(result.estimated).toBe(true);
     } finally {
       await alepha.stop();
     }
@@ -1230,6 +1288,53 @@ describe("WaeAnalyticsProvider — forwarding what cold can take", () => {
       expect(warnings[0].data).toEqual({
         dimensions: { sigilId: { rows: 2, values: [DELETED] } },
       });
+    } finally {
+      await alepha.stop();
+    }
+  });
+});
+
+/**
+ * The admin explorer's datasets, declared the way an app declares them, so
+ * the query below goes through `AdminAnalyticsService` and `$analytics` into
+ * the Analytics Engine backend, as the explorer's request does in production.
+ */
+class ExplorerDatasets {
+  public readonly views = $analytics(dataset);
+}
+
+describe("WaeAnalyticsProvider behind the admin explorer", () => {
+  it("answers a relative range (from/to instants) instead of a 500 (#Q3756)", async () => {
+    const alepha = Alepha.create({
+      env: {
+        CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
+      },
+    })
+      .with(AlephaOrmTestPostgres)
+      .with({ provide: AnalyticsProvider, use: TestWaeAnalyticsProvider });
+    const provider = alepha.inject(TestWaeAnalyticsProvider);
+    alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
+    alepha.inject(ExplorerDatasets);
+    const service = alepha.inject(AdminAnalyticsService);
+    await alepha.start();
+    try {
+      await pinNow(alepha, "2026-08-09T12:20:00.000Z");
+      await provider.record(dataset, [
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 2 },
+        { hour: "2026-08-09T12", appId: "a", path: "/x", count: 3 },
+      ]);
+
+      // The explorer's "1h": the last hour, as two instants.
+      const result = await service.queryDataset("wae_views", {
+        from: "2026-08-09T11:20:00.000Z",
+        to: "2026-08-09T12:20:00.000Z",
+        select: { count: "sum" },
+      });
+
+      expect(result.rows).toEqual([{ count: 3 }]);
+      expect(result.coarsened).toBe(true);
     } finally {
       await alepha.stop();
     }

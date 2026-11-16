@@ -210,7 +210,8 @@ folded into days, the same `from`/`to` returns the whole UTC days it overlaps, f
 An app that needs local-day totals over a long range keeps its hour tier that long (see
 [Retention and rollup](#retention-and-rollup)).
 
-Analytics Engine answers `since`/`until` only, and refuses `from`/`to` with an error.
+Analytics Engine records whole hours, so it answers `from`/`to` at hour resolution: a window that
+starts or ends inside an hour reads that hour whole and comes back `coarsened`.
 
 `where` supports equality and `{ inArray: [...] }` - the same operator name the ORM's
 [repository filters](/docs/guides-persistence-repository) use, no ranges. `groupBy` takes any
