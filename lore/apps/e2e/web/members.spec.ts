@@ -31,7 +31,11 @@ test.describe("Members settings page", () => {
 
     // The Owner badge is on the row itself: the hover card that used to
     // carry it repeated the row it decorated and is gone (feedback #2067).
-    await expect(trigger.getByText(/owner/i)).toBeVisible();
+    // Once per row (#Q3783): for the owner, who manages members, it is the
+    // rank picker's badge on the right, not a second one by the name.
+    const row = page.getByTestId("member-row").first();
+    await expect(row.getByText(/^owner$/i)).toHaveCount(1);
+    await expect(trigger.getByText(/^owner$/i)).toHaveCount(0);
     await trigger.hover();
     await expect(page.locator('[data-slot="hover-card-content"]')).toHaveCount(
       0,

@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor, within } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
@@ -36,7 +36,7 @@ class Links extends LinkProvider {
                   rank: "owner",
                   createdAt: "2026-09-01T10:00:00.000Z",
                   updatedAt: "2026-09-01T10:00:00.000Z",
-                  user: { id: ownerId, username: "owner" },
+                  user: { id: ownerId, username: "ada" },
                 },
                 {
                   id: "00000000-0000-4000-8000-000000000012",
@@ -143,6 +143,37 @@ describe("OrganizationMembers", () => {
     expect(readOnly.links.requested).not.toContain(
       "getOrganizationInvitations",
     );
+  });
+
+  it("names each member's rank once per row, for a manager and for a viewer (#Q3783)", async () => {
+    // Case-blind: a viewer reads no ranks, so the badge falls back to the
+    // rank's key ("owner").
+    const rankLabels = (row: HTMLElement) =>
+      within(row).queryAllByText(/^(owner|member)$/i);
+
+    const managed = await mount(true);
+    let rows = managed.view.getAllByTestId("member-row");
+    expect(rows).toHaveLength(2);
+    // The picker is the rank: a badge on the owner's own row, a select on
+    // the other, and nothing beside the name.
+    for (const row of rows) expect(rankLabels(row)).toHaveLength(1);
+    for (const identity of managed.view.getAllByTestId("member-identity")) {
+      expect(rankLabels(identity)).toHaveLength(0);
+    }
+    managed.view.unmount();
+    await alepha?.stop();
+    alepha = undefined;
+
+    // No picker for a viewer, so the badge by the name is the rank.
+    const readOnly = await mount(false);
+    rows = readOnly.view.getAllByTestId("member-row");
+    expect(rows).toHaveLength(2);
+    for (const row of rows) expect(rankLabels(row)).toHaveLength(1);
+    expect(
+      within(readOnly.view.getAllByTestId("member-identity")[0]).getByText(
+        /^owner$/i,
+      ),
+    ).toBeDefined();
   });
 
   it("shows pending invitations and never offers owner in the invite form", async () => {
