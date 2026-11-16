@@ -2,12 +2,17 @@ import {
   $ownsProject,
   BestEffort,
   LoreAudits,
+  LoreInboxNotifications,
+  ProjectRoster,
   ResourceLinkService,
   ResourceRegistry,
 } from "@lore/core/api";
 import type { Project } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
-import { $inject, z } from "alepha";
+import { quests } from "@lore/plan/schemas";
+import { $inject, Alepha, z } from "alepha";
+import { RankService } from "alepha/api/organizations";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
@@ -34,6 +39,7 @@ import { UseCaseService } from "../services/UseCaseService.ts";
  */
 export class UseCaseController {
   protected readonly useCases = $repository(useCases);
+  protected readonly quests = $repository(quests);
   protected readonly scenario = $inject(UseCaseService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly owned = $inject(OwnedResourceProvider);
@@ -41,6 +47,11 @@ export class UseCaseController {
   protected readonly links = $inject(ResourceLinkService);
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly bestEffort = $inject(BestEffort);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly roster = $inject(ProjectRoster);
+  protected readonly ranks = $inject(RankService);
+  protected readonly templates = $inject(LoreInboxNotifications);
+  protected readonly dt = $inject(DateTimeProvider);
 
   /**
    * ⚠️ `$sequence` keys its counter on this PROPERTY NAME.
@@ -249,6 +260,159 @@ export class UseCaseController {
       });
       const [resource] = await this.scenario.toResources([useCase]);
       return resource;
+    },
+  });
+
+  /**
+   * Ask for this use case to be validated: every member holding
+   * `usecase:validate` gets an inbox message (the owner and the Admins by
+   * default). Anyone who writes use cases may ask.
+   */
+  requestUseCaseValidation = $action({
+    method: "POST",
+    path: "/requestUseCaseValidation/:id",
+    use: [this.ownsUseCaseForWrite("usecase:write")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: z.object({ notified: z.integer() }),
+    },
+    handler: async ({ params, user }) => {
+      const useCase = this.owned.get<UseCase>();
+      const project = this.owned.authority<Project>();
+      await this.useCases.updateById(params.id, {
+        validationRequestedAt: this.dt.nowISOString(),
+      });
+      await this.log("validate", useCase, user, { request: true });
+      const notified =
+        (await this.bestEffort.run("requestUseCaseValidation: notify", () =>
+          this.notifyValidators(project, useCase, user),
+        )) ?? 0;
+      return { notified };
+    },
+  });
+
+  /**
+   * Answer a validation: Validated sets the use case's status to
+   * validated; Changes requested sends it back to draft. The note is kept
+   * on the use case and in its Activity. Held by `usecase:validate`, the
+   * owner's and the Admin's by default (not "owner only").
+   */
+  validateUseCase = $action({
+    method: "POST",
+    path: "/validateUseCase/:id",
+    use: [this.ownsUseCaseForWrite("usecase:validate")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        decision: z.enum(["validated", "changes_requested"]),
+        note: z.string().max(2000).optional(),
+      }),
+      response: useCaseResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const useCase = this.owned.get<UseCase>();
+      if (useCase.status === "deprecated") {
+        throw new BadRequestError("A deprecated use case is not validated");
+      }
+      const row = await this.useCases.updateById(params.id, {
+        status: body.decision === "validated" ? "validated" : "draft",
+        validationNote: body.note ?? "",
+        validationRequestedAt: null as never,
+      });
+      await this.log("validate", row, user, {
+        decision: body.decision,
+        ...(body.note ? { note: body.note } : {}),
+      });
+      const [resource] = await this.scenario.toResources([row]);
+      return resource;
+    },
+  });
+
+  /**
+   * One inbox message per member who may validate, the requester aside.
+   */
+  protected async notifyValidators(
+    project: Project,
+    useCase: UseCase,
+    requester: UserAccountToken,
+  ): Promise<number> {
+    const roster = await this.roster.of(useCase.projectId);
+    const requesterName =
+      roster.find((it) => it.userId === requester.id)?.name || "Someone";
+    const slug = project.slug || `project-${project.id}`;
+    const href = `/${slug}/requirements/use-cases/${useCase.number}`;
+    const baseUrl = String(this.alepha.env.PUBLIC_URL ?? "");
+    // `holdersOf`, never `can` per member: `can` answers from the CURRENT
+    // request's rank, which is the requester's.
+    const holders = new Set(
+      await this.ranks.holdersOf(project.organizationId!, "usecase:validate"),
+    );
+    let notified = 0;
+    for (const member of roster) {
+      if (member.userId === requester.id || !member.email) continue;
+      if (!holders.has(member.userId)) continue;
+      await this.templates.inboxUseCaseValidation.push({
+        contact: member.email,
+        lang: this.templates.lang,
+        variables: {
+          reference: formatReference("usecase", useCase.number),
+          useCaseTitle: useCase.title,
+          requesterName,
+          projectTitle: project.title,
+          href,
+          url: `${baseUrl}${href}`,
+          scope: `project:${useCase.projectId}`,
+        },
+      });
+      notified++;
+    }
+    return notified;
+  }
+
+  /**
+   * Development coverage: the quests of the epics covering this use case,
+   * each with its epic and whether it is done. A run's error rule reads the
+   * same thing (#Q3770): a failure is expected while one is open.
+   */
+  getUseCaseCoverage = $action({
+    method: "GET",
+    path: "/getUseCaseCoverage/:projectId/:number",
+    use: [this.ownsProject("usecase:read")],
+    schema: {
+      params: z.object({ projectId: z.integer(), number: z.integer() }),
+      response: z.array(
+        z.object({
+          shortId: z.integer(),
+          title: z.string(),
+          epicNumber: z.integer(),
+          acceptedAt: z.datetime().optional(),
+          completedAt: z.datetime().optional(),
+        }),
+      ),
+    },
+    handler: async ({ params }) => {
+      const row = await this.byNumber(params.projectId, params.number);
+      const covered =
+        (await this.scenario.coveringEpics(params.projectId, [row.id])).get(
+          row.id,
+        ) ?? [];
+      if (covered.length === 0) return [];
+      const numberOf = new Map(covered.map((epic) => [epic.id, epic.number]));
+      const rows = await this.quests.findMany({
+        where: {
+          projectId: { eq: params.projectId },
+          epicId: { inArray: covered.map((epic) => epic.id) },
+          shelvedAt: { isNull: true },
+        },
+        orderBy: [{ column: "shortId", direction: "asc" }],
+      });
+      return rows.map((quest) => ({
+        shortId: quest.shortId,
+        title: quest.title,
+        epicNumber: numberOf.get(quest.epicId ?? 0) ?? 0,
+        acceptedAt: quest.acceptedAt,
+        completedAt: quest.completedAt,
+      }));
     },
   });
 

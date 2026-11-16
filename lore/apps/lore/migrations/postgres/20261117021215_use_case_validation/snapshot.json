@@ -1,0 +1,68 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3b015b98-5ab9-4f95-8cab-4185c0811d21",
+  "prevIds": ["f9ce140d-754c-4efd-aa51-b72e9b536182"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "use_cases",
+        "validation_requested_at"
+      ],
+      "writes": [
+        "s|col|public.use_cases.validation_requested_at",
+        "n|col|public.use_cases.validation_requested_at",
+        "e|col|public.use_cases.validation_requested_at"
+      ],
+      "reads": ["n|tbl|public.use_cases", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "use_cases", "validation_note"],
+      "writes": [
+        "s|col|public.use_cases.validation_note",
+        "n|col|public.use_cases.validation_note",
+        "e|col|public.use_cases.validation_note"
+      ],
+      "reads": ["n|tbl|public.use_cases", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "validation_requested_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "validation_note",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

@@ -314,6 +314,7 @@ export class CapabilityRegistry {
         "usecase_delete",
         "usecase_comment_add",
         "usecase_link_epic",
+        "usecase_validate",
       ],
       mcpToolOptions: {
         feedback_list: "feedback",
@@ -335,6 +336,7 @@ export class CapabilityRegistry {
         usecase_delete: "requirements",
         usecase_comment_add: "requirements",
         usecase_link_epic: "requirements",
+        usecase_validate: "requirements",
       },
       // Epics and releases are found by their number only (#Q2228), and
       // like their sidebar entries they hang off their Work options.

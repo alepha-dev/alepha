@@ -176,7 +176,16 @@ describe("the Lore CLI command surface", () => {
       ],
       insights: ["read"],
       persona: ["list", "get", "create", "update", "delete", "comment"],
-      usecase: ["list", "get", "create", "update", "delete", "comment", "link"],
+      usecase: [
+        "list",
+        "get",
+        "create",
+        "update",
+        "delete",
+        "comment",
+        "link",
+        "validate",
+      ],
       monitor: ["list", "get", "create", "update", "pause", "resume", "delete"],
       project: [
         "list",

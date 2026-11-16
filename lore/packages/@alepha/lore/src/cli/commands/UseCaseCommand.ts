@@ -517,6 +517,47 @@ export class UseCaseCommand {
     },
   });
 
+  public readonly validate = $command({
+    name: "validate",
+    description:
+      "Answer a use case's validation: validated, or changes_requested with a note",
+    args: UseCaseCommand.REF_ARG,
+    flags: z.object({
+      ...UseCaseCommand.PROJECT_FLAG,
+      decision: z
+        .enum(["validated", "changes_requested"])
+        .describe("validated, or changes_requested (back to draft)."),
+      note: z
+        .text({
+          size: "rich",
+          atFile: true,
+          description: "Why, kept on the use case.",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const number = this.refs.useCase(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+        const uc = await this.useCaseApi.getUseCaseByNumber({
+          params: { projectId, number },
+        });
+        const updated = await this.useCaseApi.validateUseCase({
+          params: { id: uc.id },
+          body: { decision: flags.decision, note: flags.note },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          updated,
+          `U${number} is ${updated.status === "validated" ? "validated" : "back to draft"}`,
+        );
+      });
+    },
+  });
+
   public readonly link = $command({
     name: "link",
     description: "Link a use case: epic",
@@ -542,6 +583,7 @@ export class UseCaseCommand {
       this.delete,
       this.comment,
       this.link,
+      this.validate,
     ],
     handler: async ({ help }) => {
       help();

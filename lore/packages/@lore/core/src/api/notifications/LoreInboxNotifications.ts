@@ -180,6 +180,81 @@ export class LoreInboxNotifications {
   });
 
   /**
+   * Somebody asked for a use case to be validated (#E153): sent to every
+   * member holding `usecase:validate`, the owner and the Admins by default.
+   */
+  public readonly inboxUseCaseValidation = $notification({
+    name: "lore:usecase:validation",
+    category: "requirements",
+    description:
+      "Sent to the members who may validate use cases when somebody asks for one to be validated.",
+    schema: z.object({
+      reference: z.text(),
+      useCaseTitle: z.text(),
+      requesterName: z.text(),
+      projectTitle: z.text(),
+      href: z.text(),
+      url: z.text(),
+      scope: z.text(),
+    }),
+    inbox: {
+      title: (it) => `${it.requesterName} asks you to validate ${it.reference}`,
+      body: (it) => it.useCaseTitle,
+      href: (it) => it.href,
+      scope: (it) => it.scope,
+      scopeLabel: (it) => it.projectTitle,
+    },
+    email: {
+      subject: (it) =>
+        `${it.projectTitle}: validate ${it.reference}, ${it.useCaseTitle}`,
+      body: (it) => {
+        const requester = this.html.escape(it.requesterName);
+        const title = this.html.escape(it.useCaseTitle);
+        const reference = this.html.escape(it.reference);
+        const url = encodeURI(it.url);
+        return `
+        <p><strong>${requester}</strong> asks you to validate the use case ${reference}, <strong>${title}</strong>.</p>
+        <p>
+          <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
+            Open the use case
+          </a>
+        </p>
+      `;
+      },
+    },
+    translations: {
+      fr: {
+        inbox: {
+          title: (it) =>
+            `${it.requesterName} vous demande de valider ${it.reference}`,
+          body: (it) => it.useCaseTitle,
+          href: (it) => it.href,
+          scope: (it) => it.scope,
+          scopeLabel: (it) => it.projectTitle,
+        },
+        email: {
+          subject: (it) =>
+            `${it.projectTitle} : valider ${it.reference}, ${it.useCaseTitle}`,
+          body: (it) => {
+            const requester = this.html.escape(it.requesterName);
+            const title = this.html.escape(it.useCaseTitle);
+            const reference = this.html.escape(it.reference);
+            const url = encodeURI(it.url);
+            return `
+        <p><strong>${requester}</strong> vous demande de valider le cas d’usage ${reference}, <strong>${title}</strong>.</p>
+        <p>
+          <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
+            Ouvrir le cas d’usage
+          </a>
+        </p>
+      `;
+          },
+        },
+      },
+    },
+  });
+
+  /**
    * Your report was accepted, or rejected.
    *
    * ⚠️ **ONE template with the outcome as a variable**, not two. They are the

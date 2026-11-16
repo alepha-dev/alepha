@@ -12,7 +12,9 @@ import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
 import type { PersonaController } from "../../api/controllers/PersonaController.ts";
+import type { UseCaseController } from "../../api/controllers/UseCaseController.ts";
 import { currentPersonaAtom } from "./atoms/currentPersonaAtom.ts";
+import { currentUseCaseAtom } from "./atoms/currentUseCaseAtom.ts";
 
 /**
  * Plan's Requirements pages (#E153): one sidebar entry opening a page of
@@ -27,6 +29,7 @@ import { currentPersonaAtom } from "./atoms/currentPersonaAtom.ts";
 export class RequirementsRouter {
   alepha = $inject(Alepha);
   personaApi = $client<PersonaController>();
+  useCaseApi = $client<UseCaseController>();
 
   /**
    * The tabbed layout: folder tabs and no plate (answer 73), each tab owning
@@ -102,6 +105,43 @@ export class RequirementsRouter {
     },
     onLeave: () => {
       this.alepha.store.set(currentPersonaAtom, undefined);
+    },
+    errorHandler: (error) => {
+      if (isHttpError(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+  });
+
+  /**
+   * A use case's page, like a persona's: a full page outside the tabbed
+   * layout. `useCaseNumber`, unique across the route table.
+   */
+  projectUseCase = $pageProject({
+    loading: ProjectPageSkeleton,
+    name: "projectUseCase",
+    path: "/requirements/use-cases/:useCaseNumber",
+    schema: { params: z.object({ useCaseNumber: z.integer() }) },
+    head: (props, previous) => {
+      const useCase = (props as { useCase?: { title?: string } } | undefined)
+        ?.useCase;
+      return {
+        title: `${previous?.title ?? ""} › ${useCase?.title ?? "Use case"}`,
+      };
+    },
+    lazy: () => import("./components/usecases/UseCasePage.tsx"),
+    loader: async ({ params }) => {
+      this.gate();
+      this.gateTab("usecase:read");
+      const project = this.alepha.store.get(currentProjectAtom)!;
+      const useCase = await this.useCaseApi.getUseCaseByNumber({
+        params: { projectId: project.id, number: params.useCaseNumber },
+      });
+      this.alepha.store.set(currentUseCaseAtom, useCase);
+      return { useCase };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentUseCaseAtom, undefined);
     },
     errorHandler: (error) => {
       if (isHttpError(error, 404)) {
