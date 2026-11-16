@@ -119,12 +119,17 @@ export class DeployRouter {
     lazy: () => import("./components/bay/BayOverview.tsx"),
   });
 
+  /**
+   * What runs on the machine. Labelled "Processes" (#Q3748), since "Apps"
+   * read as the project's own apps; the name and the `/apps` path stay, so
+   * existing links keep working.
+   */
   bayApps = $page({
     name: "bayApps",
-    nav: { hidden: true, label: "Apps" },
+    nav: { hidden: true, label: "Processes" },
     path: "/apps",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Apps`,
+      title: `${previous?.title ?? ""} › Processes`,
     }),
     lazy: () => import("./components/bay/BayApps.tsx"),
   });

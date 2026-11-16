@@ -231,10 +231,10 @@ test.describe("The Bay console", () => {
     // two disappearing is exactly the kind of regression a `.first()` hides.
     await expect(page.getByText("offline", { exact: true })).toHaveCount(2);
 
-    // -- Apps, and the three reconciliation states --------------------------
+    // -- Processes, and the three reconciliation states ---------------------
     await page
       .getByTestId("bay-tabs")
-      .getByRole("link", { name: "Apps", exact: true })
+      .getByRole("link", { name: "Processes", exact: true })
       .click();
     await page.waitForURL(`**/${project.slug}/hosts/ovh-console/apps`, {
       timeout: 15_000,

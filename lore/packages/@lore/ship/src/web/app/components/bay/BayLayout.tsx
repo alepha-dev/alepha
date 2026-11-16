@@ -78,7 +78,7 @@ const BayLayout = () => {
 
   return (
     <PlateLayout
-      // "Settings" and "Apps" are ordinary words the tab bodies print too.
+      // "Settings" and "Processes" are ordinary words the tab bodies print too.
       tabsTestId="bay-tabs"
       tabs={tabs}
       active={active}
