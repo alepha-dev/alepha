@@ -2,6 +2,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   UserAvatar,
 } from "@alepha/ui";
@@ -16,6 +17,16 @@ import type { QuestResource } from "../../../../../api/schemas/questResourceSche
 export interface QuestAssigneePickerProps {
   quest: QuestResource;
   onUpdate: (quest: QuestResource) => void;
+  /**
+   * The rail's own Unassign verb: the same `unassignQuest` run, with its
+   * confirmation and lifecycle update. Without it, no Unassigned entry.
+   */
+  onUnassign?: () => void;
+  /**
+   * Whether that verb is off right now (a write in flight, or no
+   * `unassignQuest` permission), exactly as the rail's Unassign row reads it.
+   */
+  unassignDisabled?: boolean;
 }
 
 /**
@@ -28,9 +39,11 @@ export interface QuestAssigneePickerProps {
  * through a drawer would make "give this to someone else" a four-click
  * operation on the surface whose whole point is moving work.
  *
- * Unassign is not here. It already has a button in the rail's action row
- * and its own confirmation, and offering the same destructive verb twice in
- * one panel is how people click the wrong one.
+ * Unassigned is here too, while the quest has an assignee (#Q3758):
+ * releasing a quest is the same gesture as handing it over, and scrolling to
+ * the rail's action row for it was the complaint. It is not a second
+ * implementation: the entry runs the rail's own Unassign (`onUnassign`),
+ * with its permission check, its confirmation and its lifecycle update.
  */
 const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
   const { quest } = props;
@@ -107,6 +120,21 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
         <ChevronDown className="text-muted-foreground size-3 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-48">
+        {quest.acceptedBy && props.onUnassign && (
+          <>
+            <DropdownMenuItem
+              data-testid="quest-assignee-unassign"
+              disabled={props.unassignDisabled}
+              onClick={() => props.onUnassign?.()}
+            >
+              <UserMinus className="text-muted-foreground size-4" />
+              <span className="truncate">
+                {tr("quest.rail.assign.unassigned")}
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {candidates.map((member) => (
           <DropdownMenuItem
             key={member.id}

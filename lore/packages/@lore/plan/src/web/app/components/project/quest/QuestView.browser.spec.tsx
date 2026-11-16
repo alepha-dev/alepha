@@ -43,6 +43,13 @@ class FakeLinkProvider extends LinkProvider {
    */
   epicRefs: EpicRefResource[] = [];
 
+  unassignCalls = 0;
+
+  /**
+   * The project's members, for the assignee picker.
+   */
+  users: Array<{ id: string; username: string }> = [];
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return virtualClientFake({
@@ -53,7 +60,17 @@ class FakeLinkProvider extends LinkProvider {
       getQuestLine: async () => ({ dependents: [] }),
       listQuestComments: async () => [],
       listQuestAttachments: async () => [],
-      getProjectUsers: async () => [],
+      getProjectUsers: async () => this.users,
+      unassignQuest: async () => {
+        this.unassignCalls++;
+        const quest = this.quest();
+        return {
+          ...quest,
+          acceptedAt: undefined,
+          acceptedBy: undefined,
+          metadata: { ...quest.metadata, status: "todo" },
+        };
+      },
       listQuestTags: async () => [],
       getEpicRefs: async () => this.epicRefs,
     });
@@ -257,5 +274,91 @@ describe("QuestView", () => {
       ),
     );
     expect((accept as HTMLButtonElement).disabled).toBe(true);
+  });
+  it("unassigns from the Assigned picker, through the rail's Unassign and its confirmation (#Q3758)", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with(AlephaFake)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(Routes);
+    alepha.inject(I18n);
+    alepha.inject(WorkShell);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture());
+    const fake = alepha.inject(FakeLinkProvider);
+    const ada = "00000000-0000-4000-8000-0000000000a1";
+    fake.users = [{ id: ada, username: "ada" }];
+    const quest = { ...fake.quest(), acceptedBy: ada };
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <QuestView quest={quest} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const picker = await screen.findByTestId("quest-assignee-picker");
+    await waitFor(() =>
+      expect((picker as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(picker);
+    const entry = await screen.findByTestId("quest-assignee-unassign");
+    expect(entry.textContent).toBe("Unassigned");
+    fireEvent.click(entry);
+
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: "Unassign" }));
+    await waitFor(() => expect(fake.unassignCalls).toBe(1));
+  });
+
+  it("offers no Unassigned entry on a quest nobody holds", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with(AlephaFake)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(Routes);
+    alepha.inject(I18n);
+    alepha.inject(WorkShell);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture());
+    const fake = alepha.inject(FakeLinkProvider);
+    fake.users = [
+      { id: "00000000-0000-4000-8000-0000000000a1", username: "ada" },
+    ];
+    const quest = fake.quest();
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <QuestView
+            quest={{
+              ...quest,
+              acceptedAt: undefined,
+              acceptedBy: undefined,
+              metadata: { ...quest.metadata, status: "todo" },
+            }}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const picker = await screen.findByTestId("quest-assignee-picker");
+    await waitFor(() =>
+      expect((picker as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(picker);
+    await screen.findByTestId("quest-assignee-option");
+    expect(screen.queryByTestId("quest-assignee-unassign")).toBeNull();
   });
 });
