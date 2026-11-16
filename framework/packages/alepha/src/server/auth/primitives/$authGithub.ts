@@ -65,6 +65,9 @@ export const $authGithub = (
       clientSecret: env.GITHUB_CLIENT_SECRET!,
       authorization: "https://github.com/login/oauth/authorize",
       token: "https://github.com/login/oauth/access_token",
+      // What GitHub sends as the callback's `iss`: any other issuer refuses
+      // every sign-in with `unexpected "iss"` (#Q3761).
+      issuer: "https://github.com/login/oauth",
       scope: "read:user user:email",
       userinfo: async (tokens) => {
         const BASE_URL = "https://api.github.com";

@@ -283,6 +283,17 @@ export interface OAuth2Options {
   token: string;
 
   /**
+   * The provider's issuer identifier, as it sends it in the callback's `iss`
+   * parameter (RFC 9207). A callback carrying an `iss` that differs from it is
+   * refused, so a provider that sends one must name it here: GitHub sends
+   * `https://github.com/login/oauth` (#Q3761).
+   *
+   * Defaults to the authorization URL, which matches no `iss` and is only
+   * safe for a provider that sends none.
+   */
+  issuer?: string;
+
+  /**
    * Function to retrieve user profile information from the OAuth2 tokens.
    */
   userinfo: (tokens: Tokens) => Async<OAuth2Profile>;
@@ -581,7 +592,8 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
         {
           authorization_endpoint: oauth.authorization,
           token_endpoint: oauth.token,
-          issuer: oauth.authorization, // use authorization URL as a pseudo-issuer?
+          // A pseudo-issuer unless the provider names its own: see `issuer`.
+          issuer: oauth.issuer ?? oauth.authorization,
           // we don't need all of these endpoints
           jwks_uri: undefined,
           end_session_endpoint: undefined,
@@ -591,6 +603,17 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
           client_secret: oauth.clientSecret,
         },
       );
+      // Plain http only for a local token endpoint, or outside production:
+      // the same rule as the `oidc` branch's discovery.
+      const tokenUrl = new URL(oauth.token);
+      const isLocalToken =
+        tokenUrl.protocol === "http:" &&
+        ["localhost", "127.0.0.1", "[::1]", "0.0.0.0"].includes(
+          tokenUrl.hostname,
+        );
+      if (isLocalToken || !this.alepha.isProduction()) {
+        allowInsecureRequests(this.oauthConfig);
+      }
     }
   }
 }
