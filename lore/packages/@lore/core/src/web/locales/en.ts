@@ -2682,7 +2682,7 @@ export default {
   "hosts.project.lentBy": "lent by $1",
   "hosts.project.noHome": "no project",
   "bay.nav.overview": "Overview",
-  "bay.nav.apps": "Apps",
+  "bay.nav.apps": "Processes",
   "bay.nav.commands": "Commands",
   "bay.nav.settings": "Settings",
   "bay.chart.title": "Last 30 days",

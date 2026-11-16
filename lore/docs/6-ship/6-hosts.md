@@ -243,12 +243,12 @@ way. Move or delete them first.
 Clicking a Bay host in the list opens its console, at
 `/<project>/hosts/<host>`, with four tabs:
 
-| Tab      | What it shows                                                                                  |
-| -------- | ---------------------------------------------------------------------------------------------- |
-| Overview | Whether the server is online, when it last reported, its memory, disk and CPU, and its stacks. |
-| Apps     | What runs on it, beside what Lore expected, with **Restart**, **Stop** and **Start**.          |
-| Commands | What Lore has asked it to do, and how each went.                                               |
-| Settings | The host's own settings.                                                                       |
+| Tab       | What it shows                                                                                  |
+| --------- | ---------------------------------------------------------------------------------------------- |
+| Overview  | Whether the server is online, when it last reported, its memory, disk and CPU, and its stacks. |
+| Processes | What runs on it, beside what Lore expected, with **Restart**, **Stop** and **Start**.          |
+| Commands  | What Lore has asked it to do, and how each went.                                               |
+| Settings  | The host's own settings.                                                                       |
 
 Every member of the home project can open the console and look. Acting on it
 (a restart, a switch, a rotation, reading logs) takes `host:update`. From a

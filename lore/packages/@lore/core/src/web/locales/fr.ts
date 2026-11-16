@@ -2687,7 +2687,7 @@ export default {
   "hosts.project.lentBy": "prêté par $1",
   "hosts.project.noHome": "aucun projet",
   "bay.nav.overview": "Vue d'ensemble",
-  "bay.nav.apps": "Applications",
+  "bay.nav.apps": "Processus",
   "bay.nav.commands": "Commandes",
   "bay.nav.settings": "Paramètres",
   "bay.chart.title": "30 derniers jours",
