@@ -476,10 +476,6 @@ jobs:
       # #E94. `--tag` is the version, byte for byte: `releases.tag` preserves
       # case. No release of that version exits 0 with a log line.
       # ──────────────────────────────────────────────────────────────
-      - name: Rebuild docs for workerd
-        working-directory: docs
-        run: yarn alepha build --runtime=workerd && yarn alepha gen:llms
-
       # Lore's build and image, recorded in project `alepha` before the release
       # is published, so the release lists them.
       - name: Push the Lore artifact to Lore
@@ -498,6 +494,18 @@ jobs:
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
+
+      # After the publish, and it runs `gen:tree` again first (#Q3784): the
+      # changelog page lists only PUBLISHED Lore releases, and the one `yarn
+      # copy` built at the top of the job predates this one's publish. Without
+      # it, the alepha.dev a release deploys shows every version but its own
+      # until the next `docs.yml` run. A dry run publishes nothing, so its
+      # rebuild lists the previous release, as the deployed site does today.
+      - name: Rebuild docs for workerd
+        working-directory: docs
+        run: yarn alepha gen:tree && yarn alepha build --runtime=workerd && yarn alepha gen:llms
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
       # ──────────────────────────────────────────────────────────────
       # `alepha.dev` at each release. `docs.yml` also deploys it from `main`,
