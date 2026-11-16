@@ -2,10 +2,12 @@ import { Alepha } from "alepha";
 import { MemoryShellProvider, ShellProvider } from "alepha/system";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { version as frameworkVersion } from "../alephaPackageJson.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 
 const TAG = "git tag --points-at HEAD";
 const SHA = "git rev-parse --short HEAD";
+const PREFIX = "git rev-parse --show-prefix";
 const DESCRIBE = `git describe --tags --match "[0-9]*.[0-9]*.[0-9]*" --match "v[0-9]*.[0-9]*.[0-9]*"`;
 
 const setup = (
@@ -100,6 +102,105 @@ describe("MetaResolver", () => {
       });
 
       expect(meta.version).toBe("0.27.1");
+    });
+  });
+
+  describe("framework", () => {
+    const run = (
+      outputs: Record<string, string>,
+      errors?: Record<string, string>,
+    ) =>
+      setup(outputs, errors).resolve({
+        root: "/w/lore",
+        runtime: "workerd",
+        dev: false,
+      });
+
+    it("should take the tag on HEAD inside the Alepha repository, not the stale package.json", async () => {
+      // The release never commits its version (#Q3640), so package.json on
+      // main is a placeholder: lore.alepha.app said framework 0.37.0 after
+      // 0.38.0 shipped (#Q3785).
+      const meta = await run({
+        [PREFIX]: "framework/packages/alepha/src/cli/core/services/\n",
+        [TAG]: "0.38.0\n",
+      });
+
+      expect(meta.framework).toBe("0.38.0");
+    });
+
+    it("should describe an untagged commit of the Alepha repository", async () => {
+      const meta = await run({
+        [PREFIX]: "framework/packages/alepha/src/cli/core/services/\n",
+        [TAG]: "",
+        [DESCRIBE]: "0.38.0-4-g1a2b3c4\n",
+      });
+
+      expect(meta.framework).toBe("0.38.0-4-g1a2b3c4");
+    });
+
+    it("should run its git commands in the framework's own directory", async () => {
+      const alepha = Alepha.create().with({
+        provide: ShellProvider,
+        use: MemoryShellProvider,
+      });
+      const shell = alepha.inject(MemoryShellProvider);
+      shell.configure({
+        outputs: {
+          [PREFIX]: "framework/packages/alepha/src/cli/core/services/\n",
+          [TAG]: "0.38.0\n",
+        },
+      });
+      await alepha.inject(MetaResolver).resolve({
+        root: "/w/lore",
+        runtime: "node",
+        dev: false,
+      });
+
+      const prefixCall = shell.calls.find((call) => call.command === PREFIX);
+      expect(prefixCall?.options.root).toBeTruthy();
+      expect(
+        shell.calls.some(
+          (call) =>
+            call.command === TAG &&
+            call.options.root === prefixCall?.options.root,
+        ),
+      ).toBe(true);
+    });
+
+    it("should keep package.json's version in a vendored copy, whose tags are the app's", async () => {
+      const meta = await run({
+        [PREFIX]: ".vendor/alepha/src/cli/core/services/\n",
+        [TAG]: "2.4.0\n",
+      });
+
+      expect(meta.framework).toBe(frameworkVersion);
+    });
+
+    it("should keep package.json's version when installed from npm", async () => {
+      const meta = await run({
+        [PREFIX]: "node_modules/alepha/dist/cli/\n",
+        [TAG]: "2.4.0\n",
+      });
+
+      expect(meta.framework).toBe(frameworkVersion);
+    });
+
+    it("should keep package.json's version with no git at all", async () => {
+      const meta = await run({}, { [PREFIX]: "not a git repository" });
+
+      expect(meta.framework).toBe(frameworkVersion);
+    });
+
+    it("should fall back to package.json when the repository has no release tag", async () => {
+      const meta = await run(
+        {
+          [PREFIX]: "framework/packages/alepha/src/cli/core/services/\n",
+          [TAG]: "",
+        },
+        { [DESCRIBE]: "fatal: No names found, cannot describe anything." },
+      );
+
+      expect(meta.framework).toBe(frameworkVersion);
     });
   });
 

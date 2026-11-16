@@ -41,8 +41,39 @@ export class MetaResolver {
         runtime: options.runtime,
         dev: options.dev,
       },
-      framework: frameworkVersion,
+      framework: await this.frameworkVersion(),
     };
+  }
+
+  /**
+   * The version of Alepha that is building, as {@link AlephaMeta.framework}.
+   *
+   * `alepha/package.json` is right wherever the framework was installed from
+   * npm: the release writes the real version into the manifest it publishes.
+   * Inside the Alepha repository it is not. A release sets that version on
+   * its runner only and never commits it (#Q3640), so the manifest on `main`
+   * holds a stale placeholder, and every build made there (Lore, alepha.dev,
+   * the showcase) reported it: lore.alepha.app said `0.38.0` with framework
+   * `0.37.0` (#Q3785). There, the framework's version is the repository's,
+   * read from git the way {@link resolve} reads the app's.
+   *
+   * "Inside the Alepha repository" is this file sitting at
+   * `framework/packages/alepha/` of its git checkout. Anything else keeps the
+   * manifest: an npm install, under `node_modules`; a vendored copy such as
+   * `.vendor/alepha`, whose git is the downstream app's and carries the app's
+   * tags; or no git at all.
+   */
+  protected async frameworkVersion(): Promise<string> {
+    const here = import.meta.dirname;
+    const prefix = await this.git("git rev-parse --show-prefix", here);
+    if (!prefix?.startsWith("framework/packages/alepha/")) {
+      return frameworkVersion;
+    }
+    return (
+      (await this.gitTag(here)) ||
+      (await this.gitDescribe(here)) ||
+      frameworkVersion
+    );
   }
 
   /**
@@ -113,8 +144,8 @@ export class MetaResolver {
    * but stable, and the alternative (guessing which of them is "the version")
    * is worse than a rule anyone can predict.
    */
-  protected async gitTag(): Promise<string | undefined> {
-    const out = await this.git("git tag --points-at HEAD");
+  protected async gitTag(root?: string): Promise<string | undefined> {
+    const out = await this.git("git tag --points-at HEAD", root);
     const first = out?.split("\n")[0]?.trim();
     if (!first) {
       return undefined;
@@ -142,9 +173,10 @@ export class MetaResolver {
    * `actions/checkout` default) finds none and falls through to `"latest"`:
    * a job whose build is deployed needs `fetch-depth: 0`.
    */
-  protected async gitDescribe(): Promise<string | undefined> {
+  protected async gitDescribe(root?: string): Promise<string | undefined> {
     const out = await this.git(
       `git describe --tags --match "[0-9]*.[0-9]*.[0-9]*" --match "v[0-9]*.[0-9]*.[0-9]*"`,
+      root,
     );
     return out ? out.replace(/^v(?=\d)/, "") : undefined;
   }
@@ -167,10 +199,16 @@ export class MetaResolver {
    *
    * A build outside a repository is completely normal - a tarball install, a
    * docker context that did not copy `.git` - and must not fail the build.
+   *
+   * `root` is where git runs: the process directory when omitted, which is
+   * the app being built.
    */
-  protected async git(command: string): Promise<string | undefined> {
+  protected async git(
+    command: string,
+    root?: string,
+  ): Promise<string | undefined> {
     try {
-      return (await this.shell.run(command, { capture: true })).trim();
+      return (await this.shell.run(command, { capture: true, root })).trim();
     } catch {
       return undefined;
     }
