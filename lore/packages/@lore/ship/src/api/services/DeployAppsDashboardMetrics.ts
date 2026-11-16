@@ -3,11 +3,13 @@ import { $inject } from "alepha";
 
 import { appHealthFiltersSchema } from "../schemas/appHealthFiltersSchema.ts";
 import { errorTrendFiltersSchema } from "../schemas/errorTrendFiltersSchema.ts";
+import { hostsCardFiltersSchema } from "../schemas/hostsCardFiltersSchema.ts";
 import { qualityTrendFiltersSchema } from "../schemas/qualityTrendFiltersSchema.ts";
+import { uptimeCardFiltersSchema } from "../schemas/uptimeCardFiltersSchema.ts";
 
 /**
  * Deploy's apps tiles of #E77 (#Q2657): per-copy health, the error trend
- * with its deployments, and coverage. Declarative and browser-safe, like
+ * with its deployments, and coverage; then hosts and uptime (#Q3781). Declarative and browser-safe, like
  * `DeployDashboardMetrics`; project boards only.
  */
 export class DeployAppsDashboardMetrics {
@@ -71,6 +73,45 @@ export class DeployAppsDashboardMetrics {
         target.projectSlug
           ? {
               route: "reportsQuality",
+              params: { projectSlug: target.projectSlug },
+            }
+          : undefined,
+    });
+    // The machines and the monitors (#Q3781): what runs the apps, and
+    // whether they answer.
+    this.catalog.register({
+      ...common,
+      key: "hosts",
+      order: 84,
+      labelKey: "dashboard.metric.hosts",
+      hintKey: "dashboard.metric.hosts.hint",
+      icon: "server",
+      presentation: "list",
+      filters: hostsCardFiltersSchema,
+      needs: { capability: "ship" },
+      requires: "host:read",
+      link: (_scope, target) =>
+        target.projectSlug
+          ? {
+              route: "projectSettingsHosts",
+              params: { projectSlug: target.projectSlug },
+            }
+          : undefined,
+    });
+    this.catalog.register({
+      ...common,
+      key: "uptime",
+      order: 85,
+      labelKey: "dashboard.metric.uptime",
+      hintKey: "dashboard.metric.uptime.hint",
+      icon: "heart-pulse",
+      presentation: "list",
+      filters: uptimeCardFiltersSchema,
+      needs: { capability: "ship", option: "uptime" },
+      link: (_scope, target) =>
+        target.projectSlug
+          ? {
+              route: "projectApps",
               params: { projectSlug: target.projectSlug },
             }
           : undefined,

@@ -3556,9 +3556,21 @@ export default {
   "dashboard.badge.unassigned": "unassigned",
   "dashboard.badge.error": "crash",
   "dashboard.badge.untriaged": "untriaged",
+  "dashboard.badge.online": "online",
+  "dashboard.badge.offline": "offline",
+  "dashboard.badge.up": "up",
+  "dashboard.badge.down": "down",
+  "dashboard.badge.pending": "pending",
+  "dashboard.badge.paused": "paused",
   "dashboard.metric.appHealth": "App health",
   "dashboard.metric.appHealth.hint":
     "one pill per copy: its last deploy, and whether it reports",
+  "dashboard.metric.hosts": "Hosts",
+  "dashboard.metric.hosts.hint":
+    "the project's hosts, its own and lent ones, online or offline",
+  "dashboard.metric.uptime": "Uptime",
+  "dashboard.metric.uptime.hint":
+    "each monitor, up or down, and its last 24 hours",
   "dashboard.metric.errorTrend": "Error occurrences",
   "dashboard.metric.errorTrend.hint":
     "occurrences per day, deployments as rules",

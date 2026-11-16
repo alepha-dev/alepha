@@ -78,6 +78,7 @@ import { HostCloudflareService } from "./services/HostCloudflareService.ts";
 import { HostCommandService } from "./services/HostCommandService.ts";
 import { HostCommandTransport } from "./services/HostCommandTransport.ts";
 import { HostService } from "./services/HostService.ts";
+import { HostsMetric } from "./services/HostsMetric.ts";
 import { HostStatsService } from "./services/HostStatsService.ts";
 import { HostTokenService } from "./services/HostTokenService.ts";
 import { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
@@ -108,6 +109,7 @@ import { UptimeAutomationEventSubjects } from "./services/UptimeAutomationEventS
 import { UptimeAutomationPresets } from "./services/UptimeAutomationPresets.ts";
 import { UptimeAutomationReferences } from "./services/UptimeAutomationReferences.ts";
 import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
+import { UptimeMetric } from "./services/UptimeMetric.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 import { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTransport.ts";
 
@@ -167,6 +169,8 @@ export const LoreShipApi = $module({
     DeployAppsDashboardMetrics,
     AppHealthMetric,
     ErrorTrendMetric,
+    HostsMetric,
+    UptimeMetric,
     QualityTrendMetric,
     QualityNumericCatalog,
     QualityNumericMetrics,

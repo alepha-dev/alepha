@@ -3569,9 +3569,21 @@ export default {
   "dashboard.badge.unassigned": "sans responsable",
   "dashboard.badge.error": "plantage",
   "dashboard.badge.untriaged": "à trier",
+  "dashboard.badge.online": "en ligne",
+  "dashboard.badge.offline": "hors ligne",
+  "dashboard.badge.up": "actif",
+  "dashboard.badge.down": "en panne",
+  "dashboard.badge.pending": "en attente",
+  "dashboard.badge.paused": "en pause",
   "dashboard.metric.appHealth": "Santé des applications",
   "dashboard.metric.appHealth.hint":
     "une pastille par copie : son dernier déploiement, et si elle remonte",
+  "dashboard.metric.hosts": "Hôtes",
+  "dashboard.metric.hosts.hint":
+    "les hôtes du projet, les siens et ceux prêtés, en ligne ou non",
+  "dashboard.metric.uptime": "Disponibilité",
+  "dashboard.metric.uptime.hint":
+    "chaque moniteur, actif ou en panne, et ses dernières 24 heures",
   "dashboard.metric.errorTrend": "Occurrences d’erreurs",
   "dashboard.metric.errorTrend.hint":
     "occurrences par jour, déploiements en repères",
