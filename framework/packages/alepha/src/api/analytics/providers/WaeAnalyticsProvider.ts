@@ -451,13 +451,22 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     query: AnalyticsQuery,
   ): Promise<AnalyticsResult> {
-    this.assertDayWindow(query);
+    // One key range for both window forms (#Q3756): a `since`/`until` query
+    // reads whole days, a `from`/`to` query reads the hours it overlaps, the
+    // one resolution this backend records at. An hour straddling a bound is
+    // read whole and the result says so, exactly as an exact backend's hour
+    // tier does.
+    const bounds = AnalyticsWindow.forTier(query, "1h");
+    const coarsened = bounds.straddling.length > 0;
     const floor = await this.cold.pruneFloor(dataset);
-    const asked = query.since as string;
-    const since = floor ? this.laterBound(asked, floor) : asked;
+    const lower = floor ? this.laterBound(bounds.lower, floor) : bounds.lower;
 
-    if (!this.mightNeedCold(dataset, since)) {
-      return this.queryHot(dataset, { ...query, since });
+    if (!this.mightNeedCold(dataset, lower)) {
+      const hot = await this.queryHot(dataset, query, {
+        lower,
+        upper: bounds.upper,
+      });
+      return coarsened ? { ...hot, coarsened } : hot;
     }
 
     const watermark = await this.coldWatermark(dataset);
@@ -471,36 +480,38 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     // a list rather than a spread only so the two exclusions are visible, and
     // a field forgotten here is a filter that silently stops applying on the
     // merge path while still working on the hot-only one.
+    //
+    // `cold` gets the window as asked, in either form: it is an exact
+    // backend and answers instants itself. Only a `since` is raised to the
+    // prune floor, as it always was.
     const unordered: AnalyticsQuery = {
-      since,
+      since:
+        query.since !== undefined && floor
+          ? this.laterBound(query.since, floor)
+          : query.since,
       until: query.until,
+      from: query.from,
+      to: query.to,
       where: query.where,
       groupBy: query.groupBy,
       select: query.select,
     };
-    const hotSince = watermark
-      ? this.laterBound(since, this.nextBucket(watermark))
-      : since;
+    const hotLower = watermark
+      ? this.laterBound(lower, this.nextBucket(watermark))
+      : lower;
 
     const [hot, cold] = await Promise.all([
-      this.queryHot(dataset, { ...unordered, since: hotSince }),
+      this.queryHot(dataset, unordered, {
+        lower: hotLower,
+        upper: bounds.upper,
+      }),
       this.cold.query(dataset, unordered),
     ]);
 
-    return this.mergeResults(dataset, query, hot, cold);
-  }
-
-  /**
-   * Refuses a `from`/`to` query. Analytics Engine's hot tier has a
-   * `timestamp` and could honour instants, but the forward to `cold` and its
-   * watermark are hour- and day-based; nothing needs it on this backend yet.
-   */
-  protected assertDayWindow(query: AnalyticsQuery): void {
-    AnalyticsWindow.assertValid(query);
-    if (query.from === undefined) return;
-    throw new AlephaError(
-      "Analytics Engine answers whole-day windows only ('since'/'until'); 'from'/'to' instants need an exact backend (OrmAnalyticsProvider).",
-    );
+    const merged = this.mergeResults(dataset, query, hot, cold);
+    return coarsened || cold.coarsened
+      ? { ...merged, coarsened: true }
+      : merged;
   }
 
   /**
@@ -544,21 +555,28 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   protected async queryHot(
     dataset: AnalyticsDataset,
     query: AnalyticsQuery,
+    bounds: { lower: string; upper?: string } = {
+      lower: query.since as string,
+      upper:
+        query.until === undefined
+          ? undefined
+          : AnalyticsBuckets.shiftDays(query.until, 1),
+    },
   ): Promise<AnalyticsResult> {
     const map = AnalyticsSlotMap.forDataset(dataset);
     const conditions = [
       `blob${AnalyticsSlotMap.KIND_SLOT} = ${AnalyticsEngineSql.quote(dataset.name)}`,
-      `blob${AnalyticsSlotMap.HOUR_SLOT} >= ${AnalyticsEngineSql.quote(query.since as string)}`,
+      `blob${AnalyticsSlotMap.HOUR_SLOT} >= ${AnalyticsEngineSql.quote(bounds.lower)}`,
     ];
 
-    // The hour slot holds `YYYY-MM-DDTHH`, so an inclusive day bound has to be
-    // expressed as "strictly before the next day" — `<= '2026-08-20'` would
-    // exclude every hour of the 20th, which is the whole day it names.
-    if (query.until) {
+    // The hour slot holds `YYYY-MM-DDTHH`, so an inclusive day bound arrives
+    // as "strictly before the next day" (`<= '2026-08-20'` would exclude
+    // every hour of the 20th, which is the whole day it names), and an
+    // exclusive instant as the hour after the last one it touches. Both are
+    // keys the slot compares against directly.
+    if (bounds.upper !== undefined) {
       conditions.push(
-        `blob${AnalyticsSlotMap.HOUR_SLOT} < ${AnalyticsEngineSql.quote(
-          AnalyticsBuckets.shiftDays(query.until, 1),
-        )}`,
+        `blob${AnalyticsSlotMap.HOUR_SLOT} < ${AnalyticsEngineSql.quote(bounds.upper)}`,
       );
     }
 
