@@ -2,6 +2,7 @@ import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
+import { displayName } from "../../web/app/services/displayName.ts";
 import { users } from "../entities/users.ts";
 import type { AutomationAudiencePreview } from "../schemas/automationAudiencePreviewSchema.ts";
 import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
@@ -44,11 +45,7 @@ export class AutomationAudience {
     return {
       recipients: accounts.map((account) => ({
         value: account.id,
-        label: (
-          account.username ||
-          [account.firstName, account.lastName].filter(Boolean).join(" ") ||
-          account.id
-        ).slice(0, 255),
+        label: displayName(account, account.id).slice(0, 255),
       })),
       total: await this.security.members.count(where),
       hasMore: members.length > 50,

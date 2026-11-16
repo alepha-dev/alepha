@@ -51,6 +51,8 @@ export interface ProjectUser {
   id: string;
   picture?: string;
   username?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   email?: string | null;
   /**
    * Whether a quest can be handed to them (their rank grants

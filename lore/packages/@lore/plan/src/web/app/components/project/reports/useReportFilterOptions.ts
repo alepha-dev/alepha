@@ -3,6 +3,7 @@ import {
   type DashboardPickerContext,
   type I18n,
   useProjectUsers,
+  displayName,
 } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -61,5 +62,5 @@ export const useReportPriorityOptions = (): ReportFilterOption[] => {
 export const useReportMemberOptions = (): ReportFilterOption[] =>
   useProjectUsers().map((user) => ({
     value: user.id,
-    label: user.username ?? user.email ?? user.id.slice(0, 8),
+    label: displayName(user, user.id.slice(0, 8)),
   }));

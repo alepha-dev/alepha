@@ -104,7 +104,7 @@ export class FeedbackCommentController {
     const people = ids.length
       ? await this.users.findMany({
           where: { id: { inArray: ids as string[] } },
-          columns: ["id", "username", "email"],
+          columns: ["id", "username", "firstName", "lastName", "email"],
         })
       : [];
     // Chunked like `FeedbackController.toResources`: the list grows with the

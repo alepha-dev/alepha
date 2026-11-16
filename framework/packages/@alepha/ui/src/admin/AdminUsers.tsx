@@ -29,6 +29,7 @@ import { useCallback, useState } from "react";
 import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { UserAvatar } from "../core/UserAvatar.tsx";
+import { userDisplayName } from "../core/userInitials.ts";
 import { useToast } from "../core/useToast.tsx";
 import { cn } from "../core/utils.ts";
 import { DataTable } from "../table/DataTable.tsx";
@@ -262,9 +263,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
   );
 
   const userLabel = (u: UserEntity) =>
-    u.email ||
-    u.username ||
-    tr("admin.users.thisUser", { default: "this user" });
+    userDisplayName(u) || tr("admin.users.thisUser", { default: "this user" });
 
   const toggleEnabled = useAction<[UserEntity]>(
     {

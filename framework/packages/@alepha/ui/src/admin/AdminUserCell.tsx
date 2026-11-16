@@ -5,6 +5,7 @@ void React;
 import { Link } from "alepha/react/router";
 
 import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
+import { userDisplayName } from "../core/userInitials.ts";
 import { cn } from "../core/utils.ts";
 
 export interface AdminUserCellProps {
@@ -34,8 +35,8 @@ export interface AdminUserCellProps {
 }
 
 /**
- * The one way an admin table cell names a user: best available identifier
- * (email, then username, then real name, then the caller's snapshot label),
+ * The one way an admin table cell names a user: `userDisplayName` (real
+ * name, then username, then email), then the caller's snapshot label,
  * linked to the user detail page whenever an id is present.
  *
  * A real `<a href>` rather than a click handler, so the cell keeps
@@ -44,9 +45,7 @@ export interface AdminUserCellProps {
  */
 export const AdminUserCell = (props: AdminUserCellProps) => {
   const label =
-    props.user?.email ||
-    props.user?.username ||
-    [props.user?.firstName, props.user?.lastName].filter(Boolean).join(" ") ||
+    (props.user ? userDisplayName(props.user) : "") ||
     props.fallbackLabel ||
     null;
 

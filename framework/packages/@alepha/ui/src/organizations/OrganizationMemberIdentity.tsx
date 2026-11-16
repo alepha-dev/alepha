@@ -2,6 +2,7 @@ import type { OrganizationMemberResource } from "alepha/api/organizations";
 
 import { Badge } from "../core/Badge.tsx";
 import { UserAvatar } from "../core/UserAvatar.tsx";
+import { userDisplayName } from "../core/userInitials.ts";
 
 export interface OrganizationMemberIdentityProps {
   member: OrganizationMemberResource;
@@ -18,11 +19,7 @@ export const OrganizationMemberIdentity = (
   props: OrganizationMemberIdentityProps,
 ) => {
   const user = props.member.user;
-  const name =
-    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-    user.username ||
-    user.email ||
-    user.id.slice(0, 8);
+  const name = userDisplayName(user) || user.id.slice(0, 8);
 
   return (
     <div

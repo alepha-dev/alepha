@@ -5,6 +5,7 @@ import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
+import { displayName } from "../../web/app/services/displayName.ts";
 import { projects } from "../entities/projects.ts";
 import { coreRelations } from "../relations/coreRelations.ts";
 import { adminProjectResourceSchema } from "../schemas/adminProjectResourceSchema.ts";
@@ -162,7 +163,7 @@ export class AdminProjectController {
           id: project.id,
           title: project.title,
           createdBy: project.createdBy,
-          ownerUsername: project.owner?.username ?? project.owner?.email,
+          ownerUsername: project.owner ? displayName(project.owner) : undefined,
           createdAt: project.createdAt,
           updatedAt: project.updatedAt,
           memberCount: project.organizationId

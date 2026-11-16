@@ -17,10 +17,11 @@
  *
  * ## The handle is a DISPLAY NAME
  *
- * Both sides must build their member list with `displayName()`, which is
+ * Both sides must build their member list with `mentionHandle()`, which is
  * `username`, then the email prefix, then a fallback, deliberately ignoring
- * `name` / `firstName` / `lastName`. A server that assembles its roster any
- * other way disagrees about what `@nfo` even is.
+ * `firstName` / `lastName`. A server that assembles its roster any other
+ * way disagrees about what `@nfo` even is. `displayName()` is the label a
+ * person is SHOWN by, and is never a handle.
  */
 
 // alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute

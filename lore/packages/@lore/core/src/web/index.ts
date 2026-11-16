@@ -278,7 +278,11 @@ export { ProjectScopeGrants } from "./app/services/ProjectScopeGrants.ts";
 export { capabilityRegistry } from "./app/services/capabilityRegistry.ts";
 export { setCurrentProject } from "./app/services/currentProjectWrite.ts";
 export { descriptionSnippet } from "./app/services/descriptionSnippet.ts";
-export { displayName } from "./app/services/displayName.ts";
+export {
+  displayName,
+  type DisplayNameUser,
+  mentionHandle,
+} from "./app/services/displayName.ts";
 export { loreDocsUrl } from "./app/services/docsUrl.ts";
 export {
   matchMentions,

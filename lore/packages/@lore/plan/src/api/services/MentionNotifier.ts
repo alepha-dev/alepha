@@ -136,7 +136,7 @@ export class MentionNotifier {
           options.subject,
           options.agent
             ? { agent: true, name: options.agent.client ?? "" }
-            : { agent: false, name: author?.name || "Someone" },
+            : { agent: false, name: author?.label || "Someone" },
           recipient,
           options.body,
         );

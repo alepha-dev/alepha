@@ -5,6 +5,7 @@ import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
+import { displayName } from "../../web/app/services/displayName.ts";
 import type { AutomationRun } from "../entities/automationRuns.ts";
 import { automations, type Automation } from "../entities/automations.ts";
 import type { AutomationVariable } from "../entities/automationVariables.ts";
@@ -781,11 +782,7 @@ export class AutomationService {
       id: rule.id,
       projectId: rule.projectId,
       authorUserId: rule.authorUserId,
-      authorName: author
-        ? [author.firstName, author.lastName].filter(Boolean).join(" ") ||
-          author.username ||
-          undefined
-        : undefined,
+      authorName: author ? displayName(author, "") || undefined : undefined,
       title: rule.title,
       enabled: rule.enabled,
       health: rule.health,

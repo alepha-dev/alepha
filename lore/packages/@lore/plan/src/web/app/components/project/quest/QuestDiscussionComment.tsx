@@ -5,6 +5,7 @@ import {
   type I18n,
   LoreViewer,
   type ProjectUser,
+  mentionHandle,
 } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -118,7 +119,7 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
             content={expandCommentReferences(entry.comment.body, {
               projectSlug: project?.slug ?? "",
               members: props.users.map((u) => ({
-                name: displayName(u, ""),
+                name: mentionHandle(u, ""),
               })),
             })}
           />

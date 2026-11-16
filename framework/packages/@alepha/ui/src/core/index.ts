@@ -546,7 +546,11 @@ export {
 } from "./useDialog.tsx";
 export { useIsMobile } from "./useIsMobile.ts";
 export { UserAvatar, type UserAvatarProps } from "./UserAvatar.tsx";
-export type { UserAvatarUser } from "./userInitials.ts";
+export {
+  type UserAvatarUser,
+  userDisplayName,
+  type UserNameParts,
+} from "./userInitials.ts";
 export {
   type Toast,
   type ToastIntent,

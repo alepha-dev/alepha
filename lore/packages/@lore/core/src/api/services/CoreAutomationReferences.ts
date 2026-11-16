@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
+import { displayName } from "../../web/app/services/displayName.ts";
 import { users } from "../entities/users.ts";
 import type { AutomationDescriptor } from "../schemas/automationDescriptorSchema.ts";
 import { AutomationProjectPermissions } from "../security/AutomationProjectPermissions.ts";
@@ -65,14 +66,7 @@ export class CoreAutomationReferences {
               ? [
                   {
                     value: id,
-                    label: (
-                      [user.firstName, user.lastName]
-                        .filter(Boolean)
-                        .join(" ") ||
-                      user.username ||
-                      user.email ||
-                      id
-                    ).slice(0, 255),
+                    label: displayName(user, id).slice(0, 255),
                   },
                 ]
               : [];

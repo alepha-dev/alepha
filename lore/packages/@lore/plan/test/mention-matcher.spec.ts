@@ -1,11 +1,11 @@
-import { displayName, matchMentions } from "@lore/core/web";
+import { matchMentions, mentionHandle } from "@lore/core/web";
 import { describe, it } from "vitest";
 
 import { expandCommentReferences, outsideProtected } from "../src/web/index.ts";
 
 /**
  * The roster, built the way BOTH sides have to build it: through
- * `displayName`, which is `username` then the email prefix. A server that
+ * `mentionHandle`, which is `username` then the email prefix. A server that
  * assembles it any other way disagrees with the renderer about what `@nfo`
  * even is, which is the failure this whole quest exists to prevent.
  */
@@ -16,7 +16,7 @@ const users = [
   { userId: "u-4", username: "first.last", email: "fl@example.com" },
 ];
 
-const members = users.map((u) => ({ ...u, name: displayName(u, "") }));
+const members = users.map((u) => ({ ...u, name: mentionHandle(u, "") }));
 
 /**
  * What the SERVER does: hold out the four protected shapes, then match.

@@ -33,29 +33,44 @@ describe("AdminUserCell", () => {
     );
   };
 
-  it("prefers email and links to the user detail page", async () => {
+  it("prefers the real name and links to the user detail page", async () => {
     await mount(
       <AdminUserCell
         userId="0192aaaa-0000-7000-8000-000000000001"
-        user={{ email: "owner@example.com", username: "owner" }}
+        user={{
+          email: "owner@example.com",
+          username: "owner",
+          firstName: "Ada",
+          lastName: "Lovelace",
+        }}
       />,
     );
 
-    const link = screen.getByRole("link", { name: "owner@example.com" });
+    expect(screen.queryByText("owner")).toBeNull();
+    const link = screen.getByRole("link", { name: "Ada Lovelace" });
     expect(link.getAttribute("href")).toBe(
       "/admin/users/0192aaaa-0000-7000-8000-000000000001",
     );
   });
 
-  it("falls back to username, then real name", async () => {
+  it("falls back to the username without a name, then the email", async () => {
     await mount(
-      <AdminUserCell
-        userId="0192aaaa-0000-7000-8000-000000000002"
-        user={{ firstName: "Ada", lastName: "Lovelace" }}
-      />,
+      <>
+        <AdminUserCell
+          userId="0192aaaa-0000-7000-8000-000000000002"
+          user={{ email: "owner@example.com", username: "owner" }}
+        />
+        <AdminUserCell
+          userId="0192aaaa-0000-7000-8000-000000000005"
+          user={{ email: "other@example.com" }}
+        />
+      </>,
     );
 
-    expect(screen.getByRole("link", { name: "Ada Lovelace" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "owner" })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "other@example.com" }),
+    ).toBeTruthy();
   });
 
   it("keeps the link with a truncated id when the owner no longer resolves", async () => {

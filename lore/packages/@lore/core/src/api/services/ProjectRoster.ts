@@ -1,7 +1,10 @@
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { displayName } from "../../web/app/services/displayName.ts";
+import {
+  displayName,
+  mentionHandle,
+} from "../../web/app/services/displayName.ts";
 import { coreRelations } from "../relations/coreRelations.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
@@ -9,14 +12,17 @@ import { ProjectSecurityService } from "./ProjectSecurityService.ts";
  * One member of a project, in the shape everything that writes to people
  * needs: who they are, where to reach them, and what to call them.
  *
- * `name` is built with `displayName`, the same function the comment box
+ * `name` is built with `mentionHandle`, the same function the comment box
  * uses, because it is what `@handle` is compared against. A roster
  * assembled any other way disagrees with the renderer about what `@nfo` is.
+ * `label` is how the person is shown (`displayName`): their real name when
+ * they have one.
  */
 export interface ProjectRosterEntry {
   userId: string;
   email: string;
   name: string;
+  label: string;
 }
 
 /**
@@ -58,7 +64,8 @@ export class ProjectRoster {
       roster.push({
         userId: row.user.id,
         email: row.user.email ?? "",
-        name: displayName(row.user, ""),
+        name: mentionHandle(row.user, ""),
+        label: displayName(row.user, ""),
       });
     }
     return roster;
