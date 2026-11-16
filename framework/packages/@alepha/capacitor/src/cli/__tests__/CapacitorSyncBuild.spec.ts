@@ -34,6 +34,19 @@ class MacNativeBuild extends CapacitorNativeBuild {
   }
 }
 
+/** An Xcode that writes SPM's Package.resolved, as a project's first build does. */
+class ResolvingNativeBuild extends MacNativeBuild {
+  protected override async compile(
+    ...args: Parameters<CapacitorNativeBuild["compile"]>
+  ): ReturnType<CapacitorNativeBuild["compile"]> {
+    await this.fs.writeFile(
+      "/app/ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      '{ "pins": [] }',
+    );
+    return super.compile(...args);
+  }
+}
+
 class LinuxNativeBuild extends CapacitorNativeBuild {
   protected override hostPlatform(): NodeJS.Platform {
     return "linux";
@@ -44,7 +57,11 @@ const ROOT = "/app";
 const APK = `${ROOT}/android/app/build/outputs/apk/debug/app-debug.apk`;
 
 const setup = async (
-  opts: { env?: Record<string, string>; host?: "darwin" | "linux" } = {},
+  opts: {
+    env?: Record<string, string>;
+    host?: "darwin" | "linux";
+    native?: typeof CapacitorNativeBuild;
+  } = {},
 ) => {
   const alepha = Alepha.create({ env: opts.env ?? {} })
     .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
@@ -52,7 +69,9 @@ const setup = async (
     .with({ provide: BuildPipeline, use: RecordingBuildPipeline })
     .with({
       provide: CapacitorNativeBuild,
-      use: opts.host === "linux" ? LinuxNativeBuild : MacNativeBuild,
+      use:
+        opts.native ??
+        (opts.host === "linux" ? LinuxNativeBuild : MacNativeBuild),
     })
     .with(AlephaCliCapacitorPlugin);
   alepha.store.set(capacitorOptions, {
@@ -301,6 +320,21 @@ describe("alepha capacitor build", () => {
     expect(
       await fs.readTextFile(`${ROOT}/ios/App/build/ExportOptions.plist`),
     ).toContain("<key>method</key><string>release-testing</string>");
+  });
+
+  it("records the inputs a first iOS build leaves, so the next one is known", async ({
+    expect,
+  }) => {
+    const { fs, records, build } = await setup({
+      native: ResolvingNativeBuild,
+    });
+    await fs.writeFile(`${ROOT}/ios/App/output/App.ipa`, "ipa");
+
+    await build("ios --release");
+    // Package.resolved now exists: the same build again changes nothing.
+    await build("ios --release");
+
+    expect(await records.read(ROOT)).toHaveLength(1);
   });
 
   it("refuses iOS off a Mac", async ({ expect }) => {

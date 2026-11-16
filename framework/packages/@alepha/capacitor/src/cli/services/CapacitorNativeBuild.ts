@@ -116,14 +116,19 @@ export class CapacitorNativeBuild {
       return;
     }
 
+    // The record carries the inputs as the build left them. A project's first
+    // xcodebuild writes SPM's Package.resolved, which the fingerprint hashes:
+    // recorded from before the build, the next build saw other native inputs
+    // and refused until the build number was bumped by hand.
+    const built = await this.fingerprint.compute({ root, platform, identity });
     await this.records.append(root, {
       appId: options.appId,
       platform,
       versionBuild,
       variant: this.project.variant(),
       configuration: opts.release ? "release" : "debug",
-      fingerprint,
-      inputs,
+      fingerprint: built.fingerprint,
+      inputs: built.inputs,
       signing: signing.label,
       artifact: {
         path: artifact,
