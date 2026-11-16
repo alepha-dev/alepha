@@ -153,6 +153,15 @@ export const ROUTES_FULL_WIDTH = new Set([
   // it. Nothing in `ProjectInbox` constrained the width - this set is where
   // that decision lives.
   "projectQuestGraph",
+  // Plan's Requirements (#E153): three tabs on a plate-less `PlateLayout`
+  // that owns its scroll, as Reports does, and the persona and use case
+  // pages, full pages outside it.
+  "projectRequirementsLayout",
+  "projectRequirements",
+  "projectUseCases",
+  "projectPersonas",
+  "projectPersona",
+  "projectUseCase",
   ...ROUTES_APP,
   ...ROUTES_SETTINGS,
 ]);
@@ -188,6 +197,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectReleases"
   | "projectAutomations"
   | "projectSettingsHosts"
+  | "projectRequirements"
 > = {
   projectFolios: "projectFolios",
   projectFoliosNew: "projectFolios",
@@ -196,6 +206,11 @@ export const SECTION_HREF_ROUTES: Record<
   projectQuest: "projectQuests",
   projectQuestGraph: "projectQuests",
   projectRelease: "projectReleases",
+  // A persona or a use case climbs back to the Requirements page (#E153);
+  // on the page itself, whichever tab is open, the crumb stays inert as
+  // Reports' does.
+  projectPersona: "projectRequirements",
+  projectUseCase: "projectRequirements",
   projectAutomationGallery: "projectAutomations",
   projectAutomationDetail: "projectAutomations",
   projectAutomationVariables: "projectAutomations",
@@ -265,6 +280,12 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectEpic: "project.menu.epics",
   projectReleases: "project.menu.releases",
   projectRelease: "project.menu.releases",
+  projectRequirementsLayout: "project.menu.requirements",
+  projectRequirements: "project.menu.requirements",
+  projectUseCases: "project.menu.requirements",
+  projectPersonas: "project.menu.requirements",
+  projectPersona: "project.menu.requirements",
+  projectUseCase: "project.menu.requirements",
   projectReports: "project.menu.reports",
   reportsSummary: "project.menu.reports",
   reportsFlow: "project.menu.reports",

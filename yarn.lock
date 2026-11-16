@@ -2192,6 +2192,28 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@lore/plan-requirements@workspace:*, @lore/plan-requirements@workspace:lore/packages/@lore/plan-requirements":
+  version: 0.0.0-use.local
+  resolution: "@lore/plan-requirements@workspace:lore/packages/@lore/plan-requirements"
+  dependencies:
+    "@alepha/lore": "workspace:*"
+    "@alepha/ui": "workspace:*"
+    "@lore/core": "workspace:*"
+    "@lore/plan": "workspace:*"
+    "@lore/remember": "workspace:*"
+    "@lore/ship": "workspace:*"
+    "@types/bun": "npm:^1.4.4"
+    "@types/react": "npm:^19.3.0"
+    "@types/react-dom": "npm:^19.3.0"
+    alepha: "workspace:*"
+    lucide-react: "npm:^1.73.0"
+    react: "npm:^19.3.1"
+    react-dom: "npm:^19.3.1"
+    vite: "npm:^8.3.8"
+    vitest: "npm:^5.1.0"
+  languageName: unknown
+  linkType: soft
+
 "@lore/plan@workspace:*, @lore/plan@workspace:lore/packages/@lore/plan":
   version: 0.0.0-use.local
   resolution: "@lore/plan@workspace:lore/packages/@lore/plan"
@@ -7192,6 +7214,7 @@ __metadata:
     "@alepha/ui": "workspace:*"
     "@lore/core": "workspace:*"
     "@lore/plan": "workspace:*"
+    "@lore/plan-requirements": "workspace:*"
     "@lore/remember": "workspace:*"
     "@lore/ship": "workspace:*"
     "@tailwindcss/vite": "npm:^4.3.5"

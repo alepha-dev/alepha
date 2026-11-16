@@ -23,7 +23,14 @@ import type { LinkTargetKind } from "../../../../../api/schemas/linkTargetKindSc
  */
 export type ReferenceKind = Extract<
   LinkTargetKind,
-  "quest" | "epic" | "folio" | "feedback" | "release"
+  | "quest"
+  | "epic"
+  | "folio"
+  | "feedback"
+  | "release"
+  | "persona"
+  | "usecase"
+  | "requirement"
 >;
 
 /**
@@ -37,6 +44,11 @@ export const REFERENCE_LETTERS: Record<ReferenceKind, string> = {
   folio: "F",
   feedback: "P",
   release: "R",
+  // Plan's Requirements (#E153), final since the owner's answer 71: `R` is
+  // the release's, so a requirement is `S` (specification).
+  persona: "A",
+  usecase: "U",
+  requirement: "S",
 };
 
 /**

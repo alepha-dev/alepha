@@ -45,6 +45,10 @@ import {
  */
 export class ProjectShellRegistry {
   protected readonly nav = new Map<CapabilityKey, CapabilityNavEntry[]>();
+  protected readonly extensions = new Map<
+    CapabilityKey,
+    CapabilityNavEntry[]
+  >();
   protected readonly sections: SettingsSectionDef[] = [
     ...CORE_SETTINGS_SECTIONS,
   ];
@@ -64,6 +68,32 @@ export class ProjectShellRegistry {
       );
     }
     this.nav.set(capability, entries);
+  }
+
+  /**
+   * Entries a SECOND module adds under a capability another module owns
+   * (#E153, decision 66): `@lore/plan-requirements` adds Requirements under
+   * Plan, whose entries `WorkShell` registered. Appended after the owner's
+   * entries whatever order the two shells are constructed in, and placed by
+   * their `order` like any other. {@link registerNav} keeps refusing a second
+   * registration: extending is the one way in, and it names itself.
+   */
+  public extendNav(
+    capability: CapabilityKey,
+    entries: CapabilityNavEntry[],
+  ): void {
+    const existing = this.extensions.get(capability) ?? [];
+    for (const entry of entries) {
+      if (
+        existing.some((it) => it.route === entry.route) ||
+        this.nav.get(capability)?.some((it) => it.route === entry.route)
+      ) {
+        throw new AlephaError(
+          `Sidebar entry '${entry.route}' is registered twice under '${capability}'`,
+        );
+      }
+    }
+    this.extensions.set(capability, [...existing, ...entries]);
   }
 
   public registerSettings(section: SettingsSectionDef): void {
@@ -138,7 +168,10 @@ export class ProjectShellRegistry {
    * Every sidebar entry a capability declares, on or off.
    */
   public navOf(capability: CapabilityKey): CapabilityNavEntry[] {
-    return this.nav.get(capability) ?? [];
+    return [
+      ...(this.nav.get(capability) ?? []),
+      ...(this.extensions.get(capability) ?? []),
+    ];
   }
 
   /**
@@ -251,7 +284,9 @@ export class ProjectShellRegistry {
   public reads(): Atom<any>[] {
     return [
       ...new Set([
-        ...[...this.nav.values()].flat().flatMap((it) => it.reads ?? []),
+        ...[...this.nav.values(), ...this.extensions.values()]
+          .flat()
+          .flatMap((it) => it.reads ?? []),
         ...this.crumbs.flatMap((it) => it.reads ?? []),
         ...this.palette.flatMap((it) => it.reads ?? []),
       ]),

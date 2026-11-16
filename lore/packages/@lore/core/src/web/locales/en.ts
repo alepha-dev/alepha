@@ -1166,6 +1166,9 @@ export default {
   "project.capability.plan.option.feedback.label": "Feedback",
   "project.capability.plan.option.feedback.description":
     "A request form for any signed-in Lore account, and a triage inbox.",
+  "project.capability.plan.option.requirements.label": "Requirements",
+  "project.capability.plan.option.requirements.description":
+    "Personas, use cases and requirements, verified by runs and traced to epics and releases.",
   "project.capability.remember.label": "Remember",
   "project.capability.remember.description":
     "Wiki linked folios, files, revisions.",
@@ -3170,6 +3173,10 @@ export default {
 
   // Epics
   "project.menu.epics": "Epics",
+  "project.menu.requirements": "Requirements",
+  "requirements.tab.requirements": "Requirements",
+  "requirements.tab.useCases": "Use cases",
+  "requirements.tab.personas": "Personas",
   "epic.status.draft": "Draft",
   "epic.status.ready": "Ready",
   "epic.status.inProgress": "In progress",

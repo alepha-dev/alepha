@@ -1152,6 +1152,9 @@ export default {
   "project.capability.plan.option.feedback.label": "Retours",
   "project.capability.plan.option.feedback.description":
     "Un formulaire de demande pour tout compte Lore connecté, et une boîte de tri.",
+  "project.capability.plan.option.requirements.label": "Exigences",
+  "project.capability.plan.option.requirements.description":
+    "Personas, cas d’usage et exigences, vérifiés par des passages et tracés jusqu’aux épopées et aux versions.",
   "project.capability.remember.label": "Se souvenir",
   "project.capability.remember.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
@@ -3178,6 +3181,10 @@ export default {
 
   // Epics
   "project.menu.epics": "Épopées",
+  "project.menu.requirements": "Exigences",
+  "requirements.tab.requirements": "Exigences",
+  "requirements.tab.useCases": "Cas d’usage",
+  "requirements.tab.personas": "Personas",
   "epic.status.draft": "Brouillon",
   "epic.status.ready": "Prête",
   "epic.status.inProgress": "En cours",

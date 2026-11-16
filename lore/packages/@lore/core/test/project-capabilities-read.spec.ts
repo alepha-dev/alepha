@@ -125,6 +125,7 @@ describe("CapabilityRegistry", () => {
       reminder: false,
       agentPrompts: false,
       feedback: false,
+      requirements: false,
     });
     expect(ctx.registry.optionsOf("ship", { track: true })).toEqual({
       track: true,
@@ -165,6 +166,7 @@ describe("CapabilityRegistry", () => {
       reminder: false,
       agentPrompts: false,
       feedback: false,
+      requirements: false,
     });
     expect(ctx.registry.preselectedOptionsOf("ship")).toEqual({
       track: true,
