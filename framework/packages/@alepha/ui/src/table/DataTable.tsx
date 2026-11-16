@@ -4,7 +4,7 @@ void React;
 
 import { ClientOnly, useAlepha } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Table, TableHeader } from "../core/Table.tsx";
 import { useIsMobile } from "../core/useIsMobile.ts";
@@ -131,6 +131,20 @@ export const DataTable = <
     filtersKey,
     alepha,
   });
+
+  // `filters.onChange` (#Q3779): every value on mount, then after each
+  // change. Read through a ref so a new callback each render neither
+  // resubscribes nor fires.
+  const onFiltersChange = useRef(untyped.filters?.onChange);
+  onFiltersChange.current = untyped.filters?.onChange;
+  useEffect(() => {
+    if (!form) return;
+    onFiltersChange.current?.({ ...form.currentValues });
+    return alepha.events.on("form:changed", (event) => {
+      if (event.id !== form.id) return;
+      onFiltersChange.current?.({ ...form.currentValues });
+    });
+  }, [alepha, form]);
 
   const filterVisibility = useDataTableFilterVisibility({
     definition: filterDefinition,

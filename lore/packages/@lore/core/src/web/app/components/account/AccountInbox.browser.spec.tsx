@@ -119,7 +119,9 @@ describe("AccountInbox - Load more and the Project filter", () => {
   };
 
   /**
-   * Narrow the list to one project, through the Project filter.
+   * Narrow the list to one project, through the Project filter: one of the
+   * DataTable's own filters on its filter bar (#Q3779), not a hand-built
+   * select in the toolbar.
    */
   const pickProject = async (title: string) => {
     const trigger = await waitFor(() =>
@@ -188,5 +190,18 @@ describe("AccountInbox - Load more and the Project filter", () => {
     expect(fake.calls[0]?.cursor).toBe(undefined);
     expect(fake.calls[0]?.scope).toBe("project:7");
     expect(alepha.store.get(inboxUnreadAtom)?.count).toBe(7);
+    expect(screen.queryByTestId("inbox-project-filter")).toBeNull();
+
+    // An active filter like any other: the table's Reset filters clears it,
+    // and the read goes back to all projects, from the first page.
+    fake.calls = [];
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    const reset = await screen.findByRole("menuitem", {
+      name: "Reset filters",
+    });
+    expect(reset.getAttribute("aria-disabled")).not.toBe("true");
+    await act(async () => fireEvent.click(reset));
+    await waitFor(() => expect(root.textContent).toContain("Message number 4"));
+    expect(fake.calls.at(-1)?.scope).toBe(undefined);
   });
 });
