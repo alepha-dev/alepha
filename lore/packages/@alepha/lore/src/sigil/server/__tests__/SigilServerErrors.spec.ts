@@ -251,7 +251,8 @@ describe("SigilServerErrors — error-level logs", () => {
     await expect.poll(() => errors().length).toBe(1);
     expect(errors()[0]).toMatchObject({
       name: "DbError",
-      message: "links sync failed",
+      // The log line's message in front of the error's own (#Q3760).
+      message: "best-effort step failed: links sync failed",
       origin: "server",
     });
     expect(errors()[0].sourceUrl).toMatch(/^log:/);
@@ -269,7 +270,7 @@ describe("SigilServerErrors — error-level logs", () => {
       errors()
         .map((it) => String(it.message))
         .sort((a, b) => a.localeCompare(b)),
-    ).toEqual(["nested", "something is off"]);
+    ).toEqual(["best-effort step failed: nested", "something is off"]);
   });
 
   it("ignores warnings", async () => {
@@ -344,6 +345,93 @@ describe("SigilServerErrors — error-level logs", () => {
     });
 
     await expect.poll(() => sink.ingested.length).toBe(1);
-    expect(sink.ingested[0].errors[0].message).toBe("tool blew up");
+    expect(sink.ingested[0].errors[0].message).toBe(
+      `MCP tool "failing" failed: tool blew up`,
+    );
+  });
+});
+
+describe("SigilServerErrors — what explains an error (#Q3760)", () => {
+  class DbError extends AlephaError {
+    override name = "DbError";
+  }
+
+  class App {
+    protected readonly log = $logger();
+
+    page = $action({
+      method: "GET",
+      path: "/projects/:slug/request",
+      schema: { params: z.object({ slug: z.text() }), response: z.text() },
+      handler: () => {
+        const driver = Object.assign(
+          new Error("D1_ERROR: no such column: quests.archived_at"),
+          { name: "D1Error" },
+        );
+        const error = new DbError("Query select has failed", {
+          cause: driver,
+        });
+        // Caught and logged, as a best-effort SSR step does: no request
+        // fails, so only the log line reports it.
+        this.log.error("SSR rendering error", error);
+        return "rendered";
+      },
+    });
+  }
+
+  it("reports a logged DbError with its driver cause, the logged message and the route pattern", async () => {
+    const alepha = make().with(App);
+    alepha.inject(SigilServerErrors);
+    await alepha.start();
+    try {
+      const response = await fetch(
+        `${alepha.inject(ServerProvider).hostname}/api/projects/acme/request`,
+      );
+      expect(response.status).toBe(200);
+
+      const sink = alepha.inject(SigilSinkProvider) as FakeSink;
+      const errors = () => sink.ingested.flatMap((it) => it.errors);
+      await expect.poll(() => errors().length).toBe(1);
+      const [reported] = errors();
+
+      expect(reported.name).toBe("DbError");
+      expect(reported.message).toBe(
+        "SSR rendering error: Query select has failed",
+      );
+      expect(reported.stack).toContain(
+        "\nCaused by: D1Error: D1_ERROR: no such column: quests.archived_at",
+      );
+      // The pattern, never the concrete URL.
+      expect(reported.sourceUrl).toMatch(/ \/api\/projects\/:slug\/request$/);
+      expect(reported.sourceUrl).not.toContain("acme");
+      expect(reported.sourceUrl).toMatch(/^log:/);
+
+      // The fingerprint keys on the first frame, before the chain: the
+      // cause does not move an existing group.
+      const firstFrame = reported.stack
+        .split("\n")
+        .find((line: string) => /^\s*at\s/.test(line));
+      expect(firstFrame).toBeDefined();
+      expect(reported.stack.indexOf(firstFrame)).toBeLessThan(
+        reported.stack.indexOf("Caused by:"),
+      );
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("stops a cyclic cause chain and keeps the stack within its cap", async () => {
+    const alepha = make();
+    const errors = alepha.inject(SigilServerErrors) as any;
+    const a = new Error("a") as Error & { cause?: unknown };
+    const b = new Error("b", { cause: a });
+    a.cause = b;
+    a.stack = `Error: a\n${"    at frame (file.js:1:1)\n".repeat(400)}`;
+
+    const report = errors.toError(a, "log:x");
+
+    expect(report.stack.match(/Caused by:/g)).toHaveLength(1);
+    expect(report.stack).toContain("Caused by: Error: b");
+    expect(report.stack.length).toBeLessThanOrEqual(4096);
   });
 });

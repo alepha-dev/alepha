@@ -90,6 +90,15 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
    */
   public static readonly id: string = "alepha.server.ServerRouterProvider";
 
+  /**
+   * Context key holding the route pattern (`/users/:id`, never the concrete
+   * URL) of the request being served, for code that reports what happened
+   * during it: an error logged deep inside a handler can say which route it
+   * was on. A string key, so a reader on another version of this module
+   * reads nothing rather than failing.
+   */
+  public static readonly ROUTE_KEY = "alepha.server.route";
+
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
 
@@ -281,6 +290,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
             // The request's own signal, aborted on client disconnect, so
             // everything the handler calls inherits it (#E85).
             signal: request.signal,
+            [ServerRouterProvider.ROUTE_KEY]: route.path,
             // Retains this request's log entries so that a `server:request:error`
             // consumer can ship them as breadcrumbs. Contributes nothing to
             // the context when buffering is disabled.
