@@ -10,7 +10,7 @@ const subject: AgentPromptSubject = {
   id: 67,
   reference: "#E41",
   title: "Lore Agent Prompts",
-  url: "https://lore.alepha.dev/alepha/epics/41",
+  url: "https://lore.alepha.app/alepha/epics/41",
 };
 
 describe("epicActivatePromptDefault", () => {
@@ -20,7 +20,7 @@ describe("epicActivatePromptDefault", () => {
     expect(prompt).toContain("#E41");
     expect(prompt).toContain("Lore Agent Prompts");
     expect(prompt).toContain('project_name "Alepha"');
-    expect(prompt).toContain("https://lore.alepha.dev/alepha/epics/41");
+    expect(prompt).toContain("https://lore.alepha.app/alepha/epics/41");
   });
 
   it("reads the plan with epic_get and quest_list, detail: full included", () => {

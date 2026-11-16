@@ -26,7 +26,7 @@ func TestSetWritesTheCredentialAtMode0600(t *testing.T) {
 		denied" test would pass for the wrong reason.
 	*/
 	store := NewStore(t.TempDir())
-	if err := store.Set(Config{Sink: "https://lore.alepha.dev", Secret: goodSecret}); err != nil {
+	if err := store.Set(Config{Sink: "https://lore.alepha.app", Secret: goodSecret}); err != nil {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(store.Path())
@@ -40,7 +40,7 @@ func TestSetWritesTheCredentialAtMode0600(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("Load after Set: ok=%v err=%v", ok, err)
 	}
-	if cfg.Sink != "https://lore.alepha.dev" || cfg.Secret != goodSecret {
+	if cfg.Sink != "https://lore.alepha.app" || cfg.Secret != goodSecret {
 		t.Fatalf("round trip lost something: %+v", cfg)
 	}
 	if _, err := os.Stat(store.Path() + ".tmp"); !os.IsNotExist(err) {
@@ -75,7 +75,7 @@ func TestClearIsIdempotentAndForgetsTheWelcome(t *testing.T) {
 	if err := store.Clear(); err != nil {
 		t.Fatalf("clearing nothing must be fine: %v", err)
 	}
-	if err := store.Set(Config{Sink: "https://lore.alepha.dev", Secret: goodSecret}); err != nil {
+	if err := store.Set(Config{Sink: "https://lore.alepha.app", Secret: goodSecret}); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.SaveWelcome(Welcome{Slug: "ovh-1"}); err != nil {
@@ -98,7 +98,7 @@ func TestClearIsIdempotentAndForgetsTheWelcome(t *testing.T) {
 func TestSetRefusesASecretOfTheWrongShape(t *testing.T) {
 	store := NewStore(t.TempDir())
 	for _, secret := range []string{"", "sg_lore_abc", "op_abc", "est_", " " + goodSecret, goodSecret + "\n"} {
-		if err := store.Set(Config{Sink: "https://lore.alepha.dev", Secret: secret}); err == nil {
+		if err := store.Set(Config{Sink: "https://lore.alepha.app", Secret: secret}); err == nil {
 			t.Errorf("secret %q accepted", secret)
 		}
 	}
@@ -112,9 +112,9 @@ func TestValidateSinkKeepsTheOriginAndRefusesTheRest(t *testing.T) {
 		in   string
 		want string
 	}{
-		{"https://lore.alepha.dev", "https://lore.alepha.dev"},
-		{"https://Lore.Alepha.dev/", "https://lore.alepha.dev"},
-		{"  https://lore.alepha.dev:8443 ", "https://lore.alepha.dev:8443"},
+		{"https://lore.alepha.app", "https://lore.alepha.app"},
+		{"https://Lore.Alepha.app/", "https://lore.alepha.app"},
+		{"  https://lore.alepha.app:8443 ", "https://lore.alepha.app:8443"},
 		{"http://127.0.0.1:4311", "http://127.0.0.1:4311"},
 		{"http://localhost:3303", "http://localhost:3303"},
 		{"http://[::1]:3303", "http://[::1]:3303"},
@@ -132,18 +132,18 @@ func TestValidateSinkKeepsTheOriginAndRefusesTheRest(t *testing.T) {
 
 	refused := []string{
 		"",
-		"lore.alepha.dev",
-		"ftp://lore.alepha.dev",
+		"lore.alepha.app",
+		"ftp://lore.alepha.app",
 		"https://",
 		// Cleartext to anything that is not this machine.
-		"http://lore.alepha.dev",
+		"http://lore.alepha.app",
 		"http://10.0.0.5:3303",
 		"http://192.168.1.10",
 		// A page or a token URL pasted by mistake.
-		"https://lore.alepha.dev/alepha/settings",
-		"https://lore.alepha.dev/?token=x",
-		"https://lore.alepha.dev/#hosts",
-		"https://user:pw@lore.alepha.dev",
+		"https://lore.alepha.app/alepha/settings",
+		"https://lore.alepha.app/?token=x",
+		"https://lore.alepha.app/#hosts",
+		"https://user:pw@lore.alepha.app",
 	}
 	for _, in := range refused {
 		if _, err := ValidateSink(in); err == nil {
@@ -154,7 +154,7 @@ func TestValidateSinkKeepsTheOriginAndRefusesTheRest(t *testing.T) {
 
 func TestSocketURLDerivesFromTheSink(t *testing.T) {
 	cases := map[string]string{
-		"https://lore.alepha.dev":   "wss://lore.alepha.dev/ws/estates",
+		"https://lore.alepha.app":   "wss://lore.alepha.app/ws/estates",
 		"https://lore.example:8443": "wss://lore.example:8443/ws/estates",
 		"http://127.0.0.1:4311":     "ws://127.0.0.1:4311/ws/estates",
 	}
@@ -190,7 +190,7 @@ func TestWelcomeRoundTrip(t *testing.T) {
 
 func TestLoadRefusesAnIncompleteFile(t *testing.T) {
 	store := NewStore(t.TempDir())
-	if err := os.WriteFile(store.Path(), []byte(`{"sink":"https://lore.alepha.dev"}`), Mode); err != nil {
+	if err := os.WriteFile(store.Path(), []byte(`{"sink":"https://lore.alepha.app"}`), Mode); err != nil {
 		t.Fatal(err)
 	}
 	_, ok, err := store.Load()

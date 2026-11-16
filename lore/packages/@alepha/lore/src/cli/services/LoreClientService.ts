@@ -20,7 +20,7 @@ export class LoreClientService {
    * default. A commons that is there if you want it and one variable away if
    * you do not.
    */
-  public static readonly DEFAULT_HOSTNAME = "https://lore.alepha.dev";
+  public static readonly DEFAULT_HOSTNAME = "https://lore.alepha.app";
 
   /**
    * The OAuth client `lore login` signs in as, and so the one its refresh must
@@ -63,7 +63,7 @@ export class LoreClientService {
         default: "",
         secret: false,
         description:
-          "Origin of the Lore instance. Defaults to the public one (https://lore.alepha.dev); set it to self-host.",
+          "Origin of the Lore instance. Defaults to the public one (https://lore.alepha.app); set it to self-host.",
       }),
       LORE_PROJECT: z.text({
         default: "",

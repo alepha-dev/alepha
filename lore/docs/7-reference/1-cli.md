@@ -93,7 +93,7 @@ Every command that works inside a project looks for it in this order:
 | Variable       | What it does                                                                                                                      |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `LORE_API_KEY` | The API key to authenticate with. Takes precedence over `lore login`.                                                             |
-| `LORE_URL`     | The instance. Defaults to `https://lore.alepha.dev`.                                                                              |
+| `LORE_URL`     | The instance. Defaults to `https://lore.alepha.app`.                                                                              |
 | `LORE_PROJECT` | The project, when `--project` is not given.                                                                                       |
 | `LORE_APP`     | The app, for app commands, when `--app` is not given. Defaults to the name in `package.json`, slugified.                          |
 | `LORE_ENV`     | The environment, for the deploy commands, when `--env` is not given. Without either, an app with exactly one environment uses it. |

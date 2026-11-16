@@ -14,7 +14,7 @@ import { feedbackLoopPromptDefault } from "./feedbackLoopPrompt.ts";
 const subject: AgentPromptProjectSubject = {
   project: "Alepha",
   slug: "alepha",
-  url: "https://lore.alepha.dev/alepha/feedback",
+  url: "https://lore.alepha.app/alepha/feedback",
 };
 
 describe("feedbackLoopPromptDefault", () => {
@@ -22,7 +22,7 @@ describe("feedbackLoopPromptDefault", () => {
 
   it("renders with no item subject at all", () => {
     expect(prompt).toContain('project "Alepha"');
-    expect(prompt).toContain("https://lore.alepha.dev/alepha/feedback");
+    expect(prompt).toContain("https://lore.alepha.app/alepha/feedback");
     // Nothing left unresolved: a `{{...}}` surviving into the pasted text is
     // the template having asked the inbox for something only an item has.
     expect(prompt).not.toMatch(/\{\{/);

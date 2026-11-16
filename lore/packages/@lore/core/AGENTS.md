@@ -128,7 +128,7 @@ coding agent. The owner writes those prompts once, in Settings.
 
 **The switch is the Plan option `agentPrompts`, and it is OFF by default with
 no backfill.** So a project shows no Agent Prompts menu until someone opens
-Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.dev` included.
+Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.app` included.
 
 | piece          | where                                                                                                                                                                                                           |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

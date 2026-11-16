@@ -117,7 +117,7 @@ export class AppSecurityProvider {
       resetPasswordAllowed: this.emailEnabled,
       verifyEmailRequired: this.emailEnabled,
       captchaRequired: !!this.env.TURNSTILE_SITE_KEY,
-      // Open by default, on lore.alepha.dev and in the self-hosted image
+      // Open by default, on lore.alepha.app and in the self-hosted image
       // alike. The image bakes no `REGISTRATION_ALLOWED` at all: the
       // operator registers, `bootstrapFirstUser` below makes that first
       // account the administrator, and they close registration in one click
@@ -175,7 +175,7 @@ export class AppSecurityProvider {
      * owns it. No seed command, no `ADMIN_PASSWORD` in shell history.
      *
      * ⚠️ **Off on Workers, and the framework refuses it there rather than
-     * ignoring it**, so this expression is what keeps lore.alepha.dev
+     * ignoring it**, so this expression is what keeps lore.alepha.app
      * booting. On a Worker the lookup would run on every isolate forever,
      * and a freshly deployed instance with an empty table would hand admin
      * to whoever registered first. The deployed instance grants its

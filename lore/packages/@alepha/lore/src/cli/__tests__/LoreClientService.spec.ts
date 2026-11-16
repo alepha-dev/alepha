@@ -45,7 +45,7 @@ describe("LoreClientService", () => {
      */
     it("defaults to the public instance", () => {
       expect(create({ LORE_API_KEY: "k" }).scope().hostname).toBe(
-        "https://lore.alepha.dev",
+        "https://lore.alepha.app",
       );
     });
 

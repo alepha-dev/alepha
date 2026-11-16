@@ -137,11 +137,11 @@ describe("DocsMarkdown", () => {
     it("should point the site's own links at the site being built", () => {
       expect(
         DocsMarkdown.forSite(
-          "[a](https://alepha.dev/llms.txt) [b](https://lore.alepha.dev) [c](https://alepha.dev.example.com)",
+          "[a](https://alepha.dev/llms.txt) [b](https://lore.alepha.app) [c](https://alepha.dev.example.com)",
           "https://latest.alepha.dev",
         ),
       ).toBe(
-        "[a](https://latest.alepha.dev/llms.txt) [b](https://lore.alepha.dev) [c](https://alepha.dev.example.com)",
+        "[a](https://latest.alepha.dev/llms.txt) [b](https://lore.alepha.app) [c](https://alepha.dev.example.com)",
       );
     });
   });

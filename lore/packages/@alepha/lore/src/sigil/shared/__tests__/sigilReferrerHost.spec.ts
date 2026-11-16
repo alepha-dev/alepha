@@ -25,8 +25,8 @@ describe("sigilReferrerHost", () => {
 
   it("keeps a different host on the same registrable domain", () => {
     // Not the same origin, so it is a real referral between two deployments.
-    expect(sigilReferrerHost("https://lore.alepha.dev/x", SELF)).toBe(
-      "lore.alepha.dev",
+    expect(sigilReferrerHost("https://lore.alepha.app/x", SELF)).toBe(
+      "lore.alepha.app",
     );
   });
 

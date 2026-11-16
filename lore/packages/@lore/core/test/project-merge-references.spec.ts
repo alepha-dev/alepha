@@ -50,11 +50,11 @@ describe("ProjectMergeReferences", () => {
     expect,
   }) => {
     const text = [
-      "https://lore.alepha.dev/lore/quests/2683",
-      "https://lore.alepha.dev/lore/quests/12",
-      "https://lore.alepha.dev/lore/folios",
-      "(https://lore.alepha.dev/lore)",
-      "https://lore.alepha.dev/lorem/quests/2683",
+      "https://lore.alepha.app/lore/quests/2683",
+      "https://lore.alepha.app/lore/quests/12",
+      "https://lore.alepha.app/lore/folios",
+      "(https://lore.alepha.app/lore)",
+      "https://lore.alepha.app/lorem/quests/2683",
       "https://github.com/alepha-dev/lore/pull/3",
     ].join("\n");
 
@@ -62,11 +62,11 @@ describe("ProjectMergeReferences", () => {
       rewriter({ sourceSlug: "lore", targetSlug: "alepha" }).text(text),
     ).toBe(
       [
-        "https://lore.alepha.dev/alepha/quests/2790",
-        "https://lore.alepha.dev/alepha/quests/12",
-        "https://lore.alepha.dev/alepha/folios",
-        "(https://lore.alepha.dev/alepha)",
-        "https://lore.alepha.dev/lorem/quests/2683",
+        "https://lore.alepha.app/alepha/quests/2790",
+        "https://lore.alepha.app/alepha/quests/12",
+        "https://lore.alepha.app/alepha/folios",
+        "(https://lore.alepha.app/alepha)",
+        "https://lore.alepha.app/lorem/quests/2683",
         "https://github.com/alepha-dev/lore/pull/3",
       ].join("\n"),
     );

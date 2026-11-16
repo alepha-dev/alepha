@@ -116,7 +116,7 @@ describe("Lore's inbox notifications", () => {
         excerpt: "@nfo could you look at this one",
         projectTitle: "Alepha",
         href: "/alepha/quests/402",
-        url: "https://lore.alepha.dev/alepha/quests/402",
+        url: "https://lore.alepha.app/alepha/quests/402",
         scope: "project:1",
       },
       inline: true,
@@ -138,7 +138,7 @@ describe("Lore's inbox notifications", () => {
     expect(mail.last?.subject).toBe("Fabrice mentioned you in #Q402");
     expect(mail.last?.body).toContain("could you look at this one");
     expect(mail.last?.body).toContain(
-      "https://lore.alepha.dev/alepha/quests/402",
+      "https://lore.alepha.app/alepha/quests/402",
     );
 
     await alepha.stop();

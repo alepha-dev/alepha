@@ -12,7 +12,7 @@ describe("ErrorSourceCell", () => {
   it("links a full https page URL out, in a new tab, with the outbound icon", ({
     expect,
   }) => {
-    const url = "https://lore.alepha.dev/alepha/quests";
+    const url = "https://lore.alepha.app/alepha/quests";
     const ui = render(<ErrorSourceCell sourceUrl={url} />);
 
     const link = ui.getByRole("link");
@@ -62,7 +62,7 @@ describe("ErrorSourceCell", () => {
     const ui = render(
       // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- stands in for a table row's click handler
       <div onClick={() => rowClicks++}>
-        <ErrorSourceCell sourceUrl="https://lore.alepha.dev/alepha/quests" />
+        <ErrorSourceCell sourceUrl="https://lore.alepha.app/alepha/quests" />
       </div>,
     );
 

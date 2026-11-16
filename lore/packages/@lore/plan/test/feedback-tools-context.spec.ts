@@ -22,7 +22,7 @@ import { LorePlanMcp } from "../src/mcp/index.ts";
  * `source`, so an agent triaging over MCP saw the prose and nothing else.
  * That is the failure this guards: a report reading "make website
  * responsive" was filed against the wrong app while `pageUrl` said
- * `https://lore.alepha.dev/` and `viewport` said `411x845`.
+ * `https://lore.alepha.app/` and `viewport` said `411x845`.
  *
  * Same identity-injection shim as `feedback-tools-attachments.spec.ts`.
  */
@@ -83,7 +83,7 @@ describe("Lore MCP: feedback_get context", () => {
   it("returns the page, browser and viewport the report came from", async () => {
     const { feedbackTools, project, call, report } = await setup();
     const item = await report("Make website responsive", {
-      hostUrl: "https://lore.alepha.dev/",
+      hostUrl: "https://lore.alepha.app/",
       hostPath: "/",
       title: "Alepha Lore",
       referrer: "https://google.com/",
@@ -103,7 +103,7 @@ describe("Lore MCP: feedback_get context", () => {
     // Renamed on the way out: `host*` reads as a server, and a bare `title`
     // inside a feedback item is ambiguous with the item's own.
     expect(res.context).toEqual({
-      pageUrl: "https://lore.alepha.dev/",
+      pageUrl: "https://lore.alepha.app/",
       pagePath: "/",
       pageTitle: "Alepha Lore",
       referrer: "https://google.com/",
@@ -120,7 +120,7 @@ describe("Lore MCP: feedback_get context", () => {
   it("carries the two fields that decide which app and which width", async () => {
     const { feedbackTools, project, call, report } = await setup();
     const item = await report("Make website responsive", {
-      hostUrl: "https://lore.alepha.dev/",
+      hostUrl: "https://lore.alepha.app/",
       hostPath: "/",
       userAgent: "Chrome 151 on Android",
       viewport: "411x845",
@@ -133,7 +133,7 @@ describe("Lore MCP: feedback_get context", () => {
 
     // The regression in one assertion: the title says "website" and nothing
     // else in the payload distinguishes the docs site from Lore.
-    expect(res.context?.pageUrl).toContain("lore.alepha.dev");
+    expect(res.context?.pageUrl).toContain("lore.alepha.app");
     expect(res.context?.viewport).toBe("411x845");
   });
 
@@ -154,7 +154,7 @@ describe("Lore MCP: feedback_get context", () => {
   it("returns the discussion alongside the context", async () => {
     const { feedbackTools, project, call, report } = await setup();
     const item = await report("Has a thread", {
-      hostUrl: "https://lore.alepha.dev/",
+      hostUrl: "https://lore.alepha.app/",
       hostPath: "/",
       userAgent: "Chrome 151 on Android",
     });
@@ -171,7 +171,7 @@ describe("Lore MCP: feedback_get context", () => {
       id: item.id,
     });
 
-    expect(res.context?.pageUrl).toBe("https://lore.alepha.dev/");
+    expect(res.context?.pageUrl).toBe("https://lore.alepha.app/");
     expect(res.discussion).toHaveLength(1);
     expect(res.discussion[0].body).toBe("Which width did you see this at?");
     // Written over MCP, so it is an agent's line and the name says nothing

@@ -9,7 +9,7 @@ minutes, and each step links to the page that covers it in depth.
 There are two ways to use Lore, and everything in this documentation works the
 same on both:
 
-- **The hosted instance.** Open [lore.alepha.dev](https://lore.alepha.dev) and
+- **The hosted instance.** Open [lore.alepha.app](https://lore.alepha.app) and
   sign up from the sign-in page.
 - **Your own instance.** One command starts it, and the first account to
   register becomes its administrator:
@@ -21,7 +21,7 @@ same on both:
   See [Self-hosting](/lore/docs/start-self-hosting) before you put real work
   in it.
 
-On your own instance, read `https://lore.alepha.dev` as your own address
+On your own instance, read `https://lore.alepha.app` as your own address
 everywhere in these pages.
 
 ## 2. Create a project
@@ -29,7 +29,7 @@ everywhere in these pages.
 Choose **New Project** on the home page. The wizard asks three things:
 
 1. **A name.** Lore derives the project's address from it:
-   `https://lore.alepha.dev/<slug>`.
+   `https://lore.alepha.app/<slug>`.
 2. **What the project does.** Each switch is a capability: **Plan** (quests,
    epics, releases, feedback), **Remember** (folios) and **Ship** (apps and
    their deploys). Pick at least one. **Plan** and **Remember** are on by
@@ -90,10 +90,10 @@ that opens the project. See [Folios](/lore/docs/remember-folios).
 ## 6. Connect an agent (optional)
 
 If you work with a coding agent, give it the project. Lore is an MCP server at
-`https://lore.alepha.dev/mcp`. With Claude Code, for example:
+`https://lore.alepha.app/mcp`. With Claude Code, for example:
 
 ```bash
-claude mcp add --transport http lore https://lore.alepha.dev/mcp
+claude mcp add --transport http lore https://lore.alepha.app/mcp
 ```
 
 The first call sends you to a Lore page that asks you to approve the

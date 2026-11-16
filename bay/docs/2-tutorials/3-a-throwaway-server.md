@@ -81,7 +81,7 @@ DNS to set up: `<anything>.<ip-with-dashes>.sslip.io` resolves to it.
 
 ```bash
 SECRET=$(lore host add scratch-vps --allow-deploys --ttl 2h --output json | jq -r .secret)
-ssh root@$IP "curl -sSL https://alepha.dev/bay/install.sh | LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=$SECRET BAY_BASE_DOMAIN=$BASE sh"
+ssh root@$IP "curl -sSL https://alepha.dev/bay/install.sh | LORE_URL=https://lore.alepha.app LORE_ESTATE_SECRET=$SECRET BAY_BASE_DOMAIN=$BASE sh"
 lore host wait scratch-vps
 ```
 

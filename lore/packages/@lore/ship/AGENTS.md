@@ -211,9 +211,10 @@ Cloudflare rate-limiting rule is currently the only thing in front of this
 endpoint.
 
 **Where it lives** — the dashboard, not code, so it will not reappear from a
-deploy if someone removes it: `lore.alepha.dev` zone → Security → WAF → Rate
+deploy if someone removes it: `alepha.app` zone → Security → WAF → Rate
 limiting rules → the rule matching
-`http.request.uri.path contains "/sigils/"`.
+`http.request.uri.path contains "/sigils/"`. While `lore.alepha.dev` stays
+an alias (#Q3755), the `alepha.dev` zone needs the same rule.
 
 If an in-app limiter is ever added, this rule stays anyway: the point of an edge
 rule is that the flood never reaches the Worker.

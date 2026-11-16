@@ -21,7 +21,7 @@ const legacyState = `{
     {
       "name": "lore",
       "env": "production",
-      "domain": "lore.alepha.dev",
+      "domain": "lore.alepha.app",
       "release": "20260801T101500Z",
       "port": 4001,
       "runtime": "node",
@@ -55,7 +55,7 @@ func TestLegacyDomainSurvivesUpgrade(t *testing.T) {
 	}
 
 	t.Run("routing still resolves", func(t *testing.T) {
-		app, ok := store.ByDomain("lore.alepha.dev")
+		app, ok := store.ByDomain("lore.alepha.app")
 		if !ok {
 			t.Fatal("the legacy domain no longer routes")
 		}
@@ -67,7 +67,7 @@ func TestLegacyDomainSurvivesUpgrade(t *testing.T) {
 	t.Run("on-demand issuance still recognises the host", func(t *testing.T) {
 		// HasDomain is the guard in front of the CA. If it forgot these names,
 		// renewal would stop without a single error in the log.
-		for _, host := range []string{"lore.alepha.dev", "docs.alepha.dev"} {
+		for _, host := range []string{"lore.alepha.app", "docs.alepha.dev"} {
 			if !store.HasDomain(host) {
 				t.Fatalf("%s would no longer be issued a certificate", host)
 			}
@@ -98,7 +98,7 @@ func TestLegacyDomainSurvivesUpgrade(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := reopened.ByDomain("lore.alepha.dev"); !ok {
+		if _, ok := reopened.ByDomain("lore.alepha.app"); !ok {
 			t.Fatal("routing was lost on the round trip")
 		}
 	})

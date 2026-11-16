@@ -8,7 +8,7 @@ permissions:
 #   gh workflow run deploy-all.yml --ref main
 #
 # Deploy Framework (ui.alepha.dev, shop.alepha.dev), Deploy Lore
-# (lore.alepha.dev) and Docs (alepha.dev, after its checks). Each called file
+# (lore.alepha.app) and Docs (alepha.dev, after its checks). Each called file
 # gates itself: a dispatch from any ref but `main` deploys nothing, and Deploy
 # Lore still honours its LORE_DEPLOY kill switch.
 #

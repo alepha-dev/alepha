@@ -255,7 +255,7 @@ prints the secret. Without systemd it installs the binary and stops with the two
 
 ```bash
 curl -sSL https://alepha.dev/bay/install.sh \
-  | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
+  | sudo LORE_URL=https://lore.alepha.app LORE_ESTATE_SECRET=est_... sh
 ```
 
 `lore host add <slug> --allow-deploys --output json` prints the secret for a script, and

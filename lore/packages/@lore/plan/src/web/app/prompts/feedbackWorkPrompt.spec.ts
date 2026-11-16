@@ -12,7 +12,7 @@ const subject: AgentPromptSubject = {
   // Petitions. Built by `formatReference("feedback", n)`, never by hand.
   reference: "#P2087",
   title: "add new action",
-  url: "https://lore.alepha.dev/alepha/feedback?feedback=2087",
+  url: "https://lore.alepha.app/alepha/feedback?feedback=2087",
 };
 
 describe("feedbackWorkPromptDefault", () => {
@@ -36,7 +36,7 @@ describe("feedbackWorkPromptDefault", () => {
    */
   it("links the item itself, by its number", () => {
     expect(prompt).toContain(
-      "The report: https://lore.alepha.dev/alepha/feedback?feedback=2087",
+      "The report: https://lore.alepha.app/alepha/feedback?feedback=2087",
     );
     expect(prompt).toContain("open the link above and read it there");
   });

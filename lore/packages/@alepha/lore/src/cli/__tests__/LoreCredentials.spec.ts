@@ -85,14 +85,14 @@ describe("Lore credentials", () => {
     it("keeps one token per hostname", async () => {
       const ctx = await setup();
 
-      await ctx.tokens.write("https://lore.alepha.dev", {
+      await ctx.tokens.write("https://lore.alepha.app", {
         accessToken: "public-token",
       });
       await ctx.tokens.write("https://lore.internal", {
         accessToken: "self-hosted-token",
       });
 
-      expect(await ctx.tokens.read("https://lore.alepha.dev")).toBe(
+      expect(await ctx.tokens.read("https://lore.alepha.app")).toBe(
         "public-token",
       );
       expect(await ctx.tokens.read("https://lore.internal")).toBe(
@@ -223,7 +223,7 @@ describe("Lore credentials", () => {
      */
     it("ignores a token cached for a different hostname", async () => {
       const ctx = await setup();
-      await ctx.tokens.write("https://lore.alepha.dev", {
+      await ctx.tokens.write("https://lore.alepha.app", {
         accessToken: "elsewhere",
       });
 

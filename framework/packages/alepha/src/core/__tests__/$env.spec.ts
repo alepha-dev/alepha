@@ -122,9 +122,9 @@ describe("$env", () => {
   describe("loadEnv", () => {
     it("lifts string values from a runtime binding into alepha.env", () => {
       const alepha = Alepha.create();
-      alepha.loadEnv({ PUBLIC_URL: "https://lore.alepha.dev" });
+      alepha.loadEnv({ PUBLIC_URL: "https://lore.alepha.app" });
 
-      expect(alepha.env.PUBLIC_URL).toBe("https://lore.alepha.dev");
+      expect(alepha.env.PUBLIC_URL).toBe("https://lore.alepha.app");
     });
 
     it("skips non-string bindings (D1, R2, KV objects)", () => {

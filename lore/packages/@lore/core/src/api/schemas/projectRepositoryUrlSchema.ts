@@ -13,7 +13,7 @@ import { AlephaError, z } from "alepha";
  *
  * ⚠️ A bare `feunard/alepha` is a stated error, not a silently broken link.
  * It is the shape a person most plausibly types, and the failure it produces
- * without this rule is a href that resolves against lore.alepha.dev.
+ * without this rule is a href that resolves against lore.alepha.app.
  *
  * The trailing slash is stripped on the way in so the rail can append a path
  * without guessing whether it already has one. Query and hash are refused for

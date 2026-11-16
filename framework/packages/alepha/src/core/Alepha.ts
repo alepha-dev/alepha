@@ -2628,7 +2628,7 @@ export interface Env {
   APP_SECRET_FILE?: string;
 
   /**
-   * Public-facing base URL of the deployed app (e.g. "https://lore.alepha.dev").
+   * Public-facing base URL of the deployed app (e.g. "https://lore.alepha.app").
    *
    * Used to render absolute links — emails, OAuth callbacks, sitemap. On the
    * Cloudflare platform it is auto-derived from the configured production

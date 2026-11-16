@@ -407,12 +407,24 @@ export class BuildCloudflareTask extends BuildTask {
       );
     }
 
-    wrangler.routes = [
-      {
-        pattern: domain,
-        custom_domain: true,
-      },
-    ];
+    // The aliases follow the domain, which stays first: the deploy reads the
+    // first Custom Domain as the app's own address and attaches the rest
+    // beside it (#Q3755).
+    const aliases = (this.envOf(ctx, "CLOUDFLARE_DOMAIN_ALIASES") ?? "")
+      .split(",")
+      .map((it) => it.trim())
+      .filter((it) => it && it !== domain);
+    const wildcard = aliases.find((it) => it.includes("*"));
+    if (wildcard) {
+      throw new AlephaError(
+        `CLOUDFLARE_DOMAIN_ALIASES names '${wildcard}', a wildcard, and a Cloudflare Custom Domain cannot be one. Use a plain host.`,
+      );
+    }
+
+    wrangler.routes = [...new Set([domain, ...aliases])].map((pattern) => ({
+      pattern,
+      custom_domain: true,
+    }));
   }
 
   /**

@@ -47,6 +47,26 @@ export const cloudflareEnvironmentOptionsSchema =
      * Required when the token has access to multiple accounts.
      */
     accountId: z.text().optional(),
+    /**
+     * More hosts the same Worker answers on, each attached as its own Custom
+     * Domain beside `domain`, e.g. the old address of an app that moved:
+     * `cloudflare({ domain: "app.example.com", aliases: ["app.example.dev"] })`.
+     *
+     * `domain` stays the app's address: `PUBLIC_URL` follows it, never an
+     * alias. A deploy attaches every host it names and detaches none, so an
+     * alias taken out of the list stays attached until it is removed from the
+     * Worker's Domains & Routes by hand.
+     *
+     * Plain hosts only, and only beside a `domain`.
+     */
+    aliases: z
+      .array(
+        z.text().refine((it) => !it.includes("*"), {
+          message:
+            "A wildcard alias is refused: a Cloudflare Custom Domain cannot be one. Use a plain host.",
+        }),
+      )
+      .optional(),
   });
 
 export type CloudflareEnvironmentOptions = Infer<

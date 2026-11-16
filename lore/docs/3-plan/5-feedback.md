@@ -17,7 +17,7 @@ but not added to. Turn it back on and everything is where you left it.
 Every project with Feedback on has a form at its own address:
 
 ```text
-https://lore.alepha.dev/<project-slug>/request
+https://lore.alepha.app/<project-slug>/request
 ```
 
 Share that link with the people you want to hear from. Inside the project, the

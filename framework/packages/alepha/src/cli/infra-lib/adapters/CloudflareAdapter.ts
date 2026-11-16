@@ -373,6 +373,9 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     const host = ctx.options.domain;
     if (host) {
       env.CLOUDFLARE_DOMAIN = host;
+      if (ctx.options.aliases?.length) {
+        env.CLOUDFLARE_DOMAIN_ALIASES = ctx.options.aliases.join(",");
+      }
     }
 
     if (ctx.options.jurisdiction) {

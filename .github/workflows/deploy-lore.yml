@@ -5,7 +5,7 @@ permissions:
 
 # "Lore Deploy" (`lore-deploy.yml`) until #Q2946.
 #
-# Lore ships to lore.alepha.dev once Verify Lore (`verify-lore.yml`) succeeds
+# Lore ships to lore.alepha.app once Verify Lore (`verify-lore.yml`) succeeds
 # on `main` after a push. Release no longer dispatches it (#Q3640): a release
 # pushes only a tag, on a commit already verified and deployed.
 # There is no human gate: read "Migration safety on D1" in
@@ -98,7 +98,7 @@ jobs:
         run: yarn wrangler d1 time-travel info lore-production
 
       # ⚠️ The Worker is `lore-production` (`infra({ name: "lore" })`).
-      # Any other name provisions an empty D1 and moves lore.alepha.dev onto it.
+      # Any other name provisions an empty D1 and moves lore.alepha.app onto it.
       - name: Deploy
         working-directory: lore/apps/lore
         run: yarn alepha deploy --env production

@@ -83,7 +83,7 @@ export class CreateAlephaCoreCommands {
       "lore-url": z
         .text({
           description:
-            "With --infra lore: a self-hosted Lore instance. Defaults to https://lore.alepha.dev.",
+            "With --infra lore: a self-hosted Lore instance. Defaults to https://lore.alepha.app.",
         })
         .optional(),
       preset: presetSchema

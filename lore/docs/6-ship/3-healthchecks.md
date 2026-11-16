@@ -52,7 +52,7 @@ A target cannot carry credentials.
 ⚠️ **TCP and certificate monitors need a Node host.** They open a raw socket,
 which Cloudflare Workers cannot do, so on a Workers deployment such a monitor
 fails every check with a message saying so. HTTP and push monitors work on both.
-`lore.alepha.dev` runs on Workers; a
+`lore.alepha.app` runs on Workers; a
 [self-hosted image](/lore/docs/start-self-hosting) runs on Node.
 
 | Setting              | Default | Range                       | What it does                                                                               |
@@ -74,7 +74,7 @@ Creating one (`lore monitor create --kind push`) prints a private URL,
 **once**. Copy it then:
 
 ```bash
-curl -fsS https://lore.alepha.dev/uptime/push/up_...
+curl -fsS https://lore.alepha.app/uptime/push/up_...
 ```
 
 Call it when the job succeeds. Each call answers 204 and restarts the clock. If

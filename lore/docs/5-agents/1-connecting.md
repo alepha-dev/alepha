@@ -19,14 +19,14 @@ Pick by what you are connecting:
 Lore's MCP server lives at `/mcp` on the instance:
 
 ```text
-https://lore.alepha.dev/mcp
+https://lore.alepha.app/mcp
 ```
 
 On your own instance, use your own address. Any client that supports remote
 MCP servers needs nothing but this URL. With Claude Code, for example:
 
 ```bash
-claude mcp add --transport http lore https://lore.alepha.dev/mcp
+claude mcp add --transport http lore https://lore.alepha.app/mcp
 ```
 
 The first time the agent calls Lore, your browser opens on a Lore page that

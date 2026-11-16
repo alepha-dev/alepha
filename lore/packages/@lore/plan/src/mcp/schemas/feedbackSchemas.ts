@@ -70,7 +70,7 @@ const feedbackCommentRefSchema = z.object({
  * to reproduce at. Without it an agent triaging over MCP is reading the prose
  * alone — which has already cost one misrouted triage, where "make website
  * responsive" was filed against the docs site while `pageUrl` said
- * `https://lore.alepha.dev/` and `viewport` said `411x845`.
+ * `https://lore.alepha.app/` and `viewport` said `411x845`.
  *
  * Absent on older rows and on submissions that predate the page-context
  * fields; every field inside is optional for the same reason.

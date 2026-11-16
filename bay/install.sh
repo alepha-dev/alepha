@@ -15,7 +15,7 @@
 # enrolled with Lore, in one line, for a server bought to be driven from Lore:
 #
 #   curl -sSL https://alepha.dev/bay/install.sh \
-#     | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
+#     | sudo LORE_URL=https://lore.alepha.app LORE_ESTATE_SECRET=est_... sh
 #
 # LORE_ESTATE_SECRET may also be a one-time enrolment secret (`enr_...`, what
 # `lore host provision` puts in cloud-init): `bay connector set` exchanges it

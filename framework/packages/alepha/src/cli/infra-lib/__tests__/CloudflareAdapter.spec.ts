@@ -1119,7 +1119,7 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
-        options: { domain: "lore.alepha.dev" },
+        options: { domain: "lore.alepha.app" },
       });
 
       await fs.writeFile(
@@ -1132,7 +1132,7 @@ describe("CloudflareAdapter", () => {
 
       const bindings = sent(fs, worker);
       const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
-      expect(publicUrl?.text).toBe("https://lore.alepha.dev");
+      expect(publicUrl?.text).toBe("https://lore.alepha.app");
     });
 
     test("honors an explicit PUBLIC_URL over the derived one", async ({
@@ -1140,7 +1140,7 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
-        options: { domain: "lore.alepha.dev" },
+        options: { domain: "lore.alepha.app" },
       });
 
       await fs.writeFile(
@@ -1315,7 +1315,7 @@ describe("CloudflareAdapter", () => {
     }) => {
       const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
-        options: { domain: "lore.alepha.dev" },
+        options: { domain: "lore.alepha.app" },
       });
 
       // No manifest at all: PUBLIC_URL is invented by the adapter from the
@@ -1328,7 +1328,7 @@ describe("CloudflareAdapter", () => {
       const bindings = sent(fs, worker);
       const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
       expect(publicUrl?.type).toBe("plain_text");
-      expect(publicUrl?.text).toBe("https://lore.alepha.dev");
+      expect(publicUrl?.text).toBe("https://lore.alepha.app");
       expect(bindings.find((b) => b.name === "APP_SECRET")?.type).toBe(
         "secret_text",
       );
@@ -1457,7 +1457,7 @@ describe("CloudflareAdapter", () => {
       }) => {
         const { adapter, fs, naming } = createTestEnv();
         const ctx = makeCtx(naming, {
-          options: { domain: "lore.alepha.dev" },
+          options: { domain: "lore.alepha.app" },
         });
         await fs.writeFile(
           "/project/dist/wrangler.jsonc",
@@ -1474,7 +1474,7 @@ describe("CloudflareAdapter", () => {
         );
         expect(config.vars).toEqual({
           BUILT: "kept",
-          PUBLIC_URL: "https://lore.alepha.dev",
+          PUBLIC_URL: "https://lore.alepha.app",
         });
       });
     });

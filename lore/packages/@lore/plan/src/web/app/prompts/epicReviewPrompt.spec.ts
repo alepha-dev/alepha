@@ -10,7 +10,7 @@ const subject: AgentPromptSubject = {
   id: 57,
   reference: "#E31",
   title: "Epic Workflow",
-  url: "https://lore.alepha.dev/alepha/epics/31",
+  url: "https://lore.alepha.app/alepha/epics/31",
 };
 
 /**
@@ -29,7 +29,7 @@ describe("epicReviewPromptDefault", () => {
     // ⚠️ The project's TITLE, which is what `project_name` matches.
     expect(prompt).toContain('project_name "Alepha"');
     // The URL is what lets an agent with no Lore MCP be pointed at it.
-    expect(prompt).toContain("https://lore.alepha.dev/alepha/epics/31");
+    expect(prompt).toContain("https://lore.alepha.app/alepha/epics/31");
   });
 
   it("names the two calls that read the plan, detail: full included", () => {

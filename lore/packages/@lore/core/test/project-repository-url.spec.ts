@@ -23,7 +23,7 @@ const userDataSchema = z.object({
  *
  * The refusals carry as much weight as the happy path. A bare `owner/repo` is
  * the shape a person most plausibly types, and accepting it produces an href
- * that resolves against lore.alepha.dev rather than a repository - a broken
+ * that resolves against lore.alepha.app rather than a repository - a broken
  * link that looks like a working one.
  */
 describe("a project's repository URL", () => {

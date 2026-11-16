@@ -44,7 +44,7 @@ describe("SigilRoot", () => {
   });
 
   it("renders the feedback button when the sink hands out a feedback URL", async () => {
-    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
+    await renderRoot({ feedbackUrl: "https://lore.alepha.app/c/2/request" });
     expect(screen.getByLabelText("Feedback")).toBeTruthy();
   });
 
@@ -62,7 +62,7 @@ describe("SigilRoot", () => {
    */
   it("renders no button when the position is hidden", async () => {
     await renderRoot({
-      feedbackUrl: "https://lore.alepha.dev/alepha/request",
+      feedbackUrl: "https://lore.alepha.app/alepha/request",
       feedbackButton: "hidden",
     });
     expect(screen.queryByLabelText("Feedback")).toBeNull();
@@ -73,7 +73,7 @@ describe("SigilRoot", () => {
     // third-party page, so anything unknown falls back rather than suppressing
     // a control the operator never asked to remove.
     await renderRoot({
-      feedbackUrl: "https://lore.alepha.dev/alepha/request",
+      feedbackUrl: "https://lore.alepha.app/alepha/request",
       feedbackButton: "top-left",
     });
     expect(screen.getByLabelText("Feedback")).toBeTruthy();
@@ -82,7 +82,7 @@ describe("SigilRoot", () => {
   it("hides the button on a path matching an excluded glob", async () => {
     window.history.pushState({}, "", "/c/2/request");
     await renderRoot({
-      feedbackUrl: "https://lore.alepha.dev/c/2/request",
+      feedbackUrl: "https://lore.alepha.app/c/2/request",
       excludedPaths: ["/c/*/request"],
     });
     expect(screen.queryByLabelText("Feedback")).toBeNull();
@@ -91,7 +91,7 @@ describe("SigilRoot", () => {
   it("keeps the button on a non-excluded path", async () => {
     window.history.pushState({}, "", "/home");
     await renderRoot({
-      feedbackUrl: "https://lore.alepha.dev/c/2/request",
+      feedbackUrl: "https://lore.alepha.app/c/2/request",
       excludedPaths: ["/c/*/request"],
     });
     expect(screen.getByLabelText("Feedback")).toBeTruthy();
@@ -100,7 +100,7 @@ describe("SigilRoot", () => {
   it("re-hides the button when navigating to an excluded path (SPA pushState)", async () => {
     window.history.pushState({}, "", "/home");
     await renderRoot({
-      feedbackUrl: "https://lore.alepha.dev/c/2/request",
+      feedbackUrl: "https://lore.alepha.app/c/2/request",
       excludedPaths: ["/c/*/request"],
     });
     expect(screen.getByLabelText("Feedback")).toBeTruthy();
@@ -113,7 +113,7 @@ describe("SigilRoot", () => {
   });
 
   it("flashes a thank-you when the popup posts the submitted message", async () => {
-    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
+    await renderRoot({ feedbackUrl: "https://lore.alepha.app/c/2/request" });
     expect(screen.queryByText("Thank you!")).toBeNull();
 
     act(() => {
@@ -128,7 +128,7 @@ describe("SigilRoot", () => {
   });
 
   it("ignores unrelated postMessage events", async () => {
-    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
+    await renderRoot({ feedbackUrl: "https://lore.alepha.app/c/2/request" });
 
     act(() => {
       window.dispatchEvent(
@@ -143,12 +143,12 @@ describe("SigilRoot", () => {
     const open = vi.fn((..._args: unknown[]) => ({}) as Window);
     vi.stubGlobal("open", open);
 
-    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
+    await renderRoot({ feedbackUrl: "https://lore.alepha.app/c/2/request" });
     fireEvent.click(screen.getByLabelText("Feedback"));
 
     expect(open).toHaveBeenCalledWith(
       expect.stringMatching(
-        /^https:\/\/lore\.alepha\.dev\/c\/2\/request\?.*\burl=/,
+        /^https:\/\/lore\.alepha\.app\/c\/2\/request\?.*\burl=/,
       ),
       "lore-feedback",
       expect.stringMatching(
@@ -171,7 +171,7 @@ describe("SigilRoot", () => {
     vi.stubGlobal("open", open);
     window.history.pushState({}, "", "/reset?token=abc123#access_token=xyz");
 
-    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
+    await renderRoot({ feedbackUrl: "https://lore.alepha.app/c/2/request" });
     fireEvent.click(screen.getByLabelText("Feedback"));
 
     const target = open.mock.calls[0][0] as string;
@@ -188,7 +188,7 @@ describe("SigilRoot", () => {
     const open = vi.fn((..._args: unknown[]) => ({}) as Window);
     vi.stubGlobal("open", open);
 
-    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
+    await renderRoot({ feedbackUrl: "https://lore.alepha.app/c/2/request" });
     fireEvent.click(screen.getByLabelText("Feedback"));
 
     const target = open.mock.calls[0][0] as string;

@@ -145,7 +145,9 @@ describe("LoreChangelog", () => {
     const { fetcher } = lore();
     const entries = await boot().read({ LORE_API_KEY: "k" }, fetcher);
 
-    expect(JSON.stringify(entries)).not.toMatch(/shortId|#Q|lore\.alepha\.dev/);
+    expect(JSON.stringify(entries)).not.toMatch(
+      /shortId|#Q|lore\.alepha\.(dev|app)/,
+    );
   });
 
   it("reads LORE_URL when it is set", async () => {

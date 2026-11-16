@@ -13,7 +13,7 @@ import { questLoopPromptDefault } from "./questLoopPrompt.ts";
 const subject: AgentPromptProjectSubject = {
   project: "Alepha",
   slug: "alepha",
-  url: "https://lore.alepha.dev/alepha/quests",
+  url: "https://lore.alepha.app/alepha/quests",
 };
 
 describe("questLoopPromptDefault", () => {
@@ -21,7 +21,7 @@ describe("questLoopPromptDefault", () => {
 
   it("renders with no item subject at all", () => {
     expect(prompt).toContain('project "Alepha"');
-    expect(prompt).toContain("https://lore.alepha.dev/alepha/quests");
+    expect(prompt).toContain("https://lore.alepha.app/alepha/quests");
     expect(prompt).not.toMatch(/\{\{/);
   });
 
