@@ -462,6 +462,9 @@ export class CapabilityRegistry {
         "appHealth",
         "errorTrend",
         "qualityTrend",
+        // The machines and the monitors (#Q3781).
+        "hosts",
+        "uptime",
         "quality.coverage.lines",
         "quality.coverage.statements",
         "quality.coverage.functions",
