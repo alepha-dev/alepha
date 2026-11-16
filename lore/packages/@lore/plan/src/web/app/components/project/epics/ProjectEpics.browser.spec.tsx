@@ -350,6 +350,49 @@ describe("ProjectEpics - the status filter", () => {
     );
   });
 
+  /**
+   * The preset rail (#Q3780): the quests list's own component, with presets
+   * built on the epic lifecycle, each counted over the whole list.
+   */
+  it("switches presets on the rail, each counted, and All shows every epic again", async () => {
+    await mount(
+      [],
+      [
+        { ...epicOf(1, "Building", "in_progress"), openQuestions: 0 },
+        { ...epicOf(2, "Waiting", "ready"), openQuestions: 2 },
+        { ...epicOf(3, "Sketch", "draft"), openQuestions: 1 },
+        { ...epicOf(4, "Finished", "completed"), openQuestions: 0 },
+      ],
+    );
+    const preset = (key: string) =>
+      document.querySelector(`[data-preset="${key}"]`) as HTMLElement;
+    const count = (key: string) =>
+      preset(key)?.querySelector('[data-slot="data-table-preset-count"]')
+        ?.textContent;
+
+    await waitFor(() => expect(count("active")).toBe("1"));
+    expect(count("ready")).toBe("1");
+    expect(count("drafts")).toBe("1");
+    expect(count("reviews")).toBe("2");
+    // Quiet: a number of finished epics asks nothing of the reader.
+    expect(count("done")).toBeUndefined();
+
+    fireEvent.click(preset("ready"));
+    await waitFor(() => expect(row("#E1 - Building")).toBeNull());
+    expect(row("#E2 - Waiting")).toBeTruthy();
+    expect(row("#E3 - Sketch")).toBeNull();
+    expect(preset("ready").getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(preset("reviews"));
+    await waitFor(() => expect(row("#E3 - Sketch")).toBeTruthy());
+    expect(row("#E2 - Waiting")).toBeTruthy();
+    expect(row("#E1 - Building")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /^All/ }));
+    await waitFor(() => expect(row("#E4 - Finished")).toBeTruthy());
+    expect(row("#E1 - Building")).toBeTruthy();
+  });
+
   it("asks for brief descriptions, and for the whole text while a search looks inside it", async () => {
     await mount(
       [],
