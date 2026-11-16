@@ -6,6 +6,12 @@ import { UserAvatar } from "../core/UserAvatar.tsx";
 export interface OrganizationMemberIdentityProps {
   member: OrganizationMemberResource;
   rankName?: string;
+  /**
+   * Whether the rank badge shows beside the name. Off where the row carries
+   * the rank elsewhere (`OrganizationMembers` for a manager, whose rank
+   * picker is the rank), so a row never names it twice.
+   */
+  showRank?: boolean;
 }
 
 export const OrganizationMemberIdentity = (
@@ -27,12 +33,14 @@ export const OrganizationMemberIdentity = (
       <div className="flex min-w-0 flex-col">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{name}</span>
-          <Badge variant="secondary">
-            {props.rankName ??
-              props.member.rankName ??
-              props.member.rank ??
-              "member"}
-          </Badge>
+          {props.showRank !== false && (
+            <Badge variant="secondary">
+              {props.rankName ??
+                props.member.rankName ??
+                props.member.rank ??
+                "member"}
+            </Badge>
+          )}
         </div>
         {user.email && name !== user.email && (
           <span className="text-muted-foreground truncate text-xs">

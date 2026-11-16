@@ -217,10 +217,20 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
       <div className="flex flex-col gap-2">
         {members.map((member) => (
           <Card key={member.id} className={`${settingsCardEdge} py-3`}>
-            <CardContent className="flex items-center gap-4 px-3">
+            <CardContent
+              className="flex items-center gap-4 px-3"
+              data-testid="member-row"
+            >
+              {/*
+               * The rank shows once per row (#Q3783): for a manager the rank
+               * picker on the right is the rank, as a select or as a badge
+               * for their own row and the owner's, so the badge by the name
+               * shows only where the picker renders nothing.
+               */}
               <OrganizationMemberIdentity
                 member={member}
                 rankName={ranks.find((rank) => rank.key === member.rank)?.name}
+                showRank={!canManage}
               />
               <OrganizationMemberRankPicker
                 organizationId={props.organizationId}
