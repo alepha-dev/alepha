@@ -1,4 +1,10 @@
-import { Button, useDialog, useToast } from "@alepha/ui";
+import {
+  Button,
+  useDialog,
+  useToast,
+  cn,
+  textLinkUnderlineClassName,
+} from "@alepha/ui";
 import { resizeImage } from "@alepha/ui/form";
 import { type I18n, formatAttachmentBytes } from "@lore/core/web";
 import { AlephaError } from "alepha";
@@ -288,7 +294,10 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
                   href={`/api/files/${attachment.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block truncate text-xs hover:underline"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground block truncate text-xs",
+                  )}
                   title={attachment.name}
                 >
                   {attachment.name}

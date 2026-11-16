@@ -516,6 +516,12 @@ export {
   type TabsTriggerProps,
 } from "./Tabs.tsx";
 export { Textarea, type TextareaProps } from "./Textarea.tsx";
+export {
+  TextLink,
+  type TextLinkProps,
+  textLinkClassName,
+  textLinkUnderlineClassName,
+} from "./TextLink.tsx";
 export { default as TimeAgo, type TimeAgoProps } from "./TimeAgo.tsx";
 export { Toaster, type ToasterProps } from "./Toaster.tsx";
 export {

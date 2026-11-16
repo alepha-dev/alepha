@@ -1,4 +1,10 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  cn,
+  textLinkUnderlineClassName,
+} from "@alepha/ui";
 
 import type { PullRequest } from "../../../../api/schemas/pullRequestSchema.ts";
 
@@ -38,7 +44,10 @@ const PullRequestLinks = (props: PullRequestLinksProps) => (
           href={pr.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="max-w-full truncate underline-offset-2 hover:underline"
+          className={cn(
+            textLinkUnderlineClassName,
+            "hover:text-foreground max-w-full truncate",
+          )}
           onClick={(event) => event.stopPropagation()}
         >
           {label}

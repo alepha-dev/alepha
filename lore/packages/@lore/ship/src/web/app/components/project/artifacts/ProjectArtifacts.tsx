@@ -1,4 +1,4 @@
-import { TimeAgo, Badge } from "@alepha/ui";
+import { TimeAgo, Badge, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import {
   type BulkAction,
   DataTable,
@@ -455,7 +455,10 @@ const ProjectArtifacts = () => {
                   <Link
                     href={buildHref(row)}
                     onClick={(event) => event.stopPropagation()}
-                    className="font-mono text-xs underline-offset-2 hover:underline"
+                    className={cn(
+                      textLinkUnderlineClassName,
+                      "hover:text-foreground font-mono text-xs",
+                    )}
                   >
                     {row.tag}
                   </Link>

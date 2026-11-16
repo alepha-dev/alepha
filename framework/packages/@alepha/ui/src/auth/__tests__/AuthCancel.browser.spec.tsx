@@ -82,7 +82,7 @@ describe("Auth forms - the Cancel link", () => {
     it("should hide the link when cancelPath is false", async () => {
       await mount(<AuthLogin realmConfig={realmConfig} cancelPath={false} />);
 
-      expect(screen.queryByText("Sign up")).toBeTruthy();
+      expect(screen.queryByRole("link", { name: /Sign up/ })).toBeTruthy();
       expect(cancelLink()).toBeNull();
     });
   });

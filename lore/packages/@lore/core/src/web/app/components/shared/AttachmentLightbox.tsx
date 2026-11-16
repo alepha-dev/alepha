@@ -4,6 +4,8 @@ import {
   DialogContent,
   DialogTitle,
   Segmented,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import { MarkdownView } from "@alepha/ui/markdown";
 import { useI18n } from "alepha/react/i18n";
@@ -187,7 +189,10 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
           <a
             href={current.src ?? `/api/files/${current.fileId}`}
             download={current.name}
-            className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1.5 text-xs hover:underline"
+            className={cn(
+              textLinkUnderlineClassName,
+              "text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1.5 text-xs",
+            )}
           >
             <Download className="size-3.5" />
             {tr("common.download")}

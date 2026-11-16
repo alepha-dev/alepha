@@ -90,9 +90,9 @@ test.describe("Register", () => {
     // `networkidle` never settles once Turnstile is loaded — its widget polls.
     await page.waitForLoadState("domcontentloaded");
 
-    await expect(
-      page.getByText(/before creating a project, create an account/i),
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/create an account to continue/i)).toBeVisible({
+      timeout: 5_000,
+    });
 
     await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
     await page

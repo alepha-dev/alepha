@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { OutboundLink } from "@lore/core/web";
 
 import { errorSourceHref } from "./errorSourceHref.ts";
@@ -31,7 +32,10 @@ const ErrorSourceCell = (props: ErrorSourceCellProps) => {
         href={href}
         title={props.sourceUrl}
         rel="noopener noreferrer"
-        className="text-xs hover:underline"
+        className={cn(
+          textLinkUnderlineClassName,
+          "hover:text-foreground text-xs",
+        )}
         onClick={(event) => event.stopPropagation()}
       >
         {props.sourceUrl}

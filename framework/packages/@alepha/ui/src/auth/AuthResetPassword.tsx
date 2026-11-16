@@ -23,6 +23,7 @@ import { Label } from "../core/Label.tsx";
 import { Control } from "../form/Control.tsx";
 import { iconFor } from "../form/iconHint.tsx";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../otp/InputOTP.tsx";
+import { AuthCardFrame } from "./AuthCardFrame.tsx";
 import { safeRedirect } from "./safeRedirect.ts";
 import {
   TurnstileWidget,
@@ -235,199 +236,208 @@ export const AuthResetPassword = (props: AuthResetPasswordProps) => {
               className="bg-muted size-16 rounded-xl border object-cover shadow-sm"
             />
           ) : null)}
-        <Card className="w-full">
-          <CardContent className="flex flex-col gap-4">
-            {(error ?? submitError) && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertDescription>{error ?? submitError}</AlertDescription>
-              </Alert>
-            )}
-            {!allowed ? (
-              <>
-                <Alert>
+        <AuthCardFrame>
+          <Card className="w-full">
+            <CardContent className="flex flex-col gap-4">
+              {(error ?? submitError) && (
+                <Alert variant="destructive">
                   <AlertCircle className="size-4" />
-                  <AlertDescription>
-                    {tr("auth.reset.disabled", {
-                      default:
-                        "Password reset is not available. Please contact your administrator.",
-                    })}
-                  </AlertDescription>
+                  <AlertDescription>{error ?? submitError}</AlertDescription>
                 </Alert>
-                <Button
-                  render={
-                    <a
-                      href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
-                    />
-                  }
-                >
-                  {tr("auth.reset.backToSignIn", {
-                    default: "Back to sign in",
-                  })}
-                </Button>
-              </>
-            ) : state.step === "email" ? (
-              <form {...emailForm.props} className="flex flex-col gap-4">
-                <h2 className="text-center text-lg font-semibold">
-                  {tr("auth.reset.title", { default: "Reset password" })}
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {tr("auth.reset.emailHint", {
-                    default: "Enter your email address to reset your password",
-                  })}
-                </p>
-                <Control
-                  label={tr("auth.reset.email", { default: "Email" })}
-                  input={emailForm.input.email}
-                  icon={iconFor("email")}
-                />
-                {captchaSiteKey && (
-                  <TurnstileWidget
-                    ref={captchaRef}
-                    siteKey={captchaSiteKey}
-                    onToken={setCaptchaToken}
-                    className="flex justify-center"
-                  />
-                )}
-                <Button
-                  type="submit"
-                  loading={emailSubmitting}
-                  disabled={!!captchaSiteKey && !captchaToken}
-                >
-                  {tr("auth.reset.sendCode", {
-                    default: "Send verification code",
-                  })}
-                </Button>
-              </form>
-            ) : state.step === "code" ? (
-              <div className="flex flex-col gap-4">
-                <h2 className="text-center text-lg font-semibold">
-                  {tr("auth.reset.title", { default: "Reset password" })}
-                </h2>
-                <Alert>
-                  <Info className="size-4" />
-                  <AlertDescription>
-                    {tr("auth.reset.codeSent", {
-                      default: "We've sent a verification code to your email.",
-                    })}
-                  </AlertDescription>
-                </Alert>
-                <div className="flex flex-col items-center gap-2">
-                  <Label htmlFor="code">
-                    {tr("auth.reset.codeLabel", {
-                      default: "Enter the 6-digit code",
-                    })}
-                  </Label>
-                  <InputOTP
-                    id="code"
-                    maxLength={6}
-
-                    value={code}
-                    onChange={(value) => setCode(value.replace(/\D/g, ""))}
+              )}
+              {!allowed ? (
+                <>
+                  <Alert>
+                    <AlertCircle className="size-4" />
+                    <AlertDescription>
+                      {tr("auth.reset.disabled", {
+                        default:
+                          "Password reset is not available. Please contact your administrator.",
+                      })}
+                    </AlertDescription>
+                  </Alert>
+                  <Button
+                    nativeButton={false}
+                    render={
+                      <a
+                        href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
+                      />
+                    }
                   >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-                <Button onClick={handleCodeSubmit} disabled={code.length !== 6}>
-                  {tr("auth.reset.continue", { default: "Continue" })}
-                </Button>
-                {/* Resend calls the same gated endpoint as the first send,
+                    {tr("auth.reset.backToSignIn", {
+                      default: "Back to sign in",
+                    })}
+                  </Button>
+                </>
+              ) : state.step === "email" ? (
+                <form {...emailForm.props} className="flex flex-col gap-4">
+                  <h2 className="text-center text-lg font-semibold">
+                    {tr("auth.reset.title", { default: "Reset password" })}
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    {tr("auth.reset.emailHint", {
+                      default:
+                        "Enter your email address to reset your password",
+                    })}
+                  </p>
+                  <Control
+                    label={tr("auth.reset.email", { default: "Email" })}
+                    input={emailForm.input.email}
+                    icon={iconFor("email")}
+                  />
+                  {captchaSiteKey && (
+                    <TurnstileWidget
+                      ref={captchaRef}
+                      siteKey={captchaSiteKey}
+                      onToken={setCaptchaToken}
+                      className="flex justify-center"
+                    />
+                  )}
+                  <Button
+                    type="submit"
+                    loading={emailSubmitting}
+                    disabled={!!captchaSiteKey && !captchaToken}
+                  >
+                    {tr("auth.reset.sendCode", {
+                      default: "Send verification code",
+                    })}
+                  </Button>
+                </form>
+              ) : state.step === "code" ? (
+                <div className="flex flex-col gap-4">
+                  <h2 className="text-center text-lg font-semibold">
+                    {tr("auth.reset.title", { default: "Reset password" })}
+                  </h2>
+                  <Alert>
+                    <Info className="size-4" />
+                    <AlertDescription>
+                      {tr("auth.reset.codeSent", {
+                        default:
+                          "We've sent a verification code to your email.",
+                      })}
+                    </AlertDescription>
+                  </Alert>
+                  <div className="flex flex-col items-center gap-2">
+                    <Label htmlFor="code">
+                      {tr("auth.reset.codeLabel", {
+                        default: "Enter the 6-digit code",
+                      })}
+                    </Label>
+                    <InputOTP
+                      id="code"
+                      maxLength={6}
+
+                      value={code}
+                      onChange={(value) => setCode(value.replace(/\D/g, ""))}
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <Button
+                    onClick={handleCodeSubmit}
+                    disabled={code.length !== 6}
+                  >
+                    {tr("auth.reset.continue", { default: "Continue" })}
+                  </Button>
+                  {/* Resend calls the same gated endpoint as the first send,
                     and the token that got us here is already spent — so this
                     step needs its own challenge rather than reusing one. */}
-                {captchaSiteKey && (
-                  <TurnstileWidget
-                    ref={captchaRef}
-                    siteKey={captchaSiteKey}
-                    onToken={setCaptchaToken}
-                    className="flex justify-center"
-                  />
-                )}
-                <Button
-                  variant="minimal"
-                  onClick={handleResend}
-                  loading={submitting}
-                  disabled={!!captchaSiteKey && !captchaToken}
-                >
-                  {tr("auth.reset.resend", { default: "Resend code" })}
-                </Button>
-              </div>
-            ) : state.step === "password" ? (
-              <form {...passwordForm.props} className="flex flex-col gap-4">
-                {/* Hidden identifier so password managers know which saved
+                  {captchaSiteKey && (
+                    <TurnstileWidget
+                      ref={captchaRef}
+                      siteKey={captchaSiteKey}
+                      onToken={setCaptchaToken}
+                      className="flex justify-center"
+                    />
+                  )}
+                  <Button
+                    variant="minimal"
+                    onClick={handleResend}
+                    loading={submitting}
+                    disabled={!!captchaSiteKey && !captchaToken}
+                  >
+                    {tr("auth.reset.resend", { default: "Resend code" })}
+                  </Button>
+                </div>
+              ) : state.step === "password" ? (
+                <form {...passwordForm.props} className="flex flex-col gap-4">
+                  {/* Hidden identifier so password managers know which saved
                     credential the new password belongs to. Without it,
                     Safari/Chrome won't offer to update the existing entry. */}
-                {state.email && (
-                  <input
-                    type="text"
-                    name="username"
-                    autoComplete="username"
-                    value={state.email}
-                    readOnly
-                    hidden
-                  />
-                )}
-                <h2 className="text-center text-lg font-semibold">
-                  {tr("auth.reset.title", { default: "Reset password" })}
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {tr("auth.reset.newPasswordHint", {
-                    default: "Create your new password",
-                  })}
-                </p>
-                <Control
-                  label={tr("auth.reset.newPassword", {
-                    default: "New password",
-                  })}
-                  input={passwordForm.input.password}
-                  password
-                  autoComplete="new-password"
-                />
-                <Control
-                  label={tr("auth.reset.confirmPassword", {
-                    default: "Confirm password",
-                  })}
-                  input={passwordForm.input.confirmPassword}
-                  password
-                  autoComplete="new-password"
-                />
-                <Button type="submit" loading={passwordSubmitting}>
-                  {tr("auth.reset.setPassword", {
-                    default: "Set new password",
-                  })}
-                </Button>
-              </form>
-            ) : (
-              <>
-                <Alert>
-                  <CheckCircle2 className="size-4" />
-                  <AlertDescription>
-                    {tr("auth.reset.success", {
-                      default: "Your password has been reset successfully.",
-                    })}
-                  </AlertDescription>
-                </Alert>
-                <Button
-                  render={
-                    <a
-                      href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
+                  {state.email && (
+                    <input
+                      type="text"
+                      name="username"
+                      autoComplete="username"
+                      value={state.email}
+                      readOnly
+                      hidden
                     />
-                  }
-                >
-                  {tr("auth.reset.backToSignIn", {
-                    default: "Back to sign in",
-                  })}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                  )}
+                  <h2 className="text-center text-lg font-semibold">
+                    {tr("auth.reset.title", { default: "Reset password" })}
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    {tr("auth.reset.newPasswordHint", {
+                      default: "Create your new password",
+                    })}
+                  </p>
+                  <Control
+                    label={tr("auth.reset.newPassword", {
+                      default: "New password",
+                    })}
+                    input={passwordForm.input.password}
+                    password
+                    autoComplete="new-password"
+                  />
+                  <Control
+                    label={tr("auth.reset.confirmPassword", {
+                      default: "Confirm password",
+                    })}
+                    input={passwordForm.input.confirmPassword}
+                    password
+                    autoComplete="new-password"
+                  />
+                  <Button type="submit" loading={passwordSubmitting}>
+                    {tr("auth.reset.setPassword", {
+                      default: "Set new password",
+                    })}
+                  </Button>
+                </form>
+              ) : (
+                <>
+                  <Alert>
+                    <CheckCircle2 className="size-4" />
+                    <AlertDescription>
+                      {tr("auth.reset.success", {
+                        default: "Your password has been reset successfully.",
+                      })}
+                    </AlertDescription>
+                  </Alert>
+                  <Button
+                    nativeButton={false}
+                    render={
+                      <a
+                        href={`${props.loginPath ?? "/auth/login"}${realmQuery}`}
+                      />
+                    }
+                  >
+                    {tr("auth.reset.backToSignIn", {
+                      default: "Back to sign in",
+                    })}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </AuthCardFrame>
         {props.cancelPath !== false && (
           <Button
             variant="minimal"

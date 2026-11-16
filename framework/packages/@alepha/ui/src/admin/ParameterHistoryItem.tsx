@@ -29,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../core/DropdownMenu.tsx";
+import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
 import { cn } from "../core/utils.ts";
 import { ParameterDiffDialog } from "./ParameterDiffDialog.tsx";
 import { ParameterJsonDialog } from "./ParameterJsonDialog.tsx";
@@ -177,7 +178,10 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
                 {v.creatorId ? (
                   <button
                     type="button"
-                    className="text-primary truncate hover:underline"
+                    className={cn(
+                      textLinkUnderlineClassName,
+                      "hover:text-foreground truncate",
+                    )}
                     onClick={() => router.push(`/admin/users/${v.creatorId}`)}
                   >
                     {v.creator?.username ??

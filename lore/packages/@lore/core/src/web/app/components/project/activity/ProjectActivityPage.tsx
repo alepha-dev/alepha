@@ -1,4 +1,4 @@
-import { TimeAgo, Badge } from "@alepha/ui";
+import { TimeAgo, Badge, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import {
   DataTable,
   type DataTableFilterFields,
@@ -367,7 +367,10 @@ const ProjectActivityPage = ({
                   // feed says happened.
                   title={title}
                   onClick={() => router.push(href)}
-                  className="hover:text-primary inline-flex max-w-[420px] items-center gap-1.5 truncate text-left text-sm underline-offset-2 hover:underline"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground inline-flex max-w-[420px] items-center gap-1.5 truncate text-left text-sm",
+                  )}
                 >
                   <span className="text-muted-foreground shrink-0 text-xs">
                     {label}

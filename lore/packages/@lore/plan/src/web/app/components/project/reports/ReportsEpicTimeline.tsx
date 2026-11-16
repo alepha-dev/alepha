@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import type { ReportsPlanning } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
@@ -38,7 +39,10 @@ const ReportsEpicTimeline = (props: ReportsEpicTimelineProps) => {
                   epicNumber: String(epic.number),
                 },
               })}
-              className="truncate hover:underline"
+              className={cn(
+                textLinkUnderlineClassName,
+                "hover:text-foreground truncate",
+              )}
             >
               {epic.title}
             </a>

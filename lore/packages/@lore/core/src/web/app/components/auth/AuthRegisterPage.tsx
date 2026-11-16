@@ -7,7 +7,7 @@ import { useEffect } from "react";
 import type { InvitationTokenPreview } from "../../../../api/schemas/invitationTokenPreviewSchema.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
-import LoreLogo from "../shared/LoreLogo.tsx";
+import AuthBrand from "./AuthBrand.tsx";
 import AuthRegisterInvitationNotice from "./AuthRegisterInvitationNotice.tsx";
 import { resolveRegisterIntent } from "./registerIntents.ts";
 
@@ -126,7 +126,7 @@ const AuthRegisterPage = (props: AuthRegisterPageProps) => {
       <AuthRegister
         realmConfig={props.realmConfig}
         message={message}
-        logo={<LoreLogo size={64} className="animate-floating size-16" />}
+        logo={<AuthBrand />}
         // The realm may well be closed; the token is what says this one
         // address may pass. The server checks it again through
         // `isPreAuthorized`, so rendering the form is presentation only.

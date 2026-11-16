@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import {
   LoreViewer,
   mentionPattern,
@@ -112,7 +113,7 @@ const renderSegments = (props: FeedbackThreadBodyProps): ReactNode[] => {
           <Link
             key={key++}
             href={`/${props.projectSlug}/settings/members`}
-            className="text-primary hover:underline"
+            className={cn(textLinkUnderlineClassName, "hover:text-foreground")}
           >
             @{handle}
           </Link>

@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui";
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 
 export interface CommitLinkProps {
   /**
@@ -45,7 +45,8 @@ const CommitLink = (props: CommitLinkProps) => {
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "font-mono underline-offset-2 hover:underline",
+        textLinkUnderlineClassName,
+        "hover:text-foreground font-mono",
         props.className,
       )}
       onClick={(event) => event.stopPropagation()}

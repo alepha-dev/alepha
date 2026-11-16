@@ -41,6 +41,11 @@ export interface HomeRecentProjectRowProps {
  * two columns; on a phone the Open buttons drop under the name, which would
  * otherwise be truncated to a letter or two.
  *
+ * The rule under a row and its hover are horizontal gradients (clear at
+ * the ends, full from 25% to 75%), drawn by the row's own `::after` and
+ * `::before`; the hover fades in by opacity, since a gradient cannot
+ * transition, and `isolate` keeps it above the page and under the content.
+ *
  * From `md` the row has a fixed height, tall enough for the momentum strip:
  * the strip arrives with the board, after the list, and a row sized by its
  * content grew by twenty pixels under the reader when it did.
@@ -53,7 +58,7 @@ export const HomeRecentProjectRow = (props: HomeRecentProjectRowProps) => {
   return (
     <li
       data-testid="home-project-row"
-      className="hover:bg-hover relative grid grid-cols-1 items-center gap-x-4 gap-y-1.5 border-b px-3 py-1.5 transition-colors last:border-b-0 sm:grid-cols-[1fr_auto] md:h-16 md:grid-cols-[1fr_auto_1fr] md:py-0"
+      className="relative isolate grid grid-cols-1 items-center gap-x-4 gap-y-1.5 px-3 py-1.5 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[linear-gradient(to_right,transparent,var(--hover)_25%,var(--hover)_75%,transparent)] before:opacity-0 before:transition-opacity after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[linear-gradient(to_right,transparent,var(--border)_25%,var(--border)_75%,transparent)] last:after:hidden hover:before:opacity-100 sm:grid-cols-[1fr_auto] md:h-16 md:grid-cols-[1fr_auto_1fr] md:py-0"
     >
       <div className="flex min-w-0 items-center gap-3">
         <ProjectIcon

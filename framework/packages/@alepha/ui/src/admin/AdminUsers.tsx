@@ -26,9 +26,11 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { UserAvatar } from "../core/UserAvatar.tsx";
 import { useToast } from "../core/useToast.tsx";
+import { cn } from "../core/utils.ts";
 import { DataTable } from "../table/DataTable.tsx";
 import type {
   DataTableFilterFields,
@@ -489,7 +491,10 @@ export const AdminUsers = (props: AdminUsersProps) => {
                     <Link
                       href={detailHref(u)}
                       onClick={(event) => event.stopPropagation()}
-                      className="hover:text-primary inline-flex max-w-full items-center gap-1.5 truncate font-medium underline-offset-2 hover:underline"
+                      className={cn(
+                        textLinkUnderlineClassName,
+                        "hover:text-foreground inline-flex max-w-full items-center gap-1.5 truncate font-medium",
+                      )}
                     >
                       <span className="truncate">{u.email ?? "—"}</span>
                       {u.emailVerified && u.email && (
@@ -512,7 +517,10 @@ export const AdminUsers = (props: AdminUsersProps) => {
                 <Link
                   href={detailHref(u)}
                   onClick={(event) => event.stopPropagation()}
-                  className="hover:text-primary truncate underline-offset-2 hover:underline"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground truncate",
+                  )}
                 >
                   @{u.username}
                 </Link>

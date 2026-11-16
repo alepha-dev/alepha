@@ -62,9 +62,11 @@ const HEIGHT = 32;
  *
  * ## One colour, from the theme
  *
- * The bars are `--sidebar-primary`, the colour of the sidebar's active-item
- * bar: every theme gives it its own hue in both modes, so light, dark and
- * each theme need nothing of their own here. The bars read it through
+ * The bars are `--home-momentum` (`apps/lore/src/main.css`): the theme's
+ * `--sidebar-primary`, the colour of the sidebar's active-item bar, except
+ * in the default theme's dark mode, where that is a saturated blue while
+ * its light mode is a neutral near-black, so the bars take a neutral grey
+ * there instead. The bars read it through
  * `currentColor`, which is also how an inactive row turns the whole chart
  * grey in one class. A rise wears the same colour; a fall and "flat" stay
  * muted, since a quieter week is not a fault.
@@ -118,7 +120,9 @@ export const HomeMomentum = (props: HomeMomentumProps) => {
       <div
         className={cn(
           "flex items-end",
-          props.inactive ? "text-muted-foreground/50" : "text-sidebar-primary",
+          props.inactive
+            ? "text-muted-foreground/50"
+            : "text-[var(--home-momentum)]",
         )}
         style={{ height: HEIGHT }}
         role="img"
@@ -166,7 +170,7 @@ export const HomeMomentum = (props: HomeMomentumProps) => {
                   className={cn(
                     "tabular-nums",
                     delta > 0 && !props.inactive
-                      ? "text-sidebar-primary"
+                      ? "text-[var(--home-momentum)]"
                       : "text-muted-foreground",
                   )}
                   title={tr("home.table.momentum.delta.hint")}

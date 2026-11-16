@@ -1,4 +1,4 @@
-import { Button } from "@alepha/ui";
+import { Button, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Lock, Trash2 } from "lucide-react";
@@ -62,7 +62,7 @@ const FolioLockedPanel = (props: FolioLockedPanelProps): ReactElement => {
         <button
           type="button"
           onClick={() => props.onDelete()}
-          className="text-danger-text hover:underline"
+          className={cn(textLinkUnderlineClassName, "text-danger-text")}
         >
           <Trash2 className="mr-0.5 inline size-3" />
           {tr("folios.protected.delete-unrecoverable")}

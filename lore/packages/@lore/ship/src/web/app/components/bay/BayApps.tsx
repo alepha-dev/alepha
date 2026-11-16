@@ -1,4 +1,4 @@
-import { Badge, formatBytes } from "@alepha/ui";
+import { Badge, formatBytes, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
 import type { I18n } from "@lore/core/web";
@@ -83,7 +83,10 @@ const BayApps = () => {
                     // the HOME project's `projectSlug`: a copy on the machine
                     // may belong to a project the host is lent to.
                     <a
-                      className="truncate font-medium underline-offset-4 hover:underline"
+                      className={cn(
+                        textLinkUnderlineClassName,
+                        "hover:text-foreground truncate font-medium",
+                      )}
                       href={
                         row.project.slug
                           ? router.path("app", {

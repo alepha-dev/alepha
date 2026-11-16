@@ -436,7 +436,9 @@ test.describe("Home (signed out)", () => {
     // landing on a bare register form would mean the intent was dropped.
     await expect(page).toHaveURL(/intent=createProject/);
     await expect(page).toHaveURL(/redirect=/);
-    await expect(page.getByText(/before creating a project/i)).toBeVisible();
+    await expect(
+      page.getByText(/create an account to continue/i),
+    ).toBeVisible();
   });
 
   test("'Already registered? Sign in' reaches the login page", async ({

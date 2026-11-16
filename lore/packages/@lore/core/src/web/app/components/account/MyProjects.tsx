@@ -1,4 +1,10 @@
-import { Badge, Skeleton, TimeAgo } from "@alepha/ui";
+import {
+  Badge,
+  Skeleton,
+  TimeAgo,
+  cn,
+  textLinkUnderlineClassName,
+} from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
@@ -189,7 +195,10 @@ const MyProjects = () => {
                   <Link
                     href={projectPath(project)}
                     data-testid="account-project-row"
-                    className="hover:underline"
+                    className={cn(
+                      textLinkUnderlineClassName,
+                      "hover:text-foreground",
+                    )}
                     onClick={(event) => event.stopPropagation()}
                   >
                     {project.title}

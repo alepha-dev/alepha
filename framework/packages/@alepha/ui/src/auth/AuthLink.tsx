@@ -1,24 +1,13 @@
 import type { ComponentProps } from "react";
 
-import { cn } from "../core/utils.ts";
+import { TextLink } from "../core/TextLink.tsx";
 
 export interface AuthLinkProps extends ComponentProps<"a"> {}
 
 /**
- * A text link of the auth screens ("Forgot password?", "Sign up").
- *
- * Thin underline at rest, full underline on hover, so every such link
- * reads the same whatever sentence it sits in.
+ * A text link of the auth screens ("Forgot password?", "Don't have an
+ * account? Sign up"): the shared `TextLink`, so these read like every other
+ * text link of an app. The whole sentence is the link, never its last two
+ * words.
  */
-export const AuthLink = (props: AuthLinkProps) => {
-  const { className, ...rest } = props;
-  return (
-    <a
-      className={cn(
-        "text-foreground decoration-foreground/40 hover:decoration-foreground underline decoration-[0.5px] underline-offset-4 transition-colors hover:decoration-1",
-        className,
-      )}
-      {...rest}
-    />
-  );
-};
+export const AuthLink = (props: AuthLinkProps) => <TextLink {...props} />;

@@ -1,10 +1,9 @@
 import { useStore } from "alepha/react";
-import { useI18n } from "alepha/react/i18n";
 import { Suspense } from "react";
 
 import type { HomeBoardResource } from "../../../../api/schemas/homeBoardSchema.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
-import type { I18n } from "../../services/I18n.ts";
+import LoreLogoAnimated from "../shared/LoreLogoAnimated.tsx";
 import { HomeBoardProjects } from "./HomeBoardProjects.tsx";
 import HomeHeader from "./HomeHeader.tsx";
 import { HomeRecentProjects } from "./HomeRecentProjects.tsx";
@@ -29,7 +28,6 @@ export interface HomeBoardProps {
  * the rows paint and the search box works while it is on its way.
  */
 const HomeBoard = (props: HomeBoardProps) => {
-  const { tr } = useI18n<I18n, "en">();
   const [overview] = useStore(userProjectsAtom);
 
   // Most recently active first, from the overview's `lastActivityAt`.
@@ -63,7 +61,7 @@ const HomeBoard = (props: HomeBoardProps) => {
       />
       <HomeHeader />
       {/*
-        One centred column between the rails: a greeting, the search box with
+        One centred column between the rails: the companion, the search box with
         its dropdown, and the recent projects. The search box's rule runs rail to rail, which
         is why main is flush to `mx-4` and the column carries its own width.
 
@@ -72,10 +70,15 @@ const HomeBoard = (props: HomeBoardProps) => {
         `scope_id`.
       */}
       <main className="lore-page-dots bg-background mx-4 min-h-0 flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-8 pt-14 pb-16 sm:pt-20">
-          <h1 className="px-4 text-center text-3xl font-semibold tracking-tight">
-            {tr("home.greeting")}
-          </h1>
+        <div className="flex flex-col gap-4 pt-4 pb-16 sm:pt-6">
+          {/*
+            The companion in place of a greeting: the same living sprite as
+            the welcome page, a size smaller, looking at the pointer.
+          */}
+          <LoreLogoAnimated
+            follow
+            className="mx-auto -mb-5 size-24 shrink-0 sm:-mb-8 sm:size-36"
+          />
           <HomeSearch projects={projects} />
           <div className="mx-auto w-full max-w-5xl px-4 sm:px-8">
             <Suspense

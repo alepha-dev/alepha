@@ -1,4 +1,4 @@
-import { cn } from "@alepha/ui";
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import type { CSSProperties, DragEvent } from "react";
@@ -292,7 +292,10 @@ const DashboardCard = (props: DashboardCardProps) => {
               type="button"
               onClick={open}
               data-testid="dashboard-card-open"
-              className="text-primary-text mt-auto text-xs hover:underline"
+              className={cn(
+                textLinkUnderlineClassName,
+                "hover:text-foreground mt-auto text-xs",
+              )}
             >
               {tr("dashboard.card.seeAll")}
             </button>

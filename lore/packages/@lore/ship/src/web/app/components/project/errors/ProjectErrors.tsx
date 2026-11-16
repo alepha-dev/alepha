@@ -7,6 +7,8 @@ import {
   DialogTitle,
   useDialog,
   useToast,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import {
   type BulkActionContext,
@@ -417,7 +419,10 @@ const ProjectErrors = () => {
                       env: parts.env,
                     },
                   })}
-                  className="block truncate hover:underline"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground block truncate",
+                  )}
                 >
                   {name}
                 </Link>

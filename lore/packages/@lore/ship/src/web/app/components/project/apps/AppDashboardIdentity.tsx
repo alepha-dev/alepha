@@ -1,4 +1,12 @@
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  cn,
+  textLinkUnderlineClassName,
+} from "@alepha/ui";
 import {
   capabilityOption,
   currentProjectAtom,
@@ -82,7 +90,10 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
-                className="hover:text-foreground inline-flex w-fit items-center gap-1 hover:underline"
+                className={cn(
+                  textLinkUnderlineClassName,
+                  "hover:text-foreground inline-flex w-fit items-center gap-1",
+                )}
               >
                 {appUrlLabel(url)}
                 <ExternalLink

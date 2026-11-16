@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { MarkdownView } from "@alepha/ui/markdown";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -44,7 +45,10 @@ const DashboardTileNote = (props: DashboardTileNoteProps) => {
               }),
             )
           }
-          className="text-primary-text self-start text-[12px] hover:underline"
+          className={cn(
+            textLinkUnderlineClassName,
+            "hover:text-foreground self-start text-[12px]",
+          )}
         >
           {tr("dashboard.note.read-more")}
         </button>

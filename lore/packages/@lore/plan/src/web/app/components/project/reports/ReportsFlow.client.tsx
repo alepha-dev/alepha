@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import {
   type ChartConfig,
   ChartContainer,
@@ -326,7 +327,10 @@ const ReportsFlow = (props: ReportsFlowProps) => {
               <li key={quest.shortId} className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="min-w-0 flex-1 truncate text-left hover:underline"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground min-w-0 flex-1 truncate text-left",
+                  )}
                   onClick={() => openQuest(quest.shortId)}
                 >
                   #{quest.shortId} {quest.title}
@@ -404,7 +408,10 @@ const ReportsFlow = (props: ReportsFlowProps) => {
               <li key={row.shortId} className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="min-w-0 flex-1 truncate text-left hover:underline"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground min-w-0 flex-1 truncate text-left",
+                  )}
                   onClick={() => openQuest(row.shortId)}
                 >
                   #{row.shortId} {row.title}

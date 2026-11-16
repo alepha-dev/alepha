@@ -24,6 +24,7 @@ import { Button } from "../core/Button.tsx";
 import { Card, CardContent } from "../core/Card.tsx";
 import { Separator } from "../core/Separator.tsx";
 import { Control } from "../form/Control.tsx";
+import { AuthCardFrame } from "./AuthCardFrame.tsx";
 import { AuthLink } from "./AuthLink.tsx";
 import { AuthMfaStep } from "./AuthMfaStep.tsx";
 import { AuthPasskeyAutofill } from "./AuthPasskeyAutofill.tsx";
@@ -294,7 +295,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
             className="bg-muted size-16 rounded-xl border object-cover shadow-sm"
           />
         ) : null)}
-      <div className="w-full rounded-[calc(var(--radius-xl)+2px)] bg-neutral-600 px-px pt-1 pb-0.5 shadow-sm dark:bg-neutral-700">
+      <AuthCardFrame>
         <Card className="w-full">
           <CardContent className="flex flex-col gap-4">
             {(settings.displayName || settings.description) && (
@@ -430,20 +431,19 @@ export const AuthLogin = (props: AuthLoginProps) => {
             )}
 
             {!challenge && settings.registrationAllowed && (
-              <p className="text-muted-foreground text-center text-sm">
+              <AuthLink
+                href={`${props.registerPath ?? "/auth/register"}${realmQuery}`}
+                className="self-center text-center text-sm"
+              >
                 {tr("auth.login.noAccount", {
                   default: "Don't have an account?",
                 })}{" "}
-                <AuthLink
-                  href={`${props.registerPath ?? "/auth/register"}${realmQuery}`}
-                >
-                  {tr("auth.login.signUp", { default: "Sign up" })}
-                </AuthLink>
-              </p>
+                {tr("auth.login.signUp", { default: "Sign up" })}
+              </AuthLink>
             )}
           </CardContent>
         </Card>
-      </div>
+      </AuthCardFrame>
       {props.cancelPath !== false && (
         <Button
           variant="minimal"

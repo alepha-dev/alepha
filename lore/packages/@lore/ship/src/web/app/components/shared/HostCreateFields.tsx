@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { loreDocsUrl, type I18n, OutboundLink } from "@lore/core/web";
 import { useForm } from "alepha/react/form";
@@ -208,7 +209,10 @@ const HostCreateFields = (props: HostCreateFieldsProps) => {
                     links stay. */}
                 <OutboundLink
                   href={cloudflareTokenTemplateUrl()}
-                  className="underline underline-offset-4"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground",
+                  )}
                   data-testid="host-create-mint"
                 >
                   {tr("hosts.cloudflare.mint")}
@@ -221,7 +225,10 @@ const HostCreateFields = (props: HostCreateFieldsProps) => {
                   // root-relative it resolved against Lore's own origin and
                   // 404'd (feedback #P2142).
                   href={loreDocsUrl("ship-cloudflare-token")}
-                  className="underline underline-offset-4"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground",
+                  )}
                   data-testid="host-create-guide"
                 >
                   {tr("hosts.cloudflare.guide")}

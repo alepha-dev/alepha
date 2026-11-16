@@ -7,6 +7,7 @@ import { lazy, type ReactNode, Suspense } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
 import { DiagramErrorBoundary } from "./diagram/DiagramErrorBoundary.tsx";
 import { rehypeHighlight } from "./rehypeHighlight.ts";
 import { remarkSpoiler } from "./remarkSpoiler.ts";
@@ -175,7 +176,7 @@ export const MarkdownView = (props: MarkdownViewProps) => {
             ) : (
               <a
                 href={href}
-                className="text-primary decoration-primary/50 hover:decoration-primary underline underline-offset-4"
+                className={`hover:text-foreground font-medium ${textLinkUnderlineClassName}`}
               >
                 {children}
               </a>

@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Archive } from "lucide-react";
@@ -44,7 +45,10 @@ const ProjectDashboardArchived = (props: ProjectDashboardArchivedProps) => {
           href={router.path(props.destination, {
             params: { projectSlug: props.projectSlug },
           })}
-          className="text-primary-text text-[13.5px] font-medium hover:underline"
+          className={cn(
+            textLinkUnderlineClassName,
+            "hover:text-foreground text-[13.5px] font-medium",
+          )}
         >
           {tr(
             props.destination === "projectFolios"

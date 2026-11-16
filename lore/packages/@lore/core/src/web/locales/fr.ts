@@ -293,7 +293,6 @@ export default {
   "home.registration-closed":
     "Les inscriptions se font uniquement sur invitation pour le moment. Si vous avez été invité, ouvrez le lien reçu par e-mail.",
   "home.wordmark": "Alepha Lore",
-  "home.greeting": "Quelle est la prochaine quête ?",
   "home.search.placeholder": "Rechercher des quêtes, des folios et des projets",
   "home.search.searching": "Recherche...",
   "home.search.empty": "Aucun résultat",
@@ -314,8 +313,7 @@ export default {
   "home.table.open.epics": "$1 épopées en brouillon",
   "home.table.open.errors": "$1 fléaux ouverts",
   "home.table.open.feedback": "$1 retours en attente",
-  "auth.register.intent.createProject":
-    "Avant de créer un projet, créez un compte.",
+  "auth.register.intent.createProject": "Créez un compte pour continuer.",
   "auth.register.intent.invitation":
     "Vous avez été invité à rejoindre $1. Créez votre compte pour y accéder.",
   "auth.invitation.accountExists":

@@ -27,8 +27,10 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "../core/HoverCard.tsx";
+import { textLinkUnderlineClassName } from "../core/TextLink.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { formatBytes } from "../core/utils.ts";
+import { cn } from "../core/utils.ts";
 import { DataTable } from "../table/DataTable.tsx";
 import type {
   DataTableFilterFields,
@@ -253,7 +255,10 @@ export const AdminFiles = () => {
                 <button
                   type="button"
                   onClick={() => downloadFile(f)}
-                  className="hover:text-primary truncate text-start font-medium underline-offset-2 hover:underline"
+                  className={cn(
+                    textLinkUnderlineClassName,
+                    "hover:text-foreground truncate text-start font-medium",
+                  )}
                 >
                   {f.name}
                 </button>

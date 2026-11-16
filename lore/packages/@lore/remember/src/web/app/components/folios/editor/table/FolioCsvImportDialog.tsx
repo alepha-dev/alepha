@@ -7,6 +7,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  cn,
+  textLinkUnderlineClassName,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { currentProjectAtom, type I18n, loreDocsUrl } from "@lore/core/web";
@@ -234,7 +236,10 @@ const FolioCsvImportDialog = (
               href={loreDocsUrl("remember-tables")}
               target="_blank"
               rel="noreferrer"
-              className="text-primary-text hover:underline"
+              className={cn(
+                textLinkUnderlineClassName,
+                "hover:text-foreground",
+              )}
             >
               {tr("folios.table.docs")}
             </a>

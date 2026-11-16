@@ -1,4 +1,4 @@
-import { Button } from "@alepha/ui";
+import { Button, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Gauge, Plus } from "lucide-react";
 
@@ -89,7 +89,10 @@ const ProjectDashboardEmpty = (props: ProjectDashboardEmptyProps) => {
         // one link that fails exactly when the reader is stuck.
         href={loreDocsUrl("project-dashboard")}
         data-testid="dashboard-empty-docs"
-        className="text-primary mt-1 text-[12.5px] hover:underline"
+        className={cn(
+          textLinkUnderlineClassName,
+          "hover:text-foreground mt-1 text-[12.5px]",
+        )}
       >
         {tr("project.dashboard.empty.docs")}
       </OutboundLink>

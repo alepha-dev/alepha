@@ -1,3 +1,4 @@
+import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { loreDocsUrl, type I18n, OutboundLink } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
@@ -97,7 +98,10 @@ const ArtifactsEmpty = (props: ArtifactsEmptyProps) => {
           // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative it
           // resolves against Lore's own origin and 404s (feedback #P2142).
           href={loreDocsUrl("ship-artifacts")}
-          className="text-sm underline underline-offset-4"
+          className={cn(
+            textLinkUnderlineClassName,
+            "hover:text-foreground text-sm",
+          )}
           data-testid="artifacts-empty-docs"
         >
           {tr("artifacts.empty.docs")}

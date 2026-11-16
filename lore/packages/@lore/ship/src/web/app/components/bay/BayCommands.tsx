@@ -1,4 +1,4 @@
-import { Badge, useToast } from "@alepha/ui";
+import { Badge, useToast, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import type { I18n } from "@lore/core/web";
@@ -193,7 +193,10 @@ const BayCommands = (props: BayCommandsProps) => {
                   command.resultFileId &&
                   openHost?.can.includes("host:update") && (
                     <a
-                      className="text-xs underline-offset-4 hover:underline"
+                      className={cn(
+                        textLinkUnderlineClassName,
+                        "hover:text-foreground text-xs",
+                      )}
                       href={`/api/hosts/${hostId}/commands/${command.id}/result`}
                       target="_blank"
                       rel="noreferrer"

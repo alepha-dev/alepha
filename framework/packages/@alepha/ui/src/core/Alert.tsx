@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "./utils.ts";
 
 const alertVariants = cva(
-  "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-start text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pe-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
+  "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-start text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pe-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:translate-y-0.5 *:[svg]:text-current has-data-[slot=alert-title]:*:[svg]:row-span-2 *:[svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -42,7 +42,7 @@ const AlertTitle = (props: AlertTitleProps) => {
     <div
       data-slot="alert-title"
       className={cn(
-        "[&_a]:hover:text-foreground font-medium group-has-[>svg]/alert:col-start-2 [&_a]:underline [&_a]:underline-offset-3",
+        "[&_a:hover]:text-foreground font-medium group-has-[>svg]/alert:col-start-2 [&_a]:underline [&_a]:decoration-current/40 [&_a]:decoration-[0.5px] [&_a]:underline-offset-4 [&_a]:transition-colors [&_a:hover]:decoration-current [&_a:hover]:decoration-1",
         className,
       )}
       {...rest}
@@ -58,7 +58,7 @@ const AlertDescription = (props: AlertDescriptionProps) => {
     <div
       data-slot="alert-description"
       className={cn(
-        "text-muted-foreground [&_a]:hover:text-foreground text-sm text-balance md:text-pretty [&_a]:underline [&_a]:underline-offset-3 [&_p:not(:last-child)]:mb-4",
+        "text-muted-foreground [&_a:hover]:text-foreground text-sm text-balance md:text-pretty [&_a]:underline [&_a]:decoration-current/40 [&_a]:decoration-[0.5px] [&_a]:underline-offset-4 [&_a]:transition-colors [&_a:hover]:decoration-current [&_a:hover]:decoration-1 [&_p:not(:last-child)]:mb-4",
         className,
       )}
       {...rest}

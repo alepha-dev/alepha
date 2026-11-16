@@ -1,4 +1,4 @@
-import { Badge, Progress } from "@alepha/ui";
+import { Badge, Progress, cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { DetailAside, type DetailAsideRow } from "@alepha/ui/shell";
 import { type I18n, formatReference } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
@@ -99,7 +99,10 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
                     epicNumber: String(props.epic.dependsOnNumber),
                   },
                 })}
-                className="text-sm underline-offset-4 hover:underline"
+                className={cn(
+                  textLinkUnderlineClassName,
+                  "hover:text-foreground text-sm",
+                )}
               >
                 {tr(
                   blockedBy !== undefined
