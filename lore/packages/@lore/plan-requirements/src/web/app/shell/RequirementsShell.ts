@@ -12,6 +12,7 @@ import { ClipboardList, UsersRound } from "lucide-react";
 import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
 import { REQUIREMENTS_ROUTES } from "../components/layout/requirementsTabs.ts";
 import { usePersonaReferences } from "../components/personas/usePersonaReferences.ts";
+import { useUseCaseReferences } from "../components/usecases/useUseCaseReferences.ts";
 
 /**
  * Requirements' part of the project shell (#E153), registered on core's
@@ -112,6 +113,24 @@ export class RequirementsShell {
         () => import("../components/personas/PersonaReferencePreview.tsx"),
       ),
       useReferences: usePersonaReferences,
+    });
+    // `[[#U7]]`: a use case.
+    this.references.register({
+      kind: "usecase",
+      order: 61,
+      brokenKey: "folios.wikilink.broken.useCaseNotFound",
+      href: (projectSlug, ref) =>
+        `/${projectSlug}/requirements/use-cases/${ref.number}`,
+      match: (path, projectSlug) =>
+        RequirementsShell.matchPage(
+          path,
+          projectSlug,
+          /^\/([^/]+)\/requirements\/use-cases\/(\d+)(?:[#?]|$)/,
+        ),
+      preview: lazyPart(
+        () => import("../components/usecases/UseCaseReferencePreview.tsx"),
+      ),
+      useReferences: useUseCaseReferences,
     });
   }
 }

@@ -109,6 +109,8 @@ export class LorePermissions {
     // Plan's Requirements (#E153): every member writes personas (answer 75).
     "persona:read",
     "persona:write",
+    "usecase:read",
+    "usecase:write",
   ];
 
   /**
@@ -143,6 +145,8 @@ export class LorePermissions {
     "automation:read",
     "automation:write",
     "automation:manage",
+    // Validating a use case (#E153): the owner's and the Admin's, grantable.
+    "usecase:validate",
   ];
 
   /**
@@ -569,5 +573,27 @@ export class LorePermissions {
     group: "persona",
     name: "write",
     label: "permission.persona.write",
+  });
+
+  usecaseRead = $permission({
+    group: "usecase",
+    name: "read",
+    label: "permission.usecase.read",
+    groupLabel: "permission.group.usecase",
+    groupOrder: 15,
+  });
+  usecaseWrite = $permission({
+    group: "usecase",
+    name: "write",
+    label: "permission.usecase.write",
+  });
+  /**
+   * Validated / Changes requested on a use case: not "owner only", a
+   * permission the owner and the built-in Admin hold (#Q3767).
+   */
+  usecaseValidate = $permission({
+    group: "usecase",
+    name: "validate",
+    label: "permission.usecase.validate",
   });
 }

@@ -12,12 +12,14 @@ import { $repository, type SQLLike } from "alepha/orm";
 
 import { personas } from "../entities/personas.ts";
 import { requirementsComments } from "../entities/requirementsComments.ts";
+import { useCases } from "../entities/useCases.ts";
 
 /**
  * Requirements' step of a project merge (#E153), registered on core's
  * `ProjectMergeService` after Plan's, Remember's and Ship's: personas move
- * into the target project, renumbered on a collision, with their comments;
- * the `#A` references in every moved body follow the new numbers.
+ * and use cases move into the target project, renumbered on a collision,
+ * with their comments; the `#A` and `#U` references in every moved body
+ * follow the new numbers.
  */
 export class RequirementsProjectMerge {
   protected readonly merge = $inject(ProjectMergeService);
@@ -25,12 +27,15 @@ export class RequirementsProjectMerge {
   protected readonly references = $inject(ProjectMergeReferences);
   protected readonly personas = $repository(personas);
   protected readonly comments = $repository(requirementsComments);
+  protected readonly useCases = $repository(useCases);
 
   constructor() {
     this.merge.registerStep({
       order: 40,
       name: "requirements",
-      tables: ["personas", "requirements_comments"],
+      // Steps, alternatives, criteria and actors hang off a use case by its
+      // id, which does not change, so they follow it.
+      tables: ["personas", "use_cases", "requirements_comments"],
       plan: (context) => this.plan(context),
       rewrite: (context, rewriter) => this.rewrite(context, rewriter),
     });
@@ -39,52 +44,81 @@ export class RequirementsProjectMerge {
   protected async plan(
     context: ProjectMergeContext,
   ): Promise<Omit<ProjectMergeStepPlan, "name">> {
-    const read = async (projectId: number) =>
-      (
-        await this.personas.findMany(
-          {
-            where: { projectId: { eq: projectId } },
-            columns: ["id", "number"],
-            orderBy: [{ column: "id", direction: "asc" }],
-          },
-          { force: true },
-        )
-      ).map((row) => ({ id: row.id, number: row.number }));
-    const source = await read(context.sourceProjectId);
-    const target = await read(context.targetProjectId);
-    const numbering = await this.numbers.renumber({
-      kind: "persona",
-      repository: this.personas as never,
-      field: "number",
-      sequence: "personaNumber",
-      targetProjectId: context.targetProjectId,
-      targetNumbers: target.map((row) => row.number),
-      sourceRows: source,
-    });
-    const comments = await this.comments.count({
+    const kinds = [
+      {
+        kind: "persona",
+        repository: this.personas,
+        sequence: "personaNumber",
+        table: "personas",
+      },
+      {
+        kind: "usecase",
+        repository: this.useCases,
+        sequence: "useCaseNumber",
+        table: "use_cases",
+      },
+    ] as const;
+    const plan = {
+      moved: {},
+      renumbered: [],
+      joined: [],
+      changed: [],
+      statements: [],
+      sequences: [],
+    } satisfies Omit<ProjectMergeStepPlan, "name"> as {
+      moved: Record<string, number>;
+      renumbered: ProjectMergeStepPlan["renumbered"];
+      joined: ProjectMergeStepPlan["joined"];
+      changed: ProjectMergeStepPlan["changed"];
+      statements: SQLLike[];
+      sequences: NonNullable<ProjectMergeStepPlan["sequences"]>;
+    };
+    for (const it of kinds) {
+      const read = async (projectId: number) =>
+        (
+          await (it.repository as typeof this.personas).findMany(
+            {
+              where: { projectId: { eq: projectId } },
+              columns: ["id", "number"],
+              orderBy: [{ column: "id", direction: "asc" }],
+            },
+            { force: true },
+          )
+        ).map((row) => ({ id: row.id, number: row.number }));
+      const source = await read(context.sourceProjectId);
+      const target = await read(context.targetProjectId);
+      const numbering = await this.numbers.renumber({
+        kind: it.kind,
+        repository: it.repository as never,
+        field: "number",
+        sequence: it.sequence,
+        targetProjectId: context.targetProjectId,
+        targetNumbers: target.map((row) => row.number),
+        sourceRows: source,
+      });
+      plan.moved[it.table] = source.length;
+      plan.renumbered.push(...numbering.renumbered);
+      plan.sequences.push(...numbering.sequences);
+      plan.statements.push(
+        ...numbering.statements,
+        (it.repository as typeof this.personas).updateStatement(
+          { projectId: { eq: context.sourceProjectId } },
+          { projectId: context.targetProjectId },
+          projectMergeWrite,
+        ),
+      );
+    }
+    plan.moved.requirements_comments = await this.comments.count({
       projectId: { eq: context.sourceProjectId },
     });
-    const statements: SQLLike[] = [
-      ...numbering.statements,
-      this.personas.updateStatement(
-        { projectId: { eq: context.sourceProjectId } },
-        { projectId: context.targetProjectId },
-        projectMergeWrite,
-      ),
+    plan.statements.push(
       this.comments.updateStatement(
         { projectId: { eq: context.sourceProjectId } },
         { projectId: context.targetProjectId },
         projectMergeWrite,
       ),
-    ];
-    return {
-      moved: { personas: source.length, requirements_comments: comments },
-      renumbered: numbering.renumbered,
-      joined: [],
-      changed: [],
-      statements,
-      sequences: numbering.sequences,
-    };
+    );
+    return plan;
   }
 
   /**
@@ -101,6 +135,11 @@ export class RequirementsProjectMerge {
       fields: ["who", "goals", "frustrations"],
       where,
     });
+    const scenarios = await this.references.rewrite(rewriter, {
+      repository: this.useCases,
+      fields: ["preconditions"],
+      where,
+    });
     const threads = await this.references.rewrite(rewriter, {
       repository: this.comments,
       fields: ["body"],
@@ -109,9 +148,14 @@ export class RequirementsProjectMerge {
     return {
       rewritten: {
         personas: people.rewritten,
+        use_cases: scenarios.rewritten,
         requirements_comments: threads.rewritten,
       },
-      statements: [...people.statements, ...threads.statements],
+      statements: [
+        ...people.statements,
+        ...scenarios.statements,
+        ...threads.statements,
+      ],
     };
   }
 }

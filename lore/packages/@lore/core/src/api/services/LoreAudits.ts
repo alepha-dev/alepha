@@ -269,6 +269,25 @@ export class LoreAudits {
   });
 
   /**
+   * A use case of Plan's Requirements (#E153). `cover` and `uncover` are an
+   * epic starting or stopping to cover it; `validate` is a validation answer.
+   */
+  readonly usecase = $audit({
+    type: "usecase",
+    description: "Use case lifecycle",
+    actions: [
+      "create",
+      "update",
+      "delete",
+      "comment",
+      "cover",
+      "uncover",
+      "validate",
+    ],
+    coalesce: { actions: ["update"], window: "5m" },
+  });
+
+  /**
    * `join` and `leave` rather than `add` and `remove`, because both sides
    * exist: a member joins by accepting an invitation, and leaves either by
    * their own hand (`leaveProject`) or the owner's (`removeMember`, #1695).
@@ -388,6 +407,7 @@ export class LoreAudits {
       this.release,
       this.feedback,
       this.persona,
+      this.usecase,
       this.member,
       this.app,
       this.sigil,

@@ -28,6 +28,7 @@ import { RootCommand } from "./commands/RootCommand.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
 import { SigilCommand } from "./commands/SigilCommand.ts";
 import { StackCommand } from "./commands/StackCommand.ts";
+import { UseCaseCommand } from "./commands/UseCaseCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
 import { LoreOutput } from "./services/LoreOutput.ts";
@@ -115,6 +116,7 @@ export const AlephaLoreCli = $module({
     QuestCommand,
     EpicCommand,
     PersonaCommand,
+    UseCaseCommand,
     FolioCommand,
     DirectoryCommand,
     FeedbackCommand,

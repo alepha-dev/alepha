@@ -4,9 +4,12 @@ import { LoreShipApi } from "@lore/ship/api";
 import { $module } from "alepha";
 
 import { PersonaController } from "./controllers/PersonaController.ts";
+import { UseCaseController } from "./controllers/UseCaseController.ts";
 import { PersonaResourceKind } from "./resources/PersonaResourceKind.ts";
+import { UseCaseResourceKind } from "./resources/UseCaseResourceKind.ts";
 import { RequirementsCommentService } from "./services/RequirementsCommentService.ts";
 import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts";
+import { UseCaseService } from "./services/UseCaseService.ts";
 
 /**
  * The server half of `@lore/plan-requirements`, Plan's Requirements (#E153):
@@ -29,16 +32,20 @@ export const LorePlanRequirementsApi = $module({
   imports: [LorePlanApi, LoreRememberApi, LoreShipApi],
   services: [
     RequirementsCommentService,
+    UseCaseService,
     // The resource kinds on core's `ResourceRegistry`: listed, because
     // nothing injects them.
     PersonaResourceKind,
+    UseCaseResourceKind,
     // Its step of a project merge, on core's `ProjectMergeService`.
     RequirementsProjectMerge,
     // Controllers
     PersonaController,
+    UseCaseController,
   ],
 });
 
 // What code outside `src/` imports from this barrel.
 
 export { PersonaController } from "./controllers/PersonaController.ts";
+export { UseCaseController } from "./controllers/UseCaseController.ts";

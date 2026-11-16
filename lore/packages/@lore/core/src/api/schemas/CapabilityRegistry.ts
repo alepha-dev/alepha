@@ -307,6 +307,13 @@ export class CapabilityRegistry {
         "persona_update",
         "persona_delete",
         "persona_comment_add",
+        "usecase_list",
+        "usecase_get",
+        "usecase_create",
+        "usecase_update",
+        "usecase_delete",
+        "usecase_comment_add",
+        "usecase_link_epic",
       ],
       mcpToolOptions: {
         feedback_list: "feedback",
@@ -321,19 +328,41 @@ export class CapabilityRegistry {
         persona_update: "requirements",
         persona_delete: "requirements",
         persona_comment_add: "requirements",
+        usecase_list: "requirements",
+        usecase_get: "requirements",
+        usecase_create: "requirements",
+        usecase_update: "requirements",
+        usecase_delete: "requirements",
+        usecase_comment_add: "requirements",
+        usecase_link_epic: "requirements",
       },
       // Epics and releases are found by their number only (#Q2228), and
       // like their sidebar entries they hang off their Work options.
       // Feedback by number only too, and only for a caller holding
       // `feedback:read` (#Q2228): see `SearchController`.
-      searchKinds: ["quest", "epic", "release", "feedback", "persona"],
+      searchKinds: [
+        "quest",
+        "epic",
+        "release",
+        "feedback",
+        "persona",
+        "usecase",
+      ],
       searchKindOptions: {
         epic: "epics",
         release: "releases",
         feedback: "feedback",
         persona: "requirements",
+        usecase: "requirements",
       },
-      activityKinds: ["quest", "epic", "release", "feedback", "persona"],
+      activityKinds: [
+        "quest",
+        "epic",
+        "release",
+        "feedback",
+        "persona",
+        "usecase",
+      ],
       // Epics and Releases are options of Work, and so are their sidebar
       // entries (`capabilityNav.ts`). Quests are Plan's baseline.
       activityKindOptions: {
@@ -341,6 +370,7 @@ export class CapabilityRegistry {
         release: "releases",
         feedback: "feedback",
         persona: "requirements",
+        usecase: "requirements",
       },
       dashboardCards: [
         "activeQuests",
@@ -377,6 +407,7 @@ export class CapabilityRegistry {
         "feedback",
         // Plan's Requirements (#E153).
         "persona",
+        "usecase",
       ],
     },
     {
