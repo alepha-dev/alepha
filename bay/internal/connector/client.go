@@ -72,6 +72,11 @@ type Command struct {
 	// goes into that member alone, blue/green, and nothing else of the stack
 	// is touched.
 	Service string `json:"service,omitempty"`
+	// Domains are the hosts a `deploy` makes the copy answer on, canonical
+	// first. Present replaces the copy's list; absent keeps the stored one,
+	// which is what an older Lore sends. The same contract as Routes on a
+	// stack deploy: it is how a copy's domain changes without SSH (#Q3795).
+	Domains *[]string `json:"domains,omitempty"`
 	// Tag labels a console `backup`; empty for an untagged one.
 	Tag string `json:"tag,omitempty"`
 	// Policy is a `backup-policy`'s operator layer: an object sets it, JSON
