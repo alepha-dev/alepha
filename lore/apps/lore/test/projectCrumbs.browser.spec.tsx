@@ -6,6 +6,10 @@ import {
   ProjectShellRegistry,
   ProjectTrail,
 } from "@lore/core/web";
+import {
+  currentPersonaAtom,
+  RequirementsShell,
+} from "@lore/plan-requirements/web";
 import { currentAreaAtom, WorkShell } from "@lore/plan/web";
 import { currentHostAtom, DeployShell } from "@lore/ship/web";
 import { Alepha } from "alepha";
@@ -69,6 +73,7 @@ describe("the leaf crumb of a detail page", () => {
       .with({ provide: Renderer, use: UnmountingRenderer });
     alepha.inject(I18n);
     alepha.inject(WorkShell);
+    alepha.inject(RequirementsShell);
     alepha.inject(DeployShell);
     alepha.inject(ProjectTrail);
     await alepha.start();
@@ -93,7 +98,13 @@ describe("the leaf crumb of a detail page", () => {
               `${route}:${JSON.stringify(routeParams)}`,
           }),
         )
-        .filter((crumb) => crumb !== undefined);
+        .filter((crumb) => crumb !== undefined)
+        // A leaf named by an i18n key reads as its key here.
+        .map((crumb) =>
+          "labelKey" in crumb
+            ? { label: crumb.labelKey, href: crumb.href }
+            : crumb,
+        );
 
     return { alepha, leaves };
   };
@@ -125,6 +136,33 @@ describe("the leaf crumb of a detail page", () => {
       expect(crumbs[0]?.label).toBe("ovh");
       expect(crumbs[0]?.href).toContain("bayOverview");
     }
+  });
+
+  it("a persona's page reads Personas, then the persona (#E153)", async ({
+    expect,
+  }) => {
+    const { alepha, leaves } = await setup();
+    alepha.store.set(currentPersonaAtom, {
+      id: 4,
+      projectId: 7,
+      number: 2,
+      kind: "human",
+      name: "Léa",
+      who: "",
+      goals: "",
+      frustrations: "",
+      areas: [],
+      createdAt: "2026-11-10T10:00:00.000Z",
+      updatedAt: "2026-11-10T10:00:00.000Z",
+    });
+
+    const crumbs = leaves("projectPersona", { personaNumber: "2" });
+    expect(crumbs.map((it) => it?.label)).toEqual([
+      "requirements.tab.personas",
+      "#A2 Léa",
+    ]);
+    expect(crumbs[0]?.href).toContain("projectPersonas");
+    expect(leaves("projectPersonas")).toEqual([]);
   });
 
   it("an area's settings page ends with the area's name", async ({

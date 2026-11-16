@@ -3,10 +3,16 @@ import {
   canInProject,
   capabilityOption,
   currentProjectAtom,
+  ProjectPageSkeleton,
 } from "@lore/core/web";
-import { $inject, Alepha } from "alepha";
-import { $page } from "alepha/react/router";
-import { NotFoundError } from "alepha/server";
+import { $inject, Alepha, z } from "alepha";
+import { $page, NotFound } from "alepha/react/router";
+import { isHttpError, NotFoundError } from "alepha/server";
+import { $client } from "alepha/server/links";
+import { createElement } from "react";
+
+import type { PersonaController } from "../../api/controllers/PersonaController.ts";
+import { currentPersonaAtom } from "./atoms/currentPersonaAtom.ts";
 
 /**
  * Plan's Requirements pages (#E153): one sidebar entry opening a page of
@@ -20,6 +26,7 @@ import { NotFoundError } from "alepha/server";
  */
 export class RequirementsRouter {
   alepha = $inject(Alepha);
+  personaApi = $client<PersonaController>();
 
   /**
    * The tabbed layout: folder tabs and no plate (answer 73), each tab owning
@@ -62,6 +69,45 @@ export class RequirementsRouter {
     path: "/personas",
     loader: async () => this.gateTab("persona:read"),
     lazy: () => import("./components/layout/PersonasTab.tsx"),
+  });
+
+  /**
+   * A persona's page: a full page OUTSIDE the tabbed layout, without its tab
+   * bar (decision 77), under its tab's URL. `personaNumber`, never `number`:
+   * route params are unique across the whole route table.
+   */
+  projectPersona = $pageProject({
+    loading: ProjectPageSkeleton,
+    name: "projectPersona",
+    path: "/requirements/personas/:personaNumber",
+    schema: { params: z.object({ personaNumber: z.integer() }) },
+    head: (props, previous) => {
+      const persona = (props as { persona?: { name?: string } } | undefined)
+        ?.persona;
+      return {
+        title: `${previous?.title ?? ""} › ${persona?.name ?? "Persona"}`,
+      };
+    },
+    lazy: () => import("./components/personas/PersonaPage.tsx"),
+    loader: async ({ params }) => {
+      this.gate();
+      this.gateTab("persona:read");
+      const project = this.alepha.store.get(currentProjectAtom)!;
+      const persona = await this.personaApi.getPersonaByNumber({
+        params: { projectId: project.id, number: params.personaNumber },
+      });
+      // The breadcrumb leaf lives in `ProjectView`, above this route.
+      this.alepha.store.set(currentPersonaAtom, persona);
+      return { persona };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentPersonaAtom, undefined);
+    },
+    errorHandler: (error) => {
+      if (isHttpError(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
   });
 
   /**

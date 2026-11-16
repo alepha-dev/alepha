@@ -356,9 +356,16 @@ export type ProjectLinkContext = ProjectShellContext & {
 export interface ProjectCrumbContribution {
   order: number;
   reads?: Atom<any>[];
+  /**
+   * A leaf with its label, or with an i18n key the trail translates (a tab's
+   * name, as a persona page's "Personas").
+   */
   crumb: (
     context: ProjectLinkContext,
-  ) => { label: string; href?: string } | undefined;
+  ) =>
+    | { label: string; href?: string }
+    | { labelKey: string; href?: string }
+    | undefined;
 }
 
 /**

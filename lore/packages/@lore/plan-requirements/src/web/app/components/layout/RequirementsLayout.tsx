@@ -1,9 +1,11 @@
 import { PlateLayout, type PlateTab } from "@alepha/ui/shell";
 import { canInProject, currentProjectAtom, type I18n } from "@lore/core/web";
-import { useStore } from "alepha/react";
+import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 
+import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
+import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
 import { REQUIREMENTS_TABS } from "./requirementsTabs.ts";
 
 /**
@@ -23,6 +25,25 @@ const RequirementsLayout = () => {
   const router = useRouter<any>();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
+  const personaApi = useClient<PersonaController>();
+  const projectId = project?.id ?? 0;
+
+  // Each tab's count, under the key its own list reads, so the count and
+  // the list are one request. Shown once resolved: `undefined` draws the
+  // bare label rather than a confident "0".
+  const personas = useQuery<PersonaResource[]>(
+    {
+      key: ["personas", projectId],
+      enabled:
+        projectId > 0 && !!project && canInProject(project, "persona:read"),
+      handler: async () =>
+        await personaApi.getPersonas({ params: { projectId }, query: {} }),
+    },
+    [personaApi, projectId],
+  );
+  const counts: Record<string, number | undefined> = {
+    projectPersonas: personas.data?.length,
+  };
 
   const tabs: PlateTab[] = REQUIREMENTS_TABS.filter(
     (tab) => project && canInProject(project, tab.permission),
@@ -31,6 +52,7 @@ const RequirementsLayout = () => {
     label: tr(tab.labelKey),
     icon: tab.icon,
     href: router.path(tab.route),
+    count: counts[tab.route],
   }));
 
   return (
