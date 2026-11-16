@@ -46,7 +46,9 @@ export class NativeGuard {
   public async inspect(
     root: string,
     platforms: CapacitorPlatform[],
+    opts: { copiedConfigs?: boolean } = {},
   ): Promise<string[]> {
+    const copied = opts.copiedConfigs ?? true;
     const findings: string[] = [];
 
     await this.inspectSourceConfig(root, findings);
@@ -58,20 +60,24 @@ export class NativeGuard {
     }
 
     if (platforms.includes("ios")) {
-      await this.inspectCopiedConfig(
-        root,
-        "ios/App/App/capacitor.config.json",
-        findings,
-      );
+      if (copied) {
+        await this.inspectCopiedConfig(
+          root,
+          "ios/App/App/capacitor.config.json",
+          findings,
+        );
+      }
       await this.inspectInfoPlist(root, findings);
     }
 
     if (platforms.includes("android")) {
-      await this.inspectCopiedConfig(
-        root,
-        "android/app/src/main/assets/capacitor.config.json",
-        findings,
-      );
+      if (copied) {
+        await this.inspectCopiedConfig(
+          root,
+          "android/app/src/main/assets/capacitor.config.json",
+          findings,
+        );
+      }
       await this.inspectAndroid(root, findings);
     }
 
@@ -84,13 +90,20 @@ export class NativeGuard {
    * `when` says which moment of the command found it, because the advice
    * differs: before a sync, `alepha capacitor sync` is the recovery; after
    * one, the residue lives in a source file sync does not own.
+   *
+   * Before the sync, the copied `capacitor.config.json` files are not looked
+   * at: the sync about to run rewrites them, and the check after it still
+   * covers them. Refusing them sent the user to run by hand the very step the
+   * build runs next. Everything a sync does not rewrite is still refused.
    */
   public async assertClean(
     root: string,
     platforms: CapacitorPlatform[],
     when: "before sync" | "after sync",
   ): Promise<void> {
-    const findings = await this.inspect(root, platforms);
+    const findings = await this.inspect(root, platforms, {
+      copiedConfigs: when === "after sync",
+    });
     if (findings.length === 0) {
       return;
     }

@@ -84,6 +84,22 @@ describe("NativeGuard", () => {
     expect(findings.filter((f) => f.includes("cleartext"))).toHaveLength(2);
   });
 
+  it("leaves a copied config to the sync before it, and refuses it after", async ({
+    expect,
+  }) => {
+    const { fs, guard } = await setup();
+    await fs.writeFile(
+      `${ROOT}/android/app/src/main/assets/capacitor.config.json`,
+      JSON.stringify({ server: { url: "http://192.168.1.2:5173" } }),
+    );
+
+    // The sync about to run rewrites it: no reason to stop the build.
+    await guard.assertClean(ROOT, ["android"], "before sync");
+    await expect(
+      guard.assertClean(ROOT, ["android"], "after sync"),
+    ).rejects.toThrow(/points the WebView/);
+  });
+
   it("finds server.url in capacitor.config.ts", async ({ expect }) => {
     const { fs, guard } = await setup();
     await fs.writeFile(
