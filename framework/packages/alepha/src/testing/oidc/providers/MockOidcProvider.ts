@@ -246,6 +246,9 @@ export class MockOidcProvider {
       if (query.state) {
         target.searchParams.set("state", query.state);
       }
+      if (this.options.callbackIss) {
+        target.searchParams.set("iss", this.options.callbackIss);
+      }
       reply.redirect(target.toString(), 302);
       return {};
     },
@@ -433,6 +436,7 @@ export class MockOidcProvider {
         backchannelLogout: true,
         ...options.advertise,
       },
+      callbackIss: options.callbackIss,
     };
   }
 
@@ -576,7 +580,11 @@ export class MockOidcProvider {
 
     return {
       access_token: accessToken,
-      id_token: idToken,
+      // Only for an OpenID request: a plain OAuth2 grant, as GitHub's, carries
+      // none, and an id_token it never asked for is checked all the same.
+      ...(grant.scope.split(" ").includes("openid")
+        ? { id_token: idToken }
+        : {}),
       refresh_token: refreshToken,
       token_type: "Bearer",
       expires_in: this.options.accessTokenTtl,
@@ -702,6 +710,11 @@ export interface MockOidcOptions {
     revocation?: boolean;
     backchannelLogout?: boolean;
   };
+  /**
+   * An `iss` parameter added to the authorization callback (RFC 9207), as
+   * GitHub sends `https://github.com/login/oauth`. Omitted by default.
+   */
+  callbackIss?: string;
 }
 
 export interface MockOidcResolvedOptions {
@@ -714,6 +727,7 @@ export interface MockOidcResolvedOptions {
   claims?: MockOidcOptions["claims"];
   rotateRefreshTokens: boolean;
   advertise: Required<NonNullable<MockOidcOptions["advertise"]>>;
+  callbackIss?: string;
 }
 
 export interface MockOidcCall {
