@@ -407,12 +407,14 @@ test.describe("Ranks", () => {
       expect((await transferred).ok()).toBe(true);
 
       // ── Exactly one owner, and it is the other one ────────────────────
+      // Read as the NEW owner: the member rows take `member:read`, which
+      // the promoter gave up by keeping Viewer (#Q3794).
       const projectId = await projectIdOf(page, slug);
       const membersUrl = (await apiPath(page, "getProjectMembers")).replace(
         ":id",
         String(projectId),
       );
-      const after = await page.evaluate(async (url) => {
+      const after = await d.page.evaluate(async (url) => {
         const res = await fetch(url, { credentials: "include" });
         if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
         const members = (await res.json()) as Array<{ rank?: string }>;
