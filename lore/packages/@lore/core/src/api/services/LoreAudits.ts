@@ -259,6 +259,16 @@ export class LoreAudits {
   });
 
   /**
+   * A persona of Plan's Requirements (#E153), addressed by its number.
+   */
+  readonly persona = $audit({
+    type: "persona",
+    description: "Persona lifecycle",
+    actions: ["create", "update", "delete", "comment"],
+    coalesce: { actions: ["update"], window: "5m" },
+  });
+
+  /**
    * `join` and `leave` rather than `add` and `remove`, because both sides
    * exist: a member joins by accepting an invitation, and leaves either by
    * their own hand (`leaveProject`) or the owner's (`removeMember`, #1695).
@@ -377,6 +387,7 @@ export class LoreAudits {
       this.folio,
       this.release,
       this.feedback,
+      this.persona,
       this.member,
       this.app,
       this.sigil,

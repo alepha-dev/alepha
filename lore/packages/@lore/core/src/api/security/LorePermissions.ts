@@ -106,6 +106,9 @@ export class LorePermissions {
     "quality:push",
     "host:read",
     "feedback:read",
+    // Plan's Requirements (#E153): every member writes personas (answer 75).
+    "persona:read",
+    "persona:write",
   ];
 
   /**
@@ -548,5 +551,23 @@ export class LorePermissions {
     group: "feedback",
     name: "triage",
     label: "permission.feedback.triage",
+  });
+
+  // ---------------------------------------------------------------------------
+  // Plan's Requirements (#E153): personas, use cases and requirements, each a
+  // group of its own, claimed by Plan in `CapabilityRegistry.permissionGroups`.
+  // ---------------------------------------------------------------------------
+
+  personaRead = $permission({
+    group: "persona",
+    name: "read",
+    label: "permission.persona.read",
+    groupLabel: "permission.group.persona",
+    groupOrder: 14,
+  });
+  personaWrite = $permission({
+    group: "persona",
+    name: "write",
+    label: "permission.persona.write",
   });
 }

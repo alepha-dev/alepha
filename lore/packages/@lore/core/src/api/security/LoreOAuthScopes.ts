@@ -62,6 +62,8 @@ export class LoreOAuthScopes {
     "area",
     "folio",
     "feedback",
+    // Plan's Requirements (#E153).
+    "persona",
     "error",
     "quality",
     "app",

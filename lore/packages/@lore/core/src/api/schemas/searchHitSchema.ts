@@ -10,7 +10,18 @@ export const searchHitSchema = z.object({
    * `epic`, `release` and `feedback` are found by their number only (#Q2228):
    * a typed `#E52` or a bare `52`, never by title.
    */
-  kind: z.enum(["quest", "folio", "directory", "epic", "release", "feedback"]),
+  kind: z.enum([
+    "quest",
+    "folio",
+    "directory",
+    "epic",
+    "release",
+    "feedback",
+    // Plan's Requirements (#E153).
+    "persona",
+    "usecase",
+    "requirement",
+  ]),
   id: z.string(),
   /**
    * The per-project number the kind is addressed by: a quest's, folio's,

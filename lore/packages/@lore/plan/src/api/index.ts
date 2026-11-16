@@ -235,6 +235,10 @@ export const LorePlanApi = $module({
 
 export { feedbackOptionsAtom } from "./atoms/feedbackOptionsAtom.ts";
 export { AreaController } from "./controllers/AreaController.ts";
+export {
+  type MentionSubject,
+  MentionNotifier,
+} from "./services/MentionNotifier.ts";
 export { EpicController } from "./controllers/EpicController.ts";
 export { EpicReviewController } from "./controllers/EpicReviewController.ts";
 export { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
