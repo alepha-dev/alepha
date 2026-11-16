@@ -39,6 +39,22 @@ export class SigilServerErrors {
   protected static readonly INGESTING = "sigil.server.ingesting";
 
   /**
+   * Where the server keeps the route pattern of the request being served
+   * (`ServerRouterProvider.ROUTE_KEY`). Spelled out rather than imported:
+   * hosts run this sigil on their own `alepha`, and one older than the key
+   * simply reports no route.
+   */
+  protected static readonly ROUTE_KEY = "alepha.server.route";
+
+  /**
+   * How many causes deep a report follows `error.cause`, and how much of the
+   * stack the chain may take: a cause chain is short in practice, and a
+   * cyclic or runaway one must not crowd the frames out.
+   */
+  protected static readonly MAX_CAUSES = 5;
+  protected static readonly MAX_CAUSE_CHARS = 1024;
+
+  /**
    * The `Error`s already reported, by identity. Weak, so a report never keeps
    * an error alive.
    */
@@ -68,7 +84,15 @@ export class SigilServerErrors {
       if (entry.level !== "ERROR") return;
       if (this.alepha.context.get(SigilServerErrors.INGESTING)) return;
 
-      const sourceUrl = `log:${entry.module}`;
+      // The route the request was on, when this was logged during one: a
+      // logged error's stack often ends at an async boundary, and the route
+      // is what says which page or action asked (#Q3760).
+      const route = this.alepha.context.get<string>(
+        SigilServerErrors.ROUTE_KEY,
+      );
+      const sourceUrl = route
+        ? `log:${entry.module} ${route}`
+        : `log:${entry.module}`;
       const error = this.errorOf(entry.data);
       if (!error) {
         await this.ingest({
@@ -83,7 +107,9 @@ export class SigilServerErrors {
       if (!this.isCrash(error)) return;
       if (!this.claim(error)) return;
 
-      await this.ingest(this.toError(error, sourceUrl));
+      await this.ingest(
+        this.toError(error, sourceUrl, String(entry.message ?? "")),
+      );
     },
   });
 
@@ -170,13 +196,92 @@ export class SigilServerErrors {
    * one path exempt because its current caller happens to be safe is how the
    * exemption outlives the reason for it.
    */
-  protected toError(error: Error | undefined, sourceUrl: string) {
+  /**
+   * The report for one error.
+   *
+   * `logged` is the message of the log line that carried it, kept in front
+   * of the error's own (`SSR rendering error: Query select has failed`):
+   * the line says what was being done, the error what went wrong.
+   *
+   * The cause chain is appended to the stack, one `Caused by: name: message`
+   * line per level, after the frames (#Q3760). A wrapper such as `DbError`
+   * says a query failed; its cause says why (no such column, too many
+   * variables), and dropping it left reports nobody could triage.
+   *
+   * ⚠️ **Fingerprints do not move.** A fingerprint is the error's name and
+   * its first `at` frame (`sigilFingerprintSource`); the chain comes
+   * after every frame and the logged message goes into `message`, so an
+   * existing group keeps collecting the same error. Another cause under the
+   * same wrapper and frame stays in that group too, by choice: it is the same
+   * call failing, and splitting a long-standing group on a driver's wording
+   * would lose its history. The cause is on each report, which is where
+   * triage reads it.
+   *
+   * Every field stays capped as the envelope requires: the chain takes at
+   * most `MAX_CAUSE_CHARS` of the stack's 4096, the frames the rest.
+   */
+  protected toError(
+    error: Error | undefined,
+    sourceUrl: string,
+    logged?: string,
+  ) {
+    const own = String(error?.message ?? "");
+    const message = logged && logged !== own ? `${logged}: ${own}` : own;
+    const causes = this.causeChain(error).slice(
+      0,
+      SigilServerErrors.MAX_CAUSE_CHARS,
+    );
+    const frames = String(error?.stack ?? "").slice(0, 4096 - causes.length);
     return {
       name: error?.name ?? "Error",
-      message: String(error?.message ?? "").slice(0, 2000),
-      stack: String(error?.stack ?? "").slice(0, 4096),
+      message: message.slice(0, 2000),
+      stack: `${frames}${causes}`,
       sourceUrl: sigilScrubUrl(sourceUrl),
       origin: "server" as const,
     };
+  }
+
+  /**
+   * `error.cause`, level by level, as `\nCaused by: name: message` lines.
+   * Stops at `MAX_CAUSES`, at a cause seen before (a cycle), and at
+   * anything that is not an object; a non-`Error` cause is printed as text.
+   */
+  protected causeChain(error: Error | undefined): string {
+    let out = "";
+    const seen = new Set<unknown>([error]);
+    let cause = (error as { cause?: unknown } | undefined)?.cause;
+    for (
+      let depth = 0;
+      depth < SigilServerErrors.MAX_CAUSES && cause != null && !seen.has(cause);
+      depth++
+    ) {
+      seen.add(cause);
+      if (typeof cause === "object") {
+        const { name, message } = cause as {
+          name?: unknown;
+          message?: unknown;
+        };
+        out += `\nCaused by: ${this.text(name) || "Error"}: ${this.text(message)}`;
+        cause = (cause as { cause?: unknown }).cause;
+      } else {
+        out += `\nCaused by: ${this.text(cause)}`;
+        break;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * A primitive as text, and nothing for anything else: a cause's `name`
+   * or `message` is a string in practice, and an object there would print
+   * as `[object Object]`, which says nothing.
+   */
+  protected text(value: unknown): string {
+    return typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      typeof value === "bigint"
+      ? String(value)
+      : "";
   }
 }
