@@ -272,10 +272,35 @@ describe("alepha capacitor build", () => {
 
     await build("ios --release");
 
-    const call = shell.calls.find((c) => c.command.startsWith("cap build ios"));
-    const argv = call?.argv ?? [];
-    expect(argv[argv.indexOf("--xcode-export-method") + 1]).toBe("debugging");
-    expect(argv[argv.indexOf("--xcode-team-id") + 1]).toBe("TEAM123");
+    const options = await fs.readTextFile(
+      `${ROOT}/ios/App/build/ExportOptions.plist`,
+    );
+    expect(options).toContain("<key>method</key><string>debugging</string>");
+    expect(options).toContain("<key>teamID</key><string>TEAM123</string>");
+    // Xcode may create the team's certificate and profile: a new team has
+    // none, and without the flag the archive cannot be signed at all.
+    const archive = shell.calls.find((c) =>
+      c.command.startsWith("xcodebuild -project"),
+    );
+    expect(archive?.argv).toContain("-allowProvisioningUpdates");
+    expect(archive?.argv).toContain("DEVELOPMENT_TEAM=TEAM123");
+    const exported = shell.calls.find((c) =>
+      c.command.startsWith("xcodebuild -exportArchive"),
+    );
+    expect(exported?.argv).toContain("-allowProvisioningUpdates");
+  });
+
+  it("exports an iOS release with the method it is told", async ({
+    expect,
+  }) => {
+    const { fs, build } = await setup();
+    await fs.writeFile(`${ROOT}/ios/App/output/App.ipa`, "ipa");
+
+    await build("ios --release --export-method release-testing");
+
+    expect(
+      await fs.readTextFile(`${ROOT}/ios/App/build/ExportOptions.plist`),
+    ).toContain("<key>method</key><string>release-testing</string>");
   });
 
   it("refuses iOS off a Mac", async ({ expect }) => {
