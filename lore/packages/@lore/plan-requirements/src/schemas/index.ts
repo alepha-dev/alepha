@@ -21,3 +21,32 @@ export {
   type PersonaInput,
   personaInputSchema,
 } from "../api/schemas/personaInputSchema.ts";
+export { useCases } from "../api/entities/useCases.ts";
+export { useCaseActors } from "../api/entities/useCaseActors.ts";
+export { useCaseAlternatives } from "../api/entities/useCaseAlternatives.ts";
+export { useCaseCriteria } from "../api/entities/useCaseCriteria.ts";
+export { useCaseSteps } from "../api/entities/useCaseSteps.ts";
+export {
+  type ActorRole,
+  actorRoleSchema,
+} from "../api/schemas/actorRoleSchema.ts";
+export {
+  type CriterionMethod,
+  criterionMethodSchema,
+} from "../api/schemas/criterionMethodSchema.ts";
+export {
+  type UseCasePriority,
+  useCasePrioritySchema,
+} from "../api/schemas/useCasePrioritySchema.ts";
+export {
+  type UseCaseStatus,
+  useCaseStatusSchema,
+} from "../api/schemas/useCaseStatusSchema.ts";
+export {
+  type UseCaseResource,
+  useCaseResourceSchema,
+} from "../api/schemas/useCaseResourceSchema.ts";
+export {
+  type UseCaseInput,
+  useCaseInputSchema,
+} from "../api/schemas/useCaseInputSchema.ts";

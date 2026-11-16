@@ -86,6 +86,7 @@ describe("the Lore CLI command surface", () => {
       "secrets",
       "sigil",
       "stack",
+      "usecase",
     ]);
   });
 
@@ -175,6 +176,7 @@ describe("the Lore CLI command surface", () => {
       ],
       insights: ["read"],
       persona: ["list", "get", "create", "update", "delete", "comment"],
+      usecase: ["list", "get", "create", "update", "delete", "comment", "link"],
       monitor: ["list", "get", "create", "update", "pause", "resume", "delete"],
       project: [
         "list",

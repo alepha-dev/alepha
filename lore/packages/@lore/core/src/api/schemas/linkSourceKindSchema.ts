@@ -33,6 +33,7 @@ export const linkSourceKindSchema = z.enum([
   "comment",
   "persona",
   "requirement",
+  "usecase",
 ]);
 
 export type LinkSourceKind = Infer<typeof linkSourceKindSchema>;

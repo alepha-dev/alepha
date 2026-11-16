@@ -363,6 +363,81 @@ export class ResourceLinkService {
   }
 
   /**
+   * The rows of one mirror relation pointing at `targetIds` of `targetKind`
+   * (#E153): the epics covering some use cases.
+   */
+  public async relationsTo(
+    relation: Exclude<LinkRelation, "filed">,
+    targetKind: LinkTargetKind,
+    targetIds: readonly string[],
+  ): Promise<FolioLink[]> {
+    return await this.bound.collect([...new Set(targetIds)], (batch) =>
+      this.links.findMany({
+        where: {
+          targetType: { eq: targetKind },
+          toId: { inArray: batch },
+          relation: { eq: relation },
+        },
+      }),
+    );
+  }
+
+  /**
+   * The rows of one mirror relation a set of sources holds (#E153): the use
+   * cases an epic covers.
+   */
+  public async relationsFrom(
+    relation: Exclude<LinkRelation, "filed">,
+    sourceKind: LinkSourceKind,
+    sourceIds: readonly string[],
+    targetKind: LinkTargetKind,
+  ): Promise<FolioLink[]> {
+    return await this.bound.collect([...new Set(sourceIds)], (batch) =>
+      this.links.findMany({
+        where: {
+          fromType: { eq: sourceKind },
+          fromId: { inArray: batch },
+          targetType: { eq: targetKind },
+          relation: { eq: relation },
+        },
+      }),
+    );
+  }
+
+  /**
+   * Add or remove one row of a relation that IS its own store (#E153: an
+   * epic `covers` a use case). Answers whether anything changed.
+   */
+  public async setRelation(
+    relation: Exclude<LinkRelation, "filed">,
+    source: { kind: LinkSourceKind; id: string },
+    target: { kind: LinkTargetKind; id: string },
+    present: boolean,
+  ): Promise<boolean> {
+    const where = {
+      fromType: { eq: source.kind },
+      fromId: { eq: source.id },
+      targetType: { eq: target.kind },
+      toId: { eq: target.id },
+      relation: { eq: relation },
+    };
+    const existing = await this.links.findMany({ where, limit: 1 });
+    if (present === existing.length > 0) return false;
+    if (present) {
+      await this.links.create({
+        fromType: source.kind,
+        fromId: source.id,
+        targetType: target.kind,
+        toId: target.id,
+        relation,
+      });
+    } else {
+      await this.links.deleteMany(where);
+    }
+    return true;
+  }
+
+  /**
    * Drop every link row pointing at targets that are being deleted, mirror
    * and mention alike, whatever the source: a deleted use case is covered by
    * no epic. Mentions of it read as broken links where they are written.

@@ -1,0 +1,1331 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f9ce140d-754c-4efd-aa51-b72e9b536182",
+  "prevIds": ["3ce67ba2-5c70-4663-be66-d92d0153b308"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "use_case_actors"],
+      "writes": [
+        "s|tbl|public.use_case_actors",
+        "n|tbl|public.use_case_actors",
+        "e|tbl|public.use_case_actors",
+        "n|rel|public.use_case_actors",
+        "n|type|public.use_case_actors",
+        "n|rel|public.use_case_actors_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "use_case_alternatives"],
+      "writes": [
+        "s|tbl|public.use_case_alternatives",
+        "n|tbl|public.use_case_alternatives",
+        "e|tbl|public.use_case_alternatives",
+        "n|rel|public.use_case_alternatives",
+        "n|type|public.use_case_alternatives",
+        "n|rel|public.use_case_alternatives_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "use_case_criteria"],
+      "writes": [
+        "s|tbl|public.use_case_criteria",
+        "n|tbl|public.use_case_criteria",
+        "e|tbl|public.use_case_criteria",
+        "n|rel|public.use_case_criteria",
+        "n|type|public.use_case_criteria",
+        "n|rel|public.use_case_criteria_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "use_case_steps"],
+      "writes": [
+        "s|tbl|public.use_case_steps",
+        "n|tbl|public.use_case_steps",
+        "e|tbl|public.use_case_steps",
+        "n|rel|public.use_case_steps",
+        "n|type|public.use_case_steps",
+        "n|rel|public.use_case_steps_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "use_cases"],
+      "writes": [
+        "s|tbl|public.use_cases",
+        "n|tbl|public.use_cases",
+        "e|tbl|public.use_cases",
+        "n|rel|public.use_cases",
+        "n|type|public.use_cases",
+        "n|rel|public.use_cases_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "use_case_actors",
+        "use_case_actors_use_case_id_persona_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.use_case_actors_use_case_id_persona_id_idx",
+        "n|idx|public.use_case_actors_use_case_id_persona_id_idx",
+        "e|idx|public.use_case_actors_use_case_id_persona_id_idx",
+        "n|rel|public.use_case_actors_use_case_id_persona_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.use_case_actors",
+        "n|sch|public",
+        "n|col|public.use_case_actors.use_case_id",
+        "n|col|public.use_case_actors.persona_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "use_case_alternatives",
+        "use_case_alternatives_use_case_id_position_idx"
+      ],
+      "writes": [
+        "s|idx|public.use_case_alternatives_use_case_id_position_idx",
+        "n|idx|public.use_case_alternatives_use_case_id_position_idx",
+        "e|idx|public.use_case_alternatives_use_case_id_position_idx",
+        "n|rel|public.use_case_alternatives_use_case_id_position_idx"
+      ],
+      "reads": [
+        "n|tbl|public.use_case_alternatives",
+        "n|sch|public",
+        "n|col|public.use_case_alternatives.use_case_id",
+        "n|col|public.use_case_alternatives.position"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "use_case_criteria",
+        "use_case_criteria_use_case_id_key_idx"
+      ],
+      "writes": [
+        "s|idx|public.use_case_criteria_use_case_id_key_idx",
+        "n|idx|public.use_case_criteria_use_case_id_key_idx",
+        "e|idx|public.use_case_criteria_use_case_id_key_idx",
+        "n|rel|public.use_case_criteria_use_case_id_key_idx"
+      ],
+      "reads": [
+        "n|tbl|public.use_case_criteria",
+        "n|sch|public",
+        "n|col|public.use_case_criteria.use_case_id",
+        "n|col|public.use_case_criteria.key"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "use_case_steps",
+        "use_case_steps_use_case_id_position_idx"
+      ],
+      "writes": [
+        "s|idx|public.use_case_steps_use_case_id_position_idx",
+        "n|idx|public.use_case_steps_use_case_id_position_idx",
+        "e|idx|public.use_case_steps_use_case_id_position_idx",
+        "n|rel|public.use_case_steps_use_case_id_position_idx"
+      ],
+      "reads": [
+        "n|tbl|public.use_case_steps",
+        "n|sch|public",
+        "n|col|public.use_case_steps.use_case_id",
+        "n|col|public.use_case_steps.position"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "use_cases",
+        "use_cases_project_id_number_idx"
+      ],
+      "writes": [
+        "s|idx|public.use_cases_project_id_number_idx",
+        "n|idx|public.use_cases_project_id_number_idx",
+        "e|idx|public.use_cases_project_id_number_idx",
+        "n|rel|public.use_cases_project_id_number_idx"
+      ],
+      "reads": [
+        "n|tbl|public.use_cases",
+        "n|sch|public",
+        "n|col|public.use_cases.project_id",
+        "n|col|public.use_cases.number"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "use_case_actors"],
+      "writes": [
+        "s|fk|public.use_case_actors.use_case_actors_use_case_id_use_cases_id_fkey",
+        "n|fk|public.use_case_actors.use_case_actors_use_case_id_use_cases_id_fkey",
+        "e|fk|public.use_case_actors.use_case_actors_use_case_id_use_cases_id_fkey",
+        "n|con|public.use_case_actors.use_case_actors_use_case_id_use_cases_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.use_case_actors",
+        "n|sch|public",
+        "n|tbl|public.use_cases",
+        "n|sch|public",
+        "n|col|public.use_case_actors.use_case_id",
+        "n|col|public.use_cases.id",
+        "e|uniqueness|public.use_cases.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "use_case_actors"],
+      "writes": [
+        "s|fk|public.use_case_actors.use_case_actors_persona_id_personas_id_fkey",
+        "n|fk|public.use_case_actors.use_case_actors_persona_id_personas_id_fkey",
+        "e|fk|public.use_case_actors.use_case_actors_persona_id_personas_id_fkey",
+        "n|con|public.use_case_actors.use_case_actors_persona_id_personas_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.use_case_actors",
+        "n|sch|public",
+        "n|tbl|public.personas",
+        "n|sch|public",
+        "n|col|public.use_case_actors.persona_id",
+        "n|col|public.personas.id",
+        "e|uniqueness|public.personas.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "use_case_alternatives"],
+      "writes": [
+        "s|fk|public.use_case_alternatives.use_case_alternatives_use_case_id_use_cases_id_fkey",
+        "n|fk|public.use_case_alternatives.use_case_alternatives_use_case_id_use_cases_id_fkey",
+        "e|fk|public.use_case_alternatives.use_case_alternatives_use_case_id_use_cases_id_fkey",
+        "n|con|public.use_case_alternatives.use_case_alternatives_use_case_id_use_cases_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.use_case_alternatives",
+        "n|sch|public",
+        "n|tbl|public.use_cases",
+        "n|sch|public",
+        "n|col|public.use_case_alternatives.use_case_id",
+        "n|col|public.use_cases.id",
+        "e|uniqueness|public.use_cases.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "use_case_criteria"],
+      "writes": [
+        "s|fk|public.use_case_criteria.use_case_criteria_use_case_id_use_cases_id_fkey",
+        "n|fk|public.use_case_criteria.use_case_criteria_use_case_id_use_cases_id_fkey",
+        "e|fk|public.use_case_criteria.use_case_criteria_use_case_id_use_cases_id_fkey",
+        "n|con|public.use_case_criteria.use_case_criteria_use_case_id_use_cases_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.use_case_criteria",
+        "n|sch|public",
+        "n|tbl|public.use_cases",
+        "n|sch|public",
+        "n|col|public.use_case_criteria.use_case_id",
+        "n|col|public.use_cases.id",
+        "e|uniqueness|public.use_cases.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "use_case_steps"],
+      "writes": [
+        "s|fk|public.use_case_steps.use_case_steps_use_case_id_use_cases_id_fkey",
+        "n|fk|public.use_case_steps.use_case_steps_use_case_id_use_cases_id_fkey",
+        "e|fk|public.use_case_steps.use_case_steps_use_case_id_use_cases_id_fkey",
+        "n|con|public.use_case_steps.use_case_steps_use_case_id_use_cases_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.use_case_steps",
+        "n|sch|public",
+        "n|tbl|public.use_cases",
+        "n|sch|public",
+        "n|col|public.use_case_steps.use_case_id",
+        "n|col|public.use_cases.id",
+        "e|uniqueness|public.use_cases.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "use_cases"],
+      "writes": [
+        "s|fk|public.use_cases.use_cases_project_id_projects_id_fkey",
+        "n|fk|public.use_cases.use_cases_project_id_projects_id_fkey",
+        "e|fk|public.use_cases.use_cases_project_id_projects_id_fkey",
+        "n|con|public.use_cases.use_cases_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.use_cases",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.use_cases.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "use_case_actors",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "use_case_alternatives",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "use_case_criteria",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "use_case_steps",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "use_cases",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_actors",
+        "name": "id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": {
+          "type": "always",
+          "name": "use_case_actors_id_seq",
+          "increment": "1",
+          "startWith": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": 1,
+          "cycle": false
+        },
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_actors",
+        "name": "use_case_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_actors",
+        "name": "persona_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_actors",
+        "name": "role",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'primary'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_alternatives",
+        "name": "id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": {
+          "type": "always",
+          "name": "use_case_alternatives_id_seq",
+          "increment": "1",
+          "startWith": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": 1,
+          "cycle": false
+        },
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_alternatives",
+        "name": "use_case_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_alternatives",
+        "name": "key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_alternatives",
+        "name": "position",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_alternatives",
+        "name": "text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": {
+          "type": "always",
+          "name": "use_case_criteria_id_seq",
+          "increment": "1",
+          "startWith": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": 1,
+          "cycle": false
+        },
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "use_case_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "position",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "given_text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "when_text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "then_text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "method",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'manual'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "alternative_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "requirement_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_steps",
+        "name": "id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": {
+          "type": "always",
+          "name": "use_case_steps_id_seq",
+          "increment": "1",
+          "startWith": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": 1,
+          "cycle": false
+        },
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_steps",
+        "name": "use_case_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_steps",
+        "name": "position",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_steps",
+        "name": "actor_persona_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_steps",
+        "name": "text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": {
+          "type": "always",
+          "name": "use_cases_id_seq",
+          "increment": "1",
+          "startWith": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": 1,
+          "cycle": false
+        },
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "deleted_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "number",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "title",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'draft'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "priority",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'medium'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "preconditions",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "''",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "starting_data",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "automated_test_path",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "automated_test_tag",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "scenario_version",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "1",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "criterion_seq",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_actors",
+        "name": "use_case_actors_use_case_id_persona_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "use_case_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "persona_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_alternatives",
+        "name": "use_case_alternatives_use_case_id_position_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "use_case_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "position",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "use_case_criteria_use_case_id_key_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "use_case_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "key",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_steps",
+        "name": "use_case_steps_use_case_id_position_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "use_case_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "position",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "use_cases_project_id_number_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "number",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_actors",
+        "name": "use_case_actors_use_case_id_use_cases_id_fkey",
+        "nameExplicit": false,
+        "columns": ["use_case_id"],
+        "schemaTo": "public",
+        "tableTo": "use_cases",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_actors",
+        "name": "use_case_actors_persona_id_personas_id_fkey",
+        "nameExplicit": false,
+        "columns": ["persona_id"],
+        "schemaTo": "public",
+        "tableTo": "personas",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_alternatives",
+        "name": "use_case_alternatives_use_case_id_use_cases_id_fkey",
+        "nameExplicit": false,
+        "columns": ["use_case_id"],
+        "schemaTo": "public",
+        "tableTo": "use_cases",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "use_case_criteria_use_case_id_use_cases_id_fkey",
+        "nameExplicit": false,
+        "columns": ["use_case_id"],
+        "schemaTo": "public",
+        "tableTo": "use_cases",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_steps",
+        "name": "use_case_steps_use_case_id_use_cases_id_fkey",
+        "nameExplicit": false,
+        "columns": ["use_case_id"],
+        "schemaTo": "public",
+        "tableTo": "use_cases",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "use_cases_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_actors",
+        "name": "use_case_actors_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_alternatives",
+        "name": "use_case_alternatives_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_criteria",
+        "name": "use_case_criteria_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_case_steps",
+        "name": "use_case_steps_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "use_cases",
+        "name": "use_cases_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

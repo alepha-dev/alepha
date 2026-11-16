@@ -37,6 +37,7 @@ export class LoreViewerAllowlist {
     "folio",
     // Plan's Requirements (#E153, answer 22): a viewer reads them.
     "persona",
+    "usecase",
   ];
 
   /**

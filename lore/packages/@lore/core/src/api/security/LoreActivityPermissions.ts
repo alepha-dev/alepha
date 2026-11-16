@@ -32,6 +32,7 @@ export class LoreActivityPermissions {
     monitor: "app:read",
     host: "host:read",
     persona: "persona:read",
+    usecase: "usecase:read",
   };
 
   /**

@@ -42,6 +42,13 @@ export class LoreReferences {
     return this.parse(ref, "A", "persona");
   }
 
+  /**
+   * A use case of Plan's Requirements (#E153).
+   */
+  public useCase(ref: string): number {
+    return this.parse(ref, "U", "use case");
+  }
+
   public feedback(ref: string): number {
     return this.parse(ref, "P", "feedback");
   }
