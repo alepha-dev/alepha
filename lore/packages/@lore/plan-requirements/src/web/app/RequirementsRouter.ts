@@ -56,6 +56,8 @@ export class RequirementsRouter {
     name: "projectRequirements",
     // Empty, not "/": the layout's own `/requirements` is this tab's URL.
     path: "",
+    // The requirement whose detail pane is open: what `[[#S15]]` links to.
+    schema: { query: z.object({ requirement: z.text().optional() }) },
     loader: async () => this.gateTab("requirement:read"),
     lazy: () => import("./components/layout/RequirementsTab.tsx"),
   });

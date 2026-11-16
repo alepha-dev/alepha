@@ -17,7 +17,6 @@ export const requirementInputSchema = requirements.schema
     paragraph: true,
     sourceFolioId: true,
     sourceAnchor: true,
-    sourceRevisionId: true,
   })
   .partial();
 

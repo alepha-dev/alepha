@@ -5,8 +5,10 @@ import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 
 import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
+import type { RequirementController } from "../../../../api/controllers/RequirementController.ts";
 import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
+import type { RequirementResource } from "../../../../api/schemas/requirementResourceSchema.ts";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import { REQUIREMENTS_TABS } from "./requirementsTabs.ts";
 
@@ -54,7 +56,22 @@ const RequirementsLayout = () => {
     },
     [useCaseApi, projectId],
   );
+  const requirementApi = useClient<RequirementController>();
+  const requirements = useQuery<RequirementResource[]>(
+    {
+      key: ["requirements", projectId],
+      enabled:
+        projectId > 0 && !!project && canInProject(project, "requirement:read"),
+      handler: async () =>
+        await requirementApi.getRequirements({
+          params: { projectId },
+          query: {},
+        }),
+    },
+    [requirementApi, projectId],
+  );
   const counts: Record<string, number | undefined> = {
+    projectRequirements: requirements.data?.length,
     projectPersonas: personas.data?.length,
     projectUseCases: useCases.data?.length,
   };

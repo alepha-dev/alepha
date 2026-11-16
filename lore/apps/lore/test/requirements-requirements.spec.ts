@@ -3,6 +3,7 @@ import {
   UseCaseController,
 } from "@lore/plan-requirements/api";
 import { EpicController, ReleaseController } from "@lore/plan/api";
+import { FolioController } from "@lore/remember/api";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
@@ -303,5 +304,132 @@ describe("requirements", () => {
     await ctx.mcp(token, "requirement_delete", { number: 2 });
     const uc = await ctx.mcp(token, "usecase_get", { number: 1 });
     expect(uc.text).not.toContain("requirementNumber");
+  });
+});
+
+/**
+ * Source changed (#Q3769): a requirement cites a heading of a folio; each
+ * new revision of that folio compares the section with the text it was
+ * synced to, and Update or Keep resyncs it.
+ */
+describe("a requirement's source", () => {
+  let ctx: RequirementsProject;
+  let requirements: RequirementController;
+  let folios: FolioController;
+
+  beforeEach(async () => {
+    ctx = await requirementsProject();
+    requirements = ctx.alepha.inject(RequirementController);
+    folios = ctx.alepha.inject(FolioController);
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  const spec = (expiry: string) =>
+    [
+      "# Specification",
+      "## 3.2 Promo codes",
+      "A code shows its discount.",
+      "## 3.3 Expiry",
+      expiry,
+    ].join("\n");
+
+  it("is flagged when its section is edited, then removed, and cleared by a resync", async ({
+    expect,
+  }) => {
+    const as = ctx.as(ctx.owner);
+    const folio = (
+      await folios.create.fetch(
+        {
+          body: {
+            projectId: ctx.projectId,
+            title: "Specification",
+            content: spec("Codes expire."),
+          },
+        },
+        as,
+      )
+    ).data;
+    const req = (
+      await requirements.createRequirement.fetch(
+        {
+          params: { projectId: ctx.projectId },
+          body: {
+            statement: "Codes expire",
+            sourceFolioId: folio.id,
+            sourceAnchor: "33-expiry",
+          },
+        },
+        as,
+      )
+    ).data;
+    expect(req.sourceSectionText).toBe("Codes expire.");
+    expect(req.sourceChanged).toBe(false);
+
+    // Another section moving changes nothing.
+    await folios.update.fetch(
+      {
+        params: { id: folio.id },
+        body: {
+          content: spec("Codes expire.").replace(
+            "its discount",
+            "the discount",
+          ),
+        },
+      },
+      as,
+    );
+    const read = async () =>
+      (
+        await requirements.getRequirementByNumber.fetch(
+          { params: { projectId: ctx.projectId, number: req.number } },
+          as,
+        )
+      ).data;
+    expect((await read()).sourceChanged).toBe(false);
+
+    await folios.update.fetch(
+      {
+        params: { id: folio.id },
+        body: { content: spec("Codes expire after 30 days.") },
+      },
+      as,
+    );
+    expect(await read()).toMatchObject({
+      sourceChanged: true,
+      sourceChangeKind: "edited",
+    });
+
+    await folios.update.fetch(
+      {
+        params: { id: folio.id },
+        body: {
+          content: spec("x").replace("## 3.3 Expiry", "## 3.3 Validity"),
+        },
+      },
+      as,
+    );
+    expect(await read()).toMatchObject({
+      sourceChanged: true,
+      sourceChangeKind: "removed",
+    });
+
+    await folios.update.fetch(
+      {
+        params: { id: folio.id },
+        body: { content: spec("Codes expire after 30 days.") },
+      },
+      as,
+    );
+    const kept = (
+      await requirements.resyncRequirementSource.fetch(
+        { params: { id: req.id } },
+        as,
+      )
+    ).data;
+    expect(kept.sourceChanged).toBe(false);
+    expect(kept.sourceSectionText).toBe("Codes expire after 30 days.");
   });
 });

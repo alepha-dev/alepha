@@ -7,7 +7,7 @@ import {
   ProjectShellRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
-import { BookText, ClipboardList, UsersRound } from "lucide-react";
+import { BookText, ClipboardList, ListChecks, UsersRound } from "lucide-react";
 
 import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "../atoms/currentUseCaseAtom.ts";
@@ -71,6 +71,17 @@ export class RequirementsShell {
       ),
     });
 
+    // New requirement, then New use case and New persona.
+    this.shell.registerCreate({
+      key: "requirement",
+      order: 69,
+      labelKey: "project.menu.create-requirement",
+      icon: ListChecks,
+      enabled: (project) =>
+        capabilityOption(project, "plan", "requirements") &&
+        canInProject(project, "requirement:write"),
+      route: "projectRequirements",
+    });
     // New use case, beside New persona.
     this.shell.registerCreate({
       key: "usecase",

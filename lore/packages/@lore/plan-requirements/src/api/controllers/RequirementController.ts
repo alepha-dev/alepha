@@ -4,6 +4,8 @@ import {
   LoreAudits,
   ResourceLinkService,
 } from "@lore/core/api";
+import { releases } from "@lore/plan/schemas";
+import { folioRevisions, folios } from "@lore/remember/schemas";
 import { $inject, z } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
@@ -23,6 +25,7 @@ import { requirementPrioritySchema } from "../schemas/requirementPrioritySchema.
 import { requirementResourceSchema } from "../schemas/requirementResourceSchema.ts";
 import { requirementTypeSchema } from "../schemas/requirementTypeSchema.ts";
 import { RequirementService } from "../services/RequirementService.ts";
+import { SourceSectionService } from "../services/SourceSectionService.ts";
 
 /**
  * Requirements (#E153): the specification's lines, their criteria and their
@@ -38,6 +41,10 @@ export class RequirementController {
   protected readonly owned = $inject(OwnedResourceProvider);
   protected readonly links = $inject(ResourceLinkService);
   protected readonly bestEffort = $inject(BestEffort);
+  protected readonly sections = $inject(SourceSectionService);
+  protected readonly folios = $repository(folios);
+  protected readonly revisions = $repository(folioRevisions);
+  protected readonly releases = $repository(releases);
 
   /**
    * ⚠️ `$sequence` keys its counter on this PROPERTY NAME.
@@ -89,6 +96,37 @@ export class RequirementController {
   /**
    * The `source` mirror row of one requirement, rewritten from its columns.
    */
+  /**
+   * The source columns a write sets: the cited section's text and the
+   * folio's newest revision, so later revisions compare with them. No
+   * source, or a protected folio, syncs nothing.
+   */
+  protected async syncedSource(fields: {
+    sourceFolioId?: string;
+    sourceAnchor?: string;
+  }): Promise<Partial<Requirement>> {
+    if (!fields.sourceFolioId) return {};
+    const folio = await this.folios.findById(fields.sourceFolioId);
+    if (!folio || folio.protected) return {};
+    const [head] = await this.revisions.findMany({
+      where: { folioId: { eq: folio.id } },
+      orderBy: [{ column: "at", direction: "desc" }],
+      columns: ["id"],
+      limit: 1,
+    });
+    const section = fields.sourceAnchor
+      ? this.sections.section(folio.content ?? "", fields.sourceAnchor)
+      : undefined;
+    return {
+      sourceRevisionId: head?.id,
+      sourceSectionText:
+        section?.text ?? (fields.sourceAnchor ? "" : undefined),
+      sourceChanged: false,
+      sourceChangeKind: null as never,
+      sourceChangedRevisionId: null as never,
+    };
+  }
+
   protected async mirrorSource(row: Requirement): Promise<void> {
     await this.bestEffort.run("requirement: source mirror", () =>
       this.links.mirrorOutbound(
@@ -158,6 +196,7 @@ export class RequirementController {
       );
       const row = await this.requirements.create({
         ...body,
+        ...(await this.syncedSource(body)),
         projectId: params.projectId,
         number,
       });
@@ -178,7 +217,21 @@ export class RequirementController {
       response: requirementResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const row = await this.requirements.updateById(params.id, body);
+      const before = this.owned.get<Requirement>();
+      const sourceMoved =
+        (body.sourceFolioId !== undefined &&
+          body.sourceFolioId !== before.sourceFolioId) ||
+        (body.sourceAnchor !== undefined &&
+          body.sourceAnchor !== before.sourceAnchor);
+      const row = await this.requirements.updateById(params.id, {
+        ...body,
+        ...(sourceMoved
+          ? await this.syncedSource({
+              sourceFolioId: body.sourceFolioId ?? before.sourceFolioId,
+              sourceAnchor: body.sourceAnchor ?? before.sourceAnchor,
+            })
+          : {}),
+      });
       await this.mirrorSource(row);
       await this.log("update", row, user);
       const [resource] = await this.service.toResources([row]);
@@ -211,6 +264,68 @@ export class RequirementController {
       await this.log("delete", row, user);
       return { ok: true };
     },
+  });
+
+  /**
+   * Update the requirement or Keep it, after its source changed: either way
+   * the synced section and revision move to the folio's newest, and the flag
+   * clears.
+   */
+  resyncRequirementSource = $action({
+    method: "POST",
+    path: "/resyncRequirementSource/:id",
+    use: [this.ownsRequirementForWrite("requirement:write")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: requirementResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const row = this.owned.get<Requirement>();
+      const saved = await this.requirements.updateById(params.id, {
+        ...(await this.syncedSource(row)),
+        sourceChanged: false,
+        sourceChangeKind: null as never,
+        sourceChangedRevisionId: null as never,
+      });
+      await this.log("update", saved, user, { source: "resync" });
+      const [resource] = await this.service.toResources([saved]);
+      return resource;
+    },
+  });
+
+  /**
+   * The project's releases, for the Release filter and the Target release
+   * selector: a reader of requirements may pick one without `release:read`'s
+   * whole surface.
+   */
+  getRequirementReleases = $action({
+    method: "GET",
+    path: "/getRequirementReleases/:projectId",
+    use: [this.ownsProject("requirement:read")],
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.array(
+        z.object({
+          id: z.integer(),
+          number: z.integer(),
+          tag: z.string().optional(),
+          title: z.string().optional(),
+        }),
+      ),
+    },
+    handler: async ({ params }) =>
+      (
+        await this.releases.findMany({
+          where: { projectId: { eq: params.projectId } },
+          columns: ["id", "number", "tag", "title"],
+          orderBy: [{ column: "number", direction: "desc" }],
+        })
+      ).map((it) => ({
+        id: it.id,
+        number: it.number,
+        tag: it.tag ?? undefined,
+        title: it.title ?? undefined,
+      })),
   });
 
   /**

@@ -1,0 +1,130 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2f4b248d-0b7d-470d-91f4-d7b4af9b89b0",
+  "prevIds": ["20d996e1-a939-4927-8718-8583cf3ff418"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "requirements",
+        "source_section_text"
+      ],
+      "writes": [
+        "s|col|public.requirements.source_section_text",
+        "n|col|public.requirements.source_section_text",
+        "e|col|public.requirements.source_section_text"
+      ],
+      "reads": ["n|tbl|public.requirements", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "requirements", "source_changed"],
+      "writes": [
+        "s|col|public.requirements.source_changed",
+        "n|col|public.requirements.source_changed",
+        "e|col|public.requirements.source_changed"
+      ],
+      "reads": ["n|tbl|public.requirements", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "requirements",
+        "source_change_kind"
+      ],
+      "writes": [
+        "s|col|public.requirements.source_change_kind",
+        "n|col|public.requirements.source_change_kind",
+        "e|col|public.requirements.source_change_kind"
+      ],
+      "reads": ["n|tbl|public.requirements", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "requirements",
+        "source_changed_revision_id"
+      ],
+      "writes": [
+        "s|col|public.requirements.source_changed_revision_id",
+        "n|col|public.requirements.source_changed_revision_id",
+        "e|col|public.requirements.source_changed_revision_id"
+      ],
+      "reads": ["n|tbl|public.requirements", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements",
+        "name": "source_section_text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements",
+        "name": "source_changed",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements",
+        "name": "source_change_kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements",
+        "name": "source_changed_revision_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

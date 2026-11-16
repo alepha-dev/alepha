@@ -2,6 +2,7 @@ import { AutomationBatchRepository } from "@lore/core/api";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { $repository, sql } from "alepha/orm";
 
 import { folioHistoryAtom } from "../atoms/folioHistoryAtom.ts";
@@ -90,6 +91,7 @@ export class FolioHistoryService {
   );
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -313,14 +315,14 @@ export class FolioHistoryService {
     byUserId: string,
     plan: RevisionPlan,
   ): Promise<AppendedRevision> {
-    if (plan.open)
-      return {
-        created: false,
-        revision: await this.revisions.updateById(
-          plan.open.id,
-          this.revisionData(folio),
-        ),
-      };
+    if (plan.open) {
+      const revision = await this.revisions.updateById(
+        plan.open.id,
+        this.revisionData(folio),
+      );
+      await this.announce(folio.id, revision.id, false);
+      return { created: false, revision };
+    }
     const revision = await this.revisions.create({
       ...this.revisionData(folio),
       folioId: folio.id,
@@ -329,7 +331,32 @@ export class FolioHistoryService {
       pinned: false,
     });
     if (!plan.first) await this.trim(folio.id);
+    await this.announce(folio.id, revision.id, true);
     return { created: true, revision };
+  }
+
+  /**
+   * Tell whoever listens that a folio's body moved (#E153): Plan's
+   * Requirements compares the section a requirement cites. Remember knows
+   * nothing of its listeners, and a failing one never fails the save.
+   */
+  protected async announce(
+    folioId: string,
+    revisionId: string,
+    created: boolean,
+  ): Promise<void> {
+    try {
+      await this.alepha.events.emit("folio:revision:created", {
+        folioId,
+        revisionId,
+        created,
+      });
+    } catch (error) {
+      this.log.error("A folio:revision:created listener failed", {
+        folioId,
+        error,
+      });
+    }
   }
   public async trim(folioId: string): Promise<void> {
     const cap = this.alepha.store.get(folioHistoryAtom).maxRevisions;
@@ -526,5 +553,20 @@ export class FolioHistoryService {
 
   public async setPinned(id: string, pinned: boolean): Promise<void> {
     await this.revisions.updateById(id, { pinned });
+  }
+}
+
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * A folio's body was saved as a revision, new (`created`) or folded into
+     * the open one (#E153). Emitted after the write; a listener's failure is
+     * logged, never thrown into the save.
+     */
+    "folio:revision:created": {
+      folioId: string;
+      revisionId: string;
+      created: boolean;
+    };
   }
 }
