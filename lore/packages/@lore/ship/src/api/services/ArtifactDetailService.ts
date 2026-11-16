@@ -74,7 +74,7 @@ export class ArtifactDetailService {
 
     const byHost = new Map(hostRows.map((row) => [row.id, row]));
     const envs = new Map(instances.map((row) => [row.id, row.env]));
-    const names = new Map(members.map((it) => [it.userId, it.name]));
+    const names = new Map(members.map((it) => [it.userId, it.label]));
 
     return {
       copies: instances

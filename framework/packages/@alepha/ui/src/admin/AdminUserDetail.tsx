@@ -32,6 +32,7 @@ import { useCallback, useState } from "react";
 import { PROVIDER_LABELS } from "../auth/providerLabels.ts";
 import { Button } from "../core/Button.tsx";
 import { useDialog } from "../core/useDialog.tsx";
+import { userDisplayName } from "../core/userInitials.ts";
 import { useToast } from "../core/useToast.tsx";
 import { DetailLayout, type DetailTab } from "../shell/DetailLayout.tsx";
 import { useDetailTab } from "../shell/useDetailTab.tsx";
@@ -159,14 +160,9 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
   const user = userQuery.data;
 
   // Admin > Users > <user> (#Q3571): the list the page belongs to, then the
-  // user by name, else email, else username. The route's own "User" crumb
+  // user by name, else username, else email. The route's own "User" crumb
   // stands until the user has loaded.
-  const userLabel = user
-    ? [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-      user.email ||
-      user.username ||
-      ""
-    : "";
+  const userLabel = user ? userDisplayName(user) : "";
   useNavCrumbs(
     "userDetail",
     userLabel

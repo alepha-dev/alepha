@@ -45,7 +45,13 @@ const setup = async () => {
   const users = alepha.inject(UserService);
   await alepha.start();
 
-  const owner = await users.createUser({ username: "owner" });
+  // A name on the owner and none on the reporter: the thread shows the
+  // name alone, and the username only for somebody with no name (#Q3791).
+  const owner = await users.createUser({
+    username: "owner",
+    firstName: "Ada",
+    lastName: "Lovelace",
+  });
   const reporter = await users.createUser({ username: "reporter" });
   const stranger = await users.createUser({ username: "stranger" });
   const OWNER = owner.id;
@@ -121,7 +127,10 @@ describe("Lore feedback comments", () => {
     expect(thread.map((c) => c.body)).toEqual(["Which browser?", "Safari 18."]);
     // Names are resolved server-side: the reporter cannot read the member
     // list, so an unresolved id would leave the thread anonymous for them.
-    expect(thread.map((c) => c.authorName)).toEqual(["owner", "reporter"]);
+    expect(thread.map((c) => c.authorName)).toEqual([
+      "Ada Lovelace",
+      "reporter",
+    ]);
   });
 
   it("refuses a stranger, as a 404 rather than a 403", async () => {
@@ -376,7 +385,7 @@ describe("Lore MCP: feedback_comment_add", () => {
     });
     expect(read.discussion).toHaveLength(1);
     expect(read.discussion[0].authorKind).toBe("agent");
-    expect(read.discussion[0].author).toBe("owner");
+    expect(read.discussion[0].author).toBe("Ada Lovelace");
     expect(read.discussionTruncated).toBe(false);
   });
 

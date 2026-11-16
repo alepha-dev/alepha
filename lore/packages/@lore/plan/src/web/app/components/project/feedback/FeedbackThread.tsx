@@ -2,8 +2,8 @@ import { FileImage, TimeAgo, Button, Textarea, useDialog } from "@alepha/ui";
 import {
   type I18n,
   currentProjectAtom,
-  displayName,
   useProjectUsers,
+  mentionHandle,
 } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -84,7 +84,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
   // Empty outside the project shell, which is exactly the reporter's own
   // sheet: no roster to read there, and no handle should link.
   const projectUsers = useProjectUsers();
-  const members = projectUsers.map((u) => ({ name: displayName(u, "") }));
+  const members = projectUsers.map((u) => ({ name: mentionHandle(u, "") }));
 
   const [draft, setDraft] = useState("");
   const feedbackApi = useClient<FeedbackController>();

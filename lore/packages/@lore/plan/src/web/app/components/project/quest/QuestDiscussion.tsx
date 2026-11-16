@@ -1,8 +1,8 @@
 import {
   type I18n,
-  displayName,
   CollapsibleBlock,
   useProjectUsers,
+  mentionHandle,
 } from "@lore/core/web";
 import { useClient, useQuery, useQueryClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -120,10 +120,10 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
           quest={props.quest}
           // The `@` picker's roster, from the list this component already
           // holds to render each comment's author - so it costs no request.
-          // Through `displayName` because that is what `resolveMention`
+          // Through `mentionHandle` because that is what `resolveMention`
           // compares against: a roster built any other way disagrees with
           // the renderer and the notifier about what `@nfo` is.
-          members={users.map((user) => displayName(user))}
+          members={users.map((user) => mentionHandle(user))}
           // Written into the thread's cache: the server already answered
           // with the row.
           onPosted={(comment) => {

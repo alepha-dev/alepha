@@ -19,14 +19,15 @@ import { expect, test } from "./fixtures.ts";
 const PAGES = [
   { path: "dashboard", heading: "Admin: dashboard", content: "Users" },
   { path: "users", heading: "Admin: users", content: "ada@alepha.dev" },
-  { path: "sessions", heading: "Admin: sessions", content: "ada@alepha.dev" },
+  // A person is named by their name, not their email (#Q3791).
+  { path: "sessions", heading: "Admin: sessions", content: "Ada Lovelace" },
   { path: "keys", heading: "Admin: API keys", content: "CI pipeline" },
   { path: "jobs", heading: "Admin: jobs", content: "digests.send-weekly" },
   { path: "files", heading: "Admin: files", content: "quarterly-report.pdf" },
   {
     path: "notifications",
     heading: "Admin: notifications",
-    content: "ada@alepha.dev",
+    content: "Ada Lovelace",
   },
   { path: "parameters", heading: "Admin: parameters", content: "Limits" },
   { path: "analytics", heading: "Admin: analytics", content: "pageviews" },

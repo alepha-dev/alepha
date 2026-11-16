@@ -81,11 +81,22 @@ export const userInitials = (user: UserAvatarUser, locale?: string): string => {
 };
 
 /**
- * The name a screen reader says for the avatar: the full name, else the
- * username, else the email.
+ * The parts of a user a name is made from.
  */
-export const userDisplayName = (user: UserAvatarUser): string =>
-  [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-  user.username ||
-  user.email ||
+export type UserNameParts = Pick<
+  UserAvatarUser,
+  "firstName" | "lastName" | "username" | "email"
+>;
+
+/**
+ * The one way a person is named on screen: the first and last name, else
+ * the username, else the email. Empty when there is nothing to name them by.
+ *
+ * A user with a name is shown by that name alone: the username is a login
+ * handle, not how a person introduces themselves.
+ */
+export const userDisplayName = (user: UserNameParts): string =>
+  [user.firstName?.trim(), user.lastName?.trim()].filter(Boolean).join(" ") ||
+  user.username?.trim() ||
+  user.email?.trim() ||
   "";

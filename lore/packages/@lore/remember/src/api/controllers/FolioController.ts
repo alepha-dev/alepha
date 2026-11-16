@@ -9,6 +9,7 @@ import {
   ResourceLinkService,
 } from "@lore/core/api";
 import type { LinkSourceKind, LinkTargetKind } from "@lore/core/schemas";
+import { displayName } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
@@ -1880,7 +1881,16 @@ export class FolioController {
         limit,
         include: {
           folio: { select: ["id", "shortId", "title"] },
-          author: { select: ["id", "username", "email", "picture"] },
+          author: {
+            select: [
+              "id",
+              "username",
+              "firstName",
+              "lastName",
+              "email",
+              "picture",
+            ],
+          },
         },
       });
 
@@ -1893,7 +1903,7 @@ export class FolioController {
             at: r.at,
             action: r.action,
             byUserId: r.byUserId,
-            byUsername: u?.username ?? u?.email,
+            byUsername: u ? displayName(u) : undefined,
             byAvatarUrl: u?.picture ? `/api/files/${u.picture}` : undefined,
             folioId: r.folioId,
             folioShortId: folio?.shortId ?? 0,
@@ -1979,7 +1989,16 @@ export class FolioController {
           { column: "id", direction: "desc" },
         ],
         include: {
-          author: { select: ["id", "username", "email", "picture"] },
+          author: {
+            select: [
+              "id",
+              "username",
+              "firstName",
+              "lastName",
+              "email",
+              "picture",
+            ],
+          },
         },
       });
 
@@ -2005,7 +2024,7 @@ export class FolioController {
           createdAt: revision.createdAt,
           folioId: revision.folioId,
           byUserId: revision.byUserId,
-          byUsername: author?.username ?? author?.email,
+          byUsername: author ? displayName(author) : undefined,
           byAvatarUrl: author?.picture
             ? `/api/files/${author.picture}`
             : undefined,

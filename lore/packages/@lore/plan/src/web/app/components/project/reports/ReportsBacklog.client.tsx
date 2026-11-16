@@ -10,6 +10,7 @@ import {
   ReportsSection,
   useProjectUsers,
   useReportsDrillDown,
+  displayName,
 } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
@@ -31,7 +32,7 @@ const ReportsBacklog = (props: ReportsBacklogProps) => {
 
   const nameOf = (id?: string) => {
     const user = users.find((it) => it.id === id);
-    return user?.username ?? user?.email ?? "";
+    return displayName(user, "");
   };
   const daysLabel = (days: number) =>
     tr("reports.backlog.days", { args: [String(Math.round(days))] });

@@ -7,6 +7,7 @@ import {
   type DashboardCardValue,
   DashboardMetricCatalog,
 } from "@lore/core/schemas";
+import { displayName } from "@lore/core/web";
 import { $inject } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
@@ -73,12 +74,7 @@ export class RecentFoliosMetric implements DashboardMetricResolver {
         ? await this.users.findMany({ where: { id: { inArray: ids } } })
         : [];
       const nameOf = new Map(
-        people.map((person) => [
-          person.id,
-          [person.firstName, person.lastName].filter(Boolean).join(" ") ||
-            person.username ||
-            "",
-        ]),
+        people.map((person) => [person.id, displayName(person, "")]),
       );
       out.set(entry.card.id, {
         value: recent.length,
