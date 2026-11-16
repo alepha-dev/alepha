@@ -739,6 +739,17 @@ export interface DataTableFilters<
    * rest) are ignored.
    */
   render?: (form: FormModel<DataTableFilterSchema<F>>) => ReactNode;
+  /**
+   * Called with every filter value once on mount (persisted and seeded
+   * values included) and again after each change, a reset included.
+   *
+   * For a filter whose value drives a read the table does not own: a
+   * static-data table over a cursor-paged list, where choosing a scope has
+   * to refetch from the server rather than narrow the loaded rows. Such a
+   * filter is still drawn, counted and persisted like any other; the `data`
+   * predicate simply ignores its key. Read every render.
+   */
+  onChange?: (values: DataTableFilterValues<F>) => void;
 }
 
 export interface SortState {

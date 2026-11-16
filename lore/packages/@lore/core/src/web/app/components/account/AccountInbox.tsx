@@ -1,6 +1,5 @@
 import { TimeAgo, Button } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
-import { Control } from "@alepha/ui/form";
 import { inboxUnreadAtom } from "@alepha/ui/shell";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
@@ -13,10 +12,9 @@ import {
   useInject,
   useStore,
 } from "alepha/react";
-import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { CheckCheck } from "lucide-react";
+import { CheckCheck, FolderKanban } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
@@ -54,12 +52,20 @@ const PAGE_SIZE = 25;
  *
  * ## Two different emptinesses
  *
- * "This scope has no messages" and "your search matched none of them" are
+ * "This inbox has no messages" and "your filters matched none of them" are
  * different answers and the table already distinguishes them by
- * `activeFilterCount`. The scope is NOT one of the table's filters: it drives
- * the server fetch, so folding it in would have the table re-filtering in
- * memory rows the server already narrowed, and "no match" would then be shown
- * for a scope that is simply empty.
+ * `activeFilterCount`.
+ *
+ * ## The Project filter drives the server read
+ *
+ * Project is one of the table's own filters (#Q3779), opened from the filter
+ * bar like every other table's and counted as active, but it does not filter
+ * the loaded rows: the `filter` predicate ignores it, and `filters.onChange`
+ * hands its value to the `useInfiniteQuery` below, whose key it is. Choosing
+ * a project reads that project's messages from the server, first page, with
+ * that scope's unread count and cursor, rather than narrowing whatever page
+ * of all projects happened to be loaded. A project with no messages reads as
+ * "no match" with a way to clear the filter, which it is.
  *
  * ## Paging is the controller's cursor
  *
@@ -84,17 +90,10 @@ const AccountInbox = () => {
 
   /**
    * The project the list is narrowed to, or none for all of them (the
-   * default). A one-field form, since a field is always a `Control`; it
-   * drives the server read, so it is not one of the table's own filters
-   * (see "Two different emptinesses" above).
+   * default). Set by the table's Project filter through `filters.onChange`
+   * (see "The Project filter drives the server read" above).
    */
   const [projectId, setProjectId] = useState<string | undefined>();
-  const filter = useForm({
-    schema: z.object({ project: z.string().optional() }),
-    initialValues: {},
-    handler: async () => {},
-    onChange: (_key, next) => setProjectId(next ? String(next) : undefined),
-  });
   const scope = projectId ? `project:${projectId}` : undefined;
 
   /**
@@ -210,6 +209,11 @@ const AccountInbox = () => {
 
   const unreadOnScreen = rows.filter((it) => !it.readAt).length;
 
+  const projectItems = (overview?.projects ?? []).map((project) => ({
+    value: String(project.id),
+    label: project.title,
+  }));
+
   const filterFields = {
     // Spans the title and the body preview, so it is not a field the table
     // can match by name: the `filter` predicate does it.
@@ -222,6 +226,17 @@ const AccountInbox = () => {
         // fuller phrase.
         inputProps: { "aria-label": tr("inbox.filter.searchLabel") },
       },
+    },
+    // Drives the server read, not the loaded rows: the `filter` predicate
+    // below ignores it.
+    project: {
+      schema: z.string(),
+      label: tr("inbox.filter.project"),
+      placeholder: tr("inbox.scope.all"),
+      icon: FolderKanban,
+      mode: "default",
+      items: projectItems,
+      hidden: projectItems.length === 0,
     },
   } satisfies DataTableFilterFields;
 
@@ -242,26 +257,6 @@ const AccountInbox = () => {
               disabled: unreadOnScreen === 0 || markAllAction.loading,
             },
           ]}
-          toolbar={
-            <div className="w-48">
-              <Control
-                input={filter.input.project}
-                label=""
-                select
-                clearable
-                clearLabel={tr("inbox.scope.all")}
-                placeholder={tr("inbox.scope.all")}
-                items={(overview?.projects ?? []).map((project) => ({
-                  value: String(project.id),
-                  label: project.title,
-                }))}
-                inputProps={{
-                  "aria-label": tr("inbox.filter.project"),
-                  "data-testid": "inbox-project-filter",
-                }}
-              />
-            </div>
-          }
           emptyState={{
             title: tr("inbox.empty"),
             description: tr("inbox.empty.description"),
@@ -270,7 +265,11 @@ const AccountInbox = () => {
             title: tr("inbox.noMatch"),
             description: tr("inbox.noMatch.description"),
           }}
-          filters={{ fields: filterFields }}
+          filters={{
+            fields: filterFields,
+            onChange: (values) =>
+              setProjectId(values.project ? String(values.project) : undefined),
+          }}
           filter={(row, values) => {
             const search = (values.search ?? "").toLowerCase();
             if (!search) return true;
