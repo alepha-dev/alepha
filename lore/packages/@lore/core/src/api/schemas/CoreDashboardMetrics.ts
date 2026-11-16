@@ -18,6 +18,7 @@ export class CoreDashboardMetrics {
   constructor() {
     this.catalog.register({
       key: "needsYou",
+      requires: "project:read",
       order: 5,
       boards: ["project"],
       group: "core",
@@ -49,6 +50,7 @@ export class CoreDashboardMetrics {
         : undefined;
     this.catalog.register({
       key: "activityFeed",
+      requires: "project:read",
       order: 6,
       boards: ["project"],
       group: "core",
@@ -62,6 +64,7 @@ export class CoreDashboardMetrics {
     });
     this.catalog.register({
       key: "momentum",
+      requires: "project:read",
       order: 7,
       boards: ["project"],
       group: "core",

@@ -25,6 +25,7 @@ export class DeployAppsDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "appHealth",
+      requires: "app:read",
       order: 81,
       labelKey: "dashboard.metric.appHealth",
       hintKey: "dashboard.metric.appHealth.hint",
@@ -43,6 +44,7 @@ export class DeployAppsDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "errorTrend",
+      requires: "error:read",
       order: 82,
       labelKey: "dashboard.metric.errorTrend",
       hintKey: "dashboard.metric.errorTrend.hint",
@@ -62,6 +64,7 @@ export class DeployAppsDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "qualityTrend",
+      requires: "quality:read",
       order: 83,
       labelKey: "dashboard.metric.qualityTrend",
       hintKey: "dashboard.metric.qualityTrend.hint",
@@ -101,6 +104,7 @@ export class DeployAppsDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "uptime",
+      requires: "app:read",
       order: 85,
       labelKey: "dashboard.metric.uptime",
       hintKey: "dashboard.metric.uptime.hint",

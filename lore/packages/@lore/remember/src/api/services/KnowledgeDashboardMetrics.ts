@@ -35,6 +35,7 @@ export class KnowledgeDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "pinnedFolio",
+      requires: "folio:read",
       order: 91,
       labelKey: "dashboard.metric.pinnedFolio",
       hintKey: "dashboard.metric.pinnedFolio.hint",
@@ -45,6 +46,7 @@ export class KnowledgeDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "recentFolios",
+      requires: "folio:read",
       order: 92,
       labelKey: "dashboard.metric.recentFolios",
       hintKey: "dashboard.metric.recentFolios.hint",
@@ -55,6 +57,7 @@ export class KnowledgeDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "foliosThisMonth",
+      requires: "folio:read",
       order: 93,
       labelKey: "dashboard.metric.foliosThisMonth",
       hintKey: "dashboard.metric.foliosThisMonth.hint",
@@ -81,6 +84,7 @@ export class KnowledgeDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "foliosByDirectory",
+      requires: "folio:read",
       order: 94,
       labelKey: "dashboard.metric.foliosByDirectory",
       hintKey: "dashboard.metric.foliosByDirectory.hint",

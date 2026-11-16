@@ -31,6 +31,15 @@ export interface DashboardResolvable {
    * share with, and reads directly.
    */
   reads?: DashboardReadShare;
+  /**
+   * What the reader's rank holds in each project of the board (#Q3794), by
+   * project id. The registry has already dropped from `scope` the projects
+   * where the reader lacks the metric's own `requires`; a resolver that
+   * draws several kinds of row in one tile ("needs you", the activity feed)
+   * reads this to leave out the kinds the reader may not see. Absent
+   * outside a board, where such a resolver shows nothing rank-gated.
+   */
+  permissions?: ReadonlyMap<number, readonly string[]>;
 }
 
 /**

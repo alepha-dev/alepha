@@ -1,4 +1,4 @@
-import { $ownsProject } from "@lore/core/api";
+import { $ownsProject, ProjectReaderPermissions } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -33,6 +33,7 @@ export class ProjectQuestPortabilityController {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly formatter = $inject(QuestCsvFormatter);
+  protected readonly readers = $inject(ProjectReaderPermissions);
 
   exportQuests = $action({
     // A permission, so the token carries a computed `ownership` for the
@@ -63,8 +64,17 @@ export class ProjectQuestPortabilityController {
         },
       });
 
+      // A person's email is for a reader holding `member:read`. Anyone else,
+      // a viewer of an open project among them, gets the public card's name:
+      // the username, or the email's local part (#Q3794).
+      const full = this.readers.grants(
+        await this.readers.ofOne(user, project),
+        "member:read",
+      );
       const emailOf = (u?: { email?: string; username?: string }): string =>
-        u?.email ?? u?.username ?? "";
+        full
+          ? (u?.email ?? u?.username ?? "")
+          : (u?.username ?? u?.email?.split("@")[0] ?? "");
 
       const status = (q: (typeof projectQuests)[number]): ExportRow["status"] =>
         q.completedAt ? "completed" : q.acceptedAt ? "in_progress" : "todo";

@@ -65,13 +65,18 @@ export class ActivityFeedMetric implements DashboardMetricResolver {
         continue;
       }
       // The board's window: the feed slot's data gate is "anything in it".
-      const page = await this.projects().activityPage(project.id, {
-        size: 8,
-        after: this.dateTime
-          .now()
-          .subtract(entry.windowDays, "day")
-          .toISOString(),
-      });
+      const page = await this.projects().activityPage(
+        project.id,
+        {
+          size: 8,
+          after: this.dateTime
+            .now()
+            .subtract(entry.windowDays, "day")
+            .toISOString(),
+        },
+        // The kinds the reader's rank reads, as on the page (#Q3794).
+        { reader: entry.permissions?.get(project.id) ?? [] },
+      );
       const rows = page.content;
       out.set(entry.card.id, {
         ...(rows.length === 0 ? { empty: "noActivity" as const } : {}),

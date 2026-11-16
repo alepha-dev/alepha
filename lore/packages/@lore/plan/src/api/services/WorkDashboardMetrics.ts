@@ -23,6 +23,7 @@ export class WorkDashboardMetrics {
   constructor() {
     this.catalog.register({
       key: "activeQuests",
+      requires: "quest:read",
       automation: {
         kind: "number",
         requires: "quest:read",
@@ -72,6 +73,7 @@ export class WorkDashboardMetrics {
 
     this.catalog.register({
       key: "heldQuests",
+      requires: "quest:read",
       automation: { kind: "number", requires: "quest:read", slots: {} },
       order: 20,
       /**
@@ -107,6 +109,7 @@ export class WorkDashboardMetrics {
 
     this.catalog.register({
       key: "epicProgress",
+      requires: "epic:read",
       order: 30,
       /**
        * ⚠️ The `epics` group has existed in this catalogue since epic #E4
@@ -148,6 +151,7 @@ export class WorkDashboardMetrics {
 
     this.catalog.register({
       key: "releaseProgress",
+      requires: "release:read",
       order: 40,
       /**
        * The companion to the epic card, on the second scope kind
@@ -182,6 +186,7 @@ export class WorkDashboardMetrics {
 
     this.catalog.register({
       key: "tagCompletion",
+      requires: "quest:read",
       order: 50,
       boards: ["project"],
       group: "quests",
@@ -215,6 +220,7 @@ export class WorkDashboardMetrics {
 
     this.catalog.register({
       key: "untriagedFeedback",
+      requires: "feedback:read",
       automation: {
         kind: "number",
         requires: "feedback:read",

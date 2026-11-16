@@ -57,6 +57,7 @@ import {
 } from "../schemas/projectUserSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { LoreActivityPermissions } from "../security/LoreActivityPermissions.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
 import { AssignedWorkRegistry } from "../services/AssignedWorkRegistry.ts";
 import { CoreBuckets } from "../services/CoreBuckets.ts";
@@ -66,6 +67,7 @@ import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectJoinPolicy } from "../services/ProjectJoinPolicy.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
+import { ProjectReaderPermissions } from "../services/ProjectReaderPermissions.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
@@ -144,6 +146,7 @@ export class ProjectController {
   ranks = $inject(RankService);
   defaultRanks = $inject(DefaultRankService);
   joinPolicy = $inject(ProjectJoinPolicy);
+  protected readonly readers = $inject(ProjectReaderPermissions);
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -812,10 +815,13 @@ export class ProjectController {
       }),
       response: db.page(projectActivityRowSchema),
     },
-    handler: async ({ params, query, user }) =>
-      this.activityPage(params.id, query, {
-        metadata: await this.callerHolds(params.id, "member:read", user),
-      }),
+    handler: async ({ params, query, user }) => {
+      const reader = await this.readers.ofOne(user, this.owned.get<Project>());
+      return this.activityPage(params.id, query, {
+        reader,
+        metadata: this.readers.grants(reader, "member:read"),
+      });
+    },
   });
 
   /**
@@ -847,13 +853,22 @@ export class ProjectController {
        * feed everyone reads.
        */
       metadata?: boolean;
-    } = {},
+      /**
+       * The rank permissions of whoever reads the page (#Q3794): a row is
+       * shown only when they hold the permission its kind names in
+       * `LoreActivityPermissions`. The route's gate is `project:read`, the
+       * floor, so this is what keeps a feedback title or an app name from a
+       * viewer of an open project. Required, so a new caller cannot forget
+       * it: `ProjectReaderPermissions` gives it.
+       */
+      reader: readonly string[];
+    },
   ) {
     const window = this.activityWindow(query.createdAt);
     const page = await this.auditService.find({
       ...query,
       ...window,
-      type: await this.activityTypes(projectId, query.type),
+      type: await this.activityTypes(projectId, query.type, options.reader),
       // Both halves, always: every project-layer index leads on the pair,
       // and a `scopeId` alone would fall off them onto a scan.
       scopeType: "project",
@@ -922,14 +937,18 @@ export class ProjectController {
         pairs: z.array(z.object({ type: z.text(), action: z.text() })),
       }),
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, user }) => {
       const enabled = await this.projectSecurity.capabilitiesOf(params.id);
-      // The same predicate the rows are narrowed with in `enabledActivityKinds`,
-      // options included, so the dropdown never offers a kind the table hides.
+      const reader = await this.readers.ofOne(user, this.owned.get<Project>());
+      // The same predicates the rows are narrowed with in
+      // `enabledActivityKinds`, options and the reader's rank included, so
+      // the dropdown never offers a kind the table hides.
       const pairs = this.audits
         .projectLayerActions()
-        .filter((pair) =>
-          this.capabilityRegistry.isActivityKindEnabled(pair.type, enabled),
+        .filter(
+          (pair) =>
+            this.capabilityRegistry.isActivityKindEnabled(pair.type, enabled) &&
+            LoreActivityPermissions.reads(reader, pair.type),
         );
       return {
         types: [...new Set(pairs.map((pair) => pair.type))].sort(),
@@ -984,12 +1003,18 @@ export class ProjectController {
    */
   protected async activityTypes(
     projectId: number,
-    asked?: string,
+    asked: string | undefined,
+    reader: readonly string[],
   ): Promise<string | undefined> {
     const declared = [
       ...new Set(this.audits.projectLayerActions().map((pair) => pair.type)),
     ];
-    const allowed = await this.enabledActivityKinds(projectId, declared);
+    // Narrowed twice: to the capabilities that are on, then to the kinds the
+    // reader's rank reads (#Q3794). An owner holds every kind, so their
+    // query stays the unfiltered index seek.
+    const allowed = (
+      await this.enabledActivityKinds(projectId, declared)
+    ).filter((type) => LoreActivityPermissions.reads(reader, type));
 
     const wanted = asked
       ?.split(",")
@@ -997,7 +1022,12 @@ export class ProjectController {
       .filter(Boolean);
 
     if (!wanted?.length) {
-      return allowed.length === declared.length ? undefined : allowed.join(",");
+      if (allowed.length === declared.length) return undefined;
+      // Nothing left to show: an empty string reads as "no filter"
+      // downstream, so name a type nothing ever writes.
+      return allowed.length
+        ? allowed.join(",")
+        : ProjectController.NO_ACTIVITY_KIND;
     }
 
     const kept = wanted.filter((type) => allowed.includes(type));
@@ -1418,7 +1448,10 @@ export class ProjectController {
       $etag({
         control: { private: true, noCache: true },
       }),
-      this.ownsProject("project:read"),
+      // The rows carry full user records, emails included, so they take
+      // `member:read`: `project:read` is the floor a viewer of an open
+      // project holds (#Q3794). `getProjectUsers` is the public card.
+      this.ownsProject("member:read"),
     ],
     schema: {
       params: z.object({
