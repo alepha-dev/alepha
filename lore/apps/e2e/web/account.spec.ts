@@ -262,7 +262,10 @@ test.describe("Account dialog", () => {
 
     const dialog = await openAccount(page, "sessions");
 
-    await expect(dialog.getByText(/this device/i)).toBeVisible();
+    // Marked by an icon named "Current session", not a badge (#Q3778).
+    await expect(
+      dialog.getByRole("img", { name: "Current session" }),
+    ).toBeVisible();
     // The row you are sitting in has no row menu - signing yourself out
     // belongs to the sign-out affordance, not to a per-row action that reads
     // as "revoke someone else" - and with one session there is no "Sign out

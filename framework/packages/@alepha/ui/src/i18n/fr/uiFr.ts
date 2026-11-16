@@ -1486,10 +1486,10 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "account.sessions.colIp": "IP",
   "account.sessions.colLastUsed": "Dernière utilisation",
   "account.sessions.colSignedIn": "Connexion",
+  "account.sessions.currentSession": "Session actuelle",
   "account.sessions.revokeDescription":
     "Ce navigateur ou cet appareil est déconnecté. S'y reconnecter ouvre une nouvelle session.",
   "account.sessions.revokeTitle": "Révoquer cette session ?",
-  "account.sessions.thisDevice": "Cet appareil",
   "account.sessions.description":
     "Révoquez toute session que vous ne reconnaissez pas.",
   "account.sessions.deviceLabel": "$1 sur $2",

@@ -2,6 +2,7 @@ import type { MySession, MySessionController } from "alepha/api/users";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
+  CircleCheck,
   CircleHelp,
   LogOut,
   Monitor,
@@ -11,8 +12,13 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import { Badge } from "../core/Badge.tsx";
 import TimeAgo from "../core/TimeAgo.tsx";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../core/Tooltip.tsx";
 import { useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { DataTable } from "../table/DataTable.tsx";
@@ -33,7 +39,8 @@ export interface AccountSessionsViewProps extends AccountSessionsProps {
  * drops the row from the array it owns, which is the table's refresh in this
  * mode.
  *
- * The current session carries a "This device" badge and no row action: the
+ * The current session carries a check mark with a "Current session" tooltip
+ * and no row action: the
  * way to end it is to sign out, and a row button that signs you out of the
  * page you are reading is a trap. "Sign out everywhere else" is the toolbar's
  * primary action, shown while there is anything else to end.
@@ -47,6 +54,9 @@ export const AccountSessionsView = (props: AccountSessionsViewProps) => {
   const dialog = useDialog();
   const toast = useToast();
   const { tr } = useI18n();
+  const currentSession = tr("account.sessions.currentSession", {
+    default: "Current session",
+  });
   const [sessions, setSessions] = useState<MySession[]>(props.sessions);
 
   const deviceIcon = (session: MySession) => {
@@ -203,11 +213,27 @@ export const AccountSessionsView = (props: AccountSessionsViewProps) => {
                 {deviceIcon(session)}
                 <span className="truncate">{label(session)}</span>
                 {session.current ? (
-                  <Badge tone="success" data-testid="account-session-current">
-                    {tr("account.sessions.thisDevice", {
-                      default: "This device",
-                    })}
-                  </Badge>
+                  // A small mark rather than a badge (#Q3778): the row only
+                  // has to be told apart, and the tooltip says why. Named as
+                  // an image, so a screen reader announces the same words;
+                  // not focusable, since it is not a control (jsx-a11y).
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <span
+                            role="img"
+                            aria-label={currentSession}
+                            data-testid="account-session-current"
+                            className="text-success-text inline-flex shrink-0"
+                          />
+                        }
+                      >
+                        <CircleCheck className="size-4" aria-hidden />
+                      </TooltipTrigger>
+                      <TooltipContent>{currentSession}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 ) : null}
               </span>
             ),

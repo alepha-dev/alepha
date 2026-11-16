@@ -146,9 +146,24 @@ describe("AccountSessions", () => {
   it("marks the current session and offers no revoke on it", async () => {
     await mount();
 
-    const badge = screen.getByTestId("account-session-current");
-    expect(badge.textContent).toBe("This device");
-    expect(badge.closest("tr")?.textContent).toContain("Firefox on Linux");
+    // An icon named "Current session", not a "This device" badge (#Q3778).
+    const mark = screen.getByRole("img", { name: "Current session" });
+    expect(mark.getAttribute("data-testid")).toBe("account-session-current");
+    expect(mark.textContent).toBe("");
+    expect(screen.queryByText("This device")).toBeNull();
+    expect(mark.closest("tr")?.textContent).toContain("Firefox on Linux");
+    expect(screen.getAllByTestId("account-session-current")).toHaveLength(1);
+
+    // Hovering it says what it marks.
+    fireEvent.pointerEnter(mark, { pointerType: "mouse" });
+    fireEvent.mouseEnter(mark);
+    fireEvent.pointerMove(mark, { pointerType: "mouse" });
+    fireEvent.mouseMove(mark);
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-slot="tooltip-content"]')?.textContent,
+      ).toBe("Current session"),
+    );
     // Two row menus, for the two other sessions: the current row has none.
     expect(
       screen.getAllByRole("button", { name: "Open row actions" }),
