@@ -484,6 +484,8 @@ type server struct {
 	// readyWait overrides readyTimeout for a blue/green candidate when set:
 	// tests waiting for a release that never comes up need not wait a minute.
 	readyWait time.Duration
+	// adoptTimeout overrides adoptWait when set, for the same reason.
+	adoptTimeout time.Duration
 	// watchWindow and watchEvery override rollbackWindow and rollbackInterval
 	// when set: tests of the rollback watch need not sit through two minutes.
 	watchWindow time.Duration
@@ -910,18 +912,115 @@ and on the child runner it is the whole mechanism.
 
 A method rather than a loop inside `cmdServe` so a test can run it: `cmdServe`
 binds sockets and never returns.
+
+Two passes, and the split is the point. adoptApps leaves alone every app whose
+container is already the one Bay would create (#Q3742): before it, a Bay
+restart recreated every archive and image app, one at a time, so an upgrade of
+the proxy took every site on the host down. startApps then starts what could
+not be adopted. A Bay taking over from a running one says it is ready between
+the two, so its rollback window does not grow with the number of apps to
+start.
 */
 func (s *server) restoreApps() {
+	s.startApps(s.adoptApps())
+}
+
+// pendingStart is an app the adopt pass could not leave alone, and why.
+type pendingStart struct {
+	app    state.App
+	reason string
+}
+
+// adoptWait is how long a running container gets to answer before a boot
+// stops trusting it and starts it again.
+const adoptWait = 5 * time.Second
+
+// adopter is a runner that can tell whether the container it holds for a
+// spec is the one it would create now: the Docker runner.
+type adopter interface {
+	Adoptable(spec runner.Spec) string
+}
+
+/*
+adoptApps is the first pass of a boot: it adopts every app whose container
+needs nothing, and answers the ones that need a start.
+
+It starts nothing and stops nothing, so it is bounded by adoptWait per app
+whatever state the host is in.
+*/
+func (s *server) adoptApps() []pendingStart {
+	var pending []pendingStart
 	for _, app := range s.store.Apps() {
 		if app.Stopped {
 			s.log.Info("skipping a stopped app", "app", app.Key(),
 				"hint", "bay start "+app.Key())
 			continue
 		}
-		if err := s.start(app); err != nil {
-			s.log.Error("restore failed", "app", app.Key(), "err", err)
+		reason := s.adopt(app)
+		if reason == "" {
+			s.log.Info("app adopted", "app", app.Key(), "port", app.UpstreamPort(), "domain", app.Domain())
+			continue
 		}
+		pending = append(pending, pendingStart{app: app, reason: reason})
 	}
+	return pending
+}
+
+// startApps is the second pass of a boot: every app the first one could not
+// adopt goes through start, as all of them did before adoption existed.
+func (s *server) startApps(pending []pendingStart) {
+	for _, p := range pending {
+		if err := s.start(p.app); err != nil {
+			s.log.Error("restore failed", "app", p.app.Key(), "reason", p.reason, "err", err)
+			continue
+		}
+		s.log.Info("app started", "app", p.app.Key(), "reason", p.reason)
+	}
+}
+
+// Why an app goes through start at boot, beside the runner's own reasons
+// (runner.NotRunning, NoLabel, SpecChanged, ImageChanged).
+const (
+	// noAnswer: the container matches, and nothing answers on its port.
+	noAnswer = "no answer"
+	// notAContainer: a static site, a Compose service, an app service with no
+	// artifact yet. start already costs those nothing.
+	notAContainer = "not an app container"
+)
+
+/*
+adopt decides whether a boot may leave an app's container alone: empty when it
+may, the reason for a start otherwise.
+
+The container must be the one start would create now (runner.Adoptable: same
+definition, same image, running), and it must answer on its port within
+adoptWait. Anything else is a start, which is the safe side: a definition that
+differs between two Bay versions for the same intent restarts the app once.
+*/
+func (s *server) adopt(app state.App) string {
+	if app.Static || app.ServiceKind == "service" || (app.ServiceKind == "app" && app.Release == "" && app.Image == "") {
+		return notAContainer
+	}
+	ad, ok := s.runner.(adopter)
+	if !ok {
+		return runner.NotRunning
+	}
+	spec, _, err := s.specFor(app)
+	if err != nil {
+		// start will say why, with the app's name on it.
+		return runner.SpecChanged
+	}
+	if reason := ad.Adoptable(spec); reason != "" {
+		return reason
+	}
+	wait := adoptWait
+	if s.adoptTimeout > 0 {
+		wait = s.adoptTimeout
+	}
+	if err := s.waitReady(app, app.UpstreamPort(), false, wait); err != nil {
+		return noAnswer
+	}
+	return ""
 }
 
 /*

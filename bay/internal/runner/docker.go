@@ -3,7 +3,9 @@ package runner
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -107,6 +109,16 @@ var containerLogConfig = map[string]any{
 // on the host can always be traced back to the app that owns it.
 const dockerKeyLabel = "dev.alepha.bay.key"
 
+/*
+dockerSpecLabel carries the hash of the definition a container was created
+from: the hex SHA-256 of the JSON of createBody, rendered without this label.
+
+It is how a Bay that boots tells a container it would create again, byte for
+byte, from one whose definition has moved since (see Adoptable). A container
+without it was created by a Bay older than the label.
+*/
+const dockerSpecLabel = "dev.alepha.bay.spec"
+
 // Timeouts for calls to the daemon. A pull is the one call that legitimately
 // takes minutes; everything else answers in milliseconds or is broken.
 const (
@@ -177,6 +189,12 @@ func (d *Docker) create(name string, spec Spec, c Container) error {
 		return err
 	}
 	body := createBody(spec, c)
+	hash, err := hashBody(body)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", name, err)
+	}
+	// After the hash, so the hash covers what Bay asks of Docker and not itself.
+	body["Labels"].(map[string]string)[dockerSpecLabel] = hash
 	if err := d.api.do("POST", "/containers/create", url.Values{"name": {name}}, body, nil, dockerCallTimeout); err != nil {
 		return fmt.Errorf("create %s: %w", name, err)
 	}
@@ -184,6 +202,90 @@ func (d *Docker) create(name string, spec Spec, c Container) error {
 		return fmt.Errorf("start %s: %w", name, err)
 	}
 	return nil
+}
+
+/*
+hashBody is the hex SHA-256 of a container definition's JSON.
+
+encoding/json writes map keys sorted, and createBody sorts the one list whose
+order is not the caller's (the environment), so the same spec always hashes the
+same.
+*/
+func hashBody(body map[string]any) (string, error) {
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+// SpecHash is the value create stamps in the spec label for this spec.
+func SpecHash(spec Spec) (string, error) {
+	c, err := containerOf(spec)
+	if err != nil {
+		return "", err
+	}
+	return hashBody(createBody(spec, c))
+}
+
+// The reasons Adoptable gives for a container Bay must create again.
+const (
+	NotRunning   = "not running"
+	NoLabel      = "no label"
+	SpecChanged  = "spec changed"
+	ImageChanged = "image changed"
+)
+
+/*
+Adoptable says whether the instance's container is the one Start would create
+now, so a Bay that boots can leave it running: empty when it is, the reason
+otherwise.
+
+Three things must hold. The container is running and not in a restart loop.
+Its spec label equals the hash of the definition Bay would send today, which a
+container created before the label existed cannot. And its image is the one
+the spec's reference resolves to on this host now: the spec carries a
+reference, not always a digest, so a tag pulled again since the container
+started would otherwise never be picked up.
+
+Whether the app answers is the caller's question: this one only reads Docker.
+*/
+func (d *Docker) Adoptable(spec Spec) string {
+	c, err := containerOf(spec)
+	if err != nil {
+		return NotRunning
+	}
+	var info struct {
+		Image string `json:"Image"`
+		State struct {
+			Running    bool `json:"Running"`
+			Restarting bool `json:"Restarting"`
+		} `json:"State"`
+		Config struct {
+			Labels map[string]string `json:"Labels"`
+		} `json:"Config"`
+	}
+	if err := d.api.do("GET", "/containers/"+unitName(spec.Key)+"/json", nil, nil, &info, dockerCallTimeout); err != nil {
+		return NotRunning
+	}
+	if !info.State.Running || info.State.Restarting {
+		return NotRunning
+	}
+	label := info.Config.Labels[dockerSpecLabel]
+	if label == "" {
+		return NoLabel
+	}
+	if hash, err := hashBody(createBody(spec, c)); err != nil || hash != label {
+		return SpecChanged
+	}
+	var image struct {
+		ID string `json:"Id"`
+	}
+	if err := d.api.do("GET", "/images/"+c.Image+"/json", nil, nil, &image, dockerCallTimeout); err != nil || image.ID == "" || image.ID != info.Image {
+		return ImageChanged
+	}
+	return ""
 }
 
 /*
