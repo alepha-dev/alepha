@@ -1,6 +1,8 @@
 import { LorePlanMcp } from "@lore/plan/mcp";
 import { $module } from "alepha";
 
+import { PersonaTools } from "./tools/PersonaTools.ts";
+
 /**
  * The MCP tools of `@lore/plan-requirements`, Plan's Requirements (#E153),
  * each listed in Plan's `mcpTools` and gated on its `requirements` option.
@@ -14,5 +16,7 @@ export const LorePlanRequirementsMcp = $module({
   name: "lore.plan-requirements.mcp",
   // Plan first: booting this module alone boots what it depends on.
   imports: [LorePlanMcp],
-  services: [],
+  services: [PersonaTools],
 });
+
+export { PersonaTools } from "./tools/PersonaTools.ts";

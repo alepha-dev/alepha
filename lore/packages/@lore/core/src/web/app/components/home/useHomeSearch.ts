@@ -3,12 +3,13 @@ import { useState } from "react";
 
 import type { SearchController } from "../../../../api/controllers/SearchController.ts";
 import type { ProjectOverviewResource } from "../../../../api/schemas/projectResourceSchema.ts";
+import type { SearchHit } from "../../../../api/schemas/searchHitSchema.ts";
 
 /**
  * One hit of `SearchController.search`, the row the ⌘K palette renders too.
  */
 export interface HomeSearchHit {
-  kind: "quest" | "folio" | "directory" | "epic" | "release" | "feedback";
+  kind: SearchHit["kind"];
   id: string;
   shortId: number;
   title: string;

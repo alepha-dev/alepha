@@ -300,6 +300,13 @@ export class CapabilityRegistry {
         "feedback_reject",
         "feedback_comment_add",
         "feedback_attachment_get",
+        // Plan's Requirements (#E153).
+        "persona_list",
+        "persona_get",
+        "persona_create",
+        "persona_update",
+        "persona_delete",
+        "persona_comment_add",
       ],
       mcpToolOptions: {
         feedback_list: "feedback",
@@ -308,24 +315,32 @@ export class CapabilityRegistry {
         feedback_reject: "feedback",
         feedback_comment_add: "feedback",
         feedback_attachment_get: "feedback",
+        persona_list: "requirements",
+        persona_get: "requirements",
+        persona_create: "requirements",
+        persona_update: "requirements",
+        persona_delete: "requirements",
+        persona_comment_add: "requirements",
       },
       // Epics and releases are found by their number only (#Q2228), and
       // like their sidebar entries they hang off their Work options.
       // Feedback by number only too, and only for a caller holding
       // `feedback:read` (#Q2228): see `SearchController`.
-      searchKinds: ["quest", "epic", "release", "feedback"],
+      searchKinds: ["quest", "epic", "release", "feedback", "persona"],
       searchKindOptions: {
         epic: "epics",
         release: "releases",
         feedback: "feedback",
+        persona: "requirements",
       },
-      activityKinds: ["quest", "epic", "release", "feedback"],
+      activityKinds: ["quest", "epic", "release", "feedback", "persona"],
       // Epics and Releases are options of Work, and so are their sidebar
       // entries (`capabilityNav.ts`). Quests are Plan's baseline.
       activityKindOptions: {
         epic: "epics",
         release: "releases",
         feedback: "feedback",
+        persona: "requirements",
       },
       dashboardCards: [
         "activeQuests",
@@ -354,7 +369,15 @@ export class CapabilityRegistry {
       ],
       // Areas belong here: quests carry one, errors forward into one, and
       // `project_context` files them beside the epic index.
-      permissionGroups: ["quest", "epic", "release", "area", "feedback"],
+      permissionGroups: [
+        "quest",
+        "epic",
+        "release",
+        "area",
+        "feedback",
+        // Plan's Requirements (#E153).
+        "persona",
+      ],
     },
     {
       key: "remember",

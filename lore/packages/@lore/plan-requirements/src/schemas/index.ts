@@ -7,4 +7,17 @@
  *
  * @module
  */
-export {};
+export { personas } from "../api/entities/personas.ts";
+export { requirementsComments } from "../api/entities/requirementsComments.ts";
+export {
+  type PersonaKind,
+  personaKindSchema,
+} from "../api/schemas/personaKindSchema.ts";
+export {
+  type PersonaResource,
+  personaResourceSchema,
+} from "../api/schemas/personaResourceSchema.ts";
+export {
+  type PersonaInput,
+  personaInputSchema,
+} from "../api/schemas/personaInputSchema.ts";

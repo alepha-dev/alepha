@@ -12,19 +12,23 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   AppWindow,
+  BookText,
   FileText,
   Flag,
   Folder,
   Inbox,
   Layers,
   LayoutGrid,
+  ListChecks,
   Lock,
   PanelsTopLeft,
   SquareCheckBig,
+  UsersRound,
 } from "lucide-react";
 import { type ReactElement, useEffect, useState } from "react";
 
 import type { SearchController } from "../../../../../api/controllers/SearchController.ts";
+import type { SearchHit } from "../../../../../api/schemas/searchHitSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import {
   type ProjectNavEntry,
@@ -37,7 +41,7 @@ import { formatReference } from "../element/typedReference.ts";
 import { matchProjectNav } from "./matchProjectNav.ts";
 
 interface SpotlightHit {
-  kind: "quest" | "folio" | "directory" | "epic" | "release" | "feedback";
+  kind: SearchHit["kind"];
   id: string;
   shortId: number;
   title: string;
@@ -233,6 +237,30 @@ const Spotlight = (): ReactElement => {
       });
       return;
     }
+    // Plan's Requirements (#E153): each opens under its Requirements tab.
+    if (
+      hit.kind === "persona" ||
+      hit.kind === "usecase" ||
+      hit.kind === "requirement"
+    ) {
+      await router.push(
+        // A page of `@lore/plan-requirements`, which core names by string.
+        hit.kind === "persona"
+          ? ("projectPersona" as never)
+          : hit.kind === "usecase"
+            ? ("projectUseCase" as never)
+            : ("projectRequirements" as never),
+        (hit.kind === "persona"
+          ? { params: { ...params, personaNumber: String(hit.shortId) } }
+          : hit.kind === "usecase"
+            ? { params: { ...params, useCaseNumber: String(hit.shortId) } }
+            : {
+                params,
+                query: { requirement: String(hit.shortId) },
+              }) as never,
+      );
+      return;
+    }
     // A directory has no route of its own — the workspace is where it is
     // reachable, through the tree.
     await router.push("projectFolios", { params });
@@ -246,6 +274,9 @@ const Spotlight = (): ReactElement => {
     if (hit.kind === "release") return <Flag />;
     if (hit.kind === "feedback") return <Inbox />;
     if (hit.kind === "directory") return <Folder />;
+    if (hit.kind === "persona") return <UsersRound />;
+    if (hit.kind === "usecase") return <BookText />;
+    if (hit.kind === "requirement") return <ListChecks />;
     if (hit.protected) return <Lock />;
     return <FileText />;
   };
@@ -307,6 +338,16 @@ const Spotlight = (): ReactElement => {
             key: "feedback",
             heading: tr("spotlight.group.feedback"),
             items: hitRows((h) => h.kind === "feedback"),
+          },
+          {
+            key: "requirements",
+            heading: tr("spotlight.group.requirements"),
+            items: hitRows(
+              (h) =>
+                h.kind === "persona" ||
+                h.kind === "usecase" ||
+                h.kind === "requirement",
+            ),
           },
           {
             key: "folios",

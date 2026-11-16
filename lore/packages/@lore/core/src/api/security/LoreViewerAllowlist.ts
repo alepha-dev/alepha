@@ -7,7 +7,8 @@
  * refused, including any permission added later.
  *
  * A viewer reads the project's memory: quests (with their comments,
- * objectives and tags), epics, folios, releases, the roadmap and the areas.
+ * objectives and tags), epics, folios, releases, the roadmap and the areas,
+ * and Plan's Requirements: personas, use cases and requirements (#E153).
  * Nothing else, and no write at all. Other members reach a viewer only as a
  * public card, name and avatar, because `member:read` is not listed.
  *
@@ -34,6 +35,8 @@ export class LoreViewerAllowlist {
     "release",
     "area",
     "folio",
+    // Plan's Requirements (#E153, answer 22): a viewer reads them.
+    "persona",
   ];
 
   /**

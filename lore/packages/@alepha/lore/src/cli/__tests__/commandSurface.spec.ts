@@ -77,6 +77,7 @@ describe("the Lore CLI command surface", () => {
       "login",
       "logout",
       "monitor",
+      "persona",
       "project",
       "quality",
       "quest",
@@ -173,6 +174,7 @@ describe("the Lore CLI command surface", () => {
         "attachment",
       ],
       insights: ["read"],
+      persona: ["list", "get", "create", "update", "delete", "comment"],
       monitor: ["list", "get", "create", "update", "pause", "resume", "delete"],
       project: [
         "list",

@@ -31,6 +31,7 @@ export class LoreActivityPermissions {
     sigil: "app:read",
     monitor: "app:read",
     host: "host:read",
+    persona: "persona:read",
   };
 
   /**

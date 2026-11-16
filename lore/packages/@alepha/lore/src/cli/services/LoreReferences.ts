@@ -33,6 +33,15 @@ export class LoreReferences {
     return this.parse(ref, "A", "attachment");
   }
 
+  /**
+   * A persona of Plan's Requirements (#E153). `A` is the attachment's letter
+   * too on the command line; each command parses only its own kind, so the
+   * two never meet.
+   */
+  public persona(ref: string): number {
+    return this.parse(ref, "A", "persona");
+  }
+
   public feedback(ref: string): number {
     return this.parse(ref, "P", "feedback");
   }

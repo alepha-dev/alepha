@@ -42,6 +42,17 @@ export const useHomeSearchHitHref = () => {
         query: { feedback: String(hit.shortId) },
       });
     }
+    // Plan's Requirements (#E153): addressed by hand, since they are pages
+    // of `@lore/plan-requirements`, which core does not name.
+    if (hit.kind === "persona") {
+      return `/${projectSlug}/requirements/personas/${hit.shortId}`;
+    }
+    if (hit.kind === "usecase") {
+      return `/${projectSlug}/requirements/use-cases/${hit.shortId}`;
+    }
+    if (hit.kind === "requirement") {
+      return `/${projectSlug}/requirements?requirement=${hit.shortId}`;
+    }
     // A directory has no route of its own: the workspace reaches it.
     return router.path("projectFolios", { params });
   };

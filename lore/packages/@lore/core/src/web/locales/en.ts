@@ -245,6 +245,7 @@ export default {
   "spotlight.group.apps": "app",
   "spotlight.group.quests": "Quests",
   "spotlight.group.epics": "Epics",
+  "spotlight.group.requirements": "Requirements",
   "spotlight.group.releases": "Releases",
   "spotlight.group.feedback": "Feedback",
   "spotlight.group.folios": "Folios",
@@ -389,6 +390,11 @@ export default {
   "folios.wikilink.broken.folioNotFound": "No folio matches this reference.",
   "folios.wikilink.broken.questNotFound": "No quest matches this reference.",
   "folios.wikilink.broken.epicNotFound": "No epic matches this reference.",
+  "folios.wikilink.broken.personaNotFound":
+    "No persona matches this reference.",
+  "requirements.persona.kind.human": "Human",
+  "requirements.persona.kind.system": "System",
+  "requirements.persona.kind.agent": "Agent",
   "folios.wikilink.broken.attachmentNotFound":
     "No attachment of this folio matches this reference.",
   "folios.wikilink.broken.feedbackNotFound":
@@ -3981,6 +3987,9 @@ export default {
   "permission.group.feedback": "Feedback",
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",
+  "permission.group.persona": "Personas",
+  "permission.persona.read": "Read personas",
+  "permission.persona.write": "Create, edit and delete personas",
   "project.settings.nav.ranks": "Ranks",
   "project.settings.join.title": "Joining",
   "project.settings.join.description":

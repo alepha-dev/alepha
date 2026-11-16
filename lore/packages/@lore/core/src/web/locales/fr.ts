@@ -253,6 +253,7 @@ export default {
   "spotlight.group.apps": "app",
   "spotlight.group.quests": "Quêtes",
   "spotlight.group.epics": "Épopées",
+  "spotlight.group.requirements": "Exigences",
   "spotlight.group.releases": "Versions",
   "spotlight.group.feedback": "Retours",
   "spotlight.group.folios": "Folios",
@@ -395,6 +396,11 @@ export default {
     "Aucune quête ne correspond à cette référence.",
   "folios.wikilink.broken.epicNotFound":
     "Aucune épopée ne correspond à cette référence.",
+  "folios.wikilink.broken.personaNotFound":
+    "Aucun persona ne correspond à cette référence.",
+  "requirements.persona.kind.human": "Humain",
+  "requirements.persona.kind.system": "Système",
+  "requirements.persona.kind.agent": "Agent",
   "folios.wikilink.broken.attachmentNotFound":
     "Aucune pièce jointe de ce folio ne correspond à cette référence.",
   "folios.wikilink.broken.feedbackNotFound":
@@ -3993,6 +3999,9 @@ export default {
   "permission.group.feedback": "Retours",
   "permission.feedback.read": "Lire la boîte des retours",
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",
+  "permission.group.persona": "Personas",
+  "permission.persona.read": "Lire les personas",
+  "permission.persona.write": "Créer, modifier et supprimer des personas",
   "project.settings.nav.ranks": "Rangs",
   "project.settings.join.title": "Adhésion",
   "project.settings.join.description":

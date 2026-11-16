@@ -3,6 +3,11 @@ import { LoreRememberApi } from "@lore/remember/api";
 import { LoreShipApi } from "@lore/ship/api";
 import { $module } from "alepha";
 
+import { PersonaController } from "./controllers/PersonaController.ts";
+import { PersonaResourceKind } from "./resources/PersonaResourceKind.ts";
+import { RequirementsCommentService } from "./services/RequirementsCommentService.ts";
+import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts";
+
 /**
  * The server half of `@lore/plan-requirements`, Plan's Requirements (#E153):
  * personas, use cases, requirements and their runs.
@@ -22,5 +27,18 @@ export const LorePlanRequirementsApi = $module({
   name: "lore.plan-requirements.api",
   // What it builds on first: booting this module alone boots them.
   imports: [LorePlanApi, LoreRememberApi, LoreShipApi],
-  services: [],
+  services: [
+    RequirementsCommentService,
+    // The resource kinds on core's `ResourceRegistry`: listed, because
+    // nothing injects them.
+    PersonaResourceKind,
+    // Its step of a project merge, on core's `ProjectMergeService`.
+    RequirementsProjectMerge,
+    // Controllers
+    PersonaController,
+  ],
 });
+
+// What code outside `src/` imports from this barrel.
+
+export { PersonaController } from "./controllers/PersonaController.ts";

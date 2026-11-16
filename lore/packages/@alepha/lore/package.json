@@ -104,6 +104,7 @@
   "peerDependencies": {
     "@lore/core": "*",
     "@lore/plan": "*",
+    "@lore/plan-requirements": "*",
     "@lore/remember": "*",
     "@lore/ship": "*",
     "alepha": ">=0.37.0",
@@ -115,6 +116,9 @@
       "optional": true
     },
     "@lore/plan": {
+      "optional": true
+    },
+    "@lore/plan-requirements": {
       "optional": true
     },
     "@lore/remember": {
