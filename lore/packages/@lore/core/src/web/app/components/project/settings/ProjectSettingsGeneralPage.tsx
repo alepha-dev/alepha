@@ -4,6 +4,7 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { ProjectShellRegistry } from "../../../registries/ProjectShellRegistry.ts";
 import ProjectUpdate from "../ProjectUpdate.tsx";
 import ProjectSettingsDangerZoneSection from "./ProjectSettingsDangerZoneSection.tsx";
+import ProjectSettingsJoinSection from "./ProjectSettingsJoinSection.tsx";
 
 const ProjectSettingsGeneralPage = () => {
   const [project] = useStore(currentProjectAtom);
@@ -18,6 +19,10 @@ const ProjectSettingsGeneralPage = () => {
       {/* The heading is the AutoForm group's own now, so this page no longer
           wraps the form to put one above it. */}
       <ProjectUpdate project={project} />
+
+      {/* Public project (#Q3747): renders nothing for a reader who may not
+          change the project. */}
+      <ProjectSettingsJoinSection />
 
       {/* Cards a module adds here (Work's quest export), #E75 #Q2624. */}
       {shell.settingsPanels("general").map((panel) => (

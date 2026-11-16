@@ -3,7 +3,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  Segmented,
+  Switch,
   useDialog,
   useToast,
 } from "@alepha/ui";
@@ -26,13 +26,15 @@ import { setCurrentProject } from "../../../services/currentProjectWrite.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 /**
- * Who can join the project: invite only, or open to anyone signed in, as a
- * viewer (#Q3645, epic #E151).
+ * Whether the project is public: anyone signed in may join it, as a viewer
+ * (#Q3645, epic #E151). In Settings ▸ General, as a yes/no switch labelled
+ * "Public project" (#Q3747); `joinPolicy` stays `invite` / `open` underneath.
  *
- * Open is offered only when it can be applied: while the launch gate is off
- * it is shown disabled with the reason, and while the Viewer rank holds more
- * than reads of the project's memory the section says so and links to the
- * rank. Opening is confirmed, since it lets strangers in.
+ * Public is offered only when it can be applied: while the launch gate is
+ * off the switch is disabled with the reason, and while the Viewer rank
+ * holds more than reads of the project's memory the section says so and
+ * links to the rank. Making it public is confirmed, since it lets strangers
+ * in.
  */
 const ProjectSettingsJoinSection = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -99,19 +101,17 @@ const ProjectSettingsJoinSection = () => {
         description={
           settings && !settings.launched
             ? tr("project.settings.join.unavailable")
-            : tr("project.settings.join.viewers")
+            : tr("project.settings.join.policy.description")
         }
       >
-        <Segmented
-          size="sm"
-          value={current}
+        <Switch
           data-testid="project-join-policy"
+          aria-label={tr("project.settings.join.policy.label")}
+          checked={current === "open"}
           disabled={applyAction.loading || (current === "invite" && blocked)}
-          onChange={(next) => void applyAction.run(next as JoinPolicy)}
-          options={[
-            { value: "invite", label: tr("project.settings.join.invite") },
-            { value: "open", label: tr("project.settings.join.open") },
-          ]}
+          onCheckedChange={(checked) =>
+            void applyAction.run(checked ? "open" : "invite")
+          }
         />
       </SettingsRow>
 

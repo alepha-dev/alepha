@@ -3919,14 +3919,12 @@ export default {
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",
   "project.settings.nav.ranks": "Ranks",
-  "project.settings.join.title": "Who can join",
+  "project.settings.join.title": "Joining",
   "project.settings.join.description":
-    "Invite people one by one, or let anyone signed in join this project by themselves, as a viewer.",
-  "project.settings.join.policy.label": "Joining",
-  "project.settings.join.invite": "Invite only",
-  "project.settings.join.open": "Open: anyone signed in can join, as a viewer",
-  "project.settings.join.viewers":
-    "Viewers read quests, epics, folios and releases, and change nothing. To give someone more, move them to another rank.",
+    "People who join by themselves get the Viewer rank: they read quests, epics, folios and releases, and change nothing. To give someone more, move them to another rank.",
+  "project.settings.join.policy.label": "Public project",
+  "project.settings.join.policy.description":
+    "Users can join the project as a viewer without an invitation.",
   "project.settings.join.unavailable":
     "Open projects are not available on this Lore yet.",
   "project.settings.join.noViewer":

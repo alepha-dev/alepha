@@ -4,7 +4,6 @@ import { useRouter } from "alepha/react/router";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { useRank } from "../../shared/useRank.ts";
-import ProjectSettingsJoinSection from "./ProjectSettingsJoinSection.tsx";
 
 const ProjectSettingsMembersPage = () => {
   const [project] = useStore(currentProjectAtom);
@@ -15,7 +14,6 @@ const ProjectSettingsMembersPage = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <ProjectSettingsJoinSection />
       <OrganizationMembers
         organizationId={project.organizationId}
         can={can}

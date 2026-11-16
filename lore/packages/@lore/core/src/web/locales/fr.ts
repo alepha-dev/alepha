@@ -3929,15 +3929,12 @@ export default {
   "permission.feedback.read": "Lire la boîte des retours",
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",
   "project.settings.nav.ranks": "Rangs",
-  "project.settings.join.title": "Qui peut rejoindre",
+  "project.settings.join.title": "Adhésion",
   "project.settings.join.description":
-    "Invitez les personnes une à une, ou laissez toute personne connectée rejoindre ce projet d’elle-même, en lecture seule.",
-  "project.settings.join.policy.label": "Adhésion",
-  "project.settings.join.invite": "Sur invitation",
-  "project.settings.join.open":
-    "Ouvert : toute personne connectée peut rejoindre, en lecture seule",
-  "project.settings.join.viewers":
-    "Les lecteurs lisent les quêtes, épopées, folios et versions, et ne modifient rien. Pour donner davantage à quelqu’un, changez-le de rang.",
+    "Les personnes qui rejoignent d’elles-mêmes reçoivent le rang Lecteur : elles lisent les quêtes, épopées, folios et versions, et ne modifient rien. Pour donner davantage à quelqu’un, changez-le de rang.",
+  "project.settings.join.policy.label": "Projet public",
+  "project.settings.join.policy.description":
+    "Les utilisateurs peuvent rejoindre le projet en lecture seule, sans invitation.",
   "project.settings.join.unavailable":
     "Les projets ouverts ne sont pas encore disponibles sur ce Lore.",
   "project.settings.join.noViewer":
