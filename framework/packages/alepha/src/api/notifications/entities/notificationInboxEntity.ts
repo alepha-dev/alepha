@@ -84,7 +84,13 @@ export const notificationInboxEntity = $entity({
     category: z.text({ maxLength: 100 }).nullable().optional(),
 
     title: z.text({ maxLength: 500 }),
-    body: z.text().nullable().optional(),
+
+    /**
+     * The rendered body, kept whole. A template renders whatever its
+     * variables hold (a comment, a release note), so the default 255 cap
+     * of `z.text()` would refuse the row and lose the message.
+     */
+    body: z.text({ maxLength: 1_000_000 }).nullable().optional(),
 
     /**
      * Where clicking this message goes. Required by the option block, not

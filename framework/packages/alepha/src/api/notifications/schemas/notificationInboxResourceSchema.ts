@@ -30,9 +30,13 @@ export const notificationInboxResourceSchema = z.object({
    */
   template: z.text().optional(),
   category: z.text().optional(),
-  title: z.text(),
-  body: z.text().optional(),
-  href: z.text(),
+  title: z.text({ maxLength: 500 }),
+  /**
+   * The rendered body, uncapped in practice: a template renders whatever
+   * its variables hold, and the entity stores it whole.
+   */
+  body: z.text({ maxLength: 1_000_000 }).optional(),
+  href: z.text({ maxLength: 2000 }),
   /**
    * When the owner read it. Absent while unread, which is what the bell
    * counts.
