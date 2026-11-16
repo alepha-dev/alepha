@@ -26,12 +26,11 @@ be mentioned. They cannot be assigned a quest.
 
 ## Opening a project
 
-1. Open **Settings ▸ Members**.
-2. Under **Who can join**, choose **Open: anyone signed in can join, as a
-   viewer**, and confirm.
+1. Open **Settings ▸ General**.
+2. Under **Joining**, turn **Public project** on, and confirm.
 3. Copy the **Link to share** and send it where your audience is.
 
-The choice is off when your Lore does not allow open projects, or when the
+The switch is off when your Lore does not allow open projects, or when the
 **Viewer** rank holds more than reads. In that case the section says which
 permissions are in the way, with a link to the rank.
 
@@ -39,8 +38,8 @@ While the project is open, the **Ranks** tab locks every Viewer permission
 outside the list above: you cannot give viewers more than reads by accident.
 To give someone more, move them to another rank in the **Members** tab.
 
-Choosing **Invite only** again closes the project to new joiners. People who
-already joined stay members until you remove them.
+Turning **Public project** off again closes the project to new joiners.
+People who already joined stay members until you remove them.
 
 ## Joining
 

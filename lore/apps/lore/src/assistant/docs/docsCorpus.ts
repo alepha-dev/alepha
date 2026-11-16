@@ -381,7 +381,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "Open projects",
     section: "Opening a project",
     url: "https://alepha.dev/lore/docs/project-open-projects#opening-a-project",
-    text: "1. Open **Settings ▸ Members**.\n2. Under **Who can join**, choose **Open: anyone signed in can join, as a\n   viewer**, and confirm.\n3. Copy the **Link to share** and send it where your audience is.\n\nThe choice is off when your Lore does not allow open projects, or when the\n**Viewer** rank holds more than reads. In that case the section says which\npermissions are in the way, with a link to the rank.\n\nWhile the project is open, the **Ranks** tab locks every Viewer permission\noutside the list above: you cannot give viewers more than reads by accident.\nTo give someone more, move them to another rank in the **Members** tab.\n\nChoosing **Invite only** again closes the project to new joiners. People who\nalready joined stay members until you remove them.",
+    text: "1. Open **Settings ▸ General**.\n2. Under **Joining**, turn **Public project** on, and confirm.\n3. Copy the **Link to share** and send it where your audience is.\n\nThe switch is off when your Lore does not allow open projects, or when the\n**Viewer** rank holds more than reads. In that case the section says which\npermissions are in the way, with a link to the rank.\n\nWhile the project is open, the **Ranks** tab locks every Viewer permission\noutside the list above: you cannot give viewers more than reads by accident.\nTo give someone more, move them to another rank in the **Members** tab.\n\nTurning **Public project** off again closes the project to new joiners.\nPeople who already joined stay members until you remove them.",
   },
   {
     guide: "Open projects",

@@ -64,18 +64,17 @@ const ownProject = async (page: Page, title: string) => {
 };
 
 /**
- * Open the project from Members settings, as an owner does.
+ * Open the project from General settings, as an owner does: the Public
+ * project switch (#Q3747).
  */
 const openProject = async (page: Page, slug: string) => {
-  await page.goto(`/${slug}/settings/members`);
+  await page.goto(`/${slug}/settings`);
   await page.waitForLoadState("networkidle");
-  await page
-    .getByRole("radio", { name: /open: anyone signed in can join/i })
-    .click();
+  const publicProject = page.getByRole("switch", { name: "Public project" });
+  await expect(publicProject).not.toBeChecked();
+  await publicProject.click();
   await confirmDialog(page, "Open the project");
-  await expect(
-    page.getByRole("radio", { name: /open: anyone signed in can join/i }),
-  ).toBeChecked();
+  await expect(publicProject).toBeChecked();
 };
 
 /**
