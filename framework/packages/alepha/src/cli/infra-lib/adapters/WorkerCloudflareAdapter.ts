@@ -714,12 +714,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
           // answers 200 because the app renders it server-side. Only the
           // hashed assets 404, so the site is up and unstyled.
           assets: await this.assets(distDir, config),
-          domain: config.routes?.find((it) => it.custom_domain)
-            ? {
-                hostname: config.routes.find((it) => it.custom_domain)
-                  ?.pattern as string,
-              }
-            : undefined,
+          ...this.domainsOf(config),
           workersDev: config.workers_dev,
           queueConsumers,
         });
@@ -1407,11 +1402,24 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
         `The deploy config routes ${zoneRoutes.map((route) => `\`${route.pattern}\``).join(", ")} without \`custom_domain\`. The API upload attaches custom domains only; use the environment's \`domain\` option instead.`,
       );
     }
-    if (routes.length > 1) {
-      throw new AlephaError(
-        `The deploy config names ${routes.length} custom domains (${routes.map((route) => `\`${route.pattern}\``).join(", ")}); the API upload attaches one. Keep the environment's \`domain\`.`,
-      );
+  }
+
+  /**
+   * The deploy config's Custom Domains as the plan's: the first is the app's
+   * `domain`, any after it an alias attached beside it (#Q3755).
+   */
+  protected domainsOf(
+    config: WranglerConfig,
+  ): Pick<CloudflareDeployPlan, "domain" | "aliases"> {
+    const [first, ...rest] = (config.routes ?? [])
+      .filter((it) => it.custom_domain && it.pattern)
+      .map((it) => ({ hostname: it.pattern as string }));
+    if (!first) {
+      return {};
     }
+    return rest.length > 0
+      ? { domain: first, aliases: rest }
+      : { domain: first };
   }
 
   /**

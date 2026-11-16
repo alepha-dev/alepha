@@ -44,7 +44,7 @@ root:
 bay connector set <lore-url> <secret>
 ```
 
-`<lore-url>` is the address of the Lore instance (`https://lore.alepha.dev`,
+`<lore-url>` is the address of the Lore instance (`https://lore.alepha.app`,
 or yours when self-hosted), not the server's.
 
 On a fresh server, Bay's installer installs Bay, starts it and runs that
@@ -52,7 +52,7 @@ command, in one line:
 
 ```bash
 curl -sSL https://alepha.dev/bay/install.sh \
-  | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
+  | sudo LORE_URL=https://lore.alepha.app LORE_ESTATE_SECRET=est_... sh
 ```
 
 Add `BAY_BASE_DOMAIN=<domain>` to that line to say what apps deployed there are

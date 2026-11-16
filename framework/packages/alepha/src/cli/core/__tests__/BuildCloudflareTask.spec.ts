@@ -110,6 +110,7 @@ describe("BuildCloudflareTask", () => {
     "CLOUDFLARE_EMAIL_EVENTS_QUEUE",
     "CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME",
     "CLOUDFLARE_DOMAIN",
+    "CLOUDFLARE_DOMAIN_ALIASES",
     "TRACING_SAMPLE_RATIO",
   ] as const;
   const saved: Record<string, string | undefined> = {};
@@ -156,6 +157,32 @@ describe("BuildCloudflareTask", () => {
       expect(wrangler.routes).toEqual([
         { pattern: "api.example.com", custom_domain: true },
       ]);
+    });
+
+    it("writes each alias as another Custom Domain after the domain", () => {
+      // An app that moved keeps answering on its old host (#Q3755). The
+      // domain stays first: the deploy reads it as the app's own address.
+      process.env.CLOUDFLARE_DOMAIN = "lore.alepha.app";
+      process.env.CLOUDFLARE_DOMAIN_ALIASES =
+        "lore.alepha.dev, lore.alepha.app";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceDomain(ambient(), wrangler);
+
+      expect(wrangler.routes).toEqual([
+        { pattern: "lore.alepha.app", custom_domain: true },
+        { pattern: "lore.alepha.dev", custom_domain: true },
+      ]);
+    });
+
+    it("refuses a wildcard alias", () => {
+      process.env.CLOUDFLARE_DOMAIN = "lore.alepha.app";
+      process.env.CLOUDFLARE_DOMAIN_ALIASES = "*.alepha.dev";
+
+      const wrangler: Record<string, any> = {};
+      expect(() => createTask().testEnhanceDomain(ambient(), wrangler)).toThrow(
+        /wildcard/,
+      );
     });
 
     it("refuses a wildcard domain rather than writing a Custom Domain Cloudflare rejects", () => {

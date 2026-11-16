@@ -38,7 +38,7 @@ export class LoreApiClient {
     z.object({
       LORE_URL: z
         .text({
-          default: "https://lore.alepha.dev",
+          default: "https://lore.alepha.app",
           secret: false,
           description:
             "Origin of the Lore instance. Defaults to the public one; set it to self-host.",
@@ -66,7 +66,7 @@ export class LoreApiClient {
    * The origin, without a trailing slash.
    */
   public origin(): string {
-    return String(this.env.LORE_URL || "https://lore.alepha.dev").replace(
+    return String(this.env.LORE_URL || "https://lore.alepha.app").replace(
       /\/+$/,
       "",
     );

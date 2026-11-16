@@ -74,6 +74,13 @@ export interface CloudflareDeployPlan {
   domain?: { hostname: string; zoneId?: string; zoneName?: string };
 
   /**
+   * More custom domains attached beside `domain`, each account-level. A
+   * deploy attaches them and detaches none, so one left out of a later plan
+   * stays attached (#Q3755).
+   */
+  aliases?: Array<{ hostname: string; zoneId?: string; zoneName?: string }>;
+
+  /**
    * Whether the Worker answers on `<name>.<subdomain>.workers.dev`.
    */
   workersDev?: boolean;
@@ -993,13 +1000,15 @@ export class CloudflareDeployClient {
     if (!plan.domain) {
       return;
     }
-    await this.client.workers.domains.update({
-      account_id: this.accountId,
-      hostname: plan.domain.hostname,
-      service: plan.scriptName,
-      zone_id: plan.domain.zoneId,
-      zone_name: plan.domain.zoneName,
-    });
+    for (const domain of [plan.domain, ...(plan.aliases ?? [])]) {
+      await this.client.workers.domains.update({
+        account_id: this.accountId,
+        hostname: domain.hostname,
+        service: plan.scriptName,
+        zone_id: domain.zoneId,
+        zone_name: domain.zoneName,
+      });
+    }
   }
 
   /**

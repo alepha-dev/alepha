@@ -10,7 +10,7 @@ const subject: AgentPromptSubject = {
   id: 2009,
   reference: "#Q1798",
   title: "The submenu in DataTable",
-  url: "https://lore.alepha.dev/alepha/quests/1798",
+  url: "https://lore.alepha.app/alepha/quests/1798",
 };
 
 describe("questWorkPromptDefault", () => {
@@ -20,7 +20,7 @@ describe("questWorkPromptDefault", () => {
     expect(prompt).toContain("#Q1798");
     expect(prompt).toContain("The submenu in DataTable");
     expect(prompt).toContain('project_name "Alepha"');
-    expect(prompt).toContain("https://lore.alepha.dev/alepha/quests/1798");
+    expect(prompt).toContain("https://lore.alepha.app/alepha/quests/1798");
   });
 
   /**

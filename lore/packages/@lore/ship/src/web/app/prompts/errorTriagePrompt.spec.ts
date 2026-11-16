@@ -13,7 +13,7 @@ import { errorTriagePromptDefault } from "./errorTriagePrompt.ts";
 const subject: AgentPromptProjectSubject = {
   project: "Alepha",
   slug: "alepha",
-  url: "https://lore.alepha.dev/alepha/errors",
+  url: "https://lore.alepha.app/alepha/errors",
 };
 
 describe("errorTriagePromptDefault", () => {
@@ -21,7 +21,7 @@ describe("errorTriagePromptDefault", () => {
 
   it("renders with no item subject at all", () => {
     expect(prompt).toContain('project "Alepha"');
-    expect(prompt).toContain("https://lore.alepha.dev/alepha/errors");
+    expect(prompt).toContain("https://lore.alepha.app/alepha/errors");
     expect(prompt).not.toMatch(/\{\{/);
   });
 

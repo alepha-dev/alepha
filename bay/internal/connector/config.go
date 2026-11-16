@@ -62,7 +62,7 @@ const SocketPath = "/ws/estates"
 //
 // One, not a list: a host belongs to one Lore instance, and a machine
 // reporting to two would be two hosts with one secret each, which is two
-// configs. `Sink` is the origin (`https://lore.alepha.dev`); the websocket URL
+// configs. `Sink` is the origin (`https://lore.alepha.app`); the websocket URL
 // is derived from it by SocketURL.
 type Config struct {
 	Sink   string `json:"sink"`
@@ -232,7 +232,7 @@ func ValidateSink(raw string) (string, error) {
 		return "", fmt.Errorf("%q carries credentials in the URL; the secret is the second argument, not part of the sink", raw)
 	}
 	if (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" {
-		return "", fmt.Errorf("%q is a page, not a Lore origin: give the origin only, like https://lore.alepha.dev", raw)
+		return "", fmt.Errorf("%q is a page, not a Lore origin: give the origin only, like https://lore.alepha.app", raw)
 	}
 	if u.Scheme == "http" && !IsLoopback(u.Hostname()) {
 		return "", fmt.Errorf("%q is a cleartext sink: the secret would cross the network in clear. Use https://, or http:// only for a loopback host", raw)

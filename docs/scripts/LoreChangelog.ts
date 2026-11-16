@@ -49,6 +49,12 @@ export class LoreChangelog {
    */
   public static readonly RELEASE_LIMIT = 10;
 
+  /**
+   * ⚠️ Still the old host (#Q3755): the docs build runs on the pull request
+   * that moves Lore to lore.alepha.app, before that host resolves. It reads
+   * `/api` only, which lore.alepha.dev keeps serving as an alias; it moves
+   * with the follow-up that drops the alias.
+   */
   public static readonly DEFAULT_URL = "https://lore.alepha.dev";
 
   /**

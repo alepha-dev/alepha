@@ -23,7 +23,7 @@ const backupOnlyState = `{
     {
       "name": "lore",
       "env": "production",
-      "domains": ["lore.alepha.dev"],
+      "domains": ["lore.alepha.app"],
       "port": 4001,
       "runtime": "node",
       "backups": true

@@ -13,7 +13,7 @@ export const loreEnvironmentOptionsSchema = z.object({
    */
   project: z.text().optional(),
   /**
-   * Origin of the Lore instance. Defaults to `https://lore.alepha.dev`, and
+   * Origin of the Lore instance. Defaults to `https://lore.alepha.app`, and
    * `LORE_URL` overrides.
    */
   url: z.text().optional(),

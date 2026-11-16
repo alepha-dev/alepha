@@ -18,7 +18,7 @@ const stateBeforeStatic = `{
     {
       "name": "lore",
       "env": "production",
-      "domains": ["lore.alepha.dev"],
+      "domains": ["lore.alepha.app"],
       "release": "20260801T101500Z",
       "port": 4001,
       "runtime": "node"

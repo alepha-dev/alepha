@@ -171,7 +171,7 @@ describe("AppSecurityProvider", () => {
   /**
    * The deployed instance sends through the Cloudflare `send_email` binding,
    * which carries no environment variable at all. Reading `EMAIL_HOST` alone
-   * would declare lore.alepha.dev mail-less and ship it with email
+   * would declare lore.alepha.app mail-less and ship it with email
    * verification off.
    */
   it("turns them on for a Worker, which has no EMAIL_HOST to read", async ({
@@ -233,7 +233,7 @@ describe("AppSecurityProvider", () => {
   /**
    * The reason `bootstrapFirstUser` is an expression rather than `true`:
    * the framework refuses it on serverless, so an unconditional `true` here
-   * would stop lore.alepha.dev from booting.
+   * would stop lore.alepha.app from booting.
    */
   it("does not ask for the bootstrap on Workers", async ({ expect }) => {
     const { alepha, realm } = await boot({ ALEPHA_SERVERLESS: "true" });

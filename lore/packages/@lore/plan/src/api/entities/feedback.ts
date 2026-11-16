@@ -64,7 +64,7 @@ export const feedback = $entity({
     attachments: db.default(z.array(z.uuid()), []),
     /**
      * Free-form tags. The `key=value` convention is documentation, not law —
-     * common keys: `type=bug|feature`, `host=lore.alepha.dev`, `path=/foo`,
+     * common keys: `type=bug|feature`, `host=lore.alepha.app`, `path=/foo`,
      * `severity=high`. Used for inbox filtering and reporting context.
      */
     tags: db.default(z.array(z.string().max(100)).max(20), []),

@@ -236,7 +236,7 @@ backup you took before the upgrade is the way back.
 
 ### Which image goes with a given version
 
-Every release page on [lore.alepha.dev](https://lore.alepha.dev) has an
+Every release page on [lore.alepha.app](https://lore.alepha.app) has an
 **Artifacts** tab. From version 0.30.0 on, the image is listed there beside the
 packed builds, with its `docker pull` line ready to copy. Look there when you
 want the image for one specific version instead of whatever `:latest` points

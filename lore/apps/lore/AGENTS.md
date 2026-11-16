@@ -8,7 +8,7 @@ Alepha Lore is the **only public Alepha app** and exists in large part to **dogf
 
 ## The Lore of Lore (start here)
 
-The production Alepha Lore instance hosts the project we actually use to run this project: **`https://lore.alepha.dev/alepha`**, **project id `1`** over MCP, shared with the framework and Bay since 2026-10-27 (#E94): Lore's work is the `lore/*` areas. It was project `74` (`Lore`) between 2026-10-01, when Lore left the Alepha monorepo (#E72), and that merge; project `74` is archived, and a number it used that project `1` already held was renumbered (folio #F1422 maps them: `#Q2683` there is `#Q2884` here). Before 2026-10-01 it was project `1` too, and before 2026-08-18 project `2` (an older note's quest `#208` is `#1208` since that merge). The web URL is slug-addressed since 2026-08-13 (`/p/2` no longer resolves); the slug comes from the project's title ("Alepha", so `/alepha`), via the backfill in `20260813135343_nappy_excalibur`. MCP still addresses it by id, so the id stays the durable reference. It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP surface — every Claude session working on this repo should treat that project as a first-class input, not background trivia.
+The production Alepha Lore instance hosts the project we actually use to run this project: **`https://lore.alepha.app/alepha`**, **project id `1`** over MCP, shared with the framework and Bay since 2026-10-27 (#E94): Lore's work is the `lore/*` areas. It was project `74` (`Lore`) between 2026-10-01, when Lore left the Alepha monorepo (#E72), and that merge; project `74` is archived, and a number it used that project `1` already held was renumbered (folio #F1422 maps them: `#Q2683` there is `#Q2884` here). Before 2026-10-01 it was project `1` too, and before 2026-08-18 project `2` (an older note's quest `#208` is `#1208` since that merge). The web URL is slug-addressed since 2026-08-13 (`/p/2` no longer resolves); the slug comes from the project's title ("Alepha", so `/alepha`), via the backfill in `20260813135343_nappy_excalibur`. MCP still addresses it by id, so the id stays the durable reference. It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP surface — every Claude session working on this repo should treat that project as a first-class input, not background trivia.
 
 **Before non-trivial work, orient via MCP** (these tools are already exposed on `mcp__claude_ai_Lore__*` for this account, project id `1`):
 
@@ -79,7 +79,7 @@ yarn deploy            # alepha deploy -e production (Cloudflare D1)
 it any more (`VersionController` was deleted).
 
 ```bash
-curl -s https://lore.alepha.dev/version
+curl -s https://lore.alepha.app/version
 # {"name":"lore","version":"0.27.1","commit":"6faea71",
 #  "build":{"date":"2026-08-31T...","runtime":"workerd","dev":false},
 #  "framework":"0.27.1"}

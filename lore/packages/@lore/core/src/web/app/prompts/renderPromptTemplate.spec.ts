@@ -12,7 +12,7 @@ const subject: AgentPromptSubject = {
   id: 57,
   reference: "#E31",
   title: "Epic Workflow",
-  url: "https://lore.alepha.dev/alepha/epics/31",
+  url: "https://lore.alepha.app/alepha/epics/31",
 };
 
 describe("renderPromptTemplate", () => {
@@ -22,7 +22,7 @@ describe("renderPromptTemplate", () => {
       subject,
     );
     expect(out).toBe(
-      "Alepha|alepha|31|57|#E31|Epic Workflow|https://lore.alepha.dev/alepha/epics/31",
+      "Alepha|alepha|31|57|#E31|Epic Workflow|https://lore.alepha.app/alepha/epics/31",
     );
   });
 
@@ -43,7 +43,7 @@ describe("renderPromptTemplate", () => {
 
   it("tolerates whitespace inside the braces", () => {
     expect(renderPromptTemplate("{{ title }} and {{  url  }}", subject)).toBe(
-      "Epic Workflow and https://lore.alepha.dev/alepha/epics/31",
+      "Epic Workflow and https://lore.alepha.app/alepha/epics/31",
     );
   });
 
@@ -74,7 +74,7 @@ describe("renderPromptTemplate", () => {
       title: "Fix {{url}} handling",
     });
     expect(out).toBe("Quest: Fix {{url}} handling");
-    expect(out).not.toContain("https://lore.alepha.dev");
+    expect(out).not.toContain("https://lore.alepha.app");
   });
 
   /**
@@ -88,7 +88,7 @@ describe("renderPromptTemplate", () => {
       title: "Fix {{url}} handling",
     });
     expect(out).toBe(
-      "Fix {{url}} handling then https://lore.alepha.dev/alepha/epics/31",
+      "Fix {{url}} handling then https://lore.alepha.app/alepha/epics/31",
     );
   });
 

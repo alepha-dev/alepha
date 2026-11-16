@@ -35,7 +35,7 @@ when `install.sh` is given the Lore URL and the host's secret:
 
 ```bash
 curl -sSL https://alepha.dev/bay/install.sh \
-  | sudo LORE_URL=https://lore.alepha.dev LORE_ESTATE_SECRET=est_... sh
+  | sudo LORE_URL=https://lore.alepha.app LORE_ESTATE_SECRET=est_... sh
 ```
 
 The installer writes the unit from the installation guide unless one exists,

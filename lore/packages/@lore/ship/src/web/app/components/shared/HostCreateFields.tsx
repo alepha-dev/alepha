@@ -35,7 +35,7 @@ export interface HostCreateFieldsProps {
  *
  * ⚠️ The token field is `type="password"` **and** `autoComplete="off"`. A
  * password manager offering to save a Cloudflare deploy token under
- * lore.alepha.dev is the leak the masked rendering was supposed to prevent.
+ * lore.alepha.app is the leak the masked rendering was supposed to prevent.
  * It is never prefilled, cleared when the dialog closes, and never echoed in
  * a toast or an error. `Control`'s `password` gives the first, and its own
  * `autoComplete` prop the second - never `inputProps`, which

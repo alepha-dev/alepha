@@ -15,7 +15,7 @@ import {
  * ⚠️ **The OFF state is asserted first, because it is production's own
  * state.** The `agentPrompts` option is off by default and there is no
  * backfill, so on the day this ships every project including
- * `lore.alepha.dev` has no Agent Prompts menu until someone turns it on in
+ * `lore.alepha.app` has no Agent Prompts menu until someone turns it on in
  * Settings > Work.
  *
  * ⚠️ **The switch is flipped and a prompt copied with no reload in

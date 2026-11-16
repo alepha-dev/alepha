@@ -31,7 +31,7 @@ func TestInventoryRowDerivesWhatTheStatusLineDerives(t *testing.T) {
 	app := listedApp{
 		App: state.App{
 			Name: "lore", Env: "production", Runtime: "node", Release: "r-42", Port: 41001,
-			Domains:      []string{"lore.alepha.dev", "www.lore.alepha.dev"},
+			Domains:      []string{"lore.alepha.app", "www.lore.alepha.app"},
 			Backups:      true,
 			LastBackupAt: now.Add(-96 * time.Hour).Format(time.RFC3339),
 		},
@@ -175,7 +175,7 @@ func TestPrintStatusJSONOutputIsUnchangedByTheExtraction(t *testing.T) {
 		{
 			App: state.App{
 				Name: "lore", Env: "production", Release: "r-42",
-				Domains: []string{"lore.alepha.dev"}, Backups: true,
+				Domains: []string{"lore.alepha.app"}, Backups: true,
 				LastBackupAt:  now.Add(-96 * time.Hour).Format(time.RFC3339),
 				LastRequestAt: now.Add(-30 * time.Minute).Format(time.RFC3339),
 				Crons:         3,
@@ -201,7 +201,7 @@ func TestPrintStatusJSONOutputIsUnchangedByTheExtraction(t *testing.T) {
     "app": "lore",
     "env": "production",
     "domains": [
-      "lore.alepha.dev"
+      "lore.alepha.app"
     ],
     "release": "r-42",
     "running": true,

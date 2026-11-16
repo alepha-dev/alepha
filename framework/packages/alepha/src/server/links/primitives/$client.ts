@@ -36,7 +36,7 @@ import {
  * @example
  * ```ts
  * const lore = $client<QualityController>({
- *   hostname: "https://lore.alepha.dev",
+ *   hostname: "https://lore.alepha.app",
  *   authorization: () => `Bearer ${this.env.LORE_API_KEY}`,
  * });
  *

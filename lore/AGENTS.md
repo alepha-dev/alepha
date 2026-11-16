@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Alepha Lore**: the planning memory, telemetry sink and deploy chain for Alepha applications, at `lore.alepha.dev`. This repository holds the app (`apps/lore`, read `apps/lore/AGENTS.md` before working on it), its four private modules (`packages/@lore/*`, see the layout below), its CLI and client (`packages/@alepha/lore`, published to npm), and the end-to-end suites that drive built artefacts (`apps/e2e`).
+**Alepha Lore**: the planning memory, telemetry sink and deploy chain for Alepha applications, at `lore.alepha.app`. This repository holds the app (`apps/lore`, read `apps/lore/AGENTS.md` before working on it), its four private modules (`packages/@lore/*`, see the layout below), its CLI and client (`packages/@alepha/lore`, published to npm), and the end-to-end suites that drive built artefacts (`apps/e2e`).
 
 It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and came back on 2026-10-25 (#Q2765 there), as `lore/` beside `framework/` and `bay/`. Read the root `AGENTS.md` first. Every path in this file is relative to `lore/`.
 
@@ -62,7 +62,7 @@ Lore ships in the repository's one release (#Q2776): `release.yml` at the root s
 
 ## Lore MCP: the planning memory
 
-Decisions, plans and bug reports live in the Lore project **Alepha** (`https://lore.alepha.dev/alepha`, project id `1`), with the framework's and Bay's: one project since #E94 (2026-10-27), each product told apart by its quests' `area` (`lore/*` for Lore). Projects `Lore` (id `74`) and `Bay` (id `75`) are archived; a number they used after 2026-10-01 that project 1 already held was renumbered, and folio #F1422 maps the old number to the new one.
+Decisions, plans and bug reports live in the Lore project **Alepha** (`https://lore.alepha.app/alepha`, project id `1`), with the framework's and Bay's: one project since #E94 (2026-10-27), each product told apart by its quests' `area` (`lore/*` for Lore). Projects `Lore` (id `74`) and `Bay` (id `75`) are archived; a number they used after 2026-10-01 that project 1 already held was renumbered, and folio #F1422 maps the old number to the new one.
 
 - Before a non-trivial change, orient with `project_context` (project `1`), then `folio_get` the relevant folios.
 - **Folios record decisions, quests record work.** Write a folio whenever a session produces a non-obvious decision.

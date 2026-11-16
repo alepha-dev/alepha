@@ -640,7 +640,7 @@ export class ReactServerProvider {
    * **It only guarded the catch-all.** A **root-level param** swallows exactly
    * as much: `/:slug` matches every unclaimed root segment, so an application
    * that routes projects or profiles at the root took every orphaned asset and
-   * every probe into that page. On lore.alepha.dev, whose `/:projectSlug`
+   * every probe into that page. On lore.alepha.app, whose `/:projectSlug`
    * carries `$secure()`, `/chunk.OLD.js` was therefore answered as an
    * authorization question - a login redirect for a visitor, and a 403
    * "Access denied" page for a signed-in one, several times a day after a

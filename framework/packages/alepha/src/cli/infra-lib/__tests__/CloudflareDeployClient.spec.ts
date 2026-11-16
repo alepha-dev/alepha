@@ -908,6 +908,28 @@ describe("the Cloudflare deploy client", () => {
       });
     });
 
+    it("attaches every alias beside the domain, the domain first", async ({
+      expect,
+    }) => {
+      // An app that moved keeps answering on its old host (#Q3755).
+      const { client, of } = fake();
+      await client.putDomain(
+        plan({
+          domain: { hostname: "app.example.app" },
+          aliases: [{ hostname: "app.example.dev" }],
+        }) as never,
+      );
+
+      expect(
+        of("domains.update").map(
+          (it) => (it.args[0] as { hostname: string }).hostname,
+        ),
+      ).toEqual(["app.example.app", "app.example.dev"]);
+      expect(of("domains.update")[1].args[0]).toMatchObject({
+        service: "my-app-staging",
+      });
+    });
+
     it("names the account when the workers.dev call fails, without throwing", async ({
       expect,
     }) => {

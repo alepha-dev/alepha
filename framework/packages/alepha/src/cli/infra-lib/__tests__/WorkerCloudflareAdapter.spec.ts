@@ -1437,7 +1437,29 @@ describe("the worker-side Cloudflare adapter", () => {
         not_found_handling: "404-page",
       });
       expect(calls[0]!.domain).toEqual({ hostname: "alepha.dev" });
+      expect(calls[0]!.aliases).toBeUndefined();
       expect(calls[0]!.workersDev).toBe(false);
+    });
+
+    it("reads the first Custom Domain as the domain and the rest as aliases", async ({
+      expect,
+    }) => {
+      // What `BuildCloudflareTask` writes for `aliases` (#Q3755).
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployConfig(fs, {
+        workers_dev: false,
+        routes: [
+          { pattern: "lore.alepha.app", custom_domain: true },
+          { pattern: "lore.alepha.dev", custom_domain: true },
+        ],
+      });
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.domain).toEqual({ hostname: "lore.alepha.app" });
+      expect(calls[0]!.aliases).toEqual([{ hostname: "lore.alepha.dev" }]);
     });
   });
 });

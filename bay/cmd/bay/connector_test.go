@@ -69,13 +69,13 @@ func TestConnectorSetPersistsAndNeverEchoesTheSecret(t *testing.T) {
 	root := servedRoot(t)
 	store := connector.NewStore(root)
 	var out bytes.Buffer
-	if err := connectorSet(store, []string{"https://lore.alepha.dev", testSecret}, &out); err != nil {
+	if err := connectorSet(store, []string{"https://lore.alepha.app", testSecret}, &out); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(out.String(), testSecret[4:]) {
 		t.Fatalf("set echoed the secret:\n%s", out.String())
 	}
-	if !strings.Contains(out.String(), "wss://lore.alepha.dev/ws/estates") {
+	if !strings.Contains(out.String(), "wss://lore.alepha.app/ws/estates") {
 		t.Fatalf("set should say where it will dial:\n%s", out.String())
 	}
 	info, err := os.Stat(store.Path())
@@ -90,7 +90,7 @@ func TestConnectorSetPersistsAndNeverEchoesTheSecret(t *testing.T) {
 func TestConnectorSetRefusesACleartextSinkOffTheMachine(t *testing.T) {
 	root := servedRoot(t)
 	store := connector.NewStore(root)
-	err := connectorSet(store, []string{"http://lore.alepha.dev", testSecret}, &bytes.Buffer{})
+	err := connectorSet(store, []string{"http://lore.alepha.app", testSecret}, &bytes.Buffer{})
 	if err == nil || !strings.Contains(err.Error(), "cleartext") {
 		t.Fatalf("a public http:// sink must be refused, got %v", err)
 	}
@@ -104,10 +104,10 @@ func TestConnectorSetRefusesACleartextSinkOffTheMachine(t *testing.T) {
 
 func TestConnectorSetWantsExactlyTwoArguments(t *testing.T) {
 	store := connector.NewStore(servedRoot(t))
-	if err := connectorSet(store, []string{"https://lore.alepha.dev"}, &bytes.Buffer{}); err == nil {
+	if err := connectorSet(store, []string{"https://lore.alepha.app"}, &bytes.Buffer{}); err == nil {
 		t.Fatal("a missing secret must be refused")
 	}
-	if err := connectorSet(store, positionals([]string{"https://lore.alepha.dev", testSecret, "--root", "/x"}), &bytes.Buffer{}); err != nil {
+	if err := connectorSet(store, positionals([]string{"https://lore.alepha.app", testSecret, "--root", "/x"}), &bytes.Buffer{}); err != nil {
 		t.Fatalf("flags must not count as positionals: %v", err)
 	}
 }
@@ -122,7 +122,7 @@ func TestConnectorShowNeverPrintsTheSecret(t *testing.T) {
 	installerLayout(t)
 	root := servedRoot(t)
 	store := connector.NewStore(root)
-	if err := store.Set(connector.Config{Sink: "https://lore.alepha.dev", Secret: testSecret}); err != nil {
+	if err := store.Set(connector.Config{Sink: "https://lore.alepha.app", Secret: testSecret}); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.SaveWelcome(connector.Welcome{Slug: "ovh-1", DeployAllowed: true, StatsIntervalSeconds: 300, ReceivedAt: time.Now()}); err != nil {
@@ -133,7 +133,7 @@ func TestConnectorShowNeverPrintsTheSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := out.String()
-	for _, want := range []string{"https://lore.alepha.dev", "ovh-1", "deploys allowed", "300s", "no control socket"} {
+	for _, want := range []string{"https://lore.alepha.app", "ovh-1", "deploys allowed", "300s", "no control socket"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("show is missing %q:\n%s", want, text)
 		}
@@ -156,7 +156,7 @@ func TestConnectorShowUnconfigured(t *testing.T) {
 func TestConnectorClearForgetsEverything(t *testing.T) {
 	root := servedRoot(t)
 	store := connector.NewStore(root)
-	if err := store.Set(connector.Config{Sink: "https://lore.alepha.dev", Secret: testSecret}); err != nil {
+	if err := store.Set(connector.Config{Sink: "https://lore.alepha.app", Secret: testSecret}); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.SaveWelcome(connector.Welcome{Slug: "ovh-1"}); err != nil {
@@ -180,7 +180,7 @@ func TestConnectorClearForgetsEverything(t *testing.T) {
 func TestControlConnectorReportCarriesNoSecret(t *testing.T) {
 	f := newDeployFixture(t)
 	store := connector.NewStore(f.root)
-	if err := store.Set(connector.Config{Sink: "https://lore.alepha.dev", Secret: testSecret}); err != nil {
+	if err := store.Set(connector.Config{Sink: "https://lore.alepha.app", Secret: testSecret}); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.SaveWelcome(connector.Welcome{Slug: "ovh-1"}); err != nil {
@@ -201,7 +201,7 @@ func TestControlConnectorReportCarriesNoSecret(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if !report.Configured || report.Sink != "https://lore.alepha.dev" || report.Slug != "ovh-1" || report.Connected {
+	if !report.Configured || report.Sink != "https://lore.alepha.app" || report.Slug != "ovh-1" || report.Connected {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
@@ -314,7 +314,7 @@ func TestConnectorSetStoresNothingWhenTheEnrolmentIsRefused(t *testing.T) {
 // The enrolment secret never goes to a cleartext sink off the machine.
 func TestConnectorSetNeverExchangesOverCleartext(t *testing.T) {
 	store := connector.NewStore(servedRoot(t))
-	err := connectorSetWith(store, []string{"http://lore.alepha.dev", "enr_0123456789abcdef"}, &bytes.Buffer{}, nil)
+	err := connectorSetWith(store, []string{"http://lore.alepha.app", "enr_0123456789abcdef"}, &bytes.Buffer{}, nil)
 	if err == nil || !strings.Contains(err.Error(), "cleartext") {
 		t.Fatalf("want the cleartext refusal, got %v", err)
 	}
@@ -330,7 +330,7 @@ func TestConnectorShowSaysWhyTheServerCouldNotBeAsked(t *testing.T) {
 	configured := func(t *testing.T) *connector.Store {
 		t.Helper()
 		store := connector.NewStore(servedRoot(t))
-		if err := store.Set(connector.Config{Sink: "https://lore.alepha.dev", Secret: testSecret}); err != nil {
+		if err := store.Set(connector.Config{Sink: "https://lore.alepha.app", Secret: testSecret}); err != nil {
 			t.Fatal(err)
 		}
 		return store

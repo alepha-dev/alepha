@@ -17,12 +17,12 @@ const LoreHome = () => {
         <p className="product-try">
           Try it on{" "}
           <a
-            href="https://lore.alepha.dev"
+            href="https://lore.alepha.app"
             target="_blank"
             rel="noopener noreferrer"
             className="product-try-link"
           >
-            lore.alepha.dev
+            lore.alepha.app
             <IconExternalLink size={15} aria-hidden="true" />
           </a>
           , or run your own.

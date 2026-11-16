@@ -84,7 +84,7 @@ reaches the browser, and there is no cross-origin request to allow.
 | Variable       | What it does                                                                                     |
 | -------------- | ------------------------------------------------------------------------------------------------ |
 | `SIGIL_KEY`    | The instance's key. Without one, errors go to the app's log instead.                             |
-| `SIGIL_SINK`   | The Lore instance to report to. Defaults to `https://lore.alepha.dev`; set it when self-hosting. |
+| `SIGIL_SINK`   | The Lore instance to report to. Defaults to `https://lore.alepha.app`; set it when self-hosting. |
 | `SIGIL_SALT`   | The salt for visitor hashes. Falls back to `APP_SECRET`.                                         |
 | `SIGIL_CONFIG` | A JSON object to turn parts off.                                                                 |
 

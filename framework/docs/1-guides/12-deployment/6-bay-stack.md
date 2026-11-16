@@ -152,7 +152,7 @@ the image digests it ran.
 
 ### From Lore
 
-On a Bay enrolled in [Lore](https://lore.alepha.dev) as a host, the same steps run from the
+On a Bay enrolled in [Lore](https://lore.alepha.app) as a host, the same steps run from the
 `lore` CLI, with nothing to copy over ssh:
 
 ```bash

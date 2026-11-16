@@ -80,7 +80,7 @@ class QualityController {
 class CoverageReporter {
   env = $env(
     z.object({
-      LORE_URL: z.text({ default: "https://lore.alepha.dev" }),
+      LORE_URL: z.text({ default: "https://lore.alepha.app" }),
       LORE_API_KEY: z.text({ default: "" }),
     }),
   );

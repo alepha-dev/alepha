@@ -266,11 +266,11 @@ export class AppService {
    * `SIGIL_KEY` is the only required one; `SIGIL_SINK` defaults to the public
    * Lore inside the reporting package, so it is written only when THIS Lore is
    * somewhere else - which is exactly the self-hosted case that would
-   * otherwise send a self-hosted app's telemetry to lore.alepha.dev.
+   * otherwise send a self-hosted app's telemetry to lore.alepha.app.
    */
   public static readonly SIGIL_KEY = "SIGIL_KEY";
   public static readonly SIGIL_SINK = "SIGIL_SINK";
-  public static readonly PUBLIC_SINK = "https://lore.alepha.dev";
+  public static readonly PUBLIC_SINK = "https://lore.alepha.app";
 
   /**
    * Give a copy a sigil and put its key straight into that copy's environment.

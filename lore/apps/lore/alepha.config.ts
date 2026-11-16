@@ -78,7 +78,7 @@ export default defineConfig({
   // instead of one of them steering the build.
   build: {
     // ⚠️ Both slices, from one build. Lore ships to two places: a Cloudflare
-    // Worker (lore.alepha.dev) and a self-hosted image (ghcr.io). They differ
+    // Worker (lore.alepha.app) and a self-hosted image (ghcr.io). They differ
     // only in the server link, so the client bundle, the prerender and the
     // asset compression are done once and the artifact carries both.
     //
@@ -208,7 +208,7 @@ export default defineConfig({
           // What `$robots` compares a request's host to, so a `workers.dev`
           // address answers `Disallow: /`. A self-hosted image has none, and
           // answers for its own host.
-          PUBLIC_URL: "https://lore.alepha.dev",
+          PUBLIC_URL: "https://lore.alepha.app",
           // The open-projects launch gate: a project may be opened to anyone
           // signed in (it still starts invite only). Not a secret.
           LORE_OPEN_PROJECTS: "true",
@@ -219,7 +219,7 @@ export default defineConfig({
   plugins: [
     infra({
       // ⚠️ Pinned, and never a `project`: the Worker is `lore-production`, and
-      // any other name provisions an empty D1 and moves lore.alepha.dev onto
+      // any other name provisions an empty D1 and moves lore.alepha.app onto
       // it. The package name says the same today; this keeps a rename of the
       // package from renaming production.
       name: "lore",
@@ -228,7 +228,13 @@ export default defineConfig({
       // CI delivers them via the deploy job's `env:` and the deploy step
       // resolves each from `process.env`. Set `secrets.keys` only to override.
       environments: {
-        production: cloudflare({ domain: "lore.alepha.dev" }),
+        // Lore moved to lore.alepha.app (#Q3755). The old host stays attached
+        // while clients move: a zone rule on alepha.dev redirects its pages,
+        // and its websockets, API and MCP calls are still served here.
+        production: cloudflare({
+          domain: "lore.alepha.app",
+          aliases: ["lore.alepha.dev"],
+        }),
       },
     }),
     i18n({

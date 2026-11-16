@@ -2,7 +2,7 @@ import type { InfraProvider } from "../schemas/infraProviderSchema.ts";
 
 /**
  * Where a `--infra lore` project deploys: the Lore project, and the instance
- * when it is not `https://lore.alepha.dev`. Never a host: which machine a
+ * when it is not `https://lore.alepha.app`. Never a host: which machine a
  * copy deploys to is chosen in Lore, where the host is lent.
  */
 export interface AlephaConfigLoreOptions {

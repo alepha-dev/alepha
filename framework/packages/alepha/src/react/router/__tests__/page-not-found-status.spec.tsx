@@ -85,7 +85,7 @@ describe("$page not-found status", () => {
    * renames those, so a browser holding the previous build asks for
    * `/chunk.OLD.js`, that lands on `/:slug`, and the page's `$secure()`
    * answers it as an authorization question: a login redirect for a visitor,
-   * and on lore.alepha.dev a 403 "Access denied" for a signed-in one.
+   * and on lore.alepha.app a 403 "Access denied" for a signed-in one.
    *
    * The check therefore belongs OUTSIDE the middleware chain, not inside the
    * render it used to sit in: a guard that has already run has already given

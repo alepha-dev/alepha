@@ -39,7 +39,7 @@ that served the earlier binaries no longer exists. The install address is
 ## Planning lives in Lore
 
 Decisions, plans and bug reports live in the Lore project **Alepha**
-(`https://lore.alepha.dev/alepha`, id `1`), area `bay`, with the framework's
+(`https://lore.alepha.app/alepha`, id `1`), area `bay`, with the framework's
 and Lore's since #E94 (2026-10-27). Every commit names its quest as `#Q<n>`;
 record the sha with `quest_commit_add`. Decisions go in folios. The project
 `Bay` (id `75`) is archived: a number it used after 2026-10-01 was

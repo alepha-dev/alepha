@@ -6,7 +6,7 @@ place that people and AI agents share.
 
 ![A project dashboard in Lore](/screenshots/lore/dashboard-light.png)
 
-You can use the hosted instance at [lore.alepha.dev](https://lore.alepha.dev)
+You can use the hosted instance at [lore.alepha.app](https://lore.alepha.app)
 or [run your own](/lore/docs/start-self-hosting) from one Docker image. Lore
 does not care what your project is written in: planning, knowledge and feedback
 work the same for a Rust service, a mobile app or a hardware product.

@@ -24,7 +24,7 @@ const subject: AgentPromptSubject = {
   id: 67,
   reference: "#E41",
   title: "Lore Agent Prompts",
-  url: "https://lore.alepha.dev/alepha/epics/41",
+  url: "https://lore.alepha.app/alepha/epics/41",
 };
 
 /**

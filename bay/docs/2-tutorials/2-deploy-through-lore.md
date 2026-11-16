@@ -51,7 +51,7 @@ It prints the command to run on the machine, with a secret shown **once**.
 the first tutorial:
 
 ```bash
-bay connector set https://lore.alepha.dev est_...
+bay connector set https://lore.alepha.app est_...
 bay connector show
 ```
 

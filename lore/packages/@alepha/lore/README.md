@@ -8,7 +8,7 @@ The Lore client for Alepha apps: the sigil reporter, and the CLI that talks to a
 npm install @alepha/lore
 ```
 
-Everything an Alepha app needs to talk to [Lore](https://lore.alepha.dev), in three
+Everything an Alepha app needs to talk to [Lore](https://lore.alepha.app), in three
 subpaths that no host installs for the same reason.
 
 |                       |                                                                                           |
@@ -57,7 +57,7 @@ anything.
 
 |                |                                                                                  |
 | -------------- | -------------------------------------------------------------------------------- |
-| `SIGIL_SINK`   | origin of the sink. Defaults to `https://lore.alepha.dev`; set it to self-host.  |
+| `SIGIL_SINK`   | origin of the sink. Defaults to `https://lore.alepha.app`; set it to self-host.  |
 | `SIGIL_CONFIG` | JSON object of switches over what to collect. Every field optional.              |
 | `SIGIL_SALT`   | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET`. |
 
