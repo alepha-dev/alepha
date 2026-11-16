@@ -24,24 +24,36 @@ export class ReactDomServerProvider {
   protected module?: typeof import("react-dom/server");
 
   /**
-   * The in-flight load, so concurrent first renders share one import rather
-   * than racing to assign {@link module}.
-   */
-  protected pending?: Promise<typeof import("react-dom/server")>;
-
-  /**
    * Load the renderer, reusing it on every subsequent call.
    *
    * Call this from the render path, which is async anyway — the first call
    * pays for fetching the chunk and later ones resolve from cache.
+   *
+   * ⚠️ **Only the settled module is shared, never the pending load** (#Q3792).
+   * On workerd (`handle_cross_request_promise_resolution`) a promise belongs
+   * to the request that created it: when the request that started a shared
+   * `import()` ended before it settled (a client gone on a cold start), every
+   * other request awaiting that same promise failed with "This promise was
+   * created by a request that has since ended", and the page streamed that
+   * sentence into `#root`. Each caller awaits its own `import()` instead; the
+   * runtime's module cache makes the second one cheap, and concurrent first
+   * callers racing to assign {@link module} assign the same module.
    */
   public async load(): Promise<typeof import("react-dom/server")> {
     if (this.module) {
       return this.module;
     }
-    this.pending ??= import("react-dom/server");
-    this.module = await this.pending;
-    return this.module;
+    const module = await this.importRenderer();
+    this.module = module;
+    return module;
+  }
+
+  /**
+   * The `import()` itself, one per call. A seam for the workerd spec, which
+   * slows it down to hold a first load open across requests.
+   */
+  protected importRenderer(): Promise<typeof import("react-dom/server")> {
+    return import("react-dom/server");
   }
 
   /**
