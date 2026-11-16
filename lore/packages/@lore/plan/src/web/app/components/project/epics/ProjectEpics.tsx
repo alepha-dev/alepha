@@ -30,10 +30,13 @@ import {
   Archive,
   ArchiveRestore,
   Bot,
+  CircleCheck,
   CircleDot,
   ClipboardCheck,
   Flag,
   FlagOff,
+  MessageCircleQuestion,
+  NotebookPen,
   Play,
   Plus,
   Trash2,
@@ -41,6 +44,7 @@ import {
   TriangleAlert,
   Undo2,
   Wrench,
+  type LucideIcon,
 } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -136,6 +140,9 @@ const ProjectEpics = () => {
     !statusFilter.current.includes("shelved");
 
   const [createOpen, setCreateOpen] = useState(false);
+  // The preset rail's badges (#Q3780), counted by `fetchEpics` from the
+  // project's whole list, which it already holds: no request of their own.
+  const [presetCounts, setPresetCounts] = useState<EpicPresetCounts>();
   // Bumped after a create, which happens outside the table and so has no
   // `ctx.refresh()` of its own to call.
   const [reload, setReload] = useState(0);
@@ -559,9 +566,18 @@ const ProjectEpics = () => {
     alepha.store.set(currentEpicCountAtom, {
       count: all.filter((epic) => epic.status === "draft").length,
     });
+    // Set only when a count moved, so a refetch that changes nothing does
+    // not re-render the table it is running in.
+    const counts = epicPresetCounts(all);
+    setPresetCounts((previous) =>
+      previous && JSON.stringify(previous) === JSON.stringify(counts)
+        ? previous
+        : counts,
+    );
 
     const statuses = filters?.status ?? [];
     statusFilter.current = statuses;
+    const openReviews = filters?.reviews === "open";
     const picked = filters?.release ?? [];
     // The selections OR together, and the sentinel is one of them: an epic
     // matches if it is attached to a picked release, or if "No release" is
@@ -575,6 +591,7 @@ const ProjectEpics = () => {
         if (statuses.length > 0 && !statuses.includes(epic.status)) {
           return false;
         }
+        if (openReviews && (epic.openQuestions ?? 0) === 0) return false;
         if (picked.length > 0) {
           // `!= null` covers both spellings of "not attached" and narrows
           // the id in the same breath, so no cast is needed here.
@@ -717,7 +734,32 @@ const ProjectEpics = () => {
         clearLabel: tr("board.filter.allReleases"),
       },
     },
+    /**
+     * Epics with a review question nobody answered yet: what the Open
+     * reviews preset sets (#Q3780). One value, since "answered" is not a
+     * question anybody asks of this list.
+     */
+    reviews: {
+      schema: z.enum(["open"]),
+      label: tr("epic.filter.reviews"),
+      icon: MessageCircleQuestion,
+      optionLabel: () => tr("epic.filter.reviews.open"),
+    },
   } satisfies DataTableFilterFields;
+
+  // The preset rail beside the table, the quests list's own component
+  // (`filters.presets`, #Q3780): a set of this table's filters each, built on
+  // the epic lifecycle, with a badge counted from the list `fetchEpics` read.
+  const presetItems = EPIC_PRESETS.map((preset) => ({
+    key: preset.key,
+    label: tr(`epic.presets.${preset.key}`),
+    hint: tr(`epic.presets.${preset.key}.hint`),
+    icon: preset.icon,
+    group: preset.group,
+    tone: preset.tone,
+    count: preset.quiet ? undefined : presetCounts?.[preset.key],
+    values: preset.values,
+  }));
 
   const bulkActions: Array<
     BulkAction<EpicResource> | BulkMenuAction<EpicResource>
@@ -796,7 +838,23 @@ const ProjectEpics = () => {
         defaultSort={{ field: "updatedAt", direction: "desc" }}
         emptyMessage={tr("epic.list.empty")}
         refreshSignal={reload}
-        filters={{ fields: filterFields }}
+        filters={{
+          fields: filterFields,
+          // No preset by default: All, as before the rail (#Q3780). Active
+          // as the default would hide every draft and ready epic on a first
+          // visit, the drafts the sidebar's badge sends the reader to
+          // included. A link's query (`?status=ready`) selects a preset, and
+          // the reader's choice persists under `persistenceKey`, as on the
+          // quests list.
+          fromQuery: true,
+          presets: {
+            items: presetItems,
+            all: {
+              label: tr("epic.presets.all"),
+              hint: tr("epic.presets.all.hint"),
+            },
+          },
+        }}
         fetch={fetchEpics}
         onRowHover={(epic) => {
           if (epic) {
@@ -1378,3 +1436,85 @@ const isDeletable = (epic: Pick<EpicResource, "status">): boolean =>
  */
 const isShelvable = (epic: Pick<EpicResource, "status">): boolean =>
   epic.status !== "completed" && epic.status !== "shelved";
+
+type EpicPresetKey =
+  | "active"
+  | "ready"
+  | "drafts"
+  | "done"
+  | "shelved"
+  | "reviews";
+
+type EpicPresetCounts = Record<EpicPresetKey, number>;
+
+/**
+ * The presets the epics rail offers, in its order (#Q3780): the epic
+ * lifecycle first, then what asks the owner something, divided by a rule.
+ */
+const EPIC_PRESETS: Array<{
+  key: EpicPresetKey;
+  icon: LucideIcon;
+  group: "primary" | "secondary";
+  tone?: "danger";
+  /**
+   * No badge: a number of finished or set-aside epics asks nothing of the
+   * reader.
+   */
+  quiet?: boolean;
+  values: {
+    status?: EpicResource["status"][];
+    reviews?: "open";
+  };
+}> = [
+  {
+    key: "active",
+    icon: Play,
+    group: "primary",
+    values: { status: ["in_progress"] },
+  },
+  {
+    key: "ready",
+    icon: ClipboardCheck,
+    group: "primary",
+    values: { status: ["ready"] },
+  },
+  {
+    key: "drafts",
+    icon: NotebookPen,
+    group: "primary",
+    values: { status: ["draft"] },
+  },
+  {
+    key: "done",
+    icon: CircleCheck,
+    group: "primary",
+    quiet: true,
+    values: { status: ["completed"] },
+  },
+  {
+    key: "shelved",
+    icon: Archive,
+    group: "primary",
+    quiet: true,
+    values: { status: ["shelved"] },
+  },
+  {
+    key: "reviews",
+    icon: MessageCircleQuestion,
+    group: "secondary",
+    tone: "danger",
+    values: { reviews: "open" },
+  },
+];
+
+/**
+ * Each preset's count over the project's whole epic list.
+ */
+const epicPresetCounts = (epics: EpicResource[]): EpicPresetCounts => ({
+  active: epics.filter((epic) => epic.status === "in_progress").length,
+  ready: epics.filter((epic) => epic.status === "ready").length,
+  drafts: epics.filter((epic) => epic.status === "draft").length,
+  done: epics.filter((epic) => epic.status === "completed").length,
+  shelved: epics.filter((epic) => epic.status === "shelved").length,
+  reviews: epics.filter((epic) => (epic.openQuestions ?? 0) > 0).length,
+});
