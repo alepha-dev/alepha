@@ -11,7 +11,9 @@ import { RequirementResourceKind } from "./resources/RequirementResourceKind.ts"
 import { UseCaseResourceKind } from "./resources/UseCaseResourceKind.ts";
 import { RequirementsCommentService } from "./services/RequirementsCommentService.ts";
 import { RequirementService } from "./services/RequirementService.ts";
+import { RequirementSourceWatcher } from "./services/RequirementSourceWatcher.ts";
 import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts";
+import { SourceSectionService } from "./services/SourceSectionService.ts";
 import { UseCaseService } from "./services/UseCaseService.ts";
 
 /**
@@ -37,6 +39,9 @@ export const LorePlanRequirementsApi = $module({
     RequirementsCommentService,
     UseCaseService,
     RequirementService,
+    SourceSectionService,
+    // Source changed: Remember's `folio:revision:created`, listened to here.
+    RequirementSourceWatcher,
     // The resource kinds on core's `ResourceRegistry`: listed, because
     // nothing injects them.
     PersonaResourceKind,

@@ -56,6 +56,21 @@ export const requirements = $entity({
     sourceAnchor: z.string().max(200).optional(),
     sourceRevisionId: z.string().max(64).optional(),
     /**
+     * The section's text as last synced (#Q3769): what each new revision of
+     * the folio is compared with, and what Review the diff shows.
+     */
+    sourceSectionText: z.string().meta({ size: "rich" }).optional(),
+    /**
+     * Set when a new revision edited or removed the cited section; cleared
+     * by Update the requirement or Keep, which both resync.
+     */
+    sourceChanged: z.boolean().optional(),
+    sourceChangeKind: z
+      .enum(["edited", "removed"])
+      .meta({ mode: "text" })
+      .optional(),
+    sourceChangedRevisionId: z.string().max(64).optional(),
+    /**
      * The target release set BY HAND. Counts only while no covering epic
      * sits in a release: `auto` is derived on read from the covering epics
      * and never stored. `SET NULL`: deleting a release orphans it.

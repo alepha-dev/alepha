@@ -1,0 +1,178 @@
+import { DialogProvider } from "@alepha/ui";
+import { projectFixture, virtualClientFake } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
+import { render, screen } from "@testing-library/react";
+import { Alepha } from "alepha";
+import { AlephaDateTime } from "alepha/datetime";
+import { AlephaLogger } from "alepha/logger";
+import { AlephaContext, AlephaReact } from "alepha/react";
+import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
+import { $page, AlephaReactRouter } from "alepha/react/router";
+import { LinkProvider } from "alepha/server/links";
+import { setupJsdomMocks } from "alepha/testing/react";
+import { afterEach, beforeAll, describe, it } from "vitest";
+
+import type { RequirementResource } from "../../../../api/schemas/requirementResourceSchema.ts";
+import RequirementsTab from "../layout/RequirementsTab.tsx";
+import RequirementDetail from "./RequirementDetail.tsx";
+
+const aRequirement = (
+  over: Partial<RequirementResource>,
+): RequirementResource =>
+  ({
+    id: 1,
+    projectId: 1,
+    number: 5,
+    statement: "The discount is visible before payment",
+    description: "",
+    type: "functional",
+    priority: "must",
+    chapter: "3. Promotions",
+    paragraph: "3.2",
+    criteria: [
+      {
+        useCaseId: 1,
+        useCaseNumber: 7,
+        useCaseTitle: "Promo",
+        key: "C2",
+        summary: "discount shown",
+        method: "e2e",
+      },
+    ],
+    coveringEpics: [{ id: 9, number: 5, title: "Promotions", releaseId: 3 }],
+    personas: [{ number: 2, name: "Léa" }],
+    targetRelease: { id: 3, number: 2, tag: "2.4.0", mode: "auto" },
+    status: "covered",
+    createdAt: "2026-11-10T10:00:00.000Z",
+    updatedAt: "2026-11-10T10:00:00.000Z",
+    ...over,
+  }) as RequirementResource;
+
+const ROWS = [
+  aRequirement({}),
+  aRequirement({
+    id: 2,
+    number: 12,
+    statement: "A replayed webhook never charges twice",
+    chapter: "4. Payment",
+    paragraph: "4.3",
+    criteria: [],
+    coveringEpics: [],
+    targetRelease: { id: 4, number: 1, tag: "2.3.1", mode: "by_hand" },
+    status: "not_covered",
+    sourceChanged: true,
+    sourceChangeKind: "edited",
+  }),
+];
+
+class FakeLinkProvider extends LinkProvider {
+  // matches the real client's own loose virtual-action shape
+  override client(): any {
+    return virtualClientFake({
+      getRequirements: async () => ROWS,
+      getRequirementReleases: async () => [
+        { id: 3, number: 2, tag: "2.4.0" },
+        { id: 4, number: 1, tag: "2.3.1" },
+      ],
+    });
+  }
+}
+
+class StubPages {
+  projectRequirements = $page({
+    name: "projectRequirements",
+    path: "/:projectSlug/requirements",
+    component: () => null,
+  });
+}
+
+/**
+ * The Requirements tab and its detail pane (#E153, #Q3769).
+ */
+describe("Requirements screens", () => {
+  let alepha: Alepha | undefined;
+
+  beforeAll(() => {
+    setupJsdomMocks();
+  });
+
+  afterEach(async () => {
+    await alepha?.stop();
+    alepha = undefined;
+  });
+
+  const boot = async (permissions: string[]) => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n)
+      .with(I18n)
+      .with(StubPages);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, {
+      ...projectFixture({ capabilities: ["plan"] }),
+      slug: "acme",
+      permissions,
+    } as never);
+    return alepha;
+  };
+
+  it("groups the list by chapter, with release, verified by and status, and names the changed sources", async ({
+    expect,
+  }) => {
+    const app = await boot(["requirement:read", "requirement:write"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <RequirementsTab />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    await screen.findByText("The discount is visible before payment");
+    const table = screen.getByTestId("requirements-table");
+    expect(table.textContent).toContain("3. Promotions");
+    expect(table.textContent).toContain("4. Payment");
+    expect(table.textContent).toContain("2.4.0 auto");
+    expect(table.textContent).toContain("2.3.1 by hand");
+    expect(table.textContent).toContain("#U7 C2");
+    expect(screen.getByTestId("source-changed-banner").textContent).toContain(
+      "#S12",
+    );
+    expect(
+      screen.getByRole("button", { name: /New requirement/ }),
+    ).toBeTruthy();
+  });
+
+  it("draws the detail pane: release note, criteria, personas, and no write for a viewer", async ({
+    expect,
+  }) => {
+    const app = await boot(["requirement:read"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <RequirementDetail
+            requirement={ROWS[0]}
+            releases={[{ id: 3, tag: "2.4.0" }]}
+            onChange={() => {}}
+            onEdit={() => {}}
+            onDeleted={() => {}}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const pane = await screen.findByTestId("requirement-detail");
+    expect(pane.textContent).toContain("§3.2");
+    expect(pane.textContent).toContain("Léa");
+    expect(screen.getByTestId("release-note").textContent).toContain("#E5");
+    expect(pane.textContent).toContain("#U7 C2");
+    expect(
+      screen.queryByRole("button", { name: /Edit requirement/ }),
+    ).toBeNull();
+  });
+});
