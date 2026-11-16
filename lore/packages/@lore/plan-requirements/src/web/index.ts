@@ -2,6 +2,7 @@ import { LorePlanWeb } from "@lore/plan/web";
 import { $module } from "alepha";
 
 import { currentPersonaAtom } from "./app/atoms/currentPersonaAtom.ts";
+import { currentUseCaseAtom } from "./app/atoms/currentUseCaseAtom.ts";
 import { RequirementsRouter } from "./app/RequirementsRouter.ts";
 import { RequirementsShell } from "./app/shell/RequirementsShell.ts";
 
@@ -22,7 +23,7 @@ export const LorePlanRequirementsWeb = $module({
   // Plan first: Requirements extends Plan's sidebar, so booting this module
   // alone boots the shell it extends.
   imports: [LorePlanWeb],
-  atoms: [currentPersonaAtom],
+  atoms: [currentPersonaAtom, currentUseCaseAtom],
   register(alepha) {
     // Injected rather than listed in `services`, as `LorePlanWeb` does: a
     // listed service is tagged with this module, and injecting it anywhere
@@ -36,6 +37,7 @@ export const LorePlanRequirementsWeb = $module({
 
 export { RequirementsRouter } from "./app/RequirementsRouter.ts";
 export { currentPersonaAtom } from "./app/atoms/currentPersonaAtom.ts";
+export { currentUseCaseAtom } from "./app/atoms/currentUseCaseAtom.ts";
 export { RequirementsShell } from "./app/shell/RequirementsShell.ts";
 export {
   REQUIREMENTS_ROUTES,

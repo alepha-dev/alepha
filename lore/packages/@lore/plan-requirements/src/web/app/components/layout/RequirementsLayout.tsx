@@ -5,7 +5,9 @@ import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 
 import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
+import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
+import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import { REQUIREMENTS_TABS } from "./requirementsTabs.ts";
 
 /**
@@ -41,8 +43,20 @@ const RequirementsLayout = () => {
     },
     [personaApi, projectId],
   );
+  const useCaseApi = useClient<UseCaseController>();
+  const useCases = useQuery<UseCaseResource[]>(
+    {
+      key: ["use-cases", projectId],
+      enabled:
+        projectId > 0 && !!project && canInProject(project, "usecase:read"),
+      handler: async () =>
+        await useCaseApi.getUseCases({ params: { projectId }, query: {} }),
+    },
+    [useCaseApi, projectId],
+  );
   const counts: Record<string, number | undefined> = {
     projectPersonas: personas.data?.length,
+    projectUseCases: useCases.data?.length,
   };
 
   const tabs: PlateTab[] = REQUIREMENTS_TABS.filter(

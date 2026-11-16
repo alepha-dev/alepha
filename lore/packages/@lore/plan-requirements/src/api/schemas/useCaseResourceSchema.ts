@@ -38,6 +38,12 @@ export const useCaseResourceSchema = useCases.schema
         number: z.integer(),
         title: z.string(),
         status: z.string().optional(),
+        /**
+         * The epic's quests done and in all, for development progress.
+         */
+        progress: z
+          .object({ completed: z.integer(), total: z.integer() })
+          .optional(),
       }),
     ),
   });

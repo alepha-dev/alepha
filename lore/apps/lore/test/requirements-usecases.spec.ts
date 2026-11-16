@@ -323,3 +323,101 @@ describe("use cases", () => {
     expect((await ctx.mcp(token, "usecase_list", {})).text).toContain("#A1");
   });
 });
+
+/**
+ * Validation is the use case's own (#Q3767): anyone who writes may ask,
+ * only a holder of `usecase:validate` answers, and a scenario edit of a
+ * validated use case returns it to ready.
+ */
+describe("use case validation", () => {
+  let ctx: RequirementsProject;
+  let api: UseCaseController;
+
+  beforeEach(async () => {
+    ctx = await requirementsProject();
+    api = ctx.alepha.inject(UseCaseController);
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("is asked by a member and answered by the owner, never by the member", async ({
+    expect,
+  }) => {
+    const member = await ctx.seat("member");
+    const uc = (
+      await api.createUseCase.fetch(
+        {
+          params: { projectId: ctx.projectId },
+          body: { title: "Check out", criteria: [{ text: "An order exists" }] },
+        },
+        ctx.as(member),
+      )
+    ).data;
+
+    const asked = (
+      await api.requestUseCaseValidation.fetch(
+        { params: { id: uc.id } },
+        ctx.as(member),
+      )
+    ).data;
+    // The owner holds usecase:validate; the member who asked is not told.
+    expect(asked.notified).toBe(1);
+
+    expect(
+      await ctx.statusOf(
+        api.validateUseCase.fetch(
+          { params: { id: uc.id }, body: { decision: "validated" } },
+          ctx.as(member),
+        ),
+      ),
+    ).toBe(403);
+
+    const validated = (
+      await api.validateUseCase.fetch(
+        {
+          params: { id: uc.id },
+          body: { decision: "validated", note: "Checked on staging" },
+        },
+        ctx.as(ctx.owner),
+      )
+    ).data;
+    expect(validated.status).toBe("validated");
+    expect(validated.validationNote).toBe("Checked on staging");
+    expect(validated.validationRequestedAt).toBeUndefined();
+
+    const edited = (
+      await api.updateUseCase.fetch(
+        {
+          params: { id: uc.id },
+          body: { criteria: [{ text: "Two orders exist" }] },
+        },
+        ctx.as(member),
+      )
+    ).data;
+    expect(edited.status).toBe("ready");
+
+    const back = (
+      await api.validateUseCase.fetch(
+        {
+          params: { id: uc.id },
+          body: { decision: "changes_requested", note: "Name the shop" },
+        },
+        ctx.as(ctx.owner),
+      )
+    ).data;
+    expect(back.status).toBe("draft");
+  });
+
+  it("is answered over MCP with usecase_validate", async ({ expect }) => {
+    const token = await ctx.tokenOf(ctx.owner);
+    await ctx.mcp(token, "usecase_create", { title: "Return an item" });
+    const answered = await ctx.mcp(token, "usecase_validate", {
+      number: 1,
+      decision: "validated",
+    });
+    expect(answered.refused).toBe(false);
+    expect(answered.text).toContain("validated");
+  });
+});

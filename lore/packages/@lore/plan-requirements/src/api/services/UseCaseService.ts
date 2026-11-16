@@ -3,6 +3,7 @@ import {
   ResourceLinkService,
   ResourceRegistry,
 } from "@lore/core/api";
+import { EpicProgressService } from "@lore/plan/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
@@ -38,6 +39,7 @@ export class UseCaseService {
   protected readonly links = $inject(ResourceLinkService);
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly bestEffort = $inject(BestEffort);
+  protected readonly epicProgress = $inject(EpicProgressService);
 
   /**
    * Write the lists `input` carries onto `useCase`, then its mirrors.
@@ -196,7 +198,10 @@ export class UseCaseService {
       useCaseIds.map(String),
     );
     const epicIds = [...new Set(rows.map((it) => it.fromId))];
-    const described = await this.resources.describe("epic", projectId, epicIds);
+    const [described, progress] = await Promise.all([
+      this.resources.describe("epic", projectId, epicIds),
+      this.epicProgress.computeProgressOfProject(projectId),
+    ]);
     const epics = new Map(described.map((it) => [it.id, it]));
     for (const row of rows) {
       const epic = epics.get(row.fromId);
@@ -207,6 +212,10 @@ export class UseCaseService {
         number: epic.shortId,
         title: epic.title,
         status: epic.status,
+        progress: {
+          completed: progress.get(Number(epic.id))?.completed ?? 0,
+          total: progress.get(Number(epic.id))?.total ?? 0,
+        },
       });
       byUseCase.set(Number(row.toId), list);
     }

@@ -7,9 +7,10 @@ import {
   ProjectShellRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
-import { ClipboardList, UsersRound } from "lucide-react";
+import { BookText, ClipboardList, UsersRound } from "lucide-react";
 
 import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
+import { currentUseCaseAtom } from "../atoms/currentUseCaseAtom.ts";
 import { REQUIREMENTS_ROUTES } from "../components/layout/requirementsTabs.ts";
 import { usePersonaReferences } from "../components/personas/usePersonaReferences.ts";
 import { useUseCaseReferences } from "../components/usecases/useUseCaseReferences.ts";
@@ -67,6 +68,45 @@ export class RequirementsShell {
       dialog: lazyPart(
         () => import("../components/personas/PersonaCreateMenuSheet.tsx"),
       ),
+    });
+
+    // New use case, beside New persona.
+    this.shell.registerCreate({
+      key: "usecase",
+      order: 71,
+      labelKey: "project.menu.create-usecase",
+      icon: BookText,
+      enabled: (project) =>
+        capabilityOption(project, "plan", "requirements") &&
+        canInProject(project, "usecase:write"),
+      dialog: lazyPart(
+        () => import("../components/usecases/UseCaseCreateMenuSheet.tsx"),
+      ),
+    });
+    // A use case's page reads "Acme › Requirements › Use cases › #U7 Title".
+    this.shell.registerCrumb({
+      order: 52,
+      crumb: (ctx) =>
+        ctx.routeName === "projectUseCase"
+          ? {
+              labelKey: "requirements.tab.useCases",
+              href: ctx.path("projectUseCases", {
+                projectSlug: ctx.projectSlug,
+              }),
+            }
+          : undefined,
+    });
+    this.shell.registerCrumb({
+      order: 53,
+      reads: [currentUseCaseAtom],
+      crumb: (ctx) => {
+        const useCase = ctx.get(currentUseCaseAtom);
+        return ctx.routeName === "projectUseCase" && useCase
+          ? {
+              label: `${formatReference("usecase", useCase.number)} ${useCase.title}`,
+            }
+          : undefined;
+      },
     });
 
     // A persona's page reads "Acme › Requirements › Personas › #A2 Léa":

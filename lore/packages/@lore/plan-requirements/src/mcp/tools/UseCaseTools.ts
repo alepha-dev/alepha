@@ -19,6 +19,7 @@ import {
   useCaseListParamsSchema,
   useCaseListResultSchema,
   useCaseUpdateParamsSchema,
+  useCaseValidateParamsSchema,
   useCaseWriteResultSchema,
 } from "../schemas/useCaseSchemas.ts";
 
@@ -224,6 +225,27 @@ export class UseCaseTools {
         body: { body: params.body, agent: true, agentClient: params.as },
       });
       return { id: comment.id, createdAt: comment.createdAt };
+    },
+  });
+
+  usecase_validate = $tool({
+    description:
+      "Answer a use case's validation: validated, or changes_requested (back to draft) with a note. Needs usecase:validate, which the project owner and Admins hold by default.",
+    title: "Validate use case",
+    schema: {
+      params: useCaseValidateParamsSchema,
+      result: useCaseWriteResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.projectId(
+        params.project,
+        params.project_name,
+      );
+      const useCase = await this.useCases.byNumber(projectId, params.number);
+      return await this.useCases.validateUseCase({
+        params: { id: useCase.id },
+        body: { decision: params.decision, note: params.note },
+      });
     },
   });
 

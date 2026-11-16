@@ -51,6 +51,15 @@ export const useCases = $entity({
      * Playwright reporter name a criterion by `(use case, key)`.
      */
     criterionSeq: db.default(z.integer().min(0), 0),
+    /**
+     * When validation was last asked for, cleared by the answer.
+     */
+    validationRequestedAt: z.datetime().optional(),
+    /**
+     * The last validation answer's note: why changes were requested, or
+     * what the validator checked.
+     */
+    validationNote: z.string().max(2000).optional(),
   }),
   indexes: [{ columns: ["projectId", "number"], unique: true }],
 });

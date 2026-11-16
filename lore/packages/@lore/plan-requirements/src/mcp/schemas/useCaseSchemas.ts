@@ -191,4 +191,18 @@ export const useCaseLinkEpicParamsSchema = projectParamsSchema.extend({
     ),
 });
 
+export const useCaseValidateParamsSchema = projectParamsSchema.extend({
+  number: numberSchema,
+  decision: z
+    .enum(["validated", "changes_requested"])
+    .describe(
+      "validated sets the use case to validated; changes_requested sends it back to draft.",
+    ),
+  note: z
+    .string()
+    .max(2000)
+    .optional()
+    .describe("Why, kept on the use case and in its Activity."),
+});
+
 export type ScenarioFields = Infer<typeof scenarioFieldsSchema>;
