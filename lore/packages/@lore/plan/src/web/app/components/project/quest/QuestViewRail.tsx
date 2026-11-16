@@ -140,7 +140,12 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             work over is what a board is for, so it does not go through the
             edit drawer — see `QuestAssigneePicker`. */}
         <QuestViewRailRow icon={User} label={tr("board.table.assigned")}>
-          <QuestAssigneePicker quest={quest} onUpdate={props.onUpdate} />
+          <QuestAssigneePicker
+            quest={quest}
+            onUpdate={props.onUpdate}
+            onUnassign={props.onUnassign}
+            unassignDisabled={props.unassignDisabled}
+          />
         </QuestViewRailRow>
 
         <QuestViewRailRow icon={Flame} label={tr("board.table.priority")}>
