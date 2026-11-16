@@ -205,4 +205,58 @@ export const useCaseValidateParamsSchema = projectParamsSchema.extend({
     .describe("Why, kept on the use case and in its Activity."),
 });
 
+export const useCaseRunRecordParamsSchema = projectParamsSchema.extend({
+  number: numberSchema,
+  by: z
+    .enum(["agent", "ci", "person"])
+    .describe("Who played it: agent (you), ci or person."),
+  client: z
+    .string()
+    .max(60)
+    .optional()
+    .describe("Your name as a client, e.g. `claude-code`."),
+  app: z
+    .string()
+    .max(120)
+    .optional()
+    .describe("The app copy played on: its app name. Omit for local."),
+  env: z
+    .string()
+    .max(120)
+    .optional()
+    .describe("The copy's environment (`staging`), or `local`."),
+  note: z
+    .string()
+    .max(4000)
+    .optional()
+    .describe("What the run saw, in Markdown."),
+  results: z
+    .array(
+      z.object({
+        key: z.string().describe("The criterion's key: C2."),
+        result: z.enum(["passed", "failed", "not_run"]),
+        note: z
+          .string()
+          .max(2000)
+          .optional()
+          .describe("Why, for a failure: what was seen."),
+      }),
+    )
+    .describe(
+      "One result per criterion played. A criterion left out is recorded as not run.",
+    ),
+});
+
+export const useCaseRunRecordResultSchema = z.object({
+  runId: z
+    .integer()
+    .describe("Attach evidence to it with `lore attachments push --run <id>`."),
+  errorsOpened: z.integer(),
+  errorRule: z
+    .enum(["opened", "in_development", "no_inbox", "none"])
+    .describe(
+      "What a failure did: opened errors (one per failed criterion), stayed in_development (a covering quest is open), or no_inbox (Ship's track is off: the use case shows Failing).",
+    ),
+});
+
 export type ScenarioFields = Infer<typeof scenarioFieldsSchema>;

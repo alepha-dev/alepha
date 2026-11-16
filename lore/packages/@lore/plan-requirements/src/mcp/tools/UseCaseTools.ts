@@ -4,6 +4,7 @@ import { $tool } from "alepha/mcp";
 import { BadRequestError } from "alepha/server";
 
 import { PersonaController } from "../../api/controllers/PersonaController.ts";
+import { RunController } from "../../api/controllers/RunController.ts";
 import { UseCaseController } from "../../api/controllers/UseCaseController.ts";
 import type { UseCaseInput } from "../../api/schemas/useCaseInputSchema.ts";
 import {
@@ -19,6 +20,8 @@ import {
   useCaseListParamsSchema,
   useCaseListResultSchema,
   useCaseUpdateParamsSchema,
+  useCaseRunRecordParamsSchema,
+  useCaseRunRecordResultSchema,
   useCaseValidateParamsSchema,
   useCaseWriteResultSchema,
 } from "../schemas/useCaseSchemas.ts";
@@ -31,6 +34,7 @@ import {
 export class UseCaseTools {
   protected readonly useCases = $inject(UseCaseController);
   protected readonly personas = $inject(PersonaController);
+  protected readonly runs = $inject(RunController);
   protected readonly projectTools = $inject(ProjectTools);
 
   protected async projectId(project?: number, name?: string): Promise<number> {
@@ -246,6 +250,29 @@ export class UseCaseTools {
         params: { id: useCase.id },
         body: { decision: params.decision, note: params.note },
       });
+    },
+  });
+
+  usecase_run_record = $tool({
+    description:
+      "Record a run of a use case you played: one result per acceptance criterion (passed, failed, not_run), where (app and env, or local) and a note. A failed criterion opens an error only once every quest covering the use case is completed and the project tracks errors; a later pass resolves it. Fix nothing while testing. Attach screenshots or a recording with `lore attachments push --run <runId>`.",
+    title: "Record use case run",
+    schema: {
+      params: useCaseRunRecordParamsSchema,
+      result: useCaseRunRecordResultSchema,
+    },
+    handler: async ({ params }) => {
+      const { project, project_name, number, ...body } = params;
+      const projectId = await this.projectId(project, project_name);
+      const recorded = await this.runs.recordUseCaseRun({
+        params: { projectId },
+        body: { ...body, useCaseNumber: number },
+      });
+      return {
+        runId: recorded.run.id,
+        errorsOpened: recorded.errorsOpened,
+        errorRule: recorded.errorRule,
+      };
     },
   });
 

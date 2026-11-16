@@ -1,5 +1,6 @@
 import type {
   PersonaController,
+  RunController,
   UseCaseController,
 } from "@lore/plan-requirements/api";
 import { $inject, z } from "alepha";
@@ -50,6 +51,7 @@ export class UseCaseCommand {
   protected readonly personaApi = $client<PersonaController>(
     this.client.scope(),
   );
+  protected readonly runApi = $client<RunController>(this.client.scope());
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -558,6 +560,100 @@ export class UseCaseCommand {
     },
   });
 
+  public readonly runRecord = $command({
+    name: "record",
+    description:
+      "Record a run of a use case: one result per criterion, where it ran, and a note",
+    args: UseCaseCommand.REF_ARG,
+    flags: z.object({
+      ...UseCaseCommand.PROJECT_FLAG,
+      by: z
+        .enum(["agent", "ci", "person"])
+        .describe("Who played it: agent, ci or person."),
+      client: z
+        .text({ description: "Your name as a client: claude-code, github." })
+        .optional(),
+      app: z
+        .text({ description: "The app copy played on. Omit for local." })
+        .optional(),
+      env: z
+        .text({ description: "Its environment (staging), or local." })
+        .optional(),
+      note: z
+        .text({
+          size: "rich",
+          atFile: true,
+          description: "What the run saw, in Markdown.",
+        })
+        .optional(),
+      result: z.text({
+        description:
+          "The results, comma-separated: C1=passed,C2=failed:shown €0,C3=not_run. A criterion left out is not run.",
+      }),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const number = this.refs.useCase(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+        const results = flags.result
+          .split(",")
+          .map((it) => it.trim())
+          .filter(Boolean)
+          .map((part) => {
+            const match =
+              /^(C\d+)\s*=\s*(passed|failed|not_run)(?::(.*))?$/i.exec(part);
+            if (!match) {
+              throw new UsageError(
+                `A result reads C2=passed or C2=failed:why, not '${part}'.`,
+              );
+            }
+            return {
+              key: match[1].toUpperCase(),
+              result: match[2].toLowerCase() as "passed" | "failed" | "not_run",
+              ...(match[3] ? { note: match[3].trim() } : {}),
+            };
+          });
+        const recorded = await this.runApi.recordUseCaseRun({
+          params: { projectId },
+          body: {
+            useCaseNumber: number,
+            by: flags.by,
+            client: flags.client,
+            app: flags.app,
+            env: flags.env,
+            note: flags.note,
+            results,
+          },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          recorded,
+          `Recorded run ${recorded.run.id} of U${number}${
+            recorded.errorRule === "opened"
+              ? `; ${recorded.errorsOpened} error(s) opened`
+              : recorded.errorRule === "in_development"
+                ? "; failures are in development (a covering quest is open)"
+                : recorded.errorRule === "no_inbox"
+                  ? "; failures show as Failing (the project tracks no errors)"
+                  : ""
+          }. Attach evidence: lore attachments push <file> --run ${recorded.run.id}`,
+        );
+      });
+    },
+  });
+
+  public readonly run = $command({
+    name: "run",
+    description: "A use case's runs: record one",
+    children: [this.runRecord],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
   public readonly link = $command({
     name: "link",
     description: "Link a use case: epic",
@@ -584,6 +680,7 @@ export class UseCaseCommand {
       this.comment,
       this.link,
       this.validate,
+      this.run,
     ],
     handler: async ({ help }) => {
       help();

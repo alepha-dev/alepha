@@ -52,7 +52,7 @@ export class AttachmentCommand {
 
   public readonly push = $command({
     name: "push",
-    description: "Attach a file to a quest or a folio",
+    description: "Attach a file to a quest, a folio, or a use case run",
     args: z.text({ title: "file", description: "Path to the file to attach" }),
     flags: z.object({
       project: z
@@ -71,6 +71,19 @@ export class AttachmentCommand {
       folio: z
         .number()
         .describe("The folio's shortId. Mutually exclusive with --quest.")
+        .optional(),
+      run: z
+        .number()
+        .describe(
+          "A use case run's id, as `lore usecase run record` prints it: the file is evidence of that run (50 MB a file).",
+        )
+        .optional(),
+      criterion: z
+        .text({ description: "With --run: the criterion the file shows, C2." })
+        .optional(),
+      step: z
+        .number()
+        .describe("With --run: the scenario step the file shows.")
         .optional(),
       name: z
         .text({
@@ -92,28 +105,41 @@ export class AttachmentCommand {
       // `./chart.png` means. `resolve` leaves an absolute path alone.
       const filePath = this.uploaderPath(root, args);
 
-      if ((flags.quest == null) === (flags.folio == null)) {
+      if (
+        [flags.quest, flags.folio, flags.run].filter((it) => it != null)
+          .length !== 1
+      ) {
         throw new AlephaError(
-          "Name exactly one target: --quest <shortId> or --folio <shortId>.",
+          "Name exactly one target: --quest <shortId>, --folio <shortId> or --run <id>.",
         );
       }
 
       const pushed =
-        flags.quest != null
-          ? await this.uploader.pushToQuest({
+        flags.run != null
+          ? await this.uploader.pushToRun({
               projectId,
-              questShortId: flags.quest,
+              runId: flags.run,
               filePath,
               name: flags.name,
               type: flags.type,
+              criterionKey: flags.criterion,
+              step: flags.step,
             })
-          : await this.uploader.pushToFolio({
-              projectId,
-              folioShortId: flags.folio!,
-              filePath,
-              name: flags.name,
-              type: flags.type,
-            });
+          : flags.quest != null
+            ? await this.uploader.pushToQuest({
+                projectId,
+                questShortId: flags.quest,
+                filePath,
+                name: flags.name,
+                type: flags.type,
+              })
+            : await this.uploader.pushToFolio({
+                projectId,
+                folioShortId: flags.folio!,
+                filePath,
+                name: flags.name,
+                type: flags.type,
+              });
 
       this.log.info(
         `Attached ${pushed.name} (${pushed.mimeType}) to ${pushed.subject} in ${project}`,

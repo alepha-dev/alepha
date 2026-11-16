@@ -77,6 +77,20 @@ export default defineConfig([
     dts: true,
     deps,
   },
+  // The Playwright reporter (#E153): plain `fetch`, Playwright's types only.
+  {
+    entry: "src/playwright/index.ts",
+    format: ["esm"],
+    platform: "node",
+    sourcemap: true,
+    fixedExtension: false,
+    outDir: "dist/playwright",
+    dts: true,
+    deps: {
+      neverBundle: [zod, /^@playwright\//],
+      dts: { neverBundle: [zod, /^@playwright\//] },
+    },
+  },
   // The `lore` binary. `dts: false` is load-bearing rather than an
   // optimisation: a bin has no consumers, so its types are dead weight, and
   // emitting them hands `scripts/check-dts.ts` a new `.d.ts` to walk for the

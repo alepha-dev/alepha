@@ -17,6 +17,7 @@ import { type UseCase, useCases } from "../entities/useCases.ts";
 import { useCaseSteps } from "../entities/useCaseSteps.ts";
 import type { UseCaseInput } from "../schemas/useCaseInputSchema.ts";
 import type { UseCaseResource } from "../schemas/useCaseResourceSchema.ts";
+import { RunService } from "./RunService.ts";
 
 /**
  * The scenario of a use case (#E153): its actors, steps, alternatives and
@@ -42,6 +43,7 @@ export class UseCaseService {
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly bestEffort = $inject(BestEffort);
   protected readonly epicProgress = $inject(EpicProgressService);
+  protected readonly runService = $inject(RunService);
 
   /**
    * Write the lists `input` carries onto `useCase`, then its mirrors.
@@ -231,6 +233,10 @@ export class UseCaseService {
   public async toResources(rows: UseCase[]): Promise<UseCaseResource[]> {
     if (rows.length === 0) return [];
     const ids = rows.map((it) => it.id);
+    const [latest, development] = await Promise.all([
+      this.runService.latestOf(ids),
+      this.runService.developmentOf(ids),
+    ]);
     const [actors, steps, alternatives, criteria, covered] = await Promise.all([
       this.actors.findMany({ where: { useCaseId: { inArray: ids } } }),
       this.steps.findMany({
@@ -273,8 +279,31 @@ export class UseCaseService {
     const numberOf = new Map(verified.map((it) => [it.id, it.number]));
     return rows.map((row) => {
       const { deletedAt: _deleted, ...rest } = row;
+      const last = latest.get(row.id);
+      const { state, stale } = this.runService.stateOf(
+        row,
+        last,
+        development.get(row.id),
+      );
       return {
         ...rest,
+        state,
+        stale,
+        lastRun: last
+          ? {
+              id: last.run.id,
+              ranAt: last.run.ranAt,
+              by: last.run.by,
+              client: last.run.client,
+              app: last.run.app,
+              env: last.run.env,
+              results: last.results.map((it) => ({
+                key: it.criterionKey,
+                result: it.result,
+                note: it.note,
+              })),
+            }
+          : undefined,
         actors: actors
           .filter((it) => it.useCaseId === row.id)
           .flatMap((it) => {

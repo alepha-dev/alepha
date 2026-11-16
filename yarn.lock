@@ -132,6 +132,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/lore@workspace:lore/packages/@alepha/lore"
   dependencies:
+    "@playwright/test": "npm:^1.65.1"
     "@testing-library/dom": "npm:^10.4.2"
     "@testing-library/react": "npm:^16.3.3"
     "@types/bun": "npm:^1.4.4"
@@ -152,6 +153,7 @@ __metadata:
     "@lore/plan-requirements": "*"
     "@lore/remember": "*"
     "@lore/ship": "*"
+    "@playwright/test": ">=1.42"
     alepha: ">=0.37.0"
     react: "*"
     react-dom: "*"
@@ -165,6 +167,8 @@ __metadata:
     "@lore/remember":
       optional: true
     "@lore/ship":
+      optional: true
+    "@playwright/test":
       optional: true
     alepha:
       optional: true

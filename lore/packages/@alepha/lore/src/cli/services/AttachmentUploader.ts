@@ -1,3 +1,4 @@
+import type { RunController } from "@lore/plan-requirements/api";
 import type { QuestController } from "@lore/plan/api";
 import type { FolioAttachmentController } from "@lore/remember/api";
 import type { FolioController } from "@lore/remember/api";
@@ -49,6 +50,7 @@ export class AttachmentUploader {
    * ordering constraint every `$client` in this package carries.
    */
   protected readonly quests = $client<QuestController>(this.client.scope());
+  protected readonly runs = $client<RunController>(this.client.scope());
   protected readonly folios = $client<FolioController>(this.client.scope());
   protected readonly folioAttachments = $client<FolioAttachmentController>(
     this.client.scope(),
@@ -103,6 +105,50 @@ export class AttachmentUploader {
       mimeType: stored?.mimeType ?? this.mimeType(name, input.type),
       size: stored?.size,
       subject: `quest #Q${input.questShortId}`,
+    };
+  }
+
+  /**
+   * Put a file of evidence on a use case run (#E153): uploaded to the
+   * `use-case-evidence` bucket (50 MB a file), then placed on the run, on a
+   * criterion or a step when given.
+   */
+  public async pushToRun(input: {
+    projectId: number;
+    runId: number;
+    filePath: string;
+    name?: string;
+    type?: string;
+    criterionKey?: string;
+    step?: number;
+  }): Promise<AttachmentPushed> {
+    const name = input.name ?? this.basename(input.filePath);
+    const mimeType = this.mimeType(name, input.type);
+    const size = (await this.fs.readFile(input.filePath)).byteLength;
+    const { fileId } = await this.uploadBytes(
+      "/api/useCaseRuns/evidence",
+      input.filePath,
+      name,
+      input.type,
+    );
+    await this.runs.addRunEvidence({
+      params: { id: input.runId },
+      body: {
+        fileId,
+        name,
+        mimeType,
+        size,
+        ...(input.criterionKey
+          ? { criterionKey: input.criterionKey.toUpperCase() }
+          : {}),
+        ...(input.step !== undefined ? { step: input.step } : {}),
+      },
+    });
+    return {
+      name,
+      mimeType,
+      size,
+      subject: `run ${input.runId}${input.criterionKey ? ` (${input.criterionKey.toUpperCase()})` : ""}`,
     };
   }
 

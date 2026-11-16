@@ -94,6 +94,7 @@ import { QualityService } from "./services/QualityService.ts";
 import { QualityTrendMetric } from "./services/QualityTrendMetric.ts";
 import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
+import { RunErrorService } from "./services/RunErrorService.ts";
 import { SigilIngestRefusals } from "./services/SigilIngestRefusals.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
@@ -139,6 +140,9 @@ export const LoreShipApi = $module({
     AlephaRateLimit,
   ],
   services: [
+    // The errors a use case run opens and resolves (#E153), written by
+    // Plan's Requirements.
+    RunErrorService,
     // Every bucket of the package, at boot: an upload looks its bucket up
     // by name, and the controllers that use one stay pure (#Q3404).
     DeployBuckets,
@@ -390,3 +394,5 @@ export { UptimePushService } from "./services/UptimePushService.ts";
 export { MonitorController } from "./controllers/MonitorController.ts";
 // In core since #Q3614; re-exported for the module's own callers.
 export { CredentialSealService } from "@lore/core/api";
+
+export { RunErrorService } from "./services/RunErrorService.ts";

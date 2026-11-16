@@ -13,6 +13,7 @@ import { $repository, type SQLLike } from "alepha/orm";
 import { personas } from "../entities/personas.ts";
 import { requirements } from "../entities/requirements.ts";
 import { requirementsComments } from "../entities/requirementsComments.ts";
+import { useCaseRuns } from "../entities/useCaseRuns.ts";
 import { useCases } from "../entities/useCases.ts";
 
 /**
@@ -30,6 +31,7 @@ export class RequirementsProjectMerge {
   protected readonly comments = $repository(requirementsComments);
   protected readonly useCases = $repository(useCases);
   protected readonly requirements = $repository(requirements);
+  protected readonly runs = $repository(useCaseRuns);
 
   constructor() {
     this.merge.registerStep({
@@ -44,6 +46,7 @@ export class RequirementsProjectMerge {
         "use_cases",
         "requirements",
         "requirements_comments",
+        "use_case_runs",
       ],
       plan: (context) => this.plan(context),
       rewrite: (context, rewriter) => this.rewrite(context, rewriter),
@@ -123,6 +126,16 @@ export class RequirementsProjectMerge {
         ),
       );
     }
+    plan.moved.use_case_runs = await this.runs.count({
+      projectId: { eq: context.sourceProjectId },
+    });
+    plan.statements.push(
+      this.runs.updateStatement(
+        { projectId: { eq: context.sourceProjectId } },
+        { projectId: context.targetProjectId },
+        projectMergeWrite,
+      ),
+    );
     plan.moved.requirements_comments = await this.comments.count({
       projectId: { eq: context.sourceProjectId },
     });

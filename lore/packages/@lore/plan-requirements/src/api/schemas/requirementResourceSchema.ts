@@ -20,6 +20,10 @@ export const requirementResourceSchema = requirements.schema
         key: z.string(),
         summary: z.string(),
         method: z.string(),
+        /**
+         * Its result in its use case's latest run, when it ran.
+         */
+        result: z.enum(["passed", "failed", "not_run"]).optional(),
       }),
     ),
     coveringEpics: z.array(
