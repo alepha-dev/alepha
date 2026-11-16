@@ -31,7 +31,14 @@ export const useCaseResourceSchema = useCases.schema
     alternatives: z.array(
       useCaseAlternatives.schema.pick({ id: true, key: true, text: true }),
     ),
-    criteria: z.array(useCaseCriteria.schema.omit({ useCaseId: true })),
+    criteria: z.array(
+      useCaseCriteria.schema.omit({ useCaseId: true }).extend({
+        /**
+         * The number of the requirement it verifies (`#S15`), when it does.
+         */
+        requirementNumber: z.integer().optional(),
+      }),
+    ),
     coveredBy: z.array(
       z.object({
         id: z.integer(),

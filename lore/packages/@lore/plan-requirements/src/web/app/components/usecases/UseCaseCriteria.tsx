@@ -1,5 +1,5 @@
 import { Badge, Card, CardContent } from "@alepha/ui";
-import type { I18n } from "@lore/core/web";
+import { formatReference, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
@@ -36,6 +36,11 @@ const UseCaseCriteria = (props: UseCaseCriteriaProps) => {
                   <Badge variant="tint">
                     {tr(CRITERION_METHOD_LABEL_KEYS[c.method])}
                   </Badge>
+                  {c.requirementNumber ? (
+                    <span className="text-muted-foreground text-xs">
+                      {formatReference("requirement", c.requirementNumber)}
+                    </span>
+                  ) : null}
                   {c.alternativeKey ? (
                     <span className="text-muted-foreground text-xs">
                       {c.alternativeKey}

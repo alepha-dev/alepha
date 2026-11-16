@@ -315,6 +315,13 @@ export class CapabilityRegistry {
         "usecase_comment_add",
         "usecase_link_epic",
         "usecase_validate",
+        "requirement_list",
+        "requirement_get",
+        "requirement_create",
+        "requirement_update",
+        "requirement_delete",
+        "requirement_set_release",
+        "criterion_verify_link",
       ],
       mcpToolOptions: {
         feedback_list: "feedback",
@@ -337,6 +344,13 @@ export class CapabilityRegistry {
         usecase_comment_add: "requirements",
         usecase_link_epic: "requirements",
         usecase_validate: "requirements",
+        requirement_list: "requirements",
+        requirement_get: "requirements",
+        requirement_create: "requirements",
+        requirement_update: "requirements",
+        requirement_delete: "requirements",
+        requirement_set_release: "requirements",
+        criterion_verify_link: "requirements",
       },
       // Epics and releases are found by their number only (#Q2228), and
       // like their sidebar entries they hang off their Work options.
@@ -349,6 +363,7 @@ export class CapabilityRegistry {
         "feedback",
         "persona",
         "usecase",
+        "requirement",
       ],
       searchKindOptions: {
         epic: "epics",
@@ -356,6 +371,7 @@ export class CapabilityRegistry {
         feedback: "feedback",
         persona: "requirements",
         usecase: "requirements",
+        requirement: "requirements",
       },
       activityKinds: [
         "quest",
@@ -364,6 +380,7 @@ export class CapabilityRegistry {
         "feedback",
         "persona",
         "usecase",
+        "requirement",
       ],
       // Epics and Releases are options of Work, and so are their sidebar
       // entries (`capabilityNav.ts`). Quests are Plan's baseline.
@@ -373,6 +390,7 @@ export class CapabilityRegistry {
         feedback: "feedback",
         persona: "requirements",
         usecase: "requirements",
+        requirement: "requirements",
       },
       dashboardCards: [
         "activeQuests",
@@ -410,6 +428,7 @@ export class CapabilityRegistry {
         // Plan's Requirements (#E153).
         "persona",
         "usecase",
+        "requirement",
       ],
     },
     {

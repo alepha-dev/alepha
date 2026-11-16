@@ -38,6 +38,7 @@ export class LoreViewerAllowlist {
     // Plan's Requirements (#E153, answer 22): a viewer reads them.
     "persona",
     "usecase",
+    "requirement",
   ];
 
   /**

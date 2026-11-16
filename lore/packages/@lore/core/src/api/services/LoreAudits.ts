@@ -288,6 +288,17 @@ export class LoreAudits {
   });
 
   /**
+   * A requirement of Plan's Requirements (#E153). `release` is a target
+   * release change; `verify` a criterion linked to it.
+   */
+  readonly requirement = $audit({
+    type: "requirement",
+    description: "Requirement lifecycle",
+    actions: ["create", "update", "delete", "release", "verify"],
+    coalesce: { actions: ["update"], window: "5m" },
+  });
+
+  /**
    * `join` and `leave` rather than `add` and `remove`, because both sides
    * exist: a member joins by accepting an invitation, and leaves either by
    * their own hand (`leaveProject`) or the owner's (`removeMember`, #1695).
@@ -408,6 +419,7 @@ export class LoreAudits {
       this.feedback,
       this.persona,
       this.usecase,
+      this.requirement,
       this.member,
       this.app,
       this.sigil,

@@ -50,3 +50,28 @@ export {
   type UseCaseInput,
   useCaseInputSchema,
 } from "../api/schemas/useCaseInputSchema.ts";
+export { requirements } from "../api/entities/requirements.ts";
+export {
+  type RequirementType,
+  requirementTypeSchema,
+} from "../api/schemas/requirementTypeSchema.ts";
+export {
+  type RequirementPriority,
+  requirementPrioritySchema,
+} from "../api/schemas/requirementPrioritySchema.ts";
+export {
+  type RequirementStatus,
+  requirementStatusSchema,
+} from "../api/schemas/requirementStatusSchema.ts";
+export {
+  type RequirementResource,
+  requirementResourceSchema,
+} from "../api/schemas/requirementResourceSchema.ts";
+export {
+  type RequirementInput,
+  requirementInputSchema,
+} from "../api/schemas/requirementInputSchema.ts";
+export {
+  type ReleaseMove,
+  releaseMoveSchema,
+} from "../api/schemas/releaseMoveSchema.ts";

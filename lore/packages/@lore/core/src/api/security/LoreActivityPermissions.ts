@@ -33,6 +33,7 @@ export class LoreActivityPermissions {
     host: "host:read",
     persona: "persona:read",
     usecase: "usecase:read",
+    requirement: "requirement:read",
   };
 
   /**

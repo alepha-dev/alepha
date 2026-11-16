@@ -9,6 +9,7 @@ import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { personas } from "../entities/personas.ts";
+import { requirements } from "../entities/requirements.ts";
 import { useCaseActors } from "../entities/useCaseActors.ts";
 import { useCaseAlternatives } from "../entities/useCaseAlternatives.ts";
 import { useCaseCriteria } from "../entities/useCaseCriteria.ts";
@@ -36,6 +37,7 @@ export class UseCaseService {
   protected readonly criteria = $repository(useCaseCriteria);
   protected readonly actors = $repository(useCaseActors);
   protected readonly personas = $repository(personas);
+  protected readonly requirements = $repository(requirements);
   protected readonly links = $inject(ResourceLinkService);
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly bestEffort = $inject(BestEffort);
@@ -257,6 +259,18 @@ export class UseCaseService {
         )
       : [];
     const person = new Map(people.map((it) => [it.id, it]));
+    const requirementIds = [
+      ...new Set(
+        criteria.flatMap((it) => (it.requirementId ? [it.requirementId] : [])),
+      ),
+    ];
+    const verified = requirementIds.length
+      ? await this.requirements.findMany({
+          where: { id: { inArray: requirementIds } },
+          columns: ["id", "number"],
+        })
+      : [];
+    const numberOf = new Map(verified.map((it) => [it.id, it.number]));
     return rows.map((row) => {
       const { deletedAt: _deleted, ...rest } = row;
       return {
@@ -289,7 +303,12 @@ export class UseCaseService {
           .map((it) => ({ id: it.id, key: it.key, text: it.text })),
         criteria: criteria
           .filter((it) => it.useCaseId === row.id)
-          .map(({ useCaseId: _useCase, ...it }) => it),
+          .map(({ useCaseId: _useCase, ...it }) => ({
+            ...it,
+            requirementNumber: it.requirementId
+              ? numberOf.get(it.requirementId)
+              : undefined,
+          })),
         coveredBy: covered.get(row.id) ?? [],
       };
     });

@@ -65,6 +65,7 @@ export class LoreOAuthScopes {
     // Plan's Requirements (#E153).
     "persona",
     "usecase",
+    "requirement",
     "error",
     "quality",
     "app",

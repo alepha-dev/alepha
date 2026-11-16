@@ -2,6 +2,7 @@ import { LorePlanMcp } from "@lore/plan/mcp";
 import { $module } from "alepha";
 
 import { PersonaTools } from "./tools/PersonaTools.ts";
+import { RequirementTools } from "./tools/RequirementTools.ts";
 import { UseCaseTools } from "./tools/UseCaseTools.ts";
 
 /**
@@ -17,8 +18,9 @@ export const LorePlanRequirementsMcp = $module({
   name: "lore.plan-requirements.mcp",
   // Plan first: booting this module alone boots what it depends on.
   imports: [LorePlanMcp],
-  services: [PersonaTools, UseCaseTools],
+  services: [PersonaTools, UseCaseTools, RequirementTools],
 });
 
 export { PersonaTools } from "./tools/PersonaTools.ts";
+export { RequirementTools } from "./tools/RequirementTools.ts";
 export { UseCaseTools } from "./tools/UseCaseTools.ts";
