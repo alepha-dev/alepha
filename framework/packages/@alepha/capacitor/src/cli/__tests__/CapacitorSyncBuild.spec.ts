@@ -221,8 +221,8 @@ describe("alepha capacitor build", () => {
   }) => {
     const { fs, pipeline, build } = await setup();
     await fs.writeFile(
-      `${ROOT}/android/app/src/main/assets/capacitor.config.json`,
-      JSON.stringify({ server: { url: "http://192.168.1.2:5173" } }),
+      `${ROOT}/android/app/src/main/AndroidManifest.xml`,
+      '<manifest><application android:usesCleartextTraffic="true"></application></manifest>',
     );
 
     await expect(build("android")).rejects.toThrow(/before sync/);
