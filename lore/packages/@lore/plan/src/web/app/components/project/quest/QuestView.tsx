@@ -33,9 +33,9 @@ import { useEffect, useState } from "react";
 
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
-import { currentEpicsAtom } from "../../../atoms/currentEpicsAtom.ts";
 import { currentQuestAtom } from "../../../atoms/currentQuestAtom.ts";
 import { useQuestMutations } from "../../shared/useQuestMutations.ts";
+import { useCurrentEpicRefs } from "../epics/useCurrentEpicRefs.ts";
 import {
   QUEST_AGENT_GATE_LABEL_KEYS,
   questAgentGate,
@@ -131,7 +131,10 @@ const QuestView = (props: QuestViewProps) => {
     ).data ?? NO_QUESTLINE;
 
   const [project] = useStore(currentProjectAtom);
-  const [epics] = useStore(currentEpicsAtom);
+  // Read fresh, not the loader's snapshot (#Q3759): an epic readied after
+  // the project was entered still read as `draft` there, and Accept stayed
+  // withheld on a quest the server would accept.
+  const epics = useCurrentEpicRefs();
   const promptSubject = useWorkPromptSubject();
 
   // The epic phase gate (epic #31): a quest can be accepted only while its
