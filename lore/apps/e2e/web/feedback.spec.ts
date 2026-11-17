@@ -1,6 +1,11 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "./_fixtures.ts";
+import { e2eWorkerPort } from "../../../scripts/playwright.port.ts";
+import { expect, startLore, test } from "./_fixtures.ts";
 import {
   apiPath,
   createProjectViaWizard,
@@ -460,27 +465,50 @@ test.describe("Feedback", () => {
   /**
    * The request page server-renders for an anonymous visitor (the sign-in
    * card), and hydrates over it (#Q3757). Any console error fails it, a
-   * hydration mismatch first: production saw React #418 there on every load,
-   * because the server, failing its render (#Q3792), streamed an error
-   * sentence into `#root` and the browser drew the real page over it.
+   * hydration mismatch first: production saw React #418 there because the
+   * server's render failed and streamed its error page into `#root`.
+   *
+   * ⚠️ On a server of its own, whose FIRST page request is this one
+   * (#Q3855). A built Lore creates its page routes on the first page request,
+   * through a `GET /*` stand-in, and that request used to reach the page
+   * with the stand-in's params: no `projectSlug`, a schema error, the error
+   * page. Production runs many fresh isolates, so it failed there on a
+   * fraction of loads; the worker's server has already served `/register`
+   * before any test, so a test on it never saw the first request.
    */
-  test("an anonymous load of the request page logs no console error", async ({
-    context,
-    page,
-  }) => {
-    await context.clearCookies();
-    const errors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") errors.push(msg.text());
-    });
-    page.on("pageerror", (error) => errors.push(error.message));
+  test("an anonymous load of the request page logs no console error, on a fresh server", async ({
+    browser,
+  }, testInfo) => {
+    const dataDir = mkdtempSync(
+      join(tmpdir(), `lore-e2e-fresh-w${testInfo.workerIndex}-`),
+    );
+    const server = await startLore(
+      e2eWorkerPort("lore-fresh", testInfo.workerIndex),
+      dataDir,
+    );
+    const context = await browser.newContext({ baseURL: server.url });
+    try {
+      const page = await context.newPage();
+      const errors: string[] = [];
+      page.on("console", (msg) => {
+        if (msg.type() === "error") errors.push(msg.text());
+      });
+      page.on("pageerror", (error) => errors.push(error.message));
 
-    await page.goto("/acme/request", { waitUntil: "domcontentloaded" });
-    await page.waitForSelector("html[data-alepha-hydrated='true']");
-    await expect(
-      page.getByRole("button", { name: /sign in/i }).first(),
-    ).toBeVisible();
+      const response = await page.goto("/acme/request", {
+        waitUntil: "domcontentloaded",
+      });
+      // The server's own HTML, before the browser draws over it.
+      expect(await response?.text()).not.toContain("SCHEMA_VALIDATION");
+      await page.waitForSelector("html[data-alepha-hydrated='true']");
+      await expect(
+        page.getByRole("button", { name: /sign in/i }).first(),
+      ).toBeVisible();
 
-    expect(errors).toEqual([]);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+      server.stop();
+    }
   });
 });

@@ -213,10 +213,13 @@ export class ReactServerProvider {
       "/*",
       (request: ServerRequestData) => {
         this.pageApi.ensurePages();
-        const { route } = this.serverRouterProvider.match(
-          `/GET${request.url.pathname}`,
+        // Through the real route, with ITS params: this placeholder matched
+        // as `/*`, so the request carries `*` and no page param (#Q3855).
+        const route = this.serverRouterProvider.matchReplacement(
+          "GET",
+          request,
         );
-        if (!route || route.placeholder) {
+        if (!route) {
           throw new AlephaError(
             "The page routers were created and registered no page route",
           );

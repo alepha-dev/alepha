@@ -24,6 +24,9 @@ export const E2E_SLOTS = {
   // a Lore instance and a Bay proxy, one slot each.
   bay: 7,
   "bay-proxy": 8,
+  // A Lore instance booted for one test, whose first page request must be
+  // the test's own (apps/e2e/web/feedback.spec.ts).
+  "lore-fresh": 9,
 } as const;
 
 export type E2eApp = keyof typeof E2E_SLOTS;
