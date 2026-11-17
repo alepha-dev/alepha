@@ -4,13 +4,13 @@
  *
  * The feed is behind `project:read`, the floor every rank holds, so the gate
  * says nothing about what a reader may see in it. Each row is shown only to
- * a reader whose rank holds the permission its kind names here: a viewer of
- * an open project reads quest, epic, release, folio and project rows, and
- * no feedback title, app name or member event.
+ * a reader whose rank holds the permission its kind names here: a custom
+ * rank without `feedback:read` reads no feedback title, one without
+ * `member:read` no member event.
  *
  * ## ⚠️ A new audit type must be placed
  *
- * Written out rather than derived, for the reason `LoreViewerAllowlist` is.
+ * Written out rather than derived, so a new type is placed on purpose.
  * A type with no entry is shown to nobody but the owner, and
  * `viewer-closed-reads.spec.ts` fails on any project-layer type missing from
  * the list, so the decision is made when the type is added.

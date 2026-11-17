@@ -56,8 +56,7 @@ export class AutomationAccess {
    * Whether this check is a member's own subscription (#Q3648): a rule a
    * subscription toggle created, authored by the caller, which notifies the
    * caller only (`AutomationSubscriptionService` writes no other kind). A
-   * member who may not author automations, a viewer of an open project
-   * among them, may still read, keep, switch off and remove their own.
+   * member who may not author automations, a Viewer among them, may still read, keep, switch off and remove their own.
    *
    * Never `automation:manage`, and never an edit: an edited rule is no
    * longer the preset the toggle made, so editing one asks for

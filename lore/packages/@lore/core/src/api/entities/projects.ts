@@ -2,7 +2,6 @@ import { type Infer, z } from "alepha";
 import { organizations } from "alepha/api/organizations";
 import { $entity, db } from "alepha/orm";
 
-import { joinPolicySchema } from "../schemas/joinPolicySchema.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
@@ -131,15 +130,6 @@ export const projects = $entity({
      * `ProjectSecurityService.roadmapVisibilityOf`, not in the column.
      */
     roadmapVisibility: roadmapVisibilitySchema.optional(),
-    /**
-     * Who may become a member: `invite` (absent) or `open`, where anyone
-     * signed in joins by themselves on the `viewer` rank (epic #E151).
-     *
-     * NB: `z.optional` with NO `db.default(...)`, for the same reason as
-     * `roadmapVisibility`. The `invite` fallback lives in
-     * `ProjectSecurityService.joinPolicyOf`, not in the column.
-     */
-    joinPolicy: joinPolicySchema.optional(),
     /**
      * Colour token per quest tag, e.g. `{ "bug": "red", "chore": "slate" }`.
      * A tag with no entry renders neutral.

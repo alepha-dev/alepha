@@ -104,15 +104,14 @@ describe("projects.createdBy decides nothing after an ownership transfer", () =>
   }) => {
     const ctx = await setup();
 
-    // Demoted to Viewer, which reads no feedback since #Q3661, so the item
-    // is not even visible to the founder (#Q3648): membership alone no
-    // longer opens the inbox.
+    // Demoted to Viewer, which reads the inbox (#Q3833) and triages
+    // nothing: having created the project grants no delete.
     await expect(
       ctx.comments.deleteFeedbackComment.fetch(
         { params: { id: ctx.commentId } },
         { user: ctx.founder },
       ),
-    ).rejects.toMatchObject({ status: 404 });
+    ).rejects.toMatchObject({ status: 403 });
 
     const done = await ctx.comments.deleteFeedbackComment.fetch(
       { params: { id: ctx.commentId } },

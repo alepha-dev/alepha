@@ -352,15 +352,17 @@ member and viewer** (#Q3661, epic #E151, reversing #Q2511; built in since
 seeds `admin` and `viewer` under those stable keys after the capability rows
 (`DefaultRankService`), and the nightly `ranks.seed-defaults` job
 (`DefaultRankJobs`) adds either one to a project that lacks it, never changing
-an existing rank. An open project's joiners land on the rank keyed `viewer`,
-found by key and never by name.
+an existing rank. A seeded rank is found by key and never by name.
 
 - **There is no Contributor preset.** The built-in Member covers it. A
   project that holds a rank keyed `contributor` keeps it as a custom rank.
-- **Viewer is the allowlist** (`LoreViewerAllowlist`, folio #F1507): reads of
-  quests, epics, folios, releases and areas, nothing else. An existing Viewer
-  wider than that is not narrowed (its holders would lose reads):
-  `ProjectViewerRankNotice` flags it on the ranks page.
+- **Viewer is every `:read`** of the enabled capabilities and nothing else
+  (`ProjectRankPresets.VIEWER`, #Q3833). It is the rank an admin gives to
+  someone they invited: a project has no other way in since public projects
+  were withdrawn (folio #F1523). A project created while Viewer was the
+  narrower open-project allowlist keeps the Viewer it stores; an admin widens
+  it in Ranks. `LoreViewerAllowlist.isReadOnly` is what the CLI and MCP
+  read-only refusal reads.
 - **Create rank offers three bases, admin, member and viewer**, each as the
   project holds it now (`ProjectRankController.getRankPresets`), the preset
   where the rank is missing, and no blank rank (`OrganizationRanks`'

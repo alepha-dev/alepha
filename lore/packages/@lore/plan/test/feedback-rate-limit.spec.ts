@@ -1,5 +1,6 @@
 import { ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
+import { RankService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
@@ -184,14 +185,29 @@ describe("feedback rate limit", () => {
     }
   });
 
-  it("rate-limits a member on the Viewer rank like an outsider (#Q3648)", async ({
+  it("rate-limits a member whose rank does not read the inbox like an outsider (#Q3648)", async ({
     expect,
   }) => {
     const owner = await createTestUser(ctx);
     const viewer = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
-    // Anyone can join an open project as a viewer, so membership earns no
-    // exemption: the rank must read the inbox (`feedback:read`).
+    // Membership earns no exemption: the rank must read the inbox
+    // (`feedback:read`). A Viewer stored before #Q3833 reads quests only.
+    const { organizationId } = (
+      await ctx.projectController.getProjectById.fetch(
+        { params: { id: projectId } },
+        { user: owner },
+      )
+    ).data;
+    await ctx.alepha.inject(RankService).save(
+      organizationId!,
+      {
+        key: "viewer",
+        name: "Viewer",
+        permissions: ["project:read", "quest:read"],
+      },
+      owner as never,
+    );
     await createTestMemberByProjectId(ctx.alepha, projectId, viewer.id, {
       rank: "viewer",
     });

@@ -14,7 +14,6 @@ import {
 import { type Project, projects } from "../entities/projects.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
-import type { JoinPolicy } from "../schemas/joinPolicySchema.ts";
 import type { RoadmapVisibility } from "../schemas/roadmapVisibilitySchema.ts";
 
 /**
@@ -227,9 +226,9 @@ export class ProjectSecurityService {
    * Whether a project member's RANK grants `permission`, by raw user id: a
    * question about somebody else (an assignee, a mention), never the caller.
    *
-   * Membership is not trust (#Q3648): in an open project anyone can become a
-   * member on the Viewer rank, so a check that trusts membership trusts a
-   * stranger. Read a permission instead.
+   * Membership is not trust (#Q3648): a member on the Viewer rank writes
+   * nothing, so a check that trusts membership trusts too much. Read a
+   * permission instead.
    *
    * ⚠️ Not `RankService.can`: that answers from the request's resolved rank
    * when the organization matches, which is the CALLER's, and would validate
@@ -334,16 +333,6 @@ export class ProjectSecurityService {
    */
   roadmapVisibilityOf(project: Project): RoadmapVisibility {
     return project.roadmapVisibility ?? "off";
-  }
-
-  /**
-   * The `invite` fallback for a row written before the column existed, kept
-   * here and NOT in a column `DEFAULT` for the reason `roadmapVisibilityOf`
-   * gives. Defaulting closed is the only safe reading: an absent value must
-   * never let a stranger in.
-   */
-  joinPolicyOf(project: Pick<Project, "joinPolicy">): JoinPolicy {
-    return project.joinPolicy ?? "invite";
   }
 
   /**

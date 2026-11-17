@@ -13,8 +13,8 @@ import { LoreRankBounds } from "../security/LoreRankBounds.ts";
  * kinds of row behind one gate: the dashboards, Home, the activity feed.
  * A route that names one project and one permission keeps `$ownsProject`.
  *
- * Membership is not trust: anyone can join an open project on the Viewer
- * rank, so these surfaces ask what the rank reads, per project.
+ * Membership is not trust: a rank grants what it grants, so these surfaces
+ * ask what the rank reads, per project.
  *
  * The answer is the rank's stored set with the floor, as
  * `RankService.permissionsOf` gives it. A project the reader is not a member

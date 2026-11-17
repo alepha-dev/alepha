@@ -968,8 +968,8 @@ test.describe("Automations", () => {
       options: {},
     });
     // A writer of automations, and a rank that only reads them. Neither is a
-    // default rank: Member writes no automation, and Viewer, held to the
-    // open-project allowlist, reads none.
+    // default rank: Member writes no automation, and Viewer reads every part
+    // of the project, not automations alone.
     await saveRank(page, project.organizationId, "contributor", "Contributor", [
       "project:read",
       "member:read",

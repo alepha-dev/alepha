@@ -304,15 +304,17 @@ test.describe("Ranks", () => {
         c.page.getByRole("button", { name: /new directory/i }),
       ).toHaveCount(0);
 
-      // ── Members: not offered ──────────────────────────────────────────
-      // The member list is `member:read`, which a Viewer, held to the
-      // open-project allowlist, does not hold: the members tab is not in
-      // its rail at all.
-      await c.page.goto(`/${slug}/quests`);
+      // ── Members: read, never managed ──────────────────────────────────
+      // Viewer holds every read since #Q3833, `member:read` included: the
+      // list is there, and no invitation control.
+      await c.page.goto(`/${slug}/settings/members`);
       await c.page.waitForLoadState("networkidle");
-      expect(await railHrefs(c.page, slug)).not.toContain(
-        `/${slug}/settings/members`,
-      );
+      await expect(c.page.getByText(c.email).first()).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(
+        c.page.getByRole("button", { name: /^invite/i }),
+      ).toHaveCount(0);
     } finally {
       await c.ctx.close();
     }

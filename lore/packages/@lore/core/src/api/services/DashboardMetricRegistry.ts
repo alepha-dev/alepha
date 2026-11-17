@@ -229,8 +229,7 @@ export class DashboardMetricRegistry {
     // each project of the board, in two reads for the whole board. A metric
     // that `requires` a permission counts only the projects where the reader
     // holds it, and answers `noAccess`, unresolved, when that is none of
-    // them. Membership alone is not enough: anyone can join an open project
-    // as a viewer.
+    // them. Membership alone is not enough: a rank grants what it grants.
     const held = await this.readers.of(user, visible);
     const permits = (
       descriptor: DashboardMetricDescriptor,

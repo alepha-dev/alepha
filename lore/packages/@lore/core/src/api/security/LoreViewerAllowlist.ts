@@ -1,94 +1,14 @@
 /**
- * What the Viewer rank may hold: the rank an open project's joiners get.
+ * Whether a rank only reads.
  *
- * In an open project anyone signed in can become a viewer, so a viewer is
- * assumed hostile (folio "Open projects: safety contract"). The rank is an
- * **allowlist, not a denylist**: a permission that is not listed here is
- * refused, including any permission added later.
+ * Viewer is a plain read-only rank: every `:read` of the project's enabled
+ * capabilities, given by an admin to someone they invited
+ * (`ProjectRankPresets`). It is no longer an allowlist held against
+ * strangers, since a project has one way in, an invitation (#Q3833).
  *
- * A viewer reads the project's memory: quests (with their comments,
- * objectives and tags), epics, folios, releases, the roadmap and the areas,
- * and Plan's Requirements: personas, use cases and requirements (#E153).
- * Nothing else, and no write at all. Other members reach a viewer only as a
- * public card, name and avatar, because `member:read` is not listed.
- *
- * ## ⚠️ A new permission group must be placed
- *
- * Written out rather than derived from the registry, for the reason
- * `LoreOAuthScopes` is: "every `:read`" is exactly the rule that let
- * automations, errors and hosts reach a viewer. `viewer-allowlist.spec.ts`
- * boots Lore and fails on any registered group that is in neither
- * {@link READ_GROUPS} nor {@link CLOSED_GROUPS}, so the decision is made when
- * the group is added.
- *
- * Imports nothing, so the rank editor can read it in the browser.
+ * Imports nothing, so the browser can read it.
  */
 export class LoreViewerAllowlist {
-  /**
-   * The groups whose `:read` a viewer holds. `project:read` is the floor
-   * every rank holds anyway.
-   */
-  public static readonly READ_GROUPS: string[] = [
-    "project",
-    "quest",
-    "epic",
-    "release",
-    "area",
-    "folio",
-    // Plan's Requirements (#E153, answer 22): a viewer reads them.
-    "persona",
-    "usecase",
-    "requirement",
-  ];
-
-  /**
-   * The groups a viewer holds nothing of, each for its reason:
-   *
-   * - `member`: the member list carries emails and full user records.
-   * - `rank`, `capability`, `invitation`: the project's configuration.
-   *   `capability` closes `capability:manage`, never the capability set
-   *   itself: a viewer reads which capabilities are on, with their options,
-   *   on the project resource and `listCapabilities`, because the web app
-   *   draws the sidebar and every page's gates from it (#Q3797). The set
-   *   says which parts of Lore a project uses and nothing of its content.
-   *   What a viewer does NOT read under `project:read`, though every rank
-   *   holds it, is the agent prompt templates: `getProjectPrompts` refuses a
-   *   rank of reads only, since a template may hold internal instructions.
-   * - `stats`: reports break the work down per person.
-   * - `automation`: rules, their variables and their run payloads.
-   * - `feedback`: end-user reports and their attachments.
-   * - `error`, `quality`, `app`, `sigil`, `artifact`, `deploy`, `host`:
-   *   telemetry and infrastructure.
-   * - `file`, `api-key`, `organization`, `admin`: plumbing and the
-   *   application's own administration.
-   */
-  public static readonly CLOSED_GROUPS: string[] = [
-    "member",
-    "rank",
-    "capability",
-    "invitation",
-    "stats",
-    "automation",
-    "feedback",
-    "error",
-    "quality",
-    "app",
-    "sigil",
-    "artifact",
-    "deploy",
-    "host",
-    "file",
-    "api-key",
-    "organization",
-    "admin",
-  ];
-
-  /**
-   * The allowlist itself, as the permission strings a rank stores.
-   */
-  public static readonly PERMISSIONS: string[] =
-    LoreViewerAllowlist.READ_GROUPS.map((group) => `${group}:read`);
-
   /**
    * Whether a permission set grants reads only: what the Viewer rank holds,
    * and any custom rank made of reads. The surfaces that tell a reader they
@@ -101,19 +21,6 @@ export class LoreViewerAllowlist {
         (permission) =>
           permission.endsWith(":read") && !permission.includes("*"),
       )
-    );
-  }
-
-  /**
-   * The permissions of `permissions` the allowlist does not cover, in their
-   * stored order. Empty when the set fits.
-   *
-   * A wildcard (`*`, `quest:*`) is never covered: it grants whatever its
-   * prefix will ever name.
-   */
-  public static extrasOf(permissions: readonly string[]): string[] {
-    return permissions.filter(
-      (permission) => !LoreViewerAllowlist.PERMISSIONS.includes(permission),
     );
   }
 }

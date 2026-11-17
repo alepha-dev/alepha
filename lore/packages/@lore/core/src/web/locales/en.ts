@@ -4515,42 +4515,6 @@ export default {
   "folios.wikilink.broken.requirementNotFound":
     "No requirement matches this reference.",
   "project.settings.nav.ranks": "Ranks",
-  "project.settings.join.title": "Joining",
-  "project.settings.join.description":
-    "People who join by themselves get the Viewer rank: they read quests, epics, folios and releases, and change nothing. To give someone more, move them to another rank.",
-  "project.settings.join.policy.label": "Public project",
-  "project.settings.join.policy.description":
-    "Users can join the project as a viewer without an invitation.",
-  "project.settings.join.unavailable":
-    "Open projects are not available on this Lore yet.",
-  "project.settings.join.noViewer":
-    "This project has no Viewer rank, the rank people who join get",
-  "project.settings.join.toRanks": "Open the ranks",
-  "project.settings.join.openConfirm.title": "Open this project?",
-  "project.settings.join.openConfirm.description":
-    "Anyone with an account can then join it by themselves, as a viewer, and read its quests, epics, folios and releases.",
-  "project.settings.join.openConfirm.confirm": "Open the project",
-  "project.settings.join.closeRemove.title": "Remove the people who joined?",
-  "project.settings.join.closeRemove.description":
-    "The project is closed to new joiners. People who joined it by themselves stay members, on Viewer: $1. Remove them too?",
-  "project.settings.join.closeRemove.confirm": "Remove them",
-  "project.settings.join.closeRemove.cancel": "Keep them",
-  "project.settings.join.closeRemove.done": "Removed: $1",
-  "rank.viewer.selfJoined.title": "People who joined by themselves hold Viewer",
-  "rank.viewer.selfJoined.description":
-    "$1 member(s) joined this project by themselves while it was open, and still hold Viewer. Whatever you add to Viewer, they get.",
-  "project.settings.join.url.label": "Link to share",
-  "project.settings.join.url.copy": "Copy the link",
-  "project.settings.join.url.copied": "Link copied",
-  "project.join.lead": "Anyone signed in can join this project, as a viewer.",
-  "project.join.reads":
-    "A viewer reads its quests, epics, folios and releases, and changes nothing.",
-  "project.join.submit": "Join project",
-  "project.join.signIn": "Sign in to join",
-  "project.join.refused": "You cannot join this project",
-  "rank.viewer.wider.title": "$1 holds more than a viewer may",
-  "rank.viewer.wider.description":
-    "It also grants $1. A project cannot be opened to everyone signed in until its Viewer rank holds only reads of quests, epics, folios, releases and areas.",
   "automation.editor.loading": "Loading automation...",
   "automation.editor.value": "Value",
   "automation.editor.action": "Action $1",

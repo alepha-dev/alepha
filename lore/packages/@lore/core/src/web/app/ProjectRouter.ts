@@ -2,7 +2,6 @@ import { inboxUnreadAtom } from "@alepha/ui/shell";
 import {
   $inject,
   Alepha,
-  AlephaError,
   createMiddleware,
   MIDDLEWARE_PROTECTED,
   z,
@@ -14,14 +13,11 @@ import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
-import type { ProjectJoinController } from "../../api/controllers/ProjectJoinController.ts";
 import type { ProjectPromptController } from "../../api/controllers/ProjectPromptController.ts";
-import type { OpenProjectCard } from "../../api/schemas/openProjectCardSchema.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
-import ProjectJoinPage from "./components/project/ProjectJoinPage.tsx";
 import NotFoundPage from "./components/shared/NotFoundPage.tsx";
 import {
   ProjectLoaderRegistry,
@@ -33,7 +29,7 @@ import { capabilityOption } from "./services/projectCapabilities.ts";
  * The project layout's guard. Every visitor reaches the loader, which is
  * where the member check happens (see `ProjectRouter.resolve`); this marks
  * the layer protected so the router keeps its subtree client-rendered, as
- * `$secure()` did before a stranger could be shown the Join page.
+ * `$secure()` would otherwise, without sending a stranger to sign-in.
  */
 const projectAccess = () =>
   createMiddleware({
@@ -41,47 +37,6 @@ const projectAccess = () =>
     meta: { [MIDDLEWARE_PROTECTED]: "true" },
     handler: ({ next }) => next,
   });
-
-/**
- * A non-member on an open project's URL: the layout renders the Join page
- * with this card instead of the project (#Q3649).
- */
-// alepha-allow no-error-class: thrown by the project loader in the browser and caught by the same layer's errorHandler; it never crosses the wire.
-export class ProjectJoinRequired extends AlephaError {
-  public readonly name = "ProjectJoinRequired";
-  public readonly status = 404;
-
-  public readonly card: OpenProjectCard;
-  public readonly refusal?: string;
-
-  constructor(card: OpenProjectCard, refusal?: string) {
-    super("Join this project to open it");
-    this.card = card;
-    this.refusal = refusal;
-  }
-
-  /**
-   * The Join page's props when `error` is one of these, else `undefined`.
-   *
-   * ⚠️ Matched by name, never `instanceof`: when the loader runs during the
-   * server render, the error reaches the browser's `errorHandler` as the
-   * plain data it was sent as (name, status, card, refusal), with no class.
-   */
-  public static from(
-    error: unknown,
-  ): { card: OpenProjectCard; refusal?: string } | undefined {
-    const data = error as {
-      name?: unknown;
-      card?: OpenProjectCard;
-      refusal?: unknown;
-    } | null;
-    if (data?.name !== "ProjectJoinRequired" || !data.card) return undefined;
-    return {
-      card: data.card,
-      ...(typeof data.refusal === "string" ? { refusal: data.refusal } : {}),
-    };
-  }
-}
 
 /**
  * The two layouts every project page hangs under: `/:projectSlug` and its
@@ -101,7 +56,6 @@ export class ProjectRouter {
   protected readonly projectApi = $client<ProjectController>();
   protected readonly inboxApi = $client<NotificationInboxController>();
   protected readonly promptApi = $client<ProjectPromptController>();
-  protected readonly joinApi = $client<ProjectJoinController>();
   protected readonly loaders = $inject(ProjectLoaderRegistry);
 
   project = $page({
@@ -124,9 +78,9 @@ export class ProjectRouter {
     // Every project surface is member-gated server-side, so nothing under here
     // renders for a non-member. The gate is the loader, not `$secure()`: it
     // resolves the project FIRST and answers a non-member, signed in or not,
-    // with the Join page of an open project or the same 404 as an unknown slug
-    // (#Q3649). `$secure()` here would send an anonymous visitor to sign-in
-    // before that, which tells them the slug is real.
+    // with the same 404 as an unknown slug. `$secure()` here would send an
+    // anonymous visitor to sign-in before that, which tells them the slug is
+    // real.
     //
     // `projectAccess` is that gate's marker: a guard that lets every visitor
     // through to the loader, flagged protected so the subtree stays in CSR
@@ -198,10 +152,6 @@ export class ProjectRouter {
       this.alepha.store.set(projectPromptsAtom, undefined);
     },
     errorHandler: (error) => {
-      const join = ProjectJoinRequired.from(error);
-      if (join) {
-        return createElement(ProjectJoinPage, join);
-      }
       // `/:projectSlug` matches any unclaimed root path, so a typo reaches this
       // route rather than `notFound`. Without this, a visitor who mistypes a
       // URL gets the layout's generic ErrorPage in production instead of a
@@ -282,17 +232,12 @@ export class ProjectRouter {
   }
 
   /**
-   * The slug as the caller may see it (#Q3649).
+   * The slug as the caller may see it.
    *
-   * A member gets the project. Anyone else, signed in or not, gets the
-   * open project's card (a {@link ProjectJoinRequired}, which the layout
-   * renders as the Join page) or the same 404 as an unknown slug, so the
-   * answer never tells an invite-only project from a missing one. Nothing
-   * behind the link loads: the layout fails before any child loader runs.
-   *
-   * A join intent written before sign-in is completed by the Join page, not
-   * here: this loader also runs during the server render, where the intent
-   * (in the tab's `sessionStorage`) cannot be read.
+   * A member gets the project. Anyone else, signed in or not, gets the same
+   * 404 as an unknown slug, so the answer never tells a project they are not
+   * a member of from a missing one. Nothing behind the link loads: the
+   * layout fails before any child loader runs.
    */
   protected async resolve(slug: string) {
     try {
@@ -305,12 +250,7 @@ export class ProjectRouter {
       ) {
         throw error;
       }
-      const card = await this.joinApi
-        .previewOpenProject({ params: { slug } })
-        .catch(() => undefined);
-      if (!card) throw new NotFoundError("Project not found");
-
-      throw new ProjectJoinRequired(card);
+      throw new NotFoundError("Project not found");
     }
   }
 
