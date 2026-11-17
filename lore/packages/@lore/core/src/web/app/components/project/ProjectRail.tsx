@@ -3,6 +3,7 @@ import { useSettingsDialog } from "@alepha/ui/settings";
 import {
   DndContext,
   type DragEndEvent,
+  type Modifier,
   PointerSensor,
   useSensor,
   useSensors,
@@ -141,6 +142,25 @@ const ProjectRail = () => {
     setDragging(false);
   };
 
+  // The dock is one column (#Q3839): an icon moves up and down it, never
+  // sideways, and never past its ends. A sideways translate used to widen
+  // the pins column, whose horizontal auto-scroll then chased the pointer
+  // and carried the icon off to the right.
+  const vertical: Modifier = ({
+    transform,
+    draggingNodeRect,
+    containerNodeRect,
+  }) => {
+    let y = transform.y;
+    if (draggingNodeRect && containerNodeRect) {
+      y = Math.min(
+        Math.max(y, containerNodeRect.top - draggingNodeRect.top),
+        containerNodeRect.bottom - draggingNodeRect.bottom,
+      );
+    }
+    return { ...transform, x: 0, y };
+  };
+
   const onDragEnd = (event: DragEndEvent) => {
     settle();
     const from = ids.indexOf(Number(event.active.id));
@@ -221,6 +241,9 @@ const ProjectRail = () => {
       <DndContext
         id={dndId}
         sensors={sensors}
+        modifiers={[vertical]}
+        // Vertical only: the column has nothing to scroll sideways.
+        autoScroll={{ threshold: { x: 0, y: 0.2 } }}
         onDragStart={onDragStart}
         onDragCancel={settle}
         onDragEnd={onDragEnd}
