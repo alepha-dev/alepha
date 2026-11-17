@@ -18,6 +18,7 @@ import { automationRunPageSchema } from "../schemas/automationRunPageSchema.ts";
 import { automationRunResourceSchema } from "../schemas/automationRunResourceSchema.ts";
 import { automationSetupOptionPageSchema } from "../schemas/automationSetupOptionPageSchema.ts";
 import { automationSetupQuerySchema } from "../schemas/automationSetupQuerySchema.ts";
+import { automationSourceEnableBodySchema } from "../schemas/automationSourceEnableBodySchema.ts";
 import { automationSubscriptionParamsSchema } from "../schemas/automationSubscriptionParamsSchema.ts";
 import { automationSubscriptionQuerySchema } from "../schemas/automationSubscriptionQuerySchema.ts";
 import { automationSubscriptionSchema } from "../schemas/automationSubscriptionSchema.ts";
@@ -194,6 +195,28 @@ export class AutomationController {
         params.projectId,
         params.id,
         user,
+        body.enabled,
+        body.expectedRevision,
+      ),
+  });
+  /**
+   * Switch one source of an automation off or on (#Q3806).
+   */
+  setAutomationSourceEnabled = $action({
+    use: [this.mutationGate],
+    method: "PATCH",
+    path: "/projects/:projectId/automations/:id/sources",
+    schema: {
+      params: automationParamsSchema,
+      body: automationSourceEnableBodySchema,
+      response: automationResourceSchema,
+    },
+    handler: ({ params, body, user }) =>
+      this.service.setSourceEnabled(
+        params.projectId,
+        params.id,
+        user,
+        body.node,
         body.enabled,
         body.expectedRevision,
       ),

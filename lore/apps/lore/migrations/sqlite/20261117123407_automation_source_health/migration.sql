@@ -1,0 +1,1 @@
+ALTER TABLE `automations` ADD `source_health` text;

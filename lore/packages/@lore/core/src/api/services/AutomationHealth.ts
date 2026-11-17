@@ -3,6 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { HttpError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
@@ -36,6 +37,7 @@ export class AutomationHealth {
   protected readonly security = $inject(AutomationProjectSecurity);
   protected readonly bestEffort = $inject(BestEffort);
   protected readonly time = $inject(DateTimeProvider);
+  protected readonly graphs = $inject(AutomationGraph);
 
   public display(rule: Pick<Automation, "enabled" | "health">) {
     return rule.enabled ? rule.health : ("disabled" as const);
@@ -116,17 +118,48 @@ export class AutomationHealth {
       // written: not even `healthCheckedAt`, so the sweep takes this rule
       // first next time.
       const decision = await this.inspect(rule);
+      // Each source's own health (#Q3806), outside the rule: a write here
+      // never bumps the revision. A change names the sources that moved.
+      const sources = await this.dependencies.sources(rule);
+      // A source never judged was active: filling it in moves nothing.
+      const moved = Object.entries(sources).filter(
+        ([id, value]) =>
+          (rule.sourceHealth?.[id]?.health ?? "active") !== value.health,
+      );
+      const partly = Object.entries(sources).find(
+        ([id, value]) =>
+          value.health === "broken" &&
+          this.graphs.node(rule.rule, id)?.enabled !== false,
+      );
+      const reason =
+        decision.health === "active" && partly
+          ? `source '${partly[0]}' cannot run: ${partly[1].reason}`.slice(
+              0,
+              1024,
+            )
+          : decision.reason;
       await this.evidence.transition(
         rule.id,
         decision.health,
-        decision.reason,
+        reason,
         decision.requiresApproval,
-        { expectedVersion: rule.version, notifyAuthor: true },
+        {
+          expectedVersion: rule.version,
+          notifyAuthor: true,
+          ...(moved.length ? { patch: { sourceHealth: sources } } : {}),
+        },
       );
       const latest = await this.persistence.rules.getById(rule.id);
       await this.persistence.rules.updateMany(
         { id: rule.id, version: latest.version },
-        { healthCheckedAt: this.time.nowMillis() },
+        {
+          healthCheckedAt: this.time.nowMillis(),
+          // Bookkeeping, no record: what no source's move changed.
+          ...(JSON.stringify(latest.sourceHealth ?? null) !==
+          JSON.stringify(sources)
+            ? { sourceHealth: sources }
+            : {}),
+        },
       );
     });
   }

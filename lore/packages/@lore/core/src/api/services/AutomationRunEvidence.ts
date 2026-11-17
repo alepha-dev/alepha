@@ -573,7 +573,12 @@ export class AutomationRunEvidence {
       patch?: Partial<
         Pick<
           Automation,
-          "enabled" | "revision" | "approvedVariables" | "title" | "rule"
+          | "enabled"
+          | "revision"
+          | "approvedVariables"
+          | "title"
+          | "rule"
+          | "sourceHealth"
         >
       > & {
         authorKeyId?: string | null;
@@ -600,8 +605,11 @@ export class AutomationRunEvidence {
         rule.health === health &&
         rule.reason === reason &&
         rule.requiresApproval === requiresApproval &&
-        Object.entries(patch).every(
-          ([key, value]) => rule[key as keyof Automation] === value,
+        Object.entries(patch).every(([key, value]) =>
+          value !== null && typeof value === "object"
+            ? JSON.stringify(rule[key as keyof Automation] ?? null) ===
+              JSON.stringify(value)
+            : rule[key as keyof Automation] === value,
         )
       )
         return false;
@@ -657,7 +665,12 @@ export class AutomationRunEvidence {
       for (const table of options.changedTables ?? [])
         await this.cache.invalidateTable(table);
       if (options.notifyAuthor)
-        await this.attention.moved(rule, { health, requiresApproval, reason });
+        await this.attention.moved(rule, {
+          health,
+          requiresApproval,
+          reason,
+          ...(patch.sourceHealth ? { sourceHealth: patch.sourceHealth } : {}),
+        });
       return true;
     });
   }

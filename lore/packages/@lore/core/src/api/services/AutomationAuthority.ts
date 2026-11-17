@@ -1,6 +1,11 @@
 import { $inject } from "alepha";
 import { DbEntityNotFoundError, DbError } from "alepha/orm";
-import { ConflictError, ForbiddenError, isHttpError } from "alepha/server";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  isHttpError,
+} from "alepha/server";
 
 import type { AutomationAction } from "../schemas/automationActionSchema.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
@@ -58,6 +63,7 @@ export class AutomationAuthority {
       throw new ConflictError(
         rule.reason ?? "Automation requires author review",
       );
+    let dependency: string | undefined;
     let verified:
       | {
           rule: typeof rule;
@@ -89,7 +95,12 @@ export class AutomationAuthority {
           "Shared variable versions changed; author review is required",
         );
       this.variables.assertApproved(rule, variables);
-      if (input.effect) {
+      // A node that lost a dependency breaks its source, not the author's
+      // authority (#Q3806): refused below, outside the pausing gate.
+      dependency = input.effect
+        ? await this.dependencies.reason(rule, input.effect.node)
+        : undefined;
+      if (input.effect && !dependency) {
         // The effect names its action node (#Q3804).
         const node = this.graphs.node(rule.rule, input.effect.node);
         if (node?.kind !== "action" || node.type !== input.effect.action.kind)
@@ -150,6 +161,7 @@ export class AutomationAuthority {
     // The effect's targets last, outside the pausing gate: a quest or a
     // recipient gone refuses this one step and stops its branch (#Q3804);
     // it says nothing about the author.
+    if (dependency) throw new BadRequestError(dependency);
     if (input.effect)
       await this.catalog.validateEffect(
         verified.rule.rule,

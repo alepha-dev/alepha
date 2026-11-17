@@ -44,10 +44,26 @@ export class AutomationAttentionNotifier {
     before: Automation,
     after: Pick<Automation, "health" | "requiresApproval"> & {
       reason?: string;
+      sourceHealth?: Automation["sourceHealth"];
     },
   ): Promise<void> {
-    const kind = this.kind(after);
-    if (!kind || kind === this.kind(before)) return;
+    // A source that newly cannot run is the author's to know too (#Q3806),
+    // while the automation's other sources keep it active.
+    const source = Object.entries(after.sourceHealth ?? {}).some(
+      ([id, value]) =>
+        value.health === "broken" &&
+        before.sourceHealth?.[id]?.health !== "broken",
+    );
+    const own = this.kind(after);
+    // Said once: a rule already waiting on its author is not told again.
+    const kind = own
+      ? own === this.kind(before)
+        ? undefined
+        : own
+      : source && !this.kind(before)
+        ? "broken"
+        : undefined;
+    if (!kind) return;
     await this.bestEffort.run("Tell an automation's author it stopped", () =>
       this.push(before, kind, after.reason),
     );

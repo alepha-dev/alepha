@@ -220,7 +220,7 @@ export class AutomationCatalog {
      * re-checks before every step, since a target that vanished refuses
      * only its own step (#Q3804).
      */
-    options: { targets?: boolean } = {},
+    options: { targets?: boolean; skip?: ReadonlySet<string> } = {},
   ) {
     const targets = options.targets !== false;
     let scheduleCron: string | undefined;
@@ -266,6 +266,9 @@ export class AutomationCatalog {
       ]),
     );
     for (const node of rule.nodes) {
+      // A node whose dependency is gone breaks its source (#Q3806): the
+      // per-source health reports it, it is not the author's refusal.
+      if (options.skip?.has(node.id)) continue;
       const path = node.id;
       if (node.kind === "source") {
         if (node.type === AutomationVocabulary.SCHEDULE) {
@@ -426,17 +429,21 @@ export class AutomationCatalog {
     context: AutomationCatalogContext,
     rule: AutomationGraphValue,
   ): string | undefined {
-    // Every source of the graph; a run's subgraph has one (#Q3804).
-    const graph = rule;
-    for (const source of this.graphs.sources(graph)) {
-      const key = this.graphs.sourceKey(graph, source.id);
+    // Unavailable only when every source is (#Q3806): one source losing
+    // its capability breaks that source, and its health says so on the
+    // page, while the others stay readable. A run's subgraph has one source
+    // (#Q3804), so a run is redacted as soon as its own source is.
+    let first: string | undefined;
+    for (const source of this.graphs.sources(rule)) {
+      const key = this.graphs.sourceKey(rule, source.id);
       const entry = this.entries().find((item) => item.key === key);
       const reason = entry
         ? this.unavailable(context, entry)
         : "Source vocabulary is unavailable";
-      if (reason) return reason;
+      if (!reason) return undefined;
+      first ??= reason;
     }
-    return undefined;
+    return first;
   }
 
   /**
