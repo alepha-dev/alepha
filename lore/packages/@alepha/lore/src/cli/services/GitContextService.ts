@@ -51,6 +51,31 @@ export class GitContextService {
   public static readonly UNKNOWN_BRANCH = "unknown";
 
   /**
+   * Tracked changes in the working tree the build is pushed from (#E154):
+   * `git status --porcelain --untracked-files=no`. Untracked files never
+   * count, since build output and generated folders are untracked by nature.
+   * `undefined` when git cannot say (no repository), which Lore reads as
+   * unknown rather than clean.
+   */
+  public async dirty(
+    root: string,
+  ): Promise<{ dirty: boolean; paths: string[] } | undefined> {
+    const result = await this.shell
+      .capture(["git", "status", "--porcelain", "--untracked-files=no"], {
+        root,
+      })
+      .catch(() => undefined);
+    if (!result || result.exitCode !== 0) {
+      return undefined;
+    }
+    const paths = result.stdout
+      .split("\n")
+      .filter((line) => line.trim())
+      .map((line) => line.slice(3));
+    return { dirty: paths.length > 0, paths };
+  }
+
+  /**
    * Through `ShellProvider` rather than `child_process`, so the command stays
    * substitutable with `MemoryShellProvider`.
    *

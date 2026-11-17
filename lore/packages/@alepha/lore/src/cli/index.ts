@@ -178,6 +178,7 @@ export const lore = (
 export * from "./AlephaLoreDeploy.ts";
 export * from "./schemas/loreEnvironmentOptions.ts";
 export * from "./services/GitContextService.ts";
+export * from "./services/GitQuestHistory.ts";
 export * from "./services/LoreClientService.ts";
 export * from "./services/LoreTokenStore.ts";
 export * from "./services/QualityReportReader.ts";

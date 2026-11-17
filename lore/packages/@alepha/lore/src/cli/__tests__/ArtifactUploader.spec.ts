@@ -42,6 +42,9 @@ class Sink {
     bytes: string;
     assets?: string;
     schema?: string;
+    quests?: unknown;
+    commits?: string;
+    dirty?: boolean;
   };
 
   public push = $action({
@@ -58,6 +61,9 @@ class Sink {
         file: z.file(),
         assets: z.file().optional(),
         schema: z.file().optional(),
+        quests: z.record(z.text(), z.any()).optional(),
+        commits: z.file().optional(),
+        dirty: z.boolean().optional(),
       }),
       response: z.object({
         artifact: z.object({
@@ -87,6 +93,9 @@ class Sink {
         bytes: await body.file.text(),
         assets: body.assets ? await body.assets.text() : undefined,
         schema: body.schema ? await body.schema.text() : undefined,
+        quests: body.quests,
+        commits: body.commits ? await body.commits.text() : undefined,
+        dirty: body.dirty,
       };
 
       return {
@@ -225,6 +234,22 @@ describe("ArtifactUploader", () => {
 
     expect(ctx.sink.received?.schema).toBe(schema);
     expect(ctx.sink.received?.assets).toBe(assets);
+    expect(ctx.sink.received?.bytes).toBe("a packed artifact");
+  });
+
+  it("delivers the quest set as a field, the walked shas as a JSON part and dirty as a boolean (#E154)", async () => {
+    const quests = JSON.stringify({
+      version: 1,
+      base: "b".repeat(40),
+      numbers: [3, 12],
+      complete: true,
+    });
+    const commits = JSON.stringify(["c".repeat(40)]);
+    const ctx = await upload({ quests, commits, dirty: false });
+
+    expect(ctx.sink.received?.quests).toEqual(JSON.parse(quests));
+    expect(ctx.sink.received?.commits).toBe(commits);
+    expect(ctx.sink.received?.dirty).toBe(false);
     expect(ctx.sink.received?.bytes).toBe("a packed artifact");
   });
 

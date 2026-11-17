@@ -4,6 +4,7 @@ import { AlephaServerLinksClient } from "alepha/server/links";
 import { LoreAdapter } from "./adapters/LoreAdapter.ts";
 import { ArtifactUploader } from "./services/ArtifactUploader.ts";
 import { GitContextService } from "./services/GitContextService.ts";
+import { GitQuestHistory } from "./services/GitQuestHistory.ts";
 import { LoreArtifactPusher } from "./services/LoreArtifactPusher.ts";
 import { LoreClientService } from "./services/LoreClientService.ts";
 import { LoreDeployer } from "./services/LoreDeployer.ts";
@@ -45,6 +46,8 @@ export const AlephaLoreDeploy = $module({
     LoreProjectLink,
     LoreProjectResolver,
     GitContextService,
+    // The quests a pushed commit's history references (#E154).
+    GitQuestHistory,
     ArtifactUploader,
     LoreArtifactPusher,
     LoreDeployer,

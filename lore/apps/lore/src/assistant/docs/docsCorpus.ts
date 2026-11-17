@@ -1618,7 +1618,7 @@ export const docsCorpus: DocsSection[] = [
     section: "5. Push a build",
     url: "https://alepha.dev/lore/docs/ship-deploying#5-push-a-build",
     capability: "ship",
-    text: "Builds come from the machine holding the source: your laptop or your CI.\n\n```bash\nlore apps build --tag 1.2.3\nlore artifacts push --tag 1.2.3\n```\n\nThe first builds the app, the second stores the build in your project. Both\ntake `--project <slug>` (or `LORE_PROJECT`), and sign in with `lore login` or\nwith `LORE_API_KEY` in CI. See [Artifacts](/lore/docs/ship-artifacts).\n\n⚠️ `latest` is the default tag and the **only** one whose build may be\nreplaced. Two copies both showing `latest` may be running different code. Name\na real tag for anything you intend to promote.",
+    text: "Builds come from the machine holding the source: your laptop or your CI.\n\n```bash\nlore apps build --tag 1.2.3\nlore artifacts push --tag 1.2.3\n```\n\nThe first builds the app, the second stores the build in your project. Both\ntake `--project <slug>` (or `LORE_PROJECT`), and sign in with `lore login` or\nwith `LORE_API_KEY` in CI. See [Artifacts](/lore/docs/ship-artifacts).\n\nThe push also records which quests the commit's history references, so every\ncopy that later runs this build knows which quests are live on it, whichever\nway it is deployed or rolled back. See\n[What a push records](/lore/docs/ship-artifacts#what-a-push-records).\n\n⚠️ `latest` is the default tag and the **only** one whose build may be\nreplaced. Two copies both showing `latest` may be running different code. Name\na real tag for anything you intend to promote.",
   },
   {
     guide: "Deploying an app",
@@ -1692,10 +1692,17 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Artifacts",
+    section: "What a push records",
+    url: "https://alepha.dev/lore/docs/ship-artifacts#what-a-push-records",
+    capability: "ship",
+    text: 'Beside the build, a push records three things about the commit it came from:\n\n- **The commit itself**, the one `git rev-parse HEAD` names.\n- **The quests its history references.** Every `#Q12` in the subject or body\n  of a commit in its history counts. Lore keeps that set once per commit, so\n  every copy deployed from these bytes, by any route, knows which quests it\n  runs: the **Live** chip on a quest and the "behind" count on a copy read it.\n  A push only reads the commits since the last one Lore already knows, so\n  after the first push it reads a handful.\n- **Whether the working tree was dirty**: a file git tracks was modified.\n  Untracked files, build output for one, never count. A copy deployed from a\n  dirty build shows its quests as **live (unverified)**.\n\nThe push prints one line about it, for example\n`12 quests referenced (complete, since 3f2a9c1b8e0d), clean`.\n\n### A bare `#123`\n\nOnly `#Q123` counts by default. A project that writes quest numbers bare can\nopt in, in `.alepha/lore.json` at the root of the repository:\n\n```json\n{ "project": "acme", "bareQuestRefs": true }\n```\n\n⚠️ Leave it off in a project that squash-merges pull requests on GitHub:\nevery merged subject ends ...',
+  },
+  {
+    guide: "Artifacts",
     section: "From CI",
     url: "https://alepha.dev/lore/docs/ship-artifacts#from-ci",
     capability: "ship",
-    text: "`lore artifacts push` authenticates with an API key in the environment that\nruns it:\n\n```yaml\n- run: |\n    alepha build\n    lore artifacts push --project acme --tag ${{ github.ref_name }}\n  env:\n    LORE_API_KEY: ${{ secrets.LORE_API_KEY }}\n```\n\nCreate the key from your account settings: see\n[Connecting an agent](/lore/docs/agents-connecting). `lore login` is the other\nway to sign in, and not the one for CI: it needs a person to approve a code.\n\nA push that cannot happen exits non-zero. Put the step behind\n`continue-on-error` if you would rather a failed push annotate the run than\nblock the release.\n\nPushing needs the `artifact:push` permission, which the default Member rank\nholds.",
+    text: "`lore artifacts push` authenticates with an API key in the environment that\nruns it. Check out the whole history, so the push can read which quests the\ncommit carries:\n\n```yaml\n- uses: actions/checkout@v4\n  with:\n    fetch-depth: 0\n- run: |\n    alepha build\n    lore artifacts push --project acme --tag ${{ github.ref_name }}\n  env:\n    LORE_API_KEY: ${{ secrets.LORE_API_KEY }}\n```\n\nCreate the key from your account settings: see\n[Connecting an agent](/lore/docs/agents-connecting). `lore login` is the other\nway to sign in, and not the one for CI: it needs a person to approve a code.\n\n`actions/checkout` clones one commit by default. A push from that clone can\nonly name the quests of the commits it holds, unless Lore already knows the\ncommit before it, so it records a partial set and says so: copies running it\nshow the quests found, but never claim a quest is not live, or count what\nthey are behind. `fetch-depth: 0` fixes it; the push never fails over it.\n\nA push that cannot happen exits non-zero. Put the step behind\n`continue-on-error` if you would rather a failed push annotate the run than\nblock the release.\n\nPushing needs the `artifact:push` permission, which the default Member rank\n...",
   },
   {
     guide: "Artifacts",

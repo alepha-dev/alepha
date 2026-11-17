@@ -47,12 +47,36 @@ describe(".alepha/lore.json", () => {
     expect(await link.find("/repo/infra/compose")).toEqual({
       project: "hello",
       path: "/repo/.alepha/lore.json",
+      bareQuestRefs: false,
     });
     await fs.writeJsonFile("/repo/infra/.alepha/lore.json", {
       project: "inner",
     });
     expect((await link.find("/repo/infra/compose"))?.project).toBe("inner");
     expect(await link.find("/elsewhere")).toBeUndefined();
+  });
+
+  it("reads bareQuestRefs only when it is true, and a relink keeps it (#E154)", async ({
+    expect,
+  }) => {
+    const { fs, link } = await create();
+    await fs.writeJsonFile("/repo/.alepha/lore.json", {
+      project: "hello",
+      bareQuestRefs: "yes",
+    });
+    expect((await link.find("/repo"))?.bareQuestRefs).toBe(false);
+
+    await fs.writeJsonFile("/repo/.alepha/lore.json", {
+      project: "hello",
+      bareQuestRefs: true,
+    });
+    await link.write("/repo", "hello");
+
+    expect(await fs.readJsonFile("/repo/.alepha/lore.json")).toEqual({
+      project: "hello",
+      bareQuestRefs: true,
+    });
+    expect((await link.find("/repo"))?.bareQuestRefs).toBe(true);
   });
 
   it("comes after --project and LORE_PROJECT", async ({ expect }) => {

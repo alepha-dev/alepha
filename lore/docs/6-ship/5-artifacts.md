@@ -51,12 +51,47 @@ of both. Lore keeps each list for the project that pushed it, and checks every
 asset it uploads against it, so a wrong list cannot reach another project's
 deploys. A build pushed without a list deploys normally.
 
+## What a push records
+
+Beside the build, a push records three things about the commit it came from:
+
+- **The commit itself**, the one `git rev-parse HEAD` names.
+- **The quests its history references.** Every `#Q12` in the subject or body
+  of a commit in its history counts. Lore keeps that set once per commit, so
+  every copy deployed from these bytes, by any route, knows which quests it
+  runs: the **Live** chip on a quest and the "behind" count on a copy read it.
+  A push only reads the commits since the last one Lore already knows, so
+  after the first push it reads a handful.
+- **Whether the working tree was dirty**: a file git tracks was modified.
+  Untracked files, build output for one, never count. A copy deployed from a
+  dirty build shows its quests as **live (unverified)**.
+
+The push prints one line about it, for example
+`12 quests referenced (complete, since 3f2a9c1b8e0d), clean`.
+
+### A bare `#123`
+
+Only `#Q123` counts by default. A project that writes quest numbers bare can
+opt in, in `.alepha/lore.json` at the root of the repository:
+
+```json
+{ "project": "acme", "bareQuestRefs": true }
+```
+
+⚠️ Leave it off in a project that squash-merges pull requests on GitHub:
+every merged subject ends with the pull request's number, `(#123)`, which
+would count as quest 123.
+
 ## From CI
 
 `lore artifacts push` authenticates with an API key in the environment that
-runs it:
+runs it. Check out the whole history, so the push can read which quests the
+commit carries:
 
 ```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
 - run: |
     alepha build
     lore artifacts push --project acme --tag ${{ github.ref_name }}
@@ -67,6 +102,12 @@ runs it:
 Create the key from your account settings: see
 [Connecting an agent](/lore/docs/agents-connecting). `lore login` is the other
 way to sign in, and not the one for CI: it needs a person to approve a code.
+
+`actions/checkout` clones one commit by default. A push from that clone can
+only name the quests of the commits it holds, unless Lore already knows the
+commit before it, so it records a partial set and says so: copies running it
+show the quests found, but never claim a quest is not live, or count what
+they are behind. `fetch-depth: 0` fixes it; the push never fails over it.
 
 A push that cannot happen exits non-zero. Put the step behind
 `continue-on-error` if you would rather a failed push annotate the run than
