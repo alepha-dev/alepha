@@ -12,6 +12,7 @@
 export { appInstances } from "../api/entities/appInstances.ts";
 export { appSecrets } from "../api/entities/appSecrets.ts";
 export { artifacts } from "../api/entities/artifacts.ts";
+export { commitQuestSets } from "../api/entities/commitQuestSets.ts";
 export { projectErrors } from "../api/entities/projectErrors.ts";
 export { deployments } from "../api/entities/deployments.ts";
 export { hostCommands } from "../api/entities/hostCommands.ts";

@@ -53,6 +53,11 @@ const NOT_MOVED: Record<string, string> = {
   // Who an admin of the source removed (#Q3646). The target's admins decide
   // who may not rejoin the target; the rows go with the source.
   project_exclusions: "the source's admins' decision, not the target's",
+  // A pushed commit's quest numbers (#E154), in the source's numbering. The
+  // merge renumbers the source's quests, so moved they would name the wrong
+  // quests in the target; left behind, the moved deployments read as unknown
+  // until the next push records the commit in the target's numbering.
+  commit_quest_sets: "the source's quest numbers, which the merge renumbers",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

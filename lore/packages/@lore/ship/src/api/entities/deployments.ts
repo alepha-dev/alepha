@@ -66,6 +66,19 @@ export const deployments = $entity({
     tag: z.string().min(1).max(100),
     sha256: z.string().min(64).max(64),
     /**
+     * The commit these bytes were built from, and whether its working tree was
+     * dirty, snapshotted with the rest (#E154). Live quests read the quest set
+     * of this commit (`commit_quest_sets`), so a rollback or a redeploy of
+     * older bytes makes that commit's set current again with nothing
+     * recomputed. Copied from the artifact at queue time, or from the target
+     * deployment by a fast rollback, since `latest` may have moved since.
+     *
+     * Absent on a run from before this column, or for bytes pushed without a
+     * commit: the copy's live set is then UNKNOWN, never empty.
+     */
+    commitSha: z.string().max(40).optional(),
+    dirty: z.boolean().optional(),
+    /**
      * `queued` while the job is waiting, `running` from its first side effect,
      * then one terminal value.
      *

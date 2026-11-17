@@ -8,10 +8,17 @@ import { deployments } from "../entities/deployments.ts";
  * What one copy last shipped, from the snapshot its newest succeeded run took.
  */
 export interface DeployedBuild {
+  deploymentId: string;
   tag: string;
   sha256: string;
   artifactId?: string;
   at: string;
+  /**
+   * The commit snapshot (#E154): absent on a run from before it.
+   */
+  commitSha?: string;
+  dirty?: boolean;
+  finishedAt?: string;
 }
 
 /**
@@ -60,7 +67,17 @@ export class DeployedBuildService {
     }
 
     const runs = await this.deployments.findMany({
-      columns: ["instanceId", "tag", "sha256", "artifactId", "createdAt"],
+      columns: [
+        "id",
+        "instanceId",
+        "tag",
+        "sha256",
+        "artifactId",
+        "createdAt",
+        "commitSha",
+        "dirty",
+        "finishedAt",
+      ],
       where: {
         instanceId: { inArray: [...latest.keys()] },
         status: { eq: "succeeded" },
@@ -78,10 +95,14 @@ export class DeployedBuildService {
         this.dt.of(newestAt).valueOf() === this.dt.of(run.createdAt).valueOf()
       ) {
         builds.set(run.instanceId, {
+          deploymentId: run.id,
           tag: run.tag,
           sha256: run.sha256,
           artifactId: run.artifactId,
           at: run.createdAt,
+          ...(run.commitSha ? { commitSha: run.commitSha } : {}),
+          ...(run.dirty == null ? {} : { dirty: run.dirty }),
+          ...(run.finishedAt ? { finishedAt: run.finishedAt } : {}),
         });
       }
     }

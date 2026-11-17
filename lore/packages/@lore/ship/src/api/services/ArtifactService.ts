@@ -266,6 +266,7 @@ export class ArtifactService {
         sha256,
         size: bytes.length,
         commitSha: input.commitSha,
+        dirty: input.dirty,
         file: input.file,
         manifest,
       });
@@ -294,6 +295,7 @@ export class ArtifactService {
         size: bytes.length,
         fileId: stored.id,
         commitSha: input.commitSha,
+        ...(input.dirty === undefined ? {} : { dirty: input.dirty }),
         manifest: this.serialise(manifest),
       });
     } catch (error) {
@@ -302,6 +304,27 @@ export class ArtifactService {
     }
     await this.dropAll(superseded);
     return { artifact, stored: true };
+  }
+
+  /**
+   * The commit snapshot a deployment row takes from the artifact it ships
+   * (#E154): `commitSha` and `dirty`, written once and never updated, so the
+   * copy's live quest set survives `latest` being replaced. Every path that
+   * queues a deployment from an artifact spreads this, the stack member's
+   * included.
+   */
+  public static commitOf(artifact: Pick<Artifact, "commitSha" | "dirty">): {
+    commitSha?: string;
+    dirty?: boolean;
+  } {
+    return {
+      ...(artifact.commitSha
+        ? { commitSha: artifact.commitSha.toLowerCase() }
+        : {}),
+      ...(artifact.dirty === undefined || artifact.dirty === null
+        ? {}
+        : { dirty: artifact.dirty }),
+    };
   }
 
   /**
@@ -501,6 +524,7 @@ export class ArtifactService {
       sha256: string;
       size: number;
       commitSha?: string;
+      dirty?: boolean;
       file: FileLike;
       manifest: ArtifactManifest;
     },
@@ -525,6 +549,8 @@ export class ArtifactService {
         // commit that produced the PREVIOUS bytes - a claim nothing else in
         // the system could contradict.
         commitSha: next.commitSha ?? null,
+        // Same `null` rule: the flag describes the bytes, and moves with them.
+        dirty: next.dirty ?? null,
         // ⚠️ Rewritten with the bytes. A `--force` swaps what this tag points
         // at, and a row still describing the PREVIOUS build is worse than one
         // describing none: every reader would trust it.
@@ -915,6 +941,10 @@ export interface ArtifactPushInput {
   app: string;
   tag: string;
   commitSha?: string;
+  /**
+   * Tracked changes in the working tree the build was pushed from (#E154).
+   */
+  dirty?: boolean;
   /**
    * Move a pinned tag onto new bytes. Ignored for `latest`, which moves
    * anyway, and it is not an error to pass it there: a CI job that always

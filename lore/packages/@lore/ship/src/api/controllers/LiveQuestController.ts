@@ -1,0 +1,95 @@
+import { $ownsProject } from "@lore/core/api";
+import { $inject, z } from "alepha";
+import { $action, NotFoundError } from "alepha/server";
+
+import { instanceLiveQuestsSchema } from "../schemas/instanceLiveQuestsSchema.ts";
+import { knownCommitsResultSchema } from "../schemas/knownCommitsResultSchema.ts";
+import { questLivenessSchema } from "../schemas/questLivenessSchema.ts";
+import { CommitQuestSetService } from "../services/CommitQuestSetService.ts";
+import { LiveQuestService } from "../services/LiveQuestService.ts";
+
+/**
+ * Live quests (#E154, folio #F1516): which deployed copy runs a quest's
+ * commits.
+ *
+ * ⚠️ `findKnownCommits` is a wire contract like the artifact push:
+ * `@alepha/lore/cli` reaches it by path before every push.
+ */
+export class LiveQuestController {
+  protected readonly sets = $inject(CommitQuestSetService);
+  protected readonly live = $inject(LiveQuestService);
+
+  /**
+   * Which of a pusher's newest commits already have a quest set, so it walks
+   * only from the newest complete one. A POST because 200 shas are 8 KB: a
+   * read all the same, gated like the push it precedes.
+   */
+  findKnownCommits = $action({
+    use: [$ownsProject({ requires: "artifact:push", param: "projectId" })],
+    method: "POST",
+    path: "/projects/:projectId/artifacts/known-commits",
+    description:
+      "Which of these commits already have a quest set, newest first as sent.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({
+        shas: z.array(z.string().regex(/^[0-9a-fA-F]{7,40}$/)).max(200),
+      }),
+      response: knownCommitsResultSchema,
+    },
+    handler: async ({ params, body }) => ({
+      known: await this.sets.known(params.projectId, body.shas),
+    }),
+  });
+
+  /**
+   * One copy's live set, what it is behind, and what each recent deployment
+   * put live and took down.
+   */
+  getInstanceLiveQuests = $action({
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
+    method: "GET",
+    path: "/projects/:projectId/apps/:instanceId/live-quests",
+    description:
+      "The quests a deployed copy runs, and the done ones it does not.",
+    schema: {
+      params: z.object({ projectId: z.integer(), instanceId: z.uuid() }),
+      response: instanceLiveQuestsSchema,
+    },
+    handler: async ({ params }) => {
+      const detail = await this.live.instance(
+        params.projectId,
+        params.instanceId,
+      );
+      if (!detail) {
+        throw new NotFoundError("No such deployed copy in this project.");
+      }
+      return {
+        state: detail.state,
+        ...(detail.reason ? { reason: detail.reason } : {}),
+        ...(detail.deploymentId ? { deploymentId: detail.deploymentId } : {}),
+        ...(detail.commitSha ? { commitSha: detail.commitSha } : {}),
+        ...(detail.dirty === undefined ? {} : { dirty: detail.dirty }),
+        ...(detail.live ? { live: detail.live } : {}),
+        ...(detail.behind ? { behind: detail.behind } : {}),
+        runs: detail.runs,
+      };
+    },
+  });
+
+  /**
+   * The copies running one quest's commits.
+   */
+  getQuestLiveness = $action({
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
+    method: "GET",
+    path: "/projects/:projectId/live-quests/:number",
+    description: "The deployed copies running a quest's commits.",
+    schema: {
+      params: z.object({ projectId: z.integer(), number: z.integer().min(1) }),
+      response: questLivenessSchema,
+    },
+    handler: async ({ params }) =>
+      await this.live.questLiveness(params.projectId, params.number),
+  });
+}

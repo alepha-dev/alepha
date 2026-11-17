@@ -1,0 +1,321 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3418aea4-e8f9-447a-9621-b59317eb6fc4",
+  "prevIds": ["c8b7d64f-9b45-482a-8b4d-bd76bf731cff"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "commit_quest_sets"],
+      "writes": [
+        "s|tbl|public.commit_quest_sets",
+        "n|tbl|public.commit_quest_sets",
+        "e|tbl|public.commit_quest_sets",
+        "n|rel|public.commit_quest_sets",
+        "n|type|public.commit_quest_sets",
+        "n|rel|public.commit_quest_sets_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "artifacts", "dirty"],
+      "writes": [
+        "s|col|public.artifacts.dirty",
+        "n|col|public.artifacts.dirty",
+        "e|col|public.artifacts.dirty"
+      ],
+      "reads": ["n|tbl|public.artifacts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "deployments", "commit_sha"],
+      "writes": [
+        "s|col|public.deployments.commit_sha",
+        "n|col|public.deployments.commit_sha",
+        "e|col|public.deployments.commit_sha"
+      ],
+      "reads": ["n|tbl|public.deployments", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "deployments", "dirty"],
+      "writes": [
+        "s|col|public.deployments.dirty",
+        "n|col|public.deployments.dirty",
+        "e|col|public.deployments.dirty"
+      ],
+      "reads": ["n|tbl|public.deployments", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "commit_quest_sets",
+        "commit_quest_sets_project_id_commit_sha_idx"
+      ],
+      "writes": [
+        "s|idx|public.commit_quest_sets_project_id_commit_sha_idx",
+        "n|idx|public.commit_quest_sets_project_id_commit_sha_idx",
+        "e|idx|public.commit_quest_sets_project_id_commit_sha_idx",
+        "n|rel|public.commit_quest_sets_project_id_commit_sha_idx"
+      ],
+      "reads": [
+        "n|tbl|public.commit_quest_sets",
+        "n|sch|public",
+        "n|col|public.commit_quest_sets.project_id",
+        "n|col|public.commit_quest_sets.commit_sha"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "commit_quest_sets"],
+      "writes": [
+        "s|fk|public.commit_quest_sets.commit_quest_sets_project_id_projects_id_fkey",
+        "n|fk|public.commit_quest_sets.commit_quest_sets_project_id_projects_id_fkey",
+        "e|fk|public.commit_quest_sets.commit_quest_sets_project_id_projects_id_fkey",
+        "n|con|public.commit_quest_sets.commit_quest_sets_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.commit_quest_sets",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.commit_quest_sets.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "commit_quest_sets",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "artifacts",
+        "name": "dirty",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "commit_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "quests",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "complete",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "deployments",
+        "name": "commit_sha",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "deployments",
+        "name": "dirty",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "commit_quest_sets_project_id_commit_sha_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "commit_sha",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "commit_quest_sets_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "commit_quest_sets_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

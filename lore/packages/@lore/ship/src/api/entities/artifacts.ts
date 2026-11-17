@@ -202,6 +202,15 @@ export const artifacts = $entity({
      */
     commitSha: z.string().max(40).optional(),
     /**
+     * The working tree the build was pushed from had tracked changes
+     * (#E154): `git status --porcelain --untracked-files=no` was not empty, so
+     * the bytes hold something {@link commitSha} does not name. Untracked
+     * files never count. Absent when the pusher did not say (an older CLI, an
+     * image), which is unknown rather than clean. Copied to every deployment
+     * of these bytes.
+     */
+    dirty: z.boolean().optional(),
+    /**
      * The build's own document, as the server read it. ⚠️ **Two shapes, told
      * apart only by {@link format}.**
      *
