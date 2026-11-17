@@ -26,6 +26,7 @@ import {
   type DeployedBuild,
   DeployedBuildService,
 } from "../services/DeployedBuildService.ts";
+import { LiveQuestService } from "../services/LiveQuestService.ts";
 import { TeardownService } from "../services/TeardownService.ts";
 import { UptimeMonitorOwners } from "../services/UptimeMonitorOwners.ts";
 
@@ -61,6 +62,7 @@ export class AppController {
   protected security = $inject(ProjectSecurityService);
   protected service = $inject(AppService);
   protected builds = $inject(DeployedBuildService);
+  protected readonly liveQuests = $inject(LiveQuestService);
   protected artifacts = $inject(ArtifactService);
   protected readonly teardown = $inject(TeardownService);
   protected readonly monitorOwners = $inject(UptimeMonitorOwners);
@@ -667,18 +669,30 @@ export class AppController {
       ),
     ];
 
-    const [sigilRows, hostRows, deployedBuilds, stackSummaries, monitors] =
-      await Promise.all([
-        sigilIds.length
-          ? this.sigils.findMany({ where: { id: { inArray: sigilIds } } })
-          : Promise.resolve([]),
-        hostIds.length
-          ? this.hosts.findMany({ where: { id: { inArray: hostIds } } })
-          : Promise.resolve([]),
-        this.builds.latest(rows.map((row) => row.id)),
-        this.stackSummaries(environmentIds),
-        this.monitorOwners.ofCopies(rows.map((row) => row.id)),
-      ]);
+    const [
+      sigilRows,
+      hostRows,
+      deployedBuilds,
+      stackSummaries,
+      monitors,
+      behind,
+    ] = await Promise.all([
+      sigilIds.length
+        ? this.sigils.findMany({ where: { id: { inArray: sigilIds } } })
+        : Promise.resolve([]),
+      hostIds.length
+        ? this.hosts.findMany({ where: { id: { inArray: hostIds } } })
+        : Promise.resolve([]),
+      this.builds.latest(rows.map((row) => row.id)),
+      this.stackSummaries(environmentIds),
+      this.monitorOwners.ofCopies(rows.map((row) => row.id)),
+      // How many done quests each copy does not run yet (#E154): one read
+      // for every row, never one per row.
+      this.liveQuests.behindCounts(
+        rows[0]?.projectId as number,
+        rows.map((row) => row.id),
+      ),
+    ]);
 
     const bySigil = new Map(sigilRows.map((row) => [row.id, row]));
     const byHost = new Map(hostRows.map((row) => [row.id, row]));
@@ -694,7 +708,12 @@ export class AppController {
           : undefined,
       );
       const monitor = monitors.get(row.id);
-      return monitor ? { ...resource, monitor } : resource;
+      const count = behind.get(row.id);
+      return {
+        ...resource,
+        ...(monitor ? { monitor } : {}),
+        ...(count === undefined ? {} : { behind: count }),
+      };
     });
   }
 

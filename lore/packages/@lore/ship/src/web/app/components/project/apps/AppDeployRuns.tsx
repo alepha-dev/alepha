@@ -22,6 +22,8 @@ import type { DeployController } from "../../../../../api/controllers/DeployCont
 import { artifactHref } from "../artifacts/artifactView.ts";
 import AppDeployLogDialog from "./AppDeployLogDialog.tsx";
 import AppDeployRollbackDialog from "./AppDeployRollbackDialog.tsx";
+import QuestNumberLinks from "./QuestNumberLinks.tsx";
+import { useInstanceLiveQuests } from "./useInstanceLiveQuests.ts";
 
 export interface AppDeployRunsProps {
   projectId: number;
@@ -92,6 +94,16 @@ const AppDeployRuns = (props: AppDeployRunsProps) => {
   );
   // Newest first, so the first success is what this copy runs now.
   const current = items.find((it) => it.status === "succeeded");
+  // What each succeeded run put live and took down (#E154), computed by
+  // Lore on read against the previous succeeded run, so a rollback shows
+  // what it removed. Re-read when the current run changes.
+  const liveQuests = useInstanceLiveQuests(
+    props.instanceId,
+    current ? String(current.id) : undefined,
+  );
+  const diffOf = new Map(
+    (liveQuests?.runs ?? []).map((diff) => [diff.deploymentId, diff]),
+  );
 
   /**
    * ⚠️ The poll, and it stops itself. An interval that outlives the run is the
@@ -256,6 +268,42 @@ const AppDeployRuns = (props: AppDeployRunsProps) => {
                 </span>
               </span>
             ),
+          },
+          quests: {
+            label: tr("app.deploy.table.quests"),
+            cell: (run) => {
+              const diff = diffOf.get(String(run.id));
+              if (!diff?.added || !diff.removed) {
+                return null;
+              }
+              if (diff.added.length === 0 && diff.removed.length === 0) {
+                return (
+                  <span className="text-muted-foreground text-xs">
+                    {tr("app.deploy.quests.none")}
+                  </span>
+                );
+              }
+              return (
+                <span
+                  className="flex flex-col gap-0.5"
+                  data-testid={`deploy-quests-${String(run.id)}`}
+                  title={
+                    diff.known ? undefined : tr("app.deploy.quests.partial")
+                  }
+                >
+                  {diff.added.length > 0 && (
+                    <QuestNumberLinks numbers={diff.added} max={6} prefix="+" />
+                  )}
+                  {diff.removed.length > 0 && (
+                    <QuestNumberLinks
+                      numbers={diff.removed}
+                      max={6}
+                      prefix="-"
+                    />
+                  )}
+                </span>
+              );
+            },
           },
           createdAt: {
             label: tr("app.deploy.table.when"),

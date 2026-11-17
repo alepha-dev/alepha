@@ -2236,6 +2236,23 @@ export default {
   "app.tab.errors": "Errors",
   "app.tab.explore": "Explore",
   "app.tab.deploy": "Deploy",
+  "apps.table.behind": "$1 behind",
+  "apps.live.title": "Quests",
+  "apps.live.behind": "$1 done quests not deployed",
+  "apps.live.upToDate": "Every done quest is deployed here.",
+  "apps.live.unknown.noCommit":
+    "Unknown: this copy's build was pushed before Lore recorded commits, or without one. Push and deploy a new build to know.",
+  "apps.live.unknown.noSet":
+    "Unknown: Lore has no record of which quests this build carries. Push the build again with a current lore CLI.",
+  "apps.live.unknown.partial":
+    "Unknown: this build was pushed from a shallow clone, so Lore cannot say what it lacks. Set fetch-depth: 0 on actions/checkout.",
+  "apps.live.runs": "Runs $1 quests",
+  "apps.live.runsUnverified":
+    "Runs $1 quests (unverified: the build was pushed with uncommitted changes)",
+  "app.deploy.table.quests": "Quests",
+  "app.deploy.quests.none": "No change",
+  "app.deploy.quests.partial":
+    "Partial: one of the two builds was pushed from a shallow clone.",
   "apps.table.version": "Version",
   "apps.filter.version": "Version",
   "app.deploy": "Deploy",

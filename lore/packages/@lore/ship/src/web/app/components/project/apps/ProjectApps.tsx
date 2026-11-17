@@ -1,4 +1,4 @@
-import { TimeAgo, Button, Skeleton } from "@alepha/ui";
+import { Badge, TimeAgo, Button, Skeleton } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import {
   AutomationSubscriptionBell,
@@ -514,24 +514,40 @@ const ProjectApps = () => {
             sortable: true,
             cell: (instance) =>
               instance.version ? (
-                <Link
-                  href={artifactHref(project.slug, {
-                    app: instance.app,
-                    tag: String(instance.version),
-                  })}
-                  // The row opens the copy; this cell opens the build.
-                  onClick={(event) => event.stopPropagation()}
-                  className={
-                    // ⚠️ `latest` is a pointer, not a version. Muted so it does
-                    // not read as a release, and never sorted as a semver -
-                    // the column sorts as text, which is what it is.
-                    instance.version === "latest"
-                      ? "text-muted-foreground truncate font-mono text-xs"
-                      : "truncate font-mono text-xs"
-                  }
-                >
-                  {instance.version}
-                </Link>
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <Link
+                    href={artifactHref(project.slug, {
+                      app: instance.app,
+                      tag: String(instance.version),
+                    })}
+                    // The row opens the copy; this cell opens the build.
+                    onClick={(event) => event.stopPropagation()}
+                    className={
+                      // ⚠️ `latest` is a pointer, not a version. Muted so it does
+                      // not read as a release, and never sorted as a semver -
+                      // the column sorts as text, which is what it is.
+                      instance.version === "latest"
+                        ? "text-muted-foreground truncate font-mono text-xs"
+                        : "truncate font-mono text-xs"
+                    }
+                  >
+                    {instance.version}
+                  </Link>
+                  {/* How many done quests this copy does not run yet
+                      (#E154). No badge when its set is unknown or partial:
+                      a count would be a guess. */}
+                  {instance.behind ? (
+                    <Badge
+                      variant="outline"
+                      className="shrink-0 text-xs"
+                      data-testid={`app-behind-${instance.app}-${instance.env}`}
+                    >
+                      {tr("apps.table.behind", {
+                        args: [String(instance.behind)],
+                      })}
+                    </Badge>
+                  ) : undefined}
+                </span>
               ) : (
                 // Nothing, not a dash: this copy has no version, rather than
                 // one nobody could read.

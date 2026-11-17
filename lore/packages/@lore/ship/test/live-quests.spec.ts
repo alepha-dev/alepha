@@ -840,6 +840,34 @@ describe("live quests", () => {
       ).toHaveLength(1);
     });
 
+    it("puts a behind count on each listed copy with a known set, and none on the others", async ({
+      expect,
+    }) => {
+      const w = await world();
+      alepha.inject(TestRecordedCommits).recorded = [
+        { number: 1, shas: [sha("1")], completed: true },
+        { number: 2, shas: [sha("2")], completed: true },
+        { number: 3, shas: [sha("3")], completed: true },
+      ];
+      const preEpic = await w.copy("staging");
+      await record(w.project.id, sha("a"), [1]);
+      await ran(w, { commitSha: sha("a"), at: "2026-11-01T00:00:00.000Z" });
+      await ran(w, { instanceId: preEpic.id, at: "2026-11-01T00:00:00.000Z" });
+
+      const { items } = (
+        await alepha
+          .inject(AppController)
+          .listApps.fetch(
+            { params: { projectId: w.project.id } },
+            { user: w.user },
+          )
+      ).data;
+
+      const byEnv = new Map(items.map((it: any) => [it.env, it]));
+      expect(byEnv.get("production")?.behind).toBe(2);
+      expect(byEnv.get("staging")?.behind).toBeUndefined();
+    });
+
     it("serves an instance's live quests and a quest's copies over HTTP", async ({
       expect,
     }) => {

@@ -5,6 +5,7 @@ import { useRouter } from "alepha/react/router";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppDashboardCapabilities from "./AppDashboardCapabilities.tsx";
 import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
+import AppDashboardLiveQuests from "./AppDashboardLiveQuests.tsx";
 import AppDashboardNextSteps from "./AppDashboardNextSteps.tsx";
 import AppDashboardUptime from "./AppDashboardUptime.tsx";
 import { sigilConfigurable } from "./appTabs.ts";
@@ -84,6 +85,9 @@ const AppDashboard = () => {
         {/* Renders nothing unless the Apps uptime option is on and this copy
             has an address or a monitor (#Q2680). */}
         <AppDashboardUptime instance={instance} />
+        {/* The quests this copy runs and the done ones it lacks (#E154).
+            Renders nothing for a copy that never deployed. */}
+        <AppDashboardLiveQuests instance={instance} />
       </div>
     </div>
   );

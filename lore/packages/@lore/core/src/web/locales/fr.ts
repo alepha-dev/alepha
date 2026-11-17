@@ -2229,6 +2229,23 @@ export default {
   "app.tab.errors": "Erreurs",
   "app.tab.explore": "Explorer",
   "app.tab.deploy": "Déploiement",
+  "apps.table.behind": "$1 en retard",
+  "apps.live.title": "Quêtes",
+  "apps.live.behind": "$1 quêtes terminées non déployées",
+  "apps.live.upToDate": "Toutes les quêtes terminées sont déployées ici.",
+  "apps.live.unknown.noCommit":
+    "Inconnu : le build de cette copie a été envoyé avant que Lore n'enregistre les commits, ou sans commit. Envoyez et déployez un nouveau build pour le savoir.",
+  "apps.live.unknown.noSet":
+    "Inconnu : Lore ne sait pas quelles quêtes ce build contient. Envoyez de nouveau le build avec un CLI lore à jour.",
+  "apps.live.unknown.partial":
+    "Inconnu : ce build a été envoyé depuis un clone superficiel, Lore ne peut pas dire ce qui lui manque. Réglez fetch-depth: 0 sur actions/checkout.",
+  "apps.live.runs": "Exécute $1 quêtes",
+  "apps.live.runsUnverified":
+    "Exécute $1 quêtes (non vérifié : le build a été envoyé avec des modifications non commitées)",
+  "app.deploy.table.quests": "Quêtes",
+  "app.deploy.quests.none": "Aucun changement",
+  "app.deploy.quests.partial":
+    "Partiel : l'un des deux builds a été envoyé depuis un clone superficiel.",
   "apps.table.version": "Version",
   "apps.filter.version": "Version",
   "app.deploy": "Déploiement",
