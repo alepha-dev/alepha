@@ -126,6 +126,39 @@ describe("PlateLayout", () => {
   });
 
   /**
+   * Under folder tabs the body fades from the active tile's fill to
+   * transparent, so the tile joins it at the top and the page shows below
+   * (#Q3837). Underline tabs have no tile, and keep the flat fill.
+   */
+  it("fades the body from the tile's fill under folder tabs only", async () => {
+    const body = (view: Awaited<ReturnType<typeof mount>>) =>
+      view.getByText("body").parentElement!.className.split(/\s+/);
+
+    const folder = await mount(
+      <PlateLayout tabs={stateTabs} active="overview">
+        <p>body</p>
+      </PlateLayout>,
+    );
+    expect(body(folder)).toEqual(
+      expect.arrayContaining([
+        "bg-linear-to-b",
+        "from-muted",
+        "to-transparent",
+      ]),
+    );
+    expect(body(folder)).not.toContain("bg-muted");
+    folder.unmount();
+
+    const underline = await mount(
+      <PlateLayout tabs={stateTabs} active="overview" tabsVariant="underline">
+        <p>body</p>
+      </PlateLayout>,
+    );
+    expect(body(underline)).toContain("bg-muted");
+    expect(body(underline)).not.toContain("bg-linear-to-b");
+  });
+
+  /**
    * `plate` has always been optional and had never been exercised, which is
    * how the tab bar's top rule came to be unconditional: with no plate it
    * drew a stray line immediately under the container's own top edge
