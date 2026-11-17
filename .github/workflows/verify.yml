@@ -14,6 +14,10 @@ permissions:
 # and the checks half of Docs, five files left over from three repositories,
 # and the deploys followed two of them BY NAME through `workflow_run`.
 #
+# A change runs this twice: on its pull request, then in the merge queue on
+# top of `main`. The push to `main` that follows is the commit the queue
+# tested, so it skips the checks and goes straight to the deploys (#Q3834).
+#
 # On a push to `main`, a green product calls `deploy.yml` for itself from the
 # `deploy-*` jobs at the bottom. Each deploy waits on its own product's gate
 # only, so a red Bay never holds Lore back, and the framework apps and the
@@ -82,6 +86,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      # `actions: read` for the merge queue run a push to `main` looks up.
+      actions: read
       contents: read
       pull-requests: read
     outputs:
@@ -89,6 +95,7 @@ jobs:
       lore: ${{ steps.diff.outputs.lore }}
       bay: ${{ steps.diff.outputs.bay }}
       docs: ${{ steps.diff.outputs.docs }}
+      tested: ${{ steps.diff.outputs.tested }}
     steps:
       - id: diff
         env:
@@ -102,6 +109,7 @@ jobs:
           compare() {
             gh api "repos/$GITHUB_REPOSITORY/compare/$1...$2?per_page=100" --paginate --jq '.files[].filename'
           }
+          tested=false
           case "$GITHUB_EVENT_NAME" in
             pull_request)
               files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename') ;;
@@ -114,6 +122,19 @@ jobs:
                 files=ALL
               else
                 files=$(compare "$PUSH_BEFORE" "$PUSH_AFTER")
+              fi
+              # The merge queue merges by rebase and moves `main` to the very
+              # commit its run tested (#Q3834), and that run's diff covers
+              # every commit of the group. When it is green, verifying the
+              # same tree again only delays the deploys: the check jobs skip,
+              # the gates pass, and the deploys follow at once. A push the
+              # queue never tested (an admin push, a cancelled queue run)
+              # runs everything as before.
+              green=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&event=merge_group&status=success" \
+                --jq '[.workflow_runs[] | select(.path == ".github/workflows/verify.yml")] | length')
+              if [ "${green:-0}" -gt 0 ]; then
+                tested=true
+                echo "The merge queue verified $GITHUB_SHA: the check jobs skip."
               fi ;;
             *)
               files=ALL ;;
@@ -123,6 +144,8 @@ jobs:
           if [ "$files" != ALL ] && [ "$(printf '%s\n' "$files" | wc -l)" -ge 300 ]; then
             files=ALL
           fi
+
+          echo "tested=$tested" >> "$GITHUB_OUTPUT"
 
           shared='\.github/workflows/verify\.yml$|\.github/actions/|package\.json$|yarn\.lock$|\.yarnrc\.yml$|\.nvmrc$'
           product() {
@@ -158,7 +181,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   framework-checks:
     needs: changes
-    if: needs.changes.outputs.framework == 'true'
+    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-latest
     # A hang detector, not a budget. Public-repo minutes are free and the
     # GitHub cap is 6 hours, so a generous number costs nothing while a tight
@@ -242,7 +265,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   framework-test:
     needs: changes
-    if: needs.changes.outputs.framework == 'true'
+    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -319,7 +342,7 @@ jobs:
   # in `engines.node` (#Q2687). This lane keeps `>=24.0.0` a tested claim.
   framework-test-node24:
     needs: changes
-    if: needs.changes.outputs.framework == 'true'
+    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -388,7 +411,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   framework-mqtt-broker:
     needs: changes
-    if: needs.changes.outputs.framework == 'true'
+    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -438,7 +461,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   framework-e2e-apps:
     needs: changes
-    if: needs.changes.outputs.framework == 'true'
+    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -488,7 +511,7 @@ jobs:
   # does an entry no finding matches any more.
   framework-e2e-a11y:
     needs: changes
-    if: needs.changes.outputs.framework == 'true'
+    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -524,7 +547,7 @@ jobs:
   # project, so a failure here means a packaging bug rather than a UI one.
   framework-e2e-cli:
     needs: changes
-    if: needs.changes.outputs.framework == 'true'
+    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -568,7 +591,7 @@ jobs:
 
   lore-checks:
     needs: changes
-    if: needs.changes.outputs.lore == 'true'
+    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -606,7 +629,7 @@ jobs:
 
   lore-test:
     needs: changes
-    if: needs.changes.outputs.lore == 'true'
+    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -639,7 +662,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   lore-test-postgres:
     needs: changes
-    if: needs.changes.outputs.lore == 'true'
+    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     continue-on-error: true
@@ -706,7 +729,7 @@ jobs:
 
   lore-e2e:
     needs: changes
-    if: needs.changes.outputs.lore == 'true'
+    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -737,7 +760,7 @@ jobs:
 
   lore-e2e-cli:
     needs: changes
-    if: needs.changes.outputs.lore == 'true'
+    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -770,7 +793,7 @@ jobs:
   # size checks. A fixed port: the daemon pushes, not this shell.
   lore-docker:
     needs: changes
-    if: needs.changes.outputs.lore == 'true'
+    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     defaults:
@@ -810,7 +833,7 @@ jobs:
 
   bay-check:
     needs: changes
-    if: needs.changes.outputs.bay == 'true'
+    if: needs.changes.outputs.bay == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -874,7 +897,7 @@ jobs:
 
   docs-check:
     needs: changes
-    if: needs.changes.outputs.docs == 'true'
+    if: needs.changes.outputs.docs == 'true' && needs.changes.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
