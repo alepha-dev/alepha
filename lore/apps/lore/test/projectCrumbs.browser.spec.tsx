@@ -165,7 +165,6 @@ describe("the leaf crumb of a detail page", () => {
     // "Requirements" climbs back to the tab that lists the page.
     expect(SECTION_HREF_ROUTES.projectPersona).toBe("projectPersonas");
     expect(SECTION_HREF_ROUTES.projectUseCase).toBe("projectUseCases");
-    expect(SECTION_HREF_ROUTES.projectRequirement).toBe("projectRequirements");
   });
 
   it("the test book names itself (#E153)", async ({ expect }) => {

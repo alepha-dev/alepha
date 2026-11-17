@@ -11,16 +11,11 @@ capability. See [Personas](/lore/docs/plan-personas) for turning it on.
 ## The Requirements tab
 
 The **Requirements** tab lists every requirement, numbered `#S1`, `#S2` and so
-on, with its chapter, type, priority, release, what verifies it and its
-status. A click on a column's name sorts the list by it.
+on, grouped by chapter. The counters at the top filter by status; below them,
+**Type**, **Verified by** and **Release** narrow the list further. Each starts
+empty and shows everything.
 
-The rail at the left filters by status, each button counting its
-requirements, and **Source changed** shows the ones whose folio changed. The
-bar above the list holds a search and the **Status** filter; **+** adds
-**Type**, **Verified by** and **Release**. A filter starts empty and shows
-everything. The list remembers its filters, its sort and its columns.
-
-![The Requirements tab](/screenshots/lore/requirements-list-light.png)
+![The Requirements tab with a requirement open](/screenshots/lore/requirements-list-light.png)
 
 | Status             | Means                                                                           |
 | ------------------ | ------------------------------------------------------------------------------- |
@@ -36,22 +31,11 @@ everything. The list remembers its filters, its sort and its columns.
 MoSCoW **Priority** (**Must**, **Should**, **Could**, **Won't**), and its
 **Chapter** and **Paragraph** as the specification numbers them.
 
-A row's menu offers **Edit requirement** and **Delete**, and ticking several
-rows deletes them together.
+### The detail pane
 
-## A requirement's page
-
-Clicking a requirement opens its page. Its identity card shows its status,
-type, priority, chapter, the personas behind it (through its use cases) and
-its release. The tabs:
-
-- **Overview**: its description, and the criteria or the measure verifying
-  it. A criterion is linked to a requirement from the use case.
-- **Impact chain**: the use cases, epics, quests, errors and release it
-  reaches. See [Traceability](/lore/docs/plan-traceability).
-- **Activity**.
-
-![A requirement's page](/screenshots/lore/requirements-requirement-light.png)
+Clicking a requirement opens its pane: the epics covering it, the personas
+behind it (through its use cases), its release, and the criteria verifying
+it. A criterion is linked to a requirement from the use case.
 
 **Release** is filled from the epics covering it: when one of them sits in a
 release, the requirement ships there (**auto**). Changing it moves those epics
@@ -62,9 +46,8 @@ release, it is set **by hand**.
 
 A requirement can name the folio it comes from, and the heading of its
 section. When that section changes, the requirement shows **Source changed**
-and its **Overview** shows what changed. **Update the requirement** takes the
-new text, **Keep** dismisses the change. **Import a specification**, in the
-list's toolbar, opens the
+and the pane shows what changed. **Update the requirement** takes the new
+text, **Keep** dismisses the change. **Import a specification** opens the
 [Verify dialog](/lore/docs/plan-verify) with a prompt that splits a folio into
 requirements.
 
@@ -72,22 +55,17 @@ requirements.
 
 A non-functional requirement is verified by a measure rather than a use case.
 In the form, **Verified by** offers **A web vital**, **A monitor's
-availability**, **A monitor's latency** and **An API's latency**:
+availability** and **A monitor's latency**:
 
 - a web vital (LCP, INP or CLS) at a percentile, for a path pattern of the
   app's sigil (`/checkout/*`);
 - the availability of a monitor, in percent;
-- the latency of a monitor, at a percentile;
-- the latency of the app's server at a percentile (95 by default), for a
-  pattern of its route patterns (`/api/orders/*`, `/api/orders/:id`) and
-  optionally one method. Only successful answers count, so a fast error
-  never makes a route look fast.
+- the latency of a monitor, at a percentile.
 
 Each is read on an app copy (production by default), against a threshold,
 over a window (7 days by default). Lore evaluates every measure once an hour
 and when you save it, and the pane shows the value, since when it holds, and
-the last 14 days. A vital or an API's latency needs Ship's **Track** option,
-a monitor needs
+the last 14 days. A vital needs Ship's **Track** option, a monitor needs
 **Uptime**; without them, or without a point in the window, the requirement
 shows **No data**. These measures need an app built with Alepha, whose sigil
 and monitors report them.
@@ -100,7 +78,6 @@ lore requirement create --statement "The discount is visible before payment" --p
 lore criterion link --usecase U7 --key C2 --requirement S5
 lore requirement set release S5 --release 2.4.0
 lore requirement update S15 --metric-kind latency --metric-threshold 300
-lore requirement update S16 --metric-kind api --metric-path "/api/orders/*" --metric-threshold 400
 ```
 
 See [The lore CLI](/lore/docs/reference-cli).

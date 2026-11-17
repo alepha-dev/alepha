@@ -23,7 +23,6 @@ import {
 
 import { RequirementsPromptDefaults } from "../../../api/schemas/RequirementsPromptDefaults.ts";
 import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
-import { currentRequirementAtom } from "../atoms/currentRequirementAtom.ts";
 import { currentUseCaseAtom } from "../atoms/currentUseCaseAtom.ts";
 import { REQUIREMENTS_ROUTES } from "../components/layout/requirementsTabs.ts";
 import { usePersonaReferences } from "../components/personas/usePersonaReferences.ts";
@@ -160,17 +159,6 @@ export class RequirementsShell {
           : undefined;
       },
     });
-    // A requirement's page reads "Acme > Requirements > #S15".
-    this.shell.registerCrumb({
-      order: 54,
-      reads: [currentRequirementAtom],
-      crumb: (ctx) => {
-        const requirement = ctx.get(currentRequirementAtom);
-        return ctx.routeName === "projectRequirement" && requirement
-          ? { label: formatReference("requirement", requirement.number) }
-          : undefined;
-      },
-    });
     // The test book names itself: "Acme > Requirements > Test book".
     this.shell.registerCrumb({
       order: 55,
@@ -216,18 +204,18 @@ export class RequirementsShell {
       ),
       useReferences: useUseCaseReferences,
     });
-    // `[[#S15]]`: a requirement.
+    // `[[#S15]]`: a requirement, which opens the Requirements tab on it.
     this.references.register({
       kind: "requirement",
       order: 62,
       brokenKey: "folios.wikilink.broken.requirementNotFound",
       href: (projectSlug, ref) =>
-        `/${projectSlug}/requirements/requirement/${ref.number}`,
+        `/${projectSlug}/requirements?requirement=${ref.number}`,
       match: (path, projectSlug) =>
         RequirementsShell.matchPage(
           path,
           projectSlug,
-          /^\/([^/]+)\/requirements\/requirement\/(\d+)(?:[#?]|$)/,
+          /^\/([^/]+)\/requirements\?requirement=(\d+)(?:[#&]|$)/,
         ),
       preview: lazyPart(
         () =>

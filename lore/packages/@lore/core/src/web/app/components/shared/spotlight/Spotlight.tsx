@@ -249,13 +249,14 @@ const Spotlight = (): ReactElement => {
           ? ("projectPersona" as never)
           : hit.kind === "usecase"
             ? ("projectUseCase" as never)
-            : ("projectRequirement" as never),
+            : ("projectRequirements" as never),
         (hit.kind === "persona"
           ? { params: { ...params, personaNumber: String(hit.shortId) } }
           : hit.kind === "usecase"
             ? { params: { ...params, useCaseNumber: String(hit.shortId) } }
             : {
-                params: { ...params, requirementNumber: String(hit.shortId) },
+                params,
+                query: { requirement: String(hit.shortId) },
               }) as never,
       );
       return;

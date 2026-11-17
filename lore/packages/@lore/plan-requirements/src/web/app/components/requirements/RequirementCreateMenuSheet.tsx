@@ -22,11 +22,9 @@ const RequirementCreateMenuSheet = (props: ProjectCreateDialogProps) => {
       onSubmit={(requirement) => {
         props.onOpenChange(false);
         queries.invalidate(["requirements", props.project.id]);
-        void router.push("projectRequirement", {
-          params: {
-            projectSlug: props.project.slug,
-            requirementNumber: String(requirement.number),
-          },
+        void router.push("projectRequirements", {
+          params: { projectSlug: props.project.slug },
+          query: { requirement: String(requirement.number) },
         });
       }}
     />

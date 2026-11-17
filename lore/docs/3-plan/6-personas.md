@@ -15,8 +15,8 @@ deletes nothing.
 **Requirements** in the sidebar opens a page with three tabs: **Requirements**,
 **Use cases** and **Personas**. The **Personas** tab draws one card per
 persona, numbered `#A1`, `#A2` and so on, with its kind, its role and the
-first line of its goals. The bar at the top holds a search and a kind filter,
-which shows **Human**, **System** or **Agent** personas only.
+first line of its goals. The kind filter at the top shows **Human**,
+**System** or **Agent** personas only.
 
 ![The Personas tab](/screenshots/lore/requirements-personas-light.png)
 

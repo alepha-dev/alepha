@@ -1,41 +1,25 @@
-import {
-  Button,
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  FilterSlot,
-} from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
+import { Button, Segmented } from "@alepha/ui";
 import { canInProject, currentProjectAtom, type I18n } from "@lore/core/web";
-import { z } from "alepha";
 import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
-import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Plus, Search, SearchX, Shapes, UsersRound } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
 import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
-import { personaKindSchema } from "../../../../api/schemas/personaKindSchema.ts";
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import PersonaCard from "../personas/PersonaCard.tsx";
 import { PERSONA_KIND_LABEL_KEYS } from "../personas/personaKindLabels.ts";
 import PersonaSheet from "../personas/PersonaSheet.tsx";
-import GuideLink from "../shared/GuideLink.tsx";
-import ListSkeleton from "../shared/ListSkeleton.tsx";
 import WarningNotice from "../shared/WarningNotice.tsx";
 
 /**
- * The Personas tab of the Requirements page (#E153): one card per persona
- * under a filter bar shaped like every other list's (a search, a kind filter
- * that starts empty, New persona at its end), and the "To cover" notice
- * (personas with no passing use case, use cases never run). A viewer reads
- * it and sees no write control.
+ * The Personas tab of the Requirements page (#E153): the "To cover" banner
+ * (personas with no passing use case, use cases never run), one card per
+ * persona, a kind filter and New persona. A viewer reads it and sees no
+ * write control.
  */
 const PersonasTab = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -68,28 +52,12 @@ const PersonasTab = () => {
     [useCaseApi, projectId],
   );
 
-  const filters = useForm({
-    id: "persona-filters",
-    schema: z.object({
-      search: z.text().optional(),
-      kind: personaKindSchema.optional(),
-    }),
-    handler: async () => {},
-  });
-  const values = useFormValues(filters);
+  const [kind, setKind] = useState<"all" | "human" | "system" | "agent">("all");
 
   if (!project) return null;
-  // The first load only: a refetch keeps the cards on screen.
-  if (!personas.data) return <ListSkeleton />;
 
-  const needle = (values.search ?? "").trim().toLowerCase();
-  const rows = personas.data.filter(
-    (it) =>
-      (!values.kind || it.kind === values.kind) &&
-      (!needle ||
-        `a${it.number} ${it.name} ${it.role ?? ""} ${it.goals}`
-          .toLowerCase()
-          .includes(needle)),
+  const rows = (personas.data ?? []).filter(
+    (it) => kind === "all" || it.kind === kind,
   );
   const canWrite = canInProject(project, "persona:write");
   const cases = useCases.data ?? [];
@@ -98,51 +66,27 @@ const PersonasTab = () => {
       .filter((it) => it.state === "passed")
       .flatMap((it) => it.actors.map((a) => a.personaId)),
   );
-  const uncovered = personas.data.filter((it) => !passing.has(it.id)).length;
+  const uncovered = (personas.data ?? []).filter(
+    (it) => !passing.has(it.id),
+  ).length;
   const neverRun = cases.filter((it) => it.state === "never_run").length;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="chrome flex flex-wrap items-center gap-2 border-b p-2">
-        <form
-          {...filters.props}
-          className="flex flex-1 flex-wrap items-center gap-2"
-        >
-          <FilterSlot>
-            <Control
-              input={filters.input.search}
-              label=""
-              icon={Search}
-              placeholder={tr("requirements.persona.filter.search")}
-              inputProps={{
-                className: "h-7 text-sm",
-                "aria-label": tr("requirements.persona.filter.search"),
-                "data-testid": "persona-search",
-              }}
-            />
-          </FilterSlot>
-          <FilterSlot>
-            <Control
-              input={filters.input.kind}
-              label=""
-              select
-              size="sm"
-              clearable
-              icon={Shapes}
-              placeholder={tr("requirements.persona.filter.anyKind")}
-              clearLabel={tr("requirements.persona.filter.anyKind")}
-              triggerClassName="w-full"
-              inputProps={{
-                "aria-label": tr("requirements.persona.field.kind"),
-                "data-testid": "persona-kind",
-              }}
-              items={personaKindSchema.options.map((value) => ({
-                value,
-                label: tr(PERSONA_KIND_LABEL_KEYS[value]),
-              }))}
-            />
-          </FilterSlot>
-        </form>
+      <div className="chrome flex flex-wrap items-center gap-3 border-b p-3">
+        <Segmented
+          size="sm"
+          value={kind}
+          onChange={(value) => setKind(value as typeof kind)}
+          options={[
+            { value: "all", label: tr("requirements.persona.filter.all") },
+            ...(["human", "system", "agent"] as const).map((value) => ({
+              value,
+              label: tr(PERSONA_KIND_LABEL_KEYS[value]),
+            })),
+          ]}
+        />
+        <div className="flex-1" />
         {canWrite ? (
           <Button onClick={() => setCreating(true)}>
             <Plus className="size-4" />
@@ -150,11 +94,9 @@ const PersonasTab = () => {
           </Button>
         ) : null}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        {useCases.data &&
-        personas.data.length > 0 &&
-        (uncovered > 0 || neverRun > 0) ? (
-          <WarningNotice data-testid="to-cover-banner">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {useCases.data && personas.data && (uncovered > 0 || neverRun > 0) ? (
+          <WarningNotice className="mb-4" data-testid="to-cover-banner">
             {tr("requirements.persona.toCover", {
               args: [
                 tr(
@@ -173,42 +115,14 @@ const PersonasTab = () => {
             })}
           </WarningNotice>
         ) : null}
-        {rows.length === 0 ? (
-          personas.data.length === 0 ? (
-            <Empty data-testid="personas-empty">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <UsersRound />
-                </EmptyMedia>
-                <EmptyTitle>
-                  {tr("requirements.persona.empty.title")}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {tr("requirements.persona.empty")}
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                {canWrite ? (
-                  <Button onClick={() => setCreating(true)}>
-                    <Plus className="size-4" />
-                    {tr("project.menu.create-persona")}
-                  </Button>
-                ) : null}
-                <GuideLink guide="plan-personas" />
-              </EmptyContent>
-            </Empty>
-          ) : (
-            <Empty data-testid="personas-no-match">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <SearchX />
-                </EmptyMedia>
-                <EmptyDescription>
-                  {tr("requirements.persona.emptyFilter")}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )
+        {personas.data && rows.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            {tr(
+              personas.data.length === 0
+                ? "requirements.persona.empty"
+                : "requirements.persona.emptyFilter",
+            )}
+          </p>
         ) : (
           <div
             className="grid gap-4"
