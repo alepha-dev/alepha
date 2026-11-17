@@ -27,7 +27,13 @@ unreadable file under /proc drops that field and leaves the rest. Absent
 rather than zero, for the reason Sample's doc gives, and the JSON tags carry
 that through to the wire, where the whole block is optional too.
 
-BayVersion is the exception: the gauge never reads it. `version` is a package
+UpgradeMode says whether this Bay can take an `upgrade` from Lore: `handoff`
+(under systemd, with the handoff drop-in in effect), `restart` (under systemd
+without it) or `manual` (not under systemd). Only `handoff` takes the command.
+A Bay older than the verb sends none, which is how Lore knows it cannot take
+it: no version number decides.
+
+BayVersion and UpgradeMode are the exception: the gauge never reads them. `version` is a package
 main variable stamped at link time and internal/connector cannot import main,
 so it enters as Client.Version and is stamped on the frame.
 */
@@ -40,6 +46,7 @@ type Host struct {
 	Load1          *float64 `json:"load1,omitempty"`
 	UptimeSeconds  *uint64  `json:"uptimeSeconds,omitempty"`
 	BayVersion     string   `json:"bayVersion,omitempty"`
+	UpgradeMode    string   `json:"upgradeMode,omitempty"`
 }
 
 // Empty reports a Host that carries no reading at all, which is what a

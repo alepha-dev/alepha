@@ -103,6 +103,7 @@ func (c *Client) pushInventory(ctx context.Context) {
 	// Stamped here rather than read by the gauge: `version` is a package main
 	// variable and internal/connector cannot import main.
 	inv.Host.BayVersion = c.Version
+	inv.Host.UpgradeMode = c.UpgradeMode
 	if err := c.Send(inv); err != nil {
 		c.Log.Debug("inventory not sent", "err", err)
 	}

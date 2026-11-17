@@ -243,6 +243,8 @@ func (s *server) connectorLoop(ctx context.Context) {
 		Handler: acts,
 		Gauge:   connector.HostGauge(s.root),
 		Version: version,
+		// What the handoff worked out at boot (handoff.go).
+		UpgradeMode: s.upgradeMode,
 	}
 	// The executor tells the connection when something it did is worth
 	// reporting. One direction only: the client asks for an inventory, the

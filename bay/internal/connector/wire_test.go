@@ -90,6 +90,17 @@ func TestWireServerFramesDecode(t *testing.T) {
 		}
 	}
 
+	// The upgrade names a release by its version and nothing else: no
+	// instance, no artifact, no address to fetch from.
+	upgrade, err := decodeFrame(fixture(t, "command-upgrade.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upgrade.Kind != "upgrade" || upgrade.Version != "0.40.0" ||
+		upgrade.App != "" || upgrade.Environment != "" || upgrade.Artifact != nil {
+		t.Fatalf("upgrade decoded wrong: %+v", upgrade)
+	}
+
 	// The one command that carries an ask. Bounded numbers and a bounded
 	// pattern, and still no path and no argument list.
 	logs, err := decodeFrame(fixture(t, "command-logs.json"))
@@ -196,6 +207,7 @@ func sampleInventoryFrame() Inventory {
 			Load1:          ptr(0.52),
 			UptimeSeconds:  ptr(uint64(1234567)),
 			BayVersion:     "0.31.0",
+			UpgradeMode:    "handoff",
 		},
 		Apps: []InventoryApp{
 			{
