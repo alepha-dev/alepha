@@ -2449,6 +2449,12 @@ export default {
     "Ce que fait la vérification. Modifier la change ; sa cible suit l'adresse.",
   "app.settings.monitor.anySuccess": "Tout 2xx",
   "app.settings.url.saved": "Adresse enregistrée",
+  "app.settings.domains.title": "Domaines",
+  "app.settings.domains.description":
+    "Les hôtes sur lesquels cette copie répond, séparés par des virgules, le premier étant le principal. Appliqués au prochain déploiement. Vide, ils restent ceux de la machine.",
+  "app.settings.domains.save": "Enregistrer",
+  "app.settings.domains.saved":
+    "Domaines enregistrés : déployez pour les appliquer",
   "app.settings.host.title": "Hôte",
   "app.settings.host.description":
     "Où cette copie est déployée. Le choisir est un fait à propos de la copie ; y déployer viendra plus tard.",

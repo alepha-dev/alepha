@@ -452,6 +452,48 @@ export class AppService {
   }
 
   /**
+   * Sets the hosts a Bay copy answers on, canonical first, or clears them.
+   *
+   * `null` or an empty list clears the list, handing the copy's domains back
+   * to Bay, which keeps what it serves. Each entry is a bare host (no
+   * scheme, port or path), lowercased; duplicates keep the first. Applied on
+   * the copy's next deploy to its Bay host (#Q3796).
+   */
+  async setDomains(
+    instance: AppInstance,
+    raw: string[] | null,
+  ): Promise<AppInstance> {
+    const domains = raw?.length ? this.readDomains(raw) : null;
+    await this.instances.updateById(instance.id, { domains });
+    return { ...instance, domains: domains ?? undefined };
+  }
+
+  /**
+   * Reads a list of bare hosts, or refuses it: what Bay's connector checks
+   * too, said here first so a bad entry is refused before any deploy.
+   */
+  readDomains(raw: string[]): string[] {
+    const label = "[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?";
+    const host = new RegExp(`^${label}(\\.${label})+$`);
+    const out: string[] = [];
+    for (const entry of raw) {
+      const domain = entry.trim().toLowerCase().replace(/\.$/, "");
+      if (domain.length > 253 || !host.test(domain)) {
+        throw new BadRequestError(
+          `"${entry}" is not a host name: pass the host alone, like app.example.com, with no scheme, port or path`,
+        );
+      }
+      if (!out.includes(domain)) {
+        out.push(domain);
+      }
+    }
+    if (out.length > 20) {
+      throw new BadRequestError("A copy answers on at most 20 domains");
+    }
+    return out;
+  }
+
+  /**
    * Reads the operator's app URL, or refuses it.
    *
    * `null` for blank, which is what clears the override and hands the answer

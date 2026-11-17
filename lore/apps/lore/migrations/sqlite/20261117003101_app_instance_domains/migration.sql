@@ -1,0 +1,1 @@
+ALTER TABLE `app_instances` ADD `domains` text;

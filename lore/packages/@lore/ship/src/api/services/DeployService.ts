@@ -229,6 +229,9 @@ export class DeployService {
           environment: instance.env,
           ...(segment ? { project: segment } : {}),
           artifact: { id: artifact.id, sha256: artifact.sha256, size },
+          // The copy's domains as set from Lore, sent on every deploy so Bay
+          // converges on them; none set leaves Bay's own (#Q3796).
+          ...(instance.domains?.length ? { domains: instance.domains } : {}),
         },
       },
       input.createdBy,

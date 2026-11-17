@@ -397,6 +397,63 @@ describe("lore apps deploy", () => {
     expect(started[0].body).toEqual({ tag: "0.28.0" });
   });
 
+  it("sets a Bay copy's domains with --domain before deploying (#Q3796)", async () => {
+    const { alepha, cli, command, started, printed } = create(
+      {
+        production: {
+          id: "inst-1",
+          hostId: "bay-1",
+          host: { type: "bay" },
+        } as { id: string; hostId: string },
+      },
+      [{ id: "bay-1", acceptedRuntimes: ["node"] }],
+    );
+    const patched: Array<Record<string, unknown>> = [];
+    const apps = (
+      alepha.inject(LoreDeployer) as unknown as {
+        apps: Record<string, unknown>;
+      }
+    ).apps;
+    apps.updateApp = async ({ body }: { body: Record<string, unknown> }) => {
+      patched.push(body);
+      return { id: "inst-1", hostId: "bay-1", host: { type: "bay" }, ...body };
+    };
+
+    await cli.run(command.deploy, {
+      root: "/project",
+      argv: "--env production --tag 1.0.0 --domain app.example.com --domain www.example.com",
+    });
+
+    expect(patched).toEqual([
+      { domains: ["app.example.com", "www.example.com"] },
+    ]);
+    expect(started).toHaveLength(1);
+    expect(printed).toContain(
+      "docs/production answers on app.example.com, www.example.com from this deploy",
+    );
+  });
+
+  it("refuses --domain for a copy that is not on a Bay host, before deploying", async () => {
+    const { cli, command, started } = create(
+      {
+        production: {
+          id: "inst-1",
+          hostId: "cf-1",
+          host: { type: "cloudflare" },
+        } as { id: string; hostId: string },
+      },
+      [{ id: "cf-1", acceptedRuntimes: ["workerd"] }],
+    );
+
+    await expect(
+      cli.run(command.deploy, {
+        root: "/project",
+        argv: "--env production --tag 1.0.0 --domain app.example.com",
+      }),
+    ).rejects.toThrow("Bay host");
+    expect(started).toEqual([]);
+  });
+
   it("refuses a --tag with no artifact rather than building one", async () => {
     // The server is what knows; the client's job is to not paper over it by
     // falling back to a build, which is the one recovery that looks helpful.
@@ -445,9 +502,11 @@ describe("lore apps deploy", () => {
     // ⚠️ The whole surface, so `--host` cannot be added without this
     // failing. `--sigil` is here because it names a credential Lore mints for
     // this copy; a host is somebody's cloud account, which is the thing a
-    // client must never get to choose.
+    // client must never get to choose. `--domain` names the hostnames the
+    // copy answers on, on the host it already has (#Q3796), never a host.
     expect(Object.keys(command.deploy.flags?.shape ?? {}).sort()).toEqual([
       "app",
+      "domain",
       "env",
       "project",
       "sigil",

@@ -237,6 +237,67 @@ describe("an app deploy to a Bay host", () => {
     expect(copy?.url).toBe("https://minpricing.example.com");
   });
 
+  it("sends the domains set from Lore with the deploy, and takes the canonical one as the copy's address (#Q3796)", async ({
+    expect,
+  }) => {
+    const a = await arrange();
+    const update = (domains: string[] | null) =>
+      alepha.inject(AppController).updateApp.fetch(
+        {
+          params: {
+            projectId: a.w.project.id,
+            app: "minpricing",
+            env: "production",
+          },
+          body: { domains },
+        },
+        { user: a.w.user },
+      );
+
+    await expect(update(["https://app.example.com"])).rejects.toThrow(
+      "is not a host name",
+    );
+    const saved = await update([
+      " App.Example.com ",
+      "www.example.com",
+      "app.example.com",
+    ]);
+    expect(saved.data.domains).toEqual(["app.example.com", "www.example.com"]);
+
+    // A copy that already had an address follows the canonical domain.
+    await a.w.rows.instances.updateById(a.instance.id, {
+      url: "https://minpricing.bay.example.com",
+    });
+    const row = await deploy(a);
+    const command = await a.w.rows.commands.getOne({
+      where: { id: { eq: row.commandId ?? "" } },
+    });
+    expect(alepha.inject(HostCommandService).frameOf(command).domains).toEqual([
+      "app.example.com",
+      "www.example.com",
+    ]);
+    await alepha.inject(DeployService).run(row);
+    await alepha.inject(HostCommandService).ack(a.hostId, {
+      type: "ack",
+      id: row.commandId,
+      status: "done",
+      url: "https://app.example.com/",
+    } as never);
+    const copy = await a.w.rows.instances.findById(a.instance.id);
+    expect(copy?.url).toBe("https://app.example.com");
+
+    // Cleared, the next deploy sends none and the machine keeps its own.
+    const cleared = await update([]);
+    expect(cleared.data.domains).toBeUndefined();
+    const next = await deploy(a);
+    const nextCommand = await a.w.rows.commands.getOne({
+      where: { id: { eq: next.commandId ?? "" } },
+    });
+    expect(
+      alepha.inject(HostCommandService).frameOf(nextCommand),
+    ).not.toHaveProperty("domains");
+  });
+
   it("hands the machine that copy's own variables", async ({ expect }) => {
     const a = await arrange();
     const row = await deploy(a);

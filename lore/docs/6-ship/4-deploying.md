@@ -97,6 +97,32 @@ in Lore or points at another host. A copy whose app or environment was
 renamed after its first Bay deploy is refused too, instead of being started
 again as a new, empty instance: rename it back.
 
+### The domains a Bay copy answers on
+
+On its first deploy a Bay copy answers on a subdomain of the machine's base
+domain. To serve it on your own domains instead, set them from Lore, with no
+SSH to the machine:
+
+```bash
+lore deploy --env production --domain app.example.com --domain www.example.com
+```
+
+Each `--domain` is a bare host (no scheme, port or path); the first one is
+canonical, and it becomes the copy's address in the Apps table and in what the
+deploy prints. Lore stores the list on the copy and sends it with this deploy
+and every one after it, and the machine replaces the domains it serves with
+it, requesting a certificate for each new one. A later `lore deploy` without
+`--domain` keeps the list.
+
+The copy's **Settings** tab has the same list under **Domains**, for a member
+who can manage apps. Saving there changes nothing until the copy's next
+deploy: redeploy its current build to apply it at once. Clearing the field
+hands the domains back to the machine, which keeps whatever it already
+serves.
+
+Point each domain's DNS at the machine before deploying: it cannot get a
+certificate for a host that does not resolve to it.
+
 ### Telemetry wires itself
 
 If the app includes the reporting module (see

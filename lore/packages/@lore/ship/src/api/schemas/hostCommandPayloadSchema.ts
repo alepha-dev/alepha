@@ -90,6 +90,13 @@ export const hostCommandPayloadSchema = z.object({
     .optional(),
   baseDomain: z.string().max(253).optional(),
   /**
+   * On a `deploy`: the hosts the copy answers on, canonical first, from the
+   * copy's own `domains`. Present replaces the machine's list; absent keeps
+   * it, which is what Bay does for a copy whose domains Lore never set
+   * (#Q3795, #Q3796).
+   */
+  domains: z.array(z.string().min(1).max(253)).max(20).optional(),
+  /**
    * On a `deploy` into a stack member: the app service of {@link stack} the
    * artifact goes into, alone and blue/green (#Q2695). Bay names the member
    * `<stack>.<service>`.
