@@ -389,7 +389,9 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       });
       const notifyEnabled = await persistence.rules.updateById(
         notificationRule.id,
-        { enabled: true },
+        {
+          enabled: true,
+        },
       );
       const notificationContext = await contexts.source(
         project.id,

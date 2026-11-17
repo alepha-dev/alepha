@@ -37,9 +37,7 @@ describe("the login page's OAuth bridge", () => {
   });
 
   const bridged = (to: string) =>
-    `/auth/login?redirect=${encodeURIComponent(
-      `/oauth/continue?to=${encodeURIComponent(to)}`,
-    )}`;
+    `/auth/login?redirect=${encodeURIComponent(`/oauth/continue?to=${encodeURIComponent(to)}`)}`;
 
   it("sends a device approval back to the device page after sign-in", async ({
     expect,

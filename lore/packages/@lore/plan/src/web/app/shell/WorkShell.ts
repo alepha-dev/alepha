@@ -194,7 +194,9 @@ export class WorkShell {
         {
           route: "projectSettingsPrompts",
           labelKey: "project.settings.tab.prompts",
-          option: "agentPrompts",
+          // Requirements' six kinds are edited here too, with `agentPrompts`
+          // off (#E153, answer 74).
+          options: ["agentPrompts", "requirements"],
         },
       ],
     });

@@ -270,7 +270,9 @@ export const appInstances = $entity({
     stackEnvironmentId: db.ref(
       z.uuid().optional(),
       () => stackEnvironments.cols.id,
-      { onDelete: "set null" },
+      {
+        onDelete: "set null",
+      },
     ),
   }),
   indexes: [

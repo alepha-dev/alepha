@@ -184,7 +184,9 @@ export class StackComposeParser {
     const out: Pick<
       StackModelService,
       "app" | "port" | "tcp" | "tls" | "runtime" | "backup"
-    > & { routes?: string[] } = {};
+    > & {
+      routes?: string[];
+    } = {};
     if (!raw) {
       return out;
     }

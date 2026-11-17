@@ -104,9 +104,7 @@ const KanbanCardSignals = (props: KanbanCardSignalsProps) => {
         <span
           data-testid="kanban-card-due"
           data-overdue={due.overdue}
-          className={`flex items-center gap-0.5 ${
-            due.overdue ? "text-red-500" : "text-amber-500"
-          }`}
+          className={`flex items-center gap-0.5 ${due.overdue ? "text-red-500" : "text-amber-500"}`}
         >
           <CalendarClock className="size-3" />
           {l(quest.dueAt as string, { date: due.dateFormat })}

@@ -41,7 +41,9 @@ describe("lore host lend and unlend", () => {
     const command = alepha.inject(HostCommand);
     Object.assign(
       alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
-      { projects: { getProjectBySlug: async () => ({ id: 7 }) } },
+      {
+        projects: { getProjectBySlug: async () => ({ id: 7 }) },
+      },
     );
     Object.assign(
       alepha.inject(LoreHostResolver) as unknown as Record<string, unknown>,

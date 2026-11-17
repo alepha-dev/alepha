@@ -53,7 +53,9 @@ export const useAppEnvironmentActions = (target: {
             variable
               ? "app.environment.edit.title"
               : "app.environment.replace.title",
-            { args: [item.key] },
+            {
+              args: [item.key],
+            },
           ),
           description: variable
             ? undefined

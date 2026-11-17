@@ -212,9 +212,7 @@ describe("ProjectEpics - the status filter", () => {
       </AlephaContext.Provider>,
     );
     await view.findByRole("link", {
-      name: `#E${(epics ?? [])[0]?.number ?? 1} - ${
-        (epics ?? [])[0]?.title ?? "Draft epic"
-      }`,
+      name: `#E${(epics ?? [])[0]?.number ?? 1} - ${(epics ?? [])[0]?.title ?? "Draft epic"}`,
     });
     return view;
   };

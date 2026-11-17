@@ -686,7 +686,10 @@ describe("a deployed copy's environment", () => {
       await set(w, "B_KEY", "value-two-here");
 
       expect(await alepha.inject(AppSecretService).open(w.instance.id)).toEqual(
-        { A_KEY: "value-one-here", B_KEY: "value-two-here" },
+        {
+          A_KEY: "value-one-here",
+          B_KEY: "value-two-here",
+        },
       );
     });
 

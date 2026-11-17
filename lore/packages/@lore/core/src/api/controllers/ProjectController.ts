@@ -305,7 +305,9 @@ export class ProjectController {
           )
           .refine(
             (list) => new Set(list.map((it) => it.key)).size === list.length,
-            { message: "Each capability may be listed only once." },
+            {
+              message: "Each capability may be listed only once.",
+            },
           )
           .optional(),
       }),
@@ -417,7 +419,11 @@ export class ProjectController {
         await this.organizations.deleteById(organization.id);
         this.log.error(
           "createProject: owner or capability write failed, project removed by hand",
-          { projectId: project.id, userId: user.id, error },
+          {
+            projectId: project.id,
+            userId: user.id,
+            error,
+          },
         );
         throw error;
       }

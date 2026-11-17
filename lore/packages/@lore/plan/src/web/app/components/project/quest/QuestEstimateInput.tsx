@@ -146,7 +146,10 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
                 // in rather than titlecased off the enum keys - which printed
                 // "Hours" in French next to a row reading "heures".
                 items={(Object.keys(ESTIMATE_UNITS) as EstimateUnit[]).map(
-                  (u) => ({ value: u, label: unitLabel(u, 2) }),
+                  (u) => ({
+                    value: u,
+                    label: unitLabel(u, 2),
+                  }),
                 )}
               />
             </div>

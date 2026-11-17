@@ -290,9 +290,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
       {/* Column body — scrollable */}
       <div
         ref={setNodeRef}
-        className={`flex-1 overflow-y-auto transition-colors ${
-          isOver ? "bg-green-500/10" : ""
-        }`}
+        className={`flex-1 overflow-y-auto transition-colors ${isOver ? "bg-green-500/10" : ""}`}
       >
         <div className="flex min-h-[100px] flex-col gap-0.5 p-1">
           {props.onCompose && (

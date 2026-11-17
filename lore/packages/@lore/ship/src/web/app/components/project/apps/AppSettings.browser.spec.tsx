@@ -230,7 +230,9 @@ describe("the instance Settings tab", () => {
     // the only "no", a wrong pin could never be taken off.
     const { links, view } = await mount(
       anInstance({ url: "https://wrong.example" }),
-      { updateApp: anInstance() },
+      {
+        updateApp: anInstance(),
+      },
     );
 
     const field =

@@ -416,7 +416,9 @@ describe("ImageRegistryClient", () => {
       ).resolves.toMatchObject({ runtime: "node" });
       await expect(
         client.read(REFERENCE, { digest: "A".repeat(64) }),
-      ).resolves.toMatchObject({ runtime: "node" });
+      ).resolves.toMatchObject({
+        runtime: "node",
+      });
     });
 
     it("names an unreachable registry rather than throwing a fetch error", async ({

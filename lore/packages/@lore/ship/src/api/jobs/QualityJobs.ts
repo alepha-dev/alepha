@@ -66,7 +66,9 @@ export class QualityJobs {
       if (removed > 0) {
         this.log.info(
           `Pruned ${removed} quality run(s) past the cap of ${cap}`,
-          { projects: projects.length },
+          {
+            projects: projects.length,
+          },
         );
       }
     },

@@ -10,12 +10,19 @@ import {
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { FileText, History, Pencil, Trash2 } from "lucide-react";
+import {
+  ClipboardCheck,
+  FileText,
+  History,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
 import { currentPersonaAtom } from "../../atoms/currentPersonaAtom.ts";
+import VerifyDialog from "../verify/VerifyDialog.tsx";
 import PersonaAside from "./PersonaAside.tsx";
 import PersonaSheet from "./PersonaSheet.tsx";
 
@@ -42,6 +49,7 @@ const PersonaPage = (props: PersonaPageProps) => {
   const [persona, setPersona] = useState(props.persona);
   const [tab, setTab] = useState<TabKey>("overview");
   const [editing, setEditing] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const remove = useAction<[], boolean>(
     {
@@ -107,27 +115,33 @@ const PersonaPage = (props: PersonaPageProps) => {
       tab={tab}
       onTabChange={(value) => setTab(value as TabKey)}
       actions={
-        canWrite ? (
-          <>
-            <Button
-              variant="outlined"
-              size="sm"
-              onClick={() => setEditing(true)}
-            >
-              <Pencil className="size-4" />
-              {tr("requirements.persona.edit")}
-            </Button>
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={remove.loading}
-              onClick={() => void remove.run()}
-            >
-              <Trash2 className="size-4" />
-              {tr("requirements.persona.delete")}
-            </Button>
-          </>
-        ) : undefined
+        <>
+          <Button size="sm" onClick={() => setVerifying(true)}>
+            <ClipboardCheck className="size-4" />
+            {tr("requirements.verify")}
+          </Button>
+          {canWrite ? (
+            <>
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil className="size-4" />
+                {tr("requirements.persona.edit")}
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={remove.loading}
+                onClick={() => void remove.run()}
+              >
+                <Trash2 className="size-4" />
+                {tr("requirements.persona.delete")}
+              </Button>
+            </>
+          ) : null}
+        </>
       }
     >
       {tab === "overview" ? (
@@ -152,6 +166,11 @@ const PersonaPage = (props: PersonaPageProps) => {
         />
       )}
 
+      <VerifyDialog
+        subject={{ kind: "persona", number: persona.number }}
+        open={verifying}
+        onOpenChange={setVerifying}
+      />
       <PersonaSheet
         projectId={project.id}
         persona={persona}

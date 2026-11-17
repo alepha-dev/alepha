@@ -349,7 +349,10 @@ export class AutomationService {
               user,
               enabled ? "enable" : "disable",
               id,
-              { revision: rule.revision + 1, authorUserId: rule.authorUserId },
+              {
+                revision: rule.revision + 1,
+                authorUserId: rule.authorUserId,
+              },
             ),
             ...(extension?.statements ?? []),
           ],

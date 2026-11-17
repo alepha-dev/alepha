@@ -136,14 +136,18 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
       if (props.value?.value === 0) return tr("dashboard.footer.held.none");
       return tr(
         open === 1 ? "dashboard.footer.held.one" : "dashboard.footer.held",
-        { args: [String(open)] },
+        {
+          args: [String(open)],
+        },
       );
     }
     if (props.metric === "openErrors") {
       const apps = Number(detail.apps ?? 0);
       return tr(
         apps === 1 ? "dashboard.footer.errors.one" : "dashboard.footer.errors",
-        { args: [String(detail.occurrences ?? 0), String(apps)] },
+        {
+          args: [String(detail.occurrences ?? 0), String(apps)],
+        },
       );
     }
     if (props.metric === "untriagedFeedback") {

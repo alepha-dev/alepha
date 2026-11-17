@@ -120,7 +120,9 @@ describe("stack MCP tools", () => {
     });
     await w.rows.environments.updateById(
       (await w.rows.environments.findMany({}))[0].id,
-      { revision: 1 },
+      {
+        revision: 1,
+      },
     );
     const got = await call(w.user, "stack_get", {
       ...project(w),

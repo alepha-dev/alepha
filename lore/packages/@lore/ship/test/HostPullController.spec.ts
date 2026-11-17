@@ -725,7 +725,9 @@ const pullAppSecret = (
 ): Promise<Response> =>
   fetch(
     `${ctx.base}/estates/commands/${commandId}/app-secret${withValue ? "?value=1" : ""}`,
-    { headers: { authorization: `Bearer ${secret}` } },
+    {
+      headers: { authorization: `Bearer ${secret}` },
+    },
   );
 
 const sha256Hex = (value: string): string =>

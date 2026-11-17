@@ -132,7 +132,9 @@ export class ProjectMergeTables {
           statements.push(
             repository.deleteStatement(
               { [idField]: { eq: row[idField] } } as never,
-              { force: true },
+              {
+                force: true,
+              },
             ),
           );
         } else {

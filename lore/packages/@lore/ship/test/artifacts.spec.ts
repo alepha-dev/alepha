@@ -565,7 +565,9 @@ describe("artifacts", () => {
       const notGzip = new File(
         [tar({ "manifest.json": "{}" }) as BlobPart],
         "my-app.tar.gz",
-        { type: "application/gzip" },
+        {
+          type: "application/gzip",
+        },
       );
 
       // ⚠️ 400, not 500. The inflate failure surfaces on the first read of the

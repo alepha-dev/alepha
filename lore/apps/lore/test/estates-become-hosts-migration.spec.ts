@@ -172,7 +172,10 @@ describe("estates become hosts migration", () => {
     });
     expect(
       one(db, "SELECT template, category FROM notification_inbox"),
-    ).toEqual({ template: "lore:host:overdue", category: "hosts" });
+    ).toEqual({
+      template: "lore:host:overdue",
+      category: "hosts",
+    });
     expect(
       JSON.parse(
         one(db, "SELECT muted_categories FROM notification_preferences")
@@ -184,6 +187,9 @@ describe("estates become hosts migration", () => {
     );
     expect(
       JSON.parse(one(db, "SELECT content FROM parameters").content),
-    ).toEqual({ maxProjectsPerUser: 5, maxCommandsPerHost: 50 });
+    ).toEqual({
+      maxProjectsPerUser: 5,
+      maxCommandsPerHost: 50,
+    });
   });
 });

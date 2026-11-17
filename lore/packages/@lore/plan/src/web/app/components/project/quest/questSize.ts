@@ -34,7 +34,10 @@ export const DEFAULT_QUEST_SIZE = 3;
  * and the badges can never drift apart.
  */
 export const QUEST_SIZE_OPTIONS = Object.entries(QUEST_SIZE_LABELS).map(
-  ([value, label]) => ({ value, label }),
+  ([value, label]) => ({
+    value,
+    label,
+  }),
 );
 
 /**

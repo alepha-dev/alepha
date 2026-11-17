@@ -3,12 +3,12 @@ import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AgentPromptKind } from "../../../../../api/schemas/agentPromptKindSchema.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { projectPromptsAtom } from "../../../atoms/projectPromptsAtom.ts";
 import {
   type AgentPromptSubject,
   renderPromptTemplate,
-} from "../../../prompts/renderPromptTemplate.ts";
+} from "../../../../../api/schemas/renderPromptTemplate.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { projectPromptsAtom } from "../../../atoms/projectPromptsAtom.ts";
 import { AgentPromptRegistry } from "../../../registries/AgentPromptRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { capabilityOption } from "../../../services/projectCapabilities.ts";

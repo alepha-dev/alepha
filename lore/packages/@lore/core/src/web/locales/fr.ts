@@ -3215,6 +3215,38 @@ export default {
   "requirements.tab.requirements": "Exigences",
   "requirements.tab.useCases": "Cas d’usage",
   "requirements.tab.personas": "Personas",
+  "requirements.prompt.personaExplore": "Explorer en persona",
+  "requirements.prompt.requirementImport": "Importer une spécification",
+  "requirements.prompt.useCaseDemo": "Préparer une démo",
+  "requirements.prompt.useCaseSpec": "Écrire le test de bout en bout",
+  "requirements.prompt.useCaseTest": "Tester un cas d’usage",
+  "requirements.requirement.import": "Importer une spécification",
+  "requirements.verify": "Vérifier",
+  "requirements.verify.allStale": "Vérifier les périmés ($1)",
+  "requirements.verify.app": "Application",
+  "requirements.verify.as": "Jouer en tant que",
+  "requirements.verify.as.default": "L’acteur principal",
+  "requirements.verify.copied.command": "Commande copiée",
+  "requirements.verify.copied.prompt": "Invite copiée",
+  "requirements.verify.copyCommand": "Copier la commande",
+  "requirements.verify.copyPrompt": "Copier l’invite",
+  "requirements.verify.description":
+    "Lore ne lance aucun agent : copiez l’invite dans le vôtre, ou la commande qui l’affiche. Un critère en échec n’ouvre une erreur qu’une fois terminées toutes les quêtes qui le couvrent et si le projet suit les erreurs ; avant, il apparaît en développement.",
+  "requirements.verify.env": "Environnement",
+  "requirements.verify.folio": "Folio de la spécification (son numéro)",
+  "requirements.verify.folio.needed":
+    "Indiquez le folio de la spécification à importer.",
+  "requirements.verify.mission": "Mission",
+  "requirements.verify.mission.demo": "Démo",
+  "requirements.verify.mission.explore": "Explorer",
+  "requirements.verify.mission.import": "Importer",
+  "requirements.verify.mission.spec": "Écrire le test",
+  "requirements.verify.mission.test": "Tester",
+  "requirements.verify.staleOnly": "Seulement ses cas périmés",
+  "requirements.verify.title.allStale": "Vérifier tous les cas périmés",
+  "requirements.verify.title.import": "Importer une spécification",
+  "requirements.verify.title.persona": "Vérifier $1",
+  "requirements.verify.title.usecase": "Vérifier $1",
   "requirements.run.by.agent": "agent",
   "requirements.run.by.ci": "CI",
   "requirements.run.by.person": "personne",
@@ -3490,6 +3522,35 @@ export default {
   "agentPrompts.settings.description":
     "Le texte que chaque entrée Invites pour agents place dans le presse-papiers. Les invites sont rédigées en anglais à dessein : leurs mots sont les noms des outils qu’un agent appelle.",
   "agentPrompts.settings.legend": "Variables",
+  "agentPrompts.settings.placeholder.steps":
+    "Les étapes du cas d’usage, une par ligne, avec qui joue chacune.",
+  "agentPrompts.settings.placeholder.criteria":
+    "Ses critères d’acceptation, un par ligne, avec leur clé et leur vérification.",
+  "agentPrompts.settings.placeholder.persona":
+    "Le persona joué, comme #A2 Léa (Responsable boutique).",
+  "agentPrompts.settings.placeholder.demoAccount":
+    "L’identifiant de démo de ce persona, jamais un mot de passe.",
+  "agentPrompts.settings.placeholder.app":
+    "Le nom de l’application de la copie, vide pour un passage local.",
+  "agentPrompts.settings.placeholder.env":
+    "L’environnement de la copie, ou local.",
+  "agentPrompts.settings.placeholder.appUrl":
+    "L’URL de la copie, quand Lore la connaît.",
+  "agentPrompts.settings.useCaseTest.title": "Tester un cas d’usage",
+  "agentPrompts.settings.useCaseTest.description":
+    "Vérifier sur un cas d’usage : jouer ses critères, enregistrer un passage, ne rien corriger.",
+  "agentPrompts.settings.useCaseSpec.title": "Écrire le test de bout en bout",
+  "agentPrompts.settings.useCaseSpec.description":
+    "Vérifier sur un cas d’usage : écrire le test étiqueté @U7 pour que la CI enregistre ses passages.",
+  "agentPrompts.settings.personaExplore.title": "Explorer en persona",
+  "agentPrompts.settings.personaExplore.description":
+    "Vérifier sur un persona : test exploratoire à sa place, frictions citées face aux exigences.",
+  "agentPrompts.settings.useCaseDemo.title": "Préparer une démo",
+  "agentPrompts.settings.useCaseDemo.description":
+    "Vérifier sur un cas d’usage : un script de démo et ses données, déposés en folio.",
+  "agentPrompts.settings.requirementImport.title": "Importer une spécification",
+  "agentPrompts.settings.requirementImport.description":
+    "Sur la liste des exigences : découper un folio de spécification en exigences liées à leurs titres.",
   "agentPrompts.settings.placeholder.project":
     "Le titre du projet, celui qu’un appel MCP compare.",
   "agentPrompts.settings.placeholder.slug":

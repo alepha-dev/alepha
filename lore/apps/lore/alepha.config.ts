@@ -322,6 +322,11 @@ export default defineConfig({
         "agentPrompts.settings.questLoop.",
         "agentPrompts.settings.weeklyStatus.",
         "agentPrompts.settings.errorTriage.",
+        "agentPrompts.settings.useCaseTest.",
+        "agentPrompts.settings.useCaseSpec.",
+        "agentPrompts.settings.personaExplore.",
+        "agentPrompts.settings.useCaseDemo.",
+        "agentPrompts.settings.requirementImport.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
         // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail

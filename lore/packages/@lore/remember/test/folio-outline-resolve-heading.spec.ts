@@ -19,7 +19,11 @@ const heading = (
   level: number,
   text: string,
   index: number,
-): FolioOutlineHeading => ({ level, text, index });
+): FolioOutlineHeading => ({
+  level,
+  text,
+  index,
+});
 
 const dom = (level: number, text: string): FolioOutlineDomHeading => ({
   level,

@@ -54,11 +54,33 @@ export interface AgentPromptItemSubject extends AgentPromptProjectSubject {
 }
 
 /**
+ * A use case, persona or specification subject of Plan's Requirements
+ * (#E153): an item, plus what its prompts need and the seven placeholders
+ * cannot carry. Rendered on the server (`usecase_prompt`), so the CLI and
+ * MCP produce the very text the Verify dialog shows.
+ */
+export interface AgentPromptScenarioSubject extends AgentPromptItemSubject {
+  /** The scenario's steps, one per line, each with its actor. */
+  steps: string;
+  /** The acceptance criteria, one per line, each with its key and method. */
+  criteria: string;
+  /** The persona played: `#A2 Léa (Shop manager)`, or empty. */
+  persona: string;
+  /** Its demo login, never a password, or empty. */
+  demoAccount: string;
+  /** The app copy played on: its app name, its environment, its URL. */
+  app: string;
+  env: string;
+  appUrl: string;
+}
+
+/**
  * Either shape. A template is rendered against whichever its surface has.
  */
 export type AgentPromptSubject =
   | AgentPromptProjectSubject
-  | AgentPromptItemSubject;
+  | AgentPromptItemSubject
+  | AgentPromptScenarioSubject;
 
 /**
  * The names a template may substitute, per shape.
@@ -80,6 +102,17 @@ const ITEM_PLACEHOLDERS = new Set<string>([
   "id",
   "reference",
   "title",
+]);
+
+const SCENARIO_PLACEHOLDERS = new Set<string>([
+  ...ITEM_PLACEHOLDERS,
+  "steps",
+  "criteria",
+  "persona",
+  "demoAccount",
+  "app",
+  "env",
+  "appUrl",
 ]);
 
 /**
@@ -111,7 +144,11 @@ export const renderPromptTemplate = (
     // on purpose - both are a placeholder this subject has no value for, and
     // substituting `undefined` for either would be a lie rather than a gap.
     const allowed =
-      "reference" in subject ? ITEM_PLACEHOLDERS : PROJECT_PLACEHOLDERS;
+      "steps" in subject
+        ? SCENARIO_PLACEHOLDERS
+        : "reference" in subject
+          ? ITEM_PLACEHOLDERS
+          : PROJECT_PLACEHOLDERS;
     if (!allowed.has(name)) {
       return match;
     }

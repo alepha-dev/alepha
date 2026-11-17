@@ -32,7 +32,11 @@ export const useFeedbackReferences = (
       staleTime: [5, "minutes"],
       handler: async () =>
         (await feedbackApi.listFeedbackRefs({ params: { projectId } })).map(
-          (f) => ({ number: f.shortId, title: f.title, status: f.status }),
+          (f) => ({
+            number: f.shortId,
+            title: f.title,
+            status: f.status,
+          }),
         ),
       onError: () => {},
     },

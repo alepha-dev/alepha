@@ -207,7 +207,9 @@ describe("blights become project errors migration", () => {
 
     expect(
       JSON.parse(one(db, "SELECT source FROM quests WHERE id = 12").source),
-    ).toEqual({ projectErrorId: 7 });
+    ).toEqual({
+      projectErrorId: 7,
+    });
   });
 
   it("renames the Blights area, merging it into an Errors area already there", ({

@@ -47,7 +47,9 @@ const AutomationRunEvidence = (props: AutomationRunEvidenceProps) => {
           snapshot.counts.totalIsExact
             ? "automation.test.total"
             : "automation.test.lowerBound",
-          { args: [l(snapshot.counts.total)] },
+          {
+            args: [l(snapshot.counts.total)],
+          },
         )}
       </p>
       {snapshot.omitted && <p>{snapshot.omitted}</p>}

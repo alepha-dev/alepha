@@ -145,7 +145,9 @@ const ReleaseOverviewTab = (props: ReleaseOverviewTabProps) => {
                   ((count ?? 0) > 0
                     ? tab.kpiKeys.some
                     : tab.kpiKeys.none) as never,
-                  { args: [release.tag ?? String(release.number)] },
+                  {
+                    args: [release.tag ?? String(release.number)],
+                  },
                 ),
               ),
             },

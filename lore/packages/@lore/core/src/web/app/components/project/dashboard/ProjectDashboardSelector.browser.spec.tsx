@@ -53,7 +53,10 @@ class FakeLinkProvider extends LinkProvider {
       })),
       resolveProjectDashboardCards: record(
         "resolveProjectDashboardCards",
-        () => ({ values: [], refreshedAt: "2026-11-11T10:00:00.000Z" }),
+        () => ({
+          values: [],
+          refreshedAt: "2026-11-11T10:00:00.000Z",
+        }),
       ),
       createProjectDashboard: record("createProjectDashboard", (args) => ({
         id: 9,

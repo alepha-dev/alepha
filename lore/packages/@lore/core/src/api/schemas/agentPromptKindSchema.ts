@@ -35,6 +35,13 @@ export const agentPromptKindSchema = z.enum([
   "errorTriage",
   "questLoop",
   "weeklyStatus",
+  // Plan's Requirements (#E153): rendered on the server, editable with the
+  // `requirements` option alone.
+  "useCaseTest",
+  "useCaseSpec",
+  "personaExplore",
+  "useCaseDemo",
+  "requirementImport",
 ]);
 
 export type AgentPromptKind = Infer<typeof agentPromptKindSchema>;

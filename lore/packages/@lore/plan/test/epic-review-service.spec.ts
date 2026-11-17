@@ -366,7 +366,11 @@ describe("EpicReviewService", () => {
         );
       expect(
         Object.fromEntries(listed.map((row) => [row.id, row.reviewCount])),
-      ).toEqual({ [twice.id]: 2, [once.id]: 1, [never.id]: 0 });
+      ).toEqual({
+        [twice.id]: 2,
+        [once.id]: 1,
+        [never.id]: 0,
+      });
     });
   });
 
@@ -398,7 +402,10 @@ describe("EpicReviewService", () => {
       });
       expect(
         (await ctx.service.countOpenOfProject(project.id)).get(epic.id),
-      ).toEqual({ questions: 1, blockers: 1 });
+      ).toEqual({
+        questions: 1,
+        blockers: 1,
+      });
       const result = await ctx.service.resultOf(epic.id);
       expect([result.openQuestions, result.openBlockers]).toEqual([1, 1]);
 

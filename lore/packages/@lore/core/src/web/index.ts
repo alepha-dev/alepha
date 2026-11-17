@@ -224,7 +224,7 @@ export {
   type AgentPromptProjectSubject,
   type AgentPromptSubject,
   renderPromptTemplate,
-} from "./app/prompts/renderPromptTemplate.ts";
+} from "../api/schemas/renderPromptTemplate.ts";
 export { AccountDeletionRegistry } from "./app/registries/AccountDeletionRegistry.ts";
 export {
   type ProjectBlocker,

@@ -101,7 +101,9 @@ describe("ReportsUrlQuery", () => {
     });
     expect(
       url.patch({ range: "custom", from: "a", to: "b" }, "range", "7d"),
-    ).toEqual({ range: "7d" });
+    ).toEqual({
+      range: "7d",
+    });
     expect(url.patch({}, "dates", ["2026-01-01", "2026-01-31"])).toEqual({
       range: "custom",
       from: "2026-01-01",

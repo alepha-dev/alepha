@@ -89,9 +89,7 @@ const KanbanCardCompact = (props: KanbanCardCompactProps) => {
               <span
                 className="block h-full rounded-full bg-emerald-500/70"
                 style={{
-                  width: `${Math.round(
-                    (objectives.completed / objectives.total) * 100,
-                  )}%`,
+                  width: `${Math.round((objectives.completed / objectives.total) * 100)}%`,
                 }}
               />
             </span>

@@ -438,7 +438,9 @@ const ProjectEpic = (props: ProjectEpicProps) => {
                               title: tr("epic.workOnIt.confirm.title"),
                               description: tr(
                                 "epic.workOnIt.confirm.description",
-                                { args: [epic.title] },
+                                {
+                                  args: [epic.title],
+                                },
                               ),
                               confirmLabel: tr("epic.workOnIt.confirm.action"),
                             }

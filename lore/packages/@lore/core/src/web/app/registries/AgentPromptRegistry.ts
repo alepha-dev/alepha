@@ -55,4 +55,11 @@ export interface AgentPromptKindEntry {
   template: string;
   icon: LucideIcon;
   labelKey: string;
+  /**
+   * The Plan option under which Settings › Agent prompts lists this kind
+   * (#E153): `agentPrompts` by default; Plan's Requirements registers its
+   * kinds under `requirements`, so they stay editable with `agentPrompts`
+   * off.
+   */
+  option?: string;
 }

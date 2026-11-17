@@ -82,7 +82,9 @@ export const automationRunSnapshotSchema = z
   .strict()
   .refine(
     (value) => value.rule !== null || (!!value.ruleHash && !!value.omitted),
-    { message: "An omitted rule requires its hash and an explicit reason" },
+    {
+      message: "An omitted rule requires its hash and an explicit reason",
+    },
   )
   .refine(
     (value) =>

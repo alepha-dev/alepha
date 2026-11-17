@@ -600,7 +600,11 @@ describe("Durable automation dispatch", () => {
     const action = await claims.beginAction(
       occurrence.id,
       occurrence.leaseToken!,
-      { index: 0, action: effect().action, mode: "external" },
+      {
+        index: 0,
+        action: effect().action,
+        mode: "external",
+      },
     );
     await persistence.receipts.updateById(action.id, {
       result: { started: true },
@@ -648,7 +652,11 @@ describe("Durable automation dispatch", () => {
     const roster = await rosterService.freeze(
       occurrence.id,
       occurrence.leaseToken!,
-      { index: 0, channels: ["inbox", "email"], excludeUserId: user.id },
+      {
+        index: 0,
+        channels: ["inbox", "email"],
+        excludeUserId: user.id,
+      },
     );
     const late = await entities.users.create({ roles: ["user"] });
     await entities.organizationMembers.create({

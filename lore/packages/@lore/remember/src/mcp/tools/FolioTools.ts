@@ -148,7 +148,10 @@ export class FolioTools {
   protected async fileUnderEpic(epicId: number, folioId: string) {
     await this.resources.require("epic", "file a folio under an epic").attach!(
       epicId,
-      { kind: "folio", id: folioId },
+      {
+        kind: "folio",
+        id: folioId,
+      },
     );
   }
 

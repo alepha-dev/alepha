@@ -1155,7 +1155,9 @@ const ProjectEpics = () => {
                                 title: tr("epic.workOnIt.confirm.title"),
                                 description: tr(
                                   "epic.workOnIt.confirm.description",
-                                  { args: [row.title] },
+                                  {
+                                    args: [row.title],
+                                  },
                                 ),
                                 confirmLabel: tr(
                                   "epic.workOnIt.confirm.action",

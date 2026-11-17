@@ -4,6 +4,7 @@ import { $tool } from "alepha/mcp";
 import { BadRequestError } from "alepha/server";
 
 import { PersonaController } from "../../api/controllers/PersonaController.ts";
+import { RequirementsPromptController } from "../../api/controllers/RequirementsPromptController.ts";
 import { RunController } from "../../api/controllers/RunController.ts";
 import { UseCaseController } from "../../api/controllers/UseCaseController.ts";
 import type { UseCaseInput } from "../../api/schemas/useCaseInputSchema.ts";
@@ -20,6 +21,8 @@ import {
   useCaseListParamsSchema,
   useCaseListResultSchema,
   useCaseUpdateParamsSchema,
+  useCasePromptParamsSchema,
+  useCasePromptResultSchema,
   useCaseRunRecordParamsSchema,
   useCaseRunRecordResultSchema,
   useCaseValidateParamsSchema,
@@ -35,6 +38,7 @@ export class UseCaseTools {
   protected readonly useCases = $inject(UseCaseController);
   protected readonly personas = $inject(PersonaController);
   protected readonly runs = $inject(RunController);
+  protected readonly prompts = $inject(RequirementsPromptController);
   protected readonly projectTools = $inject(ProjectTools);
 
   protected async projectId(project?: number, name?: string): Promise<number> {
@@ -273,6 +277,49 @@ export class UseCaseTools {
         errorsOpened: recorded.errorsOpened,
         errorRule: recorded.errorRule,
       };
+    },
+  });
+
+  usecase_prompt = $tool({
+    description:
+      "The Verify prompt of a use case, a persona or a specification, as the project wrote it: play the criteria and record a run (test), write the tagged e2e spec (spec), a demo script (demo), explore as a persona (explore), or import a specification folio into requirements (import). Lore runs nothing: follow the prompt yourself.",
+    title: "Use case prompt",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: useCasePromptParamsSchema,
+      result: useCasePromptResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.projectId(
+        params.project,
+        params.project_name,
+      );
+      const kind = {
+        test: "useCaseTest",
+        spec: "useCaseSpec",
+        demo: "useCaseDemo",
+        explore: "personaExplore",
+        import: "requirementImport",
+      }[params.mode] as "useCaseTest";
+      return await this.prompts.renderRequirementsPrompt({
+        params: { projectId },
+        query: {
+          kind,
+          ...(params.number !== undefined
+            ? { useCaseNumber: params.number }
+            : {}),
+          ...(params.persona !== undefined
+            ? { personaNumber: params.persona }
+            : {}),
+          ...(params.folio_shortId !== undefined
+            ? { folioShortId: params.folio_shortId }
+            : {}),
+          ...(params.stale ? { staleOnly: true } : {}),
+          ...(params.app ? { app: params.app } : {}),
+          ...(params.env ? { env: params.env } : {}),
+          ...(params.as !== undefined ? { asPersona: params.as } : {}),
+        },
+      });
     },
   });
 

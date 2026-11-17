@@ -37,7 +37,9 @@ describe("lore project delete", () => {
     const command = alepha.inject(ProjectCommand);
     Object.assign(
       alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
-      { projects: { getProjectBySlug: async () => ({ id: 42 }) } },
+      {
+        projects: { getProjectBySlug: async () => ({ id: 42 }) },
+      },
     );
     Object.assign(command as unknown as Record<string, unknown>, {
       areaApi: {

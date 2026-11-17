@@ -144,9 +144,10 @@ export class AutomationEvaluator {
                 await this.catalog.inspectVariable(
                   input.rule.projectId,
                   input.disclosureUser,
-                  { ...row, projectId: input.rule.projectId } as Parameters<
-                    AutomationCatalog["inspectVariable"]
-                  >[2],
+                  {
+                    ...row,
+                    projectId: input.rule.projectId,
+                  } as Parameters<AutomationCatalog["inspectVariable"]>[2],
                 )
               ).available
             )

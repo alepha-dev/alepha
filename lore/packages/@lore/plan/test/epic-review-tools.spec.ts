@@ -301,6 +301,9 @@ describe("epic review tools", () => {
     ).toEqual([1, 2]);
     expect(
       answers.find((row) => row.metadata.item === 1)!.metadata,
-    ).toMatchObject({ outcome: "answered", suggestion: 0 });
+    ).toMatchObject({
+      outcome: "answered",
+      suggestion: 0,
+    });
   });
 });

@@ -38,9 +38,7 @@ const ReportsQualityEmpty = (props: ReportsQualityEmptyProps) => {
         is not something anyone can paste into a workflow file.
       */}
       <pre className="bg-muted text-muted-foreground w-full overflow-x-auto rounded-md p-3 text-xs">
-        <code>
-          {`alepha test --coverage\nlore quality push --project ${props.projectSlug}`}
-        </code>
+        <code>{`alepha test --coverage\nlore quality push --project ${props.projectSlug}`}</code>
       </pre>
 
       <p className="text-muted-foreground/70 text-xs">

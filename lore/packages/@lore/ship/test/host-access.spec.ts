@@ -155,7 +155,9 @@ describe("host access by the home project's rank", () => {
     for (const user of [w.owner, w.reader, w.manager]) {
       await expect(
         hostsApi.getHost({ params }, { user }),
-      ).resolves.toMatchObject({ id: w.host.id });
+      ).resolves.toMatchObject({
+        id: w.host.id,
+      });
       await expect(
         hostsApi.getHostInventory({ params }, { user }),
       ).resolves.toBeDefined();
@@ -209,7 +211,9 @@ describe("host access by the home project's rank", () => {
     ).rejects.toThrow(ForbiddenError);
     await expect(
       hostsApi.checkHostDeletable({ params }, { user: w.manager }),
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({
+      ok: true,
+    });
 
     // Create: `host:create` in the project.
     await expect(
@@ -227,7 +231,9 @@ describe("host access by the home project's rank", () => {
 
     await expect(
       hostsApi.deleteHost({ params }, { user: w.manager }),
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({
+      ok: true,
+    });
   });
 
   it("says what each reader may do, server-side", async ({ expect }) => {
@@ -321,7 +327,10 @@ describe("host access by the home project's rank", () => {
     for (const user of [w.owner, w.reader, w.manager]) {
       await expect(
         lending.getHomeHost({ params }, { user }),
-      ).resolves.toMatchObject({ id: w.host.id, slug: "ovh-1" });
+      ).resolves.toMatchObject({
+        id: w.host.id,
+        slug: "ovh-1",
+      });
     }
     await expect(
       lending.getHomeHost({ params }, { user: w.stranger }),

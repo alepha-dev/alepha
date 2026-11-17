@@ -120,7 +120,10 @@ export class AutomationTools {
         params.id,
         user,
         params.expectedRevision,
-        { title: params.title, rule: params.rule },
+        {
+          title: params.title,
+          rule: params.rule,
+        },
       );
     },
   });
@@ -197,7 +200,10 @@ export class AutomationTools {
         await this.project(params),
         this.user(),
         params.key,
-        { offset: params.offset, limit: params.limit },
+        {
+          offset: params.offset,
+          limit: params.limit,
+        },
       ),
   });
   automation_variable_delete = $tool({

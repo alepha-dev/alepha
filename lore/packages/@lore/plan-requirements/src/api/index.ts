@@ -5,6 +5,7 @@ import { $module } from "alepha";
 
 import { PersonaController } from "./controllers/PersonaController.ts";
 import { RequirementController } from "./controllers/RequirementController.ts";
+import { RequirementsPromptController } from "./controllers/RequirementsPromptController.ts";
 import { RunController } from "./controllers/RunController.ts";
 import { UseCaseController } from "./controllers/UseCaseController.ts";
 import { PersonaResourceKind } from "./resources/PersonaResourceKind.ts";
@@ -16,6 +17,7 @@ import { RequirementService } from "./services/RequirementService.ts";
 import { RequirementsFileAccess } from "./services/RequirementsFileAccess.ts";
 import { RequirementSourceWatcher } from "./services/RequirementSourceWatcher.ts";
 import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts";
+import { RequirementsPromptService } from "./services/RequirementsPromptService.ts";
 import { RunService } from "./services/RunService.ts";
 import { SourceSectionService } from "./services/SourceSectionService.ts";
 import { UseCaseService } from "./services/UseCaseService.ts";
@@ -44,6 +46,7 @@ export const LorePlanRequirementsApi = $module({
     RequirementsBuckets,
     RequirementsFileAccess,
     RunService,
+    RequirementsPromptService,
     RequirementsCommentService,
     UseCaseService,
     RequirementService,
@@ -62,6 +65,7 @@ export const LorePlanRequirementsApi = $module({
     UseCaseController,
     RequirementController,
     RunController,
+    RequirementsPromptController,
   ],
 });
 
@@ -71,4 +75,5 @@ export { PersonaController } from "./controllers/PersonaController.ts";
 export { UseCaseController } from "./controllers/UseCaseController.ts";
 export { RequirementController } from "./controllers/RequirementController.ts";
 export { RunController } from "./controllers/RunController.ts";
+export { RequirementsPromptController } from "./controllers/RequirementsPromptController.ts";
 export { RequirementsBuckets } from "./services/RequirementsBuckets.ts";

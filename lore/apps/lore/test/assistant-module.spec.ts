@@ -88,7 +88,9 @@ describe("LoreAssistant", () => {
       expect,
     }) => {
       const { alepha, controller, status, signIn, read, ai } =
-        await bootAssistant({ enabled: "true" });
+        await bootAssistant({
+          enabled: "true",
+        });
       const { headers, user } = await signIn();
       ai.script([{ type: "text", text: "Hello." }]);
 

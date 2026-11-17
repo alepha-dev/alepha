@@ -249,7 +249,9 @@ describe("Quest reminders through an automation (#Q3626)", () => {
     ).data;
     expect(
       (await persistence.rules.getById(rule.id)).rule.actions[0],
-    ).toMatchObject({ channels: [channel.id] });
+    ).toMatchObject({
+      channels: [channel.id],
+    });
     const claim = await run(rule.id);
     await finish(claim.receipt!.id, claim.receipt!.leaseToken);
     expect(await notifications()).toBe(2);

@@ -295,7 +295,11 @@ export class DeployRegistry {
     } catch (error) {
       this.log.warn(
         "Could not record a deploy status and its automation event",
-        { deploymentId, requestedStatus: values.status, error },
+        {
+          deploymentId,
+          requestedStatus: values.status,
+          error,
+        },
       );
       return false;
     }

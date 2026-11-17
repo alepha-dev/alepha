@@ -73,7 +73,10 @@ const setup = async () => {
   });
 
   const objectives = (await call(questTools.quest_get, { id: quest.id }))
-    .objectives as Array<{ id: number; title: string }>;
+    .objectives as Array<{
+    id: number;
+    title: string;
+  }>;
 
   /**
    * The REST resource, where `metadata` and `history` live.

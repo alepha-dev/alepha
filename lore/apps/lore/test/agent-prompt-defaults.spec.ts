@@ -3,18 +3,21 @@ import {
   agentPromptKindSchema,
 } from "@lore/core/schemas";
 import { AgentPromptRegistry, capabilityRegistry } from "@lore/core/web";
+import { RequirementsShell } from "@lore/plan-requirements/web";
 import { WorkShell } from "@lore/plan/web";
 import { DeployShell } from "@lore/ship/web";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
 /**
- * Every default, as Work and Deploy register them (#E75, #Q2624).
+ * Every default, as Work, Deploy and Requirements register them (#E75,
+ * #Q2624, #E153).
  */
 const AGENT_PROMPT_DEFAULTS = (() => {
   const alepha = Alepha.create();
   alepha.inject(WorkShell);
   alepha.inject(DeployShell);
+  alepha.inject(RequirementsShell);
   return Object.fromEntries(
     alepha
       .inject(AgentPromptRegistry)

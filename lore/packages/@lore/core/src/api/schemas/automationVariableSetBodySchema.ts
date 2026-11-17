@@ -11,7 +11,9 @@ export const automationVariableSetBodySchema = z
   .strict()
   .refine(
     (value) => (value.id === undefined) === (value.version === undefined),
-    { message: "An existing variable requires both identity and version" },
+    {
+      message: "An existing variable requires both identity and version",
+    },
   );
 export type AutomationVariableSetBody = Infer<
   typeof automationVariableSetBodySchema

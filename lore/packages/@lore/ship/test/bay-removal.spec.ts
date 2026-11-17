@@ -118,7 +118,9 @@ describe("Undeploying from a Bay", () => {
         .inject(AppController)
         .getAppRemoval(
           { params: { ...params(w), commandId: command?.id as string } },
-          { user: w.user } as never,
+          {
+            user: w.user,
+          } as never,
         );
       expect(read.id).toBe(command?.id);
     });

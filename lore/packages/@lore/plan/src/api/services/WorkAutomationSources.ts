@@ -43,7 +43,10 @@ export class WorkAutomationSources {
           shortId: data.shortId,
           ...this.feedbackFields.build(
             `/${project.slug || `project-${project.id}`}`,
-            { shortId: data.shortId, description: data.description ?? "" },
+            {
+              shortId: data.shortId,
+              description: data.description ?? "",
+            },
           ),
         },
       },

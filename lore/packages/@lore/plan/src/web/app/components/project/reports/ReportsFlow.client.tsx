@@ -447,9 +447,7 @@ const ReportsFlow = (props: ReportsFlowProps) => {
               {
                 label: tr("reports.flow.due.rate"),
                 definition: tr("reports.flow.due.definition"),
-                value: `${Math.round(
-                  (flow.dueDates.onTime / flow.dueDates.withDue) * 100,
-                )}%`,
+                value: `${Math.round((flow.dueDates.onTime / flow.dueDates.withDue) * 100)}%`,
                 hint: tr("reports.flow.due.hint", {
                   args: [
                     String(flow.dueDates.onTime),
