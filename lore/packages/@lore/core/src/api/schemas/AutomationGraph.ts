@@ -414,6 +414,45 @@ export class AutomationGraph {
   }
 
   /**
+   * What the outline's projection needs of a graph (#Q3846), no catalogue
+   * involved: it parses, its wires are legal, it has no cycle, a source
+   * reaches every node, and the outline rules hold. What {@link check} adds
+   * (the types, the names, the caps, a block that does nothing yet) is what
+   * an editor's draft may still lack.
+   */
+  public structure(input: unknown): AutomationGraphIssue[] {
+    const parsed = automationGraphSchema.safeParse(input);
+    if (!parsed.success)
+      return parsed.error.issues.map((issue) => ({
+        message: issue.path.length
+          ? `${issue.path.join(".")}: ${issue.message}`
+          : issue.message,
+      }));
+    const graph = parsed.data;
+    const issues: AutomationGraphIssue[] = [];
+    const add = (issue: AutomationGraphIssue) => issues.push(issue);
+    this.checkEdges(graph, add);
+    if (issues.length) return issues;
+    const order = new Set(this.order(graph));
+    const cycle = graph.nodes.find((item) => !order.has(item.id));
+    if (cycle)
+      return [
+        { node: cycle.id, message: "The graph has a cycle through this node" },
+      ];
+    const reached = new Set(
+      this.sources(graph).flatMap((source) => [
+        ...this.reachable(graph, source.id),
+      ]),
+    );
+    for (const node of graph.nodes)
+      if (node.kind !== "source" && !reached.has(node.id))
+        add({ node: node.id, message: "No source reaches this node" });
+    if (issues.length) return issues;
+    this.checkShape(graph, add);
+    return issues;
+  }
+
+  /**
    * The outline rules alone (#Q3845), on a graph that parses: what a stored
    * graph drawn before them may break, with no catalogue needed. Empty for a
    * graph that does not parse, which {@link check} reports.
