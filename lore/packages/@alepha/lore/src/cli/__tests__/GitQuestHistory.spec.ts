@@ -223,6 +223,52 @@ describe("GitQuestHistory", () => {
     });
   });
 
+  describe("a history past the cap (#Q3815)", () => {
+    /** The real walk, with a cap a test repository can pass. */
+    class ShortWalk extends GitQuestHistory {
+      protected override get maxWalked(): number {
+        return 2;
+      }
+    }
+
+    it("is partial, too-long, and sends no more shas than the cap", async ({
+      expect,
+    }) => {
+      const { root, shas } = await repository(["a #Q1", "b #Q2", "c #Q3"]);
+      const short = Alepha.create()
+        .with({ provide: ShellProvider, use: NodeShellProvider })
+        .with({ provide: GitQuestHistory, use: ShortWalk });
+      await short.start();
+      try {
+        const found = await short.inject(GitQuestHistory).walk({
+          root,
+          bare: false,
+          known: async () => [],
+        });
+
+        expect(found.complete).toBe(false);
+        expect(found.reason).toBe("too-long");
+        // The newest ones, at most the cap.
+        expect(found.walked).toEqual([shas[2], shas[1]]);
+        // Every ref found still goes: a partial walk loses no quest.
+        expect(found.numbers).toEqual([1, 2, 3]);
+      } finally {
+        await short.stop();
+      }
+    });
+
+    it("fits the commits part Lore reads", ({ expect }) => {
+      // `ArtifactController.pushArtifact` reads `commits` with
+      // `z.file({ maxBytes: 4 * 1024 * 1024 })`; a sha is `"<40 hex>",`.
+      const shas = Array.from({ length: GitQuestHistory.MAX_WALKED }, () =>
+        "f".repeat(40),
+      );
+      expect(Buffer.byteLength(JSON.stringify(shas))).toBeLessThanOrEqual(
+        4 * 1024 * 1024,
+      );
+    });
+  });
+
   it("is partial with no repository at all", async ({ expect }) => {
     const found = await walk(tempDir("lore-norepo-")).result;
 
