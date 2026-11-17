@@ -2730,6 +2730,29 @@ export default {
   "bay.overview.intervalValue": "$1s",
   "bay.overview.version": "Bay $1",
   "bay.overview.versionUnknown": "Bay version not reported",
+  "bay.version.behind": "Bay $1 → $2",
+  "bay.version.upgrade": "Upgrade Bay",
+  "bay.version.blocked.deploysOff":
+    "Its home project has to allow deploys first.",
+  "bay.version.blocked.offline": "The host is offline.",
+  "bay.version.confirm.title": "Upgrade Bay from $1 to $2?",
+  "bay.version.confirm.description":
+    "Connections are handed over to the new version, so no request is refused. Apps keep running, unless the new version changes how Bay builds their containers, in which case each restarts once. If the new version fails to start, the current one keeps serving.",
+  "bay.version.running": "Upgrading ($1)…",
+  "bay.version.done": "Upgraded to $1.",
+  "bay.version.failed": "The upgrade did not happen: $1",
+  "bay.version.byHand.tooOld": "This Bay is too old to be upgraded from here.",
+  "bay.version.byHand.noDropIn":
+    "Its systemd unit has no handoff drop-in, so this Bay cannot be upgraded from here.",
+  "bay.version.byHand.noSystemd":
+    "This Bay does not run under systemd, so it cannot be upgraded from here.",
+  "bay.version.byHand.run":
+    "Run this on the machine, once: the next upgrade is then a button on this page.",
+  "bay.version.offlineSince": "Offline since the upgrade to $1.",
+  "bay.version.offlineSince.recover":
+    "If it does not come back, this puts the previous version back, run on the machine:",
+  "bay.version.copy": "Copy the command",
+  "bay.version.copied": "Command copied.",
   "bay.state.static": "static",
   "bay.state.running": "running",
   "bay.state.stopped": "stopped",

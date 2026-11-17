@@ -2736,6 +2736,30 @@ export default {
   "bay.overview.intervalValue": "$1 s",
   "bay.overview.version": "Bay $1",
   "bay.overview.versionUnknown": "Version de Bay non communiquée",
+  "bay.version.behind": "Bay $1 → $2",
+  "bay.version.upgrade": "Mettre Bay à jour",
+  "bay.version.blocked.deploysOff":
+    "Son projet d'attache doit d'abord autoriser les déploiements.",
+  "bay.version.blocked.offline": "L'hôte est hors ligne.",
+  "bay.version.confirm.title": "Mettre Bay à jour de $1 vers $2 ?",
+  "bay.version.confirm.description":
+    "Les connexions sont transmises à la nouvelle version, donc aucune requête n'est refusée. Les apps continuent de tourner, sauf si la nouvelle version change la façon dont Bay construit leurs conteneurs, auquel cas chacune redémarre une fois. Si la nouvelle version ne démarre pas, l'actuelle continue de servir.",
+  "bay.version.running": "Mise à jour ($1)…",
+  "bay.version.done": "Mis à jour vers $1.",
+  "bay.version.failed": "La mise à jour n'a pas eu lieu : $1",
+  "bay.version.byHand.tooOld":
+    "Ce Bay est trop ancien pour être mis à jour d'ici.",
+  "bay.version.byHand.noDropIn":
+    "Son unité systemd n'a pas le drop-in de passage de relais, donc ce Bay ne peut pas être mis à jour d'ici.",
+  "bay.version.byHand.noSystemd":
+    "Ce Bay ne tourne pas sous systemd, donc il ne peut pas être mis à jour d'ici.",
+  "bay.version.byHand.run":
+    "Lancez ceci sur la machine, une fois : la mise à jour suivante sera un bouton sur cette page.",
+  "bay.version.offlineSince": "Hors ligne depuis la mise à jour vers $1.",
+  "bay.version.offlineSince.recover":
+    "S'il ne revient pas, ceci remet la version précédente, à lancer sur la machine :",
+  "bay.version.copy": "Copier la commande",
+  "bay.version.copied": "Commande copiée.",
   "bay.state.static": "statique",
   "bay.state.running": "en marche",
   "bay.state.stopped": "arrêtée",

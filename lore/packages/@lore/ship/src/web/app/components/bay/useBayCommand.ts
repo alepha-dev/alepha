@@ -5,17 +5,21 @@ import type { HostCommandController } from "../../../../api/controllers/HostComm
 import type { HostCommandResource } from "../../../../api/schemas/hostCommandResourceSchema.ts";
 
 /**
- * What this console may ask for: one instance, named by its pair.
+ * What this console may ask for: one instance, named by its pair, or the
+ * upgrade of the machine's own Bay.
  *
  * ⚠️ Not `logs`, which carries its own bounded ask and is driven by
  * `BayLogTail`; and not `deploy`, which epic #E1 owns. The vocabulary is
  * closed on both sides, and this is the subset the buttons speak.
  */
-export interface BayCommandBody {
-  kind: "restart" | "stop" | "start" | "backup";
-  app: string;
-  environment: string;
-}
+export type BayCommandBody =
+  | {
+      kind: "restart" | "stop" | "start" | "backup";
+      app: string;
+      environment: string;
+    }
+  // The machine itself, not an instance: upgrade its Bay (#E152).
+  | { kind: "upgrade"; version?: string };
 
 /**
  * Queue one command and follow it to its own conclusion.
@@ -36,11 +40,15 @@ export interface BayCommandBody {
  *
  * A verb hook over one `useAction` (#E59, #Q2329): `run` resolves the command
  * as it last read, or `undefined` when the enqueue was refused, and `busy` is
- * the action's `loading`. A refusal at enqueue (a deploy switch, an offline
+ * the action's `loading`. `attempts` is how many polls it follows the command
+ * for, for a verb that outlasts the default. A refusal at enqueue (a deploy switch, an offline
  * machine for the verbs that refuse) is the server's sentence, shown as it is
  * by the root `ActionErrorToaster`.
  */
-export const useBayCommand = (host: { id: string } | undefined) => {
+export const useBayCommand = (
+  host: { id: string } | undefined,
+  attempts = ATTEMPTS,
+) => {
   const commandApi = useClient<HostCommandController>();
   const [command, setCommand] = useState<HostCommandResource | undefined>();
 
@@ -63,7 +71,7 @@ export const useBayCommand = (host: { id: string } | undefined) => {
         // Followed rather than assumed. The machine acks over its own
         // connection, so the row is where the outcome appears. An unmount
         // aborts the signal, which ends the follow.
-        for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
           if (current.status === "done" || current.status === "failed") {
             return current;
           }
@@ -83,7 +91,7 @@ export const useBayCommand = (host: { id: string } | undefined) => {
         return current;
       },
     },
-    [commandApi, host],
+    [commandApi, host, attempts],
   );
 
   return {
