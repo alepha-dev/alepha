@@ -210,7 +210,12 @@ describe("ProjectActivityPage", () => {
         actor: undefined,
         description: "By a job",
       }),
-      row({ id: "2", actor: undefined, description: "By a deleted account" }),
+      row({
+        id: "2",
+        userId: SECOND,
+        actor: undefined,
+        description: "By a deleted account",
+      }),
     ]);
 
     await waitFor(() => {
@@ -223,6 +228,18 @@ describe("ProjectActivityPage", () => {
       within(cellOf("By a deleted account")).getByText("Former member"),
     ).toBeTruthy();
     expect(screen.queryByText("Someone")).toBeNull();
+  });
+
+  it("shows a member who acted as their avatar, named for a screen reader", async ({
+    expect,
+  }) => {
+    const screen = await show([row({ description: "By a member" })]);
+
+    await waitFor(() => {
+      expect(screen.getByText("By a member")).toBeTruthy();
+    });
+    const cell = screen.getByText("By a member").closest("tr") as HTMLElement;
+    expect(within(cell).getByRole("button", { name: /feunard/ })).toBeTruthy();
   });
 
   it("links a row to the page its resource is addressed by", async ({

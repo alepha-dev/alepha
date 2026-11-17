@@ -17,6 +17,7 @@ import type { ProjectActivityRow } from "../../../../../api/schemas/projectActiv
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { ProjectUserChip } from "../../shared/ProjectUserChip.tsx";
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import { ActivityDetails } from "./ActivityDetails.tsx";
 import { activityResourceHref } from "./activityResourceHref.ts";
@@ -319,16 +320,19 @@ const ProjectActivityPage = ({
           actor: {
             label: tr("activity.col.who"),
             cell: (row) => (
-              <span className="text-sm">
-                {/* No user behind the event (an automation, a job, the
-                    server itself) is the system; a user the project can no
-                    longer name (a deleted account) is a former member,
-                    never "Someone" (#Q3828). */}
-                {row.actor ??
+              // The avatar and its card (#Q3829). No user behind the event
+              // (an automation, a job, the server itself) is the system; a
+              // user the project can no longer name (a deleted account) is a
+              // former member, never "Someone" (#Q3828).
+              <ProjectUserChip
+                user={users.find((user) => user.id === row.userId)}
+                fallback={
+                  row.actor ??
                   (row.userId
                     ? tr("activity.actor.former")
-                    : tr("activity.actor.system"))}
-              </span>
+                    : tr("activity.actor.system"))
+                }
+              />
             ),
           },
           action: {

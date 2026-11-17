@@ -37,7 +37,10 @@ export const useProjectUsers = (
       handler: () =>
         projectApi.getProjectUsers({
           params: { id: projectId as number },
-          ...(assignable ? { query: { assignable: true } } : {}),
+          // Every web reader names ranks: the people cards (#Q3829).
+          query: assignable
+            ? { assignable: true, ranks: true }
+            : { ranks: true },
         }),
       onError: () => {},
     },
@@ -59,4 +62,8 @@ export interface ProjectUser {
    * `quest:update`). Absent on a stub, which reads as assignable.
    */
   assignable?: boolean;
+  /**
+   * The name of their rank in the project (#Q3829).
+   */
+  rank?: string;
 }

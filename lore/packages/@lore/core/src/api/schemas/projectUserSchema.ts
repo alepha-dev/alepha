@@ -27,6 +27,13 @@ export const projectUserSchema = users.schema
      * Viewer is not one of them.
      */
     assignable: z.boolean().optional(),
+    /**
+     * The name of their rank in this project, as the project calls it
+     * (#Q3829): what a person's hover card says beside their name. Every
+     * reader gets it, a rank of reads included: everyone in a project is
+     * invited.
+     */
+    rank: z.text().optional(),
   });
 
 export type ProjectUserResource = Infer<typeof projectUserSchema>;

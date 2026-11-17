@@ -369,6 +369,32 @@ describe("a member whose rank reads the project's memory only", () => {
     });
   });
 
+  describe("the member cards (#Q3829)", () => {
+    it("carry each member's rank name, for a rank of reads too", async ({
+      expect,
+    }) => {
+      const read = await ctx.http(
+        ctx.strangerToken,
+        "GET",
+        `/getProjectUsers/${ctx.projectId}?ranks=true`,
+      );
+      expect(read.status).toBe(200);
+      const cards = JSON.parse(read.text) as Array<{
+        username?: string;
+        rank?: string;
+        email?: string;
+      }>;
+      expect(cards.find((card) => card.username === "owner")?.rank).toBe(
+        "Owner",
+      );
+      expect(cards.find((card) => card.username === "stranger")?.rank).toBe(
+        "Memory",
+      );
+      // Still no email without member:read.
+      expect(cards.every((card) => card.email === undefined)).toBe(true);
+    });
+  });
+
   describe("the quest export", () => {
     it("names people by username, and by email only for member:read", async ({
       expect,

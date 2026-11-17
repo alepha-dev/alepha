@@ -36,6 +36,8 @@ import { loreDocsUrl } from "../../../services/docsUrl.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
 import { OutboundLink } from "../../shared/OutboundLink.tsx";
+import { ProjectUserChip } from "../../shared/ProjectUserChip.tsx";
+import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
 
 /**
@@ -46,6 +48,9 @@ import { useAutomationLabels } from "./useAutomationLabels.ts";
 const AutomationOverviewPage = () => {
   const [project] = useStore(currentProjectAtom);
   const { tr } = useI18n<I18n, "en">();
+  // The members, for the author's avatar and card (#Q3829). Shared with
+  // every surface that names a member: one request.
+  const users = useProjectUsers();
   const router = useRouter();
   const api = useClient<AutomationController>();
   const cache = useInject(QueryCache);
@@ -350,10 +355,17 @@ const AutomationOverviewPage = () => {
           author: {
             label: tr("automation.column.author"),
             className: "whitespace-nowrap",
+            // The avatar and its card when the author is a member (#Q3829);
+            // their stored name otherwise, as before.
             cell: (row) => (
-              <span title={row.authorUserId}>
-                {row.authorName || row.authorUserId.slice(0, 8)}
-              </span>
+              <ProjectUserChip
+                user={users.find((user) => user.id === row.authorUserId)}
+                fallback={
+                  <span title={row.authorUserId}>
+                    {row.authorName || row.authorUserId.slice(0, 8)}
+                  </span>
+                }
+              />
             ),
           },
         }}

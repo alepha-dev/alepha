@@ -657,14 +657,30 @@ export class ProjectController {
          * which every other reader of this list does not need.
          */
         assignable: z.boolean().optional(),
+        /**
+         * Also name each member's rank (`rank`), for the people cards
+         * (#Q3829). Off by default: two more reads that MCP and the other
+         * internal readers of this list do not need.
+         */
+        ranks: z.boolean().optional(),
       }),
       response: z.array(projectUserSchema),
     },
     handler: async ({ params, query, user }) => {
       const members = await this.membersOf(params.id);
       const full = await this.callerHolds(params.id, "member:read", user);
+      const rankOf = query.ranks
+        ? await this.rankNamesOf(params.id)
+        : () => undefined;
+      const card = (member: (typeof members)[number]) => {
+        const rank = rankOf(member.id);
+        return {
+          ...this.projectUser(member, full),
+          ...(rank ? { rank } : {}),
+        };
+      };
       if (!query.assignable) {
-        return members.map((member) => this.projectUser(member, full));
+        return members.map(card);
       }
       // One read of the members and one of the rank definitions, cached:
       // who may be handed a quest (#Q3648).
@@ -675,11 +691,38 @@ export class ProjectController {
         ),
       );
       return members.map((member) => ({
-        ...this.projectUser(member, full),
+        ...card(member),
         assignable: assignable.has(member.id),
       }));
     },
   });
+
+  /**
+   * Each member's rank NAME in this project, by user id (#Q3829): the
+   * membership rows and the rank definitions, two reads for the whole list.
+   * A member with no stored rank holds `member`, as everywhere else.
+   */
+  protected async rankNamesOf(
+    projectId: number,
+  ): Promise<(userId: string) => string | undefined> {
+    const organizationId =
+      await this.projectSecurity.organizationIdOf(projectId);
+    const [rows, ranks] = await Promise.all([
+      this.organizationMembers.findMany({
+        where: { organizationId: { eq: organizationId } },
+        columns: ["userId", "rank"],
+      }),
+      this.ranks.ranksOf(organizationId),
+    ]);
+    const keyOf = new Map(
+      rows.map((row) => [row.userId, row.rank ?? "member"]),
+    );
+    const nameOf = new Map(ranks.map((rank) => [rank.key, rank.name]));
+    return (userId) => {
+      const key = keyOf.get(userId);
+      return key ? (nameOf.get(key) ?? key) : undefined;
+    };
+  }
 
   /**
    * A member as {@link getProjectUsers} returns them: the public card, plus

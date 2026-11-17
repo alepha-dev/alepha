@@ -34,6 +34,7 @@ import {
   formatReference,
   useBulkReport,
   useProjectUsers,
+  ProjectUserChip,
   AgentPromptsMenu,
   useAgentPrompt,
   settleBulk,
@@ -1008,22 +1009,18 @@ const ProjectQuestsTable = () => {
                 return <span className="text-muted-foreground">-</span>;
               }
               const user = users.find((u) => u.id === quest.acceptedBy);
+              // The avatar and its card: name, username, rank, and when
+              // they took it (#Q3829).
               return (
-                <Tooltip>
-                  <TooltipTrigger render={<span className="inline-flex" />}>
-                    {renderAvatar(quest.acceptedBy)}
-                  </TooltipTrigger>
-                  <TooltipContent className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium">
-                      {displayName(user, quest.acceptedBy)}
-                    </span>
-                    {quest.acceptedAt && (
-                      <span className="text-muted-foreground text-xs">
-                        {`${tr("board.table.assigned")} ${dateFormatter.of(quest.acceptedAt).fromNow()}`}
-                      </span>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
+                <ProjectUserChip
+                  user={user}
+                  fallback={renderAvatar(quest.acceptedBy)}
+                  detail={
+                    quest.acceptedAt
+                      ? `${tr("board.table.assigned")} ${dateFormatter.of(quest.acceptedAt).fromNow()}`
+                      : undefined
+                  }
+                />
               );
             },
           },
