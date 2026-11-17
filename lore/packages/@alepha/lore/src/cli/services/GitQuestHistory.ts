@@ -31,10 +31,24 @@ export class GitQuestHistory {
   public static readonly CANDIDATES = 200;
 
   /**
-   * The most walked shas a push sends: Lore reads an 8 MB part, and a sha is
-   * 43 bytes of JSON. Past it the walk is partial.
+   * The most walked shas a push sends. Past it the walk is partial
+   * (`too-long`), never refused.
+   *
+   * ⚠️ Tied to the `commits` part of `ArtifactController.pushArtifact`,
+   * `z.file({ maxBytes: 4 * 1024 * 1024 })`: a sha is 43 bytes of JSON
+   * (`"<40 hex>",`), so the part holds about 97,500 of them. 90,000 leaves
+   * room; lower this with that part, or a long first push gets a 400
+   * (#Q3815).
    */
-  public static readonly MAX_WALKED = 150_000;
+  public static readonly MAX_WALKED = 90_000;
+
+  /**
+   * {@link GitQuestHistory.MAX_WALKED}, read through the instance so a spec
+   * can walk past it without a 90,000-commit repository.
+   */
+  protected get maxWalked(): number {
+    return GitQuestHistory.MAX_WALKED;
+  }
 
   /**
    * The highest quest number Lore's bitmap holds.
@@ -134,14 +148,14 @@ export class GitQuestHistory {
     let reason: QuestWalk["reason"];
     if (!base && shallow.out === "true") {
       reason = "shallow";
-    } else if (walked.length > GitQuestHistory.MAX_WALKED) {
+    } else if (walked.length > this.maxWalked) {
       reason = "too-long";
     }
 
     return {
       ...(base ? { base } : {}),
       numbers: [...numbers].sort((a, b) => a - b),
-      walked: walked.slice(0, GitQuestHistory.MAX_WALKED),
+      walked: walked.slice(0, this.maxWalked),
       complete: reason === undefined,
       ...(reason ? { reason } : {}),
     };
