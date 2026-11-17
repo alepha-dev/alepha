@@ -1,0 +1,8 @@
+{
+  "type": "command",
+  "id": "7c1d9e3a-2b4f-4a6c-9d8e-0f1a2b3c4d5e",
+  "kind": "upgrade",
+  "app": "",
+  "environment": "",
+  "version": "0.40.0"
+}

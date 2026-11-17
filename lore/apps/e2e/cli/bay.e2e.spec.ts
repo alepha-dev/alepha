@@ -485,6 +485,10 @@ interface InventoryApp {
 interface InventorySnapshot {
   at: string;
   reportedAt: string;
+  bayVersion?: string;
+  upgradeMode?: string;
+  upgradeAvailable?: boolean;
+  upgradeByHand?: boolean;
   apps: InventoryApp[];
 }
 
@@ -931,6 +935,43 @@ describe("Bay connector against a real Lore", () => {
         join(bay.root, "artifacts", `${pushed.artifact.sha256}.tar.zst`),
       ),
     ).toBe(true);
+  });
+
+  /**
+   * The upgrade of Bay itself (#E152), on the one Bay this suite has: a
+   * development build, started by hand. It says so on its inventory (`dev`,
+   * `manual`), and Lore refuses to send it an upgrade, with the reason,
+   * before a row exists. What a release under systemd does with the command
+   * is Bay's own suite; what is proved here is that the two agree on the
+   * inventory fields and that the refusal reaches the caller.
+   */
+  it("refuses to upgrade a development Bay started by hand, and says why", async () => {
+    const reported = await until(
+      "an inventory saying how this Bay can be upgraded",
+      async () => {
+        const read = await ok<InventoryResponse>(
+          call(lore, owner, "getHostInventory", {
+            params: { hostId: host.id },
+          }),
+        );
+        return read.inventory?.upgradeMode ? read.inventory : undefined;
+      },
+      60_000,
+    );
+    expect(reported.bayVersion).toBe("dev");
+    expect(reported.upgradeMode).toBe("manual");
+    // A build with no release version is neither behind nor ahead.
+    expect(reported.upgradeAvailable).toBe(false);
+    expect(reported.upgradeByHand).toBe(false);
+
+    const before = (await commands()).length;
+    const refused = await enqueue({ kind: "upgrade", version: "9.9.9" });
+    expect(refused.status, refused.text).toBe(400);
+    expect(refused.text).toContain("no release version (dev)");
+    // Not a version at all: stopped at the door, like any malformed body.
+    const malformed = await enqueue({ kind: "upgrade", version: "latest" });
+    expect(malformed.status, malformed.text).toBeGreaterThanOrEqual(400);
+    expect((await commands()).length).toBe(before);
   });
 
   it("deploys a stack to the real Bay: variables pulled, routes applied, outcome recorded", async () => {

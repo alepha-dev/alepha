@@ -7,6 +7,7 @@ import { $repository } from "alepha/orm";
 import { appInstances } from "../entities/appInstances.ts";
 import { hostInventories } from "../entities/hostInventories.ts";
 import type { Host } from "../entities/hosts.ts";
+import { BayUpgrade } from "../schemas/BayUpgrade.ts";
 import type { HostInventoryFrame } from "../schemas/hostInventoryFrameSchema.ts";
 import type {
   HostInventoryExpectedApp,
@@ -15,6 +16,7 @@ import type {
   HostInventoryResource,
 } from "../schemas/hostInventoryResourceSchema.ts";
 import type { HostInventorySummary } from "../schemas/ownedHostResourceSchema.ts";
+import { BayReleaseTarget } from "./BayReleaseTarget.ts";
 
 /**
  * What Lore does with an inventory push: one row per host, updated in
@@ -40,6 +42,7 @@ export class HostInventoryService {
   protected readonly instances = $repository(appInstances);
   protected readonly projects = $repository(projects);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly target = $inject(BayReleaseTarget);
 
   /**
    * Store what the machine reported, replacing whatever it said before.
@@ -150,6 +153,8 @@ export class HostInventoryService {
         };
       });
 
+    const target = this.target.version();
+    const upgradeMode = stored?.machine.upgradeMode;
     return {
       inventory: stored
         ? {
@@ -158,6 +163,13 @@ export class HostInventoryService {
             ...(stored.bayVersion === undefined
               ? {}
               : { bayVersion: stored.bayVersion }),
+            ...(upgradeMode === undefined ? {} : { upgradeMode }),
+            ...(target === undefined ? {} : { targetBayVersion: target }),
+            ...BayUpgrade.status({
+              bayVersion: stored.bayVersion,
+              upgradeMode,
+              target,
+            }),
             machine: stored.machine,
             apps: reported,
             ...(stored.stacks?.length ? { stacks: stored.stacks } : {}),
@@ -168,11 +180,13 @@ export class HostInventoryService {
   }
 
   /**
-   * The two-number summary for a list of hosts, keyed by host id.
+   * The summary for a list of hosts, keyed by host id.
    *
    * One query for the whole list, so an hosts list can say "7 apps,
-   * reported 4 minutes ago" per row without a read per row and without
-   * parsing a single app array.
+   * reported 4 minutes ago, Bay 0.39.0" per row without a read per row and
+   * without parsing a single app array. Whether a host can TAKE the upgrade
+   * is not here: the mode lives in the machine block, and the list only says
+   * that one is due.
    */
   async summariesFor(
     hostIds: string[],
@@ -182,13 +196,29 @@ export class HostInventoryService {
     }
     const rows = await this.inventories.findMany({
       where: { hostId: { inArray: hostIds } },
-      columns: ["hostId", "appCount", "reportedAt"],
+      columns: ["hostId", "appCount", "reportedAt", "bayVersion"],
     });
+    const target = this.target.version();
     return new Map(
-      rows.map((row) => [
-        row.hostId,
-        { appCount: row.appCount, reportedAt: row.reportedAt },
-      ]),
+      rows.map((row) => {
+        const { upgradeAvailable } = BayUpgrade.status({
+          bayVersion: row.bayVersion,
+          upgradeMode: "handoff",
+          target,
+        });
+        return [
+          row.hostId,
+          {
+            appCount: row.appCount,
+            reportedAt: row.reportedAt,
+            ...(row.bayVersion === undefined
+              ? {}
+              : { bayVersion: row.bayVersion }),
+            upgradeAvailable,
+            ...(upgradeAvailable && target ? { targetBayVersion: target } : {}),
+          },
+        ];
+      }),
     );
   }
 

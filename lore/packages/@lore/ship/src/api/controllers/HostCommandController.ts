@@ -22,6 +22,7 @@ import { artifacts } from "../entities/artifacts.ts";
 import { hostCommands } from "../entities/hostCommands.ts";
 import { hostProjects } from "../entities/hostProjects.ts";
 import { type Host, hosts } from "../entities/hosts.ts";
+import { BayUpgrade } from "../schemas/BayUpgrade.ts";
 import {
   BACKUP_KINDS_REFUSED_OFFLINE,
   backupCommandInput,
@@ -37,6 +38,7 @@ import {
 } from "../schemas/hostCommandResourceSchema.ts";
 import { HostCommandService } from "../services/HostCommandService.ts";
 import { HostService } from "../services/HostService.ts";
+import { HostUpgradeService } from "../services/HostUpgradeService.ts";
 import { ResourceNameService } from "../services/ResourceNameService.ts";
 
 export type { HostCommandListItem, HostCommandResource };
@@ -65,6 +67,7 @@ export type { HostCommandListItem, HostCommandResource };
 export class HostCommandController {
   protected readonly hosts = $inject(HostService);
   protected readonly commands = $inject(HostCommandService);
+  protected readonly upgrades = $inject(HostUpgradeService);
   protected readonly ranks = $inject(RankService);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly artifacts = $repository(artifacts);
@@ -197,11 +200,24 @@ export class HostCommandController {
           artifactId: z.uuid(),
           environment: z.string().min(1).max(100),
         }),
+        // Upgrade Bay itself (#E152). Without a version, the release this
+        // Lore was built from. Nothing else: no address, no checksum.
+        z.object({
+          kind: z.literal("upgrade"),
+          version: z.string().max(20).regex(BayUpgrade.VERSION).optional(),
+        }),
       ]),
       response: hostCommandResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const host = this.owned.get<Host>();
+
+      if (body.kind === "upgrade") {
+        // Home project only, by this action's own gate: a project that
+        // borrows a host cannot upgrade it. Everything else that would make
+        // it fail is refused by the service, before any row.
+        return this.upgrades.enqueue(host, body.version, user.id);
+      }
 
       if (body.kind === "logs") {
         // ⚠️ The one verb in this epic that refuses instead of queueing, and

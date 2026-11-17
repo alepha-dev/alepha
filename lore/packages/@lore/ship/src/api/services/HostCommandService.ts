@@ -5,6 +5,7 @@ import { $repository } from "alepha/orm";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import { type HostCommand, hostCommands } from "../entities/hostCommands.ts";
+import { hostInventories } from "../entities/hostInventories.ts";
 import type { Host } from "../entities/hosts.ts";
 import type { HostCommandFrame } from "../schemas/hostCommandFrameSchema.ts";
 import type { HostCommandPayload } from "../schemas/hostCommandPayloadSchema.ts";
@@ -127,10 +128,14 @@ export class HostCommandService {
       remove: 120,
       // `compose down` on every service of the environment.
       "stack-remove": 600,
+      // A download of some tens of megabytes, a checksum, and a handoff that
+      // gives the new Bay 60 s to say it is ready.
+      upgrade: 300,
     };
 
   protected readonly log = $logger();
   protected readonly commands = $repository(hostCommands);
+  protected readonly inventories = $repository(hostInventories);
   protected readonly transport = $inject(HostCommandTransport);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
@@ -162,7 +167,8 @@ export class HostCommandService {
       (kind === "deploy" ||
         kind === "stack-deploy" ||
         kind === "remove" ||
-        kind === "stack-remove") &&
+        kind === "stack-remove" ||
+        kind === "upgrade") &&
       !host.deployAllowed
     ) {
       throw new ForbiddenError(
@@ -176,6 +182,19 @@ export class HostCommandService {
       throw new ForbiddenError(
         `Host "${host.slug}" does not accept changes to its apps; its home project has to allow deploys first`,
       );
+    }
+    // The payload is one flat object for every kind, as the frame is, so
+    // what each kind may carry is said here rather than by a union. An
+    // `upgrade` is about the machine: a version, and no instance. Every other
+    // kind names an environment.
+    if (payload && kind === "upgrade") {
+      if (!payload.version || payload.app || payload.environment) {
+        throw new BadRequestError(
+          "An upgrade names a version and no app or environment",
+        );
+      }
+    } else if (payload && !payload.environment) {
+      throw new BadRequestError(`A ${kind} names an environment`);
     }
     if (kind === "restore" && !payload?.restore?.dryRun) {
       if (!payload?.restore?.reason?.trim()) {
@@ -350,17 +369,37 @@ export class HostCommandService {
       if (!reason) {
         continue;
       }
+      // An upgrade past its time may have happened all the same: the ack is
+      // what was lost. What the host says it runs is the answer.
+      const reported =
+        command.kind === "upgrade" && command.status !== "pending"
+          ? (
+              await this.inventories.findOne({
+                where: { hostId: { eq: command.hostId } },
+              })
+            )?.bayVersion
+          : undefined;
+      const reached =
+        reported !== undefined && reported === command.payload.version;
       await this.commands.updateById(command.id, {
-        status: "failed",
+        status: reached ? "done" : "failed",
         finishedAt: new Date(now).toISOString(),
-        reason,
+        ...(reached
+          ? {}
+          : {
+              reason: reported
+                ? `${reason}; the host reports Bay ${reported}`
+                : reason,
+            }),
       });
       await this.alepha.events.emit("host:command:progressed", {
         command: await this.commands.getOne({
           where: { id: { eq: command.id } },
         }),
       });
-      failed += 1;
+      if (!reached) {
+        failed += 1;
+      }
     }
     return failed;
   }
@@ -428,7 +467,61 @@ export class HostCommandService {
         : {}),
       ...(command.payload.restore ? { restore: command.payload.restore } : {}),
       ...(command.payload.logs ? { logs: command.payload.logs } : {}),
+      // The whole of what an upgrade is told, and on that kind only.
+      ...(command.kind === "upgrade" && command.payload.version
+        ? { version: command.payload.version }
+        : {}),
     };
+  }
+
+  /**
+   * Settle an `upgrade` the ack left open, from what the host now says it
+   * runs.
+   *
+   * The ack is the normal path: the old Bay acks `done` once the new one
+   * serves, over the connection it still holds. This is the backstop for an
+   * ack lost anyway (the connection dropped at the wrong second, the old
+   * process was killed). Called on every inventory.
+   *
+   * The version asked for is `done` whenever it is reported. Any other
+   * version only fails the command when the host has CONNECTED since the
+   * command was sent: before that, the inventory is the old Bay's, still
+   * downloading, and says nothing about how the upgrade ended.
+   */
+  async settleUpgrades(host: Host, bayVersion: string | undefined) {
+    if (!bayVersion) {
+      return;
+    }
+    const open = await this.commands.findMany({
+      where: {
+        hostId: { eq: host.id },
+        kind: { eq: "upgrade" },
+        status: { inArray: ["sent", "running"] },
+      },
+    });
+    for (const command of open) {
+      const reached = bayVersion === command.payload.version;
+      const since = this.millis(command.sentAt ?? command.createdAt);
+      const reconnected =
+        !!host.connectedAt && Date.parse(host.connectedAt) > since;
+      if (!reached && !reconnected) {
+        continue;
+      }
+      await this.commands.updateById(command.id, {
+        status: reached ? "done" : "failed",
+        finishedAt: this.now(),
+        ...(reached
+          ? {}
+          : {
+              reason: `The host came back on Bay ${bayVersion}, not ${command.payload.version}`,
+            }),
+      });
+      await this.alepha.events.emit("host:command:progressed", {
+        command: await this.commands.getOne({
+          where: { id: { eq: command.id } },
+        }),
+      });
+    }
   }
 
   /**
