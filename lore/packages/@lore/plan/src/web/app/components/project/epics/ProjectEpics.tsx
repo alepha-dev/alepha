@@ -566,9 +566,40 @@ const ProjectEpics = () => {
     alepha.store.set(currentEpicCountAtom, {
       count: all.filter((epic) => epic.status === "draft").length,
     });
+    const picked = filters?.release ?? [];
+    // The selections OR together, and the sentinel is one of them: an epic
+    // matches if it is attached to a picked release, or if "No release" is
+    // picked and it is attached to nothing.
+    const wantsUnattached = picked.includes(QUEST_RELEASE_NONE);
+    const wantedIds = new Set(
+      picked.filter((v) => v !== QUEST_RELEASE_NONE).map(Number),
+    );
+    // What a preset keeps (`keepOnPreset`, #Q3854): the release and the
+    // search. The badges count over this list, so "Ready 13" never sits
+    // beside the three ready epics of the release picked.
+    const kept = all.filter((epic) => {
+      if (picked.length > 0) {
+        // `!= null` covers both spellings of "not attached" and narrows
+        // the id in the same breath, so no cast is needed here.
+        const match =
+          epic.releaseId != null
+            ? wantedIds.has(epic.releaseId)
+            : wantsUnattached;
+        if (!match) return false;
+      }
+      if (!needle) return true;
+      // `#E3`, `#3` and `3` all reach the number; `needle` is lowercased,
+      // so the letter is.
+      return (
+        epic.title.toLowerCase().includes(needle) ||
+        epic.description.toLowerCase().includes(needle) ||
+        String(epic.number) === needle.replace(/^#e?/, "")
+      );
+    });
+
     // Set only when a count moved, so a refetch that changes nothing does
     // not re-render the table it is running in.
-    const counts = epicPresetCounts(all);
+    const counts = epicPresetCounts(kept);
     setPresetCounts((previous) =>
       previous && JSON.stringify(previous) === JSON.stringify(counts)
         ? previous
@@ -578,37 +609,13 @@ const ProjectEpics = () => {
     const statuses = filters?.status ?? [];
     statusFilter.current = statuses;
     const openReviews = filters?.reviews === "open";
-    const picked = filters?.release ?? [];
-    // The selections OR together, and the sentinel is one of them: an epic
-    // matches if it is attached to a picked release, or if "No release" is
-    // picked and it is attached to nothing.
-    const wantsUnattached = picked.includes(QUEST_RELEASE_NONE);
-    const wantedIds = new Set(
-      picked.filter((v) => v !== QUEST_RELEASE_NONE).map(Number),
-    );
     const rows = sortEpics(
-      all.filter((epic) => {
+      kept.filter((epic) => {
         if (statuses.length > 0 && !statuses.includes(epic.status)) {
           return false;
         }
         if (openReviews && (epic.openQuestions ?? 0) === 0) return false;
-        if (picked.length > 0) {
-          // `!= null` covers both spellings of "not attached" and narrows
-          // the id in the same breath, so no cast is needed here.
-          const match =
-            epic.releaseId != null
-              ? wantedIds.has(epic.releaseId)
-              : wantsUnattached;
-          if (!match) return false;
-        }
-        if (!needle) return true;
-        // `#E3`, `#3` and `3` all reach the number; `needle` is lowercased,
-        // so the letter is.
-        return (
-          epic.title.toLowerCase().includes(needle) ||
-          epic.description.toLowerCase().includes(needle) ||
-          String(epic.number) === needle.replace(/^#e?/, "")
-        );
+        return true;
       }),
       sort,
       releases,
@@ -696,7 +703,9 @@ const ProjectEpics = () => {
    * cannot survive in a filter that no longer matches anything.
    */
   const filterFields = {
-    search: { preset: "search" },
+    // A preset leaves the search and the release as they are (#Q3854), so
+    // "what is ready in 1.2.0" is browsed preset by preset.
+    search: { preset: "search", keepOnPreset: true },
     status: {
       schema: z.array(epicResourceSchema.shape.status),
       label: tr("epic.filter.status"),
@@ -730,6 +739,7 @@ const ProjectEpics = () => {
       icon: Flag,
       items: releaseOptions,
       hidden: (releases ?? []).length === 0,
+      keepOnPreset: true,
       control: {
         clearLabel: tr("board.filter.allReleases"),
       },
@@ -1511,7 +1521,8 @@ const EPIC_PRESETS: Array<{
 ];
 
 /**
- * Each preset's count over the project's whole epic list.
+ * Each preset's count over the epics the kept filters (release, search)
+ * leave, the list a preset click would narrow.
  */
 const epicPresetCounts = (epics: EpicResource[]): EpicPresetCounts => ({
   active: epics.filter((epic) => epic.status === "in_progress").length,
