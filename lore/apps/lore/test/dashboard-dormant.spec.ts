@@ -95,7 +95,11 @@ describe("dashboard dormant state", { timeout: 60_000 }, () => {
   });
 
   it("leaves a customized board alone", async ({ expect }) => {
-    await board.addProjectDashboardCard.fetch(
+    // In process, not over HTTP: `travel()` below runs every cron job due in
+    // 120 days, seconds of real time, and a keep-alive socket opened before
+    // it can be closed by the server just as the next request reuses it
+    // ("other side closed"). The more jobs Lore has, the likelier.
+    await board.addProjectDashboardCard.run(
       {
         params: { projectId: project.id },
         body: {

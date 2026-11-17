@@ -28,6 +28,11 @@ const GUIDES = [
   "ship-cloudflare-token",
   "project-dashboard",
   "plan-releases",
+  "plan-personas",
+  "plan-use-cases",
+  "plan-requirements",
+  "plan-verify",
+  "plan-traceability",
   "remember-tables",
 ] as const;
 
