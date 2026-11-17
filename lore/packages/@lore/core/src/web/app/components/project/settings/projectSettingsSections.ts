@@ -27,6 +27,12 @@ export interface SettingsTab {
    */
   option?: string;
   /**
+   * Options of which ANY is enough (#E153): Agent prompts shows while
+   * `agentPrompts` or `requirements` is on. Read instead of `option` when
+   * present.
+   */
+  options?: string[];
+  /**
    * A rank permission the tab needs. Not a route guard: the page stays
    * reachable by a link somebody already holds, and every write re-checks.
    */
@@ -171,9 +177,13 @@ export const visibleSettingsTabs = (
   }
   return section.tabs.filter(
     (tab) =>
-      (!tab.option ||
-        !section.capability ||
-        capabilityOption(project, section.capability, tab.option)) &&
+      (!section.capability ||
+        (tab.options
+          ? tab.options.some((option) =>
+              capabilityOption(project, section.capability!, option),
+            )
+          : !tab.option ||
+            capabilityOption(project, section.capability, tab.option))) &&
       (!tab.requires || canInProject(project, tab.requires)) &&
       (!tab.capability || hasCapability(project, tab.capability)),
   );

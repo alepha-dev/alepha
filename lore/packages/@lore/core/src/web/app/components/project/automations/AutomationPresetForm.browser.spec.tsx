@@ -314,7 +314,9 @@ describe("Automation preset setup form", () => {
     fireEvent.click(await screen.findByRole("option", { name: "Myself" }));
     fireEvent.change(
       screen.getByRole("textbox", { name: "New variable key" }),
-      { target: { value: "teamRecipient" } },
+      {
+        target: { value: "teamRecipient" },
+      },
     );
     fireEvent.click(screen.getByRole("button", { name: "Create and enable" }));
     await waitFor(() => expect(attempts).toBe(1));

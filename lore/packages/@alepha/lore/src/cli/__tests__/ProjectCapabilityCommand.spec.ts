@@ -39,7 +39,9 @@ describe("lore project capability", () => {
     const command = alepha.inject(ProjectCommand);
     Object.assign(
       alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
-      { projects: { getProjectBySlug: async () => ({ id: 7 }) } },
+      {
+        projects: { getProjectBySlug: async () => ({ id: 7 }) },
+      },
     );
     Object.assign(command as unknown as Record<string, unknown>, {
       capabilityApi: {
@@ -105,7 +107,10 @@ describe("lore project capability", () => {
     await run("capabilityEnable", "ship --option deploy=false --option track");
     expect(
       (calls[0].request as { body: { options: object } }).body.options,
-    ).toEqual({ track: true, deploy: false });
+    ).toEqual({
+      track: true,
+      deploy: false,
+    });
     await expect(run("capabilityEnable", "ship --option nope")).rejects.toThrow(
       "ship has no option nope. Its options: track, deploy.",
     );

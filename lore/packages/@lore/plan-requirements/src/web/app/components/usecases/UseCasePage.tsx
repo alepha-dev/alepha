@@ -11,6 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   CircleCheck,
+  ClipboardCheck,
   PlayCircle,
   FileText,
   History,
@@ -25,6 +26,7 @@ import { useState } from "react";
 import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import { currentUseCaseAtom } from "../../atoms/currentUseCaseAtom.ts";
+import VerifyDialog from "../verify/VerifyDialog.tsx";
 import UseCaseAside from "./UseCaseAside.tsx";
 import UseCaseCoverage from "./UseCaseCoverage.tsx";
 import UseCaseCriteria from "./UseCaseCriteria.tsx";
@@ -57,6 +59,7 @@ const UseCasePage = (props: UseCasePageProps) => {
   const [useCase, setUseCase] = useState(props.useCase);
   const [tab, setTab] = useState<TabKey>("scenario");
   const [editing, setEditing] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const apply = (next: UseCaseResource) => {
     setUseCase(next);
@@ -161,6 +164,10 @@ const UseCasePage = (props: UseCasePageProps) => {
       onTabChange={(value) => setTab(value as TabKey)}
       actions={
         <>
+          <Button size="sm" onClick={() => setVerifying(true)}>
+            <ClipboardCheck className="size-4" />
+            {tr("requirements.verify")}
+          </Button>
           {canWrite &&
           useCase.status !== "validated" &&
           useCase.status !== "deprecated" ? (
@@ -244,6 +251,11 @@ const UseCasePage = (props: UseCasePageProps) => {
           persistenceKey={`lor.activity.${project.id}.usecase.${useCase.number}`}
         />
       )}
+      <VerifyDialog
+        subject={{ kind: "usecase", number: useCase.number }}
+        open={verifying}
+        onOpenChange={setVerifying}
+      />
       <UseCaseSheet
         projectId={project.id}
         useCase={useCase}

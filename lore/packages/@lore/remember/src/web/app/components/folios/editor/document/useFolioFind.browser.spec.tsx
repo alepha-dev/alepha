@@ -174,7 +174,9 @@ describe("useFolioFind", () => {
     const container = mount("<p>alpha beta</p>");
     const { result, rerender } = renderHook(
       (content: string) => useFolioFind(container, content),
-      { initialProps: container.textContent ?? "" },
+      {
+        initialProps: container.textContent ?? "",
+      },
     );
 
     act(() => result.current.show());

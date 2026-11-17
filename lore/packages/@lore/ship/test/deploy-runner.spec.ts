@@ -206,7 +206,10 @@ describe("deploying an artifact from inside the Worker", () => {
             string,
             unknown
           >,
-          { provisioner: () => provision, deployer: () => deploy },
+          {
+            provisioner: () => provision,
+            deployer: () => deploy,
+          },
         );
         return child;
       },
@@ -464,7 +467,9 @@ describe("deploying an artifact from inside the Worker", () => {
     }) => {
       const { runner, sent, uploaded } = await withFakeCloudflare(
         await packed({}, site),
-        { askForEveryAsset: true },
+        {
+          askForEveryAsset: true,
+        },
       );
       const digest = await new CloudflareAssetManifest().digest(
         new TextEncoder().encode("page"),
@@ -512,7 +517,9 @@ describe("deploying an artifact from inside the Worker", () => {
     }) => {
       const { runner, sent } = await withFakeCloudflare(
         await packed({}, site),
-        { askForEveryAsset: true },
+        {
+          askForEveryAsset: true,
+        },
       );
       await alepha
         .inject(DeployAssetCache)

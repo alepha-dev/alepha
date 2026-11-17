@@ -296,10 +296,15 @@ describe("Automation configured notifications and durable outbox", () => {
     });
     expect(
       await persistence.receipts.getById(`job-origin:${id}`),
-    ).toMatchObject({ kind: "job_origin", automationId: opened.rule.id });
+    ).toMatchObject({
+      kind: "job_origin",
+      automationId: opened.rule.id,
+    });
     expect(
       await alepha.inject(AutomationNotificationOutbox).status(id),
-    ).toEqual({ status: "queued" });
+    ).toEqual({
+      status: "queued",
+    });
     expect(await rows.inbox.count()).toBe(0);
     expect(mail.records).toHaveLength(0);
     expect(await deliver(id)).toMatchObject({ status: "delivered" });
@@ -366,7 +371,9 @@ describe("Automation configured notifications and durable outbox", () => {
     const result = await enqueue(opened);
     expect(
       await deliver(String(result.receipt.result!.outbox_id)),
-    ).toMatchObject({ status: "sent" });
+    ).toMatchObject({
+      status: "sent",
+    });
     const base = (alepha.env.PUBLIC_URL ?? "").replace(/\/+$/, "");
     const link = `${base}/${project.slug}/quests`;
     const manage = `${base}/${project.slug}/automations/${opened.rule.id}`;
@@ -406,11 +413,16 @@ describe("Automation configured notifications and durable outbox", () => {
     await rows.preferences.create({ userId: user.id, emailEnabled: false });
     expect(
       await deliver(String(email.receipt.result!.outbox_id)),
-    ).toMatchObject({ status: "skipped", reason: "declined" });
+    ).toMatchObject({
+      status: "skipped",
+      reason: "declined",
+    });
     const inbox = await enqueue(await open());
     expect(
       await deliver(String(inbox.receipt.result!.outbox_id)),
-    ).toMatchObject({ status: "delivered" });
+    ).toMatchObject({
+      status: "delivered",
+    });
     const preference = await rows.preferences.getOne({});
     await rows.preferences.updateById(preference.id, {
       emailEnabled: true,
@@ -443,7 +455,10 @@ describe("Automation configured notifications and durable outbox", () => {
       });
       expect(
         await deliver(String(result.receipt.result!.outbox_id)),
-      ).toMatchObject({ status: "skipped", reason: "suppressed" });
+      ).toMatchObject({
+        status: "skipped",
+        reason: "suppressed",
+      });
     }
     expect(mail.records).toHaveLength(0);
     expect(await rows.inbox.count()).toBe(0);
@@ -459,7 +474,9 @@ describe("Automation configured notifications and durable outbox", () => {
     ).toBe(`lore-user:${user.id}`);
     expect(
       await deliver(String(result.receipt.result!.outbox_id)),
-    ).toMatchObject({ status: "delivered" });
+    ).toMatchObject({
+      status: "delivered",
+    });
     await rows.preferences.create({
       userId: user.id,
       mutedCategories: ["automations"],
@@ -467,7 +484,10 @@ describe("Automation configured notifications and durable outbox", () => {
     const muted = await enqueue(await open());
     expect(
       await deliver(String(muted.receipt.result!.outbox_id)),
-    ).toMatchObject({ status: "skipped", reason: "declined" });
+    ).toMatchObject({
+      status: "skipped",
+      reason: "declined",
+    });
     const email = await enqueue(await open(config("email")));
     expect(email).toMatchObject({
       status: "skipped",
@@ -491,7 +511,10 @@ describe("Automation configured notifications and durable outbox", () => {
     });
     expect(
       await deliver(String(result.receipt.result!.outbox_id)),
-    ).toMatchObject({ status: "skipped", reason: "unavailable" });
+    ).toMatchObject({
+      status: "skipped",
+      reason: "unavailable",
+    });
     expect((await persistence.rules.getById(opened.rule.id)).health).toBe(
       "active",
     );
@@ -499,7 +522,10 @@ describe("Automation configured notifications and durable outbox", () => {
     await entities.users.updateById(user.id, { email: "new@example.test" });
     expect(
       await deliver(String(changed.receipt.result!.outbox_id)),
-    ).toMatchObject({ status: "skipped", reason: "unavailable" });
+    ).toMatchObject({
+      status: "skipped",
+      reason: "unavailable",
+    });
     await alepha
       .inject(RankService)
       .save(
@@ -521,7 +547,10 @@ describe("Automation configured notifications and durable outbox", () => {
     await persistence.rules.updateById(opened.rule.id, { enabled: false });
     expect(
       await deliver(String(result.receipt.result!.outbox_id)),
-    ).toMatchObject({ status: "skipped", reason: "unavailable" });
+    ).toMatchObject({
+      status: "skipped",
+      reason: "unavailable",
+    });
     const retry = await enqueue(await open(config("email")));
     const id = String(retry.receipt.result!.outbox_id);
     mail.failures = 1;
@@ -603,7 +632,9 @@ describe("Automation configured notifications and durable outbox", () => {
     const publisher = await enqueue(
       await open(config("inbox", "releases")),
       0,
-      { excludeUserId: user.id },
+      {
+        excludeUserId: user.id,
+      },
     );
     expect(publisher).toMatchObject({
       status: "skipped",

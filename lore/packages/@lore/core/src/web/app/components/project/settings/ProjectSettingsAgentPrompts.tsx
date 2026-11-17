@@ -4,6 +4,7 @@ import {
   useAction,
   useAlepha,
   useClient,
+  useInject,
   useQuery,
   useStore,
 } from "alepha/react";
@@ -13,6 +14,7 @@ import type { ProjectPromptController } from "../../../../../api/controllers/Pro
 import type { AgentPromptKind } from "../../../../../api/schemas/agentPromptKindSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { projectPromptsAtom } from "../../../atoms/projectPromptsAtom.ts";
+import { AgentPromptRegistry } from "../../../registries/AgentPromptRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { capabilityOption } from "../../../services/projectCapabilities.ts";
 import { ProjectSettingsAgentPromptEditor } from "./ProjectSettingsAgentPromptEditor.tsx";
@@ -50,6 +52,20 @@ const PLACEHOLDERS = [
 ] as const;
 
 /**
+ * The placeholders only Requirements' kinds fill (#E153), listed once one of
+ * them is offered.
+ */
+const SCENARIO_PLACEHOLDERS = [
+  "steps",
+  "criteria",
+  "persona",
+  "demoAccount",
+  "app",
+  "env",
+  "appUrl",
+] as const;
+
+/**
  * Where the owner writes the four agent prompt templates.
  *
  * ⚠️ **This does not render the switch.** `ProjectSettingsCapabilitySection`
@@ -78,7 +94,27 @@ const ProjectSettingsAgentPrompts = () => {
   // ⚠️ Read off `currentProjectAtom` and NOT through `useCapabilityOption`.
   // That hook is a write handle: it returns `{ enabled, toggle }` and holds
   // optimistic pending state for a switch this section does not own.
-  const enabled = capabilityOption(project, "plan", "agentPrompts");
+  const registry = useInject(AgentPromptRegistry);
+  // The kinds whose option is on (#E153): the built-in ones under
+  // `agentPrompts`, Requirements' under `requirements`.
+  const kinds = [
+    ...KINDS,
+    ...registry
+      .all()
+      .map((it) => it.kind)
+      .filter((kind) => !KINDS.includes(kind)),
+  ].filter((kind) => {
+    const entry = registry.all().find((it) => it.kind === kind);
+    return (
+      !!entry &&
+      capabilityOption(project, "plan", entry.option ?? "agentPrompts")
+    );
+  });
+  const enabled = kinds.length > 0;
+  const scenario = kinds.some(
+    (kind) =>
+      registry.all().find((it) => it.kind === kind)?.option === "requirements",
+  );
   const projectId = project?.id;
 
   // Keyless on purpose: it runs on every mount, which is the unconditional
@@ -162,16 +198,16 @@ const ProjectSettingsAgentPrompts = () => {
             {tr("agentPrompts.settings.legend")}
           </span>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-            {PLACEHOLDERS.map((name) => (
-              <div key={name} className="contents">
-                <dt className="text-muted-foreground font-mono text-xs">
-                  {`{{${name}}}`}
-                </dt>
-                <dd className="text-muted-foreground text-xs">
-                  {tr(`agentPrompts.settings.placeholder.${name}`)}
-                </dd>
-              </div>
-            ))}
+            {[...PLACEHOLDERS, ...(scenario ? SCENARIO_PLACEHOLDERS : [])].map(
+              (name) => (
+                <div key={name} className="contents">
+                  <dt className="text-muted-foreground font-mono text-xs">{`{{${name}}}`}</dt>
+                  <dd className="text-muted-foreground text-xs">
+                    {tr(`agentPrompts.settings.placeholder.${name}`)}
+                  </dd>
+                </div>
+              ),
+            )}
           </dl>
         </div>
 
@@ -179,7 +215,7 @@ const ProjectSettingsAgentPrompts = () => {
             seeded with the default and then jumped to the stored template
             under the reader's cursor. */}
         {loaded &&
-          KINDS.map((kind) => (
+          kinds.map((kind) => (
             <ProjectSettingsAgentPromptEditor
               key={kind}
               kind={kind}

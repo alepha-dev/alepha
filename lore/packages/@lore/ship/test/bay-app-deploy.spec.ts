@@ -307,7 +307,9 @@ describe("an app deploy to a Bay host", () => {
     const base = alepha.inject(NodeHttpServerProvider).hostname;
     const res = await fetch(
       `${base}/estates/commands/${row.commandId}/secrets`,
-      { headers: { authorization: `Bearer ${a.secret}` } },
+      {
+        headers: { authorization: `Bearer ${a.secret}` },
+      },
     );
     expect(await res.json()).toMatchObject({ API_KEY: "bay-api-key" });
   });

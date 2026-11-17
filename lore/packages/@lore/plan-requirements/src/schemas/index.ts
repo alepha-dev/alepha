@@ -75,3 +75,8 @@ export {
   type ReleaseMove,
   releaseMoveSchema,
 } from "../api/schemas/releaseMoveSchema.ts";
+export { RequirementsPromptDefaults } from "../api/schemas/RequirementsPromptDefaults.ts";
+export {
+  type RequirementsPromptKind,
+  requirementsPromptKindSchema,
+} from "../api/schemas/requirementsPromptKindSchema.ts";

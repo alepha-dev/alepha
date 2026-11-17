@@ -168,7 +168,9 @@ export class LoreReporter implements Reporter {
       return Number(project);
     const response = await fetch(
       `${url}/api/projects/by-slug/${encodeURIComponent(project)}`,
-      { headers },
+      {
+        headers,
+      },
     );
     if (!response.ok) return undefined;
     return ((await response.json()) as { id: number }).id;

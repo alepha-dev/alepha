@@ -1,4 +1,4 @@
-import { Button, Progress } from "@alepha/ui";
+import { Button, Progress, Segmented } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import {
   canInProject,
@@ -11,7 +11,7 @@ import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, ClipboardCheck, Plus } from "lucide-react";
 import { useState } from "react";
 
 import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
@@ -26,6 +26,7 @@ import RunStateBadge from "../usecases/RunStateBadge.tsx";
 import { USE_CASE_STATUS_LABEL_KEYS } from "../usecases/useCaseLabels.ts";
 import UseCaseSheet from "../usecases/UseCaseSheet.tsx";
 import UseCaseStatusBadge from "../usecases/UseCaseStatusBadge.tsx";
+import VerifyDialog from "../verify/VerifyDialog.tsx";
 
 const STATUSES = ["draft", "ready", "validated", "deprecated"] as const;
 
@@ -59,6 +60,7 @@ const UseCasesTab = () => {
   const router = useRouter<any>();
   const projectId = project?.id ?? 0;
   const [creating, setCreating] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const useCases = useQuery<UseCaseResource[]>(
@@ -71,23 +73,25 @@ const UseCasesTab = () => {
     [useCaseApi, projectId],
   );
 
+  const [counter, setCounter] = useState("all");
   const filters = useForm({
     id: "use-case-filters",
     schema: z.object({
-      counter: z.text(),
-      persona: z.text(),
-      status: z.text(),
-      group: z.enum(["epic", "persona", "status", "none"]),
+      persona: z.text().optional(),
+      status: z.text().optional(),
+      group: z.enum(["epic", "persona", "status", "none"]).optional(),
     }),
     initialValues: {
-      counter: "all",
-      persona: "",
-      status: "",
+      persona: "all",
+      status: "all",
       group: "epic" as const,
     },
     handler: async () => {},
   });
   const values = useFormValues(filters);
+  const persona =
+    values.persona && values.persona !== "all" ? values.persona : "";
+  const status = values.status && values.status !== "all" ? values.status : "";
 
   if (!project) return null;
   const all = useCases.data ?? [];
@@ -96,14 +100,12 @@ const UseCasesTab = () => {
       all.flatMap((it) => it.actors).map((a) => [a.number, a]),
     ).values(),
   ].sort((a, b) => a.number - b.number);
-  const counter = values.counter ?? "all";
   const rows = all.filter(
     (it) =>
       (counter === "all" ||
         (counter === "stale" ? it.stale : it.state === counter)) &&
-      (!values.status || it.status === values.status) &&
-      (!values.persona ||
-        it.actors.some((a) => String(a.number) === values.persona)),
+      (!status || it.status === status) &&
+      (!persona || it.actors.some((a) => String(a.number) === persona)),
   );
   const groups = groupUseCases(
     rows,
@@ -145,15 +147,26 @@ const UseCasesTab = () => {
     <div className="flex min-h-0 flex-1 flex-col">
       <form {...filters.props} className="flex flex-col gap-3 border-b p-3">
         <div className="flex flex-wrap items-center gap-3">
-          <Control
-            input={filters.input.counter}
-            segmented
-            items={counters.map((it) => ({
+          <Segmented
+            size="sm"
+            value={counter}
+            onChange={setCounter}
+            options={counters.map((it) => ({
               value: it.key,
               label: `${it.count} ${it.label}`,
             }))}
           />
           <div className="flex-1" />
+          <Button
+            type="button"
+            variant="outlined"
+            onClick={() => setVerifying(true)}
+          >
+            <ClipboardCheck className="size-4" />
+            {tr("requirements.verify.allStale", {
+              args: [String(all.filter((row) => row.stale).length)],
+            })}
+          </Button>
           {canWrite ? (
             <Button type="button" onClick={() => setCreating(true)}>
               <Plus className="size-4" />
@@ -168,7 +181,7 @@ const UseCasesTab = () => {
             select
             items={[
               {
-                value: "",
+                value: "all",
                 label: tr("requirements.usecase.filter.anyPersona"),
               },
               ...personas.map((p) => ({
@@ -182,7 +195,10 @@ const UseCasesTab = () => {
             input={filters.input.status}
             select
             items={[
-              { value: "", label: tr("requirements.usecase.filter.anyStatus") },
+              {
+                value: "all",
+                label: tr("requirements.usecase.filter.anyStatus"),
+              },
               ...STATUSES.map((it) => ({
                 value: it,
                 label: tr(USE_CASE_STATUS_LABEL_KEYS[it]),
@@ -345,6 +361,11 @@ const UseCasesTab = () => {
           </table>
         )}
       </div>
+      <VerifyDialog
+        subject={{ kind: "allStale" }}
+        open={verifying}
+        onOpenChange={setVerifying}
+      />
       <UseCaseSheet
         projectId={projectId}
         open={creating}

@@ -101,7 +101,12 @@ export class AutomationDomainActions {
       const operation = await this.claims.beginAction(
         occurrence.id,
         input.token,
-        { index: input.index, row: input.row, action, mode: "atomic" },
+        {
+          index: input.index,
+          row: input.row,
+          action,
+          mode: "atomic",
+        },
       );
       if (operation.status !== "claimed") return operation;
       if (rendered.suppressed)

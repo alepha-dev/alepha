@@ -51,7 +51,9 @@ export class AutomationWorker {
         try {
           const rule = await this.persistence.rules.getById(
             occurrence.automationId!,
-            { force: true },
+            {
+              force: true,
+            },
           );
           if (
             occurrence.replayUntil <= this.time.nowISOString() ||

@@ -11,7 +11,9 @@ export const automationEventPayloadSchema = z
   .refine(
     (value) =>
       new TextEncoder().encode(JSON.stringify(value)).byteLength <= 65_536,
-    { message: "Event payload exceeds 64 KiB" },
+    {
+      message: "Event payload exceeds 64 KiB",
+    },
   );
 
 export type AutomationEventPayload = Infer<typeof automationEventPayloadSchema>;

@@ -90,7 +90,9 @@ export class WorkAutomationActions {
         condition: sql`${this.quests.subquery(
           { projectId: rule.projectId },
           undefined,
-          { count: true },
+          {
+            count: true,
+          },
         )} < ${cap}`,
         invoke: () => this.api().createQuest({ body }, { user }),
       };

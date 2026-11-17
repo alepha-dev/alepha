@@ -1,5 +1,6 @@
 import type {
   PersonaController,
+  RequirementsPromptController,
   RunController,
   UseCaseController,
 } from "@lore/plan-requirements/api";
@@ -52,6 +53,9 @@ export class UseCaseCommand {
     this.client.scope(),
   );
   protected readonly runApi = $client<RunController>(this.client.scope());
+  protected readonly promptApi = $client<RequirementsPromptController>(
+    this.client.scope(),
+  );
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -654,6 +658,79 @@ export class UseCaseCommand {
     },
   });
 
+  /**
+   * Prints the Verify prompt, the same text the dialog copies: it runs
+   * nothing. Named `prompt`, not `run`: `lore usecase run record` records.
+   */
+  public readonly prompt = $command({
+    name: "prompt",
+    description:
+      "Print the Verify prompt of a use case (test, spec, demo), a persona (--persona, explore) or a specification (--folio, import)",
+    args: z
+      .text({
+        title: "ref",
+        description:
+          "The use case: 7 or U7, for the test, spec and demo modes.",
+      })
+      .optional(),
+    flags: z.object({
+      ...UseCaseCommand.PROJECT_FLAG,
+      mode: z
+        .enum(["test", "spec", "demo", "explore", "import"])
+        .describe(
+          "test, spec, demo, explore (with --persona) or import (with --folio).",
+        ),
+      persona: z
+        .text({
+          description: "A persona, A2: explore it, or test its use cases.",
+        })
+        .optional(),
+      folio: z
+        .text({ description: "The specification folio, F12, for import." })
+        .optional(),
+      stale: z
+        .boolean()
+        .describe("With --persona: only its stale use cases.")
+        .optional(),
+      app: z.text({ description: "The app copy to play on." }).optional(),
+      env: z
+        .text({ description: "Its environment (staging), or local." })
+        .optional(),
+      as: z.text({ description: "The persona to play: A2." }).optional(),
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const kind = {
+          test: "useCaseTest",
+          spec: "useCaseSpec",
+          demo: "useCaseDemo",
+          explore: "personaExplore",
+          import: "requirementImport",
+        }[flags.mode] as "useCaseTest";
+        const rendered = await this.promptApi.renderRequirementsPrompt({
+          params: { projectId },
+          query: {
+            kind,
+            ...(args ? { useCaseNumber: this.refs.useCase(args) } : {}),
+            ...(flags.persona
+              ? { personaNumber: this.refs.persona(flags.persona) }
+              : {}),
+            ...(flags.folio
+              ? { folioShortId: this.refs.folio(flags.folio) }
+              : {}),
+            ...(flags.stale ? { staleOnly: true } : {}),
+            ...(flags.app ? { app: flags.app } : {}),
+            ...(flags.env ? { env: flags.env } : {}),
+            ...(flags.as ? { asPersona: this.refs.persona(flags.as) } : {}),
+          },
+        });
+        print(rendered.prompt);
+      });
+    },
+  });
+
   public readonly link = $command({
     name: "link",
     description: "Link a use case: epic",
@@ -681,6 +758,7 @@ export class UseCaseCommand {
       this.link,
       this.validate,
       this.run,
+      this.prompt,
     ],
     handler: async ({ help }) => {
       help();

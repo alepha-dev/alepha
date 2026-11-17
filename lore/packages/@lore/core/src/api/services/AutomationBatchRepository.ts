@@ -90,7 +90,9 @@ export class AutomationBatchRepository<
       statement: this.updateStatement(
         where,
         row as Parameters<Repository<T>["updateOne"]>[1],
-        { events: false },
+        {
+          events: false,
+        },
       ),
       condition: this.exists(where),
       where,

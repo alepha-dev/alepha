@@ -211,7 +211,10 @@ export class FolioTableController {
         folio,
         params.number,
         body.cells,
-        { version: body.version, userId: user.id },
+        {
+          version: body.version,
+          userId: user.id,
+        },
       );
       await this.touch(folio);
       return answer;

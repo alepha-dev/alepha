@@ -725,7 +725,9 @@ export class WorkRouter {
          */
         if (user) {
           const { member, ...roadmap } = await this.roadmapApi.getMemberRoadmap(
-            { params: { slug: params.projectSlug } },
+            {
+              params: { slug: params.projectSlug },
+            },
           );
           return { roadmap, member };
         }

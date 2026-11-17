@@ -186,7 +186,11 @@ describe("tearing a copy's resources down", () => {
 
       expect(
         await alepha.inject(TeardownService).destroy(await loaded(w)),
-      ).toEqual({ removed: [], kept: [], failed: [] });
+      ).toEqual({
+        removed: [],
+        kept: [],
+        failed: [],
+      });
     });
   });
 

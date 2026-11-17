@@ -11,7 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Bot } from "lucide-react";
 
 import type { AgentPromptKind } from "../../../../../api/schemas/agentPromptKindSchema.ts";
-import type { AgentPromptSubject } from "../../../prompts/renderPromptTemplate.ts";
+import type { AgentPromptSubject } from "../../../../../api/schemas/renderPromptTemplate.ts";
 import { AgentPromptRegistry } from "../../../registries/AgentPromptRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { useAgentPrompt } from "./useAgentPrompt.ts";

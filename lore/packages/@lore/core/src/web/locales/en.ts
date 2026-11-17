@@ -3183,6 +3183,37 @@ export default {
   "requirements.tab.requirements": "Requirements",
   "requirements.tab.useCases": "Use cases",
   "requirements.tab.personas": "Personas",
+  "requirements.prompt.personaExplore": "Explore as a persona",
+  "requirements.prompt.requirementImport": "Import a specification",
+  "requirements.prompt.useCaseDemo": "Prepare a demo",
+  "requirements.prompt.useCaseSpec": "Write the end-to-end spec",
+  "requirements.prompt.useCaseTest": "Test a use case",
+  "requirements.requirement.import": "Import a specification",
+  "requirements.verify": "Verify",
+  "requirements.verify.allStale": "Verify all stale ($1)",
+  "requirements.verify.app": "App",
+  "requirements.verify.as": "Play as",
+  "requirements.verify.as.default": "The primary actor",
+  "requirements.verify.copied.command": "Command copied",
+  "requirements.verify.copied.prompt": "Prompt copied",
+  "requirements.verify.copyCommand": "Copy command",
+  "requirements.verify.copyPrompt": "Copy prompt",
+  "requirements.verify.description":
+    "Lore runs no agent: copy the prompt into yours, or the command that prints it. A failed criterion opens an error only once every covering quest is done and the project tracks errors; before that it shows as in development.",
+  "requirements.verify.env": "Environment",
+  "requirements.verify.folio": "Specification folio (its number)",
+  "requirements.verify.folio.needed": "Name the specification folio to import.",
+  "requirements.verify.mission": "Mission",
+  "requirements.verify.mission.demo": "Demo",
+  "requirements.verify.mission.explore": "Explore",
+  "requirements.verify.mission.import": "Import",
+  "requirements.verify.mission.spec": "Write the spec",
+  "requirements.verify.mission.test": "Test",
+  "requirements.verify.staleOnly": "Only its stale use cases",
+  "requirements.verify.title.allStale": "Verify every stale use case",
+  "requirements.verify.title.import": "Import a specification",
+  "requirements.verify.title.persona": "Verify $1",
+  "requirements.verify.title.usecase": "Verify $1",
   "requirements.run.by.agent": "agent",
   "requirements.run.by.ci": "CI",
   "requirements.run.by.person": "person",
@@ -3456,6 +3487,34 @@ export default {
   "agentPrompts.settings.description":
     "The text each Agent Prompts entry puts on the clipboard. The prompts are written in English on purpose: their words are the tool names an agent calls.",
   "agentPrompts.settings.legend": "Placeholders",
+  "agentPrompts.settings.placeholder.steps":
+    "The use case's steps, one per line, with who acts each.",
+  "agentPrompts.settings.placeholder.criteria":
+    "Its acceptance criteria, one per line, with their key and method.",
+  "agentPrompts.settings.placeholder.persona":
+    "The persona played, as #A2 Léa (Shop manager).",
+  "agentPrompts.settings.placeholder.demoAccount":
+    "That persona's demo login, never a password.",
+  "agentPrompts.settings.placeholder.app":
+    "The app copy's app name, or empty for a local run.",
+  "agentPrompts.settings.placeholder.env": "The copy's environment, or local.",
+  "agentPrompts.settings.placeholder.appUrl":
+    "The copy's URL, when Lore knows it.",
+  "agentPrompts.settings.useCaseTest.title": "Test a use case",
+  "agentPrompts.settings.useCaseTest.description":
+    "Verify on a use case: play its criteria, record one run, fix nothing.",
+  "agentPrompts.settings.useCaseSpec.title": "Write the end-to-end spec",
+  "agentPrompts.settings.useCaseSpec.description":
+    "Verify on a use case: write the spec tagged @U7 so CI records its runs.",
+  "agentPrompts.settings.personaExplore.title": "Explore as a persona",
+  "agentPrompts.settings.personaExplore.description":
+    "Verify on a persona: exploratory testing in their shoes, frictions cited against requirements.",
+  "agentPrompts.settings.useCaseDemo.title": "Prepare a demo",
+  "agentPrompts.settings.useCaseDemo.description":
+    "Verify on a use case: a demo script and its data, filed as a folio.",
+  "agentPrompts.settings.requirementImport.title": "Import a specification",
+  "agentPrompts.settings.requirementImport.description":
+    "On the Requirements list: split a specification folio into requirements linked to their headings.",
   "agentPrompts.settings.placeholder.project":
     "The project's title, which is what an MCP call matches on.",
   "agentPrompts.settings.placeholder.slug":

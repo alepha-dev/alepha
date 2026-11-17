@@ -57,7 +57,9 @@ describe("lore stack operations", () => {
     );
     Object.assign(
       alepha.inject(DateTimeProvider) as unknown as Record<string, unknown>,
-      { wait: async () => undefined },
+      {
+        wait: async () => undefined,
+      },
     );
     Object.assign(
       alepha.inject(LoreStackService) as unknown as Record<string, unknown>,

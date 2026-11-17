@@ -109,7 +109,9 @@ describe(".alepha/lore.json", () => {
       },
     ]);
     expect(await fs.readJsonFile(`${process.cwd()}/.alepha/lore.json`)).toEqual(
-      { project: "hello" },
+      {
+        project: "hello",
+      },
     );
   });
 });

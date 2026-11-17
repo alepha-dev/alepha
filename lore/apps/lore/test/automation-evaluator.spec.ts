@@ -62,7 +62,9 @@ class ControlledSelections extends AutomationSelections {
     const context = await this.contexts.source(
       input.rule.projectId,
       "openErrors",
-      { value: this.scalar },
+      {
+        value: this.scalar,
+      },
     );
     return {
       kind: "scalar",

@@ -174,7 +174,10 @@ export class AutomationController {
         params.id,
         user,
         body.expectedRevision,
-        { title: body.title, rule: body.rule },
+        {
+          title: body.title,
+          rule: body.rule,
+        },
       ),
   });
   setAutomationEnabled = $action({

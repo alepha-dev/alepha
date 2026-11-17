@@ -36,7 +36,11 @@ describe("ReportsDrillDown", () => {
   it("merges the report's filters with the clicked segment", ({ expect }) => {
     expect(
       drill.query({ tag: "bug", releaseId: "4" }, { status: "in_progress" }),
-    ).toEqual({ status: "in_progress", tag: "bug", release: "4" });
+    ).toEqual({
+      status: "in_progress",
+      tag: "bug",
+      release: "4",
+    });
   });
 
   it("lets the segment win over the filter on the same axis", ({ expect }) => {

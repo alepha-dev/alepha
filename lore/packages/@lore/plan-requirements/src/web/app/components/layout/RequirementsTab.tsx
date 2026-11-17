@@ -11,7 +11,7 @@ import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { Plus, TriangleAlert } from "lucide-react";
+import { FileInput, Plus, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import type { RequirementController } from "../../../../api/controllers/RequirementController.ts";
@@ -24,6 +24,7 @@ import {
 } from "../requirements/requirementLabels.ts";
 import RequirementSheet from "../requirements/RequirementSheet.tsx";
 import RequirementStatusChips from "../requirements/RequirementStatusChips.tsx";
+import VerifyDialog from "../verify/VerifyDialog.tsx";
 
 const TYPES = ["functional", "non_functional", "constraint"] as const;
 const STATUSES = [
@@ -52,6 +53,7 @@ const RequirementsTab = () => {
   const projectId = project?.id ?? 0;
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [importing, setImporting] = useState(false);
   const selected = Number(
     (routerState.query as Record<string, string> | undefined)?.requirement ?? 0,
   );
@@ -162,6 +164,16 @@ const RequirementsTab = () => {
                 },
               ]}
             />
+            {canWrite ? (
+              <Button
+                type="button"
+                variant="outlined"
+                onClick={() => setImporting(true)}
+              >
+                <FileInput className="size-4" />
+                {tr("requirements.requirement.import")}
+              </Button>
+            ) : null}
             {canWrite ? (
               <Button type="button" onClick={() => setCreating(true)}>
                 <Plus className="size-4" />
@@ -358,6 +370,11 @@ const RequirementsTab = () => {
           />
         </aside>
       ) : null}
+      <VerifyDialog
+        subject={{ kind: "import" }}
+        open={importing}
+        onOpenChange={setImporting}
+      />
       <RequirementSheet
         projectId={projectId}
         open={creating}

@@ -96,7 +96,9 @@ export class AutomationSourceRepository<
         this.updateStatement(
           where,
           row as Parameters<Repository<T>["updateOne"]>[1],
-          { events: false },
+          {
+            events: false,
+          },
         ),
       );
       await this.invalidateCache({});

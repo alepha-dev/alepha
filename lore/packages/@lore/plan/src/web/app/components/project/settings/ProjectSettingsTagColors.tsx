@@ -147,11 +147,7 @@ const ProjectSettingsTagColors = () => {
                       colors[tag] === choice
                         ? "border-foreground scale-110"
                         : "border-border"
-                    } ${
-                      choice
-                        ? SWATCH_CLASS[choice]
-                        : "bg-muted text-muted-foreground"
-                    }`}
+                    } ${choice ? SWATCH_CLASS[choice] : "bg-muted text-muted-foreground"}`}
                   />
                 ))}
               </div>

@@ -116,7 +116,9 @@ export class AutomationNotificationOutbox {
       // a lost dispatch acknowledgement into another notification enqueue.
       this.log.warn(
         "Automation notification dispatch deferred to the job sweep",
-        { executionId: id },
+        {
+          executionId: id,
+        },
       );
     }
   }

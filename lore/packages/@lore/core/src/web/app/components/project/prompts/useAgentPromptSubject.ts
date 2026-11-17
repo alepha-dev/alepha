@@ -1,11 +1,11 @@
 import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type {
   AgentPromptItemSubject,
   AgentPromptProjectSubject,
-} from "../../../prompts/renderPromptTemplate.ts";
+} from "../../../../../api/schemas/renderPromptTemplate.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import {
   formatReference,
   type ReferenceKind,

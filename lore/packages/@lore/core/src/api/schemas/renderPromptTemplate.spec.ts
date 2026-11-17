@@ -107,3 +107,45 @@ describe("renderPromptTemplate", () => {
     expect(out).toBe("Alepha {{token}} #E31");
   });
 });
+
+describe("renderPromptTemplate, a scenario subject (#E153)", () => {
+  it("fills the scenario placeholders, and only for a scenario subject", () => {
+    const scenario = {
+      project: "Acme",
+      slug: "acme",
+      url: "https://lore.test/acme",
+      number: 7,
+      id: 70,
+      reference: "#U7",
+      title: "Create a promo code",
+      steps: "1. A2: Opens Promotions",
+      criteria: "C1 (e2e): a code is listed",
+      persona: "#A2 Léa",
+      demoAccount: "lea@acme.test",
+      app: "shop",
+      env: "staging",
+      appUrl: "https://staging.shop.test",
+    };
+    expect(
+      renderPromptTemplate(
+        "{{reference}} as {{persona}} on {{appUrl}}:\n{{steps}}",
+        scenario,
+      ),
+    ).toBe(
+      "#U7 as #A2 Léa on https://staging.shop.test:\n1. A2: Opens Promotions",
+    );
+    const {
+      steps: _s,
+      criteria: _c,
+      persona: _p,
+      demoAccount: _d,
+      app: _a,
+      env: _e,
+      appUrl: _u,
+      ...item
+    } = scenario;
+    expect(renderPromptTemplate("{{steps}} {{reference}}", item)).toBe(
+      "{{steps}} #U7",
+    );
+  });
+});

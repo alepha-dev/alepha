@@ -177,7 +177,10 @@ export class DashboardSlotRegistry {
                 candidate.metric,
                 "project",
                 project.id,
-              ) ?? { kind: "projects", projectIds: [project.id] },
+              ) ?? {
+                kind: "projects",
+                projectIds: [project.id],
+              },
             filters: this.catalog.parseFilters(
               candidate.metric,
               candidate.filters ?? {},

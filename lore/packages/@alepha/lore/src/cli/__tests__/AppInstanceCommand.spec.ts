@@ -40,7 +40,9 @@ describe("lore apps instance --host", () => {
     const command = alepha.inject(AppInstanceCommand);
     Object.assign(
       alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
-      { projects: { getProjectBySlug: async () => ({ id: 7 }) } },
+      {
+        projects: { getProjectBySlug: async () => ({ id: 7 }) },
+      },
     );
     Object.assign(command as unknown as Record<string, unknown>, {
       hostApi: {

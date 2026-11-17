@@ -64,7 +64,9 @@ describe("lore host provision", () => {
           { name: "DEV1-S", hourly_price: { units: 0, nanos: 8_976_000 } },
         ]),
         "scw instance ip create zone=fr-par-1 tags.0=lore tags.1=tmp-vps -o json":
-          JSON.stringify({ ip: { id: "ip-1", address: "203.0.113.10" } }),
+          JSON.stringify({
+            ip: { id: "ip-1", address: "203.0.113.10" },
+          }),
         "scw instance server create type=DEV1-S image=ubuntu_noble name=tmp-vps zone=fr-par-1 ip=ip-1 tags.0=lore tags.1=tmp-vps cloud-init=@/tmp/lore-cloud-init-tmp-vps.yaml -o json":
           JSON.stringify({ id: "srv-1" }),
       },

@@ -112,7 +112,10 @@ describe("Current automation authority", () => {
     const row = await create();
     expect(
       (await authority.check({ automationId: row.id, revision: 0 })).user,
-    ).toMatchObject({ id: user.id, ownership: true });
+    ).toMatchObject({
+      id: user.id,
+      ownership: true,
+    });
     await entities.organizationMembers.deleteMany({
       organizationId: project.organizationId!,
       userId: user.id,

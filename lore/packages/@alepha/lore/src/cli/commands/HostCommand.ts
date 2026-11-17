@@ -1081,7 +1081,10 @@ export class HostCommand {
   protected statsBody(flags: {
     "stats-history"?: boolean;
     "stats-interval"?: string;
-  }): { collectSeries?: boolean; statsIntervalSeconds?: number } {
+  }): {
+    collectSeries?: boolean;
+    statsIntervalSeconds?: number;
+  } {
     return {
       ...(flags["stats-history"] === undefined
         ? {}

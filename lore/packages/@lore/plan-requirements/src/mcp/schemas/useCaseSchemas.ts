@@ -259,4 +259,44 @@ export const useCaseRunRecordResultSchema = z.object({
     ),
 });
 
+export const useCasePromptParamsSchema = projectParamsSchema.extend({
+  number: z
+    .integer()
+    .optional()
+    .describe("The use case (7 for #U7), for the test, spec and demo modes."),
+  mode: z
+    .enum(["test", "spec", "demo", "explore", "import"])
+    .describe(
+      "test: play the criteria and record a run; spec: write the tagged e2e spec; demo: a demo script; explore: exploratory testing as a persona (needs persona); import: split a specification folio into requirements (needs folio_shortId).",
+    ),
+  persona: z
+    .integer()
+    .optional()
+    .describe(
+      "A persona's number (2 for #A2): the subject of explore, or of test over its use cases.",
+    ),
+  folio_shortId: z
+    .integer()
+    .optional()
+    .describe("The specification folio, for import."),
+  stale: z
+    .boolean()
+    .optional()
+    .describe("With persona and test: only its stale use cases."),
+  app: z.string().optional().describe("The app copy to play on: its app name."),
+  env: z.string().optional().describe("Its environment (staging), or local."),
+  as: z
+    .integer()
+    .optional()
+    .describe("The persona to play, by number (2 for #A2)."),
+});
+
+export const useCasePromptResultSchema = z.object({
+  kind: z.string(),
+  prompt: z
+    .string()
+    .describe("The prompt to follow: it is what the Verify dialog copies."),
+  command: z.string().describe("The lore command that prints the same prompt."),
+});
+
 export type ScenarioFields = Infer<typeof scenarioFieldsSchema>;

@@ -200,10 +200,16 @@ describe("Automation catalogue", () => {
     const result = await catalog.describe(project.id, limited);
     expect(
       result.entries.find((entry) => entry.key === "feedback.created"),
-    ).toMatchObject({ available: false, reason: "Missing feedback:read" });
+    ).toMatchObject({
+      available: false,
+      reason: "Missing feedback:read",
+    });
     expect(
       result.entries.find((entry) => entry.key === "quality.coverage.lines"),
-    ).toMatchObject({ available: false, reason: "Missing quality:read" });
+    ).toMatchObject({
+      available: false,
+      reason: "Missing quality:read",
+    });
     await expect(
       catalog.resolveMetric(project.id, limited, "quality.coverage.lines", {}),
     ).rejects.toThrow("Missing quality:read");
@@ -346,7 +352,9 @@ describe("Automation catalogue", () => {
       project.id,
       user,
       "activeQuests",
-      { statuses: ["todo"] },
+      {
+        statuses: ["todo"],
+      },
     );
     const [dashboard] = await alepha
       .inject(DashboardMetricRegistry)

@@ -2,6 +2,7 @@ import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { ProjectSettingsAgentPrompts } from "@lore/core/testing";
 import { currentProjectAtom, projectPromptsAtom, I18n } from "@lore/core/web";
+import { RequirementsShell } from "@lore/plan-requirements/web";
 import {
   epicReviewPromptDefault,
   feedbackWorkPromptDefault,
@@ -74,6 +75,7 @@ describe("ProjectSettingsAgentPrompts", () => {
 
   const mount = async (options?: {
     project?: unknown;
+    requirements?: boolean;
     rows?: Array<{ kind: string; template: string }>;
   }) => {
     alepha = Alepha.create()
@@ -84,6 +86,7 @@ describe("ProjectSettingsAgentPrompts", () => {
     // The kinds as Work and Deploy register them (#E75, #Q2624).
     alepha.inject(WorkShell);
     alepha.inject(DeployShell);
+    if (options?.requirements) alepha.inject(RequirementsShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
 
@@ -124,6 +127,20 @@ describe("ProjectSettingsAgentPrompts", () => {
     expect(screen.queryByText("Agent prompts")).toBe(null);
     // And it does not pay for a read it will not show.
     expect(links.calls).toEqual([]);
+  });
+
+  it("lists Requirements' kinds alone with agentPrompts off and requirements on (#E153)", async () => {
+    await mount({
+      requirements: true,
+      project: projectFixture({
+        options: { plan: { agentPrompts: false, requirements: true } },
+      }),
+    });
+
+    await waitFor(() => expect(editor("useCaseTest")).not.toBeNull());
+    expect(editor("requirementImport")).not.toBeNull();
+    expect(editor("epicReview")).toBeNull();
+    expect(screen.getByText("{{steps}}")).toBeTruthy();
   });
 
   it("seeds each editor with the built-in default when nothing is stored", async () => {

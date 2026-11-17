@@ -213,3 +213,11 @@ export {
   automationVariableApprovalSchema,
   type AutomationVariableApproval,
 } from "../api/schemas/automationVariableApprovalSchema.ts";
+export {
+  type AgentPromptItemSubject,
+  type AgentPromptProjectSubject,
+  type AgentPromptScenarioSubject,
+  type AgentPromptSubject,
+  renderPromptTemplate,
+} from "../api/schemas/renderPromptTemplate.ts";
+export { projectPrompts } from "../api/entities/projectPrompts.ts";
