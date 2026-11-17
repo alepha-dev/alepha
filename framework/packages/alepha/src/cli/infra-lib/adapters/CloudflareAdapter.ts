@@ -872,6 +872,15 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     }
   }
 
+  /**
+   * What `exportDb` feeds sqlite3 around the dump: one transaction, with
+   * the journal and fsync off on the scratch file (#Q3816). The newline
+   * before COMMIT ends a dump whose last line has none.
+   */
+  public static readonly IMPORT_PROLOGUE =
+    "PRAGMA journal_mode=OFF;\nPRAGMA synchronous=OFF;\nBEGIN;\n";
+  public static readonly IMPORT_EPILOGUE = "\nCOMMIT;\n";
+
   override async exportDb(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
@@ -924,14 +933,25 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     // statement it parsed before an error, so importing straight into the dev
     // DB meant a single failed export replaced a working database with a
     // silently partial one, and anyone who skimmed the error kept it.
+    //
+    // One transaction, journal and fsync off (#Q3816): D1's dump has no
+    // BEGIN/COMMIT, so each of its INSERTs committed and fsynced alone, and
+    // a 140 MB dump took over nine minutes instead of five seconds. The
+    // staging file is scratch, so neither the journal nor the syncs protect
+    // anything. `-bail` stops at the first error, before the COMMIT, and
+    // exits non-zero, so a broken dump never reaches `dbPath`.
     const stagingPath = `${dbPath}.import`;
     await this.fs.rm(stagingPath, { force: true });
     try {
       await run({
         name: `import dump → ${dbPath}`,
         handler: async () => {
-          await this.shell.run(["sqlite3", stagingPath], {
-            stdin: await this.fs.readFile(sqlPath),
+          await this.shell.run(["sqlite3", "-bail", stagingPath], {
+            stdin: Buffer.concat([
+              Buffer.from(CloudflareAdapter.IMPORT_PROLOGUE),
+              await this.fs.readFile(sqlPath),
+              Buffer.from(CloudflareAdapter.IMPORT_EPILOGUE),
+            ]),
           });
         },
       });
