@@ -1,5 +1,9 @@
 import { expect, test } from "./_fixtures.ts";
-import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
+import {
+  createProjectViaWizard,
+  registerAndVerify,
+  setCapability,
+} from "./_helpers.ts";
 
 /**
  * Switching project from a sub-page (#Q3548). The project layout's loader
@@ -153,5 +157,49 @@ test.describe("Project switch", () => {
       () => (window as unknown as { __back: string[] }).__back,
     );
     expect(back).toEqual([]);
+  });
+
+  /**
+   * The rail's row is a hint (#Q3824): a capability switched since it was
+   * read, in another tab here, makes it disagree with what the slug answers.
+   */
+  test("a rail row behind the project's capabilities is not trusted: the shell is read again from the answer", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const t = Date.now();
+    await registerAndVerify(page, `stale${t}@example.com`, "SwitchTest123!");
+    const a = await createProjectViaWizard(page, `Sigma${t}`.slice(0, 20));
+    const beta = `Omega${t}`.slice(0, 20);
+    const b = await createProjectViaWizard(page, beta);
+
+    await page.goto(`/${a.slug}/quests`);
+    await expect(page.getByTestId("quests-table")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    // Behind the page's back: the row the rail holds still says Ship is off.
+    await setCapability(page, b.id, "ship");
+
+    const shell: string[][] = [];
+    page.on("request", (request) => {
+      const actions = (
+        new URL(request.url()).searchParams.get("actions") ?? ""
+      ).split(",");
+      if (actions.includes("getReleases")) shell.push(actions);
+    });
+
+    await page
+      .getByTestId("project-rail-item")
+      .and(page.getByLabel(beta))
+      .click();
+    await page.waitForURL((url) => url.pathname === `/${b.slug}`);
+    await page.waitForLoadState("networkidle");
+
+    // Started from the row, with the slug read and without Ship's reads, then
+    // again from the answer, with them.
+    expect(shell).toHaveLength(2);
+    expect(shell[0]).toContain("getProjectBySlug");
+    expect(shell[0]).not.toContain("listApps");
+    expect(shell[1]).toContain("listApps");
   });
 });
