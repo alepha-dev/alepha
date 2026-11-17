@@ -174,10 +174,11 @@ stored, because every member of the project can read it.
 ## Getting help with triage
 
 The bell above the inbox's status filter notifies you of every new report.
-Turning it on asks how, **In-app** or **Email**, and creates a rule of yours
-from the **New feedback** preset, enabled at once. It stays an ordinary rule,
-listed under [Automations](/lore/docs/plan-automations), where you can edit it.
-Turning the bell off, after a confirmation, deletes that rule. The bell shows
+Turning it on asks how, **In-app** or **Email**, and creates an automation of
+yours from the **New feedback** preset, enabled at once. It stays an ordinary
+automation, listed under [Automations](/lore/docs/plan-automations), where you
+can edit it on its canvas; the bell's dialog links to it with **Open in
+Automations**. Turning the bell off, after a confirmation, deletes it. The bell shows
 only to a member who can create automations, in a project with automations on.
 
 The **New feedback** preset itself notifies any one member you choose when a

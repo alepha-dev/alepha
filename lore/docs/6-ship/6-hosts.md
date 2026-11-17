@@ -355,10 +355,11 @@ never in the projects it is lent to:
 - that host comes **back online**, once per outage.
 
 Nobody is told until someone asks: the bell on a host's console subscribes you
-to that host, the one on **Settings** > **Hosts** to every host of the project,
-and the **Host token invalid**, **Host past its TTL**, **Host offline** and
-**Host back online** presets can notify anyone or post to a Discord channel. See
-[Automations](/lore/docs/plan-automations).
+to that host, the one on **Settings** > **Hosts** to every host of the project.
+Each bell makes one automation with a source per event, which its dialog can
+switch off one by one. The **Host token invalid**, **Host past its TTL**,
+**Host offline** and **Host back online** presets can also notify anyone or
+post to a Discord channel. See [Automations](/lore/docs/plan-automations).
 
 ## For an instance admin
 

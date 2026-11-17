@@ -36,8 +36,8 @@ to grant.
 | A mention                                 | A member named with `@name` in a quest or feedback comment | Yes   | Yes   |
 | A report accepted or rejected             | The person who [filed it](/lore/docs/plan-feedback)        | Yes   | Yes   |
 | A report answered                         | The person who filed it                                    | Yes   | Yes   |
-| An automation's message                   | The rule's recipient, on the channels the rule names       | Yes   | Yes   |
-| An automation paused for review or broken | The rule's author                                          | Yes   | No    |
+| An automation's message                   | Its recipient, on the channels the notification names      | Yes   | Yes   |
+| An automation paused for review or broken | The automation's author                                    | Yes   | No    |
 | A project invitation                      | The person invited                                         | Yes   | Yes   |
 
 A few rules explain what you will and will not receive:
@@ -52,8 +52,8 @@ A few rules explain what you will and will not receive:
   carries the one-time link. Accepting the invitation marks its message read.
 - **Everything project-wide is an automation.** Release announcements, quest
   reminders, uptime alerts, failed deployments and host alerts reach you only
-  through a rule that names you, which the bell on the page concerned creates
-  for you. See [Automations](/lore/docs/plan-automations).
+  through an automation that names you, which the bell on the page concerned
+  creates for you: one automation per bell, a source for each event it covers. See [Automations](/lore/docs/plan-automations).
 - **An agent's comment is a comment too.** `@name` in a comment an agent
   writes reaches that member, the owner of the API key the agent works as
   included. That is how an agent asks you for a decision.
@@ -73,7 +73,7 @@ you in every project.
 
 | Kind                | What it covers                                                                  |
 | ------------------- | ------------------------------------------------------------------------------- |
-| Automations         | Messages from project automation rules.                                         |
+| Automations         | Messages from the project's automations.                                        |
 | Your reports        | A project accepts, rejects or answers a report you submitted.                   |
 | Project invitations | A project invites you, in the bell only: the email stays under Quest reminders. |
 | Mentions            | Somebody writes your name in a quest or feedback comment.                       |
@@ -92,7 +92,7 @@ See [MCP tools](/lore/docs/reference-mcp-tools).
 ## Next
 
 - [Members](/lore/docs/project-members): invitations and who is in a project.
-- [Automations](/lore/docs/plan-automations): rules that send messages of
+- [Automations](/lore/docs/plan-automations): automations that send messages of
   their own.
 - [Feedback](/lore/docs/plan-feedback): the reports and answers behind
   several of these messages.

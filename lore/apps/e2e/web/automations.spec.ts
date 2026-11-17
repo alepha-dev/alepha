@@ -1403,6 +1403,56 @@ test.describe("Automations", () => {
           { timeout: 40_000 },
         )
         .toEqual([1, 1]);
+
+      // A source switched off stays silent; the other keeps running.
+      const current = await (await page.request.get(getPath)).json();
+      const muted = await page.request.patch(`${getPath}/sources`, {
+        data: {
+          node: "completed",
+          enabled: false,
+          expectedRevision: current.revision,
+        },
+      });
+      expect(muted.ok(), await muted.text()).toBe(true);
+      const again = await page.request.post(
+        await apiPath(page, "createQuest"),
+        {
+          data: {
+            projectId: project.id,
+            title: "Muted quest",
+            description: "Completed while its source is off",
+            area: "Main",
+            priority: "medium",
+            objectives: [],
+            attachments: [],
+          },
+        },
+      );
+      expect(again.ok(), await again.text()).toBe(true);
+      const againId = (await again.json()).id;
+      for (const action of ["acceptQuest", "completeQuest"]) {
+        const res = await page.request.post(
+          (await apiPath(page, action)).replace(":id", String(againId)),
+          { data: {} },
+        );
+        expect(res.ok(), await res.text()).toBe(true);
+      }
+      const second = await page.request.post(submitPath, {
+        data: { title: "More canvas feedback", description: "Still heard" },
+      });
+      expect(second.ok(), await second.text()).toBe(true);
+      await expect
+        .poll(
+          async () => {
+            for (let index = 0; index < 2; index++) {
+              const tick = await adminPage.request.post(trigger, { data: {} });
+              expect(tick.ok(), await tick.text()).toBe(true);
+            }
+            return [await ran("source"), await ran("completed")];
+          },
+          { timeout: 40_000 },
+        )
+        .toEqual([2, 1]);
     } finally {
       await admin.close();
     }
