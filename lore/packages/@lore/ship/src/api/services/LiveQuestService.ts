@@ -229,6 +229,34 @@ export class LiveQuestService {
   }
 
   /**
+   * How many done quests each copy does not run yet, for the Apps list: one
+   * read of the copies' newest runs, one of their sets and one of the
+   * recorded commits, whatever the number of rows (#Q2682 timed out doing
+   * otherwise). Only copies with a known, complete set are in the map: an
+   * unknown or partial set has no count, never zero.
+   */
+  public async behindCounts(
+    projectId: number,
+    instanceIds: string[],
+  ): Promise<Map<string, number>> {
+    const known = (await this.states(projectId, instanceIds)).filter(
+      (state) => state.state === "known" && state.numbers,
+    );
+    if (known.length === 0) {
+      return new Map();
+    }
+    const done = (await this.registry.recordedCommits(projectId))
+      .filter((quest) => quest.completed)
+      .map((quest) => quest.number);
+    return new Map(
+      known.map((state) => [
+        state.instanceId,
+        done.filter((n) => !state.numbers?.has(n)).length,
+      ]),
+    );
+  }
+
+  /**
    * The finish time of the oldest deployment in the newest unbroken run of
    * succeeded deployments carrying the quest, bounded at {@link HISTORY}.
    */

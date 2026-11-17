@@ -83,6 +83,28 @@ something behind it.
 | **Environment** | The variables and secrets the copy runs with.                             |
 | **Settings**    | Its names and address, its sigil, and the host it deploys to.             |
 
+## Which quests a copy runs
+
+For a copy Lore deploys, the **Overview** tab has a **Quests** card: the done
+quests this copy does not run yet, linked to each one, and the quests it does
+run. The **Apps** list shows the same count as **N behind** beside the
+version, and the **Deploy** tab lists, on each run, the quests it put live
+(`+`) and the ones it took down (`-`), so a rollback shows what it removed.
+
+**Behind** counts the project's completed quests that have at least one
+recorded commit and whose commit is not in the history of the commit the copy
+runs. A quest closed with no commit never counts. What a copy runs is read
+from the commit its newest successful deployment shipped, as Lore recorded it
+when that build was pushed
+([What a push records](/lore/docs/ship-artifacts#what-a-push-records)).
+
+- **Unknown**, never a count, when Lore cannot say: the build was pushed before
+  Lore recorded commits, from a shallow clone, or with no commit at all. The
+  card says which, and the Apps list shows no badge.
+- In a repository holding several apps, a copy is also "behind" on done quests
+  for the other apps merged since its last deploy: the count follows commits,
+  not which app a quest was for.
+
 ## From the command line
 
 ```bash

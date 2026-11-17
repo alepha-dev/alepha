@@ -75,6 +75,13 @@ export const appInstanceResourceSchema = appInstances.schema
      */
     version: deployments.schema.shape.tag.optional(),
     /**
+     * How many of the project's done quests (completed, with a recorded
+     * commit) this copy does not run yet (#E154). Absent, never zero, when
+     * the copy's quest set is unknown or partial: it never deployed, its run
+     * names no commit, or the build came from a shallow clone.
+     */
+    behind: z.integer().min(0).optional(),
+    /**
      * The same run with its digest, which is what says which BYTES run here.
      *
      * `state`, `runtime` and `format` come from `getApp` alone, which reads the

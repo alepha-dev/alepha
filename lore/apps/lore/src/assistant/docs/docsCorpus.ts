@@ -1433,6 +1433,13 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Apps and instances",
+    section: "Which quests a copy runs",
+    url: "https://alepha.dev/lore/docs/ship-instances#which-quests-a-copy-runs",
+    capability: "ship",
+    text: 'For a copy Lore deploys, the **Overview** tab has a **Quests** card: the done\nquests this copy does not run yet, linked to each one, and the quests it does\nrun. The **Apps** list shows the same count as **N behind** beside the\nversion, and the **Deploy** tab lists, on each run, the quests it put live\n(`+`) and the ones it took down (`-`), so a rollback shows what it removed.\n\n**Behind** counts the project\'s completed quests that have at least one\nrecorded commit and whose commit is not in the history of the commit the copy\nruns. A quest closed with no commit never counts. What a copy runs is read\nfrom the commit its newest successful deployment shipped, as Lore recorded it\nwhen that build was pushed\n([What a push records](/lore/docs/ship-artifacts#what-a-push-records)).\n\n- **Unknown**, never a count, when Lore cannot say: the build was pushed before\n  Lore recorded commits, from a shallow clone, or with no commit at all. The\n  card says which, and the Apps list shows no badge.\n- In a repository holding several apps, a copy is also "behind" on done quests\n  for the other apps merged since its last deploy: the count follows commits,\n  not which app a quest was for.',
+  },
+  {
+    guide: "Apps and instances",
     section: "From the command line",
     url: "https://alepha.dev/lore/docs/ship-instances#from-the-command-line",
     capability: "ship",
