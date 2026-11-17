@@ -13,6 +13,7 @@ import { useDetailTab } from "../shell/useDetailTab.tsx";
 import { AdminWebhookDeliveries } from "./AdminWebhookDeliveries.tsx";
 import { AdminWebhookDetailAside } from "./AdminWebhookDetailAside.tsx";
 import { AdminWebhookDetailOverview } from "./AdminWebhookDetailOverview.tsx";
+import { useAdminDetailTrail } from "./useAdminDetailTrail.ts";
 
 /**
  * One webhook endpoint: its settings, and its delivery log.
@@ -40,6 +41,16 @@ export const AdminWebhookDetail = () => {
     [api],
   );
   const data = endpoint.data?.id === endpointId ? endpoint.data : undefined;
+  // Admin > Webhooks > <endpoint> (#Q3798): named by its description, else
+  // the host it posts to.
+  useAdminDetailTrail(
+    "webhookDetail",
+    {
+      label: tr("admin.nav.webhooks", { default: "Webhooks" }),
+      href: "/admin/webhooks",
+    },
+    data ? data.description || endpointHost(data.url) : undefined,
+  );
 
   return (
     <DetailLayout
@@ -94,3 +105,14 @@ export const AdminWebhookDetail = () => {
 };
 
 export default AdminWebhookDetail;
+
+/**
+ * The host an endpoint posts to, or the URL as given when it does not parse.
+ */
+const endpointHost = (url: string): string => {
+  try {
+    return new URL(url).host || url;
+  } catch {
+    return url;
+  }
+};

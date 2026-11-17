@@ -36,7 +36,6 @@ import { userDisplayName } from "../core/userInitials.ts";
 import { useToast } from "../core/useToast.tsx";
 import { DetailLayout, type DetailTab } from "../shell/DetailLayout.tsx";
 import { useDetailTab } from "../shell/useDetailTab.tsx";
-import { useNavCrumbs } from "../shell/useNavCrumbs.ts";
 import { AdminUserAvatarControl } from "./AdminUserAvatarControl.tsx";
 import { AdminUserDetailAuditsTab } from "./AdminUserDetailAuditsTab.tsx";
 import { AdminUserDetailIdentityAside } from "./AdminUserDetailIdentityAside.tsx";
@@ -55,6 +54,7 @@ import {
 } from "./adminUserDetailProfileSchema.ts";
 import { AdminUserDetailSecurityTab } from "./AdminUserDetailSecurityTab.tsx";
 import { AdminUserDetailSessionsTab } from "./AdminUserDetailSessionsTab.tsx";
+import { useAdminDetailTrail } from "./useAdminDetailTrail.ts";
 
 export interface AdminUserDetailProps {
   /**
@@ -163,19 +163,15 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
   // user by name, else username, else email. The route's own "User" crumb
   // stands until the user has loaded.
   const userLabel = user ? userDisplayName(user) : "";
-  useNavCrumbs(
+  useAdminDetailTrail(
     "userDetail",
-    userLabel
-      ? [
-          {
-            label: tr("admin.nav.users", { default: "Users" }),
-            // Fixed, like the table's links to this page: the UI showcase
-            // mounts it outside `AdminRouter`.
-            href: "/admin/users",
-          },
-          { label: userLabel },
-        ]
-      : undefined,
+    {
+      label: tr("admin.nav.users", { default: "Users" }),
+      // Fixed, like the table's links to this page: the UI showcase
+      // mounts it outside `AdminRouter`.
+      href: "/admin/users",
+    },
+    userLabel || undefined,
   );
 
   const rolesQuery = useQuery(

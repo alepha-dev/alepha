@@ -17,6 +17,7 @@ import { useDetailTab } from "../shell/useDetailTab.tsx";
 import { AdminJobDetailAside } from "./AdminJobDetailAside.tsx";
 import { AdminJobDetailExecutions } from "./AdminJobDetailExecutions.tsx";
 import { AdminJobExecutionSheet } from "./AdminJobExecutionSheet.tsx";
+import { useAdminDetailTrail } from "./useAdminDetailTrail.ts";
 
 export interface AdminJobDetailProps {
   /**
@@ -58,6 +59,12 @@ export const AdminJobDetail = (props: AdminJobDetailProps) => {
   // of waiting for its next poll.
   const [tableKey, setTableKey] = useState(0);
   const backPath = props.backPath ?? "/admin/jobs";
+  // Admin > Jobs > <job> (#Q3798), in the breadcrumb and the tab title.
+  useAdminDetailTrail(
+    "jobDetail",
+    { label: tr("admin.nav.jobs", { default: "Jobs" }), href: backPath },
+    jobName || undefined,
+  );
 
   const jobs = useQuery(
     {
