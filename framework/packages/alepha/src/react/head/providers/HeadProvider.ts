@@ -130,6 +130,7 @@ export class HeadProvider {
     }
 
     this.fillCanonicalUrl(state);
+    this.resolveImageUrls(state);
 
     // Defaults if none were set by global $head or page head. `lang` is one of
     // those defaults, not a decision: an app with i18n has already merged the
@@ -195,6 +196,51 @@ export class HeadProvider {
     state.head.meta = [...(state.head.meta ?? []), ...meta];
     state.head.link = [...(state.head.link ?? []), ...link];
   }
+
+  /**
+   * Make a relative `og:image` or `twitter:image` absolute.
+   *
+   * {@link SeoExpander} writes `image` as given, and every crawler that
+   * unfurls a link (chat apps, social networks) ignores a relative image: the
+   * preview shows a placeholder instead. Resolved here, against the same
+   * origin as the canonical, so a head can name `/logo.png` and stay portable
+   * across hosts. An absolute URL is kept as it is, and with no origin to
+   * build on the tag is left alone.
+   */
+  protected resolveImageUrls(state: HeadState): void {
+    const meta = state.head.meta;
+    if (!meta?.length) {
+      return;
+    }
+
+    const origin = this.resolveOrigin();
+    if (!origin) {
+      return;
+    }
+
+    const base = `${origin.replace(/\/$/, "")}/`;
+    state.head.meta = meta.map((it) => {
+      const key = it.property ?? it.name;
+      if (!key || !HeadProvider.IMAGE_META.has(key) || !it.content) {
+        return it;
+      }
+      try {
+        return { ...it, content: new URL(it.content, base).href };
+      } catch {
+        return it;
+      }
+    });
+  }
+
+  /**
+   * The meta tags whose content is an image URL a crawler fetches.
+   */
+  protected static readonly IMAGE_META = new Set([
+    "og:image",
+    "og:image:url",
+    "og:image:secure_url",
+    "twitter:image",
+  ]);
 
   /**
    * The site's absolute origin: `PUBLIC_URL`, or what the browser is already

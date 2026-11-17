@@ -111,6 +111,14 @@ export class CoreWebBoot {
       title: "Alepha Lore",
       description:
         "Alepha Lore - project and knowledge management for builders.",
+      // What a chat app or a social network shows when a Lore link is pasted.
+      // Square, so the card stays a summary: a large card crops it.
+      image: "/logo-512x512.png",
+      imageWidth: 512,
+      imageHeight: 512,
+      imageAlt: "Alepha Lore",
+      siteName: "Alepha Lore",
+      twitter: { card: "summary" },
     };
 
     head.link = [
