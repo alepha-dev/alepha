@@ -132,26 +132,6 @@ describe("AutomationCanvasMap", () => {
     });
   });
 
-  it("folds a node's rows to the worst outcome and every port taken", ({
-    expect,
-  }) => {
-    const folded = map.fold([
-      { node: "bay", row: 0, outcome: "ran", port: "true" },
-      { node: "bay", row: 1, outcome: "ran", port: "false" },
-      { node: "tell", row: 0, outcome: "ran" },
-      { node: "tell", row: 1, outcome: "unknown" },
-      { node: "tell", row: 2, outcome: "refused" },
-      { node: "later", row: 0, outcome: "not_reached" },
-      { node: "later", row: 1, outcome: "skipped" },
-    ]);
-    expect(folded.get("bay")).toEqual({
-      outcome: "ran",
-      ports: ["false", "true"],
-    });
-    expect(folded.get("tell")?.outcome).toBe("unknown");
-    expect(folded.get("later")?.outcome).toBe("skipped");
-  });
-
   it("carries each node's issues in the editor", ({ expect }) => {
     const { nodes } = map.map({
       graph: branching(),

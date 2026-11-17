@@ -5,6 +5,7 @@ import type { AutomationGraphEdge } from "../../../../../../api/schemas/automati
 import type { AutomationGraphNode } from "../../../../../../api/schemas/automationGraphNodeSchema.ts";
 import type { AutomationGraphValue } from "../../../../../../api/schemas/automationGraphSchema.ts";
 import type { AutomationNodeOutcome } from "../../../../../../api/schemas/automationNodeOutcomeSchema.ts";
+import { AutomationOutline } from "../../../../../../api/schemas/AutomationOutline.ts";
 import type { AutomationResourceSource } from "../../../../../../api/schemas/automationResourceSourceSchema.ts";
 
 export type AutomationCanvasOutcome = AutomationNodeOutcome["outcome"];
@@ -132,19 +133,6 @@ export interface AutomationCanvasInput {
  * leaves ran and, from a condition, the run took its port.
  */
 export class AutomationCanvasMap {
-  /**
-   * Outcomes from the worst: a node's rows fold to the first one present.
-   */
-  public static readonly SEVERITY: readonly AutomationCanvasOutcome[] = [
-    "failed",
-    "unknown",
-    "refused",
-    "pending",
-    "ran",
-    "skipped",
-    "not_reached",
-  ];
-
   public map(input: AutomationCanvasInput): {
     nodes: AutomationCanvasNode[];
     edges: AutomationCanvasEdge[];
@@ -197,36 +185,10 @@ export class AutomationCanvasMap {
   }
 
   /**
-   * Each node's rows folded to one outcome, and the ports it took.
+   * Each node's rows folded to one outcome, and the ports it took: the
+   * outline's fold (#Q3846).
    */
-  public fold(
-    outcomes: AutomationNodeOutcome[],
-  ): Map<
-    string,
-    { outcome: AutomationCanvasOutcome; ports: AutomationCanvasPort[] }
-  > {
-    const folded = new Map<
-      string,
-      { outcome: AutomationCanvasOutcome; ports: AutomationCanvasPort[] }
-    >();
-    const rank = (outcome: AutomationCanvasOutcome) =>
-      AutomationCanvasMap.SEVERITY.indexOf(outcome);
-    for (const item of outcomes) {
-      const current = folded.get(item.node);
-      const ports = [
-        ...new Set([
-          ...(current?.ports ?? []),
-          ...(item.port ? [item.port] : []),
-        ]),
-      ].sort();
-      folded.set(item.node, {
-        outcome:
-          current && rank(current.outcome) <= rank(item.outcome)
-            ? current.outcome
-            : item.outcome,
-        ports,
-      });
-    }
-    return folded;
+  public fold(outcomes: AutomationNodeOutcome[]) {
+    return new AutomationOutline().fold(outcomes);
   }
 }

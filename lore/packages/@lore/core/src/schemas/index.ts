@@ -152,6 +152,14 @@ export {
   type AutomationGraphOutput,
 } from "../api/schemas/AutomationGraph.ts";
 export {
+  AutomationOutline,
+  type AutomationOutlineBlock,
+  type AutomationOutlineEdit,
+  type AutomationOutlineNew,
+  type AutomationOutlineReading,
+  type AutomationOutlineSide,
+} from "../api/schemas/AutomationOutline.ts";
+export {
   automationNodeOutcomeSchema,
   type AutomationNodeOutcome,
 } from "../api/schemas/automationNodeOutcomeSchema.ts";
