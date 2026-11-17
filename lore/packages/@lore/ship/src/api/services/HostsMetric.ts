@@ -61,9 +61,16 @@ export class HostsMetric implements DashboardMetricResolver {
         }),
         this.loans.findMany({ where: { projectId: { eq: project.id } } }),
       ]);
-      const lent = grants.length
+      // A host homed here is usually lent here too: that grant is what
+      // makes it a deploy target of its own project. It is listed once, as
+      // a home host (#Q3821).
+      const homed = new Set(owned.map((host) => host.id));
+      const lentIds = grants
+        .map((grant) => grant.hostId)
+        .filter((id) => !homed.has(id));
+      const lent = lentIds.length
         ? await this.hosts.findMany({
-            where: { id: { inArray: grants.map((grant) => grant.hostId) } },
+            where: { id: { inArray: lentIds } },
             orderBy: [{ column: "slug", direction: "asc" }],
           })
         : [];

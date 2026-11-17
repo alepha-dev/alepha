@@ -149,6 +149,33 @@ describe("dashboard hosts and uptime cards", () => {
       expect(value.link?.route).toBe("projectSettingsHosts");
     });
 
+    it("lists a host homed and lent here once, as a home host (#Q3821)", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(alepha);
+      const now = dateTime.nowISOString();
+      const host = await repos.hosts.create({
+        projectId: project.id,
+        ownerUserId: project.createdBy!,
+        type: "bay",
+        slug: "home-server",
+        connectedAt: now,
+        lastSeenAt: now,
+      });
+      // Its home project is also granted it, which makes it a deploy target.
+      await repos.loans.create({ hostId: host.id, projectId: project.id });
+
+      const value = await resolve(project, "hosts");
+
+      expect((value.rows ?? []).map((row) => row.id)).toEqual(["home-server"]);
+      expect(value.value).toBe(1);
+      expect(value.detail).toEqual({ hosts: 1 });
+      expect(value.rows?.[0]?.link).toEqual({
+        route: "bay",
+        params: { projectSlug: project.slug, hostSlug: "home-server" },
+      });
+    });
+
     it("answers noData with no host", async ({ expect }) => {
       const project = await createTestProject(alepha);
       expect((await resolve(project, "hosts")).empty).toBe("noData");
