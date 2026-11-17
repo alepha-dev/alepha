@@ -1694,14 +1694,12 @@ describe("CloudflareAdapter", () => {
         const out = await super.run(command, options);
         if (!Array.isArray(command)) return out;
         if (command[0] === "sqlite3") {
+          const target = command.at(-1)!;
           if (dumping.failImport) {
-            await this.memory.writeFile(command[1], "PARTIAL");
+            await this.memory.writeFile(target, "PARTIAL");
             throw new AlephaError("Parse error near line 2134");
           }
-          await this.memory.writeFile(
-            command[1],
-            Buffer.from(options.stdin ?? ""),
-          );
+          await this.memory.writeFile(target, Buffer.from(options.stdin ?? ""));
         }
         return out;
       }
@@ -1749,12 +1747,15 @@ describe("CloudflareAdapter", () => {
       ).toBe("-- rows\n");
       // Staged, not written straight into the snapshot  -  see below. The
       // dump goes in on stdin, as an argv: no `sh -c` quoting to break.
-      expect(
-        argvs.some(
-          (it) => it[0] === "sqlite3" && it[1] === "/tmp/snap.db.import",
-        ),
-      ).toBe(true);
-      expect(fs.getFileContent("/tmp/snap.db")).toBe("-- rows\n");
+      // `-bail` stops at the first error, before the COMMIT (#Q3816).
+      expect(argvs).toContainEqual(["sqlite3", "-bail", "/tmp/snap.db.import"]);
+      // The dump goes in inside one transaction, journal and fsync off: D1's
+      // dump has no BEGIN, so every INSERT committed and fsynced alone.
+      expect(fs.getFileContent("/tmp/snap.db")).toBe(
+        "PRAGMA journal_mode=OFF;\nPRAGMA synchronous=OFF;\nBEGIN;\n" +
+          "-- rows\n" +
+          "\nCOMMIT;\n",
+      );
       // The scratch file never survives a run.
       expect(fs.files.has("/tmp/snap.db.import")).toBe(false);
     });
