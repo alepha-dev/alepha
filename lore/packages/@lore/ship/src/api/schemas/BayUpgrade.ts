@@ -115,6 +115,14 @@ export class BayUpgrade {
   }
 
   /**
+   * `install.sh` pinned to one version: how a host is put back on the Bay it
+   * ran before, from its own shell. Lore never sends a host back itself.
+   */
+  static installCommand(version: string): string {
+    return `curl -sSL https://alepha.dev/bay/install.sh | sudo BAY_VERSION=${version} sh`;
+  }
+
+  /**
    * Why a host is upgraded by hand, from the mode it reports.
    */
   static byHandReason(upgradeMode: string | undefined): string {

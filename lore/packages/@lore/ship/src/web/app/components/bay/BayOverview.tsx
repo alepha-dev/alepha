@@ -9,6 +9,7 @@ import { HostCost } from "../../../../api/schemas/HostCost.ts";
 import BayStacks from "./BayStacks.tsx";
 import BayStatsChart from "./BayStatsChart.client.tsx";
 import BayUsageBar from "./BayUsageBar.tsx";
+import BayVersion from "./BayVersion.tsx";
 import { useBayInventory } from "./useBayInventory.ts";
 
 /**
@@ -221,11 +222,8 @@ const BayOverview = () => {
               empty=""
             />
           </dl>
-          <p className="text-muted-foreground text-xs">
-            {inventory?.bayVersion
-              ? tr("bay.overview.version", { args: [inventory.bayVersion] })
-              : tr("bay.overview.versionUnknown")}
-          </p>
+          {/* Which Bay it runs, and the upgrade when one is due (#E152). */}
+          <BayVersion />
         </CardContent>
       </Card>
 
