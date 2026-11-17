@@ -8,6 +8,7 @@ import {
   automationGraphSchema,
   type AutomationGraphValue,
 } from "./automationGraphSchema.ts";
+import type { AutomationNodeOutcome } from "./automationNodeOutcomeSchema.ts";
 import type { AutomationSlotKind } from "./automationSlotKindSchema.ts";
 import { AutomationTemplateTokens } from "./AutomationTemplateTokens.ts";
 import { AutomationVocabulary } from "./AutomationVocabulary.ts";
@@ -581,6 +582,78 @@ export class AutomationGraph {
       }
     }
     return { reached, decisions };
+  }
+
+  /**
+   * What each node of a run's subgraph did (#Q3807), per row: replayed from
+   * the condition decisions and the step statuses frozen with the plan, so
+   * a run and a test are painted from what they recorded and nothing else.
+   */
+  public outcomes(input: {
+    graph: AutomationGraphValue;
+    source: string;
+    conditions: Array<{ node: string; row?: number; port?: "true" | "false" }>;
+    steps: Array<{ node: string; row?: number; status: string }>;
+  }): AutomationNodeOutcome[] {
+    const rows = [
+      ...new Set([...input.conditions, ...input.steps].map((item) => item.row)),
+    ];
+    if (!rows.length) rows.push(undefined);
+    const rank = [
+      "unknown",
+      "failed",
+      "refused",
+      "not_reached",
+      "pending",
+      "ran",
+      "skipped",
+    ] as const;
+    const of = (status: string): AutomationNodeOutcome["outcome"] =>
+      status === "succeeded" || status === "queued"
+        ? "ran"
+        : status === "running"
+          ? "pending"
+          : (status as AutomationNodeOutcome["outcome"]);
+    const outcomes: AutomationNodeOutcome[] = [];
+    for (const row of rows.sort((a, b) => (a ?? -1) - (b ?? -1))) {
+      const decided = new Map(
+        input.conditions
+          .filter((item) => item.row === row)
+          .map((item) => [item.node, item.port]),
+      );
+      const walk = this.walk(input.graph, input.source, (node) =>
+        decided.get(node.id),
+      );
+      for (const id of this.order(input.graph, input.source)) {
+        const node = this.node(input.graph, id)!;
+        const at = row !== undefined ? { row } : {};
+        if (node.kind === "condition") {
+          const port = decided.get(id);
+          outcomes.push({
+            node: id,
+            ...at,
+            outcome: walk.reached.has(id) && port ? "ran" : "skipped",
+            ...(port ? { port } : {}),
+          });
+          continue;
+        }
+        if (node.kind !== "action") {
+          outcomes.push({ node: id, ...at, outcome: "ran" });
+          continue;
+        }
+        const statuses = input.steps
+          .filter((step) => step.node === id && step.row === row)
+          .map((step) => of(step.status));
+        outcomes.push({
+          node: id,
+          ...at,
+          outcome: statuses.length
+            ? rank.find((outcome) => statuses.includes(outcome))!
+            : "skipped",
+        });
+      }
+    }
+    return outcomes;
   }
 
   /**

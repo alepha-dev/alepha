@@ -1,0 +1,1 @@
+ALTER TABLE `automation_runs` ADD `source_node` text;

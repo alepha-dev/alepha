@@ -88,6 +88,13 @@ export class AutomationEvaluator {
       );
       if (reason)
         throw new ForbiddenError("Current source access is unavailable");
+      // The source to start from (#Q3807): required when there are several.
+      const sources = this.graphs.sources(rule.rule);
+      if (!node && sources.length > 1)
+        throw new BadRequestError(
+          `Choose the source to start from: ${sources.map((item) => item.id).join(", ")}`,
+        );
+      if (node) this.graphs.source(rule.rule, node);
       const evaluation = await this.evaluate({
         rule,
         source,
@@ -610,6 +617,19 @@ export class AutomationEvaluator {
       guards: evaluation.guards,
       operations: [] as AutomationPlannedOperation[],
       operationsOmitted: 0,
+      sourceNode: evaluation.node,
+      nodes: this.graphs
+        .outcomes({
+          graph: evaluation.graph,
+          source: evaluation.node,
+          conditions: evaluation.guards,
+          // A planned step would run; one the plan skips reads skipped.
+          steps: evaluation.operations.map((operation) => ({
+            ...operation,
+            status: operation.skipped ? "skipped" : "succeeded",
+          })),
+        })
+        .slice(0, 500),
       disclaimer:
         "Preview at evaluatedAt. Notifications are planned enqueues, not delivery confirmations. Live data, permissions and preferences can change.",
     };

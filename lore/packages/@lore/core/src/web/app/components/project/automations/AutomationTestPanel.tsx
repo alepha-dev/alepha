@@ -1,7 +1,12 @@
 import { Button } from "@alepha/ui";
 import { ControlSelect } from "@alepha/ui/form";
 import { useClient } from "alepha/react";
-import { FormValidationError, useForm, useFormState } from "alepha/react/form";
+import {
+  FormValidationError,
+  useForm,
+  useFormState,
+  useFormValues,
+} from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";
 
@@ -31,20 +36,19 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
   const api = useClient<AutomationController>();
   const { tr, l } = useI18n<I18n, "en">();
   const [report, setReport] = useState<AutomationEvaluationReport>();
-  // The first source's event (#Q3805); choosing the source comes with
-  // #Q3807.
-  const origin = props.rule.rule?.nodes.find((node) => node.kind === "source");
-  const event = !!origin && origin.type !== "schedule";
-  const sourceKind = event ? origin!.type.split(".")[0] : "quest";
-  const subjects = useAutomationOptions(
-    (sourceKind === "deploy"
-      ? "deployment"
-      : sourceKind) as AutomationOptionKind,
+  // The source to start from (#Q3807): picked when there are several.
+  const sources = (props.rule.rule?.nodes ?? []).filter(
+    (node) => node.kind === "source",
   );
+  const originOf = (id?: string) =>
+    sources.find((node) => node.id === id) ?? sources[0];
   const form = useForm(
     {
       schema: automationPreviewSubjectFormSchema,
+      initialValues: { node: sources[0]?.id },
       handler: async (values) => {
+        const origin = originOf(values.node);
+        const event = !!origin && origin.type !== "schedule";
         const subject = values.subject?.trim();
         if (event && !subject)
           throw new FormValidationError({
@@ -64,13 +68,25 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
         setReport(
           await api.testAutomation({
             params: { projectId: props.rule.projectId, id: props.rule.id },
-            body: source ? { source } : {},
+            body: {
+              ...(source ? { source } : {}),
+              ...(origin ? { node: origin.id } : {}),
+            },
           }),
         );
       },
       onChange: () => setReport(undefined),
     },
     [props.rule.id, props.rule.revision],
+  );
+  const values = useFormValues(form);
+  const origin = originOf(values.node);
+  const event = !!origin && origin.type !== "schedule";
+  const sourceKind = event ? origin!.type.split(".")[0] : "quest";
+  const subjects = useAutomationOptions(
+    (sourceKind === "deploy"
+      ? "deployment"
+      : sourceKind) as AutomationOptionKind,
   );
   const testState = useFormState(form, ["loading"]);
   useEffect(() => {
@@ -90,6 +106,14 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
         {...form.props}
         className="bg-card flex flex-col gap-3 rounded-lg border p-4"
       >
+        {sources.length > 1 && (
+          <ControlSelect
+            input={form.input.node}
+            label={tr("automation.test.source")}
+            items={sources.map((node) => ({ value: node.id, label: node.id }))}
+            disabled={busy}
+          />
+        )}
         {event && (
           <ControlSelect
             input={form.input.subject}

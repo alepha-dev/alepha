@@ -14,6 +14,7 @@ import { automationPresetCreateSchema } from "../schemas/automationPresetCreateS
 import { automationProjectParamsSchema } from "../schemas/automationProjectParamsSchema.ts";
 import { automationResourceSchema } from "../schemas/automationResourceSchema.ts";
 import { automationRevisionBodySchema } from "../schemas/automationRevisionBodySchema.ts";
+import { automationRunListQuerySchema } from "../schemas/automationRunListQuerySchema.ts";
 import { automationRunPageSchema } from "../schemas/automationRunPageSchema.ts";
 import { automationRunResourceSchema } from "../schemas/automationRunResourceSchema.ts";
 import { automationSetupOptionPageSchema } from "../schemas/automationSetupOptionPageSchema.ts";
@@ -250,7 +251,13 @@ export class AutomationController {
       response: automationEvaluationReportSchema,
     },
     handler: ({ params, body, user }) =>
-      this.service.test(params.projectId, params.id, user, body.source),
+      this.service.test(
+        params.projectId,
+        params.id,
+        user,
+        body.source,
+        body.node,
+      ),
   });
   getAutomationCatalog = $action({
     use: [this.gate("automation:read")],
@@ -269,7 +276,7 @@ export class AutomationController {
     path: "/projects/:projectId/automations/:id/runs",
     schema: {
       params: automationParamsSchema,
-      query: automationPageQuerySchema,
+      query: automationRunListQuerySchema,
       response: automationRunPageSchema,
     },
     handler: ({ params, query, user }) =>
