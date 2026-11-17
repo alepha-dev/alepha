@@ -410,9 +410,6 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     const refused = await lore.fail("releases changelog", ["--tag", "1.0.0"]);
     expect(refused?.message).toContain("already published");
 
-    await lore.run("releases reopen", ["--tag", "1.0.0"]);
-    expect(await lore.run("releases list")).not.toContain("released");
-
     const unconfirmed = await lore.fail("releases delete", ["--tag", "1.1.0"]);
     expect(unconfirmed?.message).toContain("--yes");
     await lore.run("releases delete", ["--tag", "1.1.0", "--yes"]);

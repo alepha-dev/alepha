@@ -79,8 +79,7 @@ export const releases = $entity({
     /**
      * Null means open. Publishing is a one-way door: it stamps this, freezes
      * `changelog` and the four counts below, and `updateRelease` / attach /
-     * detach all refuse afterwards. `reopenRelease` is the single deliberate
-     * way back.
+     * detach all refuse afterwards. There is no way back (#Q3836).
      */
     releasedAt: z.datetime().optional(),
     /**

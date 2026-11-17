@@ -135,9 +135,8 @@ Publishing announces the release only to those who asked: the bell on the
 notify anyone or post to a Discord channel (see
 [Automations](/lore/docs/plan-automations)).
 
-**Reopen** is the single deliberate way back, for a release published by
-mistake. It clears everything publishing froze, and the release goes back to
-being computed from what it contains.
+Publishing is final: there is no way back. To ship a fix after publishing,
+create the next release and publish that.
 
 ## The default release
 
@@ -200,9 +199,6 @@ with no default. The move is recorded in the new default's activity, naming
 the release it came from.
 
 Publishing any **other** release leaves the default where it is.
-
-Reopening a release does **not** make it the default again. Reopening says the
-record was wrong, not that finished work should land there again.
 
 ## Deleting a release
 

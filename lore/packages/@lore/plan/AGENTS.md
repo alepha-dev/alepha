@@ -373,8 +373,7 @@ append-folio effect needs. It appends the frozen published changelog/counts, the
 queues inbox or email output in the `releases` preference category. Setup defaults
 to literal same-project folio/member IDs; an author can explicitly replace those
 slots with named typed variables through normal rule editing. Publication identity
-and native effect receipts make retry append once; reopening and republishing is
-a new publication. Human edits remain protected by the normal folio CAS and
+and native effect receipts make retry append once; a publication is final. Human edits remain protected by the normal folio CAS and
 revision history. A notification failure retains the append and a partial run.
 Discord provisioning and a mandatory Discord variant remain deferred.
 

@@ -306,7 +306,6 @@ export class CapabilityRegistry {
         "release_create",
         "release_update",
         "release_publish",
-        "release_reopen",
         "release_attach",
         "release_detach",
         "release_changelog",

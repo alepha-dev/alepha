@@ -359,9 +359,7 @@ describe("ReleaseController: the default release", () => {
     },
   );
 
-  it("refuses a published release with the reopen-it-first wording", async ({
-    expect,
-  }) => {
+  it("refuses a published release, which is final", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
     const release = await createRelease(ctx, user, project.id, "0.28.0");
@@ -372,7 +370,7 @@ describe("ReleaseController: the default release", () => {
     );
 
     await expect(setDefault(ctx, user, project.id, release.id)).rejects.toThrow(
-      /published\. Reopen it first\./,
+      /it has been published\.$/,
     );
   });
 
@@ -411,33 +409,6 @@ describe("ReleaseController: the default release", () => {
     ).data;
     // Without this, the next completion would try to attach to a published
     // release, `assertOpen` would refuse, and the quest could not close.
-    expect(releases.filter((it) => it.defaultSince)).toEqual([]);
-  });
-
-  it("does not restore the default when a release is reopened", async ({
-    expect,
-  }) => {
-    const user = await createTestUser(ctx);
-    const project = await createTestProject(ctx, user);
-    const release = await createRelease(ctx, user, project.id, "0.28.0");
-
-    await setDefault(ctx, user, project.id, release.id);
-    await ctx.releaseController.publishRelease.fetch(
-      { params: { id: release.id }, body: {} },
-      { user },
-    );
-    await ctx.releaseController.reopenRelease.fetch(
-      { params: { id: release.id } },
-      { user },
-    );
-
-    const releases = (
-      await ctx.releaseController.getReleases.fetch(
-        { params: { projectId: project.id } },
-        { user },
-      )
-    ).data;
-    // Reopening says the record was wrong, not that intake resumes here.
     expect(releases.filter((it) => it.defaultSince)).toEqual([]);
   });
 });

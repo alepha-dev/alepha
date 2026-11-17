@@ -1846,11 +1846,6 @@ export default {
   "release.publish.description":
     "Publishing $1 freezes its changelog and its progress counts, and no epic or quest can be attached to it afterwards. If $1 is the default release, the default moves to the next open release, the next minor or else the next major, or to none. This is one-way: reopening it clears everything it froze, and does not make it the default again.",
   "release.publish.confirm": "Publish",
-  "release.reopen.action": "Reopen",
-  "release.reopen.title": "Reopen this release?",
-  "release.reopen.description":
-    "For a release published by mistake. Reopening clears the frozen changelog and the frozen progress counts, and the release goes back to being computed from what it contains.",
-  "release.reopen.confirm": "Reopen",
   "release.start.tag.placeholder": "0.1.0",
   "release.start.cancel": "Cancel",
   "release.detail.error": "Could not save the release.",
@@ -1955,7 +1950,7 @@ export default {
   "release.kpi.target.none":
     "No target date. It would be an estimate anyway: nothing enforces it and no job reads it.",
   "release.kpi.shipped.label": "Shipped",
-  "release.kpi.shipped.note": "Published $1. Reopening is the only way back.",
+  "release.kpi.shipped.note": "Published $1. Publishing is final.",
   "release.kpi.artifacts.label": "Artifacts",
   "release.kpi.artifacts.built": "Built and kept against $1.",
 

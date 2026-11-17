@@ -375,7 +375,7 @@ describe("ReleaseController: publishing is a one-way freeze", () => {
     ).rejects.toThrow(/published/i);
   });
 
-  it("reopens by clearing releasedAt, the changelog and the counts", async ({
+  it("keeps a published release published: there is no way back", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
@@ -391,46 +391,28 @@ describe("ReleaseController: publishing is a one-way freeze", () => {
       priority: "high",
     });
     await attach(ctx, done.id, release.data.id);
-    await ctx.releaseController.publishRelease.fetch(
+    const published = await ctx.releaseController.publishRelease.fetch(
       { params: { id: release.data.id }, body: {} },
       { user },
     );
 
-    const reopened = await ctx.releaseController.reopenRelease.fetch(
-      { params: { id: release.data.id } },
-      { user },
-    );
-
-    expect(reopened.data.releasedAt).toBeUndefined();
-    expect(reopened.data.changelog).toBeUndefined();
-    expect(reopened.data.completed).toBeUndefined();
-    expect(reopened.data.total).toBeUndefined();
-
-    // And the release is editable again. The number and the tag survived,
-    // which is why reopening exists instead of delete-and-recreate.
-    expect(reopened.data.tag).toBe("0.28.0");
-    const updated = await ctx.releaseController.updateRelease.fetch(
-      { params: { id: release.data.id }, body: { title: "Renamed" } },
-      { user },
-    );
-    expect(updated.data.title).toBe("Renamed");
-  });
-
-  it("refuses reopening a release that is already open", async ({ expect }) => {
-    const user = await createTestUser(ctx);
-    const project = await createTestProject(ctx, user);
-
-    const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { tag: "0.28.0" } },
-      { user },
-    );
-
+    // Publishing is final (#Q3836): no action takes it back to open.
+    expect(ctx.releaseController).not.toHaveProperty("reopenRelease");
     await expect(
-      ctx.releaseController.reopenRelease.fetch(
-        { params: { id: release.data.id } },
+      ctx.releaseController.updateRelease.fetch(
+        { params: { id: release.data.id }, body: { title: "Renamed" } },
         { user },
       ),
-    ).rejects.toThrow(/already open/i);
+    ).rejects.toThrow(/cannot change/);
+
+    const [after] = (
+      await ctx.releaseController.getReleases.fetch(
+        { params: { projectId: project.id } },
+        { user },
+      )
+    ).data;
+    expect(after.releasedAt).toBe(published.data.releasedAt);
+    expect(after.changelog).toBe(published.data.changelog);
   });
 
   it("refuses two releases sharing a tag in one project", async ({

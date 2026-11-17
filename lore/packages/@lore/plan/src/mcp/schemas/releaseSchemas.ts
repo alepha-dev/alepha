@@ -175,7 +175,7 @@ export const releaseUpdateParamsSchema = releaseRefSchema.extend({
 export const releaseUpdateResultSchema = releaseRowSchema;
 
 // -----------------------------------------------------------------------------
-// release_publish / release_reopen
+// release_publish
 // -----------------------------------------------------------------------------
 
 export const releasePublishParamsSchema = releaseRefSchema.extend({
@@ -188,10 +188,6 @@ export const releasePublishParamsSchema = releaseRefSchema.extend({
 });
 
 export const releasePublishResultSchema = releaseRowSchema;
-
-export const releaseReopenParamsSchema = releaseRefSchema;
-
-export const releaseReopenResultSchema = releaseRowSchema;
 
 // -----------------------------------------------------------------------------
 // release_attach / release_detach

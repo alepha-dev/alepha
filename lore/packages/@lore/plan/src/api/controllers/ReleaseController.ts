@@ -416,9 +416,6 @@ export class ReleaseController {
           // write, because there is no transaction on D1 to make two atomic.
           // Handing it on to the next release is `handDefaultOn`, below, and
           // is the part allowed to fail.
-          //
-          // `reopenRelease` deliberately does NOT restore it: reopening says the
-          // record was wrong, not that intake should resume here.
           defaultSince: null,
           changelog: markdown,
           // Frozen TOGETHER with the markdown. See `releaseChangelogGroupSchema`
@@ -448,49 +445,6 @@ export class ReleaseController {
   });
 
   /**
-   * The only way back from published, and the reason publishing can be a
-   * one-way door without being a trap: "published by mistake" is real, and
-   * delete-and-recreate would burn the number and lose the tag.
-   *
-   * Clears everything publishing froze, so the release goes back to being
-   * computed live rather than keeping a snapshot nothing agrees with.
-   */
-  reopenRelease = $action({
-    method: "POST",
-    path: "/reopenRelease/:id",
-    use: [this.ownsReleaseForWork("release:manage")],
-    schema: {
-      params: z.object({
-        id: z.integer(),
-      }),
-      response: releases.schema,
-    },
-    handler: async ({ params, user }) => {
-      const release = this.owned.get<Release>();
-
-      if (!release.releasedAt) {
-        throw new BadRequestError("Release is already open.");
-      }
-
-      const reopened = await this.releases.updateById(params.id, {
-        releasedAt: null,
-        changelog: null,
-        changelogGroups: null,
-        completed: null,
-        inProgress: null,
-        shelved: null,
-        total: null,
-      });
-
-      // Beside `publish` rather than left out: a release published, reopened
-      // and published again reads as one event without this row.
-      await this.logRelease("reopen", release, user);
-
-      return reopened;
-    },
-  });
-
-  /**
    * Point this project's intake at a release, or at nothing.
    *
    * The release named here is where a completed quest that names no release,
@@ -511,8 +465,7 @@ export class ReleaseController {
    *
    * 1. A **published** release cannot become the default. Otherwise the next
    *    completion tries to attach to it, `ReleaseAttachmentService.assertOpen`
-   *    refuses, and the quest cannot close. Worded like that refusal: reopen
-   *    it first.
+   *    refuses, and the quest cannot close.
    * 2. A release from **another project** is a 404, not a 403: the caller is
    *    not entitled to learn that an id exists somewhere else. The statement's
    *    own `WHERE project_id` would have made it a silent no-op.
@@ -524,8 +477,6 @@ export class ReleaseController {
    *    this action.
    *
    * `deleteRelease` needs nothing: the flag lives on the row that goes.
-   * `reopenRelease` deliberately does NOT restore it - reopening says the
-   * record was wrong, not that intake should resume there.
    *
    * The response is the project's whole release list, the same payload
    * `getReleases` answers, because the caller's next move is always to
@@ -568,7 +519,7 @@ export class ReleaseController {
         }
         if (target.releasedAt) {
           throw new BadRequestError(
-            `Cannot make ${target.tag ?? formatReference("release", target.number)} the default release: it has been published. Reopen it first.`,
+            `Cannot make ${target.tag ?? formatReference("release", target.number)} the default release: it has been published.`,
           );
         }
         if (previous?.id !== target.id) {
@@ -581,7 +532,7 @@ export class ReleaseController {
           // skipped itself, and the project keeps the default it had.
           if (!swapped) {
             throw new ConflictError(
-              `Cannot make ${target.tag ?? formatReference("release", target.number)} the default release: it was published meanwhile. Reopen it first.`,
+              `Cannot make ${target.tag ?? formatReference("release", target.number)} the default release: it was published meanwhile.`,
             );
           }
           // The release page's activity feed should say who pointed intake
@@ -856,13 +807,12 @@ export class ReleaseController {
 
   /**
    * Refuse anything that would rewrite what a published release shipped.
-   *
-   * `reopenRelease` is the single deliberate way past this.
+   * Publishing is final (#Q3836): there is no way past this.
    */
   protected assertOpen(release: Release): void {
     if (release.releasedAt) {
       throw new BadRequestError(
-        "This release has been published. Reopen it before changing what it contains.",
+        "This release has been published, and a published release cannot change. Create the next release instead.",
       );
     }
   }

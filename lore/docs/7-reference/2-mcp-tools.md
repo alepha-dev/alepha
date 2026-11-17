@@ -131,7 +131,6 @@ See [Releases](/lore/docs/plan-releases).
 | `release_set_default` | Set the release unfiled work lands in, or clear it by omitting `tag`. |
 | `release_changelog`   | The changelog as Markdown, completed quests only.                     |
 | `release_publish`     | Publish, which freezes its changelog and progress.                    |
-| `release_reopen`      | Undo a publication made by mistake.                                   |
 | `release_delete`      | Delete a release. What is in it is detached, never deleted.           |
 
 ## Folios and directories

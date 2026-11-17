@@ -36,7 +36,7 @@ export class ReleaseAttachmentService {
    * release's contents ARE its record, and its four progress counts are
    * frozen on the row (#1551). Attaching to one would make the row disagree
    * with itself; detaching from one would quietly edit what it shipped.
-   * `reopenRelease` is the deliberate way past this.
+   * Publishing is final, so nothing gets past this.
    *
    * @param projectId the project the attaching entity belongs to
    * @param current   the entity's current `releaseId`, if any
@@ -78,7 +78,7 @@ export class ReleaseAttachmentService {
   protected assertOpen(release: Release, verb: string): void {
     if (release.releasedAt) {
       throw new BadRequestError(
-        `Cannot ${verb} ${release.tag ?? `release ${formatReference("release", release.number)}`}: it has been published. Reopen it first.`,
+        `Cannot ${verb} ${release.tag ?? `release ${formatReference("release", release.number)}`}: it has been published.`,
       );
     }
   }

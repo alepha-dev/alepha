@@ -386,15 +386,6 @@ describe("Deployment and release publication presets", () => {
           })
         ).snapshot.actions.map((action) => action.status),
       ).toEqual(["succeeded", "queued"]);
-      await alepha
-        .inject(ReleaseController)
-        .reopenRelease.fetch({ params: { id: published.id } }, { user });
-      await publish(published.id);
-      await dispatch(rule);
-      expect(
-        (await entities.folios.getById(target.id)).content.match(/## 1.0.0/g),
-      ).toHaveLength(2);
-      expect(await notifications()).toHaveLength(2);
     });
   }
   it("resumes an interrupted append without duplicating it or losing a later human edit", async ({

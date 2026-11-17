@@ -621,11 +621,12 @@ test.describe("Releases", () => {
       // ⚠️ Wait for the plate to answer before navigating. The click is
       // fire-and-forget from here, so `page.goto` races the POST, and the
       // table then paints two OPEN releases and fails on a publish that was
-      // still in flight. Reopen replacing Publish is the plate's own signal
-      // that the write landed.
-      await expect(page.getByRole("button", { name: "Reopen" })).toBeVisible({
-        timeout: 15_000,
-      });
+      // still in flight. Publish leaving the plate is its own signal that
+      // the write landed: a published release offers no way back (#Q3836).
+      await expect(page.getByRole("button", { name: "Publish" })).toHaveCount(
+        0,
+        { timeout: 15_000 },
+      );
 
       await page.goto(`/${slug}/releases`);
       const rows = page.locator("tbody tr");
