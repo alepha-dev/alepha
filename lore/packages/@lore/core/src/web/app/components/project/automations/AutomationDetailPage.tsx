@@ -28,8 +28,9 @@ import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationRunList from "./AutomationRunList.tsx";
 import AutomationTestPanel from "./AutomationTestPanel.tsx";
-import AutomationCanvas from "./canvas/AutomationCanvas.tsx";
 import AutomationGraphEditor from "./canvas/AutomationGraphEditor.tsx";
+import AutomationOutlineView from "./outline/AutomationOutlineView.tsx";
+import { useAutomationOutlineNames } from "./outline/useAutomationOutlineNames.ts";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
 
 export interface AutomationDetailPageProps {
@@ -50,8 +51,8 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
   const labels = useAutomationLabels();
   const [saved, setSaved] = useState<AutomationResource>();
   const [childBusy, setChildBusy] = useState(false);
-  // The canvas edits (#Q3811): its draft against what is saved, and the
-  // source selected on it, where Run test starts.
+  // The editor (#Q3811): its draft against what is saved, and the source
+  // selected on it, where Run test starts.
   const [editing, setEditing] = useState(false);
   const [reloads, setReloads] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -87,6 +88,7 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
     [project?.id],
   );
   const rule = saved ?? read.data;
+  const names = useAutomationOutlineNames(rule?.rule ?? undefined);
   // The trail ends with the automation's title (#Q3408).
   usePageCrumb("projectAutomationDetail", rule?.title);
   const toggle = useAction<[enabled: boolean], boolean>(
@@ -307,8 +309,9 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
                     {tr("automation.canvas.editPhone")}
                   </p>
                 )}
-                <AutomationCanvas
+                <AutomationOutlineView
                   graph={rule.rule}
+                  names={names}
                   sources={rule.sources}
                   switches={{
                     can: (enabled) =>
@@ -317,6 +320,10 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
                     set: (node, enabled) =>
                       void switchSource.run(node, enabled),
                   }}
+                  onDelete={
+                    rule.canDelete ? () => void remove.run() : undefined
+                  }
+                  busy={busy}
                 />
               </>
             )
