@@ -1,0 +1,411 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "47dd8784-ff3f-4f00-9a95-71cf312b03bb",
+  "prevIds": ["7441ae65-653f-4b1b-84a1-df2b9465151f"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "requirement_metric_days"],
+      "writes": [
+        "s|tbl|public.requirement_metric_days",
+        "n|tbl|public.requirement_metric_days",
+        "e|tbl|public.requirement_metric_days",
+        "n|rel|public.requirement_metric_days",
+        "n|type|public.requirement_metric_days",
+        "n|rel|public.requirement_metric_days_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "requirements", "metric"],
+      "writes": [
+        "s|col|public.requirements.metric",
+        "n|col|public.requirements.metric",
+        "e|col|public.requirements.metric"
+      ],
+      "reads": ["n|tbl|public.requirements", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "requirements", "metric_value"],
+      "writes": [
+        "s|col|public.requirements.metric_value",
+        "n|col|public.requirements.metric_value",
+        "e|col|public.requirements.metric_value"
+      ],
+      "reads": ["n|tbl|public.requirements", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "requirements", "metric_status"],
+      "writes": [
+        "s|col|public.requirements.metric_status",
+        "n|col|public.requirements.metric_status",
+        "e|col|public.requirements.metric_status"
+      ],
+      "reads": ["n|tbl|public.requirements", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "requirements",
+        "metric_status_since"
+      ],
+      "writes": [
+        "s|col|public.requirements.metric_status_since",
+        "n|col|public.requirements.metric_status_since",
+        "e|col|public.requirements.metric_status_since"
+      ],
+      "reads": ["n|tbl|public.requirements", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "requirements",
+        "metric_evaluated_at"
+      ],
+      "writes": [
+        "s|col|public.requirements.metric_evaluated_at",
+        "n|col|public.requirements.metric_evaluated_at",
+        "e|col|public.requirements.metric_evaluated_at"
+      ],
+      "reads": ["n|tbl|public.requirements", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "requirement_metric_days",
+        "requirement_metric_days_requirement_id_day_idx"
+      ],
+      "writes": [
+        "s|idx|public.requirement_metric_days_requirement_id_day_idx",
+        "n|idx|public.requirement_metric_days_requirement_id_day_idx",
+        "e|idx|public.requirement_metric_days_requirement_id_day_idx",
+        "n|rel|public.requirement_metric_days_requirement_id_day_idx"
+      ],
+      "reads": [
+        "n|tbl|public.requirement_metric_days",
+        "n|sch|public",
+        "n|col|public.requirement_metric_days.requirement_id",
+        "n|col|public.requirement_metric_days.day"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "requirement_metric_days"],
+      "writes": [
+        "s|fk|public.requirement_metric_days.requirement_metric_days_project_id_projects_id_fkey",
+        "n|fk|public.requirement_metric_days.requirement_metric_days_project_id_projects_id_fkey",
+        "e|fk|public.requirement_metric_days.requirement_metric_days_project_id_projects_id_fkey",
+        "n|con|public.requirement_metric_days.requirement_metric_days_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.requirement_metric_days",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.requirement_metric_days.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "requirement_metric_days"],
+      "writes": [
+        "s|fk|public.requirement_metric_days.requirement_metric_days_requirement_id_requirements_id_fkey",
+        "n|fk|public.requirement_metric_days.requirement_metric_days_requirement_id_requirements_id_fkey",
+        "e|fk|public.requirement_metric_days.requirement_metric_days_requirement_id_requirements_id_fkey",
+        "n|con|public.requirement_metric_days.requirement_metric_days_requirement_id_requirements_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.requirement_metric_days",
+        "n|sch|public",
+        "n|tbl|public.requirements",
+        "n|sch|public",
+        "n|col|public.requirement_metric_days.requirement_id",
+        "n|col|public.requirements.id",
+        "e|uniqueness|public.requirements.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "requirement_metric_days",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": {
+          "type": "always",
+          "name": "requirement_metric_days_id_seq",
+          "increment": "1",
+          "startWith": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": 1,
+          "cycle": false
+        },
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "requirement_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "day",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "value",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements",
+        "name": "metric",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements",
+        "name": "metric_value",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements",
+        "name": "metric_status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements",
+        "name": "metric_status_since",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements",
+        "name": "metric_evaluated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "requirement_metric_days_requirement_id_day_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "requirement_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "day",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "requirement_metric_days_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "requirement_metric_days_requirement_id_requirements_id_fkey",
+        "nameExplicit": false,
+        "columns": ["requirement_id"],
+        "schemaTo": "public",
+        "tableTo": "requirements",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_metric_days",
+        "name": "requirement_metric_days_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

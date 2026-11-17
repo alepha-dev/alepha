@@ -3,6 +3,10 @@ import { releases } from "@lore/plan/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import {
+  metricStatusSchema,
+  requirementMetricSchema,
+} from "../schemas/requirementMetricSchema.ts";
 import { requirementPrioritySchema } from "../schemas/requirementPrioritySchema.ts";
 import { requirementTypeSchema } from "../schemas/requirementTypeSchema.ts";
 
@@ -78,6 +82,19 @@ export const requirements = $entity({
     targetReleaseId: db.ref(z.integer().optional(), () => releases.cols.id, {
       onDelete: "set null",
     }),
+    /**
+     * The measure that verifies it (#Q3773), when it is a metric
+     * requirement. The four columns after it are the hourly job's output:
+     * every screen reads them, none queries the analytics.
+     */
+    metric: requirementMetricSchema.optional(),
+    metricValue: z.number().optional(),
+    metricStatus: metricStatusSchema.meta({ mode: "text" }).optional(),
+    /**
+     * Moved only when the status changes, never by "no data".
+     */
+    metricStatusSince: z.datetime().optional(),
+    metricEvaluatedAt: z.datetime().optional(),
   }),
   indexes: [{ columns: ["projectId", "number"], unique: true }],
 });

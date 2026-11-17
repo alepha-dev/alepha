@@ -85,11 +85,56 @@ export class RequirementCommand {
     "source-anchor": z
       .text({ description: "The heading slug of its section in that folio." })
       .optional(),
+    "metric-kind": z
+      .enum(["vital", "availability", "latency"])
+      .describe(
+        "Verify it by a measure: a web vital, or a monitor's availability or latency. Needs an app built with Alepha.",
+      )
+      .optional(),
+    "metric-vital": z
+      .enum(["lcp", "inp", "cls"])
+      .describe("The web vital, for --metric-kind vital.")
+      .optional(),
+    "metric-percentile": z
+      .integer()
+      .min(1)
+      .max(99)
+      .describe("The percentile: 75 for a vital, 95 for a latency by default.")
+      .optional(),
+    "metric-path": z
+      .text({
+        description: "A path pattern of the sigil, * matching anything.",
+      })
+      .optional(),
+    "metric-monitor": z
+      .text({ description: "The monitor's id; else the copy's first monitor." })
+      .optional(),
+    "metric-app": z.text({ description: "The app copy's app." }).optional(),
+    "metric-env": z
+      .text({ description: "The app copy's env: production by default." })
+      .optional(),
+    "metric-threshold": z
+      .number()
+      .describe(
+        "Met at or below it (ms, a CLS score), or at or above it for availability (a percentage).",
+      )
+      .optional(),
+    "metric-window-days": z
+      .integer()
+      .min(1)
+      .max(90)
+      .describe("The window in days: 7 by default.")
+      .optional(),
+    "metric-clear": z
+      .boolean()
+      .describe("Remove the metric: use cases verify it again.")
+      .optional(),
   };
 
   protected async bodyOf(
     projectId: number,
     flags: Record<string, unknown>,
+    current?: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const text = (key: string) =>
       typeof flags[key] === "string" ? (flags[key] as string) : undefined;
@@ -110,6 +155,34 @@ export class RequirementCommand {
         query: {},
       });
       body.sourceFolioId = folio.id;
+    }
+    const metric = Object.fromEntries(
+      (
+        [
+          ["metric-kind", "kind"],
+          ["metric-vital", "vital"],
+          ["metric-percentile", "percentile"],
+          ["metric-path", "path"],
+          ["metric-monitor", "monitorId"],
+          ["metric-app", "app"],
+          ["metric-env", "env"],
+          ["metric-threshold", "threshold"],
+          ["metric-window-days", "windowDays"],
+        ] as const
+      )
+        .filter(([flag]) => flags[flag] !== undefined)
+        .map(([flag, field]) => [field, flags[flag]]),
+    );
+    if (flags["metric-clear"]) {
+      body.metric = null;
+    } else if (Object.keys(metric).length) {
+      const merged = { ...current, ...metric };
+      if (!merged.kind || merged.threshold === undefined) {
+        throw new UsageError(
+          "A metric needs --metric-kind and --metric-threshold",
+        );
+      }
+      body.metric = merged;
     }
     return body;
   }
@@ -180,6 +253,12 @@ export class RequirementCommand {
             ["paragraph", it.paragraph ? `§${it.paragraph}` : undefined],
             ["chapter", it.chapter],
             ["status", it.status],
+            [
+              "metric",
+              it.metric
+                ? `${it.metric.kind} ${it.metric.vital ?? it.metric.monitorId ?? ""} ${it.metric.kind === "availability" ? ">=" : "<="} ${it.metric.threshold}: ${it.metricValue ?? "no data"}${it.metricStatusSince ? ` since ${it.metricStatusSince}` : ""}`
+                : undefined,
+            ],
             [
               "release",
               it.targetRelease
@@ -263,7 +342,11 @@ export class RequirementCommand {
         const row = await this.requirementApi.getRequirementByNumber({
           params: { projectId, number },
         });
-        const body = await this.bodyOf(projectId, flags);
+        const body = await this.bodyOf(
+          projectId,
+          flags,
+          (row as { metric?: Record<string, unknown> }).metric,
+        );
         if (flags.statement) body.statement = flags.statement;
         const updated = await this.requirementApi.updateRequirement({
           params: { id: row.id },

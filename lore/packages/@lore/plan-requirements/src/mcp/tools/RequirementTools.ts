@@ -3,10 +3,11 @@ import { ProjectTools } from "@lore/core/mcp";
 import { ReleaseController } from "@lore/plan/api";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
-import { NotFoundError } from "alepha/server";
+import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { RequirementController } from "../../api/controllers/RequirementController.ts";
 import type { RequirementInput } from "../../api/schemas/requirementInputSchema.ts";
+import type { RequirementMetric } from "../../api/schemas/requirementMetricSchema.ts";
 import {
   criterionVerifyLinkParamsSchema,
   criterionVerifyLinkResultSchema,
@@ -45,8 +46,50 @@ export class RequirementTools {
   protected async inputOf(
     projectId: number,
     fields: RequirementFields,
+    current?: RequirementMetric,
   ): Promise<RequirementInput> {
-    const { source_folio_shortId, ...rest } = fields;
+    const {
+      source_folio_shortId,
+      metric_kind,
+      metric_vital,
+      metric_percentile,
+      metric_path,
+      metric_monitor,
+      metric_app,
+      metric_env,
+      metric_threshold,
+      metric_window_days,
+      metric_clear,
+      ...plain
+    } = fields;
+    const given = {
+      kind: metric_kind,
+      vital: metric_vital,
+      percentile: metric_percentile,
+      path: metric_path,
+      monitorId: metric_monitor,
+      app: metric_app,
+      env: metric_env,
+      threshold: metric_threshold,
+      windowDays: metric_window_days,
+    };
+    const rest: RequirementInput = { ...plain };
+    if (metric_clear) {
+      rest.metric = null;
+    } else if (Object.values(given).some((it) => it !== undefined)) {
+      const merged = {
+        ...current,
+        ...Object.fromEntries(
+          Object.entries(given).filter(([, it]) => it !== undefined),
+        ),
+      };
+      if (!merged.kind || merged.threshold === undefined) {
+        throw new BadRequestError(
+          "A metric needs metric_kind and metric_threshold",
+        );
+      }
+      rest.metric = merged as RequirementMetric;
+    }
     if (source_folio_shortId === undefined) return rest;
     const ids = await this.resources
       .get("folio")
@@ -152,7 +195,7 @@ export class RequirementTools {
       const row = await this.requirements.byNumber(projectId, number);
       return await this.requirements.updateRequirement({
         params: { id: row.id },
-        body: await this.inputOf(projectId, fields),
+        body: await this.inputOf(projectId, fields, row.metric),
       });
     },
   });

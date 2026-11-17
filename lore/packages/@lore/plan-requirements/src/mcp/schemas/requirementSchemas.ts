@@ -41,6 +41,55 @@ const fieldsSchema = z.object({
     .max(200)
     .describe("The heading slug of its section in that folio.")
     .optional(),
+  metric_kind: z
+    .enum(["vital", "availability", "latency"])
+    .describe(
+      "Verify it by a measure instead of use cases: a web vital of the app copy's sigil, or a monitor's availability or latency. Needs an app built with Alepha.",
+    )
+    .optional(),
+  metric_vital: z
+    .enum(["lcp", "inp", "cls"])
+    .describe("The web vital, for metric_kind vital.")
+    .optional(),
+  metric_percentile: z
+    .integer()
+    .min(1)
+    .max(99)
+    .describe("The percentile: 75 by default for a vital, 95 for a latency.")
+    .optional(),
+  metric_path: z
+    .string()
+    .max(200)
+    .describe("A path pattern of the sigil, `*` matching anything.")
+    .optional(),
+  metric_monitor: z
+    .uuid()
+    .describe("The monitor's id; else the first monitor of the app copy.")
+    .optional(),
+  metric_app: z.string().max(100).describe("The app copy's app.").optional(),
+  metric_env: z
+    .string()
+    .max(100)
+    .describe("The app copy's env: production by default.")
+    .optional(),
+  metric_threshold: z
+    .number()
+    .describe(
+      "Met at or below it (milliseconds, a CLS score) or, for availability, at or above it (a percentage).",
+    )
+    .optional(),
+  metric_window_days: z
+    .integer()
+    .min(1)
+    .max(90)
+    .describe("The window, in days: 7 by default.")
+    .optional(),
+  metric_clear: z
+    .boolean()
+    .describe(
+      "Remove the metric: the requirement is verified by use cases again.",
+    )
+    .optional(),
 });
 
 export type RequirementFields = Infer<typeof fieldsSchema>;

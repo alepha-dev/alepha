@@ -24,6 +24,7 @@ import { requirementInputSchema } from "../schemas/requirementInputSchema.ts";
 import { requirementPrioritySchema } from "../schemas/requirementPrioritySchema.ts";
 import { requirementResourceSchema } from "../schemas/requirementResourceSchema.ts";
 import { requirementTypeSchema } from "../schemas/requirementTypeSchema.ts";
+import { RequirementMetricService } from "../services/RequirementMetricService.ts";
 import { RequirementService } from "../services/RequirementService.ts";
 import { SourceSectionService } from "../services/SourceSectionService.ts";
 
@@ -37,6 +38,7 @@ export class RequirementController {
   protected readonly criteria = $repository(useCaseCriteria);
   protected readonly useCases = $repository(useCases);
   protected readonly service = $inject(RequirementService);
+  protected readonly metrics = $inject(RequirementMetricService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly owned = $inject(OwnedResourceProvider);
   protected readonly links = $inject(ResourceLinkService);
@@ -194,12 +196,16 @@ export class RequirementController {
       const number = await this.requirementNumber.next(
         String(params.projectId),
       );
-      const row = await this.requirements.create({
-        ...body,
+      const { metric, ...fields } = body;
+      let row = await this.requirements.create({
+        ...fields,
+        ...(metric ? { metric } : {}),
         ...(await this.syncedSource(body)),
         projectId: params.projectId,
         number,
       });
+      // Saving a metric evaluates it at once (#Q3773).
+      if (row.metric) row = await this.metrics.evaluateOne(row);
       await this.mirrorSource(row);
       await this.log("create", row, user);
       const [resource] = await this.service.toResources([row]);
@@ -223,15 +229,28 @@ export class RequirementController {
           body.sourceFolioId !== before.sourceFolioId) ||
         (body.sourceAnchor !== undefined &&
           body.sourceAnchor !== before.sourceAnchor);
-      const row = await this.requirements.updateById(params.id, {
-        ...body,
+      const { metric, ...fields } = body;
+      let row = await this.requirements.updateById(params.id, {
+        ...fields,
+        ...(metric === null
+          ? {
+              metric: null,
+              metricValue: null,
+              metricStatus: null,
+              metricStatusSince: null,
+              metricEvaluatedAt: null,
+            }
+          : metric
+            ? { metric }
+            : {}),
         ...(sourceMoved
           ? await this.syncedSource({
               sourceFolioId: body.sourceFolioId ?? before.sourceFolioId,
               sourceAnchor: body.sourceAnchor ?? before.sourceAnchor,
             })
           : {}),
-      });
+      } as never);
+      if (metric) row = await this.metrics.evaluateOne(row);
       await this.mirrorSource(row);
       await this.log("update", row, user);
       const [resource] = await this.service.toResources([row]);

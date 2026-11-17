@@ -10,6 +10,7 @@ export const requirementStatusSchema = z.enum([
   "in_development",
   "covered",
   "not_covered",
+  "no_data",
 ]);
 
 export type RequirementStatus = Infer<typeof requirementStatusSchema>;

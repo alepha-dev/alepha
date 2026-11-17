@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { requirements } from "../entities/requirements.ts";
+import { metricStatusSchema } from "./requirementMetricSchema.ts";
 import { requirementStatusSchema } from "./requirementStatusSchema.ts";
 
 /**
@@ -50,6 +51,16 @@ export const requirementResourceSchema = requirements.schema
       })
       .optional(),
     status: requirementStatusSchema,
+    /**
+     * A metric requirement's last 14 days, oldest first (#Q3773).
+     */
+    metricDays: z.array(
+      z.object({
+        day: z.string(),
+        value: z.number().optional(),
+        status: metricStatusSchema,
+      }),
+    ),
   });
 
 export type RequirementResource = Infer<typeof requirementResourceSchema>;

@@ -15,6 +15,8 @@ import { Pencil, Trash2 } from "lucide-react";
 
 import type { RequirementController } from "../../../../api/controllers/RequirementController.ts";
 import type { RequirementResource } from "../../../../api/schemas/requirementResourceSchema.ts";
+import MetricSparkline from "./MetricSparkline.tsx";
+import { formatMetricValue, metricLine } from "./metricText.ts";
 import {
   REQUIREMENT_PRIORITY_LABEL_KEYS,
   REQUIREMENT_TYPE_LABEL_KEYS,
@@ -37,7 +39,8 @@ export interface RequirementDetailProps {
  * changed's Update / Keep.
  */
 const RequirementDetail = (props: RequirementDetailProps) => {
-  const { tr } = useI18n<I18n, "en">();
+  const i18n = useI18n<I18n, "en">();
+  const { tr } = i18n;
   const dialog = useDialog();
   const [project] = useStore(currentProjectAtom);
   const api = useClient<RequirementController>();
@@ -269,31 +272,74 @@ const RequirementDetail = (props: RequirementDetailProps) => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="flex flex-col gap-2 text-sm">
-          <h3 className="font-semibold">
-            {tr("requirements.requirement.verifiedBy", {
-              args: [String(it.criteria.length)],
-            })}
-          </h3>
-          {it.criteria.length === 0 ? (
+      {it.metric ? (
+        <Card data-testid="requirement-metric">
+          <CardContent className="flex flex-col gap-2 text-sm">
+            <h3 className="font-semibold">
+              {tr("requirements.requirement.metric.title")}
+            </h3>
+            <p className="font-mono text-xs">{metricLine(it.metric)}</p>
+            {it.metricValue !== undefined && it.metricStatus !== "no_data" ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-lg font-semibold">
+                  {formatMetricValue(it.metric, it.metricValue)}
+                </span>
+                <RequirementStatusChips requirement={it} />
+                {it.metricStatusSince ? (
+                  <span className="text-muted-foreground text-xs">
+                    {tr("requirements.requirement.metric.since", {
+                      args: [i18n.l(it.metricStatusSince, { date: "ll" })],
+                    })}
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                {tr("requirements.requirement.metric.empty")}
+              </p>
+            )}
+            <MetricSparkline days={it.metricDays} />
+            {it.metricEvaluatedAt ? (
+              <p className="text-muted-foreground text-xs">
+                {tr("requirements.requirement.metric.evaluated", {
+                  args: [i18n.l(it.metricEvaluatedAt, { date: "lll" })],
+                })}
+              </p>
+            ) : null}
             <p className="text-muted-foreground text-xs">
-              {tr("requirements.requirement.verifiedBy.none")}
+              {tr("requirements.requirement.metric.alephaOnly")}
             </p>
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {it.criteria.map((c) => (
-                <li key={`${c.useCaseNumber}:${c.key}`}>
-                  <span className="font-semibold">
-                    {formatReference("usecase", c.useCaseNumber)} {c.key}
-                  </span>{" "}
-                  <span className="text-muted-foreground">{c.summary}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!it.metric || it.criteria.length ? (
+        <Card>
+          <CardContent className="flex flex-col gap-2 text-sm">
+            <h3 className="font-semibold">
+              {tr("requirements.requirement.verifiedBy", {
+                args: [String(it.criteria.length)],
+              })}
+            </h3>
+            {it.criteria.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                {tr("requirements.requirement.verifiedBy.none")}
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {it.criteria.map((c) => (
+                  <li key={`${c.useCaseNumber}:${c.key}`}>
+                    <span className="font-semibold">
+                      {formatReference("usecase", c.useCaseNumber)} {c.key}
+                    </span>{" "}
+                    <span className="text-muted-foreground">{c.summary}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {canWrite ? (
         <div className="flex gap-2">

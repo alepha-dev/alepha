@@ -1,6 +1,7 @@
 import { type Infer } from "alepha";
 
 import { requirements } from "../entities/requirements.ts";
+import { requirementMetricSchema } from "./requirementMetricSchema.ts";
 
 /**
  * What a create or an update writes on a requirement (#E153). The target
@@ -18,6 +19,12 @@ export const requirementInputSchema = requirements.schema
     sourceFolioId: true,
     sourceAnchor: true,
   })
-  .partial();
+  .partial()
+  .extend({
+    /**
+     * The measure verifying it (#Q3773); `null` clears it.
+     */
+    metric: requirementMetricSchema.nullable().optional(),
+  });
 
 export type RequirementInput = Infer<typeof requirementInputSchema>;

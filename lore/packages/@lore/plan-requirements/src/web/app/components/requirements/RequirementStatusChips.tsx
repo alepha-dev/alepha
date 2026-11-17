@@ -22,6 +22,7 @@ const RequirementStatusChips = (props: RequirementStatusChipsProps) => {
       in_development: "info",
       covered: "info",
       not_covered: "neutral",
+      no_data: "neutral",
     } as const
   )[props.requirement.status];
   return (
