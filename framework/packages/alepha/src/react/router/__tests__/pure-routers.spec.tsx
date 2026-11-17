@@ -1,4 +1,4 @@
-import { $inject, Alepha, type AppSurface } from "alepha";
+import { $inject, Alepha, type AppSurface, z } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -35,6 +35,15 @@ class DocsRouter {
     parent: this.shell.layout,
     component: () => "docs page",
   });
+  // A path param, matched by the `GET /*` placeholder on the first request
+  // as `*`: the page must receive its own params, not the placeholder's.
+  docsPage = $page({
+    path: "/docs/:slug",
+    parent: this.shell.layout,
+    schema: { params: z.object({ slug: z.text() }) },
+    loader: ({ params }) => ({ params }),
+    component: ({ params }) => `docs page ${params.slug}`,
+  });
 }
 
 class Api {
@@ -56,6 +65,7 @@ const surface: AppSurface = {
     row("home", "LayoutRouter"),
     row("about", "LayoutRouter"),
     row("docs", "DocsRouter"),
+    row("docsPage", "DocsRouter"),
   ],
   jobs: [],
   tools: [],
@@ -105,6 +115,18 @@ describe("pure page routers", () => {
     const second = await request("/about");
     expect(await second.text()).toContain("about page");
     expect(created).toHaveLength(2);
+    await alepha.stop();
+  });
+
+  it("give the first page request its own path params, not the placeholder's", async ({
+    expect,
+  }) => {
+    const { alepha, request } = await start();
+    const first = await request("/docs/intro");
+    expect(first.status).toBe(200);
+    const html = await first.text();
+    expect(html).toContain("docs page intro");
+    expect(html).not.toContain("SCHEMA_VALIDATION");
     await alepha.stop();
   });
 

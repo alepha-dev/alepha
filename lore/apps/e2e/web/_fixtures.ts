@@ -47,7 +47,12 @@ const waitForServer = async (
       );
     }
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(1_000) });
+      // `/readyz`, never a page: the first page request of a built Lore
+      // creates its page routes, and a probe of `/` would take that from
+      // the test that means to make it (#Q3855).
+      const res = await fetch(`${url}/readyz`, {
+        signal: AbortSignal.timeout(1_000),
+      });
       // The listener binds before start() ends, and answers 503 until the
       // server is ready: only another status means it is (#Q3414).
       if (res.status !== 503) {
@@ -61,6 +66,53 @@ const waitForServer = async (
   throw new Error(`Lore did not answer on ${url} within 60s:\n${log()}`);
 };
 
+/**
+ * Boots one `node dist` on its own port and in-memory database, and resolves
+ * once it answers. `stop` kills it and removes its data directory.
+ */
+export const startLore = async (
+  port: number,
+  dataDir: string,
+): Promise<{ url: string; stop: () => void }> => {
+  const url = `http://localhost:${port}`;
+  const child = spawn("node", ["dist"], {
+    cwd: LORE_DIR,
+    env: {
+      ...process.env,
+      SERVER_PORT: String(port),
+      DATABASE_URL: ":memory:",
+      DATA_DIR: dataDir,
+      APP_SECRET: "e2e-test-secret",
+      TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+      TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+      REGISTRATION_IP_MAX_ATTEMPTS: "1000",
+      EMAIL_ENABLED: "true",
+      // Discord channels post to memory, never discord.com (#Q3616).
+      DISCORD_TRANSPORT: "memory",
+      ADMIN_EMAIL,
+      LOG_LEVEL: "warn",
+      LOG_FORMAT: "json",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let output = "";
+  child.stdout?.on("data", (d) => (output += d));
+  child.stderr?.on("data", (d) => (output += d));
+
+  await waitForServer(url, child, () => output.slice(-2000));
+
+  return {
+    url,
+    stop: () => {
+      child.kill("SIGKILL");
+      try {
+        rmSync(dataDir, { recursive: true, force: true });
+      } catch {}
+    },
+  };
+};
+
 // biome-ignore lint: Playwright's shape for no extra test-scoped fixtures.
 export const test = base.extend<{}, { loreServer: LoreServer }>({
   loreServer: [
@@ -69,38 +121,11 @@ export const test = base.extend<{}, { loreServer: LoreServer }>({
       const dataDir = mkdtempSync(
         join(tmpdir(), `lore-e2e-w${workerInfo.workerIndex}-`),
       );
-      const url = `http://localhost:${port}`;
-
       // The helpers read verification codes off disk, so they have to look in
       // THIS worker's mail directory rather than the framework default.
       process.env.LORE_E2E_DATA_DIR = dataDir;
 
-      const child = spawn("node", ["dist"], {
-        cwd: LORE_DIR,
-        env: {
-          ...process.env,
-          SERVER_PORT: String(port),
-          DATABASE_URL: ":memory:",
-          DATA_DIR: dataDir,
-          APP_SECRET: "e2e-test-secret",
-          TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
-          TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
-          REGISTRATION_IP_MAX_ATTEMPTS: "1000",
-          EMAIL_ENABLED: "true",
-          // Discord channels post to memory, never discord.com (#Q3616).
-          DISCORD_TRANSPORT: "memory",
-          ADMIN_EMAIL,
-          LOG_LEVEL: "warn",
-          LOG_FORMAT: "json",
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      let output = "";
-      child.stdout?.on("data", (d) => (output += d));
-      child.stderr?.on("data", (d) => (output += d));
-
-      await waitForServer(url, child, () => output.slice(-2000));
+      const { url, stop } = await startLore(port, dataDir);
 
       // The admin account, once per worker rather than once per run.
       // `global-setup.ts` did this against the single shared server; with a
@@ -114,10 +139,7 @@ export const test = base.extend<{}, { loreServer: LoreServer }>({
 
       await use({ url, port, dataDir });
 
-      child.kill("SIGKILL");
-      try {
-        rmSync(dataDir, { recursive: true, force: true });
-      } catch {}
+      stop();
     },
     { scope: "worker" },
   ],

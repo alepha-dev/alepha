@@ -32,6 +32,7 @@ import type {
   ResponseKind,
   ServerRequest,
   ServerRequestConfig,
+  ServerRequestData,
   ServerResponse,
   ServerRoute,
   ServerRouteInput,
@@ -225,6 +226,37 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       placeholder: true,
       handler: onHit,
     });
+  }
+
+  /**
+   * The route that replaced a placeholder, for the request the placeholder
+   * matched, with the request's params rewritten to that route's own.
+   *
+   * ⚠️ The placeholder matched on its OWN path: the pages' `GET /*` captures
+   * the whole path as `*` and names nothing else, so a page at
+   * `/:projectSlug/request` answered through it with no `projectSlug` and
+   * failed its schema, on the first page request of every process (#Q3855).
+   * The params are rewritten in place because the request object is the
+   * placeholder caller's, and per request: `match` hands out copies.
+   *
+   * Undefined when the path still reaches a placeholder, or nothing.
+   */
+  public matchReplacement(
+    method: string,
+    request: ServerRequestData,
+  ): ServerRouteMatcher | undefined {
+    const { route, params } = this.match(
+      `/${method.toUpperCase()}${request.url.pathname}`,
+    );
+    if (!route || route.placeholder) {
+      return undefined;
+    }
+    const own = request.params as Record<string, string>;
+    for (const key of Object.keys(own)) {
+      delete own[key];
+    }
+    Object.assign(own, params);
+    return route;
   }
 
   /**

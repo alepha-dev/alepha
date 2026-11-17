@@ -115,8 +115,8 @@ export class ServerSurfaceProvider {
         // creating it is synchronous, so concurrent first requests create it
         // once. A failed import fails this request only, and the next retries.
         this.alepha.inject(await this.alepha.resolveDeclared(service));
-        const { route } = this.router.match(`/${verb}${request.url.pathname}`);
-        if (!route || route.placeholder) {
+        const route = this.router.matchReplacement(verb, request);
+        if (!route) {
           throw new HttpError(
             { status: 500 },
             {
