@@ -108,6 +108,7 @@ import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
+import { LiveQuestRegistry } from "./services/LiveQuestRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
 import { McpProjectScope } from "./services/McpProjectScope.ts";
@@ -288,6 +289,9 @@ export const LoreCoreApi = $module({
     NotificationPreferenceController,
     ActivityChannel,
     DeliveryChangeRegistry,
+    // Which deployed copy runs a quest's commits (#E154): Plan registers the
+    // recorded commits, Ship the reads.
+    LiveQuestRegistry,
     McpProjectScope,
     ProjectLimits,
     ProjectAnalyticsController,
@@ -492,6 +496,13 @@ export {
   type DeliveryChange,
   DeliveryChangeRegistry,
 } from "./services/DeliveryChangeRegistry.ts";
+export {
+  type LiveQuestInstance,
+  type LiveQuestReader,
+  type ProjectLiveness,
+  type RecordedQuestCommits,
+  LiveQuestRegistry,
+} from "./services/LiveQuestRegistry.ts";
 export { McpProjectScope } from "./services/McpProjectScope.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
 export {

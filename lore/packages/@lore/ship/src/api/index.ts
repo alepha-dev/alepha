@@ -17,6 +17,7 @@ import { HostEnrolController } from "./controllers/HostEnrolController.ts";
 import { HostPullController } from "./controllers/HostPullController.ts";
 import { HostSocketController } from "./controllers/HostSocketController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
+import { LiveQuestController } from "./controllers/LiveQuestController.ts";
 import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
 import { ProjectHostController } from "./controllers/ProjectHostController.ts";
@@ -44,11 +45,13 @@ import { AppHealthMetric } from "./services/AppHealthMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
 import { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
+import { ArtifactPushCaps } from "./services/ArtifactPushCaps.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 import { BayRemovalService } from "./services/BayRemovalService.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
+import { CommitQuestSetService } from "./services/CommitQuestSetService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DeployAppsDashboardMetrics } from "./services/DeployAppsDashboardMetrics.ts";
 import { DeployAttentionSources } from "./services/DeployAttentionSources.ts";
@@ -83,6 +86,7 @@ import { HostsMetric } from "./services/HostsMetric.ts";
 import { HostStatsService } from "./services/HostStatsService.ts";
 import { HostTokenService } from "./services/HostTokenService.ts";
 import { HostUpgradeService } from "./services/HostUpgradeService.ts";
+import { LiveQuestService } from "./services/LiveQuestService.ts";
 import { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
 import { OpenErrorsMetric } from "./services/OpenErrorsMetric.ts";
 import { ProjectDeliveryReportService } from "./services/ProjectDeliveryReportService.ts";
@@ -199,6 +203,13 @@ export const LoreShipApi = $module({
     ArtifactDetailService,
     ArtifactService,
     DeployedBuildService,
+    // Live quests (#E154): the quest set of each pushed commit, and the
+    // reads registered on core's `LiveQuestRegistry` at boot.
+    CommitQuestSetService,
+    // The push carries more parts than the framework's default allows.
+    ArtifactPushCaps,
+    LiveQuestService,
+    LiveQuestController,
     // Deploying a stored artifact to a host (epic #1). `DeployRegistry` is
     // the seam #1201 replaces with the `deployments` table; the runner is what
     // writes through it.
@@ -334,6 +345,10 @@ export { StackVariableController } from "./controllers/StackVariableController.t
 export { StackDeployController } from "./controllers/StackDeployController.ts";
 export { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
 export { DeployAnalytics } from "./entities/deployAnalytics.ts";
+export { LiveQuestController } from "./controllers/LiveQuestController.ts";
+export { CommitQuestSetService } from "./services/CommitQuestSetService.ts";
+export { LiveQuestService } from "./services/LiveQuestService.ts";
+export { QuestBitmap } from "./services/QuestBitmap.ts";
 export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";

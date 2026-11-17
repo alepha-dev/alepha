@@ -163,6 +163,36 @@ describe("an app deploy inside a stack", () => {
     expect(command.hostId).toBe(a.hostId);
   });
 
+  it("snapshots the artifact's commit and dirty flag on the member's run (#E154)", async ({
+    expect,
+  }) => {
+    const a = await arrange();
+    await alepha.inject(ArtifactController).pushArtifact.fetch(
+      {
+        params: { projectId: a.w.project.id },
+        body: {
+          app: "crm-api",
+          tag: "1.1.0",
+          commitSha: "c".repeat(40),
+          dirty: true,
+          file: await packedArtifact({
+            manifest: { runtimes: [{ runtime: "node" }] },
+          }),
+        },
+      },
+      { user: a.w.user },
+    );
+
+    const row = await alepha.inject(DeployService).queue({
+      projectId: a.w.project.id,
+      instanceId: a.instance.id,
+      tag: "1.1.0",
+    });
+
+    expect(row.commitSha).toBe("c".repeat(40));
+    expect(row.dirty).toBe(true);
+  });
+
   it("refuses before the stack has ever been deployed, naming why", async ({
     expect,
   }) => {

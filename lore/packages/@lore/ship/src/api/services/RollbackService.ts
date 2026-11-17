@@ -259,6 +259,14 @@ export class RollbackService {
       app: plan.deployment.app,
       tag: plan.deployment.tag,
       sha256: plan.deployment.sha256,
+      // The TARGET run's commit, not the artifact's (#E154): `latest` may
+      // have moved since, and the copy is about to run the target's bytes.
+      ...(plan.deployment.commitSha
+        ? { commitSha: plan.deployment.commitSha }
+        : {}),
+      ...(plan.deployment.dirty == null
+        ? {}
+        : { dirty: plan.deployment.dirty }),
       versionId: plan.deployment.versionId,
       status: "running",
     });

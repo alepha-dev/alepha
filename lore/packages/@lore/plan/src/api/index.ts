@@ -41,6 +41,7 @@ import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
+import { PlanLiveQuestCommits } from "./services/PlanLiveQuestCommits.ts";
 import { ProjectBacklogReportService } from "./services/ProjectBacklogReportService.ts";
 import { ProjectFlowReportService } from "./services/ProjectFlowReportService.ts";
 import { ProjectPlanningReportService } from "./services/ProjectPlanningReportService.ts";
@@ -224,6 +225,8 @@ export const LorePlanApi = $module({
     QuestHoldTime,
     ReleaseForecast,
     WorkDeliveryChanges,
+    // The commits recorded on each quest, for live quests (#E154).
+    PlanLiveQuestCommits,
     WorkReportsSummary,
     ProjectQuestPortabilityController,
     KanbanController,

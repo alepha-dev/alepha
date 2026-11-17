@@ -11,8 +11,10 @@ import { artifactDetailSchema } from "../schemas/artifactDetailSchema.ts";
 import { artifactListSchema } from "../schemas/artifactListSchema.ts";
 import { artifactManifestSchema } from "../schemas/artifactManifestSchema.ts";
 import { artifactPushResultSchema } from "../schemas/artifactPushResultSchema.ts";
+import { commitQuestSetPushSchema } from "../schemas/commitQuestSetPushSchema.ts";
 import { ArtifactDetailService } from "../services/ArtifactDetailService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
+import { CommitQuestSetService } from "../services/CommitQuestSetService.ts";
 import { DeployBuckets } from "../services/DeployBuckets.ts";
 
 /**
@@ -39,6 +41,7 @@ import { DeployBuckets } from "../services/DeployBuckets.ts";
 export class ArtifactController {
   protected readonly artifacts = $inject(ArtifactService);
   protected readonly details = $inject(ArtifactDetailService);
+  protected readonly questSets = $inject(CommitQuestSetService);
   protected readonly files = $inject(FileService);
   protected readonly ranks = $inject(RankService);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
@@ -152,16 +155,43 @@ export class ArtifactController {
          * dropped rather than refused: nothing deploys from it.
          */
         schema: z.file({ maxBytes: 4 * 1024 * 1024 }).optional(),
+        /**
+         * The quests the pushed commit's history references (#E154), as the
+         * pusher found them walking from its newest known ancestor. Kept
+         * once per `(project, commitSha)`, and ignored without `commitSha`.
+         * Optional both ways: an older CLI sends none, and the copies running
+         * these bytes then have an unknown live set.
+         *
+         * ⚠️ An object part sent before `file`, for `manifest`'s reason.
+         */
+        quests: commitQuestSetPushSchema.optional(),
+        /**
+         * The shas the pusher walked, as a JSON array (#E154): a file part
+         * like `assets`, since a first push walks the whole history. Lore
+         * matches the quests whose recorded sha is among them.
+         */
+        commits: z.file({ maxBytes: 4 * 1024 * 1024 }).optional(),
+        /**
+         * The working tree had tracked changes (#E154). Untracked files
+         * never count.
+         */
+        dirty: z.boolean().optional(),
       }),
       response: artifactPushResultSchema,
     },
     handler: async ({ params, body, user }) => {
       await this.assertCanForce(params.projectId, body.force, user);
+      // Read before anything is stored, so a malformed list refuses the push
+      // rather than leaving a build whose quests were dropped.
+      const walked = body.commits
+        ? await this.questSets.walkedOf(body.commits)
+        : [];
       const { artifact, stored } = await this.artifacts.push({
         projectId: params.projectId,
         app: body.app,
         tag: body.tag,
         commitSha: body.commitSha,
+        dirty: body.dirty,
         force: body.force,
         manifest: body.manifest,
         file: body.file,
@@ -169,7 +199,29 @@ export class ArtifactController {
         schema: body.schema,
       });
 
-      return { artifact: this.resource(artifact), stored };
+      // ⚠️ On every path, the idempotent re-push included: the set belongs
+      // to the commit, not to these bytes.
+      const quests =
+        body.quests && body.commitSha
+          ? await this.questSets.record({
+              projectId: params.projectId,
+              commitSha: body.commitSha,
+              base: body.quests.base,
+              numbers: body.quests.numbers,
+              walked,
+              complete: body.quests.complete,
+            })
+          : undefined;
+
+      return {
+        artifact: this.resource(artifact),
+        stored,
+        ...(quests
+          ? {
+              quests: { count: quests.numbers.size, complete: quests.complete },
+            }
+          : {}),
+      };
     },
   });
 

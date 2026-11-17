@@ -266,6 +266,7 @@ export class StackDeployService {
       app: artifact.app,
       tag: artifact.tag,
       sha256: artifact.sha256,
+      ...ArtifactService.commitOf(artifact),
       status: "queued",
       commandId: command.id,
       createdBy: input.createdBy,

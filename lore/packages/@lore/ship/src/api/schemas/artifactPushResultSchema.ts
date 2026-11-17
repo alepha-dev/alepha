@@ -14,6 +14,14 @@ import { artifactResourceSchema } from "./artifactResourceSchema.ts";
 export const artifactPushResultSchema = z.object({
   artifact: artifactResourceSchema,
   stored: z.boolean(),
+  /**
+   * The full quest set Lore now keeps for the pushed commit (#E154): how many
+   * quests, and whether it rests on a complete history. Absent when the push
+   * sent no quests or no commit.
+   */
+  quests: z
+    .object({ count: z.integer().min(0), complete: z.boolean() })
+    .optional(),
 });
 
 export type ArtifactPushResult = Infer<typeof artifactPushResultSchema>;
