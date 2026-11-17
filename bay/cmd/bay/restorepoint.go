@@ -492,7 +492,12 @@ func (s *server) runDueVerifies(ctx context.Context) {
 		if now.Sub(last) < every {
 			continue
 		}
+		done, err := s.beginWork("a scheduled backup verification of " + app.Key())
+		if err != nil {
+			return
+		}
 		_, _ = s.verifyInstance(ctx, app, neturl.Values{})
+		done()
 		return
 	}
 }

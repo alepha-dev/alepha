@@ -174,6 +174,10 @@ func (a *actions) latestWelcome() connector.Welcome {
 // there is nothing running to report.
 func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(connector.Ack) error) {
 	log := a.s.log.With("command", cmd.ID, "kind", cmd.Kind, "app", cmd.App+"/"+cmd.Environment)
+	// A Bay that has handed over waits for this before it closes the
+	// connection, so the ack below is sent by the process that holds it.
+	a.s.commands.Add(1)
+	defer a.s.commands.Done()
 
 	if prior, ok := a.outcomes.Get(cmd.ID); ok {
 		// Redelivered after a lost ack: say again what happened, run nothing.
@@ -201,6 +205,16 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
 	}
+
+	// Refused while this Bay hands over to its successor, and counted as work
+	// a handoff must not start under (see handoff.go).
+	done, err := a.s.beginWork("the " + cmd.Kind + " command from Lore")
+	if err != nil {
+		log.Warn("lore command refused", "reason", err.Error())
+		a.finish(cmd.ID, "failed", "", err.Error(), send)
+		return
+	}
+	defer done()
 
 	if !a.outcomes.Begin(cmd.ID) {
 		// Still running from an earlier delivery: it acks when it finishes.

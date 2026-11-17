@@ -25,6 +25,16 @@ type TCP struct {
 	log       *slog.Logger
 	mu        sync.Mutex
 	listeners map[int]*tcpListener
+	// Listen opens a public port; nil means net.Listen. `serve` hands it the
+	// socket handoff's, so a Bay taking over from a running one inherits each
+	// open port instead of binding it again (#Q3743).
+	Listen func(network, addr string) (net.Listener, error)
+	// loops counts the accept loops and active the connections being
+	// forwarded, for Drain. Two groups, and Drain waits for them in that
+	// order: a loop that has just accepted a connection has not counted it
+	// yet, so waiting for the connections alone would miss that one.
+	loops  sync.WaitGroup
+	active sync.WaitGroup
 }
 
 type tcpListener struct {
@@ -59,7 +69,8 @@ func (t *TCP) Sync(forwards map[int]Forward) map[int]error {
 	failed := map[int]error{}
 	for port, l := range t.listeners {
 		if _, keep := forwards[port]; !keep {
-			l.ln.Close()
+			// Not a plain close: see retire.
+			retire(l.ln)
 			delete(t.listeners, port)
 		}
 	}
@@ -68,13 +79,18 @@ func (t *TCP) Sync(forwards map[int]Forward) map[int]error {
 			l.fwd = fwd
 			continue
 		}
-		ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+		listen := t.Listen
+		if listen == nil {
+			listen = net.Listen
+		}
+		ln, err := listen("tcp", ":"+strconv.Itoa(port))
 		if err != nil {
 			failed[port] = err
 			continue
 		}
 		l := &tcpListener{ln: ln, fwd: fwd}
 		t.listeners[port] = l
+		t.loops.Add(1)
 		go t.serve(port, l)
 	}
 	return failed
@@ -88,10 +104,38 @@ func (t *TCP) Owns(port int) bool {
 	return ok
 }
 
-// Close closes every listener.
+// Close retires every port: nothing listens on any of them afterwards.
 func (t *TCP) Close() { t.Sync(nil) }
 
+/*
+Drain is how a Bay that has handed its sockets to its successor leaves: it
+stops accepting on every port, then waits for the connections it is still
+forwarding, until ctx is done.
+
+The listeners are closed, not retired. The successor accepts on the same
+sockets, and retiring one here would stop it listening there too.
+*/
+func (t *TCP) Drain(ctx context.Context) {
+	t.mu.Lock()
+	for port, l := range t.listeners {
+		l.ln.Close()
+		delete(t.listeners, port)
+	}
+	t.mu.Unlock()
+	done := make(chan struct{})
+	go func() {
+		t.loops.Wait()
+		t.active.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
+}
+
 func (t *TCP) serve(port int, l *tcpListener) {
+	defer t.loops.Done()
 	for {
 		conn, err := l.ln.Accept()
 		if err != nil {
@@ -99,8 +143,12 @@ func (t *TCP) serve(port int, l *tcpListener) {
 		}
 		t.mu.Lock()
 		fwd := l.fwd
+		t.active.Add(1)
 		t.mu.Unlock()
-		go forward(conn, fwd, t.log, port)
+		go func() {
+			defer t.active.Done()
+			forward(conn, fwd, t.log, port)
+		}()
 	}
 }
 

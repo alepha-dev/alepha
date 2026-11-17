@@ -248,3 +248,95 @@ func TestInstallScriptWithoutSystemdSaysWhatToRun(t *testing.T) {
 		t.Fatalf("the installer printed the secret:\n%s", out)
 	}
 }
+
+/*
+The handoff drop-in (#Q3743): written beside the unit, never into it.
+
+The stub systemctl records every call, so the test can read the order: the
+drop-in and its daemon-reload come before the restart of a running bay, which
+is what makes the restarted Bay run with them.
+*/
+func (w *installWorld) recordSystemctl(t *testing.T, active bool) string {
+	t.Helper()
+	calls := filepath.Join(filepath.Dir(w.stubs), "systemctl.calls")
+	activeStatus := "3"
+	if active {
+		activeStatus = "0"
+	}
+	writeInstallFile(t, filepath.Join(w.stubs, "systemctl"), `#!/bin/sh
+echo "$*" >>"`+calls+`"
+case "$*" in "is-active"*) exit `+activeStatus+` ;; esac
+exit 0
+`, 0o755)
+	return calls
+}
+
+func TestInstallScriptWritesTheHandoffDropIn(t *testing.T) {
+	const dropInBody = "[Service]\nPIDFile=/run/bay/bay.pid\nExecReload=/bin/kill -HUP $MAINPID\n"
+
+	t.Run("a host with no unit gets it, outside any enrolment", func(t *testing.T) {
+		w := newInstallWorld(t)
+		calls := w.recordSystemctl(t, false)
+		out, err := w.run(t)
+		if err != nil {
+			t.Fatalf("install.sh: %v\n%s", err, out)
+		}
+		dropIn, err := os.ReadFile(w.unit + ".d/handoff.conf")
+		if err != nil {
+			t.Fatalf("no drop-in: %v\n%s", err, out)
+		}
+		if !strings.HasSuffix(string(dropIn), dropInBody) {
+			t.Fatalf("drop-in:\n%s", dropIn)
+		}
+		if _, err := os.Stat(w.unit); err == nil {
+			t.Fatal("the drop-in step must not write a unit")
+		}
+		recorded, _ := os.ReadFile(calls)
+		if !strings.Contains(string(recorded), "daemon-reload") {
+			t.Fatalf("systemd was not told:\n%s", recorded)
+		}
+	})
+
+	t.Run("a host with a unit is left alone unless asked", func(t *testing.T) {
+		w := newInstallWorld(t)
+		w.recordSystemctl(t, true)
+		writeInstallFile(t, w.unit, "[Service]\nExecStart=/opt/bay/bin/bay serve\n", 0o644)
+		out, err := w.run(t)
+		if err != nil {
+			t.Fatalf("install.sh: %v\n%s", err, out)
+		}
+		if _, err := os.Stat(w.unit + ".d/handoff.conf"); err == nil {
+			t.Fatal("an existing unit got a drop-in nobody asked for")
+		}
+		if !strings.Contains(out, "BAY_UPDATE_UNIT=yes") {
+			t.Fatalf("the report must say how to get it:\n%s", out)
+		}
+	})
+
+	t.Run("with BAY_UPDATE_UNIT=yes it is written before the running bay is restarted", func(t *testing.T) {
+		w := newInstallWorld(t)
+		calls := w.recordSystemctl(t, true)
+		unit := "[Service]\nExecStart=/opt/bay/bin/bay serve\n"
+		writeInstallFile(t, w.unit, unit, 0o644)
+		out, err := w.run(t, "BAY_UPDATE_UNIT=yes")
+		if err != nil {
+			t.Fatalf("install.sh: %v\n%s", err, out)
+		}
+		dropIn, err := os.ReadFile(w.unit + ".d/handoff.conf")
+		if err != nil || !strings.HasSuffix(string(dropIn), dropInBody) {
+			t.Fatalf("drop-in: %v\n%s", err, dropIn)
+		}
+		if kept, _ := os.ReadFile(w.unit); string(kept) != unit {
+			t.Fatalf("the operator's unit was edited:\n%s", kept)
+		}
+		recorded, _ := os.ReadFile(calls)
+		reload := strings.Index(string(recorded), "daemon-reload")
+		restart := strings.Index(string(recorded), "restart bay")
+		if reload < 0 || restart < 0 || reload > restart {
+			t.Fatalf("daemon-reload must come before the restart:\n%s", recorded)
+		}
+		if strings.Contains(out, "has no handoff drop-in") {
+			t.Fatalf("the report still asks for the drop-in:\n%s", out)
+		}
+	})
+}

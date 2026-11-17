@@ -27,7 +27,14 @@
 # secret is never printed, and appears in `ps` only during that one call.
 #
 # Re-running it upgrades in place: the binary is replaced atomically and, if a
-# `bay` service is already running, restarted.
+# `bay` service is already running, restarted. BAY_VERSION picks the version,
+# an older one included.
+#
+# It also writes the handoff drop-in beside the unit (bay.service.d/
+# handoff.conf): with it, `systemctl reload bay` and an upgrade started from
+# Lore hand the listening sockets to the new process and refuse no connection.
+# A host with no unit yet gets it; a host that already has one gets it with
+# BAY_UPDATE_UNIT=yes.
 #
 # Environment:
 #   BAY_VERSION   version to install (e.g. 0.34.0), or "latest" (default)
@@ -45,6 +52,9 @@
 #                 (default /etc/systemd/system/bay.service)
 #   BAY_SOCKET    the control socket the unit opens
 #                 (default /run/bay/control.sock)
+#   BAY_UPDATE_UNIT
+#                 "yes" to write the handoff drop-in on a host that already
+#                 has a unit (default "no": an existing unit is left alone)
 #
 set -eu
 
@@ -201,6 +211,34 @@ mv "$BAY_PREFIX/bin/bay.new" "$BAY_PREFIX/bin/bay"
 
 ln -sf "$BAY_PREFIX/bin/bay" "$BAY_BIN_LINK"
 
+# --- handoff drop-in -------------------------------------------------------
+
+# Bay hands its listening sockets to the process that replaces it, on a reload
+# and on an upgrade started from Lore. systemd has to follow that process as
+# the service's main one, which takes two settings: the PID file Bay writes in
+# its runtime directory, and a reload that asks Bay for the handoff.
+#
+# A drop-in, never an edit of the unit: the unit may be the operator's own.
+# Written when there is no unit yet (it applies to the one written below, or
+# by hand from INSTALL.md), and on a host that has one only when asked. Before
+# the restart below, so the Bay it starts already runs with it.
+BAY_DROPIN="$BAY_UNIT.d/handoff.conf"
+if command -v systemctl >/dev/null 2>&1; then
+  if [ ! -e "$BAY_UNIT" ] || [ "${BAY_UPDATE_UNIT:-no}" = "yes" ]; then
+    echo "==> Writing the handoff drop-in $BAY_DROPIN"
+    mkdir -p "$(dirname "$BAY_DROPIN")"
+    cat >"$BAY_DROPIN" <<DROPIN
+# Written by install.sh. With these two lines, \`systemctl reload bay\` and an
+# upgrade started from Lore hand Bay's listening sockets to the new process:
+# systemd follows it through the PID file instead of restarting the service.
+[Service]
+PIDFile=/run/bay/bay.pid
+ExecReload=/bin/kill -HUP \$MAINPID
+DROPIN
+    systemctl daemon-reload
+  fi
+fi
+
 # --- upgrade path ----------------------------------------------------------
 
 RESTARTED="no"
@@ -289,6 +327,12 @@ if [ "$ENROLLED" = "yes" ]; then
   echo "Wait for it from your shell with:  lore host wait <slug>"
 elif [ "$RESTARTED" = "yes" ]; then
   echo "The bay service was restarted on the new binary. Nothing else to do."
+  if [ ! -e "$BAY_DROPIN" ]; then
+    echo
+    echo "This unit has no handoff drop-in, so an upgrade restarts Bay and Lore"
+    echo "cannot start one. Re-run this installer with BAY_UPDATE_UNIT=yes to add"
+    echo "$BAY_DROPIN."
+  fi
 else
   echo "Check the host with:  bay doctor"
   echo "Next: run bay serve under systemd, then grant a user the right to deploy."
