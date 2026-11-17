@@ -127,6 +127,19 @@ func (s *server) freeze() error {
 	return nil
 }
 
+/*
+handoffBlocked says what would refuse a handoff right now, without starting
+one: what the `upgrade` verb asks before it downloads anything. freeze asks
+again, under the lock, when the handoff starts.
+*/
+func (s *server) handoffBlocked() error {
+	if err := s.freeze(); err != nil {
+		return err
+	}
+	s.unfreeze()
+	return nil
+}
+
 func (s *server) unfreeze() {
 	s.ledger.mu.Lock()
 	s.ledger.frozen = false

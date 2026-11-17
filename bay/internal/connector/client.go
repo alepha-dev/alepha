@@ -61,6 +61,9 @@ type Command struct {
 	// earlier revision to roll back to.
 	Stack    string `json:"stack,omitempty"`
 	Revision int    `json:"revision,omitempty"`
+	// Version is the release an `upgrade` installs, a strict x.y.z. The only
+	// thing the verb is told: no address, no path, no checksum.
+	Version string `json:"version,omitempty"`
 	// Routes are the stack environment's full-domain routes as Lore holds
 	// them. Present (even empty) replaces the environment's routes; absent
 	// leaves them as they are, which is what an older Lore sends.
@@ -218,6 +221,7 @@ type serverFrame struct {
 	BaseDomain  string          `json:"baseDomain,omitempty"`
 	Service     string          `json:"service,omitempty"`
 	Tag         string          `json:"tag,omitempty"`
+	Version     string          `json:"version,omitempty"`
 	Policy      json.RawMessage `json:"policy,omitempty"`
 	Restore     *RestoreAsk     `json:"restore,omitempty"`
 }
@@ -313,6 +317,9 @@ type Client struct {
 	// being read: `version` is a package main variable stamped at link time
 	// and internal/connector cannot import main.
 	Version string
+	// UpgradeMode says whether this Bay can take an `upgrade`: "handoff",
+	// "restart" or "manual". It enters here for the reason Version does.
+	UpgradeMode string
 	// MinStatsInterval floors whatever interval Lore names.
 	MinStatsInterval time.Duration
 	// MinInventoryInterval is the floor between two inventory pushes,
@@ -603,7 +610,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			Project:     frame.Project,
 			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs,
 			Stack: frame.Stack, Revision: frame.Revision, Routes: frame.Routes, BaseDomain: frame.BaseDomain, Service: frame.Service,
-			Tag: frame.Tag, Policy: frame.Policy, Restore: frame.Restore}
+			Tag: frame.Tag, Policy: frame.Policy, Restore: frame.Restore, Version: frame.Version}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one

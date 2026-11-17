@@ -192,6 +192,7 @@ type fixtureOptions struct {
 	// milliseconds, the way MinStatsInterval already does for the gauge.
 	inventoryFloor time.Duration
 	version        string
+	upgradeMode    string
 	// pingInterval and pongWait arm a keepalive for the test that is about
 	// it. Zero keeps the production 30 s and 10 s, which no test here outlives.
 	//
@@ -236,7 +237,7 @@ func newClientFixture(t *testing.T, opts fixtureOptions) *clientFixture {
 		PingInterval: opts.pingInterval, PongWait: opts.pongWait,
 		MinBackoff: 5 * time.Millisecond, MaxBackoff: 20 * time.Millisecond,
 		Gauge: opts.gauge, MinStatsInterval: 10 * time.Millisecond,
-		Version: opts.version,
+		Version: opts.version, UpgradeMode: opts.upgradeMode,
 	}
 	if opts.inventoryFloor == 0 {
 		opts.inventoryFloor = time.Millisecond
@@ -310,6 +311,26 @@ func TestClientSpeaksFirstAndCachesTheWelcome(t *testing.T) {
 		w, ok, _ := f.store.LoadWelcome()
 		return ok && w.DeployAllowed && w.StatsIntervalSeconds == 300
 	})
+}
+
+// The upgrade's one field reaches the executor: a version dropped between the
+// frame and the command would read as "no version", and be refused as such.
+func TestClientDeliversTheVersionOfAnUpgrade(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{configured: true})
+	s := f.lore.session(t)
+	_ = s.frame(t) // hello
+	s.send(t, welcomeFrame())
+	s.send(t, map[string]any{
+		"type": "command", "id": "cmd-up", "kind": "upgrade",
+		"app": "", "environment": "", "version": "0.40.0",
+	})
+	_ = s.frame(t) // running
+	_ = s.frame(t) // done
+	f.handler.mu.Lock()
+	defer f.handler.mu.Unlock()
+	if len(f.handler.commands) != 1 || f.handler.commands[0].Kind != "upgrade" || f.handler.commands[0].Version != "0.40.0" {
+		t.Fatalf("the handler did not receive the upgrade as sent: %+v", f.handler.commands)
+	}
 }
 
 func TestClientDeliversCommandsAndAcksOverTheSameSocket(t *testing.T) {
@@ -696,7 +717,7 @@ func TestClientPushesTheInventoryAfterTheWelcomeAndOnTheInterval(t *testing.T) {
 	total := uint64(8 << 30)
 	f := newClientFixture(t, fixtureOptions{
 		configured: true,
-		version:    "1.2.3",
+		version:    "1.2.3", upgradeMode: "handoff",
 		gauge: fixedGauge{ok: true, reading: Reading{
 			CPUPercent: 12.34, MemoryPercent: 56.78,
 			Host: Host{Cores: &cores, MemTotalBytes: &total},
@@ -734,6 +755,9 @@ func TestClientPushesTheInventoryAfterTheWelcomeAndOnTheInterval(t *testing.T) {
 	}
 	if host["bayVersion"] != "1.2.3" {
 		t.Fatalf("bayVersion = %v, want the client's", host["bayVersion"])
+	}
+	if host["upgradeMode"] != "handoff" {
+		t.Fatalf("upgradeMode = %v, want the client's", host["upgradeMode"])
 	}
 
 	// Then on the interval the welcome named, beside the gauge.

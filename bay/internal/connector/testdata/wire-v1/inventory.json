@@ -9,7 +9,8 @@
     "diskUsedBytes": 42877714432,
     "load1": 0.52,
     "uptimeSeconds": 1234567,
-    "bayVersion": "0.31.0"
+    "bayVersion": "0.31.0",
+    "upgradeMode": "handoff"
   },
   "apps": [
     {

@@ -35,10 +35,13 @@ never passed through to anything.
 
 `deploy` is already code execution as the app user, and `stack-deploy` runs
 what a compose file asks for, devices and capabilities included, so on a
-machine that accepts deploys a compromised Lore can reach the host. The
-vocabulary bounds the rest: on one that does not (`DeployAllowed`, read from the
-welcome frame), it can restart, stop, start and back up the instances this
-machine already runs and read their logs, and can do nothing else here.
+machine that accepts deploys a compromised Lore can reach the host. `upgrade`
+replaces Bay's own binary, which runs as root, with a release it names by
+version and nothing else, and never an older one (upgrade.go). The
+vocabulary bounds the rest: on a machine that does not accept deploys
+(`DeployAllowed`, read from the welcome frame), it can restart, stop, start
+and back up the instances this machine already runs and read their logs, and
+can do nothing else here. In particular it cannot replace the binary.
 
 Adding a variant is a decision about what a remote party may make this host
 do. It belongs in this file, beside this comment, and nowhere else.
@@ -108,6 +111,10 @@ const (
 	// way `bay stack destroy` does without `--purge`: its volumes, variables
 	// and registry credentials are kept. Same switch, same rule on purge.
 	actionStackRemove actionKind = "stack-remove"
+	// actionUpgrade replaces Bay's own binary with a released version and
+	// hands over to it. The most powerful verb here; what bounds it is in
+	// upgrade.go, and it is refused while deployAllowed is off.
+	actionUpgrade actionKind = "upgrade"
 )
 
 /*
@@ -193,28 +200,32 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	switch actionKind(cmd.Kind) {
 	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 		actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-		actionRemove, actionStackRemove:
+		actionRemove, actionStackRemove, actionUpgrade:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
 			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 			actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-			actionRemove, actionStackRemove)
+			actionRemove, actionStackRemove, actionUpgrade)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
 	}
 
 	// Refused while this Bay hands over to its successor, and counted as work
-	// a handoff must not start under (see handoff.go).
-	done, err := a.s.beginWork("the " + cmd.Kind + " command from Lore")
-	if err != nil {
-		log.Warn("lore command refused", "reason", err.Error())
-		a.finish(cmd.ID, "failed", "", err.Error(), send)
-		return
+	// a handoff must not start under (see handoff.go). Except the upgrade,
+	// which IS a handoff: counted, it would refuse itself. It asks the same
+	// question from the inside, and the machine mutex keeps it alone.
+	if actionKind(cmd.Kind) != actionUpgrade {
+		done, err := a.s.beginWork("the " + cmd.Kind + " command from Lore")
+		if err != nil {
+			log.Warn("lore command refused", "reason", err.Error())
+			a.finish(cmd.ID, "failed", "", err.Error(), send)
+			return
+		}
+		defer done()
 	}
-	defer done()
 
 	if !a.outcomes.Begin(cmd.ID) {
 		// Still running from an earlier delivery: it acks when it finishes.
@@ -288,6 +299,8 @@ func (a *actions) runExclusive(ctx context.Context, cmd connector.Command, send 
 		return a.remove(cmd)
 	case actionStackRemove:
 		return a.stackRemove(cmd)
+	case actionUpgrade:
+		return a.upgrade(ctx, cmd, send)
 	}
 	// Unreachable: Command refuses an unknown kind before it ever takes the
 	// lock. Said out loud rather than left as three empty strings, which would
@@ -323,7 +336,10 @@ func (a *actions) finish(id, status, step, reason string, send func(connector.Ac
 		a.s.log.Info("lore command outcome stored, ack deferred to the next delivery",
 			"command", id, "err", err)
 	}
-	if a.kick != nil {
+	// Not from a process that has handed over: its inventory would say the
+	// version it runs, a moment after its ack said the new one serves. The
+	// successor pushes its own when it connects.
+	if a.kick != nil && !a.s.isFrozen() {
 		a.kick()
 	}
 }
