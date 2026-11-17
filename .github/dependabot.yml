@@ -34,14 +34,21 @@ updates:
   # The one yarn project, at the root: its `yarn.lock` and the workspaces
   # `framework`, `lore` and `docs` declare. Minor and patch updates are one
   # pull request a week; a major is a pull request of its own, since it may
-  # need code changes. The framework's own packages resolve by `workspace:*`
-  # and never come from the registry.
+  # need code changes.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
     cooldown:
       default-days: 3
+    # The framework's own packages. Several workspaces name them by a `^x.y.z`
+    # range rather than `workspace:*`, which Yarn still resolves to the
+    # workspace, so a bump to the published release changes no file and
+    # Dependabot reports the whole update as failed.
+    ignore:
+      - dependency-name: "alepha"
+      - dependency-name: "@alepha/*"
+      - dependency-name: "create-alepha"
     groups:
       yarn:
         update-types:
