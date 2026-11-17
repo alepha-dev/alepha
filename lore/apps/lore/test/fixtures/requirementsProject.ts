@@ -1,8 +1,4 @@
-import {
-  LoreViewerAllowlist,
-  ProjectCapabilityController,
-  ProjectController,
-} from "@lore/core/api";
+import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
 import { CapabilityRegistry } from "@lore/core/schemas";
 import { CoreTestEntities } from "@lore/core/testing";
 import { Alepha } from "alepha";
@@ -16,6 +12,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 
 import { bootLore } from "./bootLore.ts";
+import { MEMORY_READS } from "./memoryReads.ts";
 
 /**
  * A project for Plan's Requirements scenarios (#E153): every capability on,
@@ -94,7 +91,7 @@ export const requirementsProject = async (
   await rankApi.saveOrganizationRank.fetch(
     {
       params: { organizationId, key: "peek" },
-      body: { name: "peek", permissions: [...LoreViewerAllowlist.PERMISSIONS] },
+      body: { name: "peek", permissions: [...MEMORY_READS] },
     },
     as(owner),
   );

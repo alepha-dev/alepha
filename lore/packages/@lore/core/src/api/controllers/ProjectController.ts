@@ -39,7 +39,6 @@ import { coreRelations } from "../relations/coreRelations.ts";
 import { assignedWorkItemSchema } from "../schemas/assignedWorkItemSchema.ts";
 import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
-import { joinPolicySchema } from "../schemas/joinPolicySchema.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projectActivityRowSchema } from "../schemas/projectActivityRowSchema.ts";
@@ -65,7 +64,6 @@ import { DefaultRankService } from "../services/DefaultRankService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
-import { ProjectJoinPolicy } from "../services/ProjectJoinPolicy.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectReaderPermissions } from "../services/ProjectReaderPermissions.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
@@ -145,7 +143,6 @@ export class ProjectController {
   projectPermissions = $inject(ProjectPermissions);
   ranks = $inject(RankService);
   defaultRanks = $inject(DefaultRankService);
-  joinPolicy = $inject(ProjectJoinPolicy);
   protected readonly readers = $inject(ProjectReaderPermissions);
 
   /**
@@ -688,8 +685,8 @@ export class ProjectController {
    * A member as {@link getProjectUsers} returns them: the public card, plus
    * the email for a caller holding `member:read`.
    *
-   * A viewer of an open project holds `project:read` and nothing about
-   * people, so the list a viewer reads is name and avatar only. `username`
+   * A custom rank without `member:read` reads the list as name and avatar
+   * only. `username`
    * falls back to the email's local part, which is what `displayName` would
    * have shown, so the card still reads as the same person.
    */
@@ -854,8 +851,7 @@ export class ProjectController {
        * Whether rows carry their audit `metadata`. Off unless asked: the
        * metadata of a project-layer event names people (an invitee's
        * address, a rank moved from one member to another), so only a caller
-       * holding `member:read` gets it, and a viewer of an open project never
-       * does. The description, the kind and the actor's display name are the
+       * holding `member:read` gets it. The description, the kind and the actor's display name are the
        * feed everyone reads.
        */
       metadata?: boolean;
@@ -864,7 +860,7 @@ export class ProjectController {
        * shown only when they hold the permission its kind names in
        * `LoreActivityPermissions`. The route's gate is `project:read`, the
        * floor, so this is what keeps a feedback title or an app name from a
-       * viewer of an open project. Required, so a new caller cannot forget
+       * rank that does not read them. Required, so a new caller cannot forget
        * it: `ProjectReaderPermissions` gives it.
        */
       reader: readonly string[];
@@ -1064,68 +1060,6 @@ export class ProjectController {
     );
   }
 
-  /**
-   * What the "Who can join" settings need (#Q3645): whether open projects
-   * are available on this Lore yet, and whether the Viewer rank fits the
-   * allowlist. Behind `project:update`, the permission that changes it.
-   */
-  getProjectJoinSettings = $action({
-    method: "GET",
-    path: "/projects/:id/join-settings",
-    use: [this.ownsProject("project:update")],
-    schema: {
-      params: z.object({ id: z.integer() }),
-      response: z.object({
-        launched: z.boolean(),
-        viewer: z
-          .object({ name: z.text(), extras: z.array(z.text()) })
-          .optional(),
-        /**
-         * How many members joined by themselves and still hold Viewer
-         * (#Q3797): what closing the project keeps, and who gets whatever
-         * Viewer is widened with.
-         */
-        selfJoinedViewers: z.integer(),
-      }),
-    },
-    handler: async ({ params }) => {
-      const organizationId = await this.projectSecurity.organizationIdOf(
-        params.id,
-      );
-      const [settings, selfJoined] = await Promise.all([
-        this.joinPolicy.settingsOf(organizationId),
-        this.joinPolicy.selfJoinedViewers(params.id, organizationId),
-      ]);
-      return { ...settings, selfJoinedViewers: selfJoined.length };
-    },
-  });
-
-  /**
-   * Remove every member who joined by themselves and still holds Viewer
-   * (#Q3797), offered when an open project is closed: closing stops new
-   * joiners, never the ones already in. Each removal is `removeMember`'s.
-   */
-  removeSelfJoinedViewers = $action({
-    method: "POST",
-    path: "/projects/:id/self-joined-viewers/remove",
-    use: [this.ownsProject("member:manage")],
-    schema: {
-      params: z.object({ id: z.integer() }),
-      response: z.object({ removed: z.integer() }),
-    },
-    handler: async ({ params, user }) => {
-      const project = this.owned.get<Project>();
-      const userIds = await this.joinPolicy.selfJoinedViewers(
-        params.id,
-        project.organizationId!,
-      );
-      for (const userId of userIds) {
-        await this.memberService.remove(project.organizationId!, userId, user);
-      }
-      return { removed: userIds.length };
-    },
-  });
-
   updateProjectById = $action({
     method: "POST",
     path: "/updateProjectById/:id",
@@ -1153,10 +1087,6 @@ export class ProjectController {
         // Who may read `/:projectSlug/roadmap`. `null` clears the override →
         // `ProjectSecurityService.roadmapVisibilityOf` reads it as `off`.
         roadmapVisibility: roadmapVisibilitySchema.nullable().optional(),
-        // Who may join: `invite`, or `open` (anyone signed in joins on the
-        // `viewer` rank). Opening is refused while the launch gate is off,
-        // or while Viewer holds more than its allowlist (`ProjectJoinPolicy`).
-        joinPolicy: joinPolicySchema.optional(),
         // Colour token per quest tag. Sent whole, not merged: the settings
         // picker holds the full map, and a partial merge gives no way to
         // clear one tag's colour without inventing a "none" token.
@@ -1209,16 +1139,6 @@ export class ProjectController {
         project.roadmapVisibility = body.roadmapVisibility ?? undefined;
       }
 
-      const joinPolicyChanged =
-        body.joinPolicy !== undefined &&
-        body.joinPolicy !== this.projectSecurity.joinPolicyOf(project);
-      if (joinPolicyChanged) {
-        if (body.joinPolicy === "open") {
-          await this.joinPolicy.assertCanOpen(project.organizationId!);
-        }
-        project.joinPolicy = body.joinPolicy;
-      }
-
       if ("tagColors" in body) {
         project.tagColors = body.tagColors ?? undefined;
       }
@@ -1259,10 +1179,7 @@ export class ProjectController {
         resourceType: "project",
         resourceId: String(project.id),
         description: project.title,
-        metadata: {
-          fields: Object.keys(body),
-          ...(joinPolicyChanged ? { joinPolicy: body.joinPolicy } : {}),
-        },
+        metadata: { fields: Object.keys(body) },
       });
 
       return this.projectMapper.toResource(
@@ -1458,8 +1375,7 @@ export class ProjectController {
 
       if (!member && user.ownership !== false) {
         // The same 404 as an unknown slug, so a refusal never tells a caller
-        // whether the slug names a real project. The web app then asks
-        // `previewOpenProject`, which answers for an open one only.
+        // whether the slug names a real project.
         throw new NotFoundError("Project not found");
       }
 

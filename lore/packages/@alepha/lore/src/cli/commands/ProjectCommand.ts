@@ -49,8 +49,7 @@ import {
  */
 export class ProjectCommand {
   /**
-   * Whether the caller's rank here grants reads only, as a viewer's of an
-   * open project does: what MCP's `project_context` returns as `readOnly`,
+   * Whether the caller's rank here grants reads only, as Viewer does: what MCP's `project_context` returns as `readOnly`,
    * told the same way (every permission a `:read`, no wildcard).
    */
   protected readOnly(project: {

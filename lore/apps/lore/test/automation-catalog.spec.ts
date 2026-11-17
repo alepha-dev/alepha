@@ -485,8 +485,7 @@ describe("Automation catalogue", () => {
   it("does not mistake a rank name for source permission", async ({
     expect,
   }) => {
-    // A reading rank that holds automations: Viewer did until #Q3661
-    // narrowed it to the open-project allowlist.
+    // A reading rank that holds automations, as Viewer does.
     await alepha.inject(RankService).save(
       project.organizationId!,
       {

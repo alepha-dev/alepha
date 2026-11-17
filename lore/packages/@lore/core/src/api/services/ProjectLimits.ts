@@ -56,8 +56,7 @@ export class ProjectLimits {
       // and the reporter met it with 8 live projects because the count was
       // also charging them for 7 deleted ones.
       maxProjectsPerUser: 100,
-      // Raised for open projects (epic #E151): every member counts against
-      // one cap, viewers who joined by themselves included. An override
+      // Every member counts against one cap. An override
       // already stored in `parameters` wins over these.
       maxMembersPerProject: 5_000,
       maxQuestsPerProject: 50_000,

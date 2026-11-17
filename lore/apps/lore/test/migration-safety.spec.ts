@@ -126,6 +126,9 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // Adoption is gone (#Q3628): a leaf, referenced by nothing.
   "20261115064301_automation_adoptions_dropped": ["automation_adoptions"],
   "20261115064310_automation_adoptions_dropped": ["automation_adoptions"],
+  // Public projects are gone (#Q3833): a leaf, referenced by nothing.
+  "20261117184516_drop_open_projects": ["project_exclusions"],
+  "20261117184530_drop_open_projects": ["project_exclusions"],
 };
 
 /**

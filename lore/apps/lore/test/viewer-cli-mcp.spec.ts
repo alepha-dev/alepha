@@ -1,5 +1,5 @@
 import { AlephaLoreCli } from "@alepha/lore/cli";
-import { LoreViewerAllowlist, ProjectController } from "@lore/core/api";
+import { ProjectController } from "@lore/core/api";
 import { CoreTestEntities } from "@lore/core/testing";
 import { Alepha, AlephaError } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
@@ -22,7 +22,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
- * An outside contributor on the Viewer rank, working with a project's memory
+ * Someone invited on the Viewer rank, as the project seeds it, working with a project's memory
  * from the terminal and from an agent: the `lore` CLI and MCP, both with a
  * personal API key, against the real Lore over HTTP.
  *
@@ -66,13 +66,6 @@ const setup = async () => {
   ).data;
   const organizationId = (await repos.projects.findById(project.id))!
     .organizationId!;
-  await rankApi.saveOrganizationRank.fetch(
-    {
-      params: { organizationId, key: "viewer" },
-      body: { name: "Viewer", permissions: LoreViewerAllowlist.PERMISSIONS },
-    },
-    as(owner),
-  );
   const viewer = await person("viewer");
   await repos.members.create({ organizationId, userId: viewer });
   await rankApi.assignOrganizationRank.fetch(

@@ -1,0 +1,73 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "4323edee-8917-4e00-9fd2-9be239b42047",
+  "prevIds": ["5b8cb699-832a-4b62-a3b4-b918d5d9c594"],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "project_exclusions"],
+      "writes": [
+        "s|tbl|public.project_exclusions",
+        "n|tbl|public.project_exclusions",
+        "e|tbl|public.project_exclusions",
+        "n|rel|public.project_exclusions",
+        "n|type|public.project_exclusions"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "projects", "join_policy"],
+      "writes": [
+        "s|col|public.projects.join_policy",
+        "n|col|public.projects.join_policy",
+        "e|col|public.projects.join_policy"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"project_exclusions\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"projects\",\"join_policy\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_exclusions\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_exclusions\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_exclusions\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_exclusions\",\"user_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"project_exclusions\",\"excluded_by\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"project_exclusions_project_id_user_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"project_exclusions\",\"project_exclusions_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"project_exclusions\",\"project_exclusions_pkey\"]"
+    }
+  ]
+}

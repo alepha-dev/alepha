@@ -150,8 +150,7 @@ describe("automation permissions for a privileged identity", () => {
     expect,
   }) => {
     const { project, admin } = await setup();
-    // A reading rank that holds automations: Viewer did until #Q3661
-    // narrowed it to the open-project allowlist.
+    // A reading rank that holds automations, as Viewer does.
     await alepha.inject(RankService).save(
       project.organizationId!,
       {

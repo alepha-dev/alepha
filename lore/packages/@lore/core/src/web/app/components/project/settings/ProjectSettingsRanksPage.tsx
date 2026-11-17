@@ -5,11 +5,9 @@ import { useI18n } from "alepha/react/i18n";
 import type { ProjectRankController } from "../../../../../api/controllers/ProjectRankController.ts";
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import { LoreRankBounds } from "../../../../../api/security/LoreRankBounds.ts";
-import { LoreViewerAllowlist } from "../../../../../api/security/LoreViewerAllowlist.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import { ProjectViewerRankNotice } from "./ProjectViewerRankNotice.tsx";
 
 const ProjectSettingsRanksPage = () => {
   const presetApi = useClient<ProjectRankController>();
@@ -40,10 +38,6 @@ const ProjectSettingsRanksPage = () => {
     // Fills the settings body (a `fullWidth` tab): the rank editor scrolls
     // its permissions inside it, under a header that stays put (#Q3666).
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <ProjectViewerRankNotice
-        organizationId={project.organizationId}
-        projectId={project.id}
-      />
       <OrganizationRanks
         organizationId={project.organizationId}
         // A new rank starts from admin, member or viewer (#Q3661): no blank one.
@@ -70,14 +64,6 @@ const ProjectSettingsRanksPage = () => {
           return granted ? undefined : "off";
         }}
         label={(key, fallback) => (key ? tr(key) : fallback)}
-        // While the project is open, Viewer holds reads of the project's
-        // memory only: every other cell of its column is closed, and the
-        // server refuses the write anyway (#Q3644, #Q3645).
-        closedPermission={(rank, permission) =>
-          rank.key === "viewer" &&
-          project.joinPolicy === "open" &&
-          !LoreViewerAllowlist.PERMISSIONS.includes(permission)
-        }
       />
     </div>
   );

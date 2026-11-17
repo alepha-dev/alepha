@@ -1,4 +1,4 @@
-import { LoreViewerAllowlist, ProjectController } from "@lore/core/api";
+import { ProjectController } from "@lore/core/api";
 import { CapabilityRegistry } from "@lore/core/schemas";
 import { CoreTestEntities } from "@lore/core/testing";
 import { FeedbackController } from "@lore/plan/api";
@@ -14,14 +14,13 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
+import { MEMORY_READS } from "./fixtures/memoryReads.ts";
 
 /**
- * What a rank holding the Viewer allowlist reads, and what it is refused:
- * the leaks the safety contract of open projects lists, each checked over
- * HTTP with a real token and through the matching MCP tool with an API key.
- *
- * In an open project anyone signed in becomes a viewer, so every assertion
- * here is about a stranger.
+ * What a custom rank reading the project's memory only reads, and what it is
+ * refused: each surface answers from the reader's permissions, never from
+ * membership, checked over HTTP with a real token and through the matching
+ * MCP tool with an API key.
  */
 
 const setup = async () => {
@@ -74,9 +73,9 @@ const setup = async () => {
     .organizationId!;
 
   const RANKS: Record<string, string[]> = {
-    peek: [...LoreViewerAllowlist.PERMISSIONS],
-    // The allowlist plus the feedback text: still no attachment.
-    reader: [...LoreViewerAllowlist.PERMISSIONS, "feedback:read"],
+    peek: [...MEMORY_READS],
+    // The memory plus the feedback text: still no attachment.
+    reader: [...MEMORY_READS, "feedback:read"],
   };
   for (const [key, permissions] of Object.entries(RANKS)) {
     await rankApi.saveOrganizationRank.fetch(

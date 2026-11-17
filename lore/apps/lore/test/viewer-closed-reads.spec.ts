@@ -1,9 +1,7 @@
 import {
   LoreActivityPermissions,
   LoreAudits,
-  LoreViewerAllowlist,
   ProjectController,
-  ProjectJoinController,
 } from "@lore/core/api";
 import { CapabilityRegistry, DashboardMetricCatalog } from "@lore/core/schemas";
 import { CoreTestEntities } from "@lore/core/testing";
@@ -13,6 +11,7 @@ import { AppController, CommitQuestSetService } from "@lore/ship/api";
 import { deployments } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
+import { OrganizationRankController } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
@@ -22,15 +21,17 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
+import { MEMORY_READS } from "./fixtures/memoryReads.ts";
 
 /**
- * What a stranger who joined an open project by themselves reads beyond the
- * Viewer allowlist (#Q3794): nothing. Each surface here once answered from
- * membership alone, or from `project:read`, the floor every rank holds.
+ * What a member whose rank reads the project's memory only reads beyond it
+ * (#Q3794): nothing. Each surface here once answered from membership alone,
+ * or from `project:read`, the floor every rank holds.
  *
- * Every read is made over HTTP with the stranger's own API key, as they
- * would make it, and repeated as the owner to prove the surface still
- * answers someone whose rank reads it.
+ * Every read is made over HTTP with the reader's own API key, as they would
+ * make it, and repeated as the owner to prove the surface still answers
+ * someone whose rank reads it. Someone who is not a member gets the same 404
+ * as an unknown slug (#Q3833).
  */
 
 /**
@@ -51,7 +52,6 @@ const setup = async () => {
       LOG_LEVEL: "error",
       SERVER_PORT: 0,
       DATABASE_URL: ":memory:",
-      LORE_OPEN_PROJECTS: "true",
     },
   });
   alepha.with(AlephaOrm);
@@ -81,6 +81,7 @@ const setup = async () => {
 
   const owner = await person("owner");
   const stranger = await person("stranger");
+  const outsider = await person("outsider");
 
   const projectId = (
     await projects.createProject.fetch(
@@ -105,13 +106,9 @@ const setup = async () => {
       as(owner),
     )
   ).data.id;
-  await projects.updateProjectById.fetch(
-    { params: { id: projectId }, body: { joinPolicy: "open" } as never },
-    as(owner),
-  );
-
   const ownerToken = await tokenOf(owner);
   const strangerToken = await tokenOf(stranger);
+  const outsiderToken = await tokenOf(outsider);
 
   const http = async (token: string, method: string, path: string) => {
     const response = await fetch(`${baseUrl}/api${path}`, {
@@ -184,9 +181,22 @@ const setup = async () => {
     as(owner),
   );
 
-  await alepha
-    .inject(ProjectJoinController)
-    .joinProject.fetch({ params: { id: projectId } }, as(stranger));
+  // The reader, invited on a custom rank that reads the memory only.
+  const project = (await repos.projects.findById(projectId))!;
+  const organizationId = project.organizationId!;
+  const rankApi = alepha.inject(OrganizationRankController);
+  await rankApi.saveOrganizationRank.fetch(
+    {
+      params: { organizationId, key: "memory" },
+      body: { name: "Memory", permissions: [...MEMORY_READS] },
+    },
+    as(owner),
+  );
+  await repos.members.create({ organizationId, userId: stranger });
+  await rankApi.assignOrganizationRank.fetch(
+    { params: { organizationId, userId: stranger }, body: { key: "memory" } },
+    as(owner),
+  );
 
   // The quest is done and live on the app's copy (#E154): its commit is in
   // the set of the commit the copy's newest succeeded run shipped.
@@ -226,8 +236,10 @@ const setup = async () => {
     alepha,
     repos,
     projectId,
+    slug: project.slug,
     ownerToken,
     strangerToken,
+    outsiderToken,
     http,
     mcp,
   };
@@ -235,7 +247,7 @@ const setup = async () => {
 
 type Ctx = Awaited<ReturnType<typeof setup>>;
 
-describe("a stranger who joined an open project", () => {
+describe("a member whose rank reads the project's memory only", () => {
   let ctx: Ctx;
 
   beforeAll(async () => {
@@ -262,24 +274,65 @@ describe("a stranger who joined an open project", () => {
     });
   });
 
-  describe("the project's configuration (#Q3797)", () => {
-    it("refuses the agent prompt templates to a rank of reads only", async ({
+  describe("someone who is not a member (#Q3833)", () => {
+    it("gets the same 404 as an unknown slug, by slug and by id", async ({
       expect,
     }) => {
+      const real = await ctx.http(
+        ctx.outsiderToken,
+        "GET",
+        `/projects/by-slug/${ctx.slug}`,
+      );
+      const unknown = await ctx.http(
+        ctx.outsiderToken,
+        "GET",
+        "/projects/by-slug/no-such-project",
+      );
+      expect(real.status).toBe(404);
+      expect(unknown.status).toBe(404);
+      expect(JSON.parse(real.text).message).toBe(
+        JSON.parse(unknown.text).message,
+      );
+
+      const byId = await ctx.http(
+        ctx.outsiderToken,
+        "GET",
+        `/getProjectById/${ctx.projectId}`,
+      );
+      expect([403, 404]).toContain(byId.status);
+      expect(byId.text).not.toContain("Ship the cart");
+    });
+
+    it("is refused by MCP, which carries no join policy", async ({
+      expect,
+    }) => {
+      await expect(
+        ctx.mcp(ctx.outsiderToken, "project_info", { project: ctx.projectId }),
+      ).rejects.toThrow();
+      const info = await ctx.mcp(ctx.ownerToken, "project_info", {
+        project: ctx.projectId,
+      });
+      expect(info).not.toContain("joinPolicy");
+    });
+  });
+
+  describe("the project's configuration", () => {
+    it("reads the agent prompt templates, an invited rank of reads included", async ({
+      expect,
+    }) => {
+      // #Q3797 refused them to a rank of reads only, which then meant a
+      // stranger; a reader is invited since #Q3833, and reads them.
       const path = `/projects/${ctx.projectId}/prompts`;
 
-      const refused = await ctx.http(ctx.strangerToken, "GET", path);
-      expect(refused.status).toBe(403);
-
-      const read = await ctx.http(ctx.ownerToken, "GET", path);
+      const read = await ctx.http(ctx.strangerToken, "GET", path);
       expect(read.status).toBe(200);
     });
 
-    it("still answers the capability set, which draws the sidebar", async ({
+    it("answers the capability set, which draws the sidebar", async ({
       expect,
     }) => {
-      // Decided in `LoreViewerAllowlist`: which parts of Lore are on says
-      // nothing of the project's content, and every page gates on it.
+      // Which parts of Lore are on says nothing of the project's content,
+      // and every page gates on it.
       const read = await ctx.http(
         ctx.strangerToken,
         "GET",
@@ -334,9 +387,7 @@ describe("a stranger who joined an open project", () => {
   });
 
   describe("the activity feed", () => {
-    const readable = new Set(
-      LoreViewerAllowlist.READ_GROUPS.map((group) => `${group}:read`),
-    );
+    const readable = new Set(MEMORY_READS);
 
     it("shows only the kinds the reader's rank reads, over HTTP", async ({
       expect,
@@ -396,7 +447,7 @@ describe("a stranger who joined an open project", () => {
         ),
       );
 
-      for (const type of ["quest", "feedback", "member", "app", "sigil"]) {
+      for (const type of ["quest", "feedback", "app", "sigil"]) {
         expect(types, type).toContain(type);
       }
     });

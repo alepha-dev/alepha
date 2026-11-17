@@ -37,13 +37,16 @@ Admin, Member and Viewer grant, but none of the four can be deleted:
 | **Owner**  | The person who created the project. There is exactly one owner, and the owner can do everything.                      |
 | **Admin**  | Someone who runs the project with you: everything except deleting the project.                                        |
 | **Member** | Someone who does the work: reads the whole project, creates and moves quests, writes epics and folios, pushes builds. |
-| **Viewer** | Someone who only reads the project's memory: quests, epics, folios and releases.                                      |
+| **Viewer** | Someone who reads the whole project and changes nothing.                                                              |
 
 Admin starts with every permission but one, so a capability you turn on later
 is already covered. Member starts from what a person doing the work needs.
-Viewer is a short list of reads; it is the rank of everyone who joins an
-[open project](/lore/docs/project-open-projects). Member is the rank an
-invitation offers by default.
+Viewer holds every read and nothing else. Member is the rank an invitation
+offers by default.
+
+A project has one way in: an invitation. Nobody joins a project by themselves,
+and someone who is not a member gets the same "Page not found" as for a
+project that does not exist.
 
 When you need another mix, open the **Ranks** tab and choose **Create rank**:
 a new rank starts from Admin, Member or Viewer. A rank you create can be
@@ -84,10 +87,7 @@ The same rules apply to an agent or a script acting for that person: see
 ## Removing a member
 
 Open the member's menu in the **Members** tab and remove them. They lose access
-to the project at once.
-
-Someone you removed cannot join an open project again by themselves. To let
-them back in, invite them: accepting the invitation lifts the exclusion.
+to the project at once. To let them back in, invite them again.
 
 ## Transferring ownership
 
@@ -99,8 +99,6 @@ they can give the project back.
 
 ## Next
 
-- [Open projects](/lore/docs/project-open-projects): letting anyone signed in
-  join as a viewer.
 - [Capabilities](/lore/docs/project-capabilities): what the project does,
   which decides what ranks have to cover.
 - [Notifications](/lore/docs/project-notifications): how members hear about

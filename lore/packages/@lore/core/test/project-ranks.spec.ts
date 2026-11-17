@@ -162,7 +162,13 @@ describe("Lore's rank resource", () => {
     expect(remembersAdmin.permissions).toContain("folio:write");
     expect(
       knowledgeOnly.find((it) => it.key === "viewer")!.permissions,
-    ).toEqual(["project:read", "folio:read"]);
+    ).toEqual([
+      "project:read",
+      "member:read",
+      "stats:read",
+      "folio:read",
+      "automation:read",
+    ]);
 
     // Core survives every capability being off, which is a legal state.
     const nothing = ctx.presets.presetsFor([]);
@@ -182,17 +188,26 @@ describe("Lore's rank resource", () => {
         .sort(),
     );
 
-    // Viewer is the allowlist, exactly: no automations, apps, errors, hosts,
-    // member records, reports or feedback.
+    // Viewer is every `:read` and nothing else (#Q3833): the member list,
+    // automations, apps, errors, hosts, reports and feedback included.
     const viewer = everything.find((it) => it.key === "viewer")!;
-    expect(viewer.permissions).toEqual(LoreViewerAllowlist.PERMISSIONS);
+    expect([...viewer.permissions].sort()).toEqual(
+      [...LorePermissions.MEMBER_DEFAULT, ...LorePermissions.OWNER_TODAY]
+        .filter(
+          (it, index, all) => it.endsWith(":read") && all.indexOf(it) === index,
+        )
+        .sort(),
+    );
+    for (const read of ["member:read", "automation:read", "feedback:read"]) {
+      expect(viewer.permissions).toContain(read);
+    }
+    expect(LoreViewerAllowlist.isReadOnly(viewer.permissions)).toBe(true);
   });
 
   it("starts a new project with owner, admin, member and viewer", async ({
     expect,
   }) => {
-    // #Q3661 reverses #Q2511: every project starts with the four ranks, and
-    // an open project's joiners land on the one keyed `viewer`.
+    // #Q3661 reverses #Q2511: every project starts with the four ranks.
     const account = await ctx.repos.users.create({});
     const user: UserAccountToken = { id: account.id, roles: ["user"] };
 
@@ -214,14 +229,11 @@ describe("Lore's rank resource", () => {
         "A built-in rank cannot be deleted",
       );
     }
-    expect(ranks.find((it) => it.key === "viewer")?.permissions).toEqual(
-      expect.arrayContaining([...LoreViewerAllowlist.PERMISSIONS]),
+    const viewer = ranks.find((it) => it.key === "viewer")!.permissions;
+    expect(viewer).toEqual(
+      expect.arrayContaining(["quest:read", "member:read"]),
     );
-    expect(
-      LoreViewerAllowlist.extrasOf(
-        ranks.find((it) => it.key === "viewer")!.permissions,
-      ),
-    ).toEqual([]);
+    expect(LoreViewerAllowlist.isReadOnly(viewer)).toBe(true);
 
     // The creator's membership row says owner, which is what the whole epic
     // reads afterwards.
@@ -279,9 +291,9 @@ describe("Lore's rank resource", () => {
       .getRankPresets({ params: { projectId: created.id } }, { user });
 
     expect(items.find((it) => it.key === "admin")?.name).toBe("Maintainer");
-    expect(items.find((it) => it.key === "viewer")?.permissions).toEqual(
-      LoreViewerAllowlist.PERMISSIONS,
-    );
+    const viewer = items.find((it) => it.key === "viewer")!.permissions;
+    expect(viewer).toContain("member:read");
+    expect(LoreViewerAllowlist.isReadOnly(viewer)).toBe(true);
   });
 
   it("resets a project to the four built-ins, moving holders of a hand-made Admin to admin", async ({
@@ -348,19 +360,20 @@ describe("Lore's rank resource", () => {
     expect(await rankOf(contributor.id)).toBeNull();
   });
 
-  it("backfills admin and viewer where missing, and leaves a wider viewer as it is", async ({
+  it("backfills admin and viewer where missing, and leaves a stored viewer as it is", async ({
     expect,
   }) => {
-    // A project from before #Q3661: owner and member only, plus a Viewer
-    // that reads automations (the old preset).
+    // A project from before #Q3833: owner and member only, plus the narrow
+    // Viewer the open-project allowlist seeded. Widening it is an admin's
+    // call, never the sweep's.
     const project = await createTestProject(ctx.alepha, {
       capabilities: [{ key: "plan", options: {} }],
     });
     const organizationId = project.organizationId!;
-    const wide = [...LoreViewerAllowlist.PERMISSIONS, "automation:read"];
+    const narrow = ["project:read", "quest:read", "folio:read"];
     await ctx.ranks.save(
       organizationId,
-      { key: "viewer", name: "Viewer", permissions: wide },
+      { key: "viewer", name: "Viewer", permissions: narrow },
       { id: project.createdBy, roles: ["user"] },
     );
 
@@ -370,7 +383,9 @@ describe("Lore's rank resource", () => {
 
     expect(added).toEqual(["admin"]);
     const ranks = await ctx.ranks.ranksOf(organizationId);
-    expect(ranks.find((it) => it.key === "viewer")?.permissions).toEqual(wide);
+    expect(ranks.find((it) => it.key === "viewer")?.permissions).toEqual(
+      narrow,
+    );
     // A second pass has nothing to do.
     expect(
       await ctx.alepha.inject(DefaultRankService).backfill(project.id),
@@ -456,9 +471,14 @@ describe("Lore's rank resource", () => {
     const admin = items.find((it) => it.key === "admin")!;
     expect(admin.permissions).toContain("folio:write");
     expect(admin.permissions).toContain("quest:create");
+    // Viewer reads Core's own groups (members, stats, automations) and the
+    // one capability's folios, nothing of a capability that is off.
     expect(items.find((it) => it.key === "viewer")?.permissions).toEqual([
       "project:read",
+      "member:read",
+      "stats:read",
       "folio:read",
+      "automation:read",
     ]);
     // The floor survives every narrowing.
     expect(admin.permissions).toContain("project:read");

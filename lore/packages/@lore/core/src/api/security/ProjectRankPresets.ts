@@ -3,7 +3,6 @@ import { $inject } from "alepha";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import { LorePermissions } from "./LorePermissions.ts";
-import { LoreViewerAllowlist } from "./LoreViewerAllowlist.ts";
 
 /**
  * The two ranks a project is seeded with beside the `owner` and `member`
@@ -13,8 +12,7 @@ import { LoreViewerAllowlist } from "./LoreViewerAllowlist.ts";
  *
  * Every project starts with four ranks: owner, admin, member and viewer.
  * Admin and Viewer are seeded as ordinary custom ranks under STABLE keys
- * (`admin`, `viewer`), because an open project's joiners land on the rank
- * keyed `viewer`, found by its key and never by its name.
+ * (`admin`, `viewer`), found by their key and never by their name.
  *
  * ## Why they are a function of the enabled capability set
  *
@@ -52,20 +50,24 @@ export class ProjectRankPresets {
    */
   protected static readonly ADMIN_EXCLUDES = LorePermissions.OWNER_ONLY;
 
-  /**
-   * Viewer reads the project's memory and nothing else: the allowlist an
-   * open project's joiners are held to (folio "Open projects: safety
-   * contract"). Automations, apps, errors, hosts, members' records, reports
-   * and feedback are all outside it.
-   */
   public static readonly ADMIN: string[] = [
     ...LorePermissions.MEMBER_DEFAULT,
     ...LorePermissions.OWNER_TODAY,
   ].filter((it) => !ProjectRankPresets.ADMIN_EXCLUDES.includes(it));
 
-  protected static readonly VIEWER: string[] = [
-    ...LoreViewerAllowlist.PERMISSIONS,
-  ];
+  /**
+   * Viewer reads and writes nothing: every `:read` a project grants, the
+   * member list, apps, errors, hosts, automations and feedback included
+   * (#Q3833). It is the rank an admin gives to someone they invited, so it
+   * is trusted with what any member reads. Narrowed to the enabled
+   * capabilities like every preset.
+   */
+  public static readonly VIEWER: string[] = [
+    ...LorePermissions.MEMBER_DEFAULT,
+    ...LorePermissions.OWNER_TODAY,
+  ].filter(
+    (it, index, all) => it.endsWith(":read") && all.indexOf(it) === index,
+  );
 
   /**
    * The two presets for a project with this capability set.

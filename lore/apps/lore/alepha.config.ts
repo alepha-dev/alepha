@@ -209,9 +209,6 @@ export default defineConfig({
           // address answers `Disallow: /`. A self-hosted image has none, and
           // answers for its own host.
           PUBLIC_URL: "https://lore.alepha.app",
-          // The open-projects launch gate: a project may be opened to anyone
-          // signed in (it still starts invite only). Not a secret.
-          LORE_OPEN_PROJECTS: "true",
         },
       },
     },

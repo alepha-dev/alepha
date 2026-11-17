@@ -6,8 +6,8 @@ import { users } from "alepha/api/users";
  *
  * Picked from the `users` entity rather than restated. `email` is the one
  * field a caller may not get: it is returned only to a caller holding
- * `member:read`, and every other field here is the card a viewer of an open
- * project sees for each member (folio "Open projects: safety contract").
+ * `member:read`, and every other field here is the card a rank without it
+ * sees for each member.
  * Roles, login stamps and the rest of the account never leave the server
  * through this schema.
  */
@@ -24,7 +24,7 @@ export const projectUserSchema = users.schema
     /**
      * Whether a quest can be handed to them: their rank grants
      * `quest:update` (#Q3648). The assignee picker lists only these, and a
-     * viewer of an open project is not one of them.
+     * Viewer is not one of them.
      */
     assignable: z.boolean().optional(),
   });

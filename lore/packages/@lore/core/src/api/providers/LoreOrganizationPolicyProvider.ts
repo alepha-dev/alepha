@@ -74,8 +74,8 @@ export class LoreOrganizationPolicyProvider extends OrganizationPolicyProvider {
   }
 
   /**
-   * The rank's own refusal. A write refused to a rank that only reads (a
-   * viewer of an open project, or any rank made of reads) says so in those
+   * The rank's own refusal. A write refused to a rank that only reads (Viewer,
+   * or any rank made of reads) says so in those
    * words, "read-only in this project", so a person or an agent stops
    * retrying writes rather than asking for one permission at a time.
    *

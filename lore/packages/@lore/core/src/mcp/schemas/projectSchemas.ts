@@ -1,7 +1,6 @@
 import { z } from "alepha";
 
 import { capabilityKeySchema } from "../../api/schemas/capabilityKeySchema.ts";
-import { joinPolicySchema } from "../../api/schemas/joinPolicySchema.ts";
 import { projectActivityRowSchema } from "../../api/schemas/projectActivityRowSchema.ts";
 import { epicStatusSchema } from "./epicStatusSchema.ts";
 import { prioritySchema } from "./prioritySchema.ts";
@@ -84,11 +83,6 @@ export const projectInfoResultSchema = z.object({
     }),
   ),
   createdAt: z.datetime(),
-  /**
-   * Who may join this project: `invite` (an admin invites) or `open` (anyone
-   * signed in joins by themselves, read-only, on the Viewer rank).
-   */
-  joinPolicy: joinPolicySchema,
   activeQuests: z.array(questOrientationRefSchema),
   /**
    * The caller's rank in this project.
@@ -105,8 +99,7 @@ export const projectInfoResultSchema = z.object({
    * every time a new one is declared.
    */
   permissions: z.array(z.text()) /**
-   * `true` when the caller's rank here grants reads only, as a viewer of an
-   * open project's does: every write tool will be refused in this project,
+   * `true` when the caller's rank here grants reads only, as Viewer does: every write tool will be refused in this project,
    * with "read-only in this project". Plan around it rather than trying.
    * One account can be admin in one project and read-only in another, so
    * the tool list itself is not narrowed.
@@ -306,8 +299,7 @@ export const projectContextResultSchema = z.object({
    */
   permissions: z.array(z.text()),
   /**
-   * `true` when the caller's rank here grants reads only, as a viewer of an
-   * open project's does: every write tool will be refused in this project,
+   * `true` when the caller's rank here grants reads only, as Viewer does: every write tool will be refused in this project,
    * with "read-only in this project". Plan around it rather than trying.
    * One account can be admin in one project and read-only in another, so
    * the tool list itself is not narrowed.

@@ -318,7 +318,6 @@ export class ProjectTools {
         areas: [],
         ...sections,
         createdAt: result.createdAt,
-        joinPolicy: this.projectSecurity.joinPolicyOf(result),
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
           shortId: quest.shortId,

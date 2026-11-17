@@ -311,9 +311,7 @@ export class LoreAudits {
   readonly member = $audit({
     type: "member",
     description: "Project membership",
-    // `self_join`: someone joined an open project by themselves (#Q3646).
-    // `lift`: an admin let someone they removed rejoin.
-    actions: ["join", "self_join", "leave", "lift", "rank", "transfer"],
+    actions: ["join", "leave", "rank", "transfer"],
   });
 
   /**

@@ -112,10 +112,6 @@ export {
   reportsPeriodFiguresSchema,
   reportsQuestsSchema,
 } from "../api/schemas/reportsSchemas.ts";
-export {
-  type JoinPolicy,
-  joinPolicySchema,
-} from "../api/schemas/joinPolicySchema.ts";
 export { type RoadmapVisibility } from "../api/schemas/roadmapVisibilitySchema.ts";
 export { attachmentPushResultSchema } from "../mcp/schemas/attachmentPushResultSchema.ts";
 export { DIAGRAM_CAPABILITY } from "../mcp/schemas/diagramCapability.ts";

@@ -4537,45 +4537,6 @@ export default {
   "folios.wikilink.broken.requirementNotFound":
     "Aucune exigence ne correspond à cette référence.",
   "project.settings.nav.ranks": "Rangs",
-  "project.settings.join.title": "Adhésion",
-  "project.settings.join.description":
-    "Les personnes qui rejoignent d’elles-mêmes reçoivent le rang Lecteur : elles lisent les quêtes, épopées, folios et versions, et ne modifient rien. Pour donner davantage à quelqu’un, changez-le de rang.",
-  "project.settings.join.policy.label": "Projet public",
-  "project.settings.join.policy.description":
-    "Les utilisateurs peuvent rejoindre le projet en lecture seule, sans invitation.",
-  "project.settings.join.unavailable":
-    "Les projets ouverts ne sont pas encore disponibles sur ce Lore.",
-  "project.settings.join.noViewer":
-    "Ce projet n’a pas de rang Lecteur, le rang que reçoivent les personnes qui le rejoignent",
-  "project.settings.join.toRanks": "Ouvrir les rangs",
-  "project.settings.join.openConfirm.title": "Ouvrir ce projet ?",
-  "project.settings.join.openConfirm.description":
-    "Toute personne ayant un compte pourra alors le rejoindre d’elle-même, en lecture seule, et lire ses quêtes, épopées, folios et versions.",
-  "project.settings.join.openConfirm.confirm": "Ouvrir le projet",
-  "project.settings.join.closeRemove.title":
-    "Retirer les personnes qui l’ont rejoint ?",
-  "project.settings.join.closeRemove.description":
-    "Le projet n’accepte plus de nouveaux membres. Les personnes qui l’ont rejoint d’elles-mêmes restent membres, en Lecteur : $1. Les retirer aussi ?",
-  "project.settings.join.closeRemove.confirm": "Les retirer",
-  "project.settings.join.closeRemove.cancel": "Les garder",
-  "project.settings.join.closeRemove.done": "Retirés : $1",
-  "rank.viewer.selfJoined.title":
-    "Des personnes qui ont rejoint d’elles-mêmes ont le rang Lecteur",
-  "rank.viewer.selfJoined.description":
-    "$1 membre(s) ont rejoint ce projet d’eux-mêmes pendant qu’il était ouvert, et ont toujours le rang Lecteur. Tout ce que vous ajoutez à Lecteur, ils l’obtiennent.",
-  "project.settings.join.url.label": "Lien à partager",
-  "project.settings.join.url.copy": "Copier le lien",
-  "project.settings.join.url.copied": "Lien copié",
-  "project.join.lead":
-    "Toute personne connectée peut rejoindre ce projet, en tant que lecteur.",
-  "project.join.reads":
-    "Un lecteur consulte ses quêtes, épopées, folios et versions, sans rien modifier.",
-  "project.join.submit": "Rejoindre le projet",
-  "project.join.signIn": "Se connecter pour rejoindre",
-  "project.join.refused": "Vous ne pouvez pas rejoindre ce projet",
-  "rank.viewer.wider.title": "$1 accorde plus qu’un lecteur ne peut avoir",
-  "rank.viewer.wider.description":
-    "Il accorde aussi $1. Un projet ne peut pas être ouvert à toute personne connectée tant que son rang Lecteur ne donne pas uniquement la lecture des quêtes, épopées, folios, versions et domaines.",
   "automation.editor.loading": "Chargement...",
   "automation.editor.value": "Valeur",
   "automation.editor.action": "Action $1",
