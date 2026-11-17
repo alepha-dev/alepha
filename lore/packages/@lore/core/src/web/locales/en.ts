@@ -4221,6 +4221,31 @@ export default {
   "dashboard.reset.description":
     "Every card on it is deleted, and every member sees the board computed from what this project does again.",
   "dashboard.window": "Time window",
+  "dashboard.presets": "Presets",
+  "dashboard.presets.apply": "Apply to this board",
+  "dashboard.presets.newFrom": "New dashboard from a preset",
+  "dashboard.preset.confirm": "Apply the $1 preset?",
+  "dashboard.preset.confirm.description":
+    "Every card on this board is replaced by the preset's. Reset to default, or apply another preset, to change it again.",
+  "dashboard.preset.confirm.action": "Apply preset",
+  "dashboard.preset.appVitals": "Apps and vitals",
+  "dashboard.preset.appVitals.description":
+    "Health, visitors, errors, uptime and quality of the project's apps.",
+  "dashboard.preset.requirements": "Requirements",
+  "dashboard.preset.requirements.description":
+    "Coverage, what is left to cover, and use case and persona health.",
+  "dashboard.preset.triage": "Triage",
+  "dashboard.preset.triage.description":
+    "What waits on someone: feedback, errors, held quests and the activity feed.",
+  "dashboard.preset.delivery": "Delivery",
+  "dashboard.preset.delivery.description":
+    "Where the next releases stand, and the epics and quests in flight.",
+  "dashboard.preset.needs.ship": "Turn on Ship to use it",
+  "dashboard.preset.needs.plan": "Turn on Plan to use it",
+  "dashboard.preset.needs.plan.requirements":
+    "Turn on Plan's Requirements option to use it",
+  "dashboard.preset.needs.plan.releases":
+    "Turn on Plan's Releases option to use it",
   "dashboard.window.days": "Last $1 days",
   "dashboard.dormant": "Quiet since $1.",
   "dashboard.footer.recentlyShipped": "$1 quests shipped",

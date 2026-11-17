@@ -4248,6 +4248,31 @@ export default {
   "dashboard.reset.description":
     "Toutes ses cartes sont supprimées, et chaque membre retrouve le tableau calculé d'après ce que fait ce projet.",
   "dashboard.window": "Période",
+  "dashboard.presets": "Modèles",
+  "dashboard.presets.apply": "Appliquer à ce tableau",
+  "dashboard.presets.newFrom": "Nouveau tableau de bord depuis un modèle",
+  "dashboard.preset.confirm": "Appliquer le modèle $1 ?",
+  "dashboard.preset.confirm.description":
+    "Toutes les cartes de ce tableau sont remplacées par celles du modèle. Revenez au tableau par défaut, ou appliquez un autre modèle, pour le changer à nouveau.",
+  "dashboard.preset.confirm.action": "Appliquer le modèle",
+  "dashboard.preset.appVitals": "Applications et indicateurs",
+  "dashboard.preset.appVitals.description":
+    "Santé, visiteurs, erreurs, disponibilité et qualité des applications du projet.",
+  "dashboard.preset.requirements": "Exigences",
+  "dashboard.preset.requirements.description":
+    "Couverture, ce qui reste à couvrir, et santé des cas d'usage et des personas.",
+  "dashboard.preset.triage": "Tri",
+  "dashboard.preset.triage.description":
+    "Ce qui attend quelqu'un : retours, erreurs, quêtes en attente et le fil d'activité.",
+  "dashboard.preset.delivery": "Livraison",
+  "dashboard.preset.delivery.description":
+    "Où en sont les prochaines versions, et les épopées et quêtes en cours.",
+  "dashboard.preset.needs.ship": "Activez Ship pour l'utiliser",
+  "dashboard.preset.needs.plan": "Activez Plan pour l'utiliser",
+  "dashboard.preset.needs.plan.requirements":
+    "Activez l'option Exigences de Plan pour l'utiliser",
+  "dashboard.preset.needs.plan.releases":
+    "Activez l'option Versions de Plan pour l'utiliser",
   "dashboard.window.days": "$1 derniers jours",
   "dashboard.dormant": "Calme depuis $1.",
   "dashboard.footer.recentlyShipped": "$1 quêtes livrées",

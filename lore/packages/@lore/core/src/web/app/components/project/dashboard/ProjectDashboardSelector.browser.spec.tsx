@@ -255,15 +255,19 @@ describe("ProjectDashboardSelector", () => {
     expect(screen.queryByTestId("dashboard-delete")).toBeNull();
   });
 
-  it("offers Reset to default on the first dashboard only", async () => {
+  it("offers Reset to default on the first dashboard only, and the presets on every one", async () => {
     await mount({ dashboardKey: "work", dashboard: WORK });
     expect(await screen.findByTestId("dashboard-selector")).toBeTruthy();
-    expect(screen.queryByTestId("dashboard-menu")).toBeNull();
+    fireEvent.click(await screen.findByTestId("dashboard-menu"));
+    expect(await screen.findByTestId("dashboard-presets")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-reset")).toBeNull();
     cleanup();
     await alepha?.stop();
 
     await mount({});
-    expect(await screen.findByTestId("dashboard-menu")).toBeTruthy();
+    fireEvent.click(await screen.findByTestId("dashboard-menu"));
+    expect(await screen.findByTestId("dashboard-reset")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-presets")).toBeTruthy();
   });
 
   it("keeps the bar on an empty dashboard when the project has more than one", async () => {

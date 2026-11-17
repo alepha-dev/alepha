@@ -3,6 +3,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Check, Pencil, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
+import type { DashboardPreset } from "../../../../../api/schemas/DashboardPresetCatalog.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import ProjectDashboardMenu from "./ProjectDashboardMenu.tsx";
 import ProjectDashboardWindow from "./ProjectDashboardWindow.tsx";
@@ -46,6 +47,11 @@ export interface ProjectDashboardHeaderProps {
    * Delete the stored cards, back to the computed board (#Q2660).
    */
   onReset: () => void;
+  /**
+   * Apply a preset to this board, and start a new board from one (#Q3831).
+   */
+  onApplyPreset: (preset: DashboardPreset) => void;
+  onCreateFromPreset: (preset: DashboardPreset) => void;
   /**
    * The reader picked another time window (#Q2661).
    */
@@ -120,8 +126,16 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
           {tr(props.editing ? "dashboard.save" : "dashboard.edit")}
         </Button>
       )}
-      {props.canEdit && props.first !== false && !props.computed && (
-        <ProjectDashboardMenu onReset={props.onReset} busy={props.busy} />
+      {props.canEdit && (
+        <ProjectDashboardMenu
+          // Reset only where there is a computed board to go back to.
+          onReset={
+            props.first !== false && !props.computed ? props.onReset : undefined
+          }
+          onApplyPreset={props.onApplyPreset}
+          onCreateFromPreset={props.onCreateFromPreset}
+          busy={props.busy}
+        />
       )}
     </div>
   );

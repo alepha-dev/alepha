@@ -16,6 +16,15 @@ export {
   DashboardMetricCatalog,
   type DashboardMetricDescriptor,
 } from "../api/schemas/DashboardMetricCatalog.ts";
+export {
+  type DashboardPreset,
+  type DashboardPresetCard,
+  DashboardPresetCatalog,
+} from "../api/schemas/DashboardPresetCatalog.ts";
+export {
+  type DashboardPresetKey,
+  dashboardPresetKeySchema,
+} from "../api/schemas/dashboardPresetKeySchema.ts";
 export { ProjectSlugService } from "../api/schemas/ProjectSlugService.ts";
 export { type AdminProjectResource } from "../api/schemas/adminProjectResourceSchema.ts";
 export {

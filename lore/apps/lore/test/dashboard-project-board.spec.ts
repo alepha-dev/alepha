@@ -578,9 +578,8 @@ describe("the project dashboard controller", () => {
     expect,
   }) => {
     expect(
-      Object.keys(ctx.board).filter((key) =>
-        key.toLowerCase().includes("reset"),
-      ),
+      // A word, not a substring: "preset" holds "reset" (#Q3831).
+      Object.keys(ctx.board).filter((key) => /(^|[a-z])Reset|^reset/.test(key)),
     ).toEqual(["resetProjectDashboard"]);
   });
 });
