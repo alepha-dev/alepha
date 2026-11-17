@@ -286,6 +286,12 @@ export class AppController {
          * lent, and the refusal is a 404 so it cannot learn one exists.
          */
         hostId: z.uuid().nullable().optional(),
+        /**
+         * The hosts a Bay copy answers on, canonical first, sent on its next
+         * deploy. `null` or `[]` clears them, leaving the domains to Bay
+         * (#Q3796).
+         */
+        domains: z.array(z.string().max(253)).max(20).nullable().optional(),
       }),
       response: appInstanceResourceSchema,
     },
@@ -313,6 +319,9 @@ export class AppController {
       }
       if (body.hostId !== undefined) {
         instance = await this.service.setHost(instance, body.hostId);
+      }
+      if (body.domains !== undefined) {
+        instance = await this.service.setDomains(instance, body.domains);
       }
 
       await this.audits.app.logSuccess("update", {
@@ -790,6 +799,7 @@ export class AppController {
       app: instance.app,
       env: instance.env,
       url: instance.url,
+      ...(instance.domains?.length ? { domains: instance.domains } : {}),
       sigilId: instance.sigilId,
       hostId: instance.hostId,
       stackEnvironmentId: instance.stackEnvironmentId,

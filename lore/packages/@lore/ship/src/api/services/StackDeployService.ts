@@ -435,10 +435,16 @@ export class StackDeployService {
           ].slice(-200),
         });
         // A copy with no address of its own takes the machine's, so its
-        // page links somewhere; one that has an address keeps it.
+        // page links somewhere; one that has an address keeps it, unless
+        // Lore set its domains: then the address is the canonical one Bay
+        // just served, so the Apps table and `lore deploy` name it (#Q3796).
         if (status === "succeeded" && address) {
           const instance = await this.instances.findById(appRow.instanceId);
-          if (instance && !instance.url) {
+          if (
+            instance &&
+            (!instance.url ||
+              (instance.domains?.length && instance.url !== address))
+          ) {
             await this.apps.setUrl(instance, address);
           }
         }

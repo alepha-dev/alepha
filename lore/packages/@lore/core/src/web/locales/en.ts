@@ -2451,6 +2451,11 @@ export default {
     "What the check does. Edit changes it; its target follows the address.",
   "app.settings.monitor.anySuccess": "Any 2xx",
   "app.settings.url.saved": "Address saved",
+  "app.settings.domains.title": "Domains",
+  "app.settings.domains.description":
+    "The hosts this copy answers on, comma-separated, the first one canonical. Applied by its next deploy. Empty leaves them to the machine.",
+  "app.settings.domains.save": "Save",
+  "app.settings.domains.saved": "Domains saved: deploy to apply them",
   "app.settings.host.title": "Host",
   "app.settings.host.description":
     "Where this copy deploys to. Selecting one is a fact about the copy; deploying through it arrives later.",

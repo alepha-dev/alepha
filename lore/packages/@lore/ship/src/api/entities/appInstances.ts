@@ -119,6 +119,14 @@ export const appInstances = $entity({
      */
     url: z.string().max(2048).optional(),
     /**
+     * The hosts a Bay copy answers on, canonical first, as set from Lore
+     * (`lore deploy --domain`, the app page). Absent leaves the copy's
+     * domains to Bay, which keeps whatever it already serves; present, every
+     * deploy to a Bay host sends it and Bay replaces its list (#Q3796). Not
+     * read for a Cloudflare host, whose address is `url`.
+     */
+    domains: z.array(z.string().max(253)).max(20).optional(),
+    /**
      * The telemetry credential this copy reports with, when it has one.
      *
      * `set null` rather than cascade: deleting a sigil is revoking a

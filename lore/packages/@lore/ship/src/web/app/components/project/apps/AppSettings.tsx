@@ -6,6 +6,7 @@ import { useI18n } from "alepha/react/i18n";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppSettingsDelete from "./AppSettingsDelete.tsx";
+import AppSettingsDomains from "./AppSettingsDomains.tsx";
 import AppSettingsHost from "./AppSettingsHost.tsx";
 import AppSettingsMonitor from "./AppSettingsMonitor.tsx";
 import AppSettingsRename from "./AppSettingsRename.tsx";
@@ -62,7 +63,7 @@ const AppSettings = () => {
     >
       <SettingsSection id="general" title={tr("app.settings.general")}>
         {/*
-          Keyed by the instance, and all three must be. Moving between two
+          Keyed by the instance, and every one must be. Moving between two
           instances' Settings tabs swaps `currentInstanceAtom` without
           unmounting anything, so an unkeyed draft would keep showing - and on
           Save, write - the value of the instance you just left. `SettingsRow`
@@ -71,6 +72,7 @@ const AppSettings = () => {
         <AppSettingsRename key={`app-${instance.id}`} half="app" />
         <AppSettingsRename key={`env-${instance.id}`} half="env" />
         <AppSettingsUrl key={`url-${instance.id}`} />
+        <AppSettingsDomains key={`domains-${instance.id}`} />
       </SettingsSection>
 
       {/* Right below General, where the address it checks is set (#Q3684). */}

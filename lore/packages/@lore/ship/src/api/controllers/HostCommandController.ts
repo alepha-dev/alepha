@@ -357,6 +357,8 @@ export class HostCommandController {
               sha256: artifact.sha256,
               size,
             },
+            // As on a deploy from the app page (#Q3796).
+            ...(instance.domains?.length ? { domains: instance.domains } : {}),
           },
         },
         user.id,

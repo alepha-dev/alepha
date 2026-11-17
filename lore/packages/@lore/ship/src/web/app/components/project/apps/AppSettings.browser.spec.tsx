@@ -246,6 +246,41 @@ describe("the instance Settings tab", () => {
     expect(writes()[0].body).toEqual({ url: "" });
   });
 
+  it("sets a Bay copy's domains as a list, and shows no Domains row elsewhere (#Q3796)", async ({
+    expect,
+  }) => {
+    const bay = anInstance({
+      host: {
+        id: "00000000-0000-4000-8000-0000000000b1",
+        slug: "ovh",
+        type: "bay",
+      },
+    } as never);
+    const { links, view } = await mount(bay, {
+      updateApp: { ...bay, domains: ["app.example.com", "www.example.com"] },
+    });
+
+    const field = view.container.querySelector<HTMLInputElement>(
+      "#app-settings-domains",
+    )!;
+    fireEvent.change(field, {
+      target: { value: "app.example.com, www.example.com" },
+    });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    const writes = () => links.calls.filter((it) => it.action === "updateApp");
+    await waitFor(() => expect(writes()).toHaveLength(1));
+    expect(writes()[0].body).toEqual({
+      domains: ["app.example.com", "www.example.com"],
+    });
+
+    view.unmount();
+    const other = await mount(anInstance());
+    expect(
+      other.view.container.querySelector("#app-settings-domains"),
+    ).toBeNull();
+  });
+
   it("offers only the hosts the project was lent", async ({ expect }) => {
     // No `view`: the trigger is found by role on `screen`, and the popup it
     // opens is portalled to the body rather than into the container.

@@ -356,6 +356,12 @@ export class AppsCommand {
         "Force a sigil for this copy, storing its key in the copy's own environment. Unneeded for a build that declares SIGIL_KEY: that is detected and done for you. `--no-sigil` opts out.",
       )
       .optional(),
+    domain: z
+      .array(z.text())
+      .describe(
+        "A host this Bay copy answers on, repeatable, the first one canonical: replaces the copy's domains on this deploy and the ones after it. Without it the copy keeps the domains it has.",
+      )
+      .optional(),
   });
 
   protected static readonly DEPLOY_DESCRIPTION =
@@ -551,8 +557,21 @@ export class AppsCommand {
     // ⚠️ First, and before anything is built. An app or env that was never
     // enrolled is a refusal, not a creation: minting a deploy target as a
     // side effect of a typo in `--env` is how `acem` gets deployed to.
-    const instance = await this.deployer.loadInstance(projectId, app, env);
+    let instance = await this.deployer.loadInstance(projectId, app, env);
     const tag = flags.tag ?? AppsCommand.DEFAULT_TAG;
+
+    // Stored on the copy before anything is built, so a host name Lore
+    // refuses fails the command before the build costs anything (#Q3796).
+    if (flags.domain?.length) {
+      instance = await this.deployer.setDomains(
+        projectId,
+        { ...instance, app, env },
+        flags.domain,
+      );
+      this.log.info(
+        `${app}/${env} answers on ${flags.domain.join(", ")} from this deploy`,
+      );
+    }
 
     // ⚠️ The switch. A named tag never builds - see the class doc.
     if (!flags.tag) {

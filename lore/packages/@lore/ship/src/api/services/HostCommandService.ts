@@ -415,6 +415,9 @@ export class HostCommandService {
         ? { revision: command.payload.revision }
         : {}),
       ...(command.payload.routes ? { routes: command.payload.routes } : {}),
+      ...(command.kind === "deploy" && command.payload.domains?.length
+        ? { domains: command.payload.domains }
+        : {}),
       ...(command.payload.baseDomain
         ? { baseDomain: command.payload.baseDomain }
         : {}),

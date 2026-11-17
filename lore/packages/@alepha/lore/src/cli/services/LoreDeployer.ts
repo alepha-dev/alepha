@@ -42,6 +42,11 @@ export interface LoreInstance {
    */
   version?: string;
   host?: { slug?: string; type?: string };
+  /**
+   * The hosts a Bay copy answers on, as set from Lore; absent leaves them
+   * to Bay.
+   */
+  domains?: string[];
   updatedAt?: string;
 }
 
@@ -276,6 +281,31 @@ export class LoreDeployer {
       (it: { id: string; slug?: string }) => it.id === instance.hostId,
     )?.slug;
     return slug ? `host '${slug}'` : undefined;
+  }
+
+  /**
+   * Replace the domains a Bay copy answers on, applied by the deploy that
+   * follows: Lore sends them with every deploy to the machine, which
+   * replaces its list, canonical first (#Q3796).
+   *
+   * Refused for a copy that is not on a Bay host: a Cloudflare copy's
+   * address is its custom domain, set when it is created, and a stack member
+   * answers on its environment's routes.
+   */
+  public async setDomains(
+    projectId: number,
+    instance: LoreInstance & { app: string; env: string },
+    domains: string[],
+  ): Promise<LoreInstance> {
+    if (instance.stackEnvironmentId || instance.host?.type !== "bay") {
+      throw new AlephaError(
+        `--domain sets the domains of a copy on a Bay host, and ${instance.app}/${instance.env} is ${instance.stackEnvironmentId ? "a stack member, which answers on its environment's routes" : "not on one"}.`,
+      );
+    }
+    return (await this.apps.updateApp({
+      params: { projectId, app: instance.app, env: instance.env },
+      body: { domains },
+    })) as LoreInstance;
   }
 
   /**
