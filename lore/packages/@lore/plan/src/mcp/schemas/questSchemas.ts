@@ -9,6 +9,7 @@ import {
 } from "@lore/core/schemas";
 import { z } from "alepha";
 
+import { questLiveCopySchema } from "../../api/schemas/questLiveCopySchema.ts";
 import { MAX_QUEST_OBJECTIVES } from "../../api/schemas/questObjectivesLimit.ts";
 import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
 import { objectiveInputSchema } from "./objectiveInputSchema.ts";
@@ -387,6 +388,12 @@ export const questGetResultSchema = z.object({
     .array(pullRequestRefSchema)
     .describe(
       "The epic's pull requests, present only when this quest is in an epic, has none of its own, and the epic has some: the pull request this quest shipped through, recorded once on the epic.",
+    )
+    .optional(),
+  live: z
+    .array(questLiveCopySchema)
+    .describe(
+      "The deployed copies running this quest's commits: the quest's commit is in the history of the commit each copy's newest succeeded deployment ran, as recorded when its build was pushed. `dirty` means that build came from a working tree with uncommitted changes (live, unverified); `since` is when it went live there. Empty does NOT mean the quest is not live: a copy whose set is unknown (deployed before Lore recorded commits, or from a shallow clone) cannot say. Absent when the project has no deploys.",
     )
     .optional(),
   attachments: z

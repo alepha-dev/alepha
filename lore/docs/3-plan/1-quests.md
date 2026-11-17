@@ -230,6 +230,30 @@ what was written, like a commit.
 lore quest pull-request add 12 --url https://github.com/acme/crm/pull/118 --pr-number 118
 ```
 
+## Where a quest is live
+
+In a project that deploys its apps with Lore, a done quest says where it runs.
+The quest's rail shows a **Live** row with one chip per deployed copy, such as
+`my-app/production · since 2 hours`, linked to that copy.
+
+**Live** means the quest's commit is in the history of the commit the copy runs,
+as Lore recorded it when that build was pushed: the push reads the `#Q12`
+references in the history, and the commits recorded on quests
+([What a push records](/lore/docs/ship-artifacts#what-a-push-records)). It
+follows the copy's newest successful deployment, so a rollback takes the quests
+it removed off at once, and a redeploy of an older build puts them back.
+
+- **unverified** beside a chip: that build was pushed from a working tree with
+  uncommitted changes, so the copy may run code no commit names.
+- **Unknown** is not "not live". A copy deployed before Lore recorded commits,
+  or from a build pushed from a shallow clone, cannot say which quests it runs.
+  The rail then shows no chip for it, and nothing claims the quest is missing.
+
+The quest list has a **Live** column, and a **Live** filter whose **Completed,
+not live yet** lists the done quests, with at least one recorded commit, that
+no copy runs. It lists nothing while any copy Lore deployed is unknown or
+partial, rather than claim a quest is missing from it.
+
 ## From the command line
 
 ```bash
@@ -239,7 +263,8 @@ lore quest complete 12 --message "Redirect fixed" --commit 3f9c2a1
 ```
 
 A quest can be named `12`, `Q12` or `'#Q12'` (quote it, or the shell reads a
-comment). `lore project info` lists the project's areas. See
+comment). `lore quest get 12` also lists the copies the quest is live on.
+`lore project info` lists the project's areas. See
 [The lore CLI](/lore/docs/reference-cli#quests) for every command and flag.
 
 ## From an agent
@@ -250,7 +275,8 @@ folio index in one call), accepts a quest with `quest_accept` before its first
 commit, ticks objectives with `quest_objective_set` as they are met, and closes
 with `quest_complete`, passing a `message` and its `commits`. It records the
 pull request it opened with `quest_pull_request_add`, or with
-`epic_pull_request_add` when the quest is part of an epic.
+`epic_pull_request_add` when the quest is part of an epic. `quest_get` carries
+`live`, the copies running the quest's commits, as the rail shows them.
 
 The full list is in [MCP tools](/lore/docs/reference-mcp-tools). To hand a
 quest to an agent from the browser, see

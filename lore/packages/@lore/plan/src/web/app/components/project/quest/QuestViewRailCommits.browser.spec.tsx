@@ -1,5 +1,5 @@
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n, ResourceRailRegistry } from "@lore/core/web";
 import { render } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -95,6 +95,8 @@ describe("QuestViewRail commits", () => {
       .with(AlephaReactRouter);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    // Read by the quest rail (#E154), so it must exist before the lock.
+    alepha.inject(ResourceRailRegistry);
     await alepha.start();
 
     // The atom validates against `projectResourceSchema`, so the fixture has

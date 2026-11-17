@@ -1,7 +1,7 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n, ResourceRailRegistry } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -152,6 +152,8 @@ describe("QuestView", () => {
     alepha.inject(I18n);
     // Work registers the reference and agent prompt kinds (#E75, #Q2624).
     alepha.inject(WorkShell);
+    // Read by the quest rail (#E154), so it must exist before the lock.
+    alepha.inject(ResourceRailRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());
@@ -193,6 +195,8 @@ describe("QuestView", () => {
     alepha.inject(Routes);
     alepha.inject(I18n);
     alepha.inject(WorkShell);
+    // Read by the quest rail (#E154), so it must exist before the lock.
+    alepha.inject(ResourceRailRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());
@@ -243,6 +247,8 @@ describe("QuestView", () => {
     alepha.inject(Routes);
     alepha.inject(I18n);
     alepha.inject(WorkShell);
+    // Read by the quest rail (#E154), so it must exist before the lock.
+    alepha.inject(ResourceRailRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());
@@ -287,6 +293,8 @@ describe("QuestView", () => {
     alepha.inject(Routes);
     alepha.inject(I18n);
     alepha.inject(WorkShell);
+    // Read by the quest rail (#E154), so it must exist before the lock.
+    alepha.inject(ResourceRailRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());
@@ -329,6 +337,8 @@ describe("QuestView", () => {
     alepha.inject(Routes);
     alepha.inject(I18n);
     alepha.inject(WorkShell);
+    // Read by the quest rail (#E154), so it must exist before the lock.
+    alepha.inject(ResourceRailRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture());

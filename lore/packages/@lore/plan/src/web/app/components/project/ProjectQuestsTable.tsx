@@ -25,6 +25,8 @@ import {
 import { prioritySchema } from "@lore/core/schemas";
 import {
   capabilityOption,
+  hasCapability,
+  canInProject,
   currentProjectAtom,
   descriptionSnippet,
   displayName,
@@ -562,6 +564,12 @@ const ProjectQuestsTable = () => {
   //
   // Led by the empty choice, "None", for the reason the release list is.
   const epicsEnabled = capabilityOption(project, "plan", "epics");
+  // Live quests (#E154): which deployed copy runs each quest, read from Ship
+  // through `getQuests`. Only a project that deploys has an answer.
+  // App names are `app:read`, which a viewer of an open project lacks
+  // (#Q3794): the server ignores both switches without it.
+  const liveEnabled =
+    hasCapability(project, "ship") && canInProject(project, "app:read");
   const epicOptions = [
     {
       value: QUEST_EPIC_NONE,
@@ -696,6 +704,16 @@ const ProjectQuestsTable = () => {
         value: days,
         label: tr("board.filter.days", { args: [days] }),
       })),
+    },
+    // "Completed, not live anywhere" (#E154): done quests with a recorded
+    // commit that no deployed copy runs. The server lists nothing while any
+    // copy's set is unknown or partial, rather than claim "not live".
+    live: {
+      schema: z.enum(["not"]),
+      label: tr("board.filter.live"),
+      icon: Rocket,
+      items: [{ value: "not", label: tr("board.filter.live.not") }],
+      hidden: !liveEnabled,
     },
     // Epic ids as strings, plus the sentinel, as for `release`. Offered with
     // no epic yet too: "None" is then every quest, which is true, and the
@@ -942,6 +960,8 @@ const ProjectQuestsTable = () => {
               priority: list(f?.priority),
               staleDays: f?.stale ? Number(f.stale) : undefined,
               completedDays: f?.completed ? Number(f.completed) : undefined,
+              live: f?.live,
+              withLive: liveEnabled || undefined,
             },
           });
         }}
@@ -1154,6 +1174,48 @@ const ProjectQuestsTable = () => {
               );
             },
           },
+          // Only for a project that deploys: anywhere else every row is a dash.
+          ...(liveEnabled
+            ? {
+                live: {
+                  label: tr("board.table.live"),
+                  // The copies running the quest's commits (#E154). A dash says
+                  // "on no copy whose set is known", never "not live".
+                  cell: (quest: QuestResource) => {
+                    const copies = quest.metadata.live ?? [];
+                    if (copies.length === 0) {
+                      return <span className="text-muted-foreground">-</span>;
+                    }
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <span
+                              data-testid={`quest-live-${quest.shortId}`}
+                              className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400"
+                            />
+                          }
+                        >
+                          <Rocket className="size-3.5" />
+                          {copies.length}
+                        </TooltipTrigger>
+                        <TooltipContent className="flex flex-col gap-0.5">
+                          {copies.map((copy) => (
+                            <span key={`${copy.app}/${copy.env}`}>
+                              {copy.dirty
+                                ? tr("board.table.live.unverified", {
+                                    args: [`${copy.app}/${copy.env}`],
+                                  })
+                                : `${copy.app}/${copy.env}`}
+                            </span>
+                          ))}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  },
+                },
+              }
+            : {}),
           linked: {
             label: tr("board.table.linked"),
             // Niche column — starts hidden; users opt in via the column picker.

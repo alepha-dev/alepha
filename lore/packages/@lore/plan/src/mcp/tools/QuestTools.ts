@@ -1,4 +1,4 @@
-import { ProjectController } from "@lore/core/api";
+import { LiveQuestRegistry, ProjectController } from "@lore/core/api";
 import {
   AttachmentContentService,
   AttachmentPushCommand,
@@ -6,8 +6,9 @@ import {
   ProjectTools,
 } from "@lore/core/mcp";
 import { formatReference, displayName } from "@lore/core/web";
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $tool } from "alepha/mcp";
+import { currentUserAtom } from "alepha/security";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
@@ -17,6 +18,7 @@ import { QuestController } from "../../api/controllers/QuestController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import { QUEST_EPIC_NONE } from "../../api/schemas/questEpicFilter.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
+import { PlanLiveQuests } from "../../api/services/PlanLiveQuests.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
 import {
   pullRequestBodyOf,
@@ -83,6 +85,9 @@ export class QuestTools {
   protected readonly attachmentPush = $inject(AttachmentPushCommand);
   protected readonly diagrams = $inject(DiagramCheckService);
   protected readonly projectTools = $inject(ProjectTools);
+  protected readonly liveQuests = $inject(LiveQuestRegistry);
+  protected readonly livePlan = $inject(PlanLiveQuests);
+  protected readonly alepha = $inject(Alepha);
 
   /**
    * How many comments `quest_get` inlines. A quest that ever carries more
@@ -909,6 +914,7 @@ export class QuestTools {
         { ref: epic, pullRequests: epicPullRequests },
         { discussion, discussionTruncated },
         files,
+        live,
       ] = await Promise.all([
         quest.dependsOn != null
           ? this.questController.shortIdOf(quest.projectId, quest.dependsOn)
@@ -924,6 +930,16 @@ export class QuestTools {
         this.loadDiscussion(quest.id, quest.projectId),
         // Skipped when the quest carries no files, the common case.
         this.questController.attachmentFilesOf(quest.attachments ?? []),
+        // Where its commits run (#E154), from Ship through core's registry;
+        // undefined with no Ship module, and for a reader without
+        // `app:read`, since it names apps (#Q3794).
+        this.livePlan
+          .readsApps(quest.projectId, this.alepha.store.get(currentUserAtom))
+          .then((reads) =>
+            reads
+              ? this.liveQuests.whereLive(quest.projectId, quest.shortId)
+              : undefined,
+          ),
       ]);
       const attachments = files.map((file) => ({
         id: file.fileId,
@@ -966,6 +982,16 @@ export class QuestTools {
           : {}),
         attachments,
         epic,
+        ...(live
+          ? {
+              live: live.map((copy) => ({
+                app: copy.app,
+                env: copy.env,
+                dirty: copy.dirty,
+                ...(copy.since ? { since: copy.since } : {}),
+              })),
+            }
+          : {}),
       };
     },
   });

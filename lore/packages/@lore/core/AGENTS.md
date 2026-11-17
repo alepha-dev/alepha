@@ -67,6 +67,7 @@ The browser side follows the same rule: core's web code (`ProjectView`, the edit
 | `ProjectShellRegistry`     | sidebar entries and badges, settings sections and panels, the "+" menu, breadcrumb leaves, the aside pane, palette rows |
 | `ElementReferenceRegistry` | `[[#Q12]]` kinds: rows, picker suggestions, href, hover preview, image upload                                           |
 | `ResourceTabRegistry`      | tabs on another module's page: Artifacts on a release, Folios on an epic                                                |
+| `ResourceRailRegistry`     | rows on another module's rail: where a quest is live (Ship on the quest page, #E154)                                    |
 | `DocumentSinkRegistry`     | where a generated document is saved (folios)                                                                            |
 | `AgentPromptRegistry`      | prompt kinds: default template, icon, label                                                                             |
 | `DashboardPickerRegistry`  | the dashboard's app, tag, epic and release pickers                                                                      |
