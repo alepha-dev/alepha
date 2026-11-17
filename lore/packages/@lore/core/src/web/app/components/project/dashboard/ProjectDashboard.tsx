@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import type { ProjectDashboardController } from "../../../../../api/controllers/ProjectDashboardController.ts";
 import type { DashboardCardResource } from "../../../../../api/schemas/dashboardCardResourceSchema.ts";
 import { DashboardMetricCatalog } from "../../../../../api/schemas/DashboardMetricCatalog.ts";
+import type { DashboardPreset } from "../../../../../api/schemas/DashboardPresetCatalog.ts";
 import type { DashboardScope } from "../../../../../api/schemas/dashboardScopeSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { dashboardWindowAtom } from "../../../atoms/dashboardWindowAtom.ts";
@@ -498,6 +499,36 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
   );
 
   /**
+   * Apply a preset to the board on screen (#Q3831), after a confirmation:
+   * its cards are replaced, as Reset to default replaces them. Reset or
+   * another preset undoes it.
+   */
+  const presetAction = useAction<[preset: DashboardPreset], void>(
+    {
+      handler: async (_context, preset) => {
+        if (!projectId) return;
+        const confirmed = await dialog.confirm({
+          title: tr("dashboard.preset.confirm", {
+            args: [tr(preset.labelKey as never)],
+          }),
+          description: tr("dashboard.preset.confirm.description"),
+          confirmLabel: tr("dashboard.preset.confirm.action"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await boardApi.applyProjectDashboardPreset({
+          params: { projectId },
+          query: onDashboard(),
+          body: { preset: preset.key },
+        });
+        setEditOn(false);
+        await loadAction.refetch();
+      },
+    },
+    [alepha, boardApi, dialog, projectId, tr],
+  );
+
+  /**
    * A dashboard's name, asked for in a dialog. `null` when cancelled.
    */
   const askName = (options: {
@@ -553,6 +584,30 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
         const made = await boardApi.createProjectDashboard({
           params: { projectId },
           body: { name: name.trim() },
+        });
+        await goTo(made);
+      },
+    },
+    [alepha, boardApi, dialog, projectId, project?.slug, tr],
+  );
+
+  /**
+   * A new dashboard started from a preset (#Q3831), named after it unless
+   * the reader names it otherwise; nothing is replaced, so no confirmation.
+   */
+  const createFromPresetAction = useAction<[preset: DashboardPreset], void>(
+    {
+      handler: async (_context, preset) => {
+        if (!projectId) return;
+        const name = await askName({
+          title: tr("project.dashboards.create"),
+          defaultValue: tr(preset.labelKey as never),
+          confirmLabel: tr("project.dashboards.create.confirm"),
+        });
+        if (name === null) return;
+        const made = await boardApi.createProjectDashboard({
+          params: { projectId },
+          body: { name: name.trim(), preset: preset.key },
         });
         await goTo(made);
       },
@@ -644,7 +699,9 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
     updateAction.loading ||
     resizeAction.loading ||
     customizeAction.loading ||
-    resetAction.loading;
+    resetAction.loading ||
+    presetAction.loading ||
+    createFromPresetAction.loading;
 
   const openCatalogue = () => {
     setEditing(undefined);
@@ -717,6 +774,10 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
             void loadAction.refetch();
           }}
           onReset={() => void resetAction.run()}
+          onApplyPreset={(preset) => void presetAction.run(preset)}
+          onCreateFromPreset={(preset) =>
+            void createFromPresetAction.run(preset)
+          }
           busy={busy}
           lead={
             <ProjectDashboardSelector

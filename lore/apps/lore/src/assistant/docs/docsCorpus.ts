@@ -265,6 +265,12 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Dashboard",
+    section: "Presets",
+    url: "https://alepha.dev/lore/docs/project-dashboard#presets",
+    text: "The menu at the right of a dashboard's header has **Presets**: ready-made\nlayouts, for anyone who may change the project.\n\n| Preset              | What it shows                                                       |\n| ------------------- | ------------------------------------------------------------------- |\n| **Apps and vitals** | Health, visitors, errors, uptime and quality of the project's apps. |\n| **Requirements**    | Coverage, what is left to cover, use case and persona health.       |\n| **Triage**          | What waits on someone: feedback, errors, held quests, the feed.     |\n| **Delivery**        | Where the next releases stand, and the epics and quests in flight.  |\n\n**Apply to this board** replaces every card on the dashboard on screen with the\npreset's, for everyone, after Lore asks. To change it again, apply another\npreset, or reset the first dashboard to default. **New dashboard from a preset**\nstarts a new dashboard with the preset's cards and replaces nothing.\n\nA preset whose capability or option is off in the project is listed greyed out,\nsaying what to turn on. A card the project cannot show (uptime without its\noption, say) is left out when the preset is applied...",
+  },
+  {
+    guide: "Dashboard",
     section: "Reset to default",
     url: "https://alepha.dev/lore/docs/project-dashboard#reset-to-default",
     text: "A customized first dashboard has **Reset to default** in the menu at the right\nof its header.\n\n⚠️ **Reset deletes every card on the dashboard, for everyone.** Every member\nthen sees the default dashboard again, built from what the project does. Lore\nasks before it does.\n\nReset exists on the first dashboard only, since it is the only one with a\ndefault to return to. Another dashboard is emptied card by card, or deleted.",

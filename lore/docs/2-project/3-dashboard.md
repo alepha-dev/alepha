@@ -252,6 +252,27 @@ or a release that has been published, keeps its card. Both are done by
 definition, so the number is settled rather than stale, and the card says
 which. To point it somewhere else, use **Change scope** in the card's menu.
 
+## Presets
+
+The menu at the right of a dashboard's header has **Presets**: ready-made
+layouts, for anyone who may change the project.
+
+| Preset              | What it shows                                                       |
+| ------------------- | ------------------------------------------------------------------- |
+| **Apps and vitals** | Health, visitors, errors, uptime and quality of the project's apps. |
+| **Requirements**    | Coverage, what is left to cover, use case and persona health.       |
+| **Triage**          | What waits on someone: feedback, errors, held quests, the feed.     |
+| **Delivery**        | Where the next releases stand, and the epics and quests in flight.  |
+
+**Apply to this board** replaces every card on the dashboard on screen with the
+preset's, for everyone, after Lore asks. To change it again, apply another
+preset, or reset the first dashboard to default. **New dashboard from a preset**
+starts a new dashboard with the preset's cards and replaces nothing.
+
+A preset whose capability or option is off in the project is listed greyed out,
+saying what to turn on. A card the project cannot show (uptime without its
+option, say) is left out when the preset is applied.
+
 ## Reset to default
 
 A customized first dashboard has **Reset to default** in the menu at the right

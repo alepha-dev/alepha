@@ -12,6 +12,7 @@ import {
 import { type Project, projects } from "../entities/projects.ts";
 import { dashboardCardResourceSchema } from "../schemas/dashboardCardResourceSchema.ts";
 import { dashboardCardValueSchema } from "../schemas/dashboardCardValueSchema.ts";
+import { dashboardPresetKeySchema } from "../schemas/dashboardPresetKeySchema.ts";
 import {
   type DashboardScope,
   dashboardScopeSchema,
@@ -22,6 +23,7 @@ import { DashboardMetricRegistry } from "../services/DashboardMetricRegistry.ts"
 import { DashboardScopeService } from "../services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "../services/DashboardSlotRegistry.ts";
 import { ProjectDashboardCardService } from "../services/ProjectDashboardCardService.ts";
+import { ProjectDashboardPresets } from "../services/ProjectDashboardPresets.ts";
 import { ProjectDashboardService } from "../services/ProjectDashboardService.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 
@@ -88,6 +90,7 @@ import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
  */
 export class ProjectDashboardController {
   protected readonly cards = $inject(ProjectDashboardCardService);
+  protected readonly layouts = $inject(ProjectDashboardPresets);
   protected readonly dashboards = $inject(ProjectDashboardService);
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly registry = $inject(DashboardMetricRegistry);
@@ -143,14 +146,22 @@ export class ProjectDashboardController {
     path: "/projects/:projectId/dashboards",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      body: z.object({ name: z.string().min(1).max(60) }),
+      body: z.object({
+        name: z.string().min(1).max(60),
+        /**
+         * A ready-made layout to start from (#Q3831). Absent opens it empty.
+         */
+        preset: dashboardPresetKeySchema.optional(),
+      }),
       response: dashboardSummarySchema,
     },
-    handler: async ({ params, body }) =>
-      this.dashboards.toSummary(
-        await this.dashboards.create(params.projectId, body.name),
-        false,
-      ),
+    handler: async ({ params, body }) => {
+      const made = await this.dashboards.create(params.projectId, body.name);
+      if (body.preset) {
+        await this.layouts.apply(params.projectId, made.id, body.preset);
+      }
+      return this.dashboards.toSummary(made, false);
+    },
   });
 
   /**
@@ -405,6 +416,31 @@ export class ProjectDashboardController {
         ),
       };
     },
+  });
+
+  /**
+   * Apply a ready-made layout (#Q3831): the dashboard's cards are replaced
+   * by the preset's. The page confirms first, as for Reset to default;
+   * resetting or applying another preset undoes it. Refused, naming what to
+   * turn on, when the project lacks what the preset needs.
+   */
+  applyProjectDashboardPreset = $action({
+    use: [this.ownsProject("project:update")],
+    method: "POST",
+    path: "/projects/:projectId/dashboard/preset",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: ProjectDashboardController.onDashboard,
+      body: z.object({ preset: dashboardPresetKeySchema }),
+      response: z.object({ cards: z.array(dashboardCardResourceSchema) }),
+    },
+    handler: async ({ params, query, body }) => ({
+      cards: await this.layouts.apply(
+        params.projectId,
+        query.dashboardId,
+        body.preset,
+      ),
+    }),
   });
 
   /**
