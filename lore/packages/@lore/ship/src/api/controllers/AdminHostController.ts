@@ -8,7 +8,7 @@ import { $secure } from "alepha/security";
 import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
 
 import { hostProjects } from "../entities/hostProjects.ts";
-import { hosts } from "../entities/hosts.ts";
+import { HOST_TYPES, hosts } from "../entities/hosts.ts";
 import { adminHostResourceSchema } from "../schemas/adminHostResourceSchema.ts";
 import { hostSlugSchema } from "../schemas/hostSlugSchema.ts";
 import { HostCloudflareService } from "../services/HostCloudflareService.ts";
@@ -49,6 +49,17 @@ export class AdminHostController {
     schema: {
       query: pageQuerySchema.extend({
         search: z.string().optional(),
+        type: z.enum(HOST_TYPES).optional(),
+        /**
+         * Derived, like the row's `online`: connected after the last
+         * disconnect, and heard from within twice its stats interval.
+         */
+        state: z.enum(["online", "offline"]).optional(),
+        /**
+         * Cloudflare only, like the row's `credentialStatus`: a bay host
+         * has none, so it never matches either value.
+         */
+        credentialStatus: z.enum(["valid", "invalid"]).optional(),
       }),
       response: db.page(adminHostResourceSchema),
     },
@@ -56,6 +67,30 @@ export class AdminHostController {
       const where = this.hosts.createQueryWhere();
       if (query.search) {
         where.slug = { ilike: `%${query.search}%` };
+      }
+      if (query.type) {
+        where.type = { eq: query.type };
+      }
+      if (query.state || query.credentialStatus) {
+        // Both are derived from timestamps against now and a per-row
+        // interval, so no column holds them. The hosts of an instance are
+        // few: read the candidates the other filters leave, keep the ids
+        // that match, and page over those, so paging and the count stay
+        // exact (#Q3800).
+        const candidates = await this.hosts.findMany({ where });
+        const ids = candidates
+          .filter(
+            (host) =>
+              (!query.state ||
+                this.service.isOnline(host) === (query.state === "online")) &&
+              (!query.credentialStatus ||
+                this.cloudflare.credentialStatus(host) ===
+                  query.credentialStatus),
+          )
+          .map((host) => host.id);
+        // `inArray: []` throws: an id is never null, so this matches nothing
+        // and the page comes back empty with its count.
+        where.id = ids.length ? { inArray: ids } : { isNull: true };
       }
       query.sort ??= "-createdAt";
 
