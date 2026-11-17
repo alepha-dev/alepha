@@ -1,4 +1,13 @@
 version: 2
+
+# Dependabot is a repository setting, not a workflow: its pull requests run
+# Verify like any other and land through the merge queue.
+#
+# The yarn and Go entries wait out a `cooldown` before proposing a release
+# (#Q3838). Yarn 4 refuses any version published less than 24 hours ago
+# (`npmMinimalAgeGate`), so a pull request for a day-old release would fail
+# its install; three days clears that with room, and lets a broken release
+# be pulled before it is proposed here.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -9,3 +18,34 @@ updates:
     directory: "/.github/actions/setup"
     schedule:
       interval: "weekly"
+
+  # Bay's Go modules: one pull request a week for every update.
+  - package-ecosystem: "gomod"
+    directory: "/bay"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      bay:
+        patterns:
+          - "*"
+
+  # The one yarn project, at the root: its `yarn.lock` and the workspaces
+  # `framework`, `lore` and `docs` declare. Minor and patch updates are one
+  # pull request a week; a major is a pull request of its own, since it may
+  # need code changes. The framework's own packages resolve by `workspace:*`
+  # and never come from the registry.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      yarn:
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
