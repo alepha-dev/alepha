@@ -1,6 +1,7 @@
 import { LorePlanWeb } from "@lore/plan/web";
 import { $module } from "alepha";
 
+import { RequirementsDashboardMetrics } from "../api/services/RequirementsDashboardMetrics.ts";
 import { currentPersonaAtom } from "./app/atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "./app/atoms/currentUseCaseAtom.ts";
 import { RequirementsRouter } from "./app/RequirementsRouter.ts";
@@ -30,6 +31,9 @@ export const LorePlanRequirementsWeb = $module({
     // would register the whole module.
     alepha.with(RequirementsRouter);
     alepha.inject(RequirementsShell);
+    // The dashboard cards' declarative half, which the browser needs to
+    // draw the tiles (#Q3775).
+    alepha.inject(RequirementsDashboardMetrics);
   },
 });
 

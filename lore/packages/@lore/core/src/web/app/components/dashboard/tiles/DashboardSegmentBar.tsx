@@ -18,7 +18,23 @@ export interface DashboardSegmentBarProps {
  * The segment labels the locale names. Anything else is the reader's own
  * word (an area, a tag) and is shown as written.
  */
-const NAMED = new Set(["done", "inProgress", "todo", "shelved", "held"]);
+const NAMED = new Set([
+  "done",
+  "inProgress",
+  "todo",
+  "shelved",
+  "held",
+  // Plan's Requirements cards (#E153).
+  "verified",
+  "failing",
+  "devPlanned",
+  "specified",
+  "notCovered",
+  "passed",
+  "failed",
+  "inDevelopment",
+  "neverRun",
+]);
 
 /**
  * A stacked bar, each part as wide as its share of the total.

@@ -1,0 +1,260 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c8b7d64f-9b45-482a-8b4d-bd76bf731cff",
+  "prevIds": ["26e5215e-2d14-453a-b6b1-6adb95864586"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "requirements_coverage_days"],
+      "writes": [
+        "s|tbl|public.requirements_coverage_days",
+        "n|tbl|public.requirements_coverage_days",
+        "e|tbl|public.requirements_coverage_days",
+        "n|rel|public.requirements_coverage_days",
+        "n|type|public.requirements_coverage_days",
+        "n|rel|public.requirements_coverage_days_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "requirements_coverage_days",
+        "requirements_coverage_days_project_id_scope_day_idx"
+      ],
+      "writes": [
+        "s|idx|public.requirements_coverage_days_project_id_scope_day_idx",
+        "n|idx|public.requirements_coverage_days_project_id_scope_day_idx",
+        "e|idx|public.requirements_coverage_days_project_id_scope_day_idx",
+        "n|rel|public.requirements_coverage_days_project_id_scope_day_idx"
+      ],
+      "reads": [
+        "n|tbl|public.requirements_coverage_days",
+        "n|sch|public",
+        "n|col|public.requirements_coverage_days.project_id",
+        "n|col|public.requirements_coverage_days.scope",
+        "n|col|public.requirements_coverage_days.day"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "requirements_coverage_days"],
+      "writes": [
+        "s|fk|public.requirements_coverage_days.requirements_coverage_days_project_id_projects_id_fkey",
+        "n|fk|public.requirements_coverage_days.requirements_coverage_days_project_id_projects_id_fkey",
+        "e|fk|public.requirements_coverage_days.requirements_coverage_days_project_id_projects_id_fkey",
+        "n|con|public.requirements_coverage_days.requirements_coverage_days_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.requirements_coverage_days",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.requirements_coverage_days.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "requirements_coverage_days",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": {
+          "type": "always",
+          "name": "requirements_coverage_days_id_seq",
+          "increment": "1",
+          "startWith": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": 1,
+          "cycle": false
+        },
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "day",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "scope",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "verified",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "covered",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "total",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "requirements_coverage_days_project_id_scope_day_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "scope",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "day",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "requirements_coverage_days_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirements_coverage_days",
+        "name": "requirements_coverage_days_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

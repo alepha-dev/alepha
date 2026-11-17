@@ -241,6 +241,42 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
       });
     }
     if (props.metric === "cycleTime") return tr("dashboard.footer.cycleTime");
+    // Plan's Requirements cards (#E153, #Q3775).
+    if (props.metric === "requirementCoverage") {
+      return tr("dashboard.footer.requirementCoverage", {
+        args: [String(detail.verified ?? 0), String(detail.total ?? 0)],
+      });
+    }
+    if (props.metric === "releaseReadiness") {
+      return tr(
+        detail.failing
+          ? "dashboard.footer.releaseReadiness.failing"
+          : "dashboard.footer.releaseReadiness",
+        {
+          args: [
+            String(detail.mustVerified ?? 0),
+            String(detail.mustTotal ?? 0),
+            String(detail.shouldVerified ?? 0),
+            String(detail.shouldTotal ?? 0),
+            String(detail.failing ?? ""),
+          ],
+        },
+      );
+    }
+    if (props.metric === "useCaseHealth") {
+      return tr("dashboard.footer.useCaseHealth", {
+        args: [
+          String(detail.passed ?? 0),
+          String(detail.total ?? 0),
+          String(detail.stale ?? 0),
+        ],
+      });
+    }
+    if (props.metric === "requirementCoverageTrend") {
+      return tr("dashboard.footer.requirementCoverageTrend", {
+        args: [String(detail.covered ?? 0)],
+      });
+    }
     if (props.metric === "boardColumns") {
       return tr("dashboard.footer.boardColumns", {
         args: [String(props.value?.value ?? 0)],

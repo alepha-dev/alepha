@@ -14,6 +14,7 @@ import { personas } from "../entities/personas.ts";
 import { requirementMetricDays } from "../entities/requirementMetricDays.ts";
 import { requirements } from "../entities/requirements.ts";
 import { requirementsComments } from "../entities/requirementsComments.ts";
+import { requirementsCoverageDays } from "../entities/requirementsCoverageDays.ts";
 import { technicalEpics } from "../entities/technicalEpics.ts";
 import { useCaseRuns } from "../entities/useCaseRuns.ts";
 import { useCases } from "../entities/useCases.ts";
@@ -36,6 +37,7 @@ export class RequirementsProjectMerge {
   protected readonly runs = $repository(useCaseRuns);
   protected readonly metricDays = $repository(requirementMetricDays);
   protected readonly technical = $repository(technicalEpics);
+  protected readonly coverageDays = $repository(requirementsCoverageDays);
 
   constructor() {
     this.merge.registerStep({
@@ -53,6 +55,7 @@ export class RequirementsProjectMerge {
         "use_case_runs",
         "requirement_metric_days",
         "requirement_technical_epics",
+        "requirements_coverage_days",
       ],
       plan: (context) => this.plan(context),
       rewrite: (context, rewriter) => this.rewrite(context, rewriter),
@@ -159,6 +162,18 @@ export class RequirementsProjectMerge {
     });
     plan.statements.push(
       this.technical.updateStatement(
+        { projectId: { eq: context.sourceProjectId } },
+        { projectId: context.targetProjectId },
+        projectMergeWrite,
+      ),
+    );
+    // The source's history moves as it is: its days and the target's stay
+    // separate rows, read per project.
+    plan.moved.requirements_coverage_days = await this.coverageDays.count({
+      projectId: { eq: context.sourceProjectId },
+    });
+    plan.statements.push(
+      this.coverageDays.updateStatement(
         { projectId: { eq: context.sourceProjectId } },
         { projectId: context.targetProjectId },
         projectMergeWrite,

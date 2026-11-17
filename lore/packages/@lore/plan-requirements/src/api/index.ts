@@ -11,6 +11,7 @@ import { RequirementsPromptController } from "./controllers/RequirementsPromptCo
 import { RunController } from "./controllers/RunController.ts";
 import { UseCaseController } from "./controllers/UseCaseController.ts";
 import { RequirementMetricJobs } from "./jobs/RequirementMetricJobs.ts";
+import { RequirementsCoverageJobs } from "./jobs/RequirementsCoverageJobs.ts";
 import { RequirementsRetentionJobs } from "./jobs/RequirementsRetentionJobs.ts";
 import { PersonaResourceKind } from "./resources/PersonaResourceKind.ts";
 import { RequirementResourceKind } from "./resources/RequirementResourceKind.ts";
@@ -18,10 +19,14 @@ import { UseCaseResourceKind } from "./resources/UseCaseResourceKind.ts";
 import { PersonaInsightService } from "./services/PersonaInsightService.ts";
 import { RequirementCoverageService } from "./services/RequirementCoverageService.ts";
 import { RequirementMetricService } from "./services/RequirementMetricService.ts";
+import { RequirementsAttentionSources } from "./services/RequirementsAttentionSources.ts";
 import { RequirementsBuckets } from "./services/RequirementsBuckets.ts";
 import { RequirementsCommentService } from "./services/RequirementsCommentService.ts";
+import { RequirementsCoverageSnapshot } from "./services/RequirementsCoverageSnapshot.ts";
+import { RequirementsDashboardMetrics } from "./services/RequirementsDashboardMetrics.ts";
 import { RequirementService } from "./services/RequirementService.ts";
 import { RequirementsFileAccess } from "./services/RequirementsFileAccess.ts";
+import { RequirementsMetricResolvers } from "./services/RequirementsMetricResolvers.ts";
 import { RequirementSourceWatcher } from "./services/RequirementSourceWatcher.ts";
 import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts";
 import { RequirementsPromptService } from "./services/RequirementsPromptService.ts";
@@ -64,6 +69,11 @@ export const LorePlanRequirementsApi = $module({
     RequirementService,
     RequirementCoverageService,
     RequirementsReleaseGuard,
+    RequirementsDashboardMetrics,
+    RequirementsMetricResolvers,
+    RequirementsAttentionSources,
+    RequirementsCoverageSnapshot,
+    RequirementsCoverageJobs,
     SourceSectionService,
     // Source changed: Remember's `folio:revision:created`, listened to here.
     RequirementSourceWatcher,
@@ -94,6 +104,8 @@ export { RunController } from "./controllers/RunController.ts";
 export { PersonaInsightController } from "./controllers/PersonaInsightController.ts";
 export { RequirementCoverageController } from "./controllers/RequirementCoverageController.ts";
 export { RequirementCoverageService } from "./services/RequirementCoverageService.ts";
+export { RequirementsCoverageSnapshot } from "./services/RequirementsCoverageSnapshot.ts";
+export { RequirementsDashboardMetrics } from "./services/RequirementsDashboardMetrics.ts";
 export { PersonaInsightService } from "./services/PersonaInsightService.ts";
 export { RequirementMetricService } from "./services/RequirementMetricService.ts";
 export { RequirementsPromptController } from "./controllers/RequirementsPromptController.ts";
