@@ -89,6 +89,14 @@ export class ArtifactUploader {
         })
         .loose(),
       stored: z.boolean(),
+      /**
+       * The quest set Lore now keeps for the pushed commit (#E154). Absent
+       * from an older Lore, or when no quests were sent.
+       */
+      quests: z
+        .object({ count: z.integer(), complete: z.boolean() })
+        .loose()
+        .optional(),
     })
     .loose();
 
@@ -111,6 +119,14 @@ export class ArtifactUploader {
     // boundary, so a quote cannot break the message.
     if (input.manifest) {
       fields.manifest = input.manifest;
+    }
+    // The quests the commit's history references (#E154): JSON, one line,
+    // sent before `file` like `manifest`. An older Lore ignores the field.
+    if (input.quests) {
+      fields.quests = input.quests;
+    }
+    if (input.dirty !== undefined) {
+      fields.dirty = input.dirty ? "true" : "false";
     }
 
     for (let attempt = 0; ; attempt++) {
@@ -168,6 +184,7 @@ export class ArtifactUploader {
         body: this.body(boundary, fields, input.filename, stream, {
           assets: input.assets,
           schema: input.schema,
+          commits: input.commits,
         }),
         schema: { response: ArtifactUploader.RESPONSE },
       } as never,
@@ -220,7 +237,7 @@ export class ArtifactUploader {
     fields: Record<string, string>,
     filename: string,
     file: AsyncIterable<unknown>,
-    { assets, schema }: ArtifactUploadExtras = {},
+    { assets, schema, commits }: ArtifactUploadExtras = {},
   ): AsyncGenerator<Uint8Array> {
     const encoder = new TextEncoder();
 
@@ -252,6 +269,18 @@ export class ArtifactUploader {
         "schema",
         "schema.json",
         [encoder.encode(schema)],
+        "application/json",
+      );
+    }
+
+    // The shas the quest walk read (#E154), a JSON array: a first push walks
+    // the whole history, past what a text field should carry.
+    if (commits) {
+      yield* this.filePart(
+        boundary,
+        "commits",
+        "commits.json",
+        [encoder.encode(commits)],
         "application/json",
       );
     }
@@ -342,6 +371,24 @@ export interface ArtifactUploadInput {
    * as the `schema` part when present. An older Lore ignores the part.
    */
   schema?: string;
+
+  /**
+   * The quest set part (#E154), JSON: `{ version: 1, base?, numbers,
+   * complete }`. Sent only with a commit.
+   */
+  quests?: string;
+
+  /**
+   * The shas the quest walk read, a JSON array (#E154): sent as the
+   * `commits` part when present.
+   */
+  commits?: string;
+
+  /**
+   * Tracked changes in the working tree (#E154). Absent when git could not
+   * say.
+   */
+  dirty?: boolean;
 }
 
 /**
@@ -350,6 +397,7 @@ export interface ArtifactUploadInput {
 export interface ArtifactUploadExtras {
   assets?: string;
   schema?: string;
+  commits?: string;
 }
 
 export interface ArtifactUploaded {
@@ -364,4 +412,8 @@ export interface ArtifactUploaded {
    * False when Lore already held these exact bytes, which is a success.
    */
   stored: boolean;
+  /**
+   * The full quest set Lore keeps for the commit (#E154).
+   */
+  quests?: { count: number; complete: boolean };
 }

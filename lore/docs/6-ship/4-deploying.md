@@ -266,6 +266,11 @@ The first builds the app, the second stores the build in your project. Both
 take `--project <slug>` (or `LORE_PROJECT`), and sign in with `lore login` or
 with `LORE_API_KEY` in CI. See [Artifacts](/lore/docs/ship-artifacts).
 
+The push also records which quests the commit's history references, so every
+copy that later runs this build knows which quests are live on it, whichever
+way it is deployed or rolled back. See
+[What a push records](/lore/docs/ship-artifacts#what-a-push-records).
+
 ⚠️ `latest` is the default tag and the **only** one whose build may be
 replaced. Two copies both showing `latest` may be running different code. Name
 a real tag for anything you intend to promote.

@@ -1,13 +1,18 @@
+import type { LiveQuestController } from "@lore/ship/api";
 import { $env, $inject, z } from "alepha";
 import { WorkspacePacker } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 
 import { ArtifactAssetLister } from "./ArtifactAssetLister.ts";
 import { ArtifactUploader } from "./ArtifactUploader.ts";
 import { GitContextService } from "./GitContextService.ts";
+import { GitQuestHistory, type QuestWalk } from "./GitQuestHistory.ts";
+import { LoreClientService } from "./LoreClientService.ts";
+import { LoreProjectLink } from "./LoreProjectLink.ts";
 import { LoreProjectResolver } from "./LoreProjectResolver.ts";
 
 /**
@@ -36,6 +41,12 @@ export class LoreArtifactPusher {
   protected readonly assetLister = $inject(ArtifactAssetLister);
   protected readonly git = $inject(GitContextService);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly history = $inject(GitQuestHistory);
+  protected readonly link = $inject(LoreProjectLink);
+  protected readonly client = $inject(LoreClientService);
+  protected readonly liveQuests = $client<LiveQuestController>(
+    this.client.scope(),
+  );
 
   /**
    * ⚠️ Declared through `$env` rather than read off `process.env`, for the
@@ -196,6 +207,13 @@ export class LoreArtifactPusher {
       this.projects.resolve(project),
       this.git.resolve(root),
     ]);
+    // The quests this commit's history references, and whether the tree
+    // the build came from had tracked changes (#E154). Never a refusal: a
+    // push that cannot read git sends a partial set and says so.
+    const [walk, tree] = await Promise.all([
+      git.commitSha ? this.walk(root, projectId) : undefined,
+      this.git.dirty(root),
+    ]);
 
     const workDir = this.fs.join(root, LoreArtifactPusher.WORK_DIR);
     await this.fs.mkdir(workDir, { recursive: true });
@@ -226,6 +244,18 @@ export class LoreArtifactPusher {
         manifest: await this.manifestOf(root),
         assets: await this.assetsOf(root),
         schema: await this.schemaOf(root),
+        ...(walk
+          ? {
+              quests: JSON.stringify({
+                version: 1,
+                ...(walk.base ? { base: walk.base } : {}),
+                numbers: walk.numbers,
+                complete: walk.complete,
+              }),
+              commits: JSON.stringify(walk.walked),
+            }
+          : {}),
+        ...(tree ? { dirty: tree.dirty } : {}),
       });
 
       const { artifact } = result;
@@ -238,12 +268,81 @@ export class LoreArtifactPusher {
       // On its own line and unadorned: a later step reads this off the log
       // when it has no `$GITHUB_OUTPUT` to read instead.
       this.log.info(`sha256: ${artifact.sha256}`);
+      this.log.info(this.questLine(walk, tree, result.quests?.count));
+      if (tree?.dirty) {
+        for (const path of tree.paths.slice(0, 5)) {
+          this.log.info(`  modified: ${path}`);
+        }
+      }
+      if (walk?.reason) {
+        this.log.warn(this.partialReason(walk.reason));
+      }
 
       await this.publishOutput(artifact.sha256);
     } finally {
       // A tarball left in `node_modules` is invisible until it is stale.
       // `alepha pack` is what to run when the file itself is wanted.
       await this.fs.rm(archivePath, { force: true });
+    }
+  }
+
+  /**
+   * Walk the commit's history for quest references, from the newest
+   * ancestor Lore already has a complete set for (#E154). A bare `#<n>`
+   * counts when the nearest `.alepha/lore.json` says `bareQuestRefs`.
+   */
+  protected async walk(root: string, projectId: number): Promise<QuestWalk> {
+    const link = await this.link.find(root).catch(() => undefined);
+    return await this.history.walk({
+      root,
+      bare: link?.bareQuestRefs === true,
+      known: async (shas) => {
+        try {
+          return (
+            await this.liveQuests.findKnownCommits({
+              params: { projectId },
+              body: { shas },
+            })
+          ).known;
+        } catch {
+          // An older Lore has no such endpoint: walk the whole history.
+          return undefined;
+        }
+      },
+    });
+  }
+
+  /**
+   * One line: "N quests referenced (complete|partial, since <base> or full
+   * history), clean|dirty".
+   */
+  public questLine(
+    walk: QuestWalk | undefined,
+    tree: { dirty: boolean } | undefined,
+    count: number | undefined,
+  ): string {
+    const state = tree ? (tree.dirty ? "dirty" : "clean") : "dirty unknown";
+    if (!walk) {
+      return `No quests recorded (no commit to record them on), ${state}`;
+    }
+    const n = count ?? walk.numbers.length;
+    const from = walk.base ? `since ${walk.base.slice(0, 12)}` : "full history";
+    return `${n} quest${n === 1 ? "" : "s"} referenced (${walk.complete ? "complete" : "partial"}, ${from}), ${state}`;
+  }
+
+  /**
+   * Why a set is partial, and what fixes it.
+   */
+  public partialReason(reason: NonNullable<QuestWalk["reason"]>): string {
+    switch (reason) {
+      case "shallow":
+        return "The quest set is partial: this clone is shallow and Lore knows none of its commits. Set `fetch-depth: 0` on `actions/checkout`.";
+      case "no-repository":
+        return "The quest set is partial: there is no git repository here.";
+      case "git-failed":
+        return "The quest set is partial: git could not read the history.";
+      case "too-long":
+        return `The quest set is partial: the history walked is longer than the ${GitQuestHistory.MAX_WALKED} commits a push sends.`;
     }
   }
 
