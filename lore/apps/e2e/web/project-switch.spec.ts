@@ -75,10 +75,10 @@ test.describe("Project switch", () => {
   });
 
   /**
-   * The same switch, on the network and frame by frame (#Q3823). No API call
-   * is held here: the batch a request rides in is the subject.
+   * The same switch, on the network and frame by frame (#Q3823, #Q3824). No
+   * API call is held here: the batch a request rides in is the subject.
    */
-  test("from /quests, the quests page neither comes back nor reads the next project", async ({
+  test("from /quests, the slug and the shell go in one request, and the quests page neither comes back nor reads the next project", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -133,8 +133,16 @@ test.describe("Project switch", () => {
     await expect(page.getByTestId("project-page-skeleton")).toHaveCount(0);
     await page.waitForLoadState("networkidle");
 
+    // One round trip for the slug and the shell: the rail's row gave the
+    // reads the id and the capabilities they need.
     const actionsOf = (request: string) =>
       new URLSearchParams(request.split("?")[1] ?? "").get("actions") ?? "";
+    const shell = requests.filter((it) =>
+      actionsOf(it).split(",").includes("getReleases"),
+    );
+    expect(shell).toHaveLength(1);
+    expect(actionsOf(shell[0]).split(",")).toContain("getProjectBySlug");
+    expect(requests.filter((it) => it.includes("/by-slug/"))).toEqual([]);
 
     // The page being left read nothing in the project being opened.
     expect(
