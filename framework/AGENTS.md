@@ -80,7 +80,7 @@ Retired framework names fail immediately and name their replacement.
 
 This folder is the framework. Lore (`../lore`) and Bay (`../bay`) sit beside it in the same repository since 2026-10-25 (#Q2765, see the root `AGENTS.md`), with workflows of their own. Every path in this file is relative to `framework/`.
 
-`main` auto-deploys the showcase (`apps/ui`) and the shop example to Cloudflare with no human gate: **Deploy Framework** (`deploy-framework.yml`) fires once **Verify Framework** (`verify-framework.yml`) succeeds on `main`. The docs site lives in `../docs` since #Q2766 and deploys from **Docs** (`docs.yml`) on `main` and from **Release**: its framework section is always built from the latest release tag, so `main` never publishes an unreleased API. `yarn copy` and `check:docs` here still run the site's generators, which write this folder's `docs/`. A Verify Framework run cancelled by a newer push leaves that commit undeployed until the next green push.
+`main` auto-deploys the showcase (`apps/ui`) and the shop example to Cloudflare with no human gate: **Verify** (`verify.yml`) calls **Deploy** (`deploy.yml`, target `framework`) once `gate (framework)` is green on a push to `main`, after Lore's own deploy when the push carries one. The docs site lives in `../docs` since #Q2766 and deploys the same way (target `docs`) and from **Release**: its framework section is always built from the latest release tag, so `main` never publishes an unreleased API. `yarn copy` and `check:docs` here still run the site's generators, which write this folder's `docs/`. A Verify run on `main` replaced while waiting by a newer push leaves that commit undeployed until the next green push.
 
 ### Lore MCP: the planning memory
 

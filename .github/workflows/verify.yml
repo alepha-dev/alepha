@@ -1,0 +1,1054 @@
+name: Verify
+
+permissions:
+  contents: read
+
+# ────────────────────────────────────────────────────────────────────────
+# Every product's checks, in one workflow (#Q3832): the framework, Lore, Bay
+# and the docs site run as parallel job chains, each skipped when the change
+# does not touch its part of the tree, and each closed by the `gate` job the
+# `main` ruleset requires.
+#
+# Four workflows in all: Verify (this one), Deploy, Release and Nightly.
+# Until #Q3832 this was Verify Framework, Verify Lore, Verify Bay, Verify All
+# and the checks half of Docs, five files left over from three repositories,
+# and the deploys followed two of them BY NAME through `workflow_run`.
+#
+# On a push to `main`, a green product calls `deploy.yml` for itself from the
+# `deploy-*` jobs at the bottom. Each deploy waits on its own product's gate
+# only, so a red Bay never holds Lore back, and the framework apps and the
+# docs wait on Lore's deploy, since they deploy THROUGH Lore with the `lore`
+# CLI of the same commit: an API rename used to fail Deploy Framework, which
+# always finished first.
+# ────────────────────────────────────────────────────────────────────────
+on:
+  # A pull request is how every change reaches main, so a branch push alone
+  # runs nothing. No `paths` filter anywhere (#Q3633): a gate is a required
+  # check, and a workflow a `paths` filter skips never reports one, which
+  # leaves a pull request waiting forever. The `changes` job filters instead.
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  # The merge queue (#Q3688): a pull request is tested again on top of main
+  # and of every pull request queued ahead of it, and merges only if that is
+  # green too. Two pull requests green alone can be red together (four
+  # migrations on one snapshot, 2026-11-15). Nothing deploys from a queue
+  # run: its event is `merge_group` and its ref `gh-readonly-queue/main/...`.
+  merge_group:
+    types: [checks_requested]
+  # By hand, on any ref: every product, whatever changed. It deploys nothing,
+  # even on `main`: checking is not shipping, and Deploy has its own dispatch.
+  #
+  #   gh workflow run verify.yml --ref <branch>
+  workflow_dispatch:
+  # Nightly, every product. The called run sees Nightly's event, so the
+  # `deploy-*` jobs skip.
+  workflow_call:
+
+concurrency:
+  # Namespaced by event, so a dispatch and a push on the same ref never cancel
+  # each other, and per ref, so two pull requests never do either.
+  group: verify-${{ github.event_name }}-${{ github.ref }}
+  # A newer push supersedes a branch run, never a main one (#Q3687): with
+  # pull requests merging every few minutes, cancelling on main left no run
+  # to finish, and the deploys a green one calls never ran. GitHub keeps the
+  # main run going and only the newest one waiting.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# Where a `lore` command reports. Not a secret: a project slug is in every URL
+# Lore serves; `LORE_API_KEY` is the secret, and it stays on the steps that
+# need it. It is declared once, at the top, because it used to come from
+# whichever `alepha.config.ts` a step's directory held, and the 0.28.0 release
+# shipped without Lore's artifact when one held none.
+#
+# ⚠️ It reaches the suites too (a spec container merges over `process.env`):
+# dropping it is a change to the environment the tests run in, not a tidy-up.
+env:
+  LORE_PROJECT: alepha
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────
+  # Which products this change touches. A pull request reads its files, a
+  # merge queue group and a push to `main` diff their commits; anything else
+  # (a dispatch, Nightly) runs every product.
+  #
+  # Lore builds on the framework's source and its e2e builds Bay, so a change
+  # to either runs Lore too: that is why the three share one repository.
+  # ──────────────────────────────────────────────────────────────────────
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      framework: ${{ steps.diff.outputs.framework }}
+      lore: ${{ steps.diff.outputs.lore }}
+      bay: ${{ steps.diff.outputs.bay }}
+      docs: ${{ steps.diff.outputs.docs }}
+    steps:
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          GROUP_BASE: ${{ github.event.merge_group.base_sha }}
+          GROUP_HEAD: ${{ github.event.merge_group.head_sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
+        run: |
+          compare() {
+            gh api "repos/$GITHUB_REPOSITORY/compare/$1...$2?per_page=100" --paginate --jq '.files[].filename'
+          }
+          case "$GITHUB_EVENT_NAME" in
+            pull_request)
+              files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename') ;;
+            merge_group)
+              # Every commit the group adds to main: this pull request's and
+              # those queued ahead of it.
+              files=$(compare "$GROUP_BASE" "$GROUP_HEAD") ;;
+            push)
+              if [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ]; then
+                files=ALL
+              else
+                files=$(compare "$PUSH_BEFORE" "$PUSH_AFTER")
+              fi ;;
+            *)
+              files=ALL ;;
+          esac
+          # The compare API lists 300 files at most: past that, a product
+          # could be missing from the list, so run everything.
+          if [ "$files" != ALL ] && [ "$(printf '%s\n' "$files" | wc -l)" -ge 300 ]; then
+            files=ALL
+          fi
+
+          shared='\.github/workflows/verify\.yml$|\.github/actions/|package\.json$|yarn\.lock$|\.yarnrc\.yml$|\.nvmrc$'
+          product() {
+            if [ "$files" = ALL ] || printf '%s\n' "$files" | grep -qE "$2"; then
+              echo "$1=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$1=false" >> "$GITHUB_OUTPUT"
+              echo "No file of the $1 part of the tree changed: its jobs skip."
+            fi
+          }
+          # The framework, plus the docs generators its `yarn copy` and
+          # `check:docs` run (#Q2766), and Bay's owned env keys, which
+          # `BayAdapter.spec.ts` pins the framework's mirror against (#Q2763).
+          product framework "^(framework/|docs/scripts/|bay/internal/deploy/deploy\.go$|$shared)"
+          product lore "^(lore/|framework/|bay/|$shared)"
+          product bay '^(bay/|\.github/workflows/verify\.yml$)'
+          product docs "^(docs/|framework/docs/|lore/docs/|bay/docs/|$shared)"
+
+  # ══════════════════════════════════════════════════════════════════════
+  # The framework, in `framework/`. Together these jobs are `yarn v`, split so
+  # a red one says which half without waiting for the other.
+  # ══════════════════════════════════════════════════════════════════════
+
+  # ──────────────────────────────────────────────────────────────────────
+  # The static half of `yarn v`: lint, typecheck and every `check:*`.
+  #
+  # ⚠️ The service containers are kept, and kept UNPROVEN. Nothing in these
+  # steps obviously wants postgres, but `check:migrations` boots each app's
+  # server entry through `loadAlephaFromServerEntryFile`, and whether that
+  # connects has never been tested: this half has always run with the
+  # containers already up. Dropping them is worth ~16s and is a deliberate
+  # experiment, not a tidy-up.
+  # ──────────────────────────────────────────────────────────────────────
+  framework-checks:
+    needs: changes
+    if: needs.changes.outputs.framework == 'true'
+    runs-on: ubuntu-latest
+    # A hang detector, not a budget. Public-repo minutes are free and the
+    # GitHub cap is 6 hours, so a generous number costs nothing while a tight
+    # one costs a blocked deploy.
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: framework
+    services:
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3:
+        image: versity/versitygw:v1.8.0
+        ports:
+          - 19090:7070
+        env:
+          VGW_BACKEND: posix
+          VGW_BACKEND_ARG: /data
+          VGW_REGION: eu-west-1
+          VGW_QUIET: "true"
+          ROOT_ACCESS_KEY: mock
+          ROOT_SECRET_KEY: mock
+        options: --tmpfs /data:size=4g
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
+
+      - name: Lint Project
+        run: yarn lint
+
+      - name: TypeScript Check
+        run: yarn typecheck
+
+      - name: Dependencies Check
+        run: yarn check:deps
+
+      - name: DB Migrations Check
+        run: yarn check:migrations
+
+      - name: Conventions Check
+        run: yarn check:conventions
+
+      - name: Docs Check
+        run: yarn check:docs
+
+  # ──────────────────────────────────────────────────────────────────────
+  # The unit and integration suite, sharded six ways with
+  # `alepha test --shard i/6` (#Q2479).
+  #
+  # ⚠️ Six is where this job stopped being the critical path, measured on run
+  # #1691: ~89s of fixed setup per shard and ~1192s of shardable work. Past
+  # six the extra shards finish early and wait, and each costs another draw
+  # from a flake distribution this repository knows is environmental.
+  # Vitest shards by sha1 of the spec's path into equal COUNTS, not by
+  # duration, which balances well over ~870 spec files.
+  #
+  # Coverage is NOT measured here. It lives in `nightly.yml`, which carries
+  # the reasoning: read it before moving coverage back.
+  # ──────────────────────────────────────────────────────────────────────
+  framework-test:
+    needs: changes
+    if: needs.changes.outputs.framework == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: framework
+    strategy:
+      # A failing shard must not cancel its siblings: the point of running
+      # the suite is to learn everything that is broken.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    services:
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3:
+        image: versity/versitygw:v1.8.0
+        ports:
+          - 19090:7070
+        env:
+          VGW_BACKEND: posix
+          VGW_BACKEND_ARG: /data
+          VGW_REGION: eu-west-1
+          VGW_QUIET: "true"
+          ROOT_ACCESS_KEY: mock
+          ROOT_SECRET_KEY: mock
+        options: --tmpfs /data:size=4g
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      # `yarn copy` minus its `yarn lint`, which is `framework-checks`' job.
+      # oxfmt stays: the generators write unformatted pages and the committed
+      # copies are the formatted ones.
+      #
+      # ⚠️ **`--exclude alepha-monorepo` is load-bearing**: the root has a
+      # `copy` script of its own, `foreach run copy && yarn lint`, so without
+      # the exclude every generator runs twice, concurrently, and the lint
+      # after all.
+      - name: Prepare
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
+
+      # No `--coverage`: that flag is Nightly's, and it also turns on the JSON
+      # test reporter. Nothing in this job reads either report.
+      - name: Test Project
+        run: yarn alepha test --shard ${{ matrix.shard }}/6
+
+      # Here rather than in `framework-checks`, because two of the six bun
+      # specs want the service containers above. On one shard only:
+      # `bun test` takes no `--shard`.
+      - name: Test Bun Providers
+        if: matrix.shard == 1
+        run: yarn test:bun
+
+  # The unit suite again, on Node 24: the floor every public package declares
+  # in `engines.node` (#Q2687). This lane keeps `>=24.0.0` a tested claim.
+  framework-test-node24:
+    needs: changes
+    if: needs.changes.outputs.framework == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: framework
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    services:
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3:
+        image: versity/versitygw:v1.8.0
+        ports:
+          - 19090:7070
+        env:
+          VGW_BACKEND: posix
+          VGW_BACKEND_ARG: /data
+          VGW_REGION: eu-west-1
+          VGW_QUIET: "true"
+          ROOT_ACCESS_KEY: mock
+          ROOT_SECRET_KEY: mock
+        options: --tmpfs /data:size=4g
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          node-version: "24.x"
+
+      - name: Clean
+        run: yarn clean
+
+      # See `framework-test`: the generators and oxfmt, not `yarn lint`.
+      - name: Prepare
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
+
+      - name: Test Project
+        run: yarn alepha test --shard ${{ matrix.shard }}/6
+
+  # ──────────────────────────────────────────────────────────────────────
+  # The MQTT contract suite on a real broker (#E88): `yarn test:broker`, the
+  # cases the shards run on `@alepha/mqtt`'s memory broker, here on
+  # Mosquitto, so the fake cannot drift from reality.
+  #
+  # Mosquitto is started by a step rather than under `services:`: a service
+  # container starts before the checkout, so it cannot mount
+  # `scripts/mosquitto.conf`, and Mosquitto 2 without a config listens on
+  # localhost inside its container only.
+  # ──────────────────────────────────────────────────────────────────────
+  framework-mqtt-broker:
+    needs: changes
+    if: needs.changes.outputs.framework == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: framework
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # The image and config of the `mosquitto` service in compose.yml; keep
+      # the two in step.
+      - name: Start Mosquitto
+        run: |
+          docker run -d --name mosquitto -p 11883:1883 \
+            -v "$PWD/scripts/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro" \
+            --health-cmd "mosquitto_pub -h 127.0.0.1 -t health -m ok" \
+            --health-interval 1s --health-timeout 5s --health-retries 30 \
+            eclipse-mosquitto:2.0.22
+          for i in $(seq 1 60); do
+            if [ "$(docker inspect -f '{{.State.Health.Status}}' mosquitto)" = healthy ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs mosquitto
+          exit 1
+
+      - name: MQTT Contract (Mosquitto)
+        timeout-minutes: 5
+        run: yarn test:broker
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Build + E2E. Each job builds only what it tests: an app needs no package
+  # built, since every framework package's `exports` points at `src/` and
+  # `alepha build` compiles the framework from source into the app's `dist/`.
+  # `framework-e2e-cli` is the exception and keeps `yarn build`: it packs the
+  # workspace, and the tarball carries each package's `dist/`.
+  #
+  # The suites are bounded on the STEP, not just the job: Playwright's
+  # `globalTimeout` covers the tests but not teardown, and teardown is where
+  # this hangs.
+  #
+  # No service containers: every app these jobs build is SQLite or nothing.
+  # ──────────────────────────────────────────────────────────────────────
+  framework-e2e-apps:
+    needs: changes
+    if: needs.changes.outputs.framework == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: framework
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      # See `framework-test`: the generators and oxfmt, not `yarn lint`.
+      - name: Prepare
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
+
+      # The three apps the step below runs that do not build themselves.
+      - name: Build Project
+        run: yarn workspaces foreach -Wpt --include '{ui,shop,ssr}' run build
+
+      - name: Setup Playwright
+        uses: ./.github/actions/playwright
+        with:
+          working-directory: framework
+
+      # ui, examples/shop, examples/ssr, and examples/ai, oidc and totp (which
+      # build themselves in their `start:e2e`).
+      #
+      # ⚠️ **`--exclude alepha-monorepo` is load-bearing.** The root workspace
+      # has an `e2e` script of its own, `foreach -Wpt run e2e`, so dropping
+      # the flag runs every suite a second time, both copies at once: the
+      # first version of this job died on `EADDRINUSE` after 11 minutes that
+      # way. Yarn's recursion guard is keyed on the workspace AND the script
+      # name, so it does not cover a shell calling the script.
+      - name: Run E2E Tests
+        timeout-minutes: 20
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run e2e
+
+  # The accessibility scan of the showcase (#Q3349): axe on every route of
+  # `apps/ui` in light, dark and both colour-blind token sets. Its own job and
+  # Playwright config (`playwright.a11y.config.ts`), off the critical path of
+  # `framework-e2e-apps`. It blocks the framework deploy, on purpose, against
+  # `apps/ui/e2e/a11y-baseline.ts`: a finding missing from it fails, and so
+  # does an entry no finding matches any more.
+  framework-e2e-a11y:
+    needs: changes
+    if: needs.changes.outputs.framework == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: framework
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      # See `framework-test`: the generators and oxfmt, not `yarn lint`.
+      - name: Prepare
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
+
+      - name: Build Showcase
+        run: yarn workspaces foreach -Wpt --include ui run build
+
+      - name: Setup Playwright
+        uses: ./.github/actions/playwright
+        with:
+          working-directory: framework
+
+      - name: Run Accessibility Scan
+        timeout-minutes: 22
+        run: yarn w ui e2e:a11y
+
+  # `yarn pack`s the workspace and installs the tarball into a throwaway
+  # project, so a failure here means a packaging bug rather than a UI one.
+  framework-e2e-cli:
+    needs: changes
+    if: needs.changes.outputs.framework == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: framework
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      # See `framework-test`: the generators and oxfmt, not `yarn lint`.
+      - name: Prepare
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
+
+      # The tarball carries `dist/`, so the build has to have happened.
+      - name: Build Project
+        run: yarn build
+
+      # `cli.e2e.spec.ts` serves the node build under Deno and fails without
+      # it, on purpose: a skipped test is how a green run lies. Only the
+      # current Deno is supported, hence `v2.x` rather than a pin.
+      - name: Setup Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+
+      # `image.e2e.spec.ts` builds, runs and pushes a scaffolded project's
+      # images with `alepha image` (#Q3361), on the runner's Docker.
+      - name: Run CLI E2E Tests
+        timeout-minutes: 10
+        run: yarn e2e-cli
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Lore, in `lore/`.
+  # ══════════════════════════════════════════════════════════════════════
+
+  lore-checks:
+    needs: changes
+    if: needs.changes.outputs.lore == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: lore
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Lint Project
+        run: yarn lint
+
+      # `yarn lint` fixes in place; a diff after it means a commit that was
+      # never linted.
+      - name: Lint Left Nothing To Fix
+        run: git diff --exit-code
+
+      - name: TypeScript Check
+        run: yarn typecheck
+
+      - name: Dependencies Check
+        run: yarn check:deps
+
+      - name: i18n Catalog Check
+        run: yarn check:i18n
+
+      - name: DB Migrations Check
+        run: yarn check:migrations
+
+      - name: Conventions Check
+        run: yarn check:conventions
+
+  lore-test:
+    needs: changes
+    if: needs.changes.outputs.lore == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: lore
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Test Project
+        run: yarn alepha test --shard ${{ matrix.shard }}/2
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Lore on Postgres (#Q3473): Lore's migrations/postgres applied to an empty
+  # database, then the specs that reach Lore's raw SQL, through
+  # `alepha test --dialect postgres`. Only those specs: the whole suite took
+  # 18 to 27 min on one runner, and runs on Postgres in Nightly.
+  #
+  # ⚠️ NOT blocking, on purpose: `continue-on-error` keeps a red run from
+  # failing the Lore gate, so it never holds a deploy back. Lore's raw SQL is
+  # still SQLite-only in places (#E141); drop `continue-on-error` when E141
+  # lands and this job is green.
+  # ──────────────────────────────────────────────────────────────────────
+  lore-test-postgres:
+    needs: changes
+    if: needs.changes.outputs.lore == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: lore
+    env:
+      POSTGRES_TEST_URL: postgres://postgres:postgres@127.0.0.1:15432/postgres
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # Started by hand, not as a service container: a service cannot pass
+      # server flags. Every spec creates and drops a schema of Lore's ~90
+      # tables in parallel, and DROP SCHEMA ... CASCADE takes a lock per
+      # object: at the default 64 the run dies of "out of shared memory". The
+      # larger lock table lives in shared memory, which Docker caps at 64 MB
+      # by default; without `--shm-size` the server crashes mid-run.
+      - name: Start Postgres
+        run: |
+          docker run -d --name postgres -p 15432:5432 --shm-size=1g \
+            -e POSTGRES_DB=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+            postgres -c max_locks_per_transaction=1024
+          until docker exec postgres pg_isready -U postgres; do sleep 1; done
+
+      # A drizzle `--> statement-breakpoint` is a SQL comment, so psql runs
+      # each migration file as it is, in order, and stops at the first error.
+      - name: Apply migrations/postgres
+        run: |
+          docker exec postgres psql -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE lore_migrations"
+          for file in apps/lore/migrations/postgres/*/migration.sql; do
+            echo "Applying $file"
+            docker exec -i postgres psql -U postgres -d lore_migrations -v ON_ERROR_STOP=1 -q < "$file"
+          done
+
+      # The specs naming a module that writes raw SQL (`sql\``, `sql.raw`,
+      # `.execute(`), plus those reaching the uncovered ones through their
+      # controller. Vitest takes each word as a path filter, so `automation-`
+      # picks up a new automation spec unasked; a spec for a new raw-SQL
+      # module elsewhere needs adding here.
+      - name: Test Raw SQL on Postgres
+        run: yarn alepha test --dialect postgres
+        env:
+          VITEST_ARGS: >-
+            apps/lore/test/automation-
+            apps/lore/test/guarded-statements.spec.ts
+            apps/lore/test/sigil-self-report.spec.ts
+            apps/lore/test/home-open-counts.spec.ts
+            apps/lore/test/owns-project-query-count.spec.ts
+            packages/@lore/ship/test/SigilIngest
+            packages/@lore/ship/test/sigil-
+            packages/@lore/ship/test/insights-controller.spec.ts
+            packages/@lore/ship/test/lore-analytics.spec.ts
+            packages/@lore/ship/test/uptime-retention.spec.ts
+            packages/@lore/ship/test/uptime-controller.spec.ts
+            packages/@lore/ship/test/open-error-counter.spec.ts
+            packages/@lore/remember/test/folio-
+            packages/@lore/plan/test/WorkAutomationSelections.spec.ts
+            packages/@lore/plan/test/release-default.spec.ts
+            packages/@lore/plan/test/quest-count.spec.ts
+
+  lore-e2e:
+    needs: changes
+    if: needs.changes.outputs.lore == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: lore
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build Lore
+        run: yarn w lore build
+
+      - name: Setup Playwright
+        uses: ./.github/actions/playwright
+        with:
+          working-directory: lore
+
+      - name: Run E2E Tests
+        timeout-minutes: 20
+        run: yarn w e2e web --shard=${{ matrix.shard }}/6
+
+  lore-e2e-cli:
+    needs: changes
+    if: needs.changes.outputs.lore == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: lore
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build Project
+        run: yarn build
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # The Bay end-to-end builds the real Bay, from `bay/`, against this Lore.
+          go-version-file: bay/go.mod
+          cache-dependency-path: bay/go.sum
+
+      - name: Run CLI E2E Tests
+        timeout-minutes: 10
+        run: yarn e2e-cli
+
+  # The build Release runs, on every change (folio #F1338, #Q3363): the
+  # attested image pushed to a registry on the runner, its attestations
+  # asserted on the index, then the image pulled back for the smoke and the
+  # size checks. A fixed port: the daemon pushes, not this shell.
+  lore-docker:
+    needs: changes
+    if: needs.changes.outputs.lore == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: lore
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Start a registry on the runner
+        run: docker run -d --name registry -p 127.0.0.1:5000:5000 registry:2
+
+      - name: Build the image
+        run: yarn w lore build
+
+      - name: Build and push the attested image
+        run: yarn w lore image:release --tag=127.0.0.1:5000/alepha-dev/lore:ci
+
+      - name: Check the attestations on the index
+        run: node scripts/docker-attestations.ts --image 127.0.0.1:5000/alepha-dev/lore:ci
+
+      - name: Pull the image back
+        run: docker pull 127.0.0.1:5000/alepha-dev/lore:ci
+
+      - name: Smoke test the image
+        run: bash scripts/docker-smoke.sh 127.0.0.1:5000/alepha-dev/lore:ci
+
+      - name: Check the image size budget
+        run: node scripts/docker-size.ts --image 127.0.0.1:5000/alepha-dev/lore:ci
+
+  # ══════════════════════════════════════════════════════════════════════
+  # Bay, the Go module in `bay/`.
+  # ══════════════════════════════════════════════════════════════════════
+
+  bay-check:
+    needs: changes
+    if: needs.changes.outputs.bay == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: bay
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # Read from go.mod so the version lives in exactly one place.
+          go-version-file: bay/go.mod
+          cache-dependency-path: bay/go.sum
+
+      # `gofmt -l` lists misformatted files and exits 0 either way, so the
+      # test has to be on its output.
+      - name: Verify Formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Not gofmt'd:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      # Let's Encrypt's test CA. Without it the ACME issuance test in
+      # internal/tlsconf skips, and the one path that fails silently for 90
+      # days goes untested. Same version as the Dockerfile.
+      - name: Install Pebble
+        run: |
+          go install github.com/letsencrypt/pebble/v2/cmd/pebble@v2.10.1 \
+            github.com/letsencrypt/pebble/v2/cmd/pebble-challtestsrv@v2.10.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      # The runner already has Docker. BAY_REQUIRE_DOCKER turns a missing
+      # daemon into a failure, so the Docker runner's tests can never report
+      # `ok` without having run.
+      - name: Test
+        env:
+          BAY_REQUIRE_DOCKER: "1"
+        run: go test ./...
+
+      - name: Cross-compile for the targets Bay actually runs on
+        run: |
+          for target in amd64 arm64; do
+            echo "→ linux/$target"
+            GOOS=linux GOARCH=$target CGO_ENABLED=0 go build -o /dev/null ./cmd/bay
+          done
+
+  # ══════════════════════════════════════════════════════════════════════
+  # alepha.dev, the site in `docs/`, documenting the three products from
+  # their own folders (#Q2766): the site as the working tree has it, every
+  # section from this commit.
+  # ══════════════════════════════════════════════════════════════════════
+
+  docs-check:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # `gen:docs` then `gen:tree`: the framework's generated reference and
+      # the tree of all three products. `gen:tree` reads the changelog from
+      # the published Lore releases (#Q3638); a fork's pull request has no
+      # secret, and builds the page from the sample instead.
+      - name: Prepare
+        run: yarn copy
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+      - name: Lint Site
+        run: yarn lint
+
+      - name: TypeScript Check
+        run: yarn typecheck
+
+      - name: Test Site
+        run: yarn test
+
+      - name: Build Site
+        run: yarn build
+
+      - name: Setup Playwright
+        uses: ./.github/actions/playwright
+        with:
+          working-directory: docs
+
+      - name: Run E2E Tests
+        timeout-minutes: 15
+        run: yarn e2e
+
+  # ══════════════════════════════════════════════════════════════════════
+  # The gates: the four checks the `main` ruleset and the merge queue require
+  # (#Q3633), by these exact names. Each always runs, so a change that
+  # skipped every job of a product still reports, and fails when any job of
+  # its product failed or was cancelled. A skipped job is a pass.
+  #
+  # ⚠️ A new job joins its product's gate `needs`, or nothing waits for it.
+  # ══════════════════════════════════════════════════════════════════════
+
+  gate-framework:
+    name: gate (framework)
+    needs:
+      - changes
+      - framework-checks
+      - framework-test
+      - framework-test-node24
+      - framework-mqtt-broker
+      - framework-e2e-apps
+      - framework-e2e-a11y
+      - framework-e2e-cli
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed or skipped
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "A job failed or was cancelled." >&2
+          exit 1
+      - run: echo "Green."
+
+  gate-lore:
+    name: gate (lore)
+    needs:
+      - changes
+      - lore-checks
+      - lore-test
+      - lore-test-postgres
+      - lore-e2e
+      - lore-e2e-cli
+      - lore-docker
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed or skipped
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "A job failed or was cancelled." >&2
+          exit 1
+      - run: echo "Green."
+
+  gate-bay:
+    name: gate (bay)
+    needs: [changes, bay-check]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed or skipped
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "A job failed or was cancelled." >&2
+          exit 1
+      - run: echo "Green."
+
+  gate-docs:
+    name: gate (docs)
+    needs: [changes, docs-check]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed or skipped
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "A job failed or was cancelled." >&2
+          exit 1
+      - run: echo "Green."
+
+  # ══════════════════════════════════════════════════════════════════════
+  # The deploys, on a push to `main` only: never on a pull request, a merge
+  # queue group, a dispatch of this workflow or Nightly's call. A product
+  # deploys when this push touched it and its gate is green; Bay deploys from
+  # no workflow, its binaries ship with Release.
+  #
+  # `deploy.yml` carries the deploy jobs themselves and checks the event and
+  # the ref again: these conditions keep the run graph honest, its own keep
+  # the deploy correct.
+  #
+  # ⚠️ The framework apps and the docs wait on Lore's deploy. They deploy
+  # through Lore with this commit's `lore` CLI, which may read an API this
+  # commit changes. A skipped Lore deploy (Lore untouched, or its gate red)
+  # does not hold them; a failed one does.
+  #
+  # A flaky job on `main`: "Re-run failed jobs" reruns it and the deploys
+  # that it skipped.
+  # ══════════════════════════════════════════════════════════════════════
+
+  deploy-lore:
+    needs: [changes, gate-lore]
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && needs.changes.outputs.lore == 'true'
+      && needs.gate-lore.result == 'success'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      target: lore
+    secrets: inherit
+
+  deploy-framework:
+    needs: [changes, gate-framework, deploy-lore]
+    if: >-
+      always()
+      && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && needs.changes.outputs.framework == 'true'
+      && needs.gate-framework.result == 'success'
+      && (needs.deploy-lore.result == 'success' || needs.deploy-lore.result == 'skipped')
+    uses: ./.github/workflows/deploy.yml
+    with:
+      target: framework
+    secrets: inherit
+
+  deploy-docs:
+    needs: [changes, gate-docs, deploy-lore]
+    if: >-
+      always()
+      && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && needs.changes.outputs.docs == 'true'
+      && needs.gate-docs.result == 'success'
+      && (needs.deploy-lore.result == 'success' || needs.deploy-lore.result == 'skipped')
+    uses: ./.github/workflows/deploy.yml
+    with:
+      target: docs
+    secrets: inherit

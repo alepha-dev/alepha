@@ -1,0 +1,348 @@
+name: Deploy
+run-name: Deploy ${{ inputs.target }}
+
+permissions:
+  contents: read
+
+# ────────────────────────────────────────────────────────────────────────
+# Every production deploy but Release's (#Q3832):
+#
+# - `lore`: lore.alepha.app (`lore-production`).
+# - `framework`: the showcase at ui.alepha.dev and the shop demo at
+#   shop.alepha.dev.
+# - `docs`: alepha.dev, each section pinned to how its product ships, and
+#   latest.alepha.dev, every section from `main`.
+#
+# Called by Verify on a push to `main`, once per product whose gate is green.
+# By hand it ships `main` as it stands, WITHOUT waiting for Verify:
+#
+#   gh workflow run deploy.yml --ref main -f target=all
+#
+# for a redeploy, or a hotfix whose branch was already green (#Q2707). Never
+# over a Lore migration Verify has not run on `main`: read "Migration safety
+# on D1" in lore/apps/lore/AGENTS.md. A dispatch from any other ref deploys
+# nothing.
+#
+# Until #Q3832 this was Deploy Framework, Deploy Lore, Deploy All and the
+# deploy half of Docs, and the first two followed a Verify BY NAME through
+# `workflow_run`: renaming one stopped every deploy silently, and Deploy
+# Framework, whose Verify always finished first, raced Deploy Lore.
+#
+# ⚠️ **Every job checks the event and the ref itself.** A pull request or a
+# merge queue run reaches a reusable workflow only if a caller is edited to
+# call it; the conditions below refuse anything but a push or a dispatch on
+# `main` all the same. A fork's pull request carries no secret either.
+#
+# ⚠️ **No job is ever cancelled.** A deploy halfway through has already run
+# its migrations; cancelling it leaves the database ahead of the Worker. Each
+# app has its own concurrency group, so a deploy waits for the one before it.
+# GitHub keeps one waiting per group: a third deploy of the same app replaces
+# the waiting one, which leaves `main` deployed by the newest.
+# ────────────────────────────────────────────────────────────────────────
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: "What to deploy: lore, framework, docs or all"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "What to deploy"
+        required: true
+        type: choice
+        options:
+          - all
+          - lore
+          - framework
+          - docs
+        default: all
+
+# Where every `lore` command reports. Not a secret: `LORE_API_KEY` is, and it
+# stays on the steps that need it.
+env:
+  LORE_PROJECT: alepha
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────
+  # lore.alepha.app. There is no human gate: read "Migration safety on D1" in
+  # lore/apps/lore/AGENTS.md before pushing a migration.
+  #
+  # The repository variable LORE_DEPLOY is the kill switch: anything but
+  # `true` stops every Lore deploy.
+  # ──────────────────────────────────────────────────────────────────────
+  lore:
+    if: >-
+      github.ref == 'refs/heads/main'
+      && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
+      && contains(fromJSON('["all", "lore"]'), inputs.target)
+      && vars.LORE_DEPLOY == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    concurrency:
+      group: deploy-lore
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: lore
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
+      # Not a secret: Lore's own routes its feedback button stays off. The
+      # feedback form itself is one, where the button would open the page
+      # already shown. `*` is one path segment: `/acme/request` only.
+      SIGIL_CONFIG: '{"feedbackButtonExcludedPaths":["/*/request"]}'
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The history back to the last release tag: an untagged build
+          # reports `git describe` as its version (#Q3639), which a shallow
+          # checkout cannot answer.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # The restore point, in the log, before `alepha deploy` migrates (#Q2603).
+      # Time Travel restores to any minute of the last 30 days anyway; the
+      # bookmark makes that restore one copy-paste:
+      #   wrangler d1 time-travel restore lore-production --bookmark=<it>
+      - name: Time Travel bookmark
+        working-directory: lore/apps/lore
+        run: yarn wrangler d1 time-travel info lore-production
+
+      # ⚠️ The Worker is `lore-production` (`infra({ name: "lore" })`).
+      # Any other name provisions an empty D1 and moves lore.alepha.app onto it.
+      - name: Deploy
+        working-directory: lore/apps/lore
+        run: yarn alepha deploy --env production
+        env:
+          GITHUB_CLIENT_ID: ${{ secrets.APP_GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.APP_GITHUB_CLIENT_SECRET }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+          TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+          # The in-app assistant's switch (#E120): unset, empty, `false` or
+          # `0` is off. The repository variable turns it on or off; a
+          # redeploy applies it.
+          AI_ASSISTANT_ENABLED: ${{ vars.AI_ASSISTANT_ENABLED }}
+          # Its vendor (#Q3572): the AI_API_KEY secret puts it on Anthropic,
+          # else the Workers AI binding answers. Anthropic refuses to start
+          # without a model, so a key with no AI_MODEL variable gets Sonnet;
+          # with no key, AI_MODEL replaces the Workers AI default.
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_MODEL: ${{ secrets.AI_API_KEY != '' && (vars.AI_MODEL || 'claude-sonnet-5-5') || vars.AI_MODEL }}
+
+      - name: Build lore (node + workerd)
+        working-directory: lore/apps/lore
+        run: yarn alepha build
+
+      - name: Push lore artifact to Lore
+        working-directory: lore/apps/lore
+        run: yarn lore artifacts push
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+  # ──────────────────────────────────────────────────────────────────────
+  # The framework's apps, deployed with `alepha deploy` through Lore
+  # (#Q2778): each app's `lore({ project: "alepha", host: "cf-feunard" })`
+  # deploys its copy (`ui/production`, `shop/production`), and Lore names the
+  # Worker `alepha-<app>-production`. Lore holds the Cloudflare credential
+  # (the host), so a job needs `LORE_API_KEY` alone; each app's own secrets
+  # live in its GitHub environment and are sealed into the copy.
+  #
+  # After `lore` when both run: they deploy with this commit's `lore` CLI,
+  # which may read an API this commit changes. A skipped `lore` does not
+  # hold them; a failed one does.
+  # ──────────────────────────────────────────────────────────────────────
+  ui:
+    needs: lore
+    if: >-
+      always()
+      && github.ref == 'refs/heads/main'
+      && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
+      && contains(fromJSON('["all", "framework"]'), inputs.target)
+      && (needs.lore.result == 'success' || needs.lore.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ui-production
+    concurrency:
+      group: deploy-ui
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: framework
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # `git describe` for an untagged build's version (#Q3639).
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Prepare
+        run: yarn copy
+
+      # Copy `ui/production`, Worker `alepha-ui-production` (#Q2778).
+      - name: Deploy
+        working-directory: framework/apps/ui
+        run: yarn alepha deploy --env production
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+  shop:
+    needs: lore
+    if: >-
+      always()
+      && github.ref == 'refs/heads/main'
+      && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
+      && contains(fromJSON('["all", "framework"]'), inputs.target)
+      && (needs.lore.result == 'success' || needs.lore.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: shop-production
+    concurrency:
+      group: deploy-shop
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: framework
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # `git describe` for an untagged build's version (#Q3639).
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Prepare
+        run: yarn copy
+
+      # A demo: its data is disposable. Secrets come from the `shop-production`
+      # environment; `deploy` reads each key the build manifest declares from
+      # the job env and seals it into copy `shop/production` (#Q2778).
+      - name: Deploy
+        working-directory: framework/apps/examples/shop
+        run: yarn alepha deploy --env production
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+
+  # ──────────────────────────────────────────────────────────────────────
+  # alepha.dev from `main`, each section pinned to how its product ships: the
+  # framework and Bay at the latest release tag (one tag for both, #Q2776),
+  # Lore at `main`. So a Lore page fix ships now, and an unreleased framework
+  # or Bay page does not. Release deploys it the same way at each release.
+  #
+  # ⚠️ It shares `deploy-docs` with `docs-latest` below because Lore keeps one
+  # `latest` tag per app: two deploys at once could ship one build to the
+  # other's copy. After `lore` when both run, for the framework apps' reason.
+  # ──────────────────────────────────────────────────────────────────────
+  docs:
+    needs: lore
+    if: >-
+      always()
+      && github.ref == 'refs/heads/main'
+      && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
+      && contains(fromJSON('["all", "docs"]'), inputs.target)
+      && (needs.lore.result == 'success' || needs.lore.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: deploy-docs
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The release tags and their history, for the pinned checkout and
+          # each page's last-modified date.
+          fetch-depth: 0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Pin the released docs at the latest release tag
+        run: yarn pin
+
+      # `gen:tree` reads the pinned checkout through DOCS_RELEASE_ROOT;
+      # `gen:llms` follows every build, which does not write the llms.txt
+      # files itself.
+      - name: Build for workerd
+        env:
+          DOCS_RELEASE_ROOT: docs/.content/release
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+        run: |
+          yarn alepha gen:tree
+          yarn alepha build --runtime=workerd
+          yarn alepha gen:llms
+
+      - name: Deploy docs
+        run: yarn alepha deploy --env production --prebuilt
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+  # latest.alepha.dev from `main`, with no pin: every section is the working
+  # tree, for projects that vendor Alepha rather than install a release
+  # (#Q3028).
+  docs-latest:
+    needs: lore
+    if: >-
+      always()
+      && github.ref == 'refs/heads/main'
+      && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
+      && contains(fromJSON('["all", "docs"]'), inputs.target)
+      && (needs.lore.result == 'success' || needs.lore.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: deploy-docs
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Each page's last-modified date.
+          fetch-depth: 0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build for workerd
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          PUBLIC_URL: https://latest.alepha.dev
+          VITE_DOCS_SITE: latest
+        run: |
+          yarn alepha gen:tree
+          yarn alepha build --runtime=workerd
+          yarn alepha gen:llms
+
+      - name: Deploy docs
+        run: yarn alepha deploy --env latest --prebuilt
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
