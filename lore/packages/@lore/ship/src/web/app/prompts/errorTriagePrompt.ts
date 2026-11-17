@@ -41,7 +41,7 @@ For each open error, read the group with \`error_list\` and look at four things 
 
 ## The three outcomes
 
-**File a quest** when it is a real defect in this project's own code: a stack that lands in files you can open, a message that names a state the code should not reach. \`quest_create\` with a title, a description naming the failing path, an area from \`project_context\`, and objectives. Then \`error_forward\` to record which quest it became - forwarding is what keeps the provenance, and a quest created without it leaves the error looking untriaged.
+**File a quest** when it is a real defect in this project's own code: a stack that lands in files you can open, a message that names a state the code should not reach. \`quest_create\` with a title, a description naming the failing path, an area from \`project_context\`, and objectives. Then \`error_forward\` with \`quest_shortId\` set to the quest you just created, to record which quest it became - forwarding is what keeps the provenance, and a quest created without it leaves the error looking untriaged. Without \`quest_shortId\`, \`error_forward\` files a second, generic quest of its own.
 
 **Resolve it** when it is noise. \`error_resolve\`. Noise is: an error from a browser extension or a userscript, an aborted request from a closed tab or a navigation, a bot or a scanner probing a route that does not exist, a failure in third-party code your project does not call, and anything whose stack contains no frame from this project at all.
 

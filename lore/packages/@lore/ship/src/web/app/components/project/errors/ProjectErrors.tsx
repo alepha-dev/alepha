@@ -147,6 +147,7 @@ const ProjectErrors = () => {
         if (!project) return;
         const res = await projectErrorApi.forwardProjectErrorToQuest({
           params: { projectId: project.id, errorId: projectError.id },
+          body: {},
         });
         toaster.success(
           tr("errors.toast.forwarded", {

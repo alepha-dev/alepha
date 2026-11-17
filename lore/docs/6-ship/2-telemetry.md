@@ -210,7 +210,7 @@ list is in [The lore CLI](/lore/docs/reference-cli).
 | ---------------------------------------------- | ----------------------------------------------------------------- |
 | `insights_read`                                | Analytics, Web Vitals and the error budget, over 1, 7 or 30 days. |
 | `error_list`                                   | The open errors; `include_resolved` for the rest.                 |
-| `error_resolve`, `error_forward`               | Close an error, or turn it into a quest.                          |
+| `error_resolve`, `error_forward`               | Close an error, or turn it into a quest, new or already filed.    |
 | `sigil_list`                                   | Every sigil, its instance and when it last reported.              |
 | `sigil_create`, `sigil_rotate`, `sigil_delete` | Manage keys. Needs `sigil:manage`.                                |
 

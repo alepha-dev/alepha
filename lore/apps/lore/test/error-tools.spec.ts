@@ -253,6 +253,97 @@ describe("Lore MCP — errors", () => {
     );
   });
 
+  describe("forwarding to a quest already filed (#Q3802)", () => {
+    const fileQuest = (call: any, questTools: any, projectId: number) =>
+      call(questTools.quest_create, {
+        project: projectId,
+        title: "Cart crashes on an empty basket",
+        description: "The cart reads the first line of an empty basket",
+        area: "shop",
+        priority: "high",
+      });
+
+    it("links that quest instead of creating another, and closes the error", async () => {
+      const { probe, projectErrorTools, questTools, project, call } =
+        await setup();
+      const filed = await fileProjectError(probe, project.id);
+      const quest = await fileQuest(call, questTools, project.id);
+
+      const res = await call(projectErrorTools.error_forward, {
+        project: project.id,
+        error_id: filed.id,
+        quest_shortId: quest.shortId,
+      });
+
+      expect(res).toEqual({ questId: quest.id, questShortId: quest.shortId });
+      expect((await probe.projectErrors.findById(filed.id))?.status).toBe(
+        `quest:${quest.id}`,
+      );
+      // No second quest: the project holds only the one the agent filed.
+      const list = await call(questTools.quest_list, { project: project.id });
+      expect(list.quests).toHaveLength(1);
+      // The quest keeps its own title and area, and now names its source:
+      // deleting it hands the error back, as for a created one.
+      await call(questTools.quest_delete, {
+        project: project.id,
+        shortId: quest.shortId,
+      });
+      expect((await probe.projectErrors.findById(filed.id))?.status).toBe(
+        "open",
+      );
+    });
+
+    it("refuses a quest of another project", async () => {
+      const {
+        probe,
+        projectErrorTools,
+        questTools,
+        project,
+        otherProject,
+        call,
+      } = await setup();
+      const filed = await fileProjectError(probe, project.id);
+      const elsewhere = await fileQuest(call, questTools, otherProject.id);
+      // A number the project holds no quest under, though the other does.
+      const list = await call(questTools.quest_list, { project: project.id });
+      expect(list.quests).toHaveLength(0);
+
+      await expect(
+        call(projectErrorTools.error_forward, {
+          project: project.id,
+          error_id: filed.id,
+          quest_shortId: elsewhere.shortId,
+        }),
+      ).rejects.toThrow(/No quest/);
+      expect((await probe.projectErrors.findById(filed.id))?.status).toBe(
+        "open",
+      );
+    });
+
+    it("refuses a quest that already has a source", async () => {
+      const { probe, projectErrorTools, project, call } = await setup();
+      const first = await fileProjectError(probe, project.id);
+      const second = await fileProjectError(probe, project.id, {
+        fingerprint: "fp-2",
+      });
+      const { questShortId } = await call(projectErrorTools.error_forward, {
+        project: project.id,
+        error_id: first.id,
+      });
+
+      await expect(
+        call(projectErrorTools.error_forward, {
+          project: project.id,
+          error_id: second.id,
+          quest_shortId: questShortId,
+        }),
+      ).rejects.toThrow(/already has a source/);
+      expect((await probe.projectErrors.findById(second.id))?.status).toBe(
+        "open",
+      );
+    });
+  });
+
   it("should refuse an error from another project", async () => {
     // Scoped by a WHERE clause on `projectId` rather than by walking the
     // project's sigils — one less step to get wrong. A real second project,

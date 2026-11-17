@@ -37,6 +37,21 @@ describe("errorTriagePromptDefault", () => {
   });
 
   /**
+   * Filed, then linked (#Q3802): `error_forward` without `quest_shortId`
+   * files a quest of its own, so an agent that read only the tool names
+   * filed two quests per error and linked the generic one.
+   */
+  it("links the quest it filed through quest_shortId, in that order", () => {
+    const filed = prompt.indexOf("`quest_create`");
+    const linked = prompt.indexOf(
+      "`error_forward` with `quest_shortId` set to the quest you just created",
+    );
+    expect(filed).toBeGreaterThan(-1);
+    expect(linked).toBeGreaterThan(filed);
+    expect(prompt).toMatch(/Without `quest_shortId`.*second, generic quest/);
+  });
+
+  /**
    * The half an agent gets wrong. An error inbox is mostly noise - extension
    * errors, aborted requests, bots - so a prompt that only says "triage" files
    * a quest per crash or resolves the one real bug along with the rest.

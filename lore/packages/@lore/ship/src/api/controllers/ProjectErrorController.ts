@@ -199,9 +199,23 @@ export class ProjectErrorController {
         projectId: z.integer(),
         errorId: z.integer(),
       }),
+      /**
+       * An existing quest of this project to link instead of creating one
+       * (#Q3802): an agent that filed the quest itself names it here.
+       */
+      body: z
+        .object({
+          questShortId: z
+            .integer()
+            .describe(
+              "An existing quest of this project to link, by its per-project number, instead of creating one",
+            )
+            .optional(),
+        })
+        .optional(),
       response: z.object({ questId: z.integer(), questShortId: z.integer() }),
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, body, user }) => {
       // ⚠️ The one cross-capability write in the app, and the rule it follows
       // is the epic's: a capability may read another's state to NARROW what it
       // does, never to widen it. Forwarding creates a quest, so it needs Work
@@ -216,6 +230,14 @@ export class ProjectErrorController {
 
       if (projectError.status.startsWith(QUEST_STATUS_PREFIX)) {
         throw new BadRequestError("Error already forwarded to a quest");
+      }
+
+      if (body?.questShortId !== undefined) {
+        return this.linkToQuest(
+          params.projectId,
+          projectError,
+          body.questShortId,
+        );
       }
 
       // Title: `[ProjectError] TypeError: cannot read…` — name + message,
@@ -294,6 +316,42 @@ export class ProjectErrorController {
       return { questId: quest.id, questShortId: quest.shortId };
     },
   });
+
+  /**
+   * Forward an error to a quest already filed (#Q3802): the `quest` kind
+   * records the error as the quest's source (same project only, never over
+   * another source), then the error points at the quest. A double click
+   * that loses the race on the error takes the source back off.
+   */
+  protected async linkToQuest(
+    projectId: number,
+    projectError: ProjectError,
+    questShortId: number,
+  ): Promise<{ questId: number; questShortId: number }> {
+    const questKind = this.resources.require(
+      "quest",
+      "forward an error into a quest",
+    );
+    const quest = await questKind.adopt!({
+      projectId,
+      shortId: questShortId,
+      source: { projectErrorId: projectError.id },
+    });
+    try {
+      await this.currentProjectErrors.updateOne(
+        {
+          id: { eq: projectError.id },
+          status: { notLike: `${QUEST_STATUS_PREFIX}%` },
+        },
+        { status: `${QUEST_STATUS_PREFIX}${quest.id}` },
+      );
+    } catch (error) {
+      if (!(error instanceof DbEntityNotFoundError)) throw error;
+      await questKind.disown!(quest.id);
+      throw new BadRequestError("Error already forwarded to a quest");
+    }
+    return { questId: quest.id, questShortId: quest.shortId };
+  }
 
   /**
    * Hard-delete an error row. Owner-only.

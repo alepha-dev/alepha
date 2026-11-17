@@ -5,6 +5,7 @@ import {
 } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
+import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { quests } from "../entities/quests.ts";
 import {
@@ -89,6 +90,24 @@ export class QuestResourceKind {
       },
       discard: async (id) => {
         await this.quests.deleteById(id, { force: true });
+      },
+      adopt: async ({ projectId, shortId, source }) => {
+        const quest = await this.quests.findOne({
+          where: { projectId: { eq: projectId }, shortId: { eq: shortId } },
+        });
+        if (!quest) {
+          throw new NotFoundError(`No quest #Q${shortId} in this project`);
+        }
+        if (quest.source && Object.keys(quest.source).length > 0) {
+          throw new BadRequestError(
+            `Quest #Q${shortId} already has a source, which linking would overwrite`,
+          );
+        }
+        await this.quests.updateById(quest.id, { source });
+        return { id: quest.id, shortId: quest.shortId };
+      },
+      disown: async (id) => {
+        await this.quests.updateById(id, { source: null });
       },
     });
   }

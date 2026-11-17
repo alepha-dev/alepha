@@ -237,6 +237,25 @@ export interface ResourceKind {
    * action that made it lost a race. Nothing points at it yet.
    */
   discard?: (id: number) => Promise<void>;
+
+  /**
+   * Record where an existing one came from, for an action that crosses
+   * modules (an error forwarded to a quest already filed, #Q3802). Looked up
+   * by its per-project number in `projectId` only, so another project's is
+   * never found; refused when it already has a source, since overwriting it
+   * would lose that provenance.
+   */
+  adopt?: (input: {
+    projectId: number;
+    shortId: number;
+    source: Record<string, unknown>;
+  }) => Promise<ResourceCreated>;
+
+  /**
+   * Undo {@link ResourceKind.adopt} when the action that adopted it lost a
+   * race: the source goes, the resource stays.
+   */
+  disown?: (id: number) => Promise<void>;
 }
 
 /**
