@@ -95,7 +95,9 @@ const PersonaAside = (props: PersonaAsideProps) => {
     },
   ];
 
-  return <DetailAside rows={rows} />;
+  // No title and no avatar, as an epic's aside: the name is a row, and a
+  // persona has no picture, so the letter square would be a "?" box.
+  return <DetailAside avatar={false} rows={rows} />;
 };
 
 export default PersonaAside;

@@ -3,6 +3,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Flag } from "lucide-react";
 
 import type { RequirementReadiness } from "../../../../api/requirementReadiness.ts";
+import ReadinessBar from "./ReadinessBar.tsx";
 
 export interface ReadinessBannerProps {
   release: string;
@@ -13,17 +14,6 @@ export interface ReadinessBannerProps {
    */
   blocks: boolean;
 }
-
-const Bar = (props: { verified: number; total: number }) => (
-  <span className="bg-muted inline-flex h-1.5 w-24 overflow-hidden rounded-full">
-    <span
-      className="bg-green-600"
-      style={{
-        width: `${props.total ? (props.verified / props.total) * 100 : 0}%`,
-      }}
-    />
-  </span>
-);
 
 /**
  * A release's readiness (#E153, #Q3774): Must and Should verified out of
@@ -43,7 +33,7 @@ const ReadinessBanner = (props: ReadinessBannerProps) => {
           {tr("requirements.trace.readiness", { args: [props.release] })}
         </span>
         <span className="flex items-center gap-2">
-          <Bar {...readiness.must} />
+          <ReadinessBar {...readiness.must} />
           {tr("requirements.trace.must", {
             args: [
               String(readiness.must.verified),
@@ -52,7 +42,7 @@ const ReadinessBanner = (props: ReadinessBannerProps) => {
           })}
         </span>
         <span className="flex items-center gap-2">
-          <Bar {...readiness.should} />
+          <ReadinessBar {...readiness.should} />
           {tr("requirements.trace.should", {
             args: [
               String(readiness.should.verified),
@@ -61,7 +51,7 @@ const ReadinessBanner = (props: ReadinessBannerProps) => {
           })}
         </span>
         {readiness.failingMust.length ? (
-          <span className="text-orange-700 dark:text-orange-400">
+          <span className="text-danger-text">
             {tr("requirements.trace.failingMust", {
               args: [
                 readiness.failingMust

@@ -9,8 +9,9 @@ capability. See [Personas](/lore/docs/plan-personas) for turning it on.
 
 ## The Verify dialog
 
-**Verify** is on a use case's page, on a persona's page, and as **Verify all
-stale** on the Use cases tab. It opens a dialog:
+**Verify** is the robot button on a use case's page and on a persona's page,
+where it lists the missions, and **Verify all stale** in the toolbar of the
+Use cases tab. It opens a dialog:
 
 ![The Verify dialog](/screenshots/lore/requirements-verify-light.png)
 

@@ -1,6 +1,10 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  I18n,
+  ElementReferenceRegistry,
+} from "@lore/core/web";
 import { render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -14,7 +18,8 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { RequirementResource } from "../../../../api/schemas/requirementResourceSchema.ts";
 import RequirementsTab from "../layout/RequirementsTab.tsx";
-import RequirementDetail from "./RequirementDetail.tsx";
+import RequirementAside from "./RequirementAside.tsx";
+import RequirementOverview from "./RequirementOverview.tsx";
 
 const aRequirement = (
   over: Partial<RequirementResource>,
@@ -85,6 +90,11 @@ class StubPages {
     path: "/:projectSlug/requirements",
     component: () => null,
   });
+  projectRequirement = $page({
+    name: "projectRequirement",
+    path: "/:projectSlug/requirements/requirement/:requirementNumber",
+    component: () => null,
+  });
   projectRequirementsTestBook = $page({
     name: "projectRequirementsTestBook",
     path: "/:projectSlug/requirements/test-book",
@@ -93,7 +103,7 @@ class StubPages {
 }
 
 /**
- * The Requirements tab and its detail pane (#E153, #Q3769).
+ * The Requirements tab and a requirement's page (#E153, #Q3769).
  */
 describe("Requirements screens", () => {
   let alepha: Alepha | undefined;
@@ -116,6 +126,7 @@ describe("Requirements screens", () => {
       .with(AlephaReactRouter)
       .with(AlephaReactI18n)
       .with(I18n)
+      .with(ElementReferenceRegistry)
       .with(StubPages);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
@@ -127,7 +138,7 @@ describe("Requirements screens", () => {
     return alepha;
   };
 
-  it("groups the list by chapter, with release, verified by and status, and names the changed sources", async ({
+  it("lists the requirements with chapter, release, verified by and status, and counts the changed sources", async ({
     expect,
   }) => {
     const app = await boot(["requirement:read", "requirement:write"]);
@@ -140,42 +151,57 @@ describe("Requirements screens", () => {
     );
 
     await screen.findByText("The discount is visible before payment");
-    const table = screen.getByTestId("requirements-table");
+    const table = screen.getByRole("table");
     expect(table.textContent).toContain("3. Promotions");
     expect(table.textContent).toContain("4. Payment");
     expect(table.textContent).toContain("2.4.0 auto");
     expect(table.textContent).toContain("2.3.1 by hand");
     expect(table.textContent).toContain("#U7 C2");
-    expect(screen.getByTestId("source-changed-banner").textContent).toContain(
-      "#S12",
-    );
+    expect(screen.getAllByTestId("requirement-row")).toHaveLength(2);
+    // The Source changed preset counts the one requirement to look at.
+    const preset = document.querySelector('[data-preset="sourceChanged"]');
+    expect(preset?.textContent).toContain("Source changed");
+    expect(preset?.textContent).toContain("1");
+    // A filter starts empty: no "All ..." value stands in for it.
+    expect(table.ownerDocument.body.textContent).not.toContain("All types");
     expect(
       screen.getByRole("button", { name: /New requirement/ }),
     ).toBeTruthy();
   });
 
-  it("draws the detail pane: release note, criteria, personas, and no write for a viewer", async ({
+  it("draws a requirement's page: release note, criteria, personas, and no write for a viewer", async ({
     expect,
   }) => {
     const app = await boot(["requirement:read"]);
     render(
       <AlephaContext.Provider value={app}>
         <DialogProvider>
-          <RequirementDetail
+          <div data-testid="requirement-aside">
+            <RequirementAside
+              requirement={ROWS[0]}
+              releases={[{ id: 3, tag: "2.4.0" }]}
+              onChange={() => {}}
+            />
+          </div>
+          <RequirementOverview
             requirement={ROWS[0]}
-            releases={[{ id: 3, tag: "2.4.0" }]}
-            onChange={() => {}}
+            canWrite={false}
+            busy={false}
             onEdit={() => {}}
-            onDeleted={() => {}}
+            onKeep={() => {}}
           />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
 
     const pane = await screen.findByTestId("requirement-detail");
-    expect(pane.textContent).toContain("§3.2");
-    expect(pane.textContent).toContain("Léa");
+    const aside = screen.getByTestId("requirement-aside");
+    expect(aside.textContent).toContain("§3.2");
+    expect(aside.textContent).toContain("Léa");
+    // No "?" square: a requirement has no picture.
+    expect(aside.textContent).not.toContain("?");
     expect(screen.getByTestId("release-note").textContent).toContain("#E5");
+    expect(pane.textContent).toContain("Verified by 1 criterion");
     expect(pane.textContent).toContain("#U7 C2");
     expect(
       screen.queryByRole("button", { name: /Edit requirement/ }),
@@ -189,7 +215,7 @@ describe("Requirements screens", () => {
     render(
       <AlephaContext.Provider value={app}>
         <DialogProvider>
-          <RequirementDetail
+          <RequirementOverview
             requirement={aRequirement({
               number: 15,
               statement: "Checkout paints fast",
@@ -211,10 +237,10 @@ describe("Requirements screens", () => {
               ],
               status: "verified",
             })}
-            releases={[{ id: 3, tag: "2.4.0" }]}
-            onChange={() => {}}
+            canWrite={false}
+            busy={false}
             onEdit={() => {}}
-            onDeleted={() => {}}
+            onKeep={() => {}}
           />
         </DialogProvider>
       </AlephaContext.Provider>,

@@ -1,8 +1,10 @@
 import { Badge, Card, CardContent } from "@alepha/ui";
-import { formatReference, type I18n } from "@lore/core/web";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
+import { Clock } from "lucide-react";
 
 import type { PersonaShowcase as Showcase } from "../../../../api/schemas/personaInsightSchemas.ts";
+import ReferenceLink from "../shared/ReferenceLink.tsx";
 
 export interface PersonaShowcaseProps {
   showcase: Showcase;
@@ -39,14 +41,12 @@ const PersonaShowcase = (props: PersonaShowcaseProps) => {
               <Card key={item.runId} data-testid="showcase-item">
                 <CardContent className="flex flex-col gap-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
-                    <span>
-                      <span className="font-semibold">
-                        {formatReference("usecase", item.useCase.number)}
-                      </span>{" "}
+                    <ReferenceLink kind="usecase" number={item.useCase.number}>
                       {item.useCase.title}
-                    </span>
+                    </ReferenceLink>
                     {item.stale ? (
                       <Badge variant="tint" tone="warning">
+                        <Clock className="size-3" />
                         {tr("requirements.persona.showcase.stale")}
                       </Badge>
                     ) : null}

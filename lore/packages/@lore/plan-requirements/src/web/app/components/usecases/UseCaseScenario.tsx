@@ -1,6 +1,6 @@
-import { Button, Card, CardContent } from "@alepha/ui";
-import { MarkdownView } from "@alepha/ui/markdown";
-import type { I18n } from "@lore/core/web";
+import { Button, Card, CardContent, Segmented } from "@alepha/ui";
+import { currentProjectAtom, type I18n, LoreViewer } from "@lore/core/web";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Download } from "lucide-react";
 import { useState } from "react";
@@ -20,6 +20,7 @@ export interface UseCaseScenarioProps {
 const UseCaseScenario = (props: UseCaseScenarioProps) => {
   const { tr } = useI18n<I18n, "en">();
   const useCase = props.useCase;
+  const [project] = useStore(currentProjectAtom);
   const [view, setView] = useState<"steps" | "lanes">("steps");
   const name = new Map(useCase.actors.map((a) => [a.personaId, a.name]));
   const actorOf = (id?: number) =>
@@ -47,30 +48,30 @@ const UseCaseScenario = (props: UseCaseScenarioProps) => {
           <h2 className="font-semibold">
             {tr("requirements.usecase.scenario")}
           </h2>
-          <div className="flex gap-1" role="group">
-            {(["steps", "lanes"] as const).map((it) => (
-              <Button
-                key={it}
-                size="sm"
-                variant={view === it ? "solid" : "minimal"}
-                aria-pressed={view === it}
-                onClick={() => setView(it)}
-              >
-                {tr(
-                  it === "steps"
-                    ? "requirements.usecase.view.steps"
-                    : "requirements.usecase.view.lanes",
-                )}
-              </Button>
-            ))}
-          </div>
+          <Segmented
+            size="sm"
+            value={view}
+            onChange={(value) => setView(value as "steps" | "lanes")}
+            options={[
+              { value: "steps", label: tr("requirements.usecase.view.steps") },
+              { value: "lanes", label: tr("requirements.usecase.view.lanes") },
+            ]}
+          />
         </div>
         {useCase.preconditions ? (
           <div className="text-sm">
             <span className="font-semibold">
               {tr("requirements.usecase.field.preconditions")}
             </span>
-            <MarkdownView content={useCase.preconditions} />
+            <LoreViewer
+              element={{
+                kind: "usecase",
+                projectId: useCase.projectId,
+                projectSlug: project?.slug ?? "",
+                id: useCase.id,
+              }}
+              content={useCase.preconditions}
+            />
           </div>
         ) : null}
         {view === "steps" ? (

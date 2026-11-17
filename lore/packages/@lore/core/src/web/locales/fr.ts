@@ -3342,19 +3342,16 @@ export default {
   "requirements.run.state.passed": "Réussi",
   "requirements.usecase.tab.runs": "Passages",
   "project.menu.create-requirement": "Nouvelle exigence",
-  "requirements.requirement.banner":
-    "La spécification a changé : les sections citées par $1 ont été modifiées ou supprimées depuis leur dernière synchronisation.",
   "requirements.requirement.col.requirement": "Exigence",
   "requirements.requirement.col.status": "Statut",
   "requirements.requirement.col.verifiedBy": "Vérifiée par",
-  "requirements.requirement.counter.all": "exigences",
   "requirements.requirement.delete.confirm": "Supprimer l’exigence",
   "requirements.requirement.delete.description":
     "$1 sera supprimée. Son numéro n’est jamais réutilisé, et les critères qui la vérifiaient ne vérifient plus rien.",
   "requirements.requirement.delete.title": "Supprimer cette exigence ?",
   "requirements.requirement.edit": "Modifier l’exigence",
   "requirements.requirement.empty":
-    "Aucune exigence pour l’instant. Une exigence est une ligne de la spécification, vérifiée par des critères de cas d’usage.",
+    "Une exigence est une ligne de la spécification, vérifiée par des critères de cas d’usage.",
   "requirements.requirement.emptyFilter":
     "Aucune exigence ne correspond à ces filtres.",
   "requirements.requirement.field.chapter": "Chapitre",
@@ -3373,7 +3370,6 @@ export default {
   "requirements.requirement.form.create": "Créer l’exigence",
   "requirements.requirement.form.update": "Enregistrer",
   "requirements.requirement.noChapter": "Sans chapitre",
-  "requirements.requirement.personas.through": "(par les cas d’usage)",
   "requirements.requirement.release": "Version",
   "requirements.requirement.release.alsoCovers": "couvre aussi $1",
   "requirements.requirement.release.auto":
@@ -3441,12 +3437,10 @@ export default {
   "project.menu.create-usecase": "Nouveau cas d’usage",
   "requirements.usecase.aside.automatedTest": "Test automatisé",
   "requirements.usecase.aside.coveredBy": "Couvert par",
-  "requirements.usecase.aside.version": "scénario v$1",
   "requirements.usecase.col.actors": "Acteurs",
   "requirements.usecase.col.development": "Développement",
   "requirements.usecase.col.status": "Statut",
   "requirements.usecase.col.useCase": "Cas d’usage",
-  "requirements.usecase.counter.all": "cas d’usage",
   "requirements.usecase.coverage": "Couverture du développement",
   "requirements.usecase.coverage.done": "Tout développé",
   "requirements.usecase.coverage.help":
@@ -3461,28 +3455,28 @@ export default {
   "requirements.usecase.development": "$1 / $2 quêtes",
   "requirements.usecase.edit": "Modifier le cas d’usage",
   "requirements.usecase.empty":
-    "Aucun cas d’usage pour l’instant. Un cas d’usage est un scénario joué par un persona, avec des critères qui disent qu’il fonctionne.",
+    "Un cas d’usage est un scénario joué par un persona, avec des critères qui disent qu’il fonctionne.",
   "requirements.usecase.emptyFilter":
     "Aucun cas d’usage ne correspond à ces filtres.",
   "requirements.usecase.exportGherkin": "Exporter en Gherkin",
   "requirements.usecase.field.actors": "Acteurs",
   "requirements.usecase.field.actors.helper":
-    "Des références de personas, chacune avec un rôle facultatif : A2, A3:beneficiary, A4:system.",
+    "Les personas qui participent, chacun avec son rôle.",
   "requirements.usecase.field.alternatives": "Alternatives",
   "requirements.usecase.field.alternatives.helper":
-    "Une par ligne : 4a: Code expiré.",
+    "Ce qui peut se passer autrement, avec pour clé l’étape quittée : 4a.",
   "requirements.usecase.field.automatedTestPath": "Test automatisé",
   "requirements.usecase.field.automatedTestTag": "Étiquette du test",
   "requirements.usecase.field.criteria": "Critères d’acceptation",
   "requirements.usecase.field.criteria.helper":
-    "Un bloc par critère, séparés par une ligne vide : des lignes Given, When et Then, ou une phrase. [C2] (e2e) @4a en première ligne garde la clé d’un critère, fixe sa vérification et son alternative.",
+    "Given, When et Then, ou une phrase. Lore numérote chaque critère à l’enregistrement.",
   "requirements.usecase.field.preconditions": "Préconditions",
   "requirements.usecase.field.priority": "Priorité",
   "requirements.usecase.field.startingData": "Données de départ",
   "requirements.usecase.field.status": "Statut",
   "requirements.usecase.field.steps": "Étapes",
   "requirements.usecase.field.steps.helper":
-    "Une étape par ligne, dans l’ordre. A2: nomme le persona qui la joue ; une ligne sans persona est le système.",
+    "Dans l’ordre. Une étape sans acteur est celle du système.",
   "requirements.usecase.field.title": "Titre",
   "requirements.usecase.filter.anyPersona": "Tous les personas",
   "requirements.usecase.filter.anyStatus": "Tout statut",
@@ -3491,13 +3485,7 @@ export default {
   "requirements.usecase.form.create": "Créer le cas d’usage",
   "requirements.usecase.form.update": "Enregistrer",
   "requirements.usecase.given": "Étant donné",
-  "requirements.usecase.group.count": "$1 cas d’usage",
   "requirements.usecase.group.unplanned": "Pas encore d’épopée",
-  "requirements.usecase.groupBy": "Grouper par",
-  "requirements.usecase.groupBy.epic": "Épopée",
-  "requirements.usecase.groupBy.persona": "Persona",
-  "requirements.usecase.groupBy.status": "Statut",
-  "requirements.usecase.groupBy.none": "Aucun",
   "requirements.usecase.noEpic": "aucune épopée",
   "requirements.usecase.quest.done": "Terminée",
   "requirements.usecase.quest.inProgress": "En cours",
@@ -3546,8 +3534,9 @@ export default {
   "requirements.persona.delete.title": "Supprimer ce persona ?",
   "requirements.persona.edit": "Modifier le persona",
   "requirements.persona.empty":
-    "Aucun persona pour l’instant. Un persona est quelqu’un, ou quelque chose, pour qui le système est construit.",
-  "requirements.persona.emptyFilter": "Aucun persona de ce type.",
+    "Un persona est quelqu’un, ou quelque chose, pour qui le système est construit.",
+  "requirements.persona.emptyFilter":
+    "Aucun persona ne correspond à ces filtres.",
   "requirements.persona.field.alephaRole": "Rôle Alepha",
   "requirements.persona.field.alephaRole.helper":
     "Le $role ou le compte de service que ce persona joue dans l’application.",
@@ -3564,7 +3553,6 @@ export default {
   "requirements.persona.field.role": "Rôle",
   "requirements.persona.field.role.helper": "Une ligne : Responsable boutique.",
   "requirements.persona.field.who": "Qui est-ce",
-  "requirements.persona.filter.all": "Tous",
   "requirements.persona.form.create": "Créer le persona",
   "requirements.persona.form.update": "Enregistrer",
   "requirements.persona.overview.empty":
@@ -3594,11 +3582,77 @@ export default {
   "requirements.persona.showcase.removed": "Enregistrement non conservé",
   "requirements.persona.showcase.current": "Version en cours",
   "requirements.persona.showcase.chapters": "Étapes",
-  "requirements.persona.toCover":
-    "À couvrir : $1 personas sans cas d’usage réussi, $2 cas d’usage jamais joués.",
+  "requirements.persona.toCover": "À couvrir : $1, $2.",
   "requirements.persona.tab.activity": "Activité",
   "requirements.persona.tab.overview": "Aperçu",
   "requirements.persona.toast.created": "Persona créé",
+  "requirements.more": "Autres actions",
+  "requirements.guide": "Lire le guide",
+  "requirements.requirement.verifiedBy.one": "Vérifiée par $1 critère",
+  "requirements.requirement.description.empty": "Pas encore de description.",
+  "requirements.requirement.delete.title.many": "Supprimer $1 exigences ?",
+  "requirements.requirement.filter.anyStatus": "Tous les statuts",
+  "requirements.requirement.empty.title": "Aucune exigence pour l’instant",
+  "requirements.requirement.sourceChanged.hint":
+    "Les exigences dont le folio source a changé depuis leur rédaction.",
+  "requirements.requirement.presets.all": "Toutes",
+  "requirements.requirement.field.statement.helper":
+    "Une phrase que le produit doit satisfaire.",
+  "requirements.requirement.field.chapter.helper":
+    "Le chapitre de la spécification dont elle vient.",
+  "requirements.usecase.delete.title.many": "Supprimer $1 cas d’usage ?",
+  "requirements.usecase.col.epic": "Epic",
+  "requirements.usecase.filter.anyEpic": "Tous les epics",
+  "requirements.usecase.filter.anyResult": "Tous les résultats",
+  "requirements.usecase.empty.title": "Aucun cas d’usage pour l’instant",
+  "requirements.run.stale.hint":
+    "Les cas d’usage dont le scénario ou le périmètre a changé depuis leur dernier passage.",
+  "requirements.usecase.presets.all": "Tous",
+  "requirements.usecase.development.one": "$1 / $2 quête",
+  "requirements.usecase.criteriaCount.one": "$1 critère",
+  "requirements.usecase.aside.scenario": "Scénario",
+  "requirements.usecase.coverage.none":
+    "Aucun epic ne couvre encore ce cas d’usage.",
+  "requirements.usecase.field.title.helper":
+    "Ce que l’acteur accomplit, en commençant par un verbe : Appliquer un code promo.",
+  "requirements.usecase.field.actors.add": "Ajouter un acteur",
+  "requirements.usecase.field.preconditions.helper":
+    "Ce qui doit être vrai avant la première étape.",
+  "requirements.usecase.field.steps.add": "Ajouter une étape",
+  "requirements.usecase.field.steps.actor": "Qui agit",
+  "requirements.usecase.field.steps.text": "Ce qui se passe",
+  "requirements.usecase.field.alternatives.add": "Ajouter une alternative",
+  "requirements.usecase.field.alternatives.key": "Clé",
+  "requirements.usecase.field.criteria.add": "Ajouter un critère",
+  "requirements.usecase.field.criteria.key": "Clé",
+  "requirements.usecase.field.criteria.method": "Vérifié par",
+  "requirements.usecase.field.criteria.text": "Ou une phrase",
+  "requirements.usecase.field.criteria.alternative": "Alternative couverte",
+  "requirements.usecase.field.startingData.helper":
+    "Le jeu de données dont part un passage.",
+  "requirements.persona.filter.search": "Rechercher un persona",
+  "requirements.persona.filter.anyKind": "Tous les types",
+  "requirements.persona.empty.title": "Aucun persona pour l’instant",
+  "requirements.persona.toCover.personas":
+    "$1 personas sans cas d’usage réussi",
+  "requirements.persona.toCover.personas.one":
+    "$1 persona sans cas d’usage réussi",
+  "requirements.persona.toCover.useCases": "$1 cas d’usage jamais joués",
+  "requirements.persona.toCover.useCases.one": "$1 cas d’usage jamais joué",
+  "requirements.persona.scopeChanged.one":
+    "Le périmètre a changé depuis le dernier passage : $1 cas d’usage à revérifier.",
+  "requirements.persona.changes.card.one":
+    "$1 changement depuis le dernier passage",
+  "requirements.persona.field.name.helper":
+    "Un prénom se lit mieux qu’un intitulé de poste : Léa.",
+  "requirements.persona.field.who.helper": "Leur contexte, en quelques lignes.",
+  "requirements.persona.field.goals.helper":
+    "Ce qu’ils viennent faire. La première ligne figure sur leur carte.",
+  "requirements.persona.field.frustrations.helper":
+    "Ce qui les freine aujourd’hui.",
+  "requirements.persona.field.demoSeed.helper":
+    "Les données de départ de leur compte de démonstration.",
+  "requirements.trace.commits.one": "$1 commit · dernier $2",
   "requirements.persona.toast.updated": "Persona enregistré",
   "epic.status.draft": "Brouillon",
   "epic.status.ready": "Prête",

@@ -1,14 +1,13 @@
-import { Badge } from "@alepha/ui";
 import { DetailAside, type DetailAsideRow } from "@alepha/ui/shell";
 import { formatReference, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
+import ReferenceLink from "../shared/ReferenceLink.tsx";
+import { developmentKey } from "./developmentKey.ts";
 import RunStateBadge from "./RunStateBadge.tsx";
-import {
-  ACTOR_ROLE_LABEL_KEYS,
-  USE_CASE_PRIORITY_LABEL_KEYS,
-} from "./useCaseLabels.ts";
+import { ACTOR_ROLE_LABEL_KEYS } from "./useCaseLabels.ts";
+import UseCasePriorityBadge from "./UseCasePriorityBadge.tsx";
 import UseCaseStatusBadge from "./UseCaseStatusBadge.tsx";
 
 export interface UseCaseAsideProps {
@@ -28,18 +27,12 @@ const UseCaseAside = (props: UseCaseAsideProps) => {
   const rows: DetailAsideRow[] = [
     {
       label: tr("requirements.persona.aside.id"),
+      copy: formatReference("usecase", useCase.number),
+    },
+    {
+      label: tr("requirements.usecase.aside.scenario"),
       value: (
-        <span className="text-sm">
-          <span className="font-mono">
-            {formatReference("usecase", useCase.number)}
-          </span>{" "}
-          <span className="text-muted-foreground">
-            ·{" "}
-            {tr("requirements.usecase.aside.version", {
-              args: [String(useCase.scenarioVersion)],
-            })}
-          </span>
-        </span>
+        <span className="font-mono text-sm">v{useCase.scenarioVersion}</span>
       ),
     },
     {
@@ -54,9 +47,7 @@ const UseCaseAside = (props: UseCaseAsideProps) => {
         <div className="flex flex-col gap-1">
           <div className="flex gap-1.5">
             <UseCaseStatusBadge status={useCase.status} />
-            <Badge variant="tint">
-              {tr(USE_CASE_PRIORITY_LABEL_KEYS[useCase.priority])}
-            </Badge>
+            <UseCasePriorityBadge priority={useCase.priority} />
           </div>
           {useCase.validationRequestedAt ? (
             <span
@@ -85,7 +76,9 @@ const UseCaseAside = (props: UseCaseAsideProps) => {
                     key={actor.personaId}
                     className="flex justify-between gap-2"
                   >
-                    <span>{actor.name}</span>
+                    <ReferenceLink kind="persona" number={actor.number}>
+                      {actor.name}
+                    </ReferenceLink>
                     <span className="text-muted-foreground text-xs">
                       {tr(ACTOR_ROLE_LABEL_KEYS[actor.role])}
                     </span>
@@ -104,12 +97,14 @@ const UseCaseAside = (props: UseCaseAsideProps) => {
               <ul className="flex flex-col gap-0.5 text-sm">
                 {useCase.coveredBy.map((epic) => (
                   <li key={epic.id}>
-                    {formatReference("epic", epic.number)} {epic.title}
+                    <ReferenceLink kind="epic" number={epic.number}>
+                      {epic.title}
+                    </ReferenceLink>
                     {epic.progress ? (
                       <span className="text-muted-foreground text-xs">
                         {" "}
                         ·{" "}
-                        {tr("requirements.usecase.development", {
+                        {tr(developmentKey(epic.progress.total), {
                           args: [
                             String(epic.progress.completed),
                             String(epic.progress.total),
@@ -170,7 +165,9 @@ const UseCaseAside = (props: UseCaseAsideProps) => {
       : []),
   ];
 
-  return <DetailAside rows={rows} />;
+  // No title and no avatar, as an epic's aside: the title is a row, and a
+  // use case has no picture, so the letter square would be a "?" box.
+  return <DetailAside avatar={false} rows={rows} />;
 };
 
 export default UseCaseAside;

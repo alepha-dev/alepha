@@ -1,41 +1,15 @@
 import { Card, CardContent } from "@alepha/ui";
-import { formatReference, type I18n } from "@lore/core/web";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
-import type {
-  PersonaChange,
-  PersonaChanges as Changes,
-} from "../../../../api/schemas/personaInsightSchemas.ts";
+import type { PersonaChanges as Changes } from "../../../../api/schemas/personaInsightSchemas.ts";
+import PersonaChangeRow from "./PersonaChangeRow.tsx";
 
 export interface PersonaChangesProps {
   name: string;
   number: number;
   changes: Changes;
 }
-
-const ChangeRow = (props: { change: PersonaChange; persona: number }) => {
-  const { tr } = useI18n<I18n, "en">();
-  const { change } = props;
-  return (
-    <li className="flex justify-between gap-2" data-testid="persona-change">
-      <span>
-        <span className="font-semibold">
-          {formatReference("quest", change.questNumber)}
-        </span>{" "}
-        {change.title}
-      </span>
-      <span className="text-muted-foreground shrink-0 text-xs">
-        {change.via === "epic" && change.epicNumber
-          ? tr("requirements.persona.changes.viaEpic", {
-              args: [formatReference("epic", change.epicNumber)],
-            })
-          : tr("requirements.persona.changes.viaMention", {
-              args: [formatReference("persona", props.persona)],
-            })}
-      </span>
-    </li>
-  );
-};
 
 /**
  * A persona's Changes tab (#E153): the completed quests that touch it
@@ -52,17 +26,17 @@ const PersonaChanges = (props: PersonaChangesProps) => {
             {tr("requirements.persona.changes.title")}
           </h2>
           {!changes.lastRunAt ? (
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm italic">
               {tr("requirements.persona.changes.neverRun")}
             </p>
           ) : changes.changes.length === 0 ? (
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm italic">
               {tr("requirements.persona.changes.none")}
             </p>
           ) : (
             <ul className="flex flex-col gap-1">
               {changes.changes.map((it) => (
-                <ChangeRow
+                <PersonaChangeRow
                   key={it.questNumber}
                   change={it}
                   persona={props.number}
@@ -91,7 +65,7 @@ const PersonaChanges = (props: PersonaChangesProps) => {
                 </h3>
                 <ul className="flex flex-col gap-1">
                   {group.quests.map((it) => (
-                    <ChangeRow
+                    <PersonaChangeRow
                       key={it.questNumber}
                       change={it}
                       persona={props.number}

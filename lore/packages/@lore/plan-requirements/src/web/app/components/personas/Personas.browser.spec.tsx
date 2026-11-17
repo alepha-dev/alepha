@@ -1,6 +1,10 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  I18n,
+  ElementReferenceRegistry,
+} from "@lore/core/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -167,6 +171,7 @@ describe("Personas screens", () => {
       .with(AlephaReactRouter)
       .with(AlephaReactI18n)
       .with(I18n)
+      .with(ElementReferenceRegistry)
       .with(StubPages);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
@@ -178,7 +183,7 @@ describe("Personas screens", () => {
     return alepha;
   };
 
-  it("draws one card per persona and filters them by kind", async ({
+  it("draws one card per persona and filters them by a search", async ({
     expect,
   }) => {
     const app = await boot(["persona:read", "persona:write"]);
@@ -201,7 +206,11 @@ describe("Personas screens", () => {
     );
     expect(screen.getByRole("button", { name: /New persona/ })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("radio", { name: "System" }));
+    // The kind filter starts empty: no "All" value stands in for it.
+    expect(screen.queryByRole("radio", { name: "All" })).toBeNull();
+    fireEvent.change(screen.getByTestId("persona-search"), {
+      target: { value: "indexer" },
+    });
     await waitFor(() =>
       expect(screen.getAllByTestId("persona-card")).toHaveLength(1),
     );
@@ -274,7 +283,7 @@ describe("Personas screens", () => {
 
     const banner = await screen.findByTestId("to-cover-banner");
     expect(banner.textContent).toBe(
-      "To cover: 2 personas with no passing use case, 1 use cases never run.",
+      "To cover: 2 personas with no passing use case, 1 use case never run.",
     );
   });
 
@@ -297,7 +306,7 @@ describe("Personas screens", () => {
     );
 
     const banner = await screen.findByTestId("scope-changed-banner");
-    expect(banner.textContent).toContain("1 use cases to re-verify");
+    expect(banner.textContent).toContain("1 use case to re-verify");
     expect(screen.getByTestId("persona-changes-card")).toBeTruthy();
 
     fireEvent.click(await screen.findByRole("button", { name: /Open as Léa/ }));

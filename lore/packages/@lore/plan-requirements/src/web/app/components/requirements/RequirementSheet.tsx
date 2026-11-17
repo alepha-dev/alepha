@@ -7,12 +7,26 @@ import {
   useToast,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
-import type { I18n } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  type I18n,
+  useLoreEditorControl,
+} from "@lore/core/web";
 import { z } from "alepha";
-import { useClient } from "alepha/react";
+import { useClient, useStore } from "alepha/react";
 import { useForm, useFormState, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Plus, Save } from "lucide-react";
+import {
+  BookMarked,
+  ClipboardCheck,
+  FileText,
+  Pilcrow,
+  Plus,
+  Save,
+  Shapes,
+  SignalHigh,
+  Type,
+} from "lucide-react";
 
 import type { RequirementController } from "../../../../api/controllers/RequirementController.ts";
 import { requirementInputSchema } from "../../../../api/schemas/requirementInputSchema.ts";
@@ -57,6 +71,7 @@ export interface RequirementSheetProps {
 const RequirementSheet = (props: RequirementSheetProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
+  const [project] = useStore(currentProjectAtom);
   const api = useClient<RequirementController>();
   const it = props.requirement;
 
@@ -160,6 +175,16 @@ const RequirementSheet = (props: RequirementSheetProps) => {
   );
   const { loading } = useFormState(form, ["loading"]);
   const { verifyBy } = useFormValues(form);
+  // Disabled rather than hidden, as the persona, use case and epic forms.
+  const canSave = it
+    ? api.updateRequirement.can()
+    : api.createRequirement.can();
+  const DescriptionEditor = useLoreEditorControl({
+    kind: "requirement",
+    projectId: props.projectId,
+    projectSlug: project?.slug ?? "",
+    id: it?.id,
+  });
 
   return (
     <Sheet open={props.open} onOpenChange={props.onOpenChange}>
@@ -180,35 +205,49 @@ const RequirementSheet = (props: RequirementSheetProps) => {
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
             <Control
               label={tr("requirements.requirement.field.statement")}
+              description={tr(
+                "requirements.requirement.field.statement.helper",
+              )}
               input={form.input.statement}
+              icon={Type}
             />
             <div className="grid grid-cols-2 gap-4">
               <Control
                 label={tr("requirements.requirement.field.type")}
                 input={form.input.type}
+                icon={Shapes}
               />
               <Control
                 label={tr("requirements.requirement.field.priority")}
                 input={form.input.priority}
+                icon={SignalHigh}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Control
                 label={tr("requirements.requirement.field.chapter")}
+                description={tr(
+                  "requirements.requirement.field.chapter.helper",
+                )}
                 input={form.input.chapter}
+                icon={BookMarked}
               />
               <Control
                 label={tr("requirements.requirement.field.paragraph")}
                 input={form.input.paragraph}
+                icon={Pilcrow}
               />
             </div>
             <Control
               label={tr("requirements.requirement.field.description")}
               input={form.input.description}
+              icon={FileText}
+              custom={DescriptionEditor}
             />
             <Control
               label={tr("requirements.requirement.verifyBy")}
               input={form.input.verifyBy}
+              icon={ClipboardCheck}
               select
               items={(
                 ["usecases", "vital", "availability", "latency"] as const
@@ -272,7 +311,7 @@ const RequirementSheet = (props: RequirementSheetProps) => {
             ) : null}
           </div>
           <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !canSave}>
               {it ? <Save className="size-4" /> : <Plus className="size-4" />}
               {tr(
                 it

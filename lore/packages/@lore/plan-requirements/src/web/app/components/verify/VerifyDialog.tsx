@@ -14,7 +14,7 @@ import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Copy, Terminal } from "lucide-react";
+import { Copy, Terminal, UserRound } from "lucide-react";
 
 import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
 import type { RequirementsPromptController } from "../../../../api/controllers/RequirementsPromptController.ts";
@@ -32,13 +32,20 @@ export type VerifySubject =
   | { kind: "import"; folioShortId?: number }
   | { kind: "draft"; requirement?: number; epic?: number };
 
+export type VerifyMission = keyof typeof MISSION_LABEL_KEYS;
+
 export interface VerifyDialogProps {
   subject: VerifySubject;
+  /**
+   * The mission the dialog opens on, when a menu already chose it
+   * (`VerifyMenu`). Read at mount: key the dialog on it.
+   */
+  mission?: VerifyMission;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const MISSIONS = {
+export const MISSIONS = {
   usecase: ["test", "spec", "demo"],
   persona: ["test", "explore"],
   allStale: ["test"],
@@ -46,7 +53,7 @@ const MISSIONS = {
   draft: ["draft"],
 } as const;
 
-const MISSION_LABEL_KEYS = {
+export const MISSION_LABEL_KEYS = {
   test: "requirements.verify.mission.test",
   spec: "requirements.verify.mission.spec",
   demo: "requirements.verify.mission.demo",
@@ -99,10 +106,9 @@ const VerifyDialog = (props: VerifyDialogProps) => {
       folio: z.text().optional(),
     }),
     initialValues: {
-      mission: missions[0],
+      mission: props.mission ?? missions[0],
       app: "",
       env: "",
-      as: "default",
       stale: false,
       folio:
         props.subject.kind === "import" && props.subject.folioShortId
@@ -123,7 +129,7 @@ const VerifyDialog = (props: VerifyDialogProps) => {
     [personaApi, projectId, props.open],
   );
 
-  const mission = (values.mission ?? missions[0]) as keyof typeof KIND_OF;
+  const mission = (values.mission ?? missions[0]) as VerifyMission;
   const folio = Number(values.folio);
   const ready = props.subject.kind !== "import" || folio > 0;
   const preview = useQuery<{ prompt: string; command: string }>(
@@ -163,9 +169,7 @@ const VerifyDialog = (props: VerifyDialogProps) => {
               : {}),
             ...(values.app ? { app: values.app } : {}),
             ...(values.env ? { env: values.env } : {}),
-            ...(values.as && values.as !== "default"
-              ? { asPersona: Number(values.as) }
-              : {}),
+            ...(values.as ? { asPersona: Number(values.as) } : {}),
           },
         }),
     },
@@ -262,16 +266,16 @@ const VerifyDialog = (props: VerifyDialogProps) => {
                 label={tr("requirements.verify.as")}
                 input={options.input.as}
                 select
-                items={[
-                  {
-                    value: "default",
-                    label: tr("requirements.verify.as.default"),
-                  },
-                  ...(personas.data ?? []).map((p) => ({
-                    value: String(p.number),
-                    label: `${formatReference("persona", p.number)} ${p.name}`,
-                  })),
-                ]}
+                clearable
+                icon={UserRound}
+                // Empty means the primary actor: the placeholder says so,
+                // and so does the row that clears a choice.
+                placeholder={tr("requirements.verify.as.default")}
+                clearLabel={tr("requirements.verify.as.default")}
+                items={(personas.data ?? []).map((p) => ({
+                  value: String(p.number),
+                  label: `${formatReference("persona", p.number)} ${p.name}`,
+                }))}
               />
             </div>
           )}

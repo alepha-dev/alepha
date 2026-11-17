@@ -23,6 +23,7 @@ import {
 
 import { RequirementsPromptDefaults } from "../../../api/schemas/RequirementsPromptDefaults.ts";
 import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
+import { currentRequirementAtom } from "../atoms/currentRequirementAtom.ts";
 import { currentUseCaseAtom } from "../atoms/currentUseCaseAtom.ts";
 import { REQUIREMENTS_ROUTES } from "../components/layout/requirementsTabs.ts";
 import { usePersonaReferences } from "../components/personas/usePersonaReferences.ts";
@@ -113,7 +114,10 @@ export class RequirementsShell {
       enabled: (project) =>
         capabilityOption(project, "plan", "requirements") &&
         canInProject(project, "requirement:write"),
-      route: "projectRequirements",
+      dialog: lazyPart(
+        () =>
+          import("../components/requirements/RequirementCreateMenuSheet.tsx"),
+      ),
     });
     // New use case, beside New persona.
     this.shell.registerCreate({
@@ -128,57 +132,51 @@ export class RequirementsShell {
         () => import("../components/usecases/UseCaseCreateMenuSheet.tsx"),
       ),
     });
-    // A use case's page reads "Acme › Requirements › Use cases › #U7 Title".
-    this.shell.registerCrumb({
-      order: 52,
-      crumb: (ctx) =>
-        ctx.routeName === "projectUseCase"
-          ? {
-              labelKey: "requirements.tab.useCases",
-              href: ctx.path("projectUseCases", {
-                projectSlug: ctx.projectSlug,
-              }),
-            }
-          : undefined,
-    });
+    // A use case's page reads "Acme > Requirements > #U7": the reference as
+    // an inert leaf, as an epic's reads "Acme > Epics > #E2". The number, not
+    // the title, which heads the page's own aside; and no crumb for the tab,
+    // which no other section has: "Requirements" climbs back to the tab that
+    // lists the page (`SECTION_HREF_ROUTES`).
     this.shell.registerCrumb({
       order: 53,
       reads: [currentUseCaseAtom],
       crumb: (ctx) => {
         const useCase = ctx.get(currentUseCaseAtom);
         return ctx.routeName === "projectUseCase" && useCase
-          ? {
-              label: `${formatReference("usecase", useCase.number)} ${useCase.title}`,
-            }
+          ? { label: formatReference("usecase", useCase.number) }
           : undefined;
       },
     });
 
-    // A persona's page reads "Acme › Requirements › Personas › #A2 Léa":
-    // the tab, linked, then the persona as the inert leaf.
-    this.shell.registerCrumb({
-      order: 50,
-      crumb: (ctx) =>
-        ctx.routeName === "projectPersona"
-          ? {
-              labelKey: "requirements.tab.personas",
-              href: ctx.path("projectPersonas", {
-                projectSlug: ctx.projectSlug,
-              }),
-            }
-          : undefined,
-    });
+    // A persona's page reads "Acme > Requirements > #A2".
     this.shell.registerCrumb({
       order: 51,
       reads: [currentPersonaAtom],
       crumb: (ctx) => {
         const persona = ctx.get(currentPersonaAtom);
         return ctx.routeName === "projectPersona" && persona
-          ? {
-              label: `${formatReference("persona", persona.number)} ${persona.name}`,
-            }
+          ? { label: formatReference("persona", persona.number) }
           : undefined;
       },
+    });
+    // A requirement's page reads "Acme > Requirements > #S15".
+    this.shell.registerCrumb({
+      order: 54,
+      reads: [currentRequirementAtom],
+      crumb: (ctx) => {
+        const requirement = ctx.get(currentRequirementAtom);
+        return ctx.routeName === "projectRequirement" && requirement
+          ? { label: formatReference("requirement", requirement.number) }
+          : undefined;
+      },
+    });
+    // The test book names itself: "Acme > Requirements > Test book".
+    this.shell.registerCrumb({
+      order: 55,
+      crumb: (ctx) =>
+        ctx.routeName === "projectRequirementsTestBook"
+          ? { labelKey: "requirements.trace.export.testBook" }
+          : undefined,
     });
 
     // `[[#A2]]`: a persona, after the kinds a body names more often.
@@ -217,18 +215,18 @@ export class RequirementsShell {
       ),
       useReferences: useUseCaseReferences,
     });
-    // `[[#S15]]`: a requirement, which opens the Requirements tab on it.
+    // `[[#S15]]`: a requirement.
     this.references.register({
       kind: "requirement",
       order: 62,
       brokenKey: "folios.wikilink.broken.requirementNotFound",
       href: (projectSlug, ref) =>
-        `/${projectSlug}/requirements?requirement=${ref.number}`,
+        `/${projectSlug}/requirements/requirement/${ref.number}`,
       match: (path, projectSlug) =>
         RequirementsShell.matchPage(
           path,
           projectSlug,
-          /^\/([^/]+)\/requirements\?requirement=(\d+)(?:[#&]|$)/,
+          /^\/([^/]+)\/requirements\/requirement\/(\d+)(?:[#?]|$)/,
         ),
       preview: lazyPart(
         () =>

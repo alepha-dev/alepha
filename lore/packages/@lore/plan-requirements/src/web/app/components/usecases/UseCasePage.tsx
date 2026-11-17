@@ -1,5 +1,5 @@
 import { Button, useDialog } from "@alepha/ui";
-import { DetailLayout, type DetailTab } from "@alepha/ui/shell";
+import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import {
   canInProject,
   currentProjectAtom,
@@ -11,7 +11,6 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   CircleCheck,
-  ClipboardCheck,
   PlayCircle,
   FileText,
   History,
@@ -26,7 +25,10 @@ import { useState } from "react";
 import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import { currentUseCaseAtom } from "../../atoms/currentUseCaseAtom.ts";
-import VerifyDialog from "../verify/VerifyDialog.tsx";
+import DetailMoreMenu from "../shared/DetailMoreMenu.tsx";
+import RequirementsHover from "../shared/RequirementsHover.tsx";
+import WarningNotice from "../shared/WarningNotice.tsx";
+import VerifyMenu from "../verify/VerifyMenu.tsx";
 import UseCaseAside from "./UseCaseAside.tsx";
 import UseCaseCoverage from "./UseCaseCoverage.tsx";
 import UseCaseCriteria from "./UseCaseCriteria.tsx";
@@ -57,9 +59,8 @@ const UseCasePage = (props: UseCasePageProps) => {
   // A page of this package, named by string.
   const router = useRouter<any>();
   const [useCase, setUseCase] = useState(props.useCase);
-  const [tab, setTab] = useState<TabKey>("scenario");
+  const [tab, setTab] = useDetailTab<TabKey>("scenario");
   const [editing, setEditing] = useState(false);
-  const [verifying, setVerifying] = useState(false);
 
   const apply = (next: UseCaseResource) => {
     setUseCase(next);
@@ -132,6 +133,8 @@ const UseCasePage = (props: UseCasePageProps) => {
   const canWrite = canInProject(project, "usecase:write");
   const canValidate = canInProject(project, "usecase:validate");
   const busy = request.loading || answer.loading || remove.loading;
+  const open = useCase.status !== "deprecated";
+  const canRequest = canWrite && open && useCase.status !== "validated";
 
   const tabs: DetailTab[] = [
     {
@@ -164,16 +167,24 @@ const UseCasePage = (props: UseCasePageProps) => {
       onTabChange={(value) => setTab(value as TabKey)}
       actions={
         <>
-          <Button size="sm" onClick={() => setVerifying(true)}>
-            <ClipboardCheck className="size-4" />
-            {tr("requirements.verify")}
-          </Button>
-          {canWrite &&
-          useCase.status !== "validated" &&
-          useCase.status !== "deprecated" ? (
+          <VerifyMenu subject={{ kind: "usecase", number: useCase.number }} />
+          {/* One validation button, the reader's own: a validator
+              validates, a writer asks for it. The other verbs are in the
+              overflow menu, so the bar never crowds the tabs out. */}
+          {canValidate && open ? (
             <Button
               variant="outlined"
-              size="sm"
+              size="lg"
+              disabled={busy}
+              onClick={() => void answer.run("validated")}
+            >
+              <CircleCheck className="size-4" />
+              {tr("requirements.usecase.validation.validate")}
+            </Button>
+          ) : canRequest ? (
+            <Button
+              variant="outlined"
+              size="lg"
               disabled={busy}
               onClick={() => void request.run()}
             >
@@ -181,81 +192,80 @@ const UseCasePage = (props: UseCasePageProps) => {
               {tr("requirements.usecase.validation.request")}
             </Button>
           ) : null}
-          {canValidate && useCase.status !== "deprecated" ? (
-            <>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={busy}
-                onClick={() => void answer.run("validated")}
-              >
-                <CircleCheck className="size-4" />
-                {tr("requirements.usecase.validation.validate")}
-              </Button>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={busy}
-                onClick={() => void answer.run("changes_requested")}
-              >
-                <MessageSquareWarning className="size-4" />
-                {tr("requirements.usecase.validation.changes")}
-              </Button>
-            </>
-          ) : null}
           {canWrite ? (
-            <>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={busy}
-                onClick={() => setEditing(true)}
-              >
-                <Pencil className="size-4" />
-                {tr("requirements.usecase.edit")}
-              </Button>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={busy}
-                onClick={() => void remove.run()}
-              >
-                <Trash2 className="size-4" />
-                {tr("requirements.persona.delete")}
-              </Button>
-            </>
+            <Button
+              variant="outlined"
+              size="lg"
+              disabled={busy}
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="size-4" />
+              {tr("requirements.usecase.edit")}
+            </Button>
           ) : null}
+          <DetailMoreMenu
+            disabled={busy}
+            items={[
+              ...(canValidate && open
+                ? [
+                    {
+                      key: "changes",
+                      icon: MessageSquareWarning,
+                      label: tr("requirements.usecase.validation.changes"),
+                      onSelect: () => void answer.run("changes_requested"),
+                    },
+                  ]
+                : []),
+              ...(canValidate && open && canRequest
+                ? [
+                    {
+                      key: "request",
+                      icon: Send,
+                      label: tr("requirements.usecase.validation.request"),
+                      onSelect: () => void request.run(),
+                    },
+                  ]
+                : []),
+              ...(canWrite
+                ? [
+                    {
+                      key: "delete",
+                      icon: Trash2,
+                      label: tr("requirements.persona.delete"),
+                      destructive: true,
+                      onSelect: () => void remove.run(),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         </>
       }
     >
-      {useCase.stale && useCase.lastRun ? (
-        <div
-          className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950"
-          data-testid="stale-banner"
-        >
-          {tr("requirements.run.staleBanner")}
-        </div>
-      ) : null}
-      {tab === "scenario" ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          <UseCaseScenario useCase={useCase} />
-          <UseCaseCriteria useCase={useCase} />
-        </div>
-      ) : tab === "coverage" ? (
-        <UseCaseCoverage projectId={project.id} useCase={useCase} />
-      ) : tab === "runs" ? (
-        <UseCaseRuns projectId={project.id} number={useCase.number} />
-      ) : (
+      {tab === "activity" ? (
         <LazyProjectActivityPage
           resource={{ type: "usecase", id: String(useCase.number) }}
           persistenceKey={`lor.activity.${project.id}.usecase.${useCase.number}`}
         />
+      ) : (
+        <RequirementsHover className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+          {useCase.stale && useCase.lastRun ? (
+            <WarningNotice data-testid="stale-banner">
+              {tr("requirements.run.staleBanner")}
+            </WarningNotice>
+          ) : null}
+          {tab === "scenario" ? (
+            <div className="grid gap-4 xl:grid-cols-2">
+              <UseCaseScenario useCase={useCase} />
+              <UseCaseCriteria useCase={useCase} />
+            </div>
+          ) : tab === "coverage" ? (
+            <UseCaseCoverage projectId={project.id} useCase={useCase} />
+          ) : (
+            <UseCaseRuns projectId={project.id} number={useCase.number} />
+          )}
+        </RequirementsHover>
       )}
-      <VerifyDialog
-        subject={{ kind: "usecase", number: useCase.number }}
-        open={verifying}
-        onOpenChange={setVerifying}
-      />
       <UseCaseSheet
         projectId={project.id}
         useCase={useCase}

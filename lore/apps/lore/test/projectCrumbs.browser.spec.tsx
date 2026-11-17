@@ -5,6 +5,7 @@ import {
   pageCrumbAtom,
   ProjectShellRegistry,
   ProjectTrail,
+  SECTION_HREF_ROUTES,
 } from "@lore/core/web";
 import {
   currentPersonaAtom,
@@ -138,7 +139,7 @@ describe("the leaf crumb of a detail page", () => {
     }
   });
 
-  it("a persona's page reads Personas, then the persona (#E153)", async ({
+  it("a persona's page ends with its reference alone, as an epic's (#E153)", async ({
     expect,
   }) => {
     const { alepha, leaves } = await setup();
@@ -157,12 +158,21 @@ describe("the leaf crumb of a detail page", () => {
     });
 
     const crumbs = leaves("projectPersona", { personaNumber: "2" });
-    expect(crumbs.map((it) => it?.label)).toEqual([
-      "requirements.tab.personas",
-      "#A2 Léa",
-    ]);
-    expect(crumbs[0]?.href).toContain("projectPersonas");
+    // No crumb for the tab, and no title: "Acme > Requirements > #A2".
+    expect(crumbs.map((it) => it?.label)).toEqual(["#A2"]);
+    expect(crumbs[0]?.href).toBeUndefined();
     expect(leaves("projectPersonas")).toEqual([]);
+    // "Requirements" climbs back to the tab that lists the page.
+    expect(SECTION_HREF_ROUTES.projectPersona).toBe("projectPersonas");
+    expect(SECTION_HREF_ROUTES.projectUseCase).toBe("projectUseCases");
+    expect(SECTION_HREF_ROUTES.projectRequirement).toBe("projectRequirements");
+  });
+
+  it("the test book names itself (#E153)", async ({ expect }) => {
+    const { leaves } = await setup();
+    expect(
+      leaves("projectRequirementsTestBook").map((it) => it?.label),
+    ).toEqual(["requirements.trace.export.testBook"]);
   });
 
   it("an area's settings page ends with the area's name", async ({

@@ -1,6 +1,10 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  I18n,
+  ElementReferenceRegistry,
+} from "@lore/core/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -128,7 +132,8 @@ describe("Traceability", () => {
       .with(AlephaReact)
       .with(AlephaReactRouter)
       .with(AlephaReactI18n)
-      .with(I18n);
+      .with(I18n)
+      .with(ElementReferenceRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, {

@@ -162,6 +162,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectPersonas",
   "projectPersona",
   "projectUseCase",
+  "projectRequirement",
   "projectRequirementsTestBook",
   ...ROUTES_APP,
   ...ROUTES_SETTINGS,
@@ -199,6 +200,8 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectAutomations"
   | "projectSettingsHosts"
   | "projectRequirements"
+  | "projectUseCases"
+  | "projectPersonas"
 > = {
   projectFolios: "projectFolios",
   projectFoliosNew: "projectFolios",
@@ -207,11 +210,14 @@ export const SECTION_HREF_ROUTES: Record<
   projectQuest: "projectQuests",
   projectQuestGraph: "projectQuests",
   projectRelease: "projectReleases",
-  // A persona or a use case climbs back to the Requirements page (#E153);
-  // on the page itself, whichever tab is open, the crumb stays inert as
+  // A persona, a use case or a requirement climbs back to the tab that
+  // lists it (#E153): the trail reads "Acme > Requirements > #U7", as an
+  // epic's reads "Acme > Epics > #E2", and the tabs are never a crumb. On
+  // the page itself, whichever tab is open, the crumb stays inert as
   // Reports' does.
-  projectPersona: "projectRequirements",
-  projectUseCase: "projectRequirements",
+  projectPersona: "projectPersonas",
+  projectUseCase: "projectUseCases",
+  projectRequirement: "projectRequirements",
   projectRequirementsTestBook: "projectRequirements",
   projectAutomationGallery: "projectAutomations",
   projectAutomationDetail: "projectAutomations",
@@ -288,6 +294,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectPersonas: "project.menu.requirements",
   projectPersona: "project.menu.requirements",
   projectUseCase: "project.menu.requirements",
+  projectRequirement: "project.menu.requirements",
   projectRequirementsTestBook: "project.menu.requirements",
   projectReports: "project.menu.reports",
   reportsSummary: "project.menu.reports",

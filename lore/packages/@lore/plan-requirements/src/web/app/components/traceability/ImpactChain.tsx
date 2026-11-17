@@ -7,6 +7,10 @@ import type { RequirementCoverageController } from "../../../../api/controllers/
 import type { RequirementImpact } from "../../../../api/schemas/requirementCoverageSchema.ts";
 import type { RequirementResource } from "../../../../api/schemas/requirementResourceSchema.ts";
 import { formatMetricValue, metricLine } from "../requirements/metricText.ts";
+import { REQUIREMENT_PRIORITY_LABEL_KEYS } from "../requirements/requirementLabels.ts";
+import ReferenceLink from "../shared/ReferenceLink.tsx";
+import { developmentKey } from "../usecases/developmentKey.ts";
+import ImpactChainStep from "./ImpactChainStep.tsx";
 
 export interface ImpactChainProps {
   projectId: number;
@@ -18,22 +22,6 @@ const RESULT_KEYS = {
   failed: "requirements.run.result.failed",
   not_run: "requirements.run.result.not_run",
 } as const;
-
-const Step = (props: {
-  label: string;
-  tone: string;
-  children: React.ReactNode;
-}) => (
-  <li className="relative flex gap-3 pb-3">
-    <span className={`mt-1 size-2.5 shrink-0 rounded-full ${props.tone}`} />
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-muted-foreground text-[11px] font-semibold uppercase">
-        {props.label}
-      </span>
-      {props.children}
-    </div>
-  </li>
-);
 
 /**
  * A requirement's impact chain (#E153, #Q3774): the requirement, its
@@ -61,28 +49,31 @@ const ImpactChain = (props: ImpactChainProps) => {
       <CardContent className="flex flex-col gap-2 text-sm">
         <div className="flex justify-between">
           <h3 className="font-semibold">{tr("requirements.trace.impact")}</h3>
-          <span className="text-muted-foreground text-xs">
+          <span className="text-muted-foreground font-mono text-xs">
             {formatReference("requirement", it.number)}
           </span>
         </div>
         <ol>
-          <Step
+          <ImpactChainStep
             label={tr("requirements.trace.step.requirement")}
-            tone="bg-blue-600"
+            tone="bg-primary"
           >
-            <span>
-              {formatReference("requirement", it.number)} {it.statement}
-            </span>
+            <ReferenceLink kind="requirement" number={it.number}>
+              {it.statement}
+            </ReferenceLink>
             <span className="text-muted-foreground text-xs">
-              {[it.paragraph ? `§${it.paragraph}` : undefined, it.priority]
+              {[
+                it.paragraph ? `§${it.paragraph}` : undefined,
+                tr(REQUIREMENT_PRIORITY_LABEL_KEYS[it.priority]),
+              ]
                 .filter(Boolean)
                 .join(" · ")}
             </span>
-          </Step>
+          </ImpactChainStep>
           {it.metric ? (
-            <Step
+            <ImpactChainStep
               label={tr("requirements.requirement.metric")}
-              tone="bg-violet-600"
+              tone="bg-primary/60"
             >
               <span className="font-mono text-xs">{metricLine(it.metric)}</span>
               <span className="text-muted-foreground text-xs">
@@ -90,16 +81,16 @@ const ImpactChain = (props: ImpactChainProps) => {
                   ? formatMetricValue(it.metric, it.metricValue)
                   : tr("requirements.requirement.status.no_data")}
               </span>
-            </Step>
+            </ImpactChainStep>
           ) : null}
           {data?.useCases.length ? (
-            <Step
+            <ImpactChainStep
               label={tr("requirements.trace.step.useCases")}
-              tone="bg-orange-600"
+              tone="bg-warning"
             >
               {data.useCases.map((uc) => (
                 <span key={uc.number}>
-                  {formatReference("usecase", uc.number)}{" "}
+                  <ReferenceLink kind="usecase" number={uc.number} />{" "}
                   {uc.criteria
                     .map(
                       (c) =>
@@ -109,46 +100,60 @@ const ImpactChain = (props: ImpactChainProps) => {
                   {uc.stale ? ` (${tr("requirements.run.stale")})` : ""}
                 </span>
               ))}
-            </Step>
+            </ImpactChainStep>
           ) : null}
           {data?.epics.length ? (
-            <Step
+            <ImpactChainStep
               label={tr("requirements.trace.step.epics")}
-              tone="bg-slate-500"
+              tone="bg-muted-foreground"
             >
               {data.epics.map((epic) => (
                 <span key={epic.number}>
-                  {formatReference("epic", epic.number)} {epic.title}{" "}
+                  <ReferenceLink kind="epic" number={epic.number}>
+                    {epic.title}
+                  </ReferenceLink>{" "}
                   <span className="text-muted-foreground text-xs">
-                    {tr("requirements.usecase.development", {
+                    {tr(developmentKey(epic.total), {
                       args: [String(epic.done), String(epic.total)],
                     })}
                   </span>
                 </span>
               ))}
-            </Step>
+            </ImpactChainStep>
           ) : null}
           {data?.quests.length ? (
-            <Step
+            <ImpactChainStep
               label={tr("requirements.trace.step.quests")}
-              tone="bg-slate-500"
+              tone="bg-muted-foreground"
             >
-              <span>
-                {data.quests
-                  .map((q) => formatReference("quest", q.number))
-                  .join(" · ")}
+              <span className="flex flex-wrap gap-x-2">
+                {data.quests.map((q) => (
+                  <ReferenceLink
+                    key={q.number}
+                    kind="quest"
+                    number={q.number}
+                  />
+                ))}
               </span>
               <span className="text-muted-foreground text-xs">
-                {tr("requirements.trace.commits", {
-                  args: [String(data.commits.count), data.commits.last ?? "-"],
-                })}
+                {tr(
+                  data.commits.count === 1
+                    ? "requirements.trace.commits.one"
+                    : "requirements.trace.commits",
+                  {
+                    args: [
+                      String(data.commits.count),
+                      data.commits.last ?? "-",
+                    ],
+                  },
+                )}
               </span>
-            </Step>
+            </ImpactChainStep>
           ) : null}
           {data?.errors.length ? (
-            <Step
+            <ImpactChainStep
               label={tr("requirements.trace.step.errors")}
-              tone="bg-orange-600"
+              tone="bg-warning"
             >
               {data.errors.map((error) => (
                 <span key={error.id}>
@@ -158,9 +163,9 @@ const ImpactChain = (props: ImpactChainProps) => {
                   </span>
                 </span>
               ))}
-            </Step>
+            </ImpactChainStep>
           ) : null}
-          <Step
+          <ImpactChainStep
             label={tr("requirements.trace.step.release")}
             tone="bg-foreground"
           >
@@ -169,7 +174,7 @@ const ImpactChain = (props: ImpactChainProps) => {
                 ? (it.targetRelease.tag ?? it.targetRelease.title)
                 : tr("requirements.requirement.release.none")}
             </span>
-          </Step>
+          </ImpactChainStep>
         </ol>
       </CardContent>
     </Card>
