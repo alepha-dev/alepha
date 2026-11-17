@@ -305,6 +305,180 @@ describe("AutomationGraph", () => {
     });
   });
 
+  describe("the outline's shape", () => {
+    const condition = (id = "c"): AutomationGraphNode => ({
+      id,
+      kind: "condition",
+      type: "compare",
+      config: { field: "quest_count", operator: "gt", value: 1 },
+    });
+
+    it("accepts a line, a compact graph, several blocks of one event and both sides", ({
+      expect,
+    }) => {
+      const builder = new AutomationGraphBuilder();
+      expect(
+        messages(
+          builder.compact({
+            sources: [{ type: "host.offline" }, { type: "host.online" }],
+            actions: [
+              { type: "notify", config: notify("x").config },
+              { type: "notify", config: notify("y").config },
+            ],
+          }),
+        ),
+      ).toEqual([]);
+      expect(
+        messages(
+          graph(
+            [
+              event("a", "epic.completed"),
+              event("b", "epic.completed"),
+              condition(),
+              notify("yes"),
+              notify("yes-2"),
+              notify("no"),
+              notify("always"),
+            ],
+            [
+              ["a", "c"],
+              ["c", "yes", "true"],
+              ["yes", "yes-2"],
+              ["c", "no", "false"],
+              ["b", "always"],
+            ],
+          ),
+        ),
+      ).toEqual([]);
+    });
+
+    it("refuses a join: one way in, unless every way is an event of one block", ({
+      expect,
+    }) => {
+      expect(
+        messages(
+          graph(
+            [event("a", "epic.completed"), condition(), notify("both")],
+            [
+              ["a", "c"],
+              ["c", "both", "true"],
+              ["c", "both", "false"],
+            ],
+          ),
+        ),
+      ).toEqual([
+        "node 'both': An action has one way in: branches do not join, so add the action on both sides",
+      ]);
+      expect(
+        messages(
+          graph(
+            [
+              event("a", "host.offline"),
+              event("b", "host.online"),
+              notify("shared"),
+              notify("own"),
+            ],
+            [
+              ["a", "shared"],
+              ["b", "shared"],
+              ["b", "own"],
+            ],
+          ),
+        ),
+      ).toEqual([
+        "node 'shared': The events wired here lead to different steps: events of one block share everything after them, so give each event a block of its own",
+      ]);
+    });
+
+    it("refuses a block that starts two ways: a condition beside an action, or two conditions", ({
+      expect,
+    }) => {
+      expect(
+        messages(
+          graph(
+            [
+              event("a", "epic.completed"),
+              condition(),
+              notify("y"),
+              notify("z"),
+            ],
+            [
+              ["a", "c"],
+              ["c", "y", "true"],
+              ["a", "z"],
+            ],
+          ),
+        ),
+      ).toEqual([
+        "node 'a': An event leads to one condition or to actions, never both: use two blocks of the same event, or put the action on both sides of the condition",
+      ]);
+      expect(
+        messages(
+          graph(
+            [
+              event("a", "epic.completed"),
+              condition("c1"),
+              condition("c2"),
+              notify("y"),
+              notify("z"),
+            ],
+            [
+              ["a", "c1"],
+              ["a", "c2"],
+              ["c1", "y", "true"],
+              ["c2", "z", "true"],
+            ],
+          ),
+        ),
+      ).toEqual([
+        "node 'a': An event leads to one condition at most: a block holds one condition, so use two blocks of the same event",
+      ]);
+    });
+
+    it("refuses a condition after a condition, and an action followed by two", ({
+      expect,
+    }) => {
+      expect(
+        messages(
+          graph(
+            [
+              event("a", "epic.completed"),
+              condition("c1"),
+              condition("c2"),
+              notify("y"),
+            ],
+            [
+              ["a", "c1"],
+              ["c1", "c2", "true"],
+              ["c2", "y", "true"],
+            ],
+          ),
+        ),
+      ).toEqual([
+        "node 'c1': A condition leads to actions only: a block holds one condition, so fold the second one into another block",
+      ]);
+      expect(
+        messages(
+          graph(
+            [
+              event("a", "epic.completed"),
+              notify("x"),
+              notify("y"),
+              notify("z"),
+            ],
+            [
+              ["a", "x"],
+              ["x", "y"],
+              ["x", "z"],
+            ],
+          ),
+        ),
+      ).toEqual([
+        "node 'x': An action is followed by one action at most: chain the others after it in one sequence, or start a sequence of their own",
+      ]);
+    });
+  });
+
   describe("fields", () => {
     it("lets two sources share one action on the fields they have in common", ({
       expect,
@@ -493,7 +667,7 @@ describe("AutomationGraph", () => {
           ),
         ),
       ).toContain(
-        "node 'c2': An automation holds at most one 'crosses above' condition: its baseline is one per automation",
+        "node 'c1': A condition leads to actions only: a block holds one condition, so fold the second one into another block",
       );
       expect(
         messages(
@@ -662,7 +836,9 @@ describe("AutomationGraph", () => {
       expect(graphs.outputs(value, "create", entries)).toEqual({});
     });
 
-    it("refuses an output whose producer a path goes around", ({ expect }) => {
+    it("refuses a path around a producer as a join, before its outputs", ({
+      expect,
+    }) => {
       const value = graph(
         [event("done", "epic.completed"), create, tag()],
         [
@@ -672,7 +848,7 @@ describe("AutomationGraph", () => {
         ],
       );
       expect(messages(value)).toEqual([
-        "node 'tag': 'created_quest_id' comes from 'create', which is not on every path to this node: an output reaches only the actions every path passes it on the way to",
+        "node 'tag': An action has one way in: branches do not join, so add the action on both sides",
       ]);
       const twoSources = graph(
         [

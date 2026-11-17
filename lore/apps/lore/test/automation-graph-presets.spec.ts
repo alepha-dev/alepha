@@ -62,6 +62,53 @@ describe("Stock presets as graphs", () => {
     }
   });
 
+  it("merges every non-schedule stock preset into one valid outline, as a bell does", ({
+    expect,
+  }) => {
+    const registry = alepha.inject(AutomationPresetRegistry);
+    const entries = alepha.inject(AutomationCatalog).entries();
+    const graphs = new AutomationGraph();
+    const values = (key: string) => {
+      const preset = registry.all().find((item) => item.key === key)!;
+      const out: Record<string, unknown> = {};
+      for (const [name, slot] of Object.entries(preset.slots)) {
+        if (slot.default !== undefined || !slot.required) continue;
+        out[name] =
+          slot.values?.[0] ??
+          (slot.kind === "member" || slot.kind === "folio"
+            ? crypto.randomUUID()
+            : slot.kind === "number" || slot.kind === "release"
+              ? 1
+              : slot.kind === "boolean"
+                ? true
+                : slot.kind === "textArray"
+                  ? ["inbox"]
+                  : slot.kind === "channel"
+                    ? "inbox"
+                    : "release");
+      }
+      return out;
+    };
+    const events = registry
+      .all()
+      .filter(
+        (preset) =>
+          registry.build(preset.key, values(preset.key) as never).rule.nodes[0]
+            .type !== "schedule",
+      )
+      .slice(0, 4);
+    expect(events.length).toBeGreaterThan(1);
+    const { rule } = registry.merge(
+      events.map((preset) => ({
+        key: preset.key,
+        values: values(preset.key) as never,
+      })),
+    );
+    expect(
+      graphs.check(rule, entries).map((issue) => graphs.message(issue)),
+    ).toEqual([]);
+  });
+
   it("sketches every stock preset for its card: kinds, places and wires, no configuration", ({
     expect,
   }) => {

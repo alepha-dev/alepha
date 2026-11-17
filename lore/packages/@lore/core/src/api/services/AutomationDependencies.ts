@@ -27,6 +27,16 @@ export class AutomationDependencies {
    * others keep running.
    */
   public async assert(rule: Automation): Promise<void> {
+    // A graph the outline rules refuse (#Q3845) was drawn before them: it is
+    // not converted, it reads broken until it is rebuilt or deleted.
+    const [shape] = this.graphs.shape(rule.rule);
+    if (shape)
+      throw new AutomationDependencyError(
+        `Built with the previous editor, rebuild it: ${this.graphs.message(shape)}`.slice(
+          0,
+          1024,
+        ),
+      );
     const sources = await this.sources(rule);
     const enabled = this.graphs
       .sources(rule.rule)
