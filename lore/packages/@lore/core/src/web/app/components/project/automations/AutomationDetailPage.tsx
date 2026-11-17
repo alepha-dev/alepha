@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   useDialog,
+  useIsMobile,
 } from "@alepha/ui";
 import {
   useAction,
@@ -15,8 +16,8 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Braces, Pause, Play, PowerOff, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Braces, Pause, Pencil, Play, PowerOff, Trash2 } from "lucide-react";
+import { useCallback, useState } from "react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
 import type { AutomationResource } from "../../../../../api/schemas/automationResourceSchema.ts";
@@ -28,6 +29,7 @@ import AutomationPage from "./AutomationPage.tsx";
 import AutomationRunList from "./AutomationRunList.tsx";
 import AutomationTestPanel from "./AutomationTestPanel.tsx";
 import AutomationCanvas from "./canvas/AutomationCanvas.tsx";
+import AutomationGraphEditor from "./canvas/AutomationGraphEditor.tsx";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
 
 export interface AutomationDetailPageProps {
@@ -48,6 +50,18 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
   const labels = useAutomationLabels();
   const [saved, setSaved] = useState<AutomationResource>();
   const [childBusy, setChildBusy] = useState(false);
+  // The canvas edits (#Q3811): its draft against what is saved, and the
+  // source selected on it, where Run test starts.
+  const [editing, setEditing] = useState(false);
+  const [reloads, setReloads] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [testSource, setTestSource] = useState<string>();
+  const phone = useIsMobile();
+  const onDirtyChange = useCallback((value: boolean) => setDirty(value), []);
+  const onSourceChange = useCallback(
+    (node: string | undefined) => setTestSource(node),
+    [],
+  );
   const read = useQuery(
     {
       key: ["automation", project?.id, props.automationId],
@@ -99,6 +113,31 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
     },
     [api, rule, queries],
   );
+  // A source's own switch on the read-only canvas (#Q3806, #Q3811): at
+  // once, and refreshed on success and failure alike.
+  const switchSource = useAction<[node: string, enabled: boolean], boolean>(
+    {
+      handler: async (_context, node, enabled) => {
+        if (!rule) return false;
+        try {
+          setSaved(
+            await api.setAutomationSourceEnabled({
+              params: { projectId: rule.projectId, id: rule.id },
+              body: { node, enabled, expectedRevision: rule.revision },
+            }),
+          );
+        } catch (error) {
+          setSaved(undefined);
+          queries.invalidate(["automation", rule.projectId, rule.id]);
+          throw error;
+        } finally {
+          queries.invalidate(["automations", rule.projectId]);
+        }
+        return true;
+      },
+    },
+    [api, rule, queries],
+  );
   const remove = useAction<[], boolean>(
     {
       handler: async () => {
@@ -138,7 +177,8 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
         )}
       </AutomationPage>
     );
-  const busy = toggle.loading || remove.loading || childBusy;
+  const busy =
+    toggle.loading || remove.loading || switchSource.loading || childBusy;
   const referencedKeys =
     rule.rule && catalog.data
       ? [...new Set(new AutomationTemplateTokens().inValue(rule.rule))].filter(
@@ -158,9 +198,18 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
       }
       description={labels.trigger(rule.rule)}
       actions={
-        // No editor until the canvas edits (#Q3811): an automation is
-        // created from a preset, switched and deleted.
         <>
+          {rule.canEdit && !editing && !phone && rule.rule && (
+            <Button
+              variant="outlined"
+              disabled={busy || !catalog.data}
+              data-testid="automation-edit"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="size-4" />
+              {tr("automation.edit")}
+            </Button>
+          )}
           {rule.canDelete && (
             <Button
               variant="outlined"
@@ -228,8 +277,49 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
         </p>
       ) : (
         <>
-          {rule.rule && (
-            <AutomationCanvas graph={rule.rule} sources={rule.sources} />
+          {editing && rule.rule && catalog.data ? (
+            <AutomationGraphEditor
+              key={`${rule.id}:${rule.revision}:${reloads}`}
+              resource={rule}
+              catalog={catalog.data}
+              onSaved={(next) => {
+                setSaved(next);
+                queries.invalidate(["automations", next.projectId]);
+              }}
+              onClose={() => {
+                setEditing(false);
+                setDirty(false);
+              }}
+              onDirtyChange={onDirtyChange}
+              onSourceChange={onSourceChange}
+              onReload={() => {
+                setSaved(undefined);
+                setDirty(false);
+                setReloads((count) => count + 1);
+                queries.invalidate(["automation", rule.projectId, rule.id]);
+              }}
+            />
+          ) : (
+            rule.rule && (
+              <>
+                {rule.canEdit && phone && (
+                  <p className="text-muted-foreground text-sm">
+                    {tr("automation.canvas.editPhone")}
+                  </p>
+                )}
+                <AutomationCanvas
+                  graph={rule.rule}
+                  sources={rule.sources}
+                  switches={{
+                    can: (enabled) =>
+                      enabled ? rule.canEnable : rule.canDisable,
+                    busy,
+                    set: (node, enabled) =>
+                      void switchSource.run(node, enabled),
+                  }}
+                />
+              </>
+            )
           )}
           {referencedKeys.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -258,6 +348,8 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
           <AutomationTestPanel
             key={`${rule.id}:${rule.revision}`}
             rule={rule}
+            dirty={editing && dirty}
+            source={testSource}
             disabled={toggle.loading || remove.loading}
             onBusyChange={setChildBusy}
           />

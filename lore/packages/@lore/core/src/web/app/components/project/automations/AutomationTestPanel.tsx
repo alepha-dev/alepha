@@ -24,6 +24,15 @@ import {
 export interface AutomationTestPanelProps {
   rule: AutomationResource;
   disabled?: boolean;
+  /**
+   * The canvas holds unsaved changes (#Q3811): Run test tests what is
+   * saved, so it waits for the save.
+   */
+  dirty?: boolean;
+  /**
+   * The source selected on the canvas, where the test starts.
+   */
+  source?: string;
   onBusyChange?: (busy: boolean) => void;
 }
 
@@ -93,7 +102,11 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
     props.onBusyChange?.(testState.loading);
     return () => props.onBusyChange?.(false);
   }, [testState.loading, props.onBusyChange]);
-  const busy = testState.loading || props.disabled;
+  useEffect(() => {
+    if (props.source && sources.some((node) => node.id === props.source))
+      form.input.node.set(props.source);
+  }, [props.source]);
+  const busy = testState.loading || props.disabled || props.dirty;
   return (
     <section className="flex flex-col gap-3">
       <div>
@@ -130,8 +143,11 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
           className="self-start"
           loading={testState.loading}
           disabled={busy}
+          data-testid="automation-test-run"
         >
-          {tr("automation.test.run")}
+          {props.dirty
+            ? tr("automation.test.saveToTest")
+            : tr("automation.test.run")}
         </Button>
         {report && (
           <section

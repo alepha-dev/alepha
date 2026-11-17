@@ -1168,4 +1168,241 @@ test.describe("Automations", () => {
       await member.ctx.close();
     }
   });
+
+  test("builds a two-source automation on the canvas, refuses a bad wire, keeps a draft on conflict, and runs both sources", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(150_000);
+    await registerAndVerify(
+      page,
+      `automation-canvas-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(page, "Automation canvas");
+    await setCapability(page, project.id, "plan", {
+      options: { feedback: true },
+    });
+    const me = await (await page.request.get("/api/users/me")).json();
+    const optionsPath = (
+      await apiPath(page, "getAutomationSetupOptions")
+    ).replace(":projectId", String(project.id));
+    const owner = (
+      await (await page.request.get(`${optionsPath}?kind=member`)).json()
+    ).items.find((item: { value: string }) => item.value === me.id);
+    const createPath = (await apiPath(page, "createAutomation")).replace(
+      ":projectId",
+      String(project.id),
+    );
+    const created = await page.request.post(createPath, {
+      data: {
+        title: "Feedback and quests",
+        rule: line("feedback.created", [
+          {
+            kind: "notify",
+            recipient: me.id,
+            channels: ["inbox"],
+            title: "Feedback",
+            text: "{{title}} came in",
+            category: "automations",
+          },
+        ]),
+      },
+    });
+    expect(created.ok(), await created.text()).toBe(true);
+    const rule = await created.json();
+    const getPath = (await apiPath(page, "getAutomation"))
+      .replace(":projectId", String(project.id))
+      .replace(":id", rule.id);
+    const isSave = (response: Response) =>
+      (response.request().method() === "PUT" &&
+        new URL(response.url()).pathname.endsWith(`/automations/${rule.id}`)) ||
+      (response.url().includes("/api/_batch") &&
+        response
+          .request()
+          .postData()
+          ?.includes('"action":"updateAutomation"') === true);
+
+    await page.goto(`/${project.slug}/automations/${rule.id}`);
+    await page.getByTestId("automation-edit").click();
+    const canvas = page.getByTestId("automation-canvas");
+    await expect(canvas).toHaveAttribute("data-editing", "true");
+
+    // A wire the graph refuses is refused while dragged, with its reason.
+    const from = canvas
+      .getByTestId("automation-node-source")
+      .locator(".react-flow__handle-right");
+    const to = canvas
+      .getByTestId("automation-node-action-1")
+      .locator(".react-flow__handle-left");
+    const start = (await from.boundingBox())!;
+    const end = (await to.boundingBox())!;
+    await page.mouse.move(
+      start.x + start.width / 2,
+      start.y + start.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, {
+      steps: 10,
+    });
+    await expect(page.getByTestId("automation-canvas-refusal")).toHaveText(
+      "These two nodes are already wired",
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId("automation-canvas-refusal")).toHaveCount(0);
+
+    // A second source from the palette, then a notification after it from
+    // its "+", configured in the inspector.
+    await page.getByTestId("automation-canvas-add").click();
+    await page.getByTestId("automation-palette-quest.completed").click();
+    const inspector = page.getByTestId("automation-node-inspector");
+    await expect(inspector).toContainText("Quest completed");
+    await expect(canvas.getByTestId("automation-node-completed")).toContainText(
+      "This source reaches no action",
+    );
+    await expect(page.getByTestId("automation-canvas-save")).toBeDisabled();
+    await expect(page.getByTestId("automation-test-run")).toHaveText(
+      "Save to test",
+    );
+    await canvas.getByTestId("automation-node-completed-add-out").click();
+    await expect(
+      page.getByTestId("automation-palette-quest.completed"),
+    ).toHaveCount(0);
+    await page.getByTestId("automation-palette-notify").click();
+    await expect(inspector).toContainText("notify");
+    await inspector.getByRole("combobox", { name: "Recipient" }).click();
+    await page.getByRole("option", { name: owner.label, exact: true }).click();
+    await inspector.getByRole("textbox", { name: "Title" }).fill("Quest done");
+    await inspector
+      .getByRole("textbox", { name: "Message" })
+      .fill("{{title}} is done");
+    await expect(page.getByTestId("automation-canvas-save")).toBeEnabled();
+
+    // A save against an older revision keeps the draft and offers a reload.
+    const before = await (await page.request.get(getPath)).json();
+    const renamed = await page.request.put(getPath, {
+      data: {
+        title: "Renamed elsewhere",
+        rule: before.rule,
+        expectedRevision: before.revision,
+      },
+    });
+    expect(renamed.ok(), await renamed.text()).toBe(true);
+    await page.getByTestId("automation-canvas-save").click();
+    await expect(page.getByTestId("automation-canvas-conflict")).toBeVisible();
+    await expect(canvas.getByTestId("automation-node-notify")).toBeVisible();
+    await page
+      .getByRole("button", { name: "Discard draft and reload", exact: true })
+      .click();
+    await expect(page.getByTestId("automation-canvas-conflict")).toHaveCount(0);
+    await expect(canvas.getByTestId("automation-node-completed")).toHaveCount(
+      0,
+    );
+
+    // Drawn again on the reloaded revision, and saved.
+    await page.getByTestId("automation-canvas-add").click();
+    await page.getByTestId("automation-palette-quest.completed").click();
+    await canvas.getByTestId("automation-node-completed-add-out").click();
+    await page.getByTestId("automation-palette-notify").click();
+    await inspector.getByRole("combobox", { name: "Recipient" }).click();
+    await page.getByRole("option", { name: owner.label, exact: true }).click();
+    await inspector.getByRole("textbox", { name: "Title" }).fill("Quest done");
+    await inspector
+      .getByRole("textbox", { name: "Message" })
+      .fill("{{title}} is done");
+    const saved = page.waitForResponse(isSave);
+    await page.getByTestId("automation-canvas-save").click();
+    expect((await saved).ok()).toBe(true);
+    await expect(page.getByTestId("automation-canvas-save")).toBeDisabled();
+    const stored = await (await page.request.get(getPath)).json();
+    expect(
+      stored.rule.nodes
+        .filter((node: { kind: string }) => node.kind === "source")
+        .map((node: { type: string }) => node.type)
+        .sort(),
+    ).toEqual(["feedback.created", "quest.completed"]);
+    expect(
+      stored.rule.nodes.every(
+        (node: { position?: unknown }) => node.position !== undefined,
+      ),
+    ).toBe(true);
+    await expect(page.getByTestId("automation-test-run")).toHaveText(
+      "Run test",
+    );
+
+    // Enabled, it runs from each source.
+    await page.getByRole("button", { name: "Enable", exact: true }).click();
+    await expect
+      .poll(
+        async () => (await (await page.request.get(getPath)).json()).enabled,
+      )
+      .toBe(true);
+    const submitPath = (await apiPath(page, "submitFeedback")).replace(
+      ":projectId",
+      String(project.id),
+    );
+    const feedback = await page.request.post(submitPath, {
+      data: { title: "Canvas feedback", description: "From the canvas" },
+    });
+    expect(feedback.ok(), await feedback.text()).toBe(true);
+    const quest = await page.request.post(await apiPath(page, "createQuest"), {
+      data: {
+        projectId: project.id,
+        title: "Canvas quest",
+        description: "Completed for the canvas",
+        area: "Main",
+        priority: "medium",
+        objectives: [],
+        attachments: [],
+      },
+    });
+    expect(quest.ok(), await quest.text()).toBe(true);
+    const questId = (await quest.json()).id;
+    for (const action of ["acceptQuest", "completeQuest"]) {
+      const res = await page.request.post(
+        (await apiPath(page, action)).replace(":id", String(questId)),
+        { data: {} },
+      );
+      expect(res.ok(), await res.text()).toBe(true);
+    }
+    const runsPath = (await apiPath(page, "listAutomationRuns"))
+      .replace(":projectId", String(project.id))
+      .replace(":id", rule.id);
+    const admin = await browser.newContext({ baseURL });
+    try {
+      const adminPage = await admin.newPage();
+      await signInAsAdmin(adminPage);
+      await adminPage.goto("/admin/jobs/automations.dispatch");
+      const trigger = (await apiPath(adminPage, "triggerJob")).replace(
+        ":name",
+        "automations.dispatch",
+      );
+      const ran = async (source: string) =>
+        (
+          (
+            await (
+              await page.request.get(`${runsPath}?source=${source}`)
+            ).json()
+          ).items as Array<{ occurrenceId: string; status: string }>
+        ).filter(
+          (run) =>
+            run.occurrenceId.startsWith("event:") && run.status === "succeeded",
+        ).length;
+      await expect
+        .poll(
+          async () => {
+            for (let index = 0; index < 2; index++) {
+              const tick = await adminPage.request.post(trigger, { data: {} });
+              expect(tick.ok(), await tick.text()).toBe(true);
+            }
+            return [await ran("source"), await ran("completed")];
+          },
+          { timeout: 40_000 },
+        )
+        .toEqual([1, 1]);
+    } finally {
+      await admin.close();
+    }
+  });
 });

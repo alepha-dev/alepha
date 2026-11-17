@@ -4560,6 +4560,70 @@ export default {
   "automation.node.transform": "Transformation",
   "automation.effect.not_reached":
     "Non atteinte : une étape précédente a échoué",
+  "automation.edit": "Modifier",
+  "automation.editor.conflictTitle":
+    "Cette automatisation a changé depuis son ouverture",
+  "automation.editor.conflict":
+    "L'enregistrement a été refusé et votre brouillon est conservé. Recharger affiche l'automatisation enregistrée et abandonne ce brouillon.",
+  "automation.editor.reload": "Abandonner le brouillon et recharger",
+  "automation.test.saveToTest": "Enregistrer pour tester",
+  "automation.canvas.editor": "Éditeur d'automatisation",
+  "automation.canvas.editPhone":
+    "Modifier une automatisation demande un écran plus large.",
+  "automation.canvas.add": "Ajouter un nœud",
+  "automation.canvas.addAfter": "Ajouter une étape après $1",
+  "automation.canvas.addAfterPort": "Ajouter une étape après $1, $2",
+  "automation.canvas.palette.title": "Ajouter un nœud",
+  "automation.canvas.palette.after": "Ajouter après $1",
+  "automation.canvas.palette.description":
+    "Ce que cette automatisation peut contenir, dans ce projet, pour vous.",
+  "automation.canvas.group.sources": "Sources",
+  "automation.canvas.group.reads": "Lectures",
+  "automation.canvas.group.conditions": "Conditions",
+  "automation.canvas.group.actions": "Actions",
+  "automation.canvas.schedule": "Selon un planning (UTC)",
+  "automation.canvas.compare": "Comparer un champ",
+  "automation.canvas.undo": "Annuler",
+  "automation.canvas.redo": "Rétablir",
+  "automation.canvas.inspector": "Réglages du nœud",
+  "automation.canvas.removeNode": "Supprimer le nœud $1",
+  "automation.canvas.source.enabled": "Activée",
+  "automation.canvas.cron": "Planning (cron à cinq champs, UTC)",
+  "automation.canvas.condition.field": "Champ",
+  "automation.canvas.condition.operator": "Comparaison",
+  "automation.canvas.wires": "Liens",
+  "automation.canvas.wire.to": "Relier à",
+  "automation.canvas.wire.add": "Relier",
+  "automation.canvas.wire.remove": "Supprimer le lien vers $1",
+  "automation.canvas.placeholders.lacking": "absent de $1",
+  "automation.canvas.unavailable": "Indisponible dans ce projet",
+  "automation.canvas.unavailable.nodes":
+    "Une automatisation contient au plus $1 nœuds",
+  "automation.canvas.unavailable.sources":
+    "Une automatisation contient au plus $1 sources",
+  "automation.canvas.unavailable.schedule":
+    "Un planning est la seule source de son automatisation",
+  "automation.canvas.refuse.self": "Un nœud ne se relie pas à lui-même",
+  "automation.canvas.refuse.duplicate": "Ces deux nœuds sont déjà reliés",
+  "automation.canvas.refuse.port":
+    "Une condition sort par son port vrai ou faux",
+  "automation.canvas.refuse.intoSource":
+    "Rien ne mène à une source : une source démarre une exécution",
+  "automation.canvas.refuse.readAfterEvent":
+    "Une lecture suit un planning, et seulement un planning",
+  "automation.canvas.refuse.readOneWay": "Une lecture n'a qu'une seule entrée",
+  "automation.canvas.refuse.scheduleToRead":
+    "Un planning est suivi de sa lecture, et de rien d'autre",
+  "automation.canvas.refuse.scheduleOneRead":
+    "Un planning est suivi d'une seule lecture",
+  "automation.canvas.refuse.conditionAfterAction":
+    "Une condition ne suit jamais une action : les conditions sont décidées avant le premier effet",
+  "automation.canvas.refuse.cycle": "Ce lien fermerait une boucle",
+  "automation.canvas.refuse.actions": "Une source atteint au plus $1 actions",
+  "automation.canvas.leave.title": "Quitter sans enregistrer ?",
+  "automation.canvas.leave.description":
+    "Vos modifications de cette automatisation ne sont pas enregistrées et seront perdues.",
+  "automation.canvas.leave.confirm": "Quitter",
   "automation.canvas.label": "Graphe de l'automatisation",
   "automation.canvas.ran": "Exécutée",
   "automation.canvas.notReached": "Non atteinte",

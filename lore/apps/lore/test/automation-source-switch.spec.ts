@@ -297,6 +297,39 @@ describe("Automation sources, one by one", () => {
     });
   });
 
+  it("refuses, as a 400 naming the source, a save whose every source lacks what it needs", async ({
+    expect,
+  }) => {
+    await entities.capabilities.deleteMany({
+      projectId: { eq: project.id },
+      key: { eq: "ship" },
+    });
+    const refused = alepha.inject(AutomationController).createAutomation.fetch(
+      {
+        params: { projectId: project.id },
+        body: {
+          title: "Hosts only",
+          rule: {
+            version: 2,
+            nodes: [
+              {
+                id: "offline",
+                kind: "source",
+                type: "host.offline",
+                config: {},
+              },
+              notify("tell-host", "{{host}} is offline"),
+            ],
+            edges: [{ from: "offline", port: "out", to: "tell-host" }],
+          },
+        },
+      },
+      { user },
+    );
+    await expect(refused).rejects.toMatchObject({ status: 400 });
+    await expect(refused).rejects.toThrow("source 'offline': Missing ship");
+  });
+
   it("still pauses the whole automation, with its review flag, when the author loses a permission", async ({
     expect,
   }) => {

@@ -38,6 +38,44 @@ export interface AutomationCanvasNodeData extends Record<string, unknown> {
    * The names the page resolved for the ids a node holds.
    */
   names?: AutomationCanvasNames;
+  /**
+   * In the editor, what the graph's check says of this node (#Q3811).
+   */
+  issues?: string[];
+  /**
+   * In the editor, adds a node after this one from `port`, wired at once.
+   */
+  onAdd?: (port: AutomationGraphEdge["port"]) => void;
+}
+
+/**
+ * What the canvas needs to edit (#Q3811): the draft's issues, and a
+ * callback for every change it can make. Absent, the canvas only shows.
+ */
+export interface AutomationCanvasEditing {
+  issues: Record<string, string[]>;
+  /**
+   * Why a wire may not be drawn, in words; nothing when it may.
+   */
+  refuse: (edge: AutomationGraphEdge) => string | undefined;
+  onConnect: (edge: AutomationGraphEdge) => void;
+  /**
+   * Nodes dragged to `positions`, on every frame of a drag.
+   */
+  onMove: (positions: Record<string, { x: number; y: number }>) => void;
+  onDragStart: () => void;
+  onDelete: (removed: { nodes: string[]; edges: string[] }) => void;
+  onAdd: (node: string, port: AutomationGraphEdge["port"]) => void;
+}
+
+/**
+ * The read-only canvas's source switches (#Q3811): whether the viewer may
+ * turn one on or off, and the call that does it.
+ */
+export interface AutomationSourceSwitches {
+  can: (enabled: boolean) => boolean;
+  busy: boolean;
+  set: (node: string, enabled: boolean) => void;
 }
 
 /**
@@ -77,6 +115,10 @@ export interface AutomationCanvasInput {
   outcomes?: AutomationNodeOutcome[];
   selected?: string;
   names?: AutomationCanvasNames;
+  /**
+   * Issues by node id, from the graph's check or the server (#Q3811).
+   */
+  issues?: Record<string, string[]>;
 }
 
 /**
@@ -127,6 +169,9 @@ export class AutomationCanvasMap {
           node,
           painted,
           ...(input.names ? { names: input.names } : {}),
+          ...(input.issues?.[node.id]?.length
+            ? { issues: input.issues[node.id] }
+            : {}),
           ...(source ? { source } : {}),
           ...(done ? { outcome: done.outcome } : {}),
           ...(done?.ports.length ? { ports: done.ports } : {}),

@@ -10,6 +10,7 @@ import type { AutomationRun } from "../entities/automationRuns.ts";
 import { automations, type Automation } from "../entities/automations.ts";
 import type { AutomationVariable } from "../entities/automationVariables.ts";
 import { users, type User } from "../entities/users.ts";
+import { AutomationDependencyError } from "../errors/AutomationDependencyError.ts";
 import type { AutomationCompactInput } from "../schemas/automationCompactSchema.ts";
 import {
   automationCreateBodySchema,
@@ -790,9 +791,21 @@ export class AutomationService {
     const author = await this.access.author(rule);
     await this.access.assert(rule.projectId, author, "automation:write", rule);
     await this.assertSingleReminderRule(rule);
-    const values = await this.variables.snapshot(rule, author, {
-      transition: false,
-    });
+    const values = await this.variables
+      .snapshot(rule, author, { transition: false })
+      .catch((error: unknown) => {
+        // Every enabled source lacks what it needs (#Q3806): a refusal of
+        // this write, naming the source, not a server fault (#Q3811).
+        if (!(error instanceof AutomationDependencyError)) throw error;
+        const enabled = this.graphs
+          .sources(rule.rule)
+          .filter((node) => node.enabled !== false);
+        throw new BadRequestError(
+          error.message.startsWith("source '") || enabled.length !== 1
+            ? error.message
+            : `source '${enabled[0].id}': ${error.message}`,
+        );
+      });
     const compiled = await this.catalog.compile(
       rule.projectId,
       author,
