@@ -262,6 +262,33 @@ describe("a stranger who joined an open project", () => {
     });
   });
 
+  describe("the project's configuration (#Q3797)", () => {
+    it("refuses the agent prompt templates to a rank of reads only", async ({
+      expect,
+    }) => {
+      const path = `/projects/${ctx.projectId}/prompts`;
+
+      const refused = await ctx.http(ctx.strangerToken, "GET", path);
+      expect(refused.status).toBe(403);
+
+      const read = await ctx.http(ctx.ownerToken, "GET", path);
+      expect(read.status).toBe(200);
+    });
+
+    it("still answers the capability set, which draws the sidebar", async ({
+      expect,
+    }) => {
+      // Decided in `LoreViewerAllowlist`: which parts of Lore are on says
+      // nothing of the project's content, and every page gates on it.
+      const read = await ctx.http(
+        ctx.strangerToken,
+        "GET",
+        `/projects/${ctx.projectId}/capabilities`,
+      );
+      expect(read.status).toBe(200);
+    });
+  });
+
   describe("live quests (#E154)", () => {
     it("name no app to a reader without app:read, on the list or quest_get", async ({
       expect,

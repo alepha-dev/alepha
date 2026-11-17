@@ -46,6 +46,14 @@ export class LoreViewerAllowlist {
    *
    * - `member`: the member list carries emails and full user records.
    * - `rank`, `capability`, `invitation`: the project's configuration.
+   *   `capability` closes `capability:manage`, never the capability set
+   *   itself: a viewer reads which capabilities are on, with their options,
+   *   on the project resource and `listCapabilities`, because the web app
+   *   draws the sidebar and every page's gates from it (#Q3797). The set
+   *   says which parts of Lore a project uses and nothing of its content.
+   *   What a viewer does NOT read under `project:read`, though every rank
+   *   holds it, is the agent prompt templates: `getProjectPrompts` refuses a
+   *   rank of reads only, since a template may hold internal instructions.
    * - `stats`: reports break the work down per person.
    * - `automation`: rules, their variables and their run payloads.
    * - `feedback`: end-user reports and their attachments.

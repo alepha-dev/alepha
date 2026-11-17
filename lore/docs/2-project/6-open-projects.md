@@ -40,7 +40,13 @@ outside the list above: you cannot give viewers more than reads by accident.
 To give someone more, move them to another rank in the **Members** tab.
 
 Turning **Public project** off again closes the project to new joiners.
-People who already joined stay members until you remove them.
+People who already joined stay members, on Viewer: Lore says how many, and
+offers to remove them all at once. While any of them stays, the **Ranks** tab
+warns that whatever you add to Viewer, they get, since a closed project no
+longer locks Viewer to reads.
+
+A viewer never reads the project's agent prompt templates, which are part of
+its configuration.
 
 ## Joining
 

@@ -1,10 +1,12 @@
 import { $env, $inject, z } from "alepha";
-import { RankService } from "alepha/api/organizations";
+import { audits } from "alepha/api/audits";
+import { organizationMembers, RankService } from "alepha/api/organizations";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { projects } from "../entities/projects.ts";
 import { LoreViewerAllowlist } from "../security/LoreViewerAllowlist.ts";
+import { BoundParameters } from "./BoundParameters.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
@@ -34,6 +36,9 @@ export class ProjectJoinPolicy {
   protected readonly ranks = $inject(RankService);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly projects = $repository(projects);
+  protected readonly members = $repository(organizationMembers);
+  protected readonly audits = $repository(audits);
+  protected readonly bound = $inject(BoundParameters);
 
   protected readonly env = $env(
     z.object({
@@ -101,6 +106,46 @@ export class ProjectJoinPolicy {
           }
         : {}),
     };
+  }
+
+  /**
+   * The members who joined this project by themselves and still hold
+   * Viewer (#Q3797): what closing the project leaves behind, and who gets
+   * whatever Viewer is widened with afterwards.
+   *
+   * A self-join is told apart by its `self_join` audit row, so a member an
+   * admin moved onto Viewer is not one, and a joiner an admin moved to
+   * another rank no longer counts. ⚠️ Audit rows expire with the audit
+   * retention, so a join older than it is not found.
+   */
+  public async selfJoinedViewers(
+    projectId: number,
+    organizationId: string,
+  ): Promise<string[]> {
+    const rows = await this.audits.findMany({
+      where: {
+        scopeType: { eq: "project" },
+        scopeId: { eq: String(projectId) },
+        type: { eq: "member" },
+        action: { eq: "self_join" },
+      },
+      columns: ["userId"],
+    });
+    const joined = [
+      ...new Set(rows.flatMap((row) => (row.userId ? [row.userId] : []))),
+    ];
+    if (joined.length === 0) return [];
+    const viewers = await this.bound.collect(joined, (batch) =>
+      this.members.findMany({
+        where: {
+          organizationId: { eq: organizationId },
+          rank: { eq: ProjectJoinPolicy.VIEWER_KEY },
+          userId: { inArray: batch },
+        },
+        columns: ["userId"],
+      }),
+    );
+    return viewers.map((member) => member.userId);
   }
 
   /**

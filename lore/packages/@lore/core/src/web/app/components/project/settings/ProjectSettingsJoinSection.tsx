@@ -48,7 +48,7 @@ const ProjectSettingsJoinSection = () => {
   const [project] = useStore(currentProjectAtom);
   const current: JoinPolicy = project?.joinPolicy ?? "invite";
 
-  const { data: settings } = useQuery(
+  const { data: settings, refetch: refetchSettings } = useQuery(
     {
       key: ["project-join-settings", project?.id],
       enabled: !!project && projectApi.updateProjectById.can(),
@@ -80,9 +80,39 @@ const ProjectSettingsJoinSection = () => {
           body: { joinPolicy: next },
         });
         setCurrentProject(alepha, updated);
+        // Closing stops new joiners, never the ones already in (#Q3797):
+        // say how many stay, and offer to remove them. Closed first, so
+        // dismissing this question keeps them and leaves the project closed.
+        const stay = settings?.selfJoinedViewers ?? 0;
+        if (
+          next === "invite" &&
+          stay > 0 &&
+          projectApi.removeSelfJoinedViewers.can()
+        ) {
+          const remove = await dialog.confirm({
+            title: tr("project.settings.join.closeRemove.title"),
+            description: tr("project.settings.join.closeRemove.description", {
+              args: [String(stay)],
+            }),
+            confirmLabel: tr("project.settings.join.closeRemove.confirm"),
+            cancelLabel: tr("project.settings.join.closeRemove.cancel"),
+            destructive: true,
+          });
+          if (remove) {
+            const { removed } = await projectApi.removeSelfJoinedViewers({
+              params: { id: project.id },
+            });
+            toaster.success(
+              tr("project.settings.join.closeRemove.done", {
+                args: [String(removed)],
+              }),
+            );
+          }
+          await refetchSettings();
+        }
       },
     },
-    [projectApi, alepha, dialog, project, current, tr],
+    [projectApi, alepha, dialog, project, current, tr, settings, toaster],
   );
 
   if (!project || !projectApi.updateProjectById.can()) return null;

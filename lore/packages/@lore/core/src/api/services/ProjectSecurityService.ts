@@ -241,24 +241,38 @@ export class ProjectSecurityService {
     userId: string,
     permission: string,
   ): Promise<boolean> {
+    const permissions = await this.permissionsIn(projectId, userId);
+    return (
+      permissions !== undefined &&
+      this.alepha.inject(RankService).grants(permissions, permission)
+    );
+  }
+
+  /**
+   * The permissions `userId`'s rank stores in this project, or `undefined`
+   * when they are not a member. Read from the member row, never from the
+   * request's resolved rank, for the reason {@link holds} gives.
+   */
+  async permissionsIn(
+    projectId: number,
+    userId: string,
+  ): Promise<string[] | undefined> {
     const project = await this.projects.findOne({
       where: { id: { eq: projectId } },
     });
-    if (!project?.organizationId) return false;
+    if (!project?.organizationId) return undefined;
     const member = await this.members.findOne({
       where: {
         organizationId: { eq: project.organizationId },
         userId: { eq: userId },
       },
     });
-    if (!member) return false;
-    const ranks = this.alepha.inject(RankService);
-    const permissions =
-      (await ranks.permissionsOf(
-        project.organizationId,
-        member.rank ?? "member",
-      )) ?? [];
-    return ranks.grants(permissions, permission);
+    if (!member) return undefined;
+    return (
+      (await this.alepha
+        .inject(RankService)
+        .permissionsOf(project.organizationId, member.rank ?? "member")) ?? []
+    );
   }
 
   /**

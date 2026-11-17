@@ -1080,12 +1080,50 @@ export class ProjectController {
         viewer: z
           .object({ name: z.text(), extras: z.array(z.text()) })
           .optional(),
+        /**
+         * How many members joined by themselves and still hold Viewer
+         * (#Q3797): what closing the project keeps, and who gets whatever
+         * Viewer is widened with.
+         */
+        selfJoinedViewers: z.integer(),
       }),
     },
-    handler: async ({ params }) =>
-      this.joinPolicy.settingsOf(
-        await this.projectSecurity.organizationIdOf(params.id),
-      ),
+    handler: async ({ params }) => {
+      const organizationId = await this.projectSecurity.organizationIdOf(
+        params.id,
+      );
+      const [settings, selfJoined] = await Promise.all([
+        this.joinPolicy.settingsOf(organizationId),
+        this.joinPolicy.selfJoinedViewers(params.id, organizationId),
+      ]);
+      return { ...settings, selfJoinedViewers: selfJoined.length };
+    },
+  });
+
+  /**
+   * Remove every member who joined by themselves and still holds Viewer
+   * (#Q3797), offered when an open project is closed: closing stops new
+   * joiners, never the ones already in. Each removal is `removeMember`'s.
+   */
+  removeSelfJoinedViewers = $action({
+    method: "POST",
+    path: "/projects/:id/self-joined-viewers/remove",
+    use: [this.ownsProject("member:manage")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: z.object({ removed: z.integer() }),
+    },
+    handler: async ({ params, user }) => {
+      const project = this.owned.get<Project>();
+      const userIds = await this.joinPolicy.selfJoinedViewers(
+        params.id,
+        project.organizationId!,
+      );
+      for (const userId of userIds) {
+        await this.memberService.remove(project.organizationId!, userId, user);
+      }
+      return { removed: userIds.length };
+    },
   });
 
   updateProjectById = $action({

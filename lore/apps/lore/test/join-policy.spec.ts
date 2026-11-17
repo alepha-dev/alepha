@@ -1,6 +1,7 @@
 import {
   LoreViewerAllowlist,
   ProjectController,
+  ProjectJoinController,
   ProjectSecurityService,
 } from "@lore/core/api";
 import { CoreTestEntities } from "@lore/core/testing";
@@ -242,6 +243,68 @@ describe("a project's join policy", () => {
           )
         ).status,
       ).toBe(200);
+    });
+
+    it("counts who joined by themselves, and removes them on request once closed (#Q3797)", async ({
+      expect,
+    }) => {
+      ctx = await setup({ launched: true });
+      const users = ctx.alepha.inject(UserService);
+      const stranger = (
+        await users.createUser({
+          username: "stranger",
+          email: "stranger@example.com",
+        })
+      ).id;
+      // Moved onto Viewer by an admin, never self-joined: not counted.
+      const invited = (
+        await users.createUser({
+          username: "invited",
+          email: "invited@example.com",
+        })
+      ).id;
+      await ctx.repos.members.create({
+        organizationId: ctx.organizationId,
+        userId: invited,
+        rank: "viewer",
+      } as never);
+
+      await ctx.setPolicy("open");
+      await ctx.alepha
+        .inject(ProjectJoinController)
+        .joinProject.fetch(
+          { params: { id: ctx.project.id } },
+          ctx.as(stranger),
+        );
+      await ctx.setPolicy("invite");
+
+      const settings = await ctx.projects.getProjectJoinSettings.fetch(
+        { params: { id: ctx.project.id } },
+        ctx.as(ctx.owner),
+      );
+      // Closing kept them.
+      expect(settings.data.selfJoinedViewers).toBe(1);
+
+      const removed = await ctx.projects.removeSelfJoinedViewers.fetch(
+        { params: { id: ctx.project.id } },
+        ctx.as(ctx.owner),
+      );
+      expect(removed.data.removed).toBe(1);
+
+      const members = await ctx.repos.members.findMany({
+        where: { organizationId: { eq: ctx.organizationId } },
+      });
+      const ids = members.map((member) => member.userId);
+      expect(ids).not.toContain(stranger);
+      expect(ids).toContain(invited);
+      expect(
+        (
+          await ctx.projects.getProjectJoinSettings.fetch(
+            { params: { id: ctx.project.id } },
+            ctx.as(ctx.owner),
+          )
+        ).data.selfJoinedViewers,
+      ).toBe(0);
     });
 
     it("tells an agent the policy in project_info", async ({ expect }) => {
