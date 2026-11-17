@@ -75,3 +75,92 @@ describe("useDialog confirm onConfirm", () => {
     expect(calls).toEqual([]);
   });
 });
+
+/**
+ * `confirm({ confirmText })` (#Q3819): the confirm button stays disabled
+ * until the user types the text, through a labelled field that Enter submits.
+ */
+describe("useDialog confirm confirmText", () => {
+  let alepha: Alepha | undefined;
+
+  beforeAll(() => {
+    setupJsdomMocks();
+  });
+
+  afterEach(async () => {
+    await alepha?.stop();
+    alepha = undefined;
+  });
+
+  const mount = async (results: boolean[]) => {
+    const Opener = () => {
+      const dialog = useDialog();
+      return (
+        <button
+          type="button"
+          onClick={async () => {
+            results.push(
+              await dialog.confirm({
+                title: "Open the project?",
+                confirmText: "acme",
+              }),
+            );
+          }}
+        >
+          open
+        </button>
+      );
+    };
+    alepha = Alepha.create().with(AlephaReactI18n);
+    await alepha.start();
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <Opener />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+  };
+
+  it("enables confirm only once the text is typed", async () => {
+    const results: boolean[] = [];
+    await mount(results);
+
+    fireEvent.click(screen.getByText("open"));
+    // The field is named by its label, so a screen reader announces it.
+    const field = await screen.findByLabelText("Type acme to confirm");
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(field, { target: { value: "acm" } });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    // Enter does not get around the disabled button.
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(results).toEqual([]);
+
+    fireEvent.change(field, { target: { value: "acme" } });
+    expect((confirm as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() => expect(results).toEqual([true]));
+  });
+
+  it("starts empty again on the next open", async () => {
+    const results: boolean[] = [];
+    await mount(results);
+
+    fireEvent.click(screen.getByText("open"));
+    fireEvent.change(await screen.findByLabelText("Type acme to confirm"), {
+      target: { value: "acme" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(results).toEqual([false]));
+
+    fireEvent.click(screen.getByText("open"));
+    const field = await screen.findByLabelText("Type acme to confirm");
+    expect((field as HTMLInputElement).value).toBe("");
+    expect(
+      (screen.getByRole("button", { name: "Confirm" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+});
