@@ -438,6 +438,13 @@ export class CapabilityRegistry {
         "dueSoon",
         "recentlyShipped",
         "untriagedFeedback",
+        // Plan's Requirements (#E153, #Q3775), each needing that option.
+        "requirementCoverage",
+        "releaseReadiness",
+        "useCaseHealth",
+        "requirementsToCover",
+        "personaHealth",
+        "requirementCoverageTrend",
       ],
       // Areas belong here: quests carry one, errors forward into one, and
       // `project_context` files them beside the epic index.

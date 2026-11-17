@@ -3929,6 +3929,46 @@ export default {
   "dashboard.group.core": "Projet",
   "dashboard.empty.noAccess":
     "Vous ne pouvez pas lire les rapports de ce projet.",
+  "dashboard.metric.requirementCoverage": "Couverture des exigences",
+  "dashboard.metric.requirementCoverage.hint":
+    "Exigences vérifiées, en échec, planifiées dans une épopée, spécifiées sans développement, ou non couvertes.",
+  "dashboard.metric.releaseReadiness": "Préparation de la version",
+  "dashboard.metric.releaseReadiness.hint":
+    "Les exigences Must et Should vérifiées d’une version, et ses Must en échec.",
+  "dashboard.metric.useCaseHealth": "Santé des cas d’usage",
+  "dashboard.metric.useCaseHealth.hint":
+    "Cas d’usage réussis, en échec, en développement et jamais joués, avec les périmés.",
+  "dashboard.metric.requirementsToCover": "Pas encore couvertes",
+  "dashboard.metric.requirementsToCover.hint":
+    "Exigences pas encore vérifiées, les Must d’abord.",
+  "dashboard.metric.personaHealth": "Personas",
+  "dashboard.metric.personaHealth.hint":
+    "Les cas d’usage réussis de chaque persona, et si son périmètre a changé depuis son dernier passage.",
+  "dashboard.metric.requirementCoverageTrend": "Couverture dans le temps",
+  "dashboard.metric.requirementCoverageTrend.hint":
+    "La part des exigences vérifiées, jour après jour, depuis l’activation des exigences.",
+  "dashboard.segment.verified": "Vérifiées",
+  "dashboard.segment.failing": "En échec",
+  "dashboard.segment.devPlanned": "Dév. planifié",
+  "dashboard.segment.specified": "Spécifiées, sans dév.",
+  "dashboard.segment.notCovered": "Non couvertes",
+  "dashboard.segment.passed": "Réussis",
+  "dashboard.segment.failed": "En échec",
+  "dashboard.segment.inDevelopment": "En développement",
+  "dashboard.segment.neverRun": "Jamais joués",
+  "dashboard.badge.must": "Must",
+  "dashboard.badge.should": "Should",
+  "dashboard.badge.could": "Could",
+  "dashboard.badge.wont": "Won't",
+  "dashboard.badge.scopeChanged": "Périmètre changé",
+  "dashboard.badge.failingMust": "Must en échec",
+  "dashboard.badge.sourceChanged": "Spéc. modifiée",
+  "dashboard.footer.requirementCoverage": "$1 sur $2 vérifiées",
+  "dashboard.footer.releaseReadiness": "Must $1/$2 · Should $3/$4",
+  "dashboard.footer.releaseReadiness.failing":
+    "Must $1/$2 · Should $3/$4 · en échec $5",
+  "dashboard.footer.useCaseHealth": "$1 sur $2 réussis · $3 périmés",
+  "dashboard.footer.requirementCoverageTrend": "$1 % couvertes",
   "dashboard.badge.todo": "À faire",
   "dashboard.metric.burnup": "Burn-up",
   "dashboard.metric.burnup.hint": "créées contre terminées, en cumul",
