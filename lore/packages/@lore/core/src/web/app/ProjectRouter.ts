@@ -20,9 +20,13 @@ import type { OpenProjectCard } from "../../api/schemas/openProjectCardSchema.ts
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
+import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import ProjectJoinPage from "./components/project/ProjectJoinPage.tsx";
 import NotFoundPage from "./components/shared/NotFoundPage.tsx";
-import { ProjectLoaderRegistry } from "./registries/ProjectLoaderRegistry.ts";
+import {
+  ProjectLoaderRegistry,
+  type ProjectLoaderSubject,
+} from "./registries/ProjectLoaderRegistry.ts";
 import { capabilityOption } from "./services/projectCapabilities.ts";
 
 /**
@@ -142,67 +146,38 @@ export class ProjectRouter {
       meta.firstOpen ? { enter: "project-open" } : undefined,
     lazy: () => import("./components/project/ProjectView.tsx"),
     loader: async ({ params }) => {
-      // The one slug→id resolution in the app. Every fetch below — and every
-      // endpoint any page under this layout calls — still takes the integer
+      // The one slug→id resolution in the app. Every fetch below, and every
+      // endpoint any page under this layout calls, still takes the integer
       // id, read off `currentProjectAtom`. That is what keeps slug routing out
       // of the rest of the API surface.
+      const resolving = this.resolve(params.projectSlug);
+
+      // The shell's reads need the project's id and capabilities, and the
+      // rail's row holds both: started here, in the tick the slug read left
+      // in, they ride its `POST /api/_batch` instead of waiting a round trip
+      // for its answer (#Q3824). `/api/_batch` runs its entries together, so
+      // the pair costs the slower of the two.
+      //
+      // ⚠️ The answer stays the authority. Nothing is written before it, a
+      // refusal is the only error this loader reports, and reads started
+      // from a row that disagrees with it are thrown away and run again.
+      const known = this.known(params.projectSlug);
+      const early = known ? this.shell(known) : undefined;
+      // Awaited only once the slug has answered: a refused slug must not
+      // leave this one's rejection unhandled.
+      early?.catch(() => undefined);
+
       // `quests` is the narrow list kept on the response for published CLIs;
       // the full resources come from Work below.
-      const {
-        member,
-        quests: _assignedWork,
-        ...project
-      } = await this.resolve(params.projectSlug);
+      const { member, quests: _assignedWork, ...project } = await resolving;
 
-      // Everything below needs only `project.id`, so it is issued together
-      // rather than awaited in turn. That is not just parallelism: the
-      // browser's `BatchCollector` coalesces action calls raised within a
-      // 10ms window into ONE `POST /api/_batch`, and sequential awaits can
-      // never share a window because each blocks on a full round trip.
-      //
-      // Each module's part of it is a registered contribution
-      // (`ProjectLoaderRegistry`, #E75 #Q2624): this loader is core and names
-      // no module's client. They run in the same `Promise.all`, so the batch
-      // is unchanged, and write their atoms once everything has settled.
-      const [, unreadEverywhere, prompts] = await Promise.all([
-        this.loaders.load(project),
+      const [applyModules, unreadEverywhere, prompts] = await (early &&
+      known &&
+      this.loaders.same(known, project)
+        ? early
+        : this.shell(project));
 
-        // ⚠️ ONE inbox count, and it is deliberately the cross-project one.
-        // Two projects are open in the same session and a ping in one
-        // must not be invisible from the other, so this passes NO scope. It
-        // seeds `inboxUnreadAtom` before the first paint, which is what the
-        // bell's own mount-fetch then does not have to do.
-        //
-        // A `count` action, never `list().items.length`: that is the bug
-        // #1744 was, where a paged list capped the Feedback badge at 10 over
-        // an inbox of 106.
-        this.inboxApi
-          .countInbox({ query: {} })
-          .then((r) => r.unread)
-          .catch(() => 0),
-
-        // The agent prompt templates this project has customised, read here
-        // so the copy can happen inside a click: Safari's transient
-        // activation does not survive an `await` before `writeText`.
-        //
-        // Gated on the option, which is off by default, so a project that
-        // does not use the feature pays no request.
-        //
-        // ⚠️ `{}` on failure and NOT `undefined`: the built-in defaults are
-        // a complete answer, so a failed read is indistinguishable from a
-        // project that has customised nothing, and the menus keep working.
-        capabilityOption(project, "plan", "agentPrompts")
-          ? this.promptApi
-              .getProjectPrompts({ params: { projectId: project.id } })
-              .then((rows) =>
-                Object.fromEntries(
-                  rows.map((it) => [it.kind, it.template] as const),
-                ),
-              )
-              .catch(() => ({}))
-          : Promise.resolve({}),
-      ]);
-
+      applyModules();
       this.alepha.store.set(currentProjectAtom, project);
       this.alepha.store.set(currentProjectMemberAtom, member);
       this.alepha.store.set(inboxUnreadAtom, { count: unreadEverywhere });
@@ -236,6 +211,75 @@ export class ProjectRouter {
       }
     },
   });
+
+  /**
+   * The project at `slug` as the rail holds it, when it does:
+   * `userProjectsAtom` lists every project the viewer belongs to.
+   *
+   * A hint, never an answer. The row may be stale (a capability switched in
+   * another tab, a slug renamed and taken by another project), which is why
+   * the loader compares it with what `getProjectBySlug` says before keeping
+   * anything read from it.
+   */
+  protected known(slug: string): ProjectLoaderSubject | undefined {
+    return this.alepha.store
+      .get(userProjectsAtom)
+      ?.projects.find((it) => it.slug === slug);
+  }
+
+  /**
+   * Everything the shell reads for a project besides the project itself,
+   * issued together: the browser's `BatchCollector` coalesces action calls
+   * raised within a 10ms window into ONE `POST /api/_batch`, and sequential
+   * awaits can never share a window because each blocks on a full round
+   * trip.
+   *
+   * Each module's part of it is a registered contribution
+   * (`ProjectLoaderRegistry`, #E75 #Q2624): this loader is core and names no
+   * module's client. It answers their writes instead of making them, with
+   * the inbox count and the prompts, so the caller decides whether this
+   * project is the one to write.
+   */
+  protected shell(project: ProjectLoaderSubject) {
+    return Promise.all([
+      this.loaders.fetch(project),
+
+      // ⚠️ ONE inbox count, and it is deliberately the cross-project one.
+      // Two projects are open in the same session and a ping in one
+      // must not be invisible from the other, so this passes NO scope. It
+      // seeds `inboxUnreadAtom` before the first paint, which is what the
+      // bell's own mount-fetch then does not have to do.
+      //
+      // A `count` action, never `list().items.length`: that is the bug
+      // #1744 was, where a paged list capped the Feedback badge at 10 over
+      // an inbox of 106.
+      this.inboxApi
+        .countInbox({ query: {} })
+        .then((r) => r.unread)
+        .catch(() => 0),
+
+      // The agent prompt templates this project has customised, read here
+      // so the copy can happen inside a click: Safari's transient
+      // activation does not survive an `await` before `writeText`.
+      //
+      // Gated on the option, which is off by default, so a project that
+      // does not use the feature pays no request.
+      //
+      // ⚠️ `{}` on failure and NOT `undefined`: the built-in defaults are
+      // a complete answer, so a failed read is indistinguishable from a
+      // project that has customised nothing, and the menus keep working.
+      capabilityOption(project, "plan", "agentPrompts")
+        ? this.promptApi
+            .getProjectPrompts({ params: { projectId: project.id } })
+            .then((rows): Record<string, string> =>
+              Object.fromEntries(
+                rows.map((it) => [it.kind, it.template] as const),
+              ),
+            )
+            .catch((): Record<string, string> => ({}))
+        : Promise.resolve<Record<string, string>>({}),
+    ]);
+  }
 
   /**
    * The slug as the caller may see it (#Q3649).

@@ -257,7 +257,10 @@ export {
   type ElementReferenceSet,
   type WikiLinkPreviewProps,
 } from "./app/registries/ElementReferenceRegistry.ts";
-export { ProjectLoaderRegistry } from "./app/registries/ProjectLoaderRegistry.ts";
+export {
+  ProjectLoaderRegistry,
+  type ProjectLoaderSubject,
+} from "./app/registries/ProjectLoaderRegistry.ts";
 export {
   type ProjectCreateDialogProps,
   ProjectShellRegistry,
