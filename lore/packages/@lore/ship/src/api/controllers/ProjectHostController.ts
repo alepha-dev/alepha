@@ -27,6 +27,7 @@ import {
 } from "../schemas/lentHostResourceSchema.ts";
 import { ownedHostResourceSchema } from "../schemas/ownedHostResourceSchema.ts";
 import { HostCloudflareService } from "../services/HostCloudflareService.ts";
+import { HostInventoryService } from "../services/HostInventoryService.ts";
 import { HostService } from "../services/HostService.ts";
 
 export type { LentHostResource, MintedLentHost };
@@ -68,6 +69,7 @@ export class ProjectHostController {
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly service = $inject(HostService);
   protected readonly cloudflare = $inject(HostCloudflareService);
+  protected readonly inventories = $inject(HostInventoryService);
   protected readonly audits = $inject(LoreAudits);
 
   /**
@@ -371,8 +373,14 @@ export class ProjectHostController {
     for (const homeId of homeIds) {
       can.set(homeId, await this.service.hostPermissionsIn(homeId, user));
     }
+    // One read for the whole list: which Bay each machine runs, and whether
+    // a newer release is known (#E152).
+    const summaries = await this.inventories.summariesFor(
+      loans.map(({ host }) => host.id),
+    );
     return loans.map(({ host, lentAt }) => {
       const home = homes.find((project) => project.id === host.projectId);
+      const summary = summaries.get(host.id);
       return {
         id: host.id,
         slug: host.slug,
@@ -390,6 +398,11 @@ export class ProjectHostController {
         providerServerType: host.providerServerType ?? undefined,
         cpuPercent: host.cpuPercent ?? undefined,
         memoryPercent: host.memoryPercent ?? undefined,
+        ...(summary?.bayVersion ? { bayVersion: summary.bayVersion } : {}),
+        upgradeAvailable: summary?.upgradeAvailable ?? false,
+        ...(summary?.targetBayVersion
+          ? { targetBayVersion: summary.targetBayVersion }
+          : {}),
         ...(home
           ? {
               home: {

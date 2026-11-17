@@ -156,6 +156,8 @@ export class HostSocketController {
       }
       if (message.type === "inventory") {
         await this.inventories.record(host, message);
+        // An upgrade whose ack was lost settles on what the host now runs.
+        await this.commands.settleUpgrades(host, message.host.bayVersion);
         return;
       }
       if (message.type === "event") {

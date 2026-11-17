@@ -46,6 +46,7 @@ import { AppService } from "./services/AppService.ts";
 import { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
+import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 import { BayRemovalService } from "./services/BayRemovalService.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
@@ -81,6 +82,7 @@ import { HostService } from "./services/HostService.ts";
 import { HostsMetric } from "./services/HostsMetric.ts";
 import { HostStatsService } from "./services/HostStatsService.ts";
 import { HostTokenService } from "./services/HostTokenService.ts";
+import { HostUpgradeService } from "./services/HostUpgradeService.ts";
 import { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
 import { OpenErrorsMetric } from "./services/OpenErrorsMetric.ts";
 import { ProjectDeliveryReportService } from "./services/ProjectDeliveryReportService.ts";
@@ -263,6 +265,9 @@ export const LoreShipApi = $module({
     // for the machine's next connect.
     HostCommandTransport,
     HostCommandService,
+    // The upgrade of Bay itself (#E152), and the release it targets.
+    BayReleaseTarget,
+    HostUpgradeService,
     HostStatsService,
     // The real transport, substituted for `HostCommandTransport` in
     // `main.server.ts`. Listed so DI scanning sees the class.
@@ -353,7 +358,9 @@ export { DeployRegistry } from "./services/DeployRegistry.ts";
 export { type DeployRequest, DeployRunner } from "./services/DeployRunner.ts";
 export { DeployService } from "./services/DeployService.ts";
 export { HostCloudflareService } from "./services/HostCloudflareService.ts";
+export { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 export { HostCommandService } from "./services/HostCommandService.ts";
+export { HostUpgradeService } from "./services/HostUpgradeService.ts";
 export { HostCommandTransport } from "./services/HostCommandTransport.ts";
 export { HostEventService } from "./services/HostEventService.ts";
 export { HostInventoryService } from "./services/HostInventoryService.ts";

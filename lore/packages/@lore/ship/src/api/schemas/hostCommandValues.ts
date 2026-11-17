@@ -53,6 +53,14 @@ export const HOST_COMMAND_KINDS = [
   // Bay's `actionRemove` and `actionStackRemove` are their other half.
   "remove",
   "stack-remove",
+  // Replace Bay's own binary with a released version and hand over to it
+  // (#E152). ⚠️ The most powerful verb here: the binary runs as root. What
+  // bounds it: the payload is a strict `x.y.z` and nothing else (no URL, no
+  // path, no checksum comes from Lore); Bay refuses any version older than
+  // its own, so there is no downgrade on the wire; it is held to the deploy
+  // switch on both sides; and a host that cannot hand its sockets over
+  // refuses it. Bay's `actionUpgrade` is its other half.
+  "upgrade",
 ] as const;
 
 export type HostCommandKind = (typeof HOST_COMMAND_KINDS)[number];

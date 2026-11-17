@@ -94,6 +94,18 @@ export const hostInventoryResourceSchema = z.object({
       at: z.string().max(40),
       reportedAt: z.string().max(40),
       bayVersion: z.string().max(100).optional(),
+      /**
+       * The upgrade of Bay itself (#E152). `upgradeMode` is what the machine
+       * reported; `targetBayVersion` is the release this Lore installs,
+       * absent on a Lore built from no release; `upgradeAvailable` says the
+       * host runs an older one; `upgradeByHand` says it is behind and cannot
+       * take the command (its Bay reported no mode, `restart` or `manual`),
+       * so a person runs `install.sh` on the machine.
+       */
+      upgradeMode: z.string().max(20).optional(),
+      targetBayVersion: z.string().max(20).optional(),
+      upgradeAvailable: z.boolean(),
+      upgradeByHand: z.boolean(),
       machine: hostInventoryMachineSchema,
       apps: z.array(hostInventoryReportedAppSchema),
       stacks: z.array(hostInventoryStackSchema).optional(),

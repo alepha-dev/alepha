@@ -20,7 +20,11 @@ export const hostCommandPayloadSchema = z.object({
    * Empty on a `stack-deploy`, which names a stack environment instead.
    */
   app: z.string().max(100),
-  environment: z.string().min(1).max(100),
+  /**
+   * Empty on an `upgrade`, which names no instance: it is about the machine.
+   * `HostCommandService.assertAccepts` requires it on every other kind.
+   */
+  environment: z.string().max(100),
   /**
    * The project slug, sent on a `deploy` so the machine can tell two projects
    * apart.
@@ -108,6 +112,21 @@ export const hostCommandPayloadSchema = z.object({
    * stack member's host comes from its stack environment, not its row.
    */
   instanceId: z.uuid().optional(),
+  /**
+   * The release an `upgrade` installs, a strict `x.y.z` (`BayUpgrade.VERSION`,
+   * Bay's own pattern). The whole of what the verb is told.
+   */
+  version: z
+    .string()
+    .max(20)
+    .regex(/^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$/)
+    .optional(),
+  /**
+   * The version the host ran when an `upgrade` was asked. Lore's own, never
+   * sent to the machine: it is what lets the host's activity say "0.39.0 to
+   * 0.40.0" once the host reports the new one.
+   */
+  fromVersion: z.string().max(100).optional(),
   /** A label on a console `backup`, kept with the backup and by retention. */
   tag: z
     .string()

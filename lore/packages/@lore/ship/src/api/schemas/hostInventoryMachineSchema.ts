@@ -25,6 +25,15 @@ export const hostInventoryMachineSchema = z.object({
   load1: z.number().min(0).optional(),
   uptimeSeconds: z.integer().min(0).optional(),
   bayVersion: z.string().max(100).optional(),
+  /**
+   * Whether this Bay can take an `upgrade`: `handoff`, `restart` or `manual`
+   * (`BAY_UPGRADE_MODES`). Absent from a Bay older than the command, which is
+   * how Lore knows it cannot take it: no version number decides.
+   *
+   * A bounded string and not an enum, on purpose: a mode a later Bay adds
+   * must not make Lore refuse the whole inventory of that machine.
+   */
+  upgradeMode: z.string().max(20).optional(),
 });
 
 export type HostInventoryMachine = Infer<typeof hostInventoryMachineSchema>;

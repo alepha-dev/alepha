@@ -48,6 +48,14 @@ export const lentHostResourceSchema = z.object({
   cpuPercent: z.number().optional(),
   memoryPercent: z.number().optional(),
   /**
+   * Which Bay the machine runs, whether a newer release is known, and that
+   * release when it is (#E152): what `lore host list` prints, read for the
+   * whole list in one query.
+   */
+  bayVersion: z.string().optional(),
+  upgradeAvailable: z.boolean(),
+  targetBayVersion: z.string().optional(),
+  /**
    * The host's home project, whose members manage it (#E126). Absent for
    * a host with no home, which the admin has yet to assign.
    */

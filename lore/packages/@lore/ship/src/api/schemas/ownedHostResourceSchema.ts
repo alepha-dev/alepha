@@ -25,6 +25,14 @@ export type HostLoan = Infer<typeof hostLoanSchema>;
 export const hostInventorySummarySchema = z.object({
   appCount: z.integer().min(0),
   reportedAt: z.string().max(40),
+  /**
+   * Which Bay the machine runs and whether a newer release is known
+   * (#E152), read from columns like the two numbers above. The target is
+   * only there when the host is behind it.
+   */
+  bayVersion: z.string().max(100).optional(),
+  upgradeAvailable: z.boolean(),
+  targetBayVersion: z.string().max(20).optional(),
 });
 
 export type HostInventorySummary = Infer<typeof hostInventorySummarySchema>;
