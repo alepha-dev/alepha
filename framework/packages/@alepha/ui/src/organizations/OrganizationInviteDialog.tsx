@@ -16,6 +16,7 @@ import {
 import { Input } from "../core/Input.tsx";
 import { Label } from "../core/Label.tsx";
 import { Control } from "../form/Control.tsx";
+import { rankOrder } from "./rankOrder.ts";
 import { useInviteOrganizationMember } from "./useInviteOrganizationMember.ts";
 
 const inviteRankFieldSchema = z.object({ rank: z.text() });
@@ -89,7 +90,8 @@ export const OrganizationInviteDialog = (
             select
             input={form.input.rank}
             label={tr("organizations.members.rank", { default: "Rank" })}
-            items={props.ranks
+            // The member picker's order (#Q3840).
+            items={rankOrder(props.ranks)
               .filter((item) => item.key !== "owner")
               .map((item) => ({ value: item.key, label: item.name }))}
             inputProps={{ "data-testid": "invite-rank" }}

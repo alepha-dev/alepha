@@ -11,6 +11,7 @@ import { useState } from "react";
 import { Badge } from "../core/Badge.tsx";
 import { useToast } from "../core/useToast.tsx";
 import { Control } from "../form/Control.tsx";
+import { rankOrder } from "./rankOrder.ts";
 
 const rankFieldSchema = z.object({ rank: z.text() });
 
@@ -84,7 +85,8 @@ export const OrganizationMemberRankPicker = (
       label=""
       disabled={saving}
       triggerClassName="w-40"
-      items={props.ranks
+      // Most powerful first, ties by name (#Q3840).
+      items={rankOrder(props.ranks)
         .filter((rank) => rank.key !== "owner")
         .map((rank) => ({ value: rank.key, label: rank.name }))}
       inputProps={{
