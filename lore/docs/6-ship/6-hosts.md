@@ -273,6 +273,57 @@ The **Settings** tab holds, for whoever the rank allows:
 A member who may only look sees a Settings tab that says so, and which
 permission would let them do more.
 
+### Upgrading Bay
+
+The Overview says which version of Bay the server runs. When a newer release
+exists it reads "Bay 0.39.0 → 0.40.0", with an **Upgrade Bay** button for
+whoever holds `host:update` in the host's home project. A project that only
+borrows the host cannot upgrade it.
+
+Pressing it asks for confirmation, then follows the upgrade to its end:
+"Upgraded to 0.40.0" once the new version serves, or the reason the server
+gave. Nothing is interrupted while it runs:
+
+- connections are handed over to the new version, so no request is refused;
+- apps keep running, unless the new version changes how Bay builds their
+  containers, in which case each restarts once;
+- if the new version fails to start, the current one keeps serving.
+
+The button is shown but cannot be pressed, with the reason under it, in two
+cases:
+
+- **the home project has not allowed deploys on the host.** An upgrade is
+  held to **Allow deploys**, like a deploy;
+- **the host is offline.** An upgrade is never kept waiting for a server to
+  come back.
+
+Some hosts are upgraded by hand instead. The Overview then shows no button,
+says why, and gives one command to copy and run on the server:
+
+- its Bay is too old to be upgraded from Lore;
+- its systemd unit has no handoff drop-in;
+- its Bay does not run under systemd.
+
+```bash
+curl -sSL https://alepha.dev/bay/install.sh | sudo BAY_VERSION=0.40.0 BAY_UPDATE_UNIT=yes sh
+```
+
+That command upgrades Bay and sets the server up for the next time: from then
+on, the upgrade is the button. See
+[Upgrading Bay](/bay/docs/guides-installation#upgrading-bay) for what it
+changes on the server.
+
+Three more things to know:
+
+- **Lore never takes a host back to an older version.** That is done on the
+  server, with the same installer and the older `BAY_VERSION`.
+- **A host that went offline during an upgrade and has not come back** reads
+  "Offline since the upgrade", with the command that puts the previous
+  version back.
+- **The version offered is the release your Lore itself runs.** A new release
+  shows up as the target once Lore has been updated to it, not the day it is
+  published.
+
 ## The drawer of a Cloudflare host
 
 A Cloudflare host has no console. Clicking it in the list opens a drawer
@@ -328,6 +379,7 @@ lore host list                            # home or borrowed, and their state
 lore host get my-vps                      # one host, and what it runs
 lore host update my-vps --allow-deploys   # or --no-allow-deploys, --label
 lore host update my-vps --stats-history   # keep CPU and memory, --stats-interval 5m
+lore host upgrade my-vps                  # upgrade its Bay, and wait for it
 lore host rotate my-vps                   # a new secret, shown once
 lore host lend my-vps --project shop      # unlend withdraws the loan
 lore host move my-vps --to platform --yes
@@ -349,6 +401,13 @@ lore host delete my-vps --yes
   delete, so a refused delete destroys nothing. If terminating fails, the
   host is kept and the command that finishes is printed. `--keep-server`
   deletes the host and leaves the server running.
+- `lore host upgrade` is the **Upgrade Bay** button: it waits until the new
+  version serves and prints it, or exits `1` with the server's reason.
+  `--version 0.40.2` picks another release, newer than the one the host
+  runs; `--no-wait` returns once the upgrade is queued. Where the page would
+  show the command to run by hand, it prints that command. `lore host list`
+  shows each host's Bay version, and the release available when it is
+  behind.
 - When a command could mean two hosts of one name, it refuses and names
   their projects. `--home <project>` picks one.
 - `lore host assign <host id> --to <project>` is the admin's **Assign to
@@ -363,7 +422,8 @@ stay a person's acts. An agent deploys an app it names by app and environment,
 and the app already knows its host, so no deploy tool takes a machine.
 `app_instance_update` can point an app at a host lent to the project
 (`hostId`), `host_stats` reads a host's CPU and memory, and an agent
-never sees a host's secret. See
+never sees a host's secret. No tool upgrades Bay either: that is the button,
+or `lore host upgrade`. See
 [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next

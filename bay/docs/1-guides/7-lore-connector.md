@@ -66,7 +66,7 @@ The secret is a command-line argument, so `ps` shows it while `set` runs and the
 shell history keeps it: clear that entry.
 
 | Command                        | Effect                                                                           |
-| ------------------------------ | -------------------------------------------------------------------------------- |
+| ------------------------------ | ------------------------------------------------------------------------------ |
 | `bay connector set URL SECRET` | enrol, or re-enrol with a rotated secret                                         |
 | `bay connector show`           | the Lore URL, the host name and whether the connection is up; never the secret |
 | `bay connector clear`          | forget both: the machine dials nobody                                            |
@@ -76,8 +76,8 @@ network in clear.
 
 ## What Lore can make the machine do
 
-A **closed vocabulary of fourteen verbs**, each naming one app instance or stack
-environment. `deploy` and `stack-deploy` create what they name, `remove` and
+A **closed vocabulary of fifteen verbs**, each naming one app instance or stack
+environment, or, for `upgrade`, the machine's own Bay. `deploy` and `stack-deploy` create what they name, `remove` and
 `stack-remove` answer done for one that is already gone, and the others refuse
 an instance this Bay does not run:
 
@@ -97,6 +97,7 @@ an instance this Bay does not run:
 | `restore`       | brings a backup back (by key, by time, or from another instance); needs a reason unless it is a dry run                                                                                 |
 | `remove`        | unregisters an app and stops serving it, as `bay remove` without `--purge`: its database, uploads and `.env` stay on the machine. Refused for a stack member, which goes with its stack |
 | `stack-remove`  | takes a stack environment down and forgets it, as `bay stack destroy` without `--purge`: its volumes, variables and registry credentials stay                                           |
+| `upgrade`       | replaces Bay's own binary with a newer release, named by its version, and hands over to it without closing a port. See [Upgrading Bay](/bay/docs/guides-installation#upgrading-bay)     |
 
 ⚠️ **This list is a security boundary, not a menu.** It is all that Lore, or
 whoever controls Lore, can ask of this machine. No verb takes a path, a shell
@@ -105,6 +106,15 @@ pattern, all bounded and validated; `backup-policy` carries a policy checked
 like `bay backup config`'s, and `restore` a backup key or a time, the instance
 to restore from and a reason. Both are held to the same switch as `deploy`,
 and Lore refuses them while the machine is offline rather than queueing them.
+`upgrade` is held to that switch as well, and it is the verb that replaces a
+binary running as root, so it is told as little as possible: a version, as
+`x.y.z`, and nothing else. No address, no path and no checksum come from
+Lore; the release is fetched from the repository the installer uses and
+checked against its `SHA256SUMS`. **A version older than the one running is
+refused**, so a Lore that was taken over cannot put a host back on a release
+with a known flaw: going back is the installer, run on the machine. And Bay
+takes it only when it can hand its sockets over (under systemd, with the
+handoff drop-in), answering with the command to run by hand otherwise.
 `remove` and `stack-remove` are held to that switch too, and ⚠️ **neither can
 delete data**: there is no purge on the wire. Deleting a copy's data is
 `bay remove --purge` or `bay stack destroy --purge`, run on the machine, and it
