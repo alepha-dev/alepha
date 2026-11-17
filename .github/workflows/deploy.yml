@@ -162,6 +162,10 @@ jobs:
   # After `lore` when both run: they deploy with this commit's `lore` CLI,
   # which may read an API this commit changes. A skipped `lore` does not
   # hold them; a failed one does.
+  #
+  # ⚠️ One at a time (#Q3843): lore, ui, shop, docs, docs-latest, each after
+  # the one before whatever its result. Started in the same second, the
+  # deploys through Lore failed on resets talking to it.
   # ──────────────────────────────────────────────────────────────────────
   ui:
     needs: lore
@@ -203,7 +207,7 @@ jobs:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
   shop:
-    needs: lore
+    needs: [lore, ui]
     if: >-
       always()
       && github.ref == 'refs/heads/main'
@@ -257,7 +261,7 @@ jobs:
   # other's copy. After `lore` when both run, for the framework apps' reason.
   # ──────────────────────────────────────────────────────────────────────
   docs:
-    needs: lore
+    needs: [lore, shop]
     if: >-
       always()
       && github.ref == 'refs/heads/main'
@@ -307,7 +311,7 @@ jobs:
   # tree, for projects that vendor Alepha rather than install a release
   # (#Q3028).
   docs-latest:
-    needs: lore
+    needs: [lore, docs]
     if: >-
       always()
       && github.ref == 'refs/heads/main'
