@@ -4690,6 +4690,18 @@ export default {
   "automation.canvas.leave.description":
     "Vos modifications de cette automatisation ne sont pas enregistrées et seront perdues.",
   "automation.canvas.leave.confirm": "Quitter",
+  "automation.preset.openInCanvas": "Ouvrir dans le canevas",
+  "automation.preset.addToDraft": "Ajouter à l'automatisation",
+  "automation.gallery.scratch": "Partir de zéro",
+  "automation.gallery.sketch": "Le graphe de $1",
+  "automation.canvas.group.presets": "Depuis un modèle",
+  "automation.canvas.mergeDescription":
+    "Sa source et ses étapes rejoignent cette automatisation, sous leurs propres noms. Rien n'est enregistré avant que vous n'enregistriez.",
+  "automation.canvas.newDescription":
+    "Dessinez ce qui la déclenche et ce qu'elle fait. Elle est créée désactivée à l'enregistrement, puis testée et activée sur sa page.",
+  "automation.subscription.open": "Ouvrir dans les automatisations",
+  "automation.canvas.empty":
+    "Commencez par une source : ce qui déclenche l'automatisation. Ajoutez un nœud pour la choisir.",
   "automation.canvas.label": "Graphe de l'automatisation",
   "automation.canvas.ran": "Exécutée",
   "automation.canvas.notReached": "Non atteinte",

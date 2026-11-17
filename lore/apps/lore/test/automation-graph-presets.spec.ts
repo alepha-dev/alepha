@@ -61,4 +61,20 @@ describe("Stock presets as graphs", () => {
       );
     }
   });
+
+  it("sketches every stock preset for its card: kinds, places and wires, no configuration", ({
+    expect,
+  }) => {
+    const registry = alepha.inject(AutomationPresetRegistry);
+    for (const preset of registry.all()) {
+      const sketch = registry.sketch(preset.key);
+      expect(sketch, preset.key).toBeDefined();
+      expect(sketch!.nodes.length).toBeGreaterThan(1);
+      expect(sketch!.edges.length).toBeGreaterThan(0);
+      expect(JSON.stringify(sketch)).not.toContain("config");
+      expect(
+        sketch!.nodes.filter((node) => node.kind === "source"),
+      ).toHaveLength(1);
+    }
+  });
 });

@@ -10,6 +10,7 @@ import {
   automationPresetDescriptorSchema,
   type AutomationPresetDescriptor,
 } from "../schemas/automationPresetDescriptorSchema.ts";
+import type { AutomationPresetSketch } from "../schemas/automationPresetSketchSchema.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
 import { AutomationTemplateTokens } from "../schemas/AutomationTemplateTokens.ts";
 
@@ -89,6 +90,47 @@ export class AutomationPresetRegistry {
       descriptor: structuredClone(entry.descriptor),
       rule: automationGraphSchema.parse(entry.build(values, sharedTokens)),
     };
+  }
+
+  /**
+   * A preset's graph as its card draws it (#Q3812): built from stand-in
+   * values (the slot's default, else an empty value of its kind), laid out,
+   * and stripped to kinds, places and wires. A preset whose builder refuses
+   * the stand-ins has no sketch.
+   */
+  public sketch(key: string): AutomationPresetSketch | undefined {
+    const entry = this.entries.get(key);
+    if (!entry) return undefined;
+    const values: AutomationPresetValues = {};
+    for (const [name, slot] of Object.entries(entry.descriptor.slots))
+      values[name] =
+        slot.default ??
+        slot.values?.[0] ??
+        (slot.kind === "number" || slot.kind === "release"
+          ? 0
+          : slot.kind === "boolean"
+            ? false
+            : slot.kind === "textArray"
+              ? ["inbox"]
+              : slot.kind === "channel"
+                ? "inbox"
+                : "");
+    try {
+      const graph = AutomationGraph.layout(
+        automationGraphSchema.parse(entry.build(values, {})),
+      );
+      return {
+        nodes: graph.nodes.map((node) => ({
+          id: node.id,
+          kind: node.kind,
+          x: node.position?.x ?? 0,
+          y: node.position?.y ?? 0,
+        })),
+        edges: graph.edges.map((edge) => ({ from: edge.from, to: edge.to })),
+      };
+    } catch {
+      return undefined;
+    }
   }
 
   /**

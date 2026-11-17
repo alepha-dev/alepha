@@ -106,6 +106,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   // Every page under Automations draws its own bordered header and scrolling
   // body (`AutomationPage`), as Uptime's monitor page does.
   "projectAutomationGallery",
+  "projectAutomationNew",
   "projectAutomationDetail",
   "projectAutomationVariables",
   "projectAutomationChannels",
@@ -220,6 +221,7 @@ export const SECTION_HREF_ROUTES: Record<
   projectRequirement: "projectRequirements",
   projectRequirementsTestBook: "projectRequirements",
   projectAutomationGallery: "projectAutomations",
+  projectAutomationNew: "projectAutomations",
   projectAutomationDetail: "projectAutomations",
   projectAutomationVariables: "projectAutomations",
   projectAutomationChannels: "projectAutomations",
@@ -267,6 +269,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // Every page under Automations reads "Automations" and links back to the
   // list, as an app's tabs do with Apps: the page names itself in its header.
   projectAutomationGallery: "project.settings.nav.automations",
+  projectAutomationNew: "project.settings.nav.automations",
   projectAutomationDetail: "project.settings.nav.automations",
   projectAutomationVariables: "project.settings.nav.automations",
   projectAutomationChannels: "project.settings.nav.automations",

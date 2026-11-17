@@ -4664,6 +4664,18 @@ export default {
   "automation.canvas.leave.description":
     "Your changes to this automation are not saved and will be lost.",
   "automation.canvas.leave.confirm": "Leave",
+  "automation.preset.openInCanvas": "Open in canvas",
+  "automation.preset.addToDraft": "Add to the automation",
+  "automation.gallery.scratch": "Start from scratch",
+  "automation.gallery.sketch": "The graph of $1",
+  "automation.canvas.group.presets": "From a preset",
+  "automation.canvas.mergeDescription":
+    "Its source and steps join this automation, under their own names. Nothing is saved until you save.",
+  "automation.canvas.newDescription":
+    "Draw what starts it and what it does. It is created disabled when you save, then tested and enabled on its page.",
+  "automation.subscription.open": "Open in Automations",
+  "automation.canvas.empty":
+    "Start with a source: what starts the automation. Add a node to choose one.",
   "automation.canvas.label": "Automation graph",
   "automation.canvas.ran": "Ran",
   "automation.canvas.notReached": "Not reached",

@@ -151,6 +151,11 @@ export {
   type AutomationNodeOutcome,
 } from "../api/schemas/automationNodeOutcomeSchema.ts";
 export {
+  automationPresetDraftSchema,
+  type AutomationPresetDraft,
+} from "../api/schemas/automationPresetDraftSchema.ts";
+export { automationPresetDraftBodySchema } from "../api/schemas/automationPresetDraftBodySchema.ts";
+export {
   automationRunListQuerySchema,
   type AutomationRunListQuery,
 } from "../api/schemas/automationRunListQuerySchema.ts";

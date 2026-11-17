@@ -295,6 +295,47 @@ export class AutomationCanvasEdits {
   }
 
   /**
+   * The prefix a preset's nodes take when added to this graph (#Q3812): its
+   * key, or `<key>-2`, `<key>-3` once a copy is there.
+   */
+  public prefix(graph: AutomationGraphValue, key: string): string {
+    const taken = (prefix: string) =>
+      graph.nodes.some((node) => node.id.startsWith(`${prefix}.`));
+    let candidate = key;
+    for (let index = 2; taken(candidate); index++)
+      candidate = `${key}-${index}`;
+    return candidate;
+  }
+
+  /**
+   * The graph with another one's nodes and wires added, placed below what
+   * is there: a preset added to a draft (#Q3812).
+   */
+  public merge(
+    graph: AutomationGraphValue,
+    addition: AutomationGraphValue,
+  ): AutomationGraphValue {
+    const below = graph.nodes.length
+      ? Math.max(...graph.nodes.map((node) => node.position?.y ?? 0)) +
+        AutomationGraph.ROW_HEIGHT
+      : 0;
+    return {
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        ...addition.nodes.map((node) => ({
+          ...node,
+          position: {
+            x: node.position?.x ?? 0,
+            y: (node.position?.y ?? 0) + below,
+          },
+        })),
+      ],
+      edges: [...graph.edges, ...addition.edges],
+    };
+  }
+
+  /**
    * Which of a node's ports a new wire may start from, and the node types
    * that may follow it (#Q3811's "+").
    */
