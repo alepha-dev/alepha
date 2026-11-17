@@ -4,7 +4,9 @@ import { DbEntityNotFoundError } from "alepha/orm";
 import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
+import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
 import type { AutomationRenderContext } from "./AutomationContextBuilder.ts";
@@ -37,6 +39,7 @@ export class AutomationWorker {
   protected readonly renderer = $inject(AutomationTemplateRenderer);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly time = $inject(DateTimeProvider);
+  protected readonly graphs = $inject(AutomationGraph);
 
   public async step(
     input: { receiptId: string; token?: string },
@@ -82,17 +85,24 @@ export class AutomationWorker {
             },
           });
           if (holder) return this.waitFor(occurrence, holder);
+          const origin = this.graphs.source(frozen);
+          const source = this.claims.sourceOf(
+            occurrence.occurrenceId,
+            origin.id,
+          );
           const evaluation = await this.evaluator.evaluate({
-            rule: { ...rule, rule: frozen, revision: occurrence.ruleRevision },
-            ...(frozen.trigger.kind === "event"
+            rule: { ...rule, revision: occurrence.ruleRevision },
+            graph: frozen,
+            node: origin.id,
+            ...(source.kind === "event"
               ? {
                   liveSource: {
                     fields: occurrence.snapshot!.inputs,
                     provenance: {
                       ...occurrence.snapshot!.source,
                       mode: "live" as const,
-                      key: frozen.trigger.event,
-                      id: occurrence.occurrenceId.slice(6),
+                      key: origin.type,
+                      id: source.eventId,
                       occurredAt: occurrence.occurredAt,
                     },
                   },
@@ -103,9 +113,13 @@ export class AutomationWorker {
             automationId: rule.id,
             revision: occurrence.ruleRevision,
             source:
-              frozen.trigger.kind === "event"
-                ? { kind: "event", eventId: occurrence.occurrenceId.slice(6) }
-                : { kind: "schedule", scheduledAt: occurrence.occurredAt },
+              source.kind === "event"
+                ? source
+                : {
+                    kind: "schedule",
+                    scheduledAt: occurrence.occurredAt,
+                    node: origin.id,
+                  },
             prepared: evaluation.prepared!,
           });
           if (active.state !== "claimed" || !active.receipt?.leaseToken) return;
@@ -130,7 +144,12 @@ export class AutomationWorker {
       try {
         occurrence = await this.claims.renew(occurrence.id, token);
         await this.claims.ensureRun(occurrence);
-        if (occurrence.snapshot?.rule?.guard?.operator === "crossesAbove")
+        if (
+          occurrence.snapshot?.rule &&
+          this.graphs
+            .conditions(occurrence.snapshot.rule)
+            .some((node) => node.config.operator === "crossesAbove")
+        )
           await this.guards.observe({ occurrenceId: occurrence.id, token });
         for (let count = 0; count < 5; count++) {
           occurrence = await this.claims.lease(occurrence.id, token);
@@ -138,15 +157,15 @@ export class AutomationWorker {
           if (!planned) {
             await this.evidence.finish(occurrence.runId!);
             if (
-              occurrence.snapshot!.rule!.select?.key ===
-                "quests.remindersDue" &&
+              this.reminders(occurrence.snapshot!) &&
               occurrence.snapshot!.selectionNext
             ) {
               const rule = await this.persistence.rules.getById(
                 occurrence.automationId!,
               );
               const evaluation = await this.evaluator.evaluate({
-                rule: { ...rule, rule: occurrence.snapshot!.rule! },
+                rule,
+                graph: occurrence.snapshot!.rule!,
                 evaluatedAt: occurrence.snapshot!.evaluatedAt,
                 cursor: occurrence.snapshot!.selectionNext,
               });
@@ -162,18 +181,38 @@ export class AutomationWorker {
             await this.claims.complete(occurrence.id, token);
             return;
           }
-          const ast = occurrence.snapshot!.rule!.actions[planned.index];
+          const step = {
+            node: planned.node,
+            ...(planned.channel !== undefined
+              ? { channel: planned.channel }
+              : {}),
+            ...(planned.row !== undefined ? { row: planned.row } : {}),
+          };
+          // A step behind a failed node is not reached, and a failed one is
+          // already recorded: the walk goes past both (#Q3804).
+          const recorded = (
+            await this.persistence.runs.getById(occurrence.runId!)
+          ).snapshot.actions.find((action) =>
+            this.graphs.sameStep(action, step),
+          );
+          if (
+            recorded &&
+            ["not_reached", "failed", "refused"].includes(recorded.status)
+          ) {
+            await this.claims.pass(occurrence.id, token, step);
+            continue;
+          }
+          const ast = this.graphs.action(occurrence.snapshot!.rule!, step);
           if (ast.kind === "notify" && ast.audience) {
             const progress = await this.rosterWorker.step(
               occurrence,
               token,
-              planned.index,
+              step,
               this.context(occurrence.snapshot!, planned.row),
             );
             if (!progress.done) return { receiptId: occurrence.id, token };
             await this.claims.advance(occurrence.id, token, {
-              index: planned.index,
-              row: planned.row,
+              ...step,
               receiptId: progress.receiptId!,
             });
             continue;
@@ -196,112 +235,128 @@ export class AutomationWorker {
             occurrence.snapshot!.variables,
           );
           const reminderDeliveryKey =
-            ast.kind === "notify" &&
-            occurrence.snapshot!.rule!.select?.key === "quests.remindersDue"
+            ast.kind === "notify" && this.reminders(occurrence.snapshot!)
               ? `reminder:${context.values.quest_id}:${context.values.reminder_next_at}`
               : undefined;
           const identity = await this.claims.actionIdentity(occurrence, {
-            ...planned,
+            ...step,
             ...(reminderDeliveryKey
               ? { deliveryKey: reminderDeliveryKey }
               : {}),
           });
-          let receipt: AutomationReceipt | undefined =
-            await this.persistence.receipts.findById(identity);
-          if (receipt?.status !== "committed") {
-            await this.evidence.action(occurrence.runId!, {
-              index: planned.index,
-              row: planned.row,
-              status: "running",
-            });
-            try {
-              if (ast.kind === "notify") {
-                const earlier = await this.persistence.receipts.findMany({
-                  where: {
-                    parentId: occurrence.id,
-                    kind: "action",
-                    status: "committed",
-                    runId: occurrence.runId!,
-                    ...(planned.row !== undefined
-                      ? { rowIndex: planned.row }
-                      : { rowIndex: { isNull: true } }),
-                  },
-                  limit: 5,
-                });
-                const settle =
-                  occurrence.snapshot!.rule!.select?.key ===
-                    "quests.remindersDue" &&
-                  !earlier.some((row) => row.result?.enqueued === true)
-                    ? this.selections.settlement(
-                        "quests.remindersDue",
-                        occurrence.projectId,
-                        context,
-                        occurrence.snapshot!.evaluatedAt!,
-                      )
-                    : undefined;
-                receipt = (
-                  await this.notifications.enqueue({
+          let receipt: AutomationReceipt | undefined;
+          try {
+            receipt = await this.persistence.receipts.findById(identity);
+            if (receipt?.status !== "committed") {
+              await this.evidence.action(occurrence.runId!, {
+                ...step,
+                status: "running",
+              });
+              try {
+                if (ast.kind === "notify") {
+                  const earlier = await this.persistence.receipts.findMany({
+                    where: {
+                      parentId: occurrence.id,
+                      kind: "action",
+                      status: "committed",
+                      runId: occurrence.runId!,
+                      ...(step.row !== undefined
+                        ? { rowIndex: step.row }
+                        : { rowIndex: { isNull: true } }),
+                    },
+                    limit: 5,
+                  });
+                  const settle =
+                    this.reminders(occurrence.snapshot!) &&
+                    !earlier.some((row) => row.result?.enqueued === true)
+                      ? this.selections.settlement(
+                          "quests.remindersDue",
+                          occurrence.projectId,
+                          context,
+                          occurrence.snapshot!.evaluatedAt!,
+                        )
+                      : undefined;
+                  receipt = (
+                    await this.notifications.enqueue({
+                      occurrenceId: occurrence.id,
+                      token,
+                      ...step,
+                      context,
+                      ...(reminderDeliveryKey &&
+                      rendered.raw.kind === "notify" &&
+                      rendered.raw.recipient &&
+                      rendered.raw.channel !== undefined
+                        ? {
+                            delivery: {
+                              recipient: rendered.raw.recipient,
+                              channel: rendered.raw.channel,
+                              key: reminderDeliveryKey,
+                            },
+                          }
+                        : {}),
+                      ...(settle ? { settlement: settle } : {}),
+                    })
+                  ).receipt;
+                } else
+                  receipt = await this.domain.execute({
                     occurrenceId: occurrence.id,
                     token,
-                    index: planned.index,
-                    row: planned.row,
+                    node: step.node,
+                    row: step.row,
                     context,
-                    ...(reminderDeliveryKey &&
-                    rendered.raw.kind === "notify" &&
-                    rendered.raw.recipient &&
-                    rendered.raw.channel !== undefined
-                      ? {
-                          delivery: {
-                            recipient: rendered.raw.recipient,
-                            channel: rendered.raw.channel,
-                            key: reminderDeliveryKey,
-                          },
-                        }
-                      : {}),
-                    ...(settle ? { settlement: settle } : {}),
-                  })
-                ).receipt;
-              } else
-                receipt = await this.domain.execute({
-                  occurrenceId: occurrence.id,
-                  token,
-                  index: planned.index,
-                  row: planned.row,
-                  context,
+                  });
+              } catch (error) {
+                // A controller hook can fail after its native root committed.
+                // Recover that receipt before deciding that the action failed.
+                receipt = await this.persistence.receipts.findById(identity);
+                if (receipt?.status !== "committed") throw error;
+              }
+            }
+            if (!receipt || receipt.status !== "committed") {
+              if (receipt?.status === "unknown") {
+                await this.evidence.action(occurrence.runId!, {
+                  ...step,
+                  status: "unknown",
+                  receiptId: receipt.id,
                 });
-            } catch (error) {
-              // A controller hook can fail after its native root committed.
-              // Recover that receipt before deciding that the action failed.
-              receipt = await this.persistence.receipts.findById(identity);
-              if (receipt?.status !== "committed") throw error;
-            }
-          }
-          if (!receipt || receipt.status !== "committed") {
-            if (receipt?.status === "unknown") {
-              await this.evidence.action(occurrence.runId!, {
-                index: planned.index,
-                row: planned.row,
-                status: "unknown",
-                receiptId: receipt.id,
-              });
-              await this.claims.stop(
-                occurrence.id,
-                token,
-                "unknown",
-                "Action outcome is unknown",
+                await this.claims.stop(
+                  occurrence.id,
+                  token,
+                  "unknown",
+                  "Action outcome is unknown",
+                );
+                return;
+              }
+              throw new BadRequestError(
+                "Action did not produce a committed receipt",
               );
-              return;
             }
-            throw new BadRequestError(
-              "Action did not produce a committed receipt",
-            );
+          } catch (error) {
+            // A failed or refused action stops its own branch (#Q3804, the
+            // owner's ruling): what is downstream of it is not reached, its
+            // siblings still run. A transient fault retries first; a loss
+            // of the author's authority stops the whole run (`lease`).
+            if (!this.refusal(error) && attempt < 3) throw error;
+            await this.claims.lease(occurrence.id, token);
+            const reason = (
+              error instanceof Error
+                ? error.message
+                : "Automation action failed"
+            ).slice(0, 1024);
+            await this.evidence.action(occurrence.runId!, {
+              ...step,
+              status: this.refusal(error) ? "refused" : "failed",
+              result: { reason },
+            });
+            await this.evidence.unreach(occurrence.runId!, step);
+            await this.claims.pass(occurrence.id, token, step);
+            continue;
           }
           const skipped =
             receipt.result?.skipped === true ||
             receipt.result?.changed === false;
           await this.evidence.action(occurrence.runId!, {
-            index: planned.index,
-            row: planned.row,
+            ...step,
             status: skipped
               ? "skipped"
               : receipt.result?.enqueued === true
@@ -314,8 +369,7 @@ export class AutomationWorker {
           if (rendered.truncated)
             await this.evidence.truncated(occurrence.runId!);
           await this.claims.advance(occurrence.id, token, {
-            index: planned.index,
-            row: planned.row,
+            ...step,
             receiptId: receipt.id,
           });
         }
@@ -330,11 +384,7 @@ export class AutomationWorker {
           latest.leaseUntil <= this.time.nowISOString()
         )
           return;
-        const refusal =
-          error instanceof BadRequestError ||
-          error instanceof ForbiddenError ||
-          error instanceof ConflictError ||
-          error instanceof DbEntityNotFoundError;
+        const refusal = this.refusal(error);
         if (!refusal && attempt < 3) throw error;
         const reason = (
           error instanceof Error ? error.message : "Automation worker failed"
@@ -342,14 +392,16 @@ export class AutomationWorker {
         const planned = latest.snapshot?.actions[latest.cursor];
         if (planned && latest.runId) {
           const run = await this.persistence.runs.getById(latest.runId);
-          const current = run.snapshot.actions.find(
-            (row) => row.index === planned.index && row.row === planned.row,
+          const current = run.snapshot.actions.find((row) =>
+            this.graphs.sameStep(row, planned),
           );
           if (current && ["pending", "running"].includes(current.status)) {
             const committed = await this.persistence.receipts.findById(
               await this.claims.actionIdentity(latest, {
-                ...planned,
-                ...(latest.snapshot?.rule?.select?.key === "quests.remindersDue"
+                node: planned.node,
+                channel: planned.channel,
+                row: planned.row,
+                ...(this.reminders(latest.snapshot!)
                   ? {
                       deliveryKey: `reminder:${this.context(latest.snapshot!, planned.row).values.quest_id}:${this.context(latest.snapshot!, planned.row).values.reminder_next_at}`,
                     }
@@ -357,8 +409,11 @@ export class AutomationWorker {
               }),
             );
             await this.evidence.action(run.id, {
-              index: planned.index,
-              row: planned.row,
+              node: planned.node,
+              ...(planned.channel !== undefined
+                ? { channel: planned.channel }
+                : {}),
+              ...(planned.row !== undefined ? { row: planned.row } : {}),
               status:
                 committed?.status === "committed"
                   ? committed.result?.skipped === true ||
@@ -389,6 +444,30 @@ export class AutomationWorker {
       }
     });
   }
+  /**
+   * Whether an error refuses the step rather than failing it: a domain
+   * check said no, as opposed to a fault worth retrying.
+   */
+  protected refusal(error: unknown): boolean {
+    return (
+      error instanceof BadRequestError ||
+      error instanceof ForbiddenError ||
+      error instanceof ConflictError ||
+      error instanceof DbEntityNotFoundError
+    );
+  }
+
+  /**
+   * A quest reminders run (`quests.remindersDue`, #Q3626), which follows
+   * due-selector cursors and keys each delivery by its due state.
+   */
+  protected reminders(snapshot: AutomationRunSnapshot): boolean {
+    return (
+      !!snapshot.rule &&
+      this.graphs.read(snapshot.rule)?.type === "quests.remindersDue"
+    );
+  }
+
   /**
    * A ready occurrence whose rule is busy with another one waits for it in
    * short delays instead of until its own queue lease lapses and the next
@@ -427,8 +506,7 @@ export class AutomationWorker {
     row?: number,
   ): AutomationRenderContext {
     const rule = snapshot.rule!;
-    const key =
-      rule.trigger.kind === "event" ? rule.trigger.event : rule.select!.key;
+    const key = this.graphs.sourceKey(rule);
     const descriptor = this.catalog
       .entries()
       .find((entry) => entry.key === key);
@@ -440,7 +518,8 @@ export class AutomationWorker {
     return {
       descriptor,
       values,
-      ...(rule.select?.kind === "collection"
+      ...(this.graphs.source(rule).type === AutomationVocabulary.SCHEDULE &&
+      descriptor.result === "collection"
         ? {
             collection: {
               items: snapshot.selected,

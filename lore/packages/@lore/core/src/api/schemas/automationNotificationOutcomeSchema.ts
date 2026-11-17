@@ -5,7 +5,8 @@ import { z } from "alepha";
  */
 export const automationNotificationOutcomeSchema = z
   .object({
-    index: z.integer().min(0).max(4),
+    node: z.string().max(64),
+    channel: z.string().max(255).optional(),
     row: z.integer().min(0).max(49).optional(),
     outboxId: z.uuid(),
     status: z.enum([

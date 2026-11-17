@@ -21,7 +21,12 @@ export const automationNotificationVariablesSchema = z.object({
   scope: z.string().max(64),
   automationId: z.uuid(),
   ruleRevision: z.integer().nonnegative(),
-  actionIndex: z.integer().min(0).max(4),
+  /**
+   * The action node that queued it (#Q3804), and the source its run
+   * started at, whose read access the recipient must hold.
+   */
+  nodeId: z.string().max(64).optional(),
+  sourceNode: z.string().max(64).optional(),
   /**
    * The member addressed; absent for a room, which is nobody's (#Q3613).
    */

@@ -135,7 +135,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
       inputs: context.values,
       selected: [context.values],
       matched: 1,
-      planned: steps.map((_, index) => ({ index })),
+      planned: steps.map((_, index) => ({ node: `action-${index + 1}` })),
     });
     const claimed = await claims.claim({
       automationId: rule.id,
@@ -151,7 +151,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
     actions.execute({
       occurrenceId: opened.occurrence.id,
       token: opened.occurrence.leaseToken!,
-      index,
+      node: `action-${index + 1}`,
       context: opened.context,
     });
   const createFolio = (content = "Original") =>
@@ -538,7 +538,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
     );
     const first = await execute(opened);
     await claims.advance(opened.occurrence.id, opened.occurrence.leaseToken!, {
-      index: 0,
+      node: "action-1",
       receiptId: first.id,
     });
     await expect(execute(opened, 1)).rejects.toThrow("Only the quest creator");

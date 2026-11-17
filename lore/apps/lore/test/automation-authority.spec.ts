@@ -199,7 +199,7 @@ describe("Current automation authority", () => {
         automationId: row.id,
         revision: 0,
         effect: {
-          index: 0,
+          node: "action-1",
           action: {
             ...config().actions[0],
             kind: "notify",
@@ -313,7 +313,7 @@ describe("Current automation authority", () => {
         automationId: next.id,
         revision: 0,
         effect: {
-          index: 0,
+          node: "action-1",
           action: {
             kind: "notify",
             recipient: foreign.createdBy,

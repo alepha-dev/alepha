@@ -147,6 +147,7 @@ export {
   type AutomationGraphIssue,
   type AutomationGraphNameInput,
   type AutomationGraphNameProvider,
+  type AutomationGraphStep,
 } from "../api/schemas/AutomationGraph.ts";
 export {
   automationGraphSchema,

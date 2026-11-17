@@ -172,7 +172,7 @@ describe("Automation configured notifications and durable outbox", () => {
       variables,
       matched: 1,
       planned: ast.actions.map((_, index) => ({
-        index,
+        node: `action-${index + 1}`,
         ...(ast.select?.kind === "rows" ? { row: 0 } : {}),
       })),
     });
@@ -191,7 +191,7 @@ describe("Automation configured notifications and durable outbox", () => {
       automationId: rule.id,
       revision: rule.revision,
       source: event
-        ? { kind: "event", eventId: event.id }
+        ? { kind: "event", eventId: event.id, node: "source" }
         : { kind: "schedule", scheduledAt: at },
       prepared,
     });
@@ -207,7 +207,7 @@ describe("Automation configured notifications and durable outbox", () => {
     notify.enqueue({
       occurrenceId: opened.occurrence.id,
       token: opened.occurrence.leaseToken!,
-      index,
+      node: `action-${index + 1}`,
       ...(opened.rule.rule.select?.kind === "rows" ? { row: 0 } : {}),
       context: opened.context,
       ...extra,
@@ -611,7 +611,7 @@ describe("Automation configured notifications and durable outbox", () => {
     };
     const preview = await notify.prepare({
       rule: opened.rule,
-      index: 0,
+      node: "action-1",
       action: ast.actions[0],
       context: opened.context,
       variables: [],
@@ -706,7 +706,7 @@ describe("Automation configured notifications and durable outbox", () => {
     );
     const prepared = await notify.prepare({
       rule: opened.rule,
-      index: 0,
+      node: "action-1",
       action: ast.actions[0],
       context,
       variables: [],

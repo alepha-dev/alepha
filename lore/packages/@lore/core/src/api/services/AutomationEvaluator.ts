@@ -6,7 +6,8 @@ import { BadRequestError, ForbiddenError } from "alepha/server";
 import type { Automation } from "../entities/automations.ts";
 import type { AutomationAudiencePreview } from "../schemas/automationAudiencePreviewSchema.ts";
 import { automationEvaluationReportSchema } from "../schemas/automationEvaluationReportSchema.ts";
-import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
+import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import type { AutomationSourceProvenance } from "../schemas/automationSourceProvenanceSchema.ts";
@@ -15,6 +16,7 @@ import {
   automationTestSourceSchema,
   type AutomationTestSource,
 } from "../schemas/automationTestSourceSchema.ts";
+import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationAudience } from "./AutomationAudience.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
@@ -65,11 +67,13 @@ export class AutomationEvaluator {
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly bindings = $inject(AutomationTemplateBindings);
   protected readonly time = $inject(DateTimeProvider);
+  protected readonly graphs = $inject(AutomationGraph);
 
   public async test(
     id: string,
     caller: UserAccountToken,
     source?: AutomationTestSource,
+    node?: string,
   ) {
     return this.database.primary(async () => {
       const rule = await this.persistence.rules.getById(id);
@@ -84,6 +88,7 @@ export class AutomationEvaluator {
       const evaluation = await this.evaluate({
         rule,
         source,
+        node,
         disclosureUser: caller,
       });
       return this.report(evaluation);
@@ -91,6 +96,12 @@ export class AutomationEvaluator {
   }
   public async evaluate(input: {
     rule: Automation;
+    /**
+     * What the run walks: the subgraph its source reaches (#Q3804). Absent,
+     * the stored rule's, from `node` or its first source.
+     */
+    graph?: AutomationGraphValue;
+    node?: string;
     source?: AutomationTestSource;
     liveSource?: {
       fields: Record<string, unknown>;
@@ -102,13 +113,16 @@ export class AutomationEvaluator {
   }): Promise<AutomationEvaluation> {
     return this.database.primary(async () => {
       const evaluatedAt = input.evaluatedAt ?? this.time.nowISOString();
-      // One notify per channel (#Q3613): the snapshot, its planned
-      // positions and every step after hold the expanded rule.
+      const whole = AutomationGraph.of(input.rule.rule);
+      const node =
+        input.graph?.nodes.find((item) => item.kind === "source")?.id ??
+        this.graphs.source(whole, input.node).id;
+      const graph = input.graph ?? this.graphs.subgraph(whole, node);
+      const trigger = this.graphs.source(graph, node);
       const base: AutomationEvaluation = {
-        rule: {
-          ...input.rule,
-          rule: AutomationRuleChannels.expand(input.rule.rule),
-        },
+        rule: input.rule,
+        graph,
+        node,
         evaluatedAt,
         variables: [],
         selected: [],
@@ -153,20 +167,21 @@ export class AutomationEvaluator {
             )
               throw new ForbiddenError("Variable source access is unavailable");
         let selected: AutomationSelected;
-        if (input.rule.rule.trigger.kind === "event") {
+        if (trigger.type !== AutomationVocabulary.SCHEDULE) {
           const source =
             input.liveSource ??
             (input.source
               ? await this.subjects.resolve(
                   input.rule,
                   automationTestSourceSchema.parse(input.source),
+                  node,
                 )
               : undefined);
           if (!source)
             throw new BadRequestError(
               "Choose a typed same-project event subject or retained snapshot",
             );
-          if (source.provenance.key !== input.rule.rule.trigger.event)
+          if (source.provenance.key !== trigger.type)
             throw new BadRequestError("Event source does not match this rule");
           base.source = source.provenance;
           const context = await this.builder.source(
@@ -175,7 +190,7 @@ export class AutomationEvaluator {
             source.fields,
           );
           // `app` filters deploy.*, `monitor` filters monitor.* (#Q3610).
-          const trigger = input.rule.rule.trigger;
+          const filters = trigger.config as Record<string, string | undefined>;
           const variables = new Map(
             base.variables.map((row) => [
               row.key,
@@ -184,7 +199,7 @@ export class AutomationEvaluator {
           );
           const filtered = (["app", "monitor", "host"] as const).some(
             (name) => {
-              const filter = trigger[name];
+              const filter = filters[name];
               return (
                 filter !== undefined &&
                 this.bindings.resolve({
@@ -220,12 +235,16 @@ export class AutomationEvaluator {
             );
           selected = await this.selections.evaluate({
             rule: input.rule,
+            graph,
             user,
             variables: base.variables,
             evaluatedAt,
             cursor: input.cursor,
           });
-          base.source = { mode: "schedule", key: input.rule.rule.select!.key };
+          base.source = {
+            mode: "schedule",
+            key: this.graphs.sourceKey(graph, node),
+          };
         }
         Object.assign(base, {
           selected: selected.items,
@@ -237,26 +256,55 @@ export class AutomationEvaluator {
           noData: selected.noData,
           next: selected.next,
         });
+        const steps = this.graphs.steps(graph, node);
         for (const [row, context] of selected.contexts.entries()) {
-          const guard = selected.noData
-            ? { matched: false, noData: true }
-            : await this.guards.evaluate({
-                rule: input.rule,
-                context: context.values,
-                variables: base.variables,
-              });
-          base.guards.push(guard);
-          base.noData ||= guard.noData;
+          // Every condition is decided before the first effect, so the walk
+          // is a plan (#Q3804): the run goes down the port each one takes.
+          const decided = new Map<string, AutomationGuardResult>();
+          for (const condition of this.graphs.conditions(graph))
+            decided.set(
+              condition.id,
+              selected.noData
+                ? { matched: false, noData: true }
+                : await this.guards.evaluate({
+                    rule: input.rule,
+                    graph,
+                    node: condition,
+                    context: context.values,
+                    variables: base.variables,
+                  }),
+            );
+          const walk = this.graphs.walk(graph, node, (condition) => {
+            const result = decided.get(condition.id)!;
+            return result.noData
+              ? undefined
+              : result.matched
+                ? "true"
+                : "false";
+          });
+          for (const decision of walk.decisions) {
+            const result = decided.get(decision.node)!;
+            base.guards.push({
+              node: decision.node,
+              ...(selected.kind === "rows" ? { row } : {}),
+              ...(decision.port ? { port: decision.port } : {}),
+              ...result,
+            });
+            base.noData ||= result.noData;
+          }
+          const reached = steps.filter((step) => walk.reached.has(step.node));
           if (
-            !guard.matched ||
+            !reached.length ||
             (selected.kind === "collection" && !selected.items.length)
           )
             continue;
           base.matched +=
             selected.kind === "collection" ? selected.items.length : 1;
-          for (const [index, action] of base.rule.rule.actions.entries()) {
+          for (const step of reached) {
+            const action = this.graphs.action(graph, step);
             const position = {
-              index,
+              node: step.node,
+              ...(step.channel !== undefined ? { channel: step.channel } : {}),
               ...(selected.kind === "rows" ? { row } : {}),
             };
             const rendered = this.renderer.render(
@@ -276,11 +324,12 @@ export class AutomationEvaluator {
             };
             if (!rendered.suppressed) {
               await this.catalog.validateEffect(
-                input.rule.rule,
+                graph,
                 input.rule.projectId,
                 user,
                 rendered.raw,
                 input.rule,
+                node,
               );
               if (action.kind === "notify" && action.audience) {
                 if (input.disclosureUser) {
@@ -309,7 +358,9 @@ export class AutomationEvaluator {
               } else if (action.kind === "notify") {
                 const prepared = await this.notifications.prepare({
                   rule: input.rule,
-                  index,
+                  node: step.node,
+                  sourceNode: node,
+                  sourceKey: this.graphs.sourceKey(graph, node),
                   action,
                   context,
                   variables: base.variables,
@@ -383,6 +434,12 @@ export class AutomationEvaluator {
   ): Promise<AutomationPreparedEvidence> {
     const prepared = await this.evidence.prepare({
       rule: evaluation.rule,
+      node: evaluation.node,
+      conditions: evaluation.guards.map(({ node, row, port }) => ({
+        node,
+        ...(row !== undefined ? { row } : {}),
+        ...(port ? { port } : {}),
+      })),
       occurrenceId: "preview",
       triggeredAt: evaluation.evaluatedAt,
       evaluatedAt: evaluation.evaluatedAt,
@@ -396,8 +453,9 @@ export class AutomationEvaluator {
       total: evaluation.total,
       totalIsExact: evaluation.totalIsExact,
       hasMore: evaluation.hasMore,
-      planned: evaluation.operations.map(({ index, row }) => ({
-        index,
+      planned: evaluation.operations.map(({ node, channel, row }) => ({
+        node,
+        ...(channel !== undefined ? { channel } : {}),
         ...(row !== undefined ? { row } : {}),
       })),
       ...(evaluation.refusal
@@ -443,7 +501,8 @@ export class AutomationEvaluator {
   }
 }
 export interface AutomationPlannedOperation {
-  index: number;
+  node: string;
+  channel?: string;
   row?: number;
   action: AutomationRule["actions"][number];
   rendered: AutomationRule["actions"][number];
@@ -458,12 +517,23 @@ export interface AutomationPlannedOperation {
 }
 export interface AutomationEvaluation {
   rule: Automation;
+  /**
+   * The subgraph the run walks, and the source it starts at.
+   */
+  graph: AutomationGraphValue;
+  node: string;
   evaluatedAt: string;
   variables: AutomationRunSnapshot["variables"];
   source?: AutomationSourceProvenance;
   selected: AutomationRunSnapshot["selected"];
   contexts: AutomationRenderContext[];
-  guards: AutomationGuardResult[];
+  guards: Array<
+    AutomationGuardResult & {
+      node: string;
+      row?: number;
+      port?: "true" | "false";
+    }
+  >;
   operations: AutomationPlannedOperation[];
   prepared?: AutomationPreparedEvidence;
   matched: number;

@@ -1,4 +1,5 @@
 import { AutomationPersistence, AutomationRunEvidence } from "@lore/core/api";
+import { AutomationGraph } from "@lore/core/schemas";
 import type { AutomationRule } from "@lore/core/schemas";
 import { $hook, Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
@@ -61,7 +62,7 @@ describe("Bounded automation run evidence", () => {
     });
   const start = async (
     rule: Awaited<ReturnType<typeof create>>,
-    planned: Array<{ index: number; row?: number }> = [],
+    planned: Array<{ node: string; row?: number }> = [],
   ) =>
     evidence.start({
       rule,
@@ -109,17 +110,19 @@ describe("Bounded automation run evidence", () => {
       selected: [{ title: "Safe" }],
       matched: 1,
       total: 1,
-      planned: [{ index: 0 }],
+      planned: [{ node: "action-1" }],
     });
     const stored = await persistence.runs.getById(run.id);
     expect(stored).toMatchObject({
       ruleRevision: 0,
       status: "queued",
       snapshot: {
-        rule: rule.rule,
+        // The subgraph its source reaches: the whole of a one-source rule.
+        rule: AutomationGraph.fromV1(rule.rule),
+        sourceNode: "source",
         inputs: { title: "Safe", feedback_id: 12 },
         counts: { selected: 1, matched: 1, executed: 0, totalIsExact: true },
-        actions: [{ index: 0, status: "pending", result: {} }],
+        actions: [{ node: "action-1", status: "pending", result: {} }],
       },
     });
     expect(stored.snapshot.evaluatedAt).toBeDefined();
@@ -201,13 +204,13 @@ describe("Bounded automation run evidence", () => {
     const rule = config();
     rule.actions = [rule.actions[0], rule.actions[0], rule.actions[0]];
     const run = await start(await create(rule), [
-      { index: 0 },
-      { index: 1 },
-      { index: 2 },
+      { node: "action-1" },
+      { node: "action-2" },
+      { node: "action-3" },
     ]);
     const receiptId = crypto.randomUUID();
     const committed = await evidence.action(run.id, {
-      index: 0,
+      node: "action-1",
       status: "queued",
       receiptId,
       deliveries: 1,
@@ -219,13 +222,13 @@ describe("Bounded automation run evidence", () => {
       result: { outbox_id: "outbox-1", enqueued: true, delivered: false },
     });
     await evidence.action(run.id, {
-      index: 0,
+      node: "action-1",
       status: "queued",
       receiptId,
       deliveries: 1,
     });
     await evidence.action(run.id, {
-      index: 1,
+      node: "action-2",
       status: "failed",
       result: { reason: "Known refusal" },
     });
@@ -237,20 +240,92 @@ describe("Bounded automation run evidence", () => {
     expect(finished.snapshot.actions[2].status).toBe("skipped");
     expect(JSON.stringify(finished)).not.toContain("SECRET");
     await expect(
-      evidence.action(run.id, { index: 2, status: "running" }),
+      evidence.action(run.id, { node: "action-3", status: "running" }),
     ).rejects.toThrow("terminal");
+  });
+
+  it("stops a failed branch alone: what follows it is not reached, its sibling still runs, and the run reads partial", async ({
+    expect,
+  }) => {
+    const stored = await create();
+    const notify = (id: string) => ({
+      id,
+      kind: "action" as const,
+      type: "notify",
+      config: {
+        recipient: user.id,
+        channel: "inbox",
+        title: "Feedback",
+        text: "{{title}}",
+        category: "automations",
+      },
+    });
+    // A fan-out: `first` feeds `after`, `sibling` stands beside them.
+    const graph = {
+      version: 2 as const,
+      nodes: [
+        {
+          id: "feedback",
+          kind: "source" as const,
+          type: "feedback.created",
+          config: {},
+        },
+        notify("first"),
+        notify("after"),
+        notify("sibling"),
+      ],
+      edges: [
+        { from: "feedback", port: "out" as const, to: "first" },
+        { from: "first", port: "out" as const, to: "after" },
+        { from: "feedback", port: "out" as const, to: "sibling" },
+      ],
+    };
+    const run = await evidence.start({
+      rule: { ...stored, rule: graph as never },
+      node: "feedback",
+      occurrenceId: crypto.randomUUID(),
+      triggeredAt: "2026-10-15T10:00:00.000Z",
+      selected: [{ title: "One" }],
+      matched: 1,
+      planned: [{ node: "first" }, { node: "after" }, { node: "sibling" }],
+    });
+    expect(run.snapshot.sourceNode).toBe("feedback");
+    await evidence.action(run.id, {
+      node: "first",
+      status: "failed",
+      result: {},
+    });
+    const stopped = await evidence.unreach(run.id, { node: "first" });
+    expect(stopped.snapshot.actions).toEqual([
+      { node: "first", status: "failed", result: {} },
+      { node: "after", status: "not_reached", after: "first", result: {} },
+      { node: "sibling", status: "pending", result: {} },
+    ]);
+    await evidence.action(run.id, {
+      node: "sibling",
+      status: "queued",
+      result: {},
+      deliveries: 1,
+    });
+    const finished = await evidence.finish(run.id);
+    expect(finished.status).toBe("partial");
+    expect(finished.snapshot.counts.executed).toBe(1);
   });
 
   it("refuses delivery overflow and pauses uncertain external outcomes without blind replay", async ({
     expect,
   }) => {
     const rule = await create();
-    const run = await start(rule, [{ index: 0 }]);
+    const run = await start(rule, [{ node: "action-1" }]);
     await expect(
-      evidence.action(run.id, { index: 0, status: "queued", deliveries: 101 }),
+      evidence.action(run.id, {
+        node: "action-1",
+        status: "queued",
+        deliveries: 101,
+      }),
     ).rejects.toThrow("100");
     await evidence.action(run.id, {
-      index: 0,
+      node: "action-1",
       status: "unknown",
       receiptId: crypto.randomUUID(),
     });
@@ -291,7 +366,7 @@ describe("Bounded automation run evidence", () => {
         version: 0,
         value: { kind: "text", value: "😀".repeat(6_000) },
       })),
-      planned: [{ index: 0 }],
+      planned: [{ node: "action-1" }],
     });
     expect(run).toMatchObject({
       status: "refused",
@@ -303,7 +378,7 @@ describe("Bounded automation run evidence", () => {
       new TextEncoder().encode(JSON.stringify(run.snapshot)).byteLength,
     ).toBeLessThanOrEqual(65_536);
     await expect(
-      evidence.action(run.id, { index: 0, status: "running" }),
+      evidence.action(run.id, { node: "action-1", status: "running" }),
     ).rejects.toThrow("terminal");
   });
 
@@ -366,7 +441,7 @@ describe("Bounded automation run evidence", () => {
     expect,
   }) => {
     const rule = await create();
-    const run = await start(rule, [{ index: 0 }]);
+    const run = await start(rule, [{ node: "action-1" }]);
     const stale = await persistence.runs.getById(run.id);
     await persistence.runs.updateById(run.id, { reason: "Moved" });
     expect(await evidence.swap(stale, { reason: "Stale" })).toBeUndefined();
@@ -383,7 +458,7 @@ describe("Bounded automation run evidence", () => {
       });
     };
     const written = await evidence.action(run.id, {
-      index: 0,
+      node: "action-1",
       status: "running",
     });
     expect(written.snapshot.counts.truncated).toBe(true);

@@ -1,4 +1,4 @@
-import { z } from "alepha";
+import { type Infer, z } from "alepha";
 
 import { automationValueSchema } from "./automationValueSchema.ts";
 
@@ -18,3 +18,4 @@ export const automationGuardSchema = z
     value: automationValueSchema,
   })
   .strict();
+export type AutomationGuard = Infer<typeof automationGuardSchema>;

@@ -195,7 +195,7 @@ export class AutomationMutationContext {
       state.occurrence.id,
       state.token,
       {
-        index: state.index,
+        node: state.node,
         row: state.row,
         action: state.action,
         statements: [
@@ -232,7 +232,10 @@ export interface AutomationMutationState {
   occurrence: AutomationReceipt;
   operation: AutomationReceipt;
   token: string;
-  index: number;
+  /**
+   * The action node of the step (#Q3804).
+   */
+  node: string;
   row?: number;
   action: Exclude<AutomationRule["actions"][number], { kind: "notify" }>;
   target: { table: string; mode: "create" | "update"; id?: string | number };

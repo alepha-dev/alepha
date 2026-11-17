@@ -6,6 +6,8 @@ import type { AutomationVariable } from "../entities/automationVariables.ts";
 import { automationCatalogSchema } from "../schemas/automationCatalogSchema.ts";
 import { AutomationCron } from "../schemas/AutomationCron.ts";
 import type { AutomationDescriptor } from "../schemas/automationDescriptorSchema.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
+import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import {
   automationRuleSchema,
@@ -46,6 +48,7 @@ export class AutomationCatalog {
   protected readonly cron = $inject(AutomationCron);
   protected readonly bindings = $inject(AutomationTemplateBindings);
   protected readonly tokens = $inject(AutomationTemplateTokens);
+  protected readonly graphs = $inject(AutomationGraph);
 
   public entries(): AutomationDescriptor[] {
     return [
@@ -137,7 +140,15 @@ export class AutomationCatalog {
     input: AutomationRule,
     overrides: Map<string, AutomationVariable> = new Map(),
     subject?: AutomationAccessSubject,
+    /**
+     * `targets: false` checks the configuration without the domain rows it
+     * names (a quest, a folio, a recipient's membership): what a run
+     * re-checks before every step, since a target that vanished refuses
+     * only its own step (#Q3804).
+     */
+    options: { targets?: boolean } = {},
   ) {
+    const targets = options.targets !== false;
     let scheduleCron: string | undefined;
     const parsedRule = automationRuleSchema.safeParse(input);
     if (!parsedRule.success)
@@ -195,6 +206,8 @@ export class AutomationCatalog {
         {},
         variables,
         "trigger.cron",
+        false,
+        targets,
       );
       if (resolvedCron.complete) {
         try {
@@ -221,6 +234,8 @@ export class AutomationCatalog {
         {},
         variables,
         "select.filters",
+        false,
+        targets,
       );
       if (source.type === "metric" && resolved.complete) {
         const schema = this.metrics.get(source.key).filters;
@@ -271,6 +286,8 @@ export class AutomationCatalog {
         source.fields,
         variables,
         "guard.value",
+        false,
+        targets,
       );
     }
     // Validated one channel at a time (#Q3613): the vocabulary's notify takes
@@ -307,6 +324,8 @@ export class AutomationCatalog {
         source.fields,
         variables,
         `actions[${index}]`,
+        false,
+        targets,
       );
       if (kind === "notify") {
         if (
@@ -318,7 +337,7 @@ export class AutomationCatalog {
           throw new BadRequestError(
             "Project audience requires release.published and the releases category",
           );
-        if (typeof resolved.values.recipient === "string") {
+        if (targets && typeof resolved.values.recipient === "string") {
           const reason = await this.coreReferences.recipientReason(
             projectId,
             resolved.values.recipient,
@@ -350,7 +369,7 @@ export class AutomationCatalog {
   public async sourceAvailability(
     projectId: number,
     user: UserAccountToken,
-    rule: AutomationRule,
+    rule: AutomationRule | AutomationGraphValue,
   ): Promise<string | undefined> {
     const context = await this.access.authorize(
       projectId,
@@ -367,14 +386,19 @@ export class AutomationCatalog {
    */
   public sourceAvailabilityIn(
     context: AutomationCatalogContext,
-    rule: AutomationRule,
+    rule: AutomationRule | AutomationGraphValue,
   ): string | undefined {
-    const key =
-      rule.trigger.kind === "event" ? rule.trigger.event : rule.select!.key;
-    const entry = this.entries().find((item) => item.key === key);
-    return entry
-      ? this.unavailable(context, entry)
-      : "Source vocabulary is unavailable";
+    // Every source of the graph; a run's subgraph has one (#Q3804).
+    const graph = AutomationGraph.of(rule);
+    for (const source of this.graphs.sources(graph)) {
+      const key = this.graphs.sourceKey(graph, source.id);
+      const entry = this.entries().find((item) => item.key === key);
+      const reason = entry
+        ? this.unavailable(context, entry)
+        : "Source vocabulary is unavailable";
+      if (reason) return reason;
+    }
+    return undefined;
   }
 
   /**
@@ -382,12 +406,22 @@ export class AutomationCatalog {
    * destinations and domain IDs immediately before an adapter is invoked.
    */
   public async validateEffect(
-    rule: AutomationRule,
+    rule: AutomationRule | AutomationGraphValue,
     projectId: number,
     user: UserAccountToken,
     action: AutomationRule["actions"][number],
     subject?: AutomationAccessSubject,
+    sourceNode?: string,
+    /**
+     * Whether to check the effect's targets (a quest, a folio, a release,
+     * the recipient). The author's grant and the action's availability are
+     * checked either way: losing those is losing authority, while a target
+     * that vanished refuses one step (#Q3804).
+     */
+    targets = true,
   ) {
+    const graph = AutomationGraph.of(rule);
+    const origin = this.graphs.source(graph, sourceNode);
     const context = await this.access.authorize(
       projectId,
       user,
@@ -396,7 +430,7 @@ export class AutomationCatalog {
     );
     const source = this.require(
       context,
-      rule.trigger.kind === "event" ? rule.trigger.event : rule.select!.key,
+      this.graphs.sourceKey(graph, origin.id),
       undefined,
       "source",
     );
@@ -409,9 +443,7 @@ export class AutomationCatalog {
     if (
       action.kind === "notify" &&
       action.audience &&
-      (rule.trigger.kind !== "event" ||
-        rule.trigger.event !== "release.published" ||
-        action.category !== "releases")
+      (origin.type !== "release.published" || action.category !== "releases")
     )
       throw new BadRequestError(
         "Project audience requires release.published and the releases category",
@@ -425,8 +457,10 @@ export class AutomationCatalog {
       new Map(),
       "effect",
       true,
+      targets,
     );
     if (
+      targets &&
       kind === "notify" &&
       action.kind === "notify" &&
       !action.audience &&
@@ -622,7 +656,7 @@ export class AutomationCatalog {
     };
   }
 
-  public names(rule: AutomationRule): Set<string> {
+  public names(rule: unknown): Set<string> {
     const names = new Set<string>();
     const visit = (value: unknown): void => {
       if (typeof value === "string")
@@ -643,6 +677,7 @@ export class AutomationCatalog {
     variables: AutomationVariableMap,
     path: string,
     literal = false,
+    targets = true,
   ) {
     for (const key of Object.keys(values))
       if (!Object.hasOwn(entry.slots, key))
@@ -664,6 +699,7 @@ export class AutomationCatalog {
         variables,
         `${path}.${key}`,
         literal,
+        targets,
       );
       complete &&= value.complete;
       if (value.complete) resolved[key] = value.value;
@@ -679,6 +715,7 @@ export class AutomationCatalog {
     variables: AutomationVariableMap,
     path: string,
     literal = false,
+    targets = true,
   ): Promise<{ complete: boolean; value?: unknown }> {
     let bound: { complete: boolean; value?: unknown };
     try {
@@ -703,7 +740,7 @@ export class AutomationCatalog {
       (["release", "folio", "member", "channel"].includes(kind)
         ? kind
         : undefined);
-    if (resource) {
+    if (resource && targets) {
       const reason = await this.references.reason(
         resource,
         projectId,

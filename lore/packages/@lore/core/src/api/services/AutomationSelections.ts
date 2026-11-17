@@ -5,6 +5,8 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
+import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import {
   automationSelectionCursorSchema,
@@ -23,6 +25,7 @@ import { AutomationDatabase } from "./AutomationDatabase.ts";
  * before a handler sees it; private source fields never leave the builder.
  */
 export class AutomationSelections {
+  protected readonly graphs = $inject(AutomationGraph);
   protected readonly handlers = new Map<string, AutomationSelectionHandler>();
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly builder = $inject(AutomationContextBuilder);
@@ -36,6 +39,7 @@ export class AutomationSelections {
   }
   public async evaluate(input: {
     rule: Automation;
+    graph?: AutomationGraphValue;
     user: UserAccountToken;
     variables: AutomationRunSnapshot["variables"];
     evaluatedAt?: string;
@@ -51,7 +55,20 @@ export class AutomationSelections {
         undefined,
         input.rule,
       );
-      const selection = input.rule.rule.select;
+      // The read node of the run's graph (#Q3804), as a v1 selection.
+      const read = input.graph ? this.graphs.read(input.graph) : undefined;
+      const selection = read
+        ? {
+            kind: this.catalog
+              .entries()
+              .find((entry) => entry.key === read.type)?.result as
+              | "rows"
+              | "scalar"
+              | "collection",
+            key: read.type,
+            filters: read.config.filters as Record<string, never>,
+          }
+        : input.rule.rule.select;
       if (input.cursor && selection?.kind !== "rows")
         throw new BadRequestError(
           "Only row selectors accept continuation cursors",

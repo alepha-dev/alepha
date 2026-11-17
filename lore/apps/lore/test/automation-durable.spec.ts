@@ -101,7 +101,7 @@ describe("Durable automation dispatch", () => {
       inputs: event.payload.fields,
       selected: [event.payload.fields],
       matched: 1,
-      planned: [{ index: 0 }],
+      planned: [{ node: "action-1" }],
     });
   const claim = async (
     rule: Awaited<ReturnType<typeof createRule>>,
@@ -110,7 +110,7 @@ describe("Durable automation dispatch", () => {
     const result = await claims.claim({
       automationId: rule.id,
       revision: rule.revision,
-      source: { kind: "event", eventId: event.id },
+      source: { kind: "event", eventId: event.id, node: "source" },
       prepared: await prepare(rule, event),
     });
     if (result.state !== "claimed" || !result.receipt?.leaseToken)
@@ -118,7 +118,7 @@ describe("Durable automation dispatch", () => {
     return result.receipt;
   };
   const effect = (key = "one") => ({
-    index: 0,
+    node: "action-1",
     action: {
       kind: "notify" as const,
       recipient: user.id,
@@ -254,7 +254,7 @@ describe("Durable automation dispatch", () => {
     const ready = await claims.reserve({
       automationId: rule.id,
       revision: 0,
-      source: { kind: "event", eventId: second.event.id },
+      source: { kind: "event", eventId: second.event.id, node: "source" },
     });
     const worker = alepha.inject(AutomationWorker);
     const waiting = await worker.step({ receiptId: ready.id });
@@ -280,7 +280,7 @@ describe("Durable automation dispatch", () => {
     const ready = await claims.reserve({
       automationId: rule.id,
       revision: 0,
-      source: { kind: "event", eventId: source.event.id },
+      source: { kind: "event", eventId: source.event.id, node: "source" },
     });
     expect(ready).toMatchObject({
       status: "ready",
@@ -309,12 +309,12 @@ describe("Durable automation dispatch", () => {
       inputs: ready.snapshot!.inputs,
       selected: [ready.snapshot!.inputs],
       matched: 1,
-      planned: [{ index: 0 }],
+      planned: [{ node: "action-1" }],
     });
     const active = await claims.claim({
       automationId: rule.id,
       revision: 0,
-      source: { kind: "event", eventId: source.event.id },
+      source: { kind: "event", eventId: source.event.id, node: "source" },
       prepared,
     });
     expect(active).toMatchObject({
@@ -370,7 +370,7 @@ describe("Durable automation dispatch", () => {
       triggeredAt: ready.occurredAt,
       selected: [{ value: 0, title: "Open quests" }],
       matched: 1,
-      planned: [{ index: 0 }],
+      planned: [{ node: "action-1" }],
     });
     const active = await claims.claim({
       automationId: rule.id,
@@ -402,7 +402,11 @@ describe("Durable automation dispatch", () => {
     const request = {
       automationId: rule.id,
       revision: 0,
-      source: { kind: "event" as const, eventId: source.event.id },
+      source: {
+        kind: "event" as const,
+        eventId: source.event.id,
+        node: "source",
+      },
       prepared,
     };
     const results = await Promise.all([
@@ -418,7 +422,7 @@ describe("Durable automation dispatch", () => {
       (
         await claims.claim({
           ...request,
-          source: { kind: "event", eventId: another.event.id },
+          source: { kind: "event", eventId: another.event.id, node: "source" },
         })
       ).state,
     ).toBe("busy");
@@ -487,7 +491,7 @@ describe("Durable automation dispatch", () => {
       ),
     ).toEqual([{ hits: 1 }]);
     await claims.advance(occurrence.id, occurrence.leaseToken!, {
-      index: 0,
+      node: "action-1",
       receiptId: committed.id,
     });
     await claims.complete(occurrence.id, occurrence.leaseToken!);
@@ -510,7 +514,7 @@ describe("Durable automation dispatch", () => {
     const recovered = await claims.claim({
       automationId: rule.id,
       revision: 0,
-      source: { kind: "event", eventId: source.event.id },
+      source: { kind: "event", eventId: source.event.id, node: "source" },
       prepared: await prepare(rule, source.event),
     });
     expect(recovered).toMatchObject({
@@ -534,7 +538,7 @@ describe("Durable automation dispatch", () => {
     const occurrence = await claim(rule, (await createEvent()).event);
     let sends = 0;
     const input = {
-      index: 0,
+      node: "action-1",
       action: effect().action,
       perform: async () => {
         sends += 1;
@@ -568,7 +572,7 @@ describe("Durable automation dispatch", () => {
     const source = await createEvent();
     const occurrence = await claim(rule, source.event);
     await claims.beginAction(occurrence.id, occurrence.leaseToken!, {
-      index: 0,
+      node: "action-1",
       action: effect().action,
       mode: "external",
     });
@@ -579,7 +583,7 @@ describe("Durable automation dispatch", () => {
       resumed.id,
       resumed.leaseToken!,
       {
-        index: 0,
+        node: "action-1",
         action: effect().action,
         perform: async () => {
           sends += 1;
@@ -601,7 +605,7 @@ describe("Durable automation dispatch", () => {
       occurrence.id,
       occurrence.leaseToken!,
       {
-        index: 0,
+        node: "action-1",
         action: effect().action,
         mode: "external",
       },
@@ -613,7 +617,7 @@ describe("Durable automation dispatch", () => {
     const recovered = await claims.claim({
       automationId: rule.id,
       revision: 0,
-      source: { kind: "event", eventId: source.event.id },
+      source: { kind: "event", eventId: source.event.id, node: "source" },
       prepared: await prepare(rule, source.event),
     });
     expect(recovered).toMatchObject({
@@ -653,7 +657,7 @@ describe("Durable automation dispatch", () => {
       occurrence.id,
       occurrence.leaseToken!,
       {
-        index: 0,
+        node: "action-1",
         channels: ["inbox", "email"],
         excludeUserId: user.id,
       },
@@ -672,7 +676,7 @@ describe("Durable automation dispatch", () => {
       runId: string,
     ) =>
       claims.atomicEffect(occurrence.id, occurrence.leaseToken!, {
-        index: 0,
+        node: "action-1",
         runId,
         deliveryKey: recipient.id,
         action: {
@@ -716,7 +720,7 @@ describe("Durable automation dispatch", () => {
           }),
         ).rejects.toThrow("100");
       await evidence.action(page.run.id, {
-        index: 0,
+        node: "action-1",
         status: "queued",
         receiptId: page.chunk.id,
         deliveries: page.recipients.length,
@@ -745,7 +749,7 @@ describe("Durable automation dispatch", () => {
       }),
     ).toBe(0);
     await claims.advance(occurrence.id, occurrence.leaseToken!, {
-      index: 0,
+      node: "action-1",
       receiptId: roster.id,
     });
     await claims.complete(occurrence.id, occurrence.leaseToken!);
@@ -786,13 +790,13 @@ describe("Durable automation dispatch", () => {
       effect(),
     );
     await evidence.action(occurrence.runId!, {
-      index: 0,
+      node: "action-1",
       status: "succeeded",
       receiptId: receipt.id,
     });
     await evidence.finish(occurrence.runId!);
     await claims.advance(occurrence.id, occurrence.leaseToken!, {
-      index: 0,
+      node: "action-1",
       receiptId: receipt.id,
     });
     await claims.complete(occurrence.id, occurrence.leaseToken!);
@@ -811,7 +815,7 @@ describe("Durable automation dispatch", () => {
         await claims.claim({
           automationId: rule.id,
           revision: 0,
-          source: { kind: "event", eventId: source.event.id },
+          source: { kind: "event", eventId: source.event.id, node: "source" },
           prepared: await prepare(rule, source.event),
         })
       ).state,
@@ -833,7 +837,7 @@ describe("Durable automation dispatch", () => {
     const replay = await claims.claim({
       automationId: rule.id,
       revision: 0,
-      source: { kind: "event", eventId: source.event.id },
+      source: { kind: "event", eventId: source.event.id, node: "source" },
       prepared: await prepare(rule, source.event),
     });
     expect(replay).toMatchObject({

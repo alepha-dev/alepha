@@ -507,7 +507,7 @@ describe("Automation schedules and named selections", () => {
       triggeredAt: occurrenceAt,
       selected: last.items,
       matched: 1,
-      planned: [{ index: 0, row: 0 }],
+      planned: [{ node: "action-1", row: 0 }],
     });
     const claimed = await alepha.inject(AutomationClaims).claim({
       automationId: row.id,
@@ -537,7 +537,7 @@ describe("Automation schedules and named selections", () => {
       alepha
         .inject(AutomationClaims)
         .atomicEffect(claimed.receipt!.id, claimed.receipt!.leaseToken!, {
-          index: 0,
+          node: "action-1",
           row: 0,
           action,
           condition: sql`FALSE`,
@@ -561,7 +561,7 @@ describe("Automation schedules and named selections", () => {
     const receipt = await alepha
       .inject(AutomationClaims)
       .atomicEffect(claimed.receipt!.id, claimed.receipt!.leaseToken!, {
-        index: 0,
+        node: "action-1",
         row: 0,
         action,
         condition: settlement.condition,

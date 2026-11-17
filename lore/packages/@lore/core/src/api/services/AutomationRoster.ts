@@ -5,6 +5,7 @@ import { sql } from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { AutomationAtomic } from "./AutomationAtomic.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
@@ -20,6 +21,7 @@ import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
  * Each action/row gets its own cursor and bounded 100-delivery chunks.
  */
 export class AutomationRoster {
+  protected readonly graphs = $inject(AutomationGraph);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly claims = $inject(AutomationClaims);
   protected readonly persistence = $inject(AutomationPersistence);
@@ -35,7 +37,8 @@ export class AutomationRoster {
     id: string,
     token: string,
     input: {
-      index: number;
+      node: string;
+      channel?: string;
       row?: number;
       channels: string[];
       excludeUserId?: string;
@@ -43,13 +46,13 @@ export class AutomationRoster {
   ): Promise<AutomationReceipt> {
     return this.database.primary(async () => {
       const occurrence = await this.claims.lease(id, token);
-      const action = occurrence.snapshot?.rule?.actions[input.index];
+      const graph = occurrence.snapshot?.rule;
+      const action = graph ? this.graphs.node(graph, input.node) : undefined;
       if (
         !action ||
-        action.kind !== "notify" ||
-        !occurrence.snapshot?.actions.some(
-          (planned) =>
-            planned.index === input.index && planned.row === input.row,
+        action.type !== "notify" ||
+        !occurrence.snapshot?.actions.some((planned) =>
+          this.graphs.sameStep(planned, input),
         )
       )
         throw new BadRequestError(
@@ -58,7 +61,8 @@ export class AutomationRoster {
       const rosterId = await this.identity.hash([
         "roster",
         occurrence.id,
-        input.index,
+        input.node,
+        input.channel ?? null,
         input.row ?? null,
       ]);
       const existing = await this.persistence.receipts.findById(rosterId);
@@ -102,7 +106,8 @@ export class AutomationRoster {
               occurredAt: occurrence.occurredAt,
               replayUntil: occurrence.replayUntil,
               parentId: occurrence.id,
-              actionIndex: input.index,
+              nodeId: input.node,
+              recipientChannel: input.channel,
               rowIndex: input.row,
               cursor: 0,
               rosterComplete: false,
@@ -184,11 +189,15 @@ export class AutomationRoster {
         snapshot.actions = snapshot.actions
           .filter(
             (action) =>
-              action.index === page.roster.actionIndex &&
+              action.node === page.roster.nodeId &&
+              action.channel === (page.roster.recipientChannel ?? undefined) &&
               action.row === page.roster.rowIndex,
           )
           .map((action) => ({
-            index: action.index,
+            node: action.node,
+            ...(action.channel !== undefined
+              ? { channel: action.channel }
+              : {}),
             ...(action.row !== undefined ? { row: action.row } : {}),
             status: "pending",
             result: {},

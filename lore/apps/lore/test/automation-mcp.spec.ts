@@ -59,7 +59,7 @@ class McpCrashAfterAdvance extends AutomationClaims {
     ...args: Parameters<AutomationClaims["advance"]>
   ) {
     const next = await super.advance(...args);
-    if (this.crash && args[2].index === 0) {
+    if (this.crash && args[2].node === "action-1") {
       this.crash = false;
       throw new AlephaError("Exit after committed append cursor");
     }
@@ -286,8 +286,8 @@ describe("Automation MCP transport uses shared application policy", () => {
       preview: true,
       status: "preview",
       operations: [
-        expect.objectContaining({ index: 0 }),
-        expect.objectContaining({ index: 1 }),
+        expect.objectContaining({ node: "action-1" }),
+        expect.objectContaining({ node: "action-2" }),
       ],
     });
     expect(JSON.stringify(await persistence.rules.findMany())).toBe(before);
@@ -784,7 +784,7 @@ describe("Automation MCP transport uses shared application policy", () => {
         result: { enqueued: true, delivered: false },
       });
       expect(first.items[0].notifications[0]).toMatchObject({
-        index: 0,
+        node: "action-1",
         status: "queued",
       });
       const second = value(

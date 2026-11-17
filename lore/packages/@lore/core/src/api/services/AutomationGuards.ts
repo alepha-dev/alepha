@@ -4,9 +4,14 @@ import { DbCacheProvider, sql } from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
+import type { AutomationGraphNode } from "../schemas/automationGraphNodeSchema.ts";
+import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
+import type { AutomationGuard } from "../schemas/automationGuardSchema.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
+import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import { AutomationAtomic } from "./AutomationAtomic.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
@@ -29,6 +34,7 @@ export class AutomationGuards {
   protected readonly atomic = $inject(AutomationAtomic);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly time = $inject(DateTimeProvider);
+  protected readonly graphs = $inject(AutomationGraph);
 
   public configurationChanged(
     before: AutomationRule,
@@ -47,18 +53,18 @@ export class AutomationGuards {
   public async evaluate(
     input: AutomationGuardInput,
   ): Promise<AutomationGuardResult> {
-    const guard = input.rule.rule.guard;
-    if (!guard) return { matched: true, noData: false };
+    const graph = input.graph ?? AutomationGraph.of(input.rule.rule);
+    // Absent, the graph's one condition, as the v1 guard was.
+    const node = input.node ?? this.graphs.conditions(graph)[0];
+    if (!node) return { matched: true, noData: false };
+    const guard = node.config as AutomationGuard;
+    const sourceKey = this.graphs.sourceKey(graph);
+    const schedule =
+      this.graphs.source(graph).type === AutomationVocabulary.SCHEDULE;
+    const read = this.graphs.read(graph);
     const descriptor = this.catalog
       .entries()
-      .find(
-        (entry) =>
-          entry.key ===
-          (input.rule.rule.select?.key ??
-            (input.rule.rule.trigger.kind === "event"
-              ? input.rule.rule.trigger.event
-              : "")),
-      );
+      .find((entry) => entry.key === sourceKey);
     if (!descriptor || !Object.hasOwn(descriptor.fields, guard.field))
       throw new BadRequestError("Guard field is unavailable");
     const kind = descriptor.fields[guard.field];
@@ -68,7 +74,7 @@ export class AutomationGuards {
     if (
       ["delta", "crossesAbove"].includes(guard.operator) &&
       (descriptor.result !== "scalar" ||
-        input.rule.rule.trigger.kind !== "schedule" ||
+        !schedule ||
         !descriptor.operators.includes(guard.operator))
     )
       throw new BadRequestError(
@@ -124,7 +130,9 @@ export class AutomationGuards {
     }
     const filters: Record<string, unknown> = {};
     for (const [key, slot] of Object.entries(descriptor.slots)) {
-      const value = input.rule.rule.select?.filters[key] ?? slot.default;
+      const value =
+        (read?.config.filters as Record<string, unknown> | undefined)?.[key] ??
+        slot.default;
       if (value === undefined && !slot.required) continue;
       filters[key] = this.bindings.resolve({
         slot,
@@ -176,12 +184,18 @@ export class AutomationGuards {
       const rule = await this.persistence.rules.getById(
         occurrence.automationId!,
       );
+      const graph = occurrence.snapshot!.rule!;
+      const node = this.graphs
+        .conditions(graph)
+        .find((item) => item.config.operator === "crossesAbove");
+      if (!node) return { matched: true, noData: false };
       const decision = await this.evaluate({
         rule,
+        graph,
+        node,
         context: occurrence.snapshot!.inputs,
         variables: occurrence.snapshot?.variables ?? [],
       });
-      if (rule.rule.guard?.operator !== "crossesAbove") return decision;
       if (
         !occurrence.runId ||
         !(await this.persistence.runs.findById(occurrence.runId))
@@ -252,6 +266,11 @@ export class AutomationGuards {
 
 export interface AutomationGuardInput {
   rule: Automation;
+  /**
+   * The run's subgraph, and the condition node to decide.
+   */
+  graph?: AutomationGraphValue;
+  node?: AutomationGraphNode;
   context: AutomationRunSnapshot["inputs"];
   variables: AutomationRunSnapshot["variables"];
 }

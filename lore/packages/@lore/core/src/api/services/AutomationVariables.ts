@@ -330,12 +330,15 @@ export class AutomationVariables {
             limit: 64,
           })
         : [];
+      // Targets are each step's own check (#Q3804): a quest gone refuses
+      // the step that names it, not the automation.
       await this.catalog.validate(
         rule.projectId,
         user,
         rule.rule,
         new Map(rows.map((row) => [row.key, row])),
         rule,
+        { targets: false },
       );
       return rows.map(({ id, key, version, value }) => ({
         id,
