@@ -15,6 +15,7 @@ const Parameters = () => (
     id="pages/admin/Parameters"
     title="Admin: parameters"
     description="Runtime configuration, versioned."
+    fill
   >
     {() => <AdminParameters />}
   </Showcase>

@@ -83,7 +83,7 @@ export const AdminParametersEditorPane = (
     // No selection → history pane is hidden, so the editor is the rightmost
     // pane and closes the card on its right edge.
     return (
-      <div className="bg-card flex flex-1 items-center justify-center rounded-e-lg border-y border-e p-6">
+      <div className="bg-card flex flex-1 items-center justify-center p-6">
         <Empty className="border-0">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -106,7 +106,7 @@ export const AdminParametersEditorPane = (
   }
   if (!current) {
     return (
-      <div className="bg-card flex min-h-0 flex-1 flex-col border-y">
+      <div className="bg-card flex min-h-0 flex-1 flex-col">
         <div className="flex items-center gap-3 border-b px-4 pt-3 pb-3">
           <Skeleton className="size-10 rounded-full" />
           <div className="flex flex-col gap-1.5">
