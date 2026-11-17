@@ -3347,7 +3347,7 @@ export default {
   "requirements.requirement.delete.title": "Delete this requirement?",
   "requirements.requirement.edit": "Edit requirement",
   "requirements.requirement.empty":
-    "A requirement is a line of the specification, verified by use case criteria.",
+    "No requirement yet. A requirement is a line of the specification, verified by use case criteria.",
   "requirements.requirement.emptyFilter":
     "No requirement matches these filters.",
   "requirements.requirement.field.chapter": "Chapter",
@@ -3452,27 +3452,27 @@ export default {
   "requirements.usecase.development": "$1 / $2 quests",
   "requirements.usecase.edit": "Edit use case",
   "requirements.usecase.empty":
-    "A use case is a scenario a persona plays, with criteria that say it works.",
+    "No use case yet. A use case is a scenario a persona plays, with criteria that say it works.",
   "requirements.usecase.emptyFilter": "No use case matches these filters.",
   "requirements.usecase.exportGherkin": "Export as Gherkin",
   "requirements.usecase.field.actors": "Actors",
   "requirements.usecase.field.actors.helper":
-    "The personas taking part, each with its role.",
+    "Persona references, each with an optional role: A2, A3:beneficiary, A4:system.",
   "requirements.usecase.field.alternatives": "Alternatives",
   "requirements.usecase.field.alternatives.helper":
-    "What may go another way, keyed by the step it leaves: 4a.",
+    "One per line: 4a: Expired code.",
   "requirements.usecase.field.automatedTestPath": "Automated test",
   "requirements.usecase.field.automatedTestTag": "Test tag",
   "requirements.usecase.field.criteria": "Acceptance criteria",
   "requirements.usecase.field.criteria.helper":
-    "Given, When and Then, or one sentence. Lore numbers each criterion when it is saved.",
+    "One block per criterion, separated by a blank line: Given, When and Then lines, or one sentence. [C2] (e2e) @4a on the first line keeps a criterion's key, sets how it is verified and its alternative.",
   "requirements.usecase.field.preconditions": "Preconditions",
   "requirements.usecase.field.priority": "Priority",
   "requirements.usecase.field.startingData": "Starting data",
   "requirements.usecase.field.status": "Status",
   "requirements.usecase.field.steps": "Steps",
   "requirements.usecase.field.steps.helper":
-    "In order. A step with no actor is the system's.",
+    "One step per line, in order. A2: names the persona who acts it; a line without one is the system.",
   "requirements.usecase.field.title": "Title",
   "requirements.usecase.filter.anyPersona": "All personas",
   "requirements.usecase.filter.anyStatus": "Any status",
@@ -3530,8 +3530,8 @@ export default {
   "requirements.persona.delete.title": "Delete this persona?",
   "requirements.persona.edit": "Edit persona",
   "requirements.persona.empty":
-    "A persona is someone, or something, the system is built for.",
-  "requirements.persona.emptyFilter": "No persona matches these filters.",
+    "No persona yet. A persona is someone, or something, the system is built for.",
+  "requirements.persona.emptyFilter": "No persona of this kind.",
   "requirements.persona.field.alephaRole": "Alepha role",
   "requirements.persona.field.alephaRole.helper":
     "The $role or service account this persona plays in the app.",
@@ -3581,51 +3581,21 @@ export default {
   "requirements.persona.tab.overview": "Overview",
   "requirements.persona.toast.created": "Persona created",
   "requirements.more": "More actions",
-  "requirements.guide": "Read the guide",
   "requirements.requirement.verifiedBy.one": "Verified by $1 criterion",
-  "requirements.requirement.description.empty": "No description yet.",
-  "requirements.requirement.delete.title.many": "Delete $1 requirements?",
-  "requirements.requirement.filter.anyStatus": "Any status",
-  "requirements.requirement.empty.title": "No requirement yet",
-  "requirements.requirement.sourceChanged.hint":
-    "Requirements whose source folio changed since they were written.",
-  "requirements.requirement.presets.all": "All",
   "requirements.requirement.field.statement.helper":
     "One sentence the product must satisfy.",
   "requirements.requirement.field.chapter.helper":
     "The chapter of the specification it comes from.",
-  "requirements.usecase.delete.title.many": "Delete $1 use cases?",
-  "requirements.usecase.col.epic": "Epic",
-  "requirements.usecase.filter.anyEpic": "Any epic",
-  "requirements.usecase.filter.anyResult": "Any result",
-  "requirements.usecase.empty.title": "No use case yet",
-  "requirements.run.stale.hint":
-    "Use cases whose scenario or scope changed since their last run.",
-  "requirements.usecase.presets.all": "All",
   "requirements.usecase.development.one": "$1 / $2 quest",
   "requirements.usecase.criteriaCount.one": "$1 criterion",
   "requirements.usecase.aside.scenario": "Scenario",
   "requirements.usecase.coverage.none": "No epic covers this use case yet.",
   "requirements.usecase.field.title.helper":
     "What the actor achieves, as a verb phrase: Apply a promo code.",
-  "requirements.usecase.field.actors.add": "Add an actor",
   "requirements.usecase.field.preconditions.helper":
     "What must be true before the first step.",
-  "requirements.usecase.field.steps.add": "Add a step",
-  "requirements.usecase.field.steps.actor": "Who acts",
-  "requirements.usecase.field.steps.text": "What happens",
-  "requirements.usecase.field.alternatives.add": "Add an alternative",
-  "requirements.usecase.field.alternatives.key": "Key",
-  "requirements.usecase.field.criteria.add": "Add a criterion",
-  "requirements.usecase.field.criteria.key": "Key",
-  "requirements.usecase.field.criteria.method": "Verified by",
-  "requirements.usecase.field.criteria.text": "Or one sentence",
-  "requirements.usecase.field.criteria.alternative": "Alternative it covers",
   "requirements.usecase.field.startingData.helper":
     "The seed or fixture a run starts from.",
-  "requirements.persona.filter.search": "Search personas",
-  "requirements.persona.filter.anyKind": "Any kind",
-  "requirements.persona.empty.title": "No persona yet",
   "requirements.persona.toCover.personas":
     "$1 personas with no passing use case",
   "requirements.persona.toCover.personas.one":
@@ -3645,6 +3615,21 @@ export default {
   "requirements.persona.field.demoSeed.helper":
     "The data their demo account starts with.",
   "requirements.trace.commits.one": "$1 commit · last $2",
+  "requirements.persona.filter.all": "All",
+  "requirements.requirement.banner":
+    "The specification changed: the sections cited by $1 were edited or removed since they were last synced.",
+  "requirements.requirement.counter.all": "requirements",
+  "requirements.requirement.personas.through": "(through the use cases)",
+  "requirements.usecase.counter.all": "use cases",
+  "requirements.usecase.group.count": "$1 use cases",
+  "requirements.usecase.groupBy": "Group by",
+  "requirements.usecase.groupBy.epic": "Epic",
+  "requirements.usecase.groupBy.none": "None",
+  "requirements.usecase.groupBy.persona": "Persona",
+  "requirements.usecase.groupBy.status": "Status",
+  "requirements.requirement.counter.all.one": "requirement",
+  "requirements.usecase.counter.all.one": "use case",
+  "requirements.usecase.group.count.one": "$1 use case",
   "requirements.persona.toast.updated": "Persona saved",
   "epic.status.draft": "Draft",
   "epic.status.ready": "Ready",

@@ -112,7 +112,7 @@ export class RequirementsPromptService {
         subject = {
           project: input.project.title,
           slug,
-          url: `${base}/${slug}/requirements/requirement/${row.number}`,
+          url: `${base}/${slug}/requirements?requirement=${row.number}`,
           number: row.number,
           id: row.id,
           reference: formatReference("requirement", row.number),

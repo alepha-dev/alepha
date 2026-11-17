@@ -11,33 +11,27 @@ See [Personas](/lore/docs/plan-personas) for turning it on.
 ## The Use cases tab
 
 The **Use cases** tab of the **Requirements** page lists every use case,
-numbered `#U1`, `#U2` and so on. Each row shows the use case's actors, the
-epic covering it, its status, how many quests of its epics are done
-(**Development**) and its last result. A click on a column's name sorts the
-list by it: **Epic** puts the use cases of one epic together.
+numbered `#U1`, `#U2` and so on, grouped by **Epic** by default. **Group by**
+also offers **Persona**, **Status** and **None**, and a group folds with a
+click on its title.
 
 ![The Use cases tab](/screenshots/lore/requirements-use-cases-light.png)
 
-The rail at the left filters the list by last result, each button counting
-its use cases: **Passed**, **Failed**, **In development**, **Never run** and
-**Stale**. The bar above the list holds a search and the **Status** and
-**Persona** filters; **+** adds **Epic** and **Last result**. A filter starts
-empty and shows everything.
-
-The robot button in the toolbar, **Verify all stale**, opens the
-[Verify dialog](/lore/docs/plan-verify) on every stale use case. A row's menu
-offers **Verify** and **Delete**.
+The counters at the top filter the list by **Last result**: **Passed**,
+**Failed**, **In development**, **Never run** and **Stale**. Each row shows
+the use case's actors, its status, how many quests of its epics are done
+(**Development**) and its last result. The **Persona** and **Status** filters
+start empty and show everything. **Verify all stale** opens the
+[Verify dialog](/lore/docs/plan-verify) on every stale use case.
 
 ## Writing a use case
 
 **New use case** opens the form:
 
 - **Title**, **Priority** and **Preconditions**.
-- **Actors**: the personas who play it, each picked from the project's
-  personas with its role, one **Primary**, others **Beneficiary** or
-  **System**. **Add an actor** adds a line.
-- **Steps**: in order, each with who acts it, a persona or the system, and
-  what happens. **Add a step** adds one, and the arrows reorder them.
+- **Actors**: the personas who play it, one **Primary**, others
+  **Beneficiary** or **System**.
+- **Steps**: numbered, each played by an actor or by the system.
 - **Alternatives**: what happens otherwise, keyed `4a`, `4b`.
 - **Acceptance criteria**: `C1`, `C2`, each a sentence or **Given**, **When**,
   **Then**, and how it is checked (**Agent**, **Manual** or end-to-end). A

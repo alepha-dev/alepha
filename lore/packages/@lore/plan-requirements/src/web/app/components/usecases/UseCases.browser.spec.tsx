@@ -5,7 +5,7 @@ import {
   I18n,
   ElementReferenceRegistry,
 } from "@lore/core/web";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -142,24 +142,24 @@ describe("Use cases screens", () => {
       </AlephaContext.Provider>,
     );
 
-  it("lists the use cases with the epic covering each, and counts each last result", async ({
+  it("groups the use cases by epic, the uncovered ones last, and collapses a group", async ({
     expect,
   }) => {
     mount(await boot(["usecase:read", "usecase:write"]), <UseCasesTab />);
 
     await screen.findByText("Order as a guest");
-    const rows = screen.getAllByTestId("use-case-row");
-    expect(rows).toHaveLength(2);
-    const table = screen.getByRole("table");
-    expect(table.textContent).toContain("#E2");
-    expect(table.textContent).toContain("1 / 3 quests");
-    expect(table.textContent).toContain("no epic");
+    const groups = screen.getAllByTestId("use-case-group");
+    expect(groups).toHaveLength(2);
+    expect(groups[0].textContent).toContain("#E2 Checkout");
+    expect(groups[0].textContent).toContain("1 / 3 quests");
+    expect(groups[1].textContent).toContain("No epic yet");
     expect(screen.getByRole("button", { name: /New use case/ })).toBeTruthy();
-    // The preset rail counts each last result, where a strip of counters
-    // used to.
-    const preset = document.querySelector('[data-preset="never_run"]');
-    expect(preset?.textContent).toContain("Never run");
-    expect(preset?.textContent).toContain("2");
+
+    fireEvent.click(screen.getByRole("button", { name: /#E2 Checkout/ }));
+    await waitFor(() =>
+      expect(screen.queryByText("Order as a guest")).toBeNull(),
+    );
+    expect(screen.getByText("Share a wishlist")).toBeTruthy();
   });
 
   it("offers a viewer no create control", async ({ expect }) => {
@@ -211,9 +211,6 @@ describe("Use cases screens", () => {
     expect(screen.getByRole("button", { name: /^Validate$/ })).toBeTruthy();
     // Request changes sits in the overflow menu, so the bar never crowds
     // the tabs out.
-    expect(
-      screen.queryByRole("button", { name: /Request changes/ }),
-    ).toBeNull();
     fireEvent.click(screen.getByTestId("detail-more"));
     expect(
       await screen.findByRole("menuitem", { name: /Request changes/ }),

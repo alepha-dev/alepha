@@ -183,7 +183,7 @@ describe("Personas screens", () => {
     return alepha;
   };
 
-  it("draws one card per persona and filters them by a search", async ({
+  it("draws one card per persona and filters them by kind", async ({
     expect,
   }) => {
     const app = await boot(["persona:read", "persona:write"]);
@@ -206,11 +206,7 @@ describe("Personas screens", () => {
     );
     expect(screen.getByRole("button", { name: /New persona/ })).toBeTruthy();
 
-    // The kind filter starts empty: no "All" value stands in for it.
-    expect(screen.queryByRole("radio", { name: "All" })).toBeNull();
-    fireEvent.change(screen.getByTestId("persona-search"), {
-      target: { value: "indexer" },
-    });
+    fireEvent.click(screen.getByRole("radio", { name: "System" }));
     await waitFor(() =>
       expect(screen.getAllByTestId("persona-card")).toHaveLength(1),
     );

@@ -1,8 +1,7 @@
 import { Button, useToast } from "@alepha/ui";
-import { Control, ControlArray } from "@alepha/ui/form";
+import { Control } from "@alepha/ui/form";
 import {
   currentProjectAtom,
-  formatReference,
   type I18n,
   useLoreEditorControl,
 } from "@lore/core/web";
@@ -20,19 +19,15 @@ import {
   SignalHigh,
   Tag,
   Type,
+  UsersRound,
 } from "lucide-react";
 
 import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
 import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
-import { actorRoleSchema } from "../../../../api/schemas/actorRoleSchema.ts";
-import { criterionMethodSchema } from "../../../../api/schemas/criterionMethodSchema.ts";
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
 import { useCaseInputSchema } from "../../../../api/schemas/useCaseInputSchema.ts";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
-import {
-  ACTOR_ROLE_LABEL_KEYS,
-  CRITERION_METHOD_LABEL_KEYS,
-} from "./useCaseLabels.ts";
+import { scenarioToText, textToScenario } from "./scenarioText.ts";
 
 export interface UseCaseFormProps {
   projectId: number;
@@ -42,11 +37,10 @@ export interface UseCaseFormProps {
 
 /**
  * The use case form (#E153), for create and edit. Its fields, then the
- * scenario as lists the reader adds to, removes from and reorders: actors
- * (a persona and its role), steps (who acts it, and what happens),
- * alternatives (a key such as `4a`, and its text) and acceptance criteria
- * (Given / When / Then or free text, and how it is verified). Every choice
- * is a picker: nothing is typed in a notation of the form's own.
+ * scenario as text: actors as `A2, A3:beneficiary`, one step per line
+ * (`A2: text` names who acts it), one alternative per line (`4a: text`),
+ * and criteria as blocks of Given / When / Then lines, `[C2] (e2e)` keeping
+ * a criterion's key and setting its method.
  */
 const UseCaseForm = (props: UseCaseFormProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -68,7 +62,6 @@ const UseCaseForm = (props: UseCaseFormProps) => {
     [personaApi, props.projectId],
   );
 
-  // Persona ids travel as strings: a select's value is one.
   const schema = useCaseInputSchema
     .pick({
       title: true,
@@ -81,40 +74,13 @@ const UseCaseForm = (props: UseCaseFormProps) => {
     .required({ title: true })
     .extend({
       status: z.enum(["draft", "ready", "deprecated"]).optional(),
-      actors: z
-        .array(z.object({ persona: z.string(), role: actorRoleSchema }))
-        .optional(),
-      steps: z
-        .array(
-          z.object({
-            actor: z.string().optional(),
-            text: z.string().min(1).max(2000),
-          }),
-        )
-        .optional(),
-      alternatives: z
-        .array(
-          z.object({
-            key: z.string().min(1).max(10),
-            text: z.string().min(1).max(2000),
-          }),
-        )
-        .optional(),
-      criteria: z
-        .array(
-          z.object({
-            key: z.string().max(10).optional(),
-            method: criterionMethodSchema,
-            givenText: z.string().max(2000).optional(),
-            whenText: z.string().max(2000).optional(),
-            thenText: z.string().max(2000).optional(),
-            text: z.string().max(2000).optional(),
-            alternativeKey: z.string().max(10).optional(),
-          }),
-        )
-        .optional(),
+      actorsText: z.text({ size: "rich" }).optional(),
+      stepsText: z.text({ size: "rich" }).optional(),
+      alternativesText: z.text({ size: "rich" }).optional(),
+      criteriaText: z.text({ size: "rich" }).optional(),
     });
 
+  const text = useCase ? scenarioToText(useCase) : undefined;
   const form = useForm({
     id: "use-case-form",
     schema,
@@ -127,33 +93,44 @@ const UseCaseForm = (props: UseCaseFormProps) => {
           startingData: useCase.startingData ?? "",
           automatedTestPath: useCase.automatedTestPath ?? "",
           automatedTestTag: useCase.automatedTestTag ?? "",
-          actors: useCase.actors.map((a) => ({
-            persona: String(a.personaId),
-            role: a.role,
-          })),
-          steps: useCase.steps.map((s) => ({
-            actor:
-              s.actorPersonaId !== undefined
-                ? String(s.actorPersonaId)
-                : undefined,
-            text: s.text,
-          })),
-          alternatives: useCase.alternatives.map((a) => ({
-            key: a.key,
-            text: a.text,
-          })),
-          criteria: useCase.criteria.map((c) => ({
-            key: c.key,
-            method: c.method,
-            givenText: c.givenText ?? "",
-            whenText: c.whenText ?? "",
-            thenText: c.thenText ?? "",
-            text: c.text ?? "",
-            alternativeKey: c.alternativeKey ?? "",
-          })),
+          actorsText: useCase.actors
+            .map((a) =>
+              a.role === "primary" ? `A${a.number}` : `A${a.number}:${a.role}`,
+            )
+            .join(", "),
+          stepsText: text?.steps ?? "",
+          alternativesText: text?.alternatives ?? "",
+          criteriaText: text?.criteria ?? "",
         }
       : { priority: "medium" as const },
     handler: async (data) => {
+      const ids = new Map((personas.data ?? []).map((p) => [p.number, p.id]));
+      const actors = (data.actorsText ?? "")
+        .split(",")
+        .map((it) => it.trim())
+        .filter(Boolean)
+        .flatMap((part) => {
+          const match = /^#?A(\d+)(?::(primary|beneficiary|system))?$/i.exec(
+            part,
+          );
+          const id = match ? ids.get(Number(match[1])) : undefined;
+          return id === undefined
+            ? []
+            : [
+                {
+                  personaId: id,
+                  role: (match?.[2]?.toLowerCase() ?? "primary") as "primary",
+                },
+              ];
+        });
+      const scenario = textToScenario(
+        {
+          steps: data.stepsText ?? "",
+          alternatives: data.alternativesText ?? "",
+          criteria: data.criteriaText ?? "",
+        },
+        ids,
+      );
       const body = {
         title: data.title.trim(),
         ...(data.status ? { status: data.status } : {}),
@@ -162,27 +139,8 @@ const UseCaseForm = (props: UseCaseFormProps) => {
         startingData: data.startingData || undefined,
         automatedTestPath: data.automatedTestPath || undefined,
         automatedTestTag: data.automatedTestTag || undefined,
-        actors: (data.actors ?? [])
-          .filter((a) => a.persona)
-          .map((a) => ({ personaId: Number(a.persona), role: a.role })),
-        steps: (data.steps ?? []).map((s) => ({
-          ...(s.actor ? { actorPersonaId: Number(s.actor) } : {}),
-          text: s.text,
-        })),
-        alternatives: data.alternatives ?? [],
-        criteria: (data.criteria ?? []).map((c) => ({
-          ...(c.key ? { key: c.key } : {}),
-          method: c.method,
-          // Given / When / Then when any is written, else the free text.
-          ...(c.givenText || c.whenText || c.thenText
-            ? {
-                givenText: c.givenText || undefined,
-                whenText: c.whenText || undefined,
-                thenText: c.thenText || undefined,
-              }
-            : { text: c.text || undefined }),
-          ...(c.alternativeKey ? { alternativeKey: c.alternativeKey } : {}),
-        })),
+        actors,
+        ...scenario,
       };
       const saved = useCase
         ? await useCaseApi.updateUseCase({ params: { id: useCase.id }, body })
@@ -212,11 +170,6 @@ const UseCaseForm = (props: UseCaseFormProps) => {
     id: useCase?.id,
   });
 
-  const personaItems = (personas.data ?? []).map((p) => ({
-    value: String(p.id),
-    label: `${formatReference("persona", p.number)} ${p.name}`,
-  }));
-
   return (
     <form {...form.props} className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -238,27 +191,11 @@ const UseCaseForm = (props: UseCaseFormProps) => {
             icon={SignalHigh}
           />
         </div>
-        <ControlArray
+        <Control
           label={tr("requirements.usecase.field.actors")}
           description={tr("requirements.usecase.field.actors.helper")}
-          input={form.input.actors}
-          addLabel={tr("requirements.usecase.field.actors.add")}
-          columns={2}
-          controlProps={{
-            persona: {
-              label: tr("requirements.usecase.filter.persona"),
-              select: true,
-              items: personaItems,
-            },
-            role: {
-              label: tr("requirements.persona.field.role"),
-              select: true,
-              items: actorRoleSchema.options.map((value) => ({
-                value,
-                label: tr(ACTOR_ROLE_LABEL_KEYS[value]),
-              })),
-            },
-          }}
+          input={form.input.actorsText}
+          icon={UsersRound}
         />
         <Control
           label={tr("requirements.usecase.field.preconditions")}
@@ -267,76 +204,20 @@ const UseCaseForm = (props: UseCaseFormProps) => {
           icon={FileText}
           custom={PreconditionsEditor}
         />
-        <ControlArray
+        <Control
           label={tr("requirements.usecase.field.steps")}
           description={tr("requirements.usecase.field.steps.helper")}
-          input={form.input.steps}
-          addLabel={tr("requirements.usecase.field.steps.add")}
-          columns={2}
-          controlProps={{
-            actor: {
-              label: tr("requirements.usecase.field.steps.actor"),
-              select: true,
-              clearable: true,
-              // Empty means the system acts: the placeholder says so.
-              placeholder: tr("requirements.usecase.system"),
-              clearLabel: tr("requirements.usecase.system"),
-              items: personaItems,
-            },
-            text: {
-              label: tr("requirements.usecase.field.steps.text"),
-              area: true,
-              rows: 2,
-            },
-          }}
+          input={form.input.stepsText}
         />
-        <ControlArray
+        <Control
           label={tr("requirements.usecase.field.alternatives")}
           description={tr("requirements.usecase.field.alternatives.helper")}
-          input={form.input.alternatives}
-          addLabel={tr("requirements.usecase.field.alternatives.add")}
-          columns={2}
-          controlProps={{
-            key: { label: tr("requirements.usecase.field.alternatives.key") },
-            text: {
-              label: tr("requirements.usecase.field.steps.text"),
-              area: true,
-              rows: 2,
-            },
-          }}
+          input={form.input.alternativesText}
         />
-        <ControlArray
+        <Control
           label={tr("requirements.usecase.field.criteria")}
           description={tr("requirements.usecase.field.criteria.helper")}
-          input={form.input.criteria}
-          addLabel={tr("requirements.usecase.field.criteria.add")}
-          columns={2}
-          controlProps={{
-            key: {
-              label: tr("requirements.usecase.field.criteria.key"),
-              // Lore numbers a criterion (C1, C2) when it is saved.
-              disabled: true,
-            },
-            method: {
-              label: tr("requirements.usecase.field.criteria.method"),
-              select: true,
-              items: criterionMethodSchema.options.map((value) => ({
-                value,
-                label: tr(CRITERION_METHOD_LABEL_KEYS[value]),
-              })),
-            },
-            givenText: { label: tr("requirements.usecase.given") },
-            whenText: { label: tr("requirements.usecase.when") },
-            thenText: { label: tr("requirements.usecase.then") },
-            text: {
-              label: tr("requirements.usecase.field.criteria.text"),
-              area: true,
-              rows: 2,
-            },
-            alternativeKey: {
-              label: tr("requirements.usecase.field.criteria.alternative"),
-            },
-          }}
+          input={form.input.criteriaText}
         />
         <Control
           label={tr("requirements.usecase.field.startingData")}
