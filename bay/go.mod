@@ -4,6 +4,7 @@ go 1.27.1
 
 require (
 	github.com/caddyserver/certmagic v0.25.6
+	github.com/cloudflare/tableflip v1.2.3
 	github.com/gorilla/websocket v1.5.3
 	github.com/klauspost/compress v1.20.1
 	golang.org/x/crypto v0.57.0

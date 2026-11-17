@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -41,6 +42,7 @@ import (
 	"github.com/alepha-dev/bay/internal/stack"
 	"github.com/alepha-dev/bay/internal/state"
 	"github.com/alepha-dev/bay/internal/tlsconf"
+	"github.com/cloudflare/tableflip"
 )
 
 const (
@@ -547,9 +549,21 @@ type server struct {
 	// failure path has to be testable as root, where mode bits mean nothing.
 	repoint func(instance, name, env string, storage *state.S3Target) error
 	log     *slog.Logger
+	// The socket handoff (handoff.go). ledger is the work in flight and the
+	// freeze; upgrade starts a successor and waits for it, nil in the CLI
+	// paths that never serve; booting is set while this process starts the
+	// apps it could not adopt; commands counts the Lore commands still to
+	// acknowledge, which a process that handed over waits for before it
+	// closes the connection; upgradeMode is how this Bay says it can be
+	// upgraded.
+	ledger      ledger
+	upgrade     func() error
+	booting     atomic.Bool
+	commands    sync.WaitGroup
+	upgradeMode string
 }
 
-func cmdServe(args []string) error {
+func cmdServe(args []string) (err error) {
 	root, addr := defaultRoot, defaultProxyAddr
 	tlsAddr, acmeCA, acmeEmail, acmeCARoot := defaultTLSAddr, "", "", ""
 	acmeHTTPPort, acmeTLSPort := 0, 0 // 0 = CertMagic defaults, i.e. 80 and 443
@@ -637,7 +651,7 @@ func cmdServe(args []string) error {
 	if badKeepReleases != "" {
 		return fmt.Errorf("--keep-releases %q must be a whole number of at least 2 (try 5): automatic rollback needs a previous release to return to, and the serving release is always kept on top", badKeepReleases)
 	}
-	root, err := filepath.Abs(root)
+	root, err = filepath.Abs(root)
 	if err != nil {
 		return err
 	}
@@ -647,6 +661,34 @@ func cmdServe(args []string) error {
 	}
 
 	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+	// The socket handoff (handoff.go). Before anything listens: every public
+	// listener below is opened through it, so that a successor inherits the
+	// socket instead of binding the port again.
+	pidFile := pidFilePath()
+	upg, err := tableflip.New(tableflip.Options{PIDFile: pidFile, UpgradeTimeout: handoffTimeout})
+	if err != nil {
+		return fmt.Errorf("socket handoff: %w", err)
+	}
+	defer upg.Stop()
+	// `systemctl reload bay`, through the drop-in's ExecReload. Caught from
+	// here on, and acted on once this process is up: an unhandled SIGHUP ends
+	// a Go process, and one sent during a slow boot must not.
+	reload := make(chan os.Signal, 1)
+	signal.Notify(reload, syscall.SIGHUP)
+	// A successor is a Bay started by a running one to take over from it.
+	successor := upg.HasParent()
+	ready := false
+	if successor {
+		log.Info("taking over from a running bay", "version", version)
+		// The parent can only see that its child exited. Tell it why.
+		defer func() {
+			if err != nil && !ready {
+				leaveHandoffError(root, err)
+			}
+		}()
+	}
+
 	store, err := state.Open(filepath.Join(root, "state.json"))
 	if err != nil {
 		return err
@@ -671,12 +713,25 @@ func cmdServe(args []string) error {
 		keepReleases: keepReleases, backupInterval: backupInterval,
 		probe:           &health.Probe{},
 		connectorStatus: connector.NewStatus(), connectorReload: make(chan struct{}, 1),
-		events: connector.NewEventSpool(root, 0), targets: newTargetHealth()}
+		events: connector.NewEventSpool(root, 0), targets: newTargetHealth(),
+		upgradeMode: detectUpgradeMode(pidFile, successor)}
+	// Said at boot: it is what Lore is told, and what decides whether a reload
+	// is taken or refused.
+	log.Info("upgrade mode", "mode", srv.upgradeMode, "pidFile", pidFile)
+	srv.upgrade = func() error {
+		_ = os.Remove(handoffErrorFile(root))
+		if err := upg.Upgrade(); err != nil {
+			return withHandoffError(root, err)
+		}
+		return nil
+	}
 
 	router := proxy.New(root, store, log)
 	srv.router = router
 	// Stays nil without TLS, which leaves port 80 the plain router it always was.
 	var challenge func(http.Handler) http.Handler
+	var tlsSrv *http.Server
+	var tlsLn net.Listener
 
 	// TLS is obtained synchronously at startup: a certificate that cannot be
 	// issued must surface now, not as a browser warning in three months.
@@ -728,20 +783,43 @@ func cmdServe(args []string) error {
 		// CA follows it — so the challenge must also be answerable over TLS,
 		// otherwise issuance fails behind Cloudflare and the error says nothing
 		// useful.
-		tlsSrv := &http.Server{
+		tlsSrv = &http.Server{
 			Addr:      tlsAddr,
 			Handler:   mgr.HTTPChallengeHandler(router),
 			TLSConfig: mgr.TLSConfig(),
 		}
-		go func() {
-			log.Info("tls proxy listening", "addr", tlsAddr, "domains", domains)
-			if err := tlsSrv.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Error("tls proxy stopped", "err", err)
-			}
-		}()
+		if tlsLn, err = upg.Listen("tcp", tlsAddr); err != nil {
+			return fmt.Errorf("listen on %s: %w", tlsAddr, err)
+		}
+		log.Info("tls proxy listening", "addr", tlsAddr, "domains", domains, "inherited", successor)
 	}
 
 	proxySrv := &http.Server{Addr: addr, Handler: portEighty(router, challenge, store, tlsAddr)}
+	// Fatal, where a failed bind used to be one log line under a Bay that then
+	// ran with no proxy: a successor that cannot have the socket must not be
+	// told it is ready, and a first process without its port serves nothing.
+	proxyLn, err := upg.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("listen on %s: %w", addr, err)
+	}
+	log.Info("proxy listening", "addr", addr, "inherited", successor)
+	/*
+		startProxies begins accepting on the public listeners.
+
+		A first process does it at once, as it always has. A successor waits
+		until its adopt pass is done: until then the old process accepts, and a
+		successor killed for not being ready has then accepted nothing, so its
+		death cuts no request.
+	*/
+	proxies := []*handedServer{newHandedServer(proxySrv, proxyLn, false, "proxy", log)}
+	if tlsSrv != nil {
+		proxies = append(proxies, newHandedServer(tlsSrv, tlsLn, true, "tls proxy", log))
+	}
+	startProxies := func() {
+		for _, p := range proxies {
+			go p.serve()
+		}
+	}
 	// The control API listens on a unix socket and nowhere else.
 	//
 	// It deploys code, and a stack it deploys runs containers with the devices
@@ -757,31 +835,37 @@ func cmdServe(args []string) error {
 	// CI) logs into the host and the bay commands run there are ordinary local
 	// clients of this same socket, authorized the same way. Accounts and
 	// revocation live entirely in sshd; nothing here has to duplicate them.
-	socketSrv := &http.Server{Handler: srv.controlMux()}
-
-	go func() {
-		log.Info("proxy listening", "addr", addr)
-		if err := proxySrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("proxy stopped", "err", err)
-		}
-	}()
+	socketSrv := &http.Server{Handler: srv.guardControl(srv.controlMux())}
 	// Fatal now that it is the only way in. A Bay that serves traffic but
 	// cannot be deployed to, rolled back or stopped is a Bay nobody can fix,
 	// and it would fail at the worst possible moment — the next incident.
-	ln, reachableBy, err := control.Listen(controlSocket, controlGroup)
-	if err != nil {
-		return fmt.Errorf("control socket %s: %w", controlSocket, err)
-	}
-	defer ln.Close()
-	// Logged because "who can talk to the root-equivalent API" is the fact an
-	// operator should be handed, not have to derive from a mode bit.
-	log.Info("control socket listening", "path", controlSocket,
-		"auth", "unix permissions", "reachableBy", reachableBy)
-	go func() {
-		if err := socketSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("control socket stopped", "err", err)
+	//
+	// Never inherited: a successor opens it once the old process has closed
+	// its own, so one process at a time answers the control API.
+	openControl := func() (net.Listener, error) {
+		ln, reachableBy, err := control.Listen(controlSocket, controlGroup)
+		if err != nil {
+			return nil, fmt.Errorf("control socket %s: %w", controlSocket, err)
 		}
-	}()
+		// Logged because "who can talk to the root-equivalent API" is the fact an
+		// operator should be handed, not have to derive from a mode bit.
+		log.Info("control socket listening", "path", controlSocket,
+			"auth", "unix permissions", "reachableBy", reachableBy)
+		go func() {
+			if err := socketSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error("control socket stopped", "err", err)
+			}
+		}()
+		return ln, nil
+	}
+	if !successor {
+		startProxies()
+		ln, err := openControl()
+		if err != nil {
+			return err
+		}
+		defer ln.Close()
+	}
 
 	// Trim release history BEFORE starting anything, and this order is the whole
 	// reason there is a prune at startup at all.
@@ -796,9 +880,47 @@ func cmdServe(args []string) error {
 		srv.pruneReleases(app)
 	}
 
-	srv.restoreApps()
+	// The raw TCP ports of stack services, opened through the handoff like the
+	// proxy's own, and before Ready: an inherited socket nobody has asked for
+	// by then is closed.
 	srv.tcp = proxy.NewTCP(log)
+	srv.tcp.Listen = upg.Listen
 	srv.syncTCP()
+
+	// The apps. First the ones that need nothing (#Q3742), then Ready, then
+	// the ones that need a start: a successor's rollback window must not grow
+	// with the number of apps it has to start. See handoff.go.
+	srv.booting.Store(true)
+	pending := srv.adoptApps()
+	if successor {
+		startProxies()
+	}
+	// Writes the PID file too, for systemd to follow the handoff.
+	if err := upg.Ready(); err != nil {
+		return fmt.Errorf("socket handoff: %w", err)
+	}
+	ready = true
+	if successor {
+		go func() {
+			srv.startApps(pending)
+			srv.booting.Store(false)
+		}()
+		// The old process drains, then closes its control socket and its Lore
+		// connection. Only then does this one open its own.
+		waitCtx, cancelWait := context.WithTimeout(context.Background(), 2*time.Minute)
+		if err := upg.WaitForParent(waitCtx); err != nil {
+			log.Warn("the old bay did not leave cleanly", "err", err)
+		}
+		cancelWait()
+		ln, err := openControl()
+		if err != nil {
+			return err
+		}
+		defer ln.Close()
+	} else {
+		srv.startApps(pending)
+		srv.booting.Store(false)
+	}
 
 	// Scheduled backups. Started after the apps are up so the first catch-up run
 	// snapshots databases that are being served, which is the state a restore has
@@ -813,19 +935,73 @@ func cmdServe(args []string) error {
 	// The Lore connection, held open for the life of the process when a sink
 	// is configured and inert otherwise; `bay connector set` wakes it through
 	// the control socket. Nothing the proxy or an app does waits on it.
-	go srv.connectorLoop(backupCtx)
+	//
+	// A context of its own: a process that handed over keeps the connection
+	// after its backups have stopped, to acknowledge what it was asked.
+	connectorCtx, stopConnector := context.WithCancel(context.Background())
+	defer stopConnector()
+	go srv.connectorLoop(connectorCtx)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
+	handedOver := false
+wait:
+	for {
+		select {
+		case <-stop:
+			break wait
+		case <-upg.Exit():
+			handedOver = true
+			break wait
+		case <-reload:
+			if srv.upgradeMode == upgradeRestart {
+				// systemd would not follow the new process: it would see this
+				// one exit, kill the other with the cgroup and start Bay again.
+				log.Warn("reload refused: this unit lacks the handoff drop-in ("+handoffDropIn+"), so systemd would restart Bay instead of following the new process",
+					"hint", "re-run install.sh with BAY_UPDATE_UNIT=yes")
+				continue
+			}
+			// Not on this goroutine: a handoff waits up to a minute, and a
+			// SIGTERM during it must still stop Bay.
+			go func() { _ = srv.handOver() }()
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if handedOver {
+		/*
+			The successor is serving on the same sockets. This process stops
+			accepting, lets what it is serving finish, and leaves without
+			writing anything: the state file is the successor's from the moment
+			it read it.
+		*/
+		log.Info("handed over, draining")
+		stopBackups()
+		// Not a bare Shutdown, which drops a connection it has accepted and
+		// not read yet: see handedServer.
+		for _, p := range proxies {
+			p.leave(ctx)
+		}
+		srv.tcp.Drain(ctx)
+		_ = socketSrv.Shutdown(ctx)
+		// The command that asked for the handoff, if one did, is acknowledged
+		// by this process: it is the one holding the connection.
+		waitGroup(&srv.commands, 10*time.Second)
+		stopConnector()
+		log.Info("left to the new process")
+		return nil
+	}
+
 	log.Info("shutting down")
 	// Before draining: a backup in flight holds the app's runtime and would
 	// outlive the process it belongs to.
 	stopBackups()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	_ = proxySrv.Shutdown(ctx)
+	if tlsSrv != nil {
+		_ = tlsSrv.Shutdown(ctx)
+	}
 	_ = socketSrv.Shutdown(ctx)
 
 	// Synchronously, and only once the proxy has drained: anything served during
@@ -840,6 +1016,19 @@ func cmdServe(args []string) error {
 
 	srv.runner.StopAll(stopGrace)
 	return nil
+}
+
+// waitGroup waits for wg, for at most `limit`.
+func waitGroup(wg *sync.WaitGroup, limit time.Duration) {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(limit):
+	}
 }
 
 /*

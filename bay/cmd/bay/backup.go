@@ -1011,7 +1011,14 @@ func (s *server) runDueBackups(ctx context.Context) {
 		if !policy.Spec().Decide(last, app.Key(), now).Due {
 			continue
 		}
+		// Paused while this Bay hands over: the successor's scheduler takes
+		// the run, through the same catch-up as after any restart.
+		done, err := s.beginWork("a scheduled backup of " + app.Key())
+		if err != nil {
+			return
+		}
 		s.backupOne(ctx, app, now)
+		done()
 	}
 }
 

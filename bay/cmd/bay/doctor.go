@@ -72,6 +72,9 @@ func runDoctor(root string, probeKeys bool) []check {
 	checks = append(checks, composePlugin())
 	checks = append(checks, portFree(80), portFree(443))
 	checks = append(checks, diskFree(root))
+	if c, has := handoffCheck(showUnit("bay.service")); has {
+		checks = append(checks, c)
+	}
 	checks = append(checks, storageChecks(root, probeKeys)...)
 	return checks
 }
@@ -249,4 +252,35 @@ func diskFree(root string) check {
 		c.Detail += fmt.Sprintf(", under the %d GiB a deploy needs", minFreeDisk>>30)
 	}
 	return c
+}
+
+/*
+handoffCheck reads `systemctl show bay.service` and warns when the unit lacks
+what a socket handoff needs. No line at all on a host with no bay unit (or no
+systemd): there is nothing to fix there yet.
+
+A warning, never a failure: Bay runs without the drop-in. What is lost is the
+restart that costs nothing, and the upgrade from Lore, which is only sent to a
+Bay that can hand over.
+*/
+func handoffCheck(show string, err error) (check, bool) {
+	// An unknown unit still answers, with an empty PIDFile and no ExecReload
+	// line worth reading, so "is there a unit" is asked of its file.
+	if err != nil || !unitExists() {
+		return check{}, false
+	}
+	c := check{Name: "handoff"}
+	if dropInInEffect(show, "/run/bay/bay.pid") {
+		c.OK, c.Detail = true, "systemd follows a handoff: a reload or an upgrade of Bay refuses no connection"
+		return c, true
+	}
+	c.Warn = true
+	c.Detail = "the bay unit lacks the handoff drop-in (" + handoffDropIn + "), so an upgrade restarts Bay and cannot be started from Lore: re-run install.sh with BAY_UPDATE_UNIT=yes"
+	return c, true
+}
+
+// unitExists says whether systemd knows a bay service on this host.
+var unitExists = func() bool {
+	out, err := exec.Command("systemctl", "show", "bay.service", "-p", "LoadState", "--value").Output()
+	return err == nil && strings.TrimSpace(string(out)) == "loaded"
 }
