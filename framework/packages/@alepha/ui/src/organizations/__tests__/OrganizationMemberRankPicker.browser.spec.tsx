@@ -96,6 +96,42 @@ describe("OrganizationMemberRankPicker", () => {
     expect(trigger().textContent).not.toContain("r1x9k2");
   });
 
+  it("lists ranks most powerful first, ties by name", async () => {
+    const ladder = [
+      { key: "viewer", name: "Viewer", permissions: ["project:read"] },
+      { key: "owner", name: "Owner", permissions: ["*"] },
+      { key: "member", name: "Member", permissions: ["a", "b", "c"] },
+      { key: "admin", name: "Admin", permissions: ["a", "b", "c", "d", "e"] },
+      { key: "zz", name: "Auditor", permissions: ["x"] },
+    ] as never;
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with({ provide: LinkProvider, use: Links })
+      .with(AlephaReact)
+      .with(AlephaReactI18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <OrganizationMemberRankPicker
+          organizationId={organizationId}
+          userId="00000000-0000-4000-8000-000000000001"
+          rank="viewer"
+          ranks={ladder}
+          self={false}
+          canAssign
+          onAssigned={() => {}}
+        />
+      </AlephaContext.Provider>,
+    );
+
+    fireEvent.keyDown(trigger(), { key: "ArrowDown" });
+    await screen.findByRole("option", { name: "Admin" });
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["Admin", "Member", "Auditor", "Viewer"]);
+  });
+
   it("restores the held rank when the server refuses the assignment", async () => {
     const { links } = await mount();
     links.fails = true;

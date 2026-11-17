@@ -29,6 +29,7 @@ import {
   type PermissionMatrixGroup,
 } from "../table/PermissionMatrix.tsx";
 import { OrganizationRankColumnHeader } from "./OrganizationRankColumnHeader.tsx";
+import { rankOrder } from "./rankOrder.ts";
 
 type CatalogueGroup = PermissionCatalogue["groups"][number];
 type CataloguePermission = CatalogueGroup["permissions"][number];
@@ -250,7 +251,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
   // Member and a custom rank falls into place by how much it grants. Counted
   // on the SAVED grants over the permissions the matrix shows, `*` holding
   // them all: a column never moves under a click, only once the change is
-  // saved. Ties keep the server's order (`sort` is stable).
+  // saved. Ties go by name, as in the member and invite pickers (#Q3840).
   const shown = groups.flatMap((group) =>
     group.permissions.map((permission) => permission.name),
   );
@@ -258,7 +259,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
     rank.permissions.includes("*")
       ? shown.length
       : shown.filter((name) => rank.permissions.includes(name)).length;
-  const ordered = [...ranks].sort((a, b) => grants(b) - grants(a));
+  const ordered = rankOrder(ranks, grants);
   const columns: PermissionMatrixColumn[] = ordered.map((rank) => ({
     key: rank.key,
     readOnly: !rank.editable,
