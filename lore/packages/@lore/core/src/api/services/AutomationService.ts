@@ -15,6 +15,7 @@ import {
   type AutomationCreateBody,
 } from "../schemas/automationCreateBodySchema.ts";
 import { AutomationCron } from "../schemas/AutomationCron.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import {
   automationListQuerySchema,
   type AutomationListQuery,
@@ -25,7 +26,6 @@ import {
   type AutomationPageQuery,
 } from "../schemas/automationPageQuerySchema.ts";
 import { automationResourceSchema } from "../schemas/automationResourceSchema.ts";
-import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import { automationRunResourceSchema } from "../schemas/automationRunResourceSchema.ts";
 import type { AutomationTestSource } from "../schemas/automationTestSourceSchema.ts";
 import type { AutomationVariableApproval } from "../schemas/automationVariableApprovalSchema.ts";
@@ -57,6 +57,7 @@ import { BoundParameters } from "./BoundParameters.ts";
  * Clients supply configuration and a revision, never execution identity.
  */
 export class AutomationService {
+  protected readonly graphs = $inject(AutomationGraph);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly outbox = $inject(AutomationNotificationOutbox);
@@ -601,7 +602,11 @@ export class AutomationService {
    */
   protected authored<T extends { rule: Automation["rule"] }>(body: T): T {
     try {
-      return { ...body, rule: AutomationRuleChannels.normalize(body.rule) };
+      // A graph saved without positions is laid out (#Q3809).
+      const graph = body.rule.nodes.every((node) => !node.position)
+        ? AutomationGraph.layout(body.rule)
+        : body.rule;
+      return { ...body, rule: this.graphs.normalize(graph) };
     } catch (error) {
       if (error instanceof AlephaError)
         throw new BadRequestError(error.message);
@@ -638,15 +643,17 @@ export class AutomationService {
    * a draft is one click from running.
    */
   protected async assertSingleReminderRule(rule: Automation) {
-    if (rule.rule.select?.key !== "quests.remindersDue") return;
+    const reminders = (graph: Automation["rule"]) =>
+      graph.nodes.some(
+        (node) => node.kind === "read" && node.type === "quests.remindersDue",
+      );
+    if (!reminders(rule.rule)) return;
     const others = await this.persistence.rules.findMany({
       where: { projectId: rule.projectId, id: { ne: rule.id } },
       columns: ["id", "rule"],
       limit: 500,
     });
-    if (
-      others.some((other) => other.rule.select?.key === "quests.remindersDue")
-    )
+    if (others.some((other) => reminders(other.rule)))
       throw new ConflictError(
         "This project already has a quest reminders automation",
       );

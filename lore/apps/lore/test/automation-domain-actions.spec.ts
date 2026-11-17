@@ -11,7 +11,8 @@ import {
   AutomationPersistence,
   AutomationRunEvidence,
 } from "@lore/core/api";
-import type { AutomationRule } from "@lore/core/schemas";
+import { type AutomationAction, AutomationGraph } from "@lore/core/schemas";
+import { type AutomationLineSpec, automationLine } from "@lore/core/testing";
 import { QuestController } from "@lore/plan/api";
 import { FolioController } from "@lore/remember/api";
 import { folioRevisions } from "@lore/remember/schemas";
@@ -100,20 +101,20 @@ describe("Idempotent automation domain actions through normal controllers", () =
   let claims: AutomationClaims;
   let actions: AutomationDomainActions;
   let faults: DomainMutationFaults;
-  const createAction = (): AutomationRule["actions"][number] => ({
+  const createAction = (): AutomationAction => ({
     kind: "createQuest",
     title: "Created {{value}}",
     description: "Original <TypeScript<T>> Markdown",
     area: "automation-tests",
   });
-  const open = async (steps: AutomationRule["actions"], author = user) => {
-    const ast: AutomationRule = {
-      version: 1,
+  const open = async (steps: AutomationAction[], author = user) => {
+    const line: AutomationLineSpec = {
       trigger: { kind: "schedule", cron: "*/5 * * * *" },
       select: { kind: "scalar", key: "activeQuests", filters: {} },
       guard: null,
       actions: steps,
     };
+    const ast = automationLine(line);
     await alepha.inject(AutomationCatalog).validate(project.id, author, ast);
     const created = await persistence.rules.create({
       projectId: project.id,
@@ -594,7 +595,13 @@ describe("Idempotent automation domain actions through normal controllers", () =
     const author = await alepha.inject(AutomationAccess).author(opened.rule);
     const rendered = alepha
       .inject(AutomationTemplateRenderer)
-      .render(opened.rule.rule.actions[0], opened.context, []);
+      .render(
+        alepha
+          .inject(AutomationGraph)
+          .action(opened.rule.rule, { node: "action-1" }),
+        opened.context,
+        [],
+      );
     if (rendered.raw.kind === "notify")
       throw new AlephaError("Expected domain action");
     const before = {

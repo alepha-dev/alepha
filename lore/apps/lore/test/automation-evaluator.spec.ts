@@ -11,7 +11,7 @@ import {
   AutomationWorkerJobs,
   type AutomationSelected,
 } from "@lore/core/api";
-import type { AutomationRule } from "@lore/core/schemas";
+import { automationLine, type AutomationLineSpec } from "@lore/core/testing";
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { audits } from "alepha/api/audits";
 import {
@@ -37,6 +37,10 @@ import {
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
+type EventName = Parameters<
+  AutomationPersistence["events"]["create"]
+>[0]["name"];
+
 class HeldAutomationQueue extends JobQueueProvider {
   public dispatched: string[] = [];
   public override async dispatch(_name: string, id: string) {
@@ -54,10 +58,10 @@ class ControlledSelections extends AutomationSelections {
   public override async evaluate(
     input: Parameters<AutomationSelections["evaluate"]>[0],
   ): Promise<AutomationSelected> {
-    if (
-      input.rule.rule.select?.key !== "openErrors" ||
-      this.scalar === undefined
-    )
+    const read = (input.graph ?? input.rule.rule).nodes.find(
+      (node) => node.kind === "read",
+    );
+    if (read?.type !== "openErrors" || this.scalar === undefined)
       return super.evaluate(input);
     const context = await this.contexts.source(
       input.rule.projectId,
@@ -112,8 +116,7 @@ describe("Pure automation evaluation and durable worker", () => {
     text,
     category: "automations" as const,
   });
-  const ast = (): AutomationRule => ({
-    version: 1,
+  const ast = (): AutomationLineSpec => ({
     trigger: { kind: "event", event: "quest.completed" },
     select: null,
     guard: null,
@@ -124,7 +127,7 @@ describe("Pure automation evaluation and durable worker", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Rule",
-      rule,
+      rule: automationLine(rule),
     });
   const state = async () =>
     JSON.stringify(
@@ -147,12 +150,13 @@ describe("Pure automation evaluation and durable worker", () => {
     fields?: Record<string, string | number | boolean | null>,
   ) => {
     await persistence.rules.updateById(rule.id, { enabled: true });
+    const source = rule.rule.nodes.find((node) => node.kind === "source")!;
     const event =
-      rule.rule.trigger.kind === "event"
+      source.type !== "schedule"
         ? await persistence.events.create({
             projectId: project.id,
             identity: crypto.randomUUID(),
-            name: rule.rule.trigger.event,
+            name: source.type as EventName,
             occurredAt: time.nowISOString(),
             replayUntil: time.now().add(90, "days").toISOString(),
             payload: {
@@ -710,11 +714,11 @@ describe("Pure automation evaluation and durable worker", () => {
             ? { enabled: false }
             : {
                 revision: 1,
-                rule: {
-                  ...stored.rule,
+                rule: automationLine({
+                  ...ast(),
                   trigger: { kind: "schedule", cron: "*/5 * * * *" },
                   select: { kind: "scalar", key: "activeQuests", filters: {} },
-                },
+                }),
               },
         );
       if (change === "delete") await persistence.rules.deleteById(stored.id);
@@ -793,8 +797,8 @@ describe("Pure automation evaluation and durable worker", () => {
       projectId: project.id,
       key: "remember",
     });
-    const rule = {
-      ...stored.rule,
+    const rule = automationLine({
+      ...ast(),
       actions: [
         {
           kind: "appendFolio" as const,
@@ -802,7 +806,7 @@ describe("Pure automation evaluation and durable worker", () => {
           text: "{{missing}}",
         },
       ],
-    };
+    });
     await persistence.rules.updateById(stored.id, { rule });
     const before = await state();
     expect(

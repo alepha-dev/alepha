@@ -2,13 +2,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { automationRuleSchema } from "@lore/core/schemas";
 import { describe, it } from "vitest";
 
 /**
  * The migration that removes adoption (#Q3628), applied for real: a rule
- * adopted before it loses its `compatibility` key, stays enabled, and is a
- * rule the strict schema accepts again, so it keeps running.
+ * adopted before it loses its `compatibility` key and stays enabled, so it
+ * keeps running. The v1 rule schema it was checked against is gone since
+ * automations are graphs (#Q3803); the JSON-level assertions remain.
  */
 describe("automation adoptions dropped migration", () => {
   const sql = readFileSync(
@@ -72,8 +72,6 @@ describe("automation adoptions dropped migration", () => {
       "quest-reminders",
       "adopted",
     );
-    expect(automationRuleSchema.safeParse(adopted).success).toBe(false);
-
     db.exec(sql);
 
     const row = db
@@ -82,7 +80,8 @@ describe("automation adoptions dropped migration", () => {
     const rule = JSON.parse(row.rule);
     expect(row.enabled).toBe(1);
     expect(rule).not.toHaveProperty("compatibility");
-    expect(automationRuleSchema.parse(rule)).toMatchObject({
+    expect(rule).toMatchObject({
+      version: 1,
       select: { key: "quests.remindersDue" },
     });
     const run = JSON.parse(

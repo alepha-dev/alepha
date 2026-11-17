@@ -4,7 +4,7 @@ import {
   AutomationPresetRegistry,
 } from "@lore/core/api";
 import { AutomationVocabulary } from "@lore/core/schemas";
-import { createPresetRanks } from "@lore/core/testing";
+import { automationLine, createPresetRanks } from "@lore/core/testing";
 import { appInstances } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { JobQueueProvider } from "alepha/api/jobs";
@@ -109,26 +109,24 @@ describe("Automation subscriptions with a scope (#Q3635)", () => {
           },
         },
       },
-      (values) => ({
-        version: 1,
-        trigger: {
-          kind: "event",
-          event: "deploy.succeeded",
-          app: String(values.app),
-        },
-        select: null,
-        guard: null,
-        actions: [
-          {
-            kind: "notify",
-            recipient: String(values.recipient),
-            channel: String(values.channel),
-            category: "automations",
-            title: "Deployment succeeded: {{app}}",
-            text: "{{url}}",
+      (values) =>
+        automationLine({
+          trigger: {
+            kind: "event",
+            event: "deploy.succeeded",
+            app: String(values.app),
           },
-        ],
-      }),
+          actions: [
+            {
+              kind: "notify",
+              recipient: String(values.recipient),
+              channel: String(values.channel),
+              category: "automations",
+              title: "Deployment succeeded: {{app}}",
+              text: "{{url}}",
+            },
+          ],
+        }),
     );
     project = await createTestProject(alepha, {
       capabilities: [{ key: "ship", options: { deploy: true } }],
@@ -160,7 +158,9 @@ describe("Automation subscriptions with a scope (#Q3635)", () => {
     ).toEqual(presets);
     for (const rule of rules) {
       expect(rule.subscriptionScope).toBe("app=site");
-      expect(rule.rule.trigger).toMatchObject({ app: "site" });
+      expect(
+        rule.rule.nodes.find((node) => node.kind === "source")?.config,
+      ).toMatchObject({ app: "site" });
     }
     expect(await get("app=site")).toEqual(on);
   });

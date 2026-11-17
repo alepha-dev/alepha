@@ -320,24 +320,33 @@ describe("Deployment and release publication presets", () => {
         title: rule.title,
         rule: {
           ...configured,
-          actions: [
-            {
-              ...configured.actions[0],
-              kind: "appendFolio",
-              folio: "{{release_log}}",
-              text: "## {{release_tag}}: {{title}}\n\n{{changelog}}\n\nQuests: {{quest_count}}.",
-            },
-            {
-              ...configured.actions[1],
-              kind: "notify",
-              recipient: "{{release_recipient}}",
-              channel: undefined,
-              channels: [channel],
-              title: "Release published: {{release_tag}}",
-              text: "{{title}}",
-              category: "releases",
-            },
-          ],
+          nodes: configured.nodes.map((node) =>
+            node.id === "action-1"
+              ? {
+                  ...node,
+                  type: "appendFolio",
+                  config: {
+                    ...node.config,
+                    folio: "{{release_log}}",
+                    text: "## {{release_tag}}: {{title}}\n\n{{changelog}}\n\nQuests: {{quest_count}}.",
+                  },
+                }
+              : node.id === "action-2"
+                ? {
+                    ...node,
+                    type: "notify",
+                    config: {
+                      ...node.config,
+                      recipient: "{{release_recipient}}",
+                      channel: undefined,
+                      channels: [channel],
+                      title: "Release published: {{release_tag}}",
+                      text: "{{title}}",
+                      category: "releases",
+                    },
+                  }
+                : node,
+          ),
         },
       });
       const published = await release();

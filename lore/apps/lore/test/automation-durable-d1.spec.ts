@@ -21,7 +21,7 @@ import {
   AutomationRoster,
   AutomationRunEvidence,
 } from "@lore/core/api";
-import type { AutomationRule } from "@lore/core/schemas";
+import { type AutomationLineSpec, automationLine } from "@lore/core/testing";
 import { FeedbackController } from "@lore/plan/api";
 import { FolioController } from "@lore/remember/api";
 import { Alepha, AlephaError } from "alepha";
@@ -182,8 +182,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         feedback_id: submitted.data.id,
         title: "Native D1 feedback",
       });
-      const rule: AutomationRule = {
-        version: 1,
+      const rule: AutomationLineSpec = {
         trigger: { kind: "event", event: "feedback.created" },
         select: null,
         guard: null,
@@ -202,7 +201,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         projectId: project.id,
         authorUserId: project.createdBy,
         title: "D1 rule",
-        rule,
+        rule: automationLine(rule),
       });
       const enabled = await persistence.rules.updateById(created.id, {
         enabled: true,
@@ -327,11 +326,11 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         authorUserId: project.createdBy,
         title: "D1 schedule",
         scheduleCron: "*/5 * * * *",
-        rule: {
+        rule: automationLine({
           ...rule,
           trigger: { kind: "schedule", cron: "*/5 * * * *" },
           select: { kind: "rows", key: "quests.open", filters: {} },
-        },
+        }),
       });
       await persistence.rules.updateById(schedule.id, {
         enabled: true,
@@ -389,7 +388,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         projectId: project.id,
         authorUserId: project.createdBy,
         title: "D1 notify",
-        rule,
+        rule: automationLine(rule),
       });
       const notifyEnabled = await persistence.rules.updateById(
         notificationRule.id,
@@ -483,8 +482,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         },
         { user: domainAuthor },
       );
-      const domainAst: AutomationRule = {
-        version: 1,
+      const domainAst: AutomationLineSpec = {
         trigger: { kind: "schedule", cron: "*/5 * * * *" },
         select: { kind: "scalar", key: "activeQuests", filters: {} },
         guard: null,
@@ -502,7 +500,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         projectId: project.id,
         authorUserId: project.createdBy,
         title: "D1 domain effects",
-        rule: domainAst,
+        rule: automationLine(domainAst),
       });
       const domainEnabled = await persistence.rules.updateById(
         domainCreated.id,
@@ -578,7 +576,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       );
       expect(Number(nativeAuditCount.count)).toBe(2);
 
-      const workerAst: AutomationRule = {
+      const workerAst: AutomationLineSpec = {
         ...domainAst,
         actions: [
           {
@@ -598,7 +596,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         projectId: project.id,
         authorUserId: project.createdBy,
         title: "D1 shared evaluator worker",
-        rule: workerAst,
+        rule: automationLine(workerAst),
       });
       const countBeforePreview = await persistence.runs.count({
         projectId: project.id,
@@ -648,7 +646,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       );
       const approved = await application.create(project.id, domainAuthor, {
         title: "D1 native approval fence",
-        rule: {
+        rule: automationLine({
           ...workerAst,
           actions: [
             {
@@ -657,7 +655,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
               text: "{{native_message}}",
             },
           ],
-        },
+        }),
       });
       const activated = await application.setEnabled(
         project.id,

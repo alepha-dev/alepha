@@ -4,7 +4,7 @@ import {
   AutomationPersistence,
   AutomationWorker,
 } from "@lore/core/api";
-import type { AutomationRule } from "@lore/core/schemas";
+import { automationLine, type AutomationLineSpec } from "@lore/core/testing";
 import { Alepha, AlephaError } from "alepha";
 import { JobQueueProvider } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
@@ -20,6 +20,10 @@ import {
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
+
+type EventName = Parameters<
+  AutomationPersistence["events"]["create"]
+>[0]["name"];
 
 class HeldQueue extends JobQueueProvider {
   public override async dispatch() {}
@@ -37,12 +41,12 @@ describe("Automation node outputs", () => {
   let project: Awaited<ReturnType<typeof createTestProject>>;
   let user: UserAccountToken;
 
-  const create = async (rule: AutomationRule) => {
+  const create = async (rule: AutomationLineSpec) => {
     const row = await persistence.rules.create({
       projectId: project.id,
       authorUserId: user.id,
       title: "Rule",
-      rule,
+      rule: automationLine(rule),
     });
     return persistence.rules.updateById(row.id, { enabled: true });
   };
@@ -50,12 +54,13 @@ describe("Automation node outputs", () => {
     rule: Awaited<ReturnType<typeof create>>,
     fields: Record<string, string | number | boolean | null> = {},
   ) => {
+    const source = rule.rule.nodes.find((node) => node.kind === "source")!;
     const event =
-      rule.rule.trigger.kind === "event"
+      source.type !== "schedule"
         ? await persistence.events.create({
             projectId: project.id,
             identity: crypto.randomUUID(),
-            name: rule.rule.trigger.event,
+            name: source.type as EventName,
             occurredAt: time.nowISOString(),
             replayUntil: time.now().add(90, "days").toISOString(),
             payload: { fields, omitted: [] },
@@ -77,8 +82,7 @@ describe("Automation node outputs", () => {
       next = await alepha.inject(AutomationWorker).step(next, 3);
     if (next) throw new AlephaError("Worker exceeded the test's bounded steps");
   };
-  const followUps = (release: number): AutomationRule => ({
-    version: 1,
+  const followUps = (release: number): AutomationLineSpec => ({
     trigger: { kind: "schedule", cron: "0 9 * * *" },
     select: { kind: "rows", key: "quests.open", filters: { tag: "triage" } },
     guard: null,
@@ -192,7 +196,6 @@ describe("Automation node outputs", () => {
   }) => {
     const folio = await createTestFolio(alepha, project, { content: "Log" });
     const rule = await create({
-      version: 1,
       trigger: { kind: "event", event: "feedback.created" },
       select: null,
       guard: null,
@@ -272,13 +275,12 @@ describe("Automation node outputs", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Rule",
-      rule: {
-        version: 1,
+      rule: automationLine({
         trigger: { kind: "event", event: "feedback.created" },
         select: null,
         guard: null,
         actions: [{ kind: "addTag", quest: "{{created_quest_id}}", tag: "x" }],
-      },
+      }),
     });
     const report = await alepha
       .inject(AutomationEvaluator)

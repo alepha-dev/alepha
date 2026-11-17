@@ -58,13 +58,17 @@ export class AutomationSchedules {
       const rules = page.slice(0, size);
       let claimed = 0;
       for (const rule of rules) {
-        if (rule.rule.trigger.kind !== "schedule" || !rule.nextRunAt) continue;
+        // A schedule is the only source of its graph (#Q3803).
+        const schedule = rule.rule.nodes.find(
+          (node) => node.kind === "source" && node.type === "schedule",
+        );
+        if (!schedule || !rule.nextRunAt) continue;
         let cron: string;
         let scheduledAt: string;
         let next: string;
         try {
           cron = this.cron.validate(
-            rule.scheduleCron ?? rule.rule.trigger.cron,
+            rule.scheduleCron ?? String(schedule.config.cron),
           );
           scheduledAt = this.cron.latest(cron, now);
           next = this.cron.next(cron, now);

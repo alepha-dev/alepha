@@ -6,9 +6,8 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
- * Every stock preset, read as a v2 graph (#Q3803): the runner walks a v1
- * rule through `AutomationGraph.fromV1` until storage holds graphs, so each
- * preset's rule has to come out as a graph the validator accepts.
+ * Every stock preset builds a graph (#Q3805), with the one builder, laid
+ * out by `AutomationGraph.layout`, and the validator accepts it.
  */
 describe("Stock presets as graphs", () => {
   let alepha: Alepha;
@@ -24,9 +23,7 @@ describe("Stock presets as graphs", () => {
     await alepha.stop();
   });
 
-  it("turns every stock preset's rule into a valid straight-line graph", ({
-    expect,
-  }) => {
+  it("builds every stock preset as a valid, laid-out graph", ({ expect }) => {
     const registry = alepha.inject(AutomationPresetRegistry);
     const entries = alepha.inject(AutomationCatalog).entries();
     const graphs = new AutomationGraph();
@@ -50,8 +47,7 @@ describe("Stock presets as graphs", () => {
                     ? "inbox"
                     : "release");
       }
-      const { rule } = registry.build(preset.key, values as never);
-      const graph = AutomationGraph.fromV1(rule);
+      const { rule: graph } = registry.build(preset.key, values as never);
       const issues = graphs
         .check(graph, entries)
         .map((issue) => graphs.message(issue));
@@ -59,8 +55,9 @@ describe("Stock presets as graphs", () => {
         preset: preset.key,
         issues: [],
       });
-      expect(graph.nodes.filter((node) => node.kind === "action")).toHaveLength(
-        rule.actions.length,
+      expect(graph.nodes.every((node) => node.position)).toBe(true);
+      expect(graph.nodes.filter((node) => node.kind === "source")).toHaveLength(
+        1,
       );
     }
   });

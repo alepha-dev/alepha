@@ -2,18 +2,19 @@ import { $inject, AlephaError, type Infer } from "alepha";
 
 import type { automationFilterValueSchema } from "../schemas/automationFilterValueSchema.ts";
 import {
+  automationGraphSchema,
+  type AutomationGraphValue,
+} from "../schemas/automationGraphSchema.ts";
+import {
   automationPresetDescriptorSchema,
   type AutomationPresetDescriptor,
 } from "../schemas/automationPresetDescriptorSchema.ts";
-import {
-  automationRuleSchema,
-  type AutomationRule,
-} from "../schemas/automationRuleSchema.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
 import { AutomationTemplateTokens } from "../schemas/AutomationTemplateTokens.ts";
 
 /**
- * Feature modules register stock programs. Setup choices are literal native
+ * Feature modules register stock programs, each a graph (#Q3805), most of
+ * them a line written with `AutomationGraphBuilder`. Setup choices are literal native
  * values, never implicit shared variables or recursively expanded templates.
  */
 export class AutomationPresetRegistry {
@@ -24,7 +25,7 @@ export class AutomationPresetRegistry {
       build: (
         values: AutomationPresetValues,
         bindings: AutomationPresetBindings,
-      ) => AutomationRule;
+      ) => AutomationGraphValue;
     }
   >();
   protected readonly bindings = $inject(AutomationTemplateBindings);
@@ -34,7 +35,7 @@ export class AutomationPresetRegistry {
     build: (
       values: AutomationPresetValues,
       bindings: AutomationPresetBindings,
-    ) => AutomationRule,
+    ) => AutomationGraphValue,
   ): void {
     if (this.entries.has(descriptor.key))
       throw new AlephaError(`Preset '${descriptor.key}' is already registered`);
@@ -85,7 +86,7 @@ export class AutomationPresetRegistry {
     }
     return {
       descriptor: structuredClone(entry.descriptor),
-      rule: automationRuleSchema.parse(entry.build(values, sharedTokens)),
+      rule: automationGraphSchema.parse(entry.build(values, sharedTokens)),
     };
   }
 }

@@ -5,12 +5,7 @@ import { DbConflictError } from "alepha/orm";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreCoreApi } from "../src/api/index.ts";
-import { AutomationGraph } from "../src/api/schemas/AutomationGraph.ts";
-import { AutomationRuleChannels } from "../src/api/schemas/AutomationRuleChannels.ts";
-import {
-  automationRuleSchema,
-  type AutomationRule,
-} from "../src/api/schemas/automationRuleSchema.ts";
+import { automationGraphSchema } from "../src/api/schemas/automationGraphSchema.ts";
 import {
   automationRunSnapshotSchema,
   type AutomationRunSnapshot,
@@ -18,6 +13,8 @@ import {
 import { AutomationPersistence } from "../src/api/services/AutomationPersistence.ts";
 import { ProjectDeletionService } from "../src/api/services/ProjectDeletionService.ts";
 import {
+  automationLine,
+  type AutomationLineSpec,
   CoreTestEntities,
   createTestMember,
   createTestProject,
@@ -31,8 +28,7 @@ describe("Automation persistence", () => {
   let entities: CoreTestEntities;
   let persistence: AutomationPersistence;
 
-  const eventRule = (): AutomationRule => ({
-    version: 1,
+  const eventRule = (): AutomationLineSpec => ({
     trigger: { kind: "event", event: "feedback.created" },
     select: null,
     guard: null,
@@ -48,8 +44,8 @@ describe("Automation persistence", () => {
     ],
   });
 
-  const snapshot = (rule: AutomationRule): AutomationRunSnapshot => ({
-    rule: AutomationGraph.fromV1(rule),
+  const snapshot = (rule: AutomationLineSpec): AutomationRunSnapshot => ({
+    rule: automationLine(rule),
     sourceNode: "source",
     inputs: { title: "Safe title" },
     variables: [
@@ -109,7 +105,7 @@ describe("Automation persistence", () => {
       projectId: project.id,
       authorUserId: project.createdBy,
       title: "Feedback",
-      rule: eventRule(),
+      rule: automationLine(eventRule()),
     });
     expect(rule.enabled).toBe(false);
     expect(rule.health).toBe("active");
@@ -119,7 +115,7 @@ describe("Automation persistence", () => {
         authorUserId: project.createdBy,
         title: "Unsafe create",
         enabled: true,
-        rule: eventRule(),
+        rule: automationLine(eventRule()),
       }),
     ).rejects.toThrow("disabled");
     await expect(
@@ -144,7 +140,7 @@ describe("Automation persistence", () => {
       projectId: project.id,
       authorUserId: member.userId,
       title: "Member rule",
-      rule: eventRule(),
+      rule: automationLine(eventRule()),
     });
     await persistence.rules.updateById(rule.id, { enabled: true });
     const now = alepha.inject(DateTimeProvider).now().toISOString();
@@ -212,7 +208,7 @@ describe("Automation persistence", () => {
         projectId: project.id,
         authorUserId,
         title,
-        rule: eventRule(),
+        rule: automationLine(eventRule()),
       });
       const run = await persistence.runs.create({
         projectId: project.id,
@@ -272,7 +268,7 @@ describe("Automation persistence", () => {
       projectId: project.id,
       authorUserId: project.createdBy,
       title: "Project rule",
-      rule: eventRule(),
+      rule: automationLine(eventRule()),
     });
     const run = await persistence.runs.create({
       projectId: project.id,
@@ -301,7 +297,7 @@ describe("Automation persistence", () => {
       projectId: other.id,
       authorUserId: other.createdBy,
       title: "Other rule",
-      rule: eventRule(),
+      rule: automationLine(eventRule()),
     });
     await alepha
       .inject(ProjectDeletionService)
@@ -323,7 +319,7 @@ describe("Automation persistence", () => {
     "round-trips a %s selection and a bounded run envelope",
     async (kind, { expect }) => {
       const project = await createTestProject(alepha);
-      const definition: AutomationRule = {
+      const definition: AutomationLineSpec = {
         ...eventRule(),
         trigger: { kind: "schedule", cron: "0 0 * * *" },
         select: { kind, key: "quests.tagged", filters: { tag: "reminder" } },
@@ -332,7 +328,7 @@ describe("Automation persistence", () => {
         projectId: project.id,
         authorUserId: project.createdBy,
         title: kind,
-        rule: definition,
+        rule: automationLine(definition),
         nextRunAt: "2026-10-16T00:00:00.000Z",
         baseline: { value: 7, revision: 1 },
       });
@@ -347,7 +343,7 @@ describe("Automation persistence", () => {
         snapshot: payload,
       });
       expect((await persistence.rules.getById(rule.id)).rule).toEqual(
-        definition,
+        automationLine(definition),
       );
       expect((await persistence.runs.getById(run.id)).snapshot).toEqual(
         payload,
@@ -395,30 +391,25 @@ describe("Automation persistence", () => {
       title: "🌱".repeat(1000),
     }));
     expect(automationRunSnapshotSchema.safeParse(large).success).toBe(false);
-    // The schema holds a run's expanded rule, one notify per channel, so
-    // its cap is 40; an authored rule holds five (#Q3613).
+    // A graph holds at most 40 nodes; what one source reaches is the
+    // validator's (#Q3803).
+    const line = automationLine(eventRule());
     expect(
-      automationRuleSchema.safeParse({
-        ...eventRule(),
-        actions: Array(41).fill(eventRule().actions[0]),
-      }).success,
-    ).toBe(false);
-    expect(() =>
-      AutomationRuleChannels.normalize({
-        ...eventRule(),
-        actions: Array(6).fill(eventRule().actions[0]),
-      }),
-    ).toThrow("at most 5 actions");
-    expect(
-      automationRuleSchema.safeParse({
-        ...eventRule(),
-        select: { kind: "rows", key: "quests", filters: {} },
+      automationGraphSchema.safeParse({
+        ...line,
+        nodes: [
+          ...line.nodes,
+          ...Array.from({ length: 40 }, (_, index) => ({
+            ...line.nodes[1],
+            id: `extra-${index}`,
+          })),
+        ],
       }).success,
     ).toBe(false);
     expect(
-      automationRuleSchema.safeParse({
-        ...eventRule(),
-        actions: [{ kind: "project:delete" }],
+      automationGraphSchema.safeParse({
+        ...line,
+        nodes: [line.nodes[0], { ...line.nodes[1], type: "project:delete" }],
       }).success,
     ).toBe(false);
   });

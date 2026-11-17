@@ -1,0 +1,30 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a57aee7f-e8c1-4153-809b-58b5c99f0b27",
+  "prevIds": ["294d61ab-a4b7-48f6-8a42-fe846fb5fdfd"],
+  "footprints": [
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "automation_receipts",
+        "action_index"
+      ],
+      "writes": [
+        "s|col|public.automation_receipts.action_index",
+        "n|col|public.automation_receipts.action_index",
+        "e|col|public.automation_receipts.action_index"
+      ],
+      "reads": ["n|tbl|public.automation_receipts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"action_index\"]"
+    }
+  ]
+}

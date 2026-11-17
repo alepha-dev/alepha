@@ -1,196 +1,77 @@
 import { useI18n } from "alepha/react/i18n";
 
+import { AutomationGraph } from "../../../../../api/schemas/AutomationGraph.ts";
 import type { AutomationResource } from "../../../../../api/schemas/automationResourceSchema.ts";
-import { AutomationRuleChannels } from "../../../../../api/schemas/AutomationRuleChannels.ts";
-import { AutomationTemplateTokens } from "../../../../../api/schemas/AutomationTemplateTokens.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
-import { useAutomationOptionLabels } from "./useAutomationOptions.ts";
 
 export interface AutomationRuleSummaryProps {
   rule: AutomationResource;
 }
 
 /**
- * A rule read aloud: when it runs, the condition it checks and what it does,
- * with members and folios named rather than printed as ids.
+ * An automation's graph as a read-only list of its nodes, in walk order
+ * (#Q3805): what each one is and what it is wired to. The canvas replaces
+ * it (#Q3810).
  */
 const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
-  const { tr, l } = useI18n<I18n, "en">();
+  const { tr } = useI18n<I18n, "en">();
   const labels = useAutomationLabels();
   const rule = props.rule.rule;
-  const tokens = new AutomationTemplateTokens();
-  const literal = (value: unknown) =>
-    typeof value === "string" && tokens.whole(value) === undefined
-      ? value
-      : undefined;
-  const members = useAutomationOptionLabels(
-    "member",
-    (rule?.actions ?? []).flatMap((action) =>
-      action.kind === "notify" && literal(action.recipient)
-        ? [action.recipient!]
-        : [],
-    ),
-  );
-  const folios = useAutomationOptionLabels(
-    "folio",
-    (rule?.actions ?? []).flatMap((action) =>
-      action.kind === "appendFolio" && literal(action.folio)
-        ? [action.folio]
-        : [],
-    ),
-  );
-  const hosts = useAutomationOptionLabels(
-    "host",
-    rule?.trigger.kind === "event" &&
-      rule.trigger.host &&
-      literal(rule.trigger.host)
-      ? [rule.trigger.host]
-      : [],
-  );
-  const monitors = useAutomationOptionLabels(
-    "monitor",
-    rule?.trigger.kind === "event" &&
-      rule.trigger.monitor &&
-      literal(rule.trigger.monitor)
-      ? [rule.trigger.monitor]
-      : [],
-  );
-  /**
-   * A bound value names its variable; a literal one its label when known.
-   */
-  const named = (value: unknown, names?: Map<string, string>) => {
-    if (typeof value === "number" || typeof value === "boolean")
-      return String(value);
-    if (Array.isArray(value)) return value.join(", ");
-    if (typeof value !== "string") return "";
-    const key = tokens.whole(value);
-    if (key !== undefined)
-      return tr("automation.summary.variable", { args: [key] });
-    return names?.get(value) ?? value;
+  if (!rule) return null;
+  const graphs = new AutomationGraph();
+  const kinds: Record<string, string> = {
+    source: tr("automation.node.source"),
+    read: tr("automation.node.read"),
+    condition: tr("automation.node.condition"),
+    action: tr("automation.node.action"),
+    transform: tr("automation.node.transform"),
   };
-  const channel = (value: string) =>
-    tokens.whole(value) !== undefined
-      ? named(value)
-      : tr(`automation.channel.${value}`, { default: value });
-  const operators: Record<string, string> = {
-    eq: "=",
-    ne: "≠",
-    lt: "<",
-    lte: "≤",
-    gt: ">",
-    gte: "≥",
-    delta: tr("automation.summary.dropsBy"),
-    crossesAbove: tr("automation.summary.crossesAbove"),
-  };
-  if (!rule)
-    return (
-      <p className="text-muted-foreground text-sm">
-        {props.rule.redactionReason || tr("automation.redacted")}
-      </p>
-    );
   return (
-    <div className="bg-card rounded-lg border">
-      <dl className="grid grid-cols-[minmax(6rem,auto)_1fr] gap-x-6 gap-y-3 p-4 text-sm">
-        <dt className="text-muted-foreground">
-          {tr("automation.summary.when")}
-        </dt>
-        <dd>
-          {labels.trigger(rule)}
-          {rule.trigger.kind === "event" && rule.trigger.host && (
-            <span className="text-muted-foreground">
-              {" "}
-              {tr("automation.summary.forApp", {
-                args: [named(rule.trigger.host, hosts)],
-              })}
-            </span>
-          )}
-          {rule.trigger.kind === "event" && rule.trigger.monitor && (
-            <span className="text-muted-foreground">
-              {" "}
-              {tr("automation.summary.forApp", {
-                args: [named(rule.trigger.monitor, monitors)],
-              })}
-            </span>
-          )}
-          {rule.trigger.kind === "event" && rule.trigger.app && (
-            <span className="text-muted-foreground">
-              {" "}
-              {tr("automation.summary.forApp", {
-                args: [named(rule.trigger.app)],
-              })}
-            </span>
-          )}
-          {rule.select && Object.keys(rule.select.filters).length > 0 && (
-            <span className="text-muted-foreground block text-xs">
-              {Object.entries(rule.select.filters)
-                .map(([key, value]) => `${key}: ${named(value)}`)
-                .join(", ")}
-            </span>
-          )}
-        </dd>
-        {rule.guard && (
-          <>
-            <dt className="text-muted-foreground">
-              {tr("automation.summary.onlyIf")}
-            </dt>
-            <dd className="font-mono text-xs leading-5">
-              {rule.guard.field} {operators[rule.guard.operator]}{" "}
-              {named(rule.guard.value)}
-            </dd>
-          </>
-        )}
-        <dt className="text-muted-foreground">
-          {tr("automation.summary.then")}
-        </dt>
-        <dd>
-          <ol className="flex flex-col gap-1.5">
-            {rule.actions.map((action, index) => (
-              <li key={index} className="break-words">
-                {action.kind === "notify"
-                  ? tr("automation.summary.notify", {
-                      args: [
-                        action.audience
-                          ? tr("automation.audience.roster")
-                          : named(action.recipient, members),
-                        AutomationRuleChannels.of(action)
-                          .map((name) => channel(name))
-                          .join(", "),
-                      ],
-                    })
-                  : action.kind === "appendFolio"
-                    ? tr("automation.summary.appendFolio", {
-                        args: [named(action.folio, folios)],
-                      })
-                    : action.kind === "createQuest"
-                      ? tr("automation.summary.createQuest", {
-                          args: [action.title],
-                        })
-                      : action.kind === "assignRelease"
-                        ? tr("automation.summary.assignRelease", {
-                            args: [named(action.release)],
-                          })
-                        : tr("automation.summary.addTag", {
-                            args: [action.tag],
-                          })}
-              </li>
-            ))}
-          </ol>
-        </dd>
-        <dt className="text-muted-foreground">
-          {tr("automation.column.author")}
-        </dt>
-        <dd>{props.rule.authorName || props.rule.authorUserId}</dd>
-        {props.rule.nextRunAt && props.rule.enabled && (
-          <>
-            <dt className="text-muted-foreground">
-              {tr("automation.summary.nextRun")}
-            </dt>
-            <dd>{l(props.rule.nextRunAt, { date: "lll" })}</dd>
-          </>
-        )}
-      </dl>
-    </div>
+    <ol
+      className="flex flex-col gap-2 text-sm"
+      data-testid="automation-graph-nodes"
+    >
+      {graphs.order(rule).map((id) => {
+        const node = graphs.node(rule, id)!;
+        const next = graphs
+          .outgoing(rule, id)
+          .map((edge) =>
+            edge.port === "out" ? edge.to : `${edge.port}: ${edge.to}`,
+          );
+        return (
+          <li key={id} className="rounded-md border p-3 break-words">
+            <p>
+              <span className="text-muted-foreground">{kinds[node.kind]}</span>{" "}
+              <span className="font-medium">
+                {node.kind === "source"
+                  ? labels.source(node)
+                  : node.kind === "condition"
+                    ? `${String(node.config.field)} ${String(node.config.operator)} ${String(node.config.value)}`
+                    : node.type}
+              </span>{" "}
+              <code className="text-muted-foreground text-xs">{id}</code>
+              {node.kind === "source" && node.enabled === false && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  ({tr("automation.state.disabled")})
+                </span>
+              )}
+            </p>
+            {graphs.channels(node).length > 0 && (
+              <p className="text-muted-foreground text-xs">
+                {graphs.channels(node).join(", ")}
+              </p>
+            )}
+            {next.length > 0 && (
+              <p className="text-muted-foreground text-xs">
+                → {next.join(", ")}
+              </p>
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 };
 

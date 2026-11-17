@@ -191,10 +191,15 @@ describe("Preset setup, explicit bindings and project pickers", () => {
         preset.key === "coverage-regression" ||
         preset.key === "error-crossing"
       ) {
-        expect(made.rule?.guard?.value).toBe(`{{${bindings.threshold.key}}}`);
-        expect(JSON.stringify(made.rule?.actions)).toContain(
-          `{{${bindings.threshold.key}}}`,
-        );
+        expect(
+          made.rule?.nodes.find((node) => node.kind === "condition")?.config
+            .value,
+        ).toBe(`{{${bindings.threshold.key}}}`);
+        expect(
+          JSON.stringify(
+            made.rule?.nodes.filter((node) => node.kind === "action"),
+          ),
+        ).toContain(`{{${bindings.threshold.key}}}`);
       }
     }
   });

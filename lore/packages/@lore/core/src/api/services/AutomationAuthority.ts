@@ -2,8 +2,8 @@ import { $inject } from "alepha";
 import { DbEntityNotFoundError, DbError } from "alepha/orm";
 import { ConflictError, ForbiddenError, isHttpError } from "alepha/server";
 
+import type { AutomationAction } from "../schemas/automationActionSchema.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
-import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
@@ -40,7 +40,7 @@ export class AutomationAuthority {
      */
     effect?: {
       node: string;
-      action: AutomationRule["actions"][number];
+      action: AutomationAction;
       source?: string;
     };
   }) {
@@ -91,10 +91,7 @@ export class AutomationAuthority {
       this.variables.assertApproved(rule, variables);
       if (input.effect) {
         // The effect names its action node (#Q3804).
-        const node = this.graphs.node(
-          AutomationGraph.of(rule.rule),
-          input.effect.node,
-        );
+        const node = this.graphs.node(rule.rule, input.effect.node);
         if (node?.kind !== "action" || node.type !== input.effect.action.kind)
           throw new ForbiddenError(
             "Effect does not match the claimed rule action",

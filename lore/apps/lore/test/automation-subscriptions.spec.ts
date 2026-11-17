@@ -89,8 +89,10 @@ describe("Automation subscriptions (#Q3576)", () => {
       enabled: true,
       subscription: true,
       authorUserId: user.id,
-      rule: { actions: [{ recipient: user.id, channels: ["email"] }] },
     });
+    expect(
+      rules[0].rule.nodes.find((node) => node.id === "action-1")?.config,
+    ).toMatchObject({ recipient: user.id, channels: ["email"] });
 
     // A reload asks the server again: the state is not the client's.
     expect(await get()).toEqual(on);
@@ -135,7 +137,10 @@ describe("Automation subscriptions (#Q3576)", () => {
       rules
         .map(
           (rule) =>
-            (rule.rule.actions[0] as { channels: string[] }).channels[0],
+            (
+              rule.rule.nodes.find((node) => node.id === "action-1")!
+                .config as { channels: string[] }
+            ).channels[0],
         )
         .sort(),
     ).toEqual(["email", "inbox"]);
@@ -257,8 +262,10 @@ describe("Automation subscriptions (#Q3576)", () => {
         subscription: true,
         health: "active",
         requiresApproval: false,
-        rule: { actions: [{ recipient: reader.id }] },
       });
+      expect(
+        rule.rule.nodes.find((node) => node.id === "action-1")?.config,
+      ).toMatchObject({ recipient: reader.id });
 
       // Its own rule, kept as the toggle made it: editing asks for
       // automation:write like any rule.

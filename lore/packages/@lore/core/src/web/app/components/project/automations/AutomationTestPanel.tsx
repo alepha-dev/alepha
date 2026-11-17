@@ -31,11 +31,11 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
   const api = useClient<AutomationController>();
   const { tr, l } = useI18n<I18n, "en">();
   const [report, setReport] = useState<AutomationEvaluationReport>();
-  const event = props.rule.rule?.trigger.kind === "event";
-  const sourceKind =
-    props.rule.rule?.trigger.kind === "event"
-      ? props.rule.rule.trigger.event.split(".")[0]
-      : "quest";
+  // The first source's event (#Q3805); choosing the source comes with
+  // #Q3807.
+  const origin = props.rule.rule?.nodes.find((node) => node.kind === "source");
+  const event = !!origin && origin.type !== "schedule";
+  const sourceKind = event ? origin!.type.split(".")[0] : "quest";
   const subjects = useAutomationOptions(
     (sourceKind === "deploy"
       ? "deployment"

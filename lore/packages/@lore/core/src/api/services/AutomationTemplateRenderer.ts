@@ -3,7 +3,7 @@ import { BadRequestError } from "alepha/server";
 
 import { NotificationHtmlEscaper } from "../notifications/NotificationHtmlEscaper.ts";
 import { automationActionSchema } from "../schemas/automationActionSchema.ts";
-import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
+import type { AutomationAction } from "../schemas/automationActionSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
@@ -22,7 +22,7 @@ export class AutomationTemplateRenderer {
   protected readonly html = $inject(NotificationHtmlEscaper);
 
   public render(
-    action: AutomationRule["actions"][number],
+    action: AutomationAction,
     context: AutomationRenderContext,
     variables: AutomationRunSnapshot["variables"],
     target: AutomationRenderTarget = "text",
@@ -164,8 +164,8 @@ export type AutomationRenderTarget = "text" | "html" | "markdown" | "discord";
 export type AutomationRenderedAction =
   | {
       suppressed: true;
-      action: AutomationRule["actions"][number];
-      raw: AutomationRule["actions"][number];
+      action: AutomationAction;
+      raw: AutomationAction;
       reason: "empty_collection";
       lang: "en";
       bytes: number;
@@ -174,8 +174,8 @@ export type AutomationRenderedAction =
     }
   | {
       suppressed: false;
-      action: AutomationRule["actions"][number];
-      raw: AutomationRule["actions"][number];
+      action: AutomationAction;
+      raw: AutomationAction;
       lang: "en";
       bytes: number;
       truncated: boolean;

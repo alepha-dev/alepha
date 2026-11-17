@@ -2,7 +2,11 @@ import {
   AutomationPresetRegistry,
   type AutomationPresetValues,
 } from "@lore/core/api";
-import { AutomationVocabulary, type AutomationRule } from "@lore/core/schemas";
+import {
+  AutomationVocabulary,
+  AutomationGraphBuilder,
+  type AutomationGraphValue,
+} from "@lore/core/schemas";
 import { $inject } from "alepha";
 
 /**
@@ -16,6 +20,7 @@ import { $inject } from "alepha";
  * subscription scope binds it).
  */
 export class UptimeAutomationPresets {
+  protected readonly builder = new AutomationGraphBuilder();
   protected readonly presets = $inject(AutomationPresetRegistry);
   protected readonly vocabulary = new AutomationVocabulary();
   constructor() {
@@ -85,18 +90,13 @@ export class UptimeAutomationPresets {
     event: "monitor.down" | "monitor.up",
     message: { title: string; text: string },
     values: AutomationPresetValues,
-  ): AutomationRule {
-    return {
-      version: 1,
-      trigger: {
-        kind: "event",
-        event,
-        ...(values.monitor !== undefined && values.monitor !== ""
+  ): AutomationGraphValue {
+    return this.builder.line({
+      source: event,
+      filters:
+        values.monitor !== undefined && values.monitor !== ""
           ? { monitor: String(values.monitor) }
-          : {}),
-      },
-      select: null,
-      guard: null,
+          : {},
       actions: [
         {
           kind: "notify",
@@ -109,6 +109,6 @@ export class UptimeAutomationPresets {
           text: message.text,
         },
       ],
-    };
+    });
   }
 }

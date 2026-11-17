@@ -1,5 +1,6 @@
 import { AlephaLoreCli } from "@alepha/lore/cli";
 import { ProjectController } from "@lore/core/api";
+import { automationLine } from "@lore/core/testing";
 import {
   EpicController,
   FeedbackCommentController,
@@ -474,22 +475,23 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     const { owner, lore } = await ownProject();
     await lore.fs.writeFile(
       "/work/rule.json",
-      JSON.stringify({
-        version: 1,
-        trigger: { kind: "event", event: "feedback.created" },
-        select: null,
-        guard: null,
-        actions: [
-          {
-            kind: "notify",
-            recipient: owner.id,
-            channel: "inbox",
-            title: "New feedback",
-            text: "Something came in",
-            category: "automations",
-          },
-        ],
-      }),
+      JSON.stringify(
+        automationLine({
+          trigger: { kind: "event", event: "feedback.created" },
+          select: null,
+          guard: null,
+          actions: [
+            {
+              kind: "notify",
+              recipient: owner.id,
+              channel: "inbox",
+              title: "New feedback",
+              text: "Something came in",
+              category: "automations",
+            },
+          ],
+        }),
+      ),
     );
 
     expect(await lore.json("automation list")).toHaveProperty("items", []);

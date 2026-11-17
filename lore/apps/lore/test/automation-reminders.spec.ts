@@ -170,8 +170,12 @@ describe("Quest reminders through an automation (#Q3626)", () => {
     const rule = await createRule();
     const stored = await persistence.rules.getById(rule.id);
     expect(stored.rule).not.toHaveProperty("compatibility");
-    expect(stored.rule.select?.key).toBe("quests.remindersDue");
-    expect(stored.rule.actions[0]).toMatchObject({
+    expect(stored.rule.nodes.find((node) => node.kind === "read")?.type).toBe(
+      "quests.remindersDue",
+    );
+    expect(
+      stored.rule.nodes.find((node) => node.id === "action-1")?.config,
+    ).toMatchObject({
       recipient: "{{assignee_id}}",
       channels: ["email"],
     });
@@ -248,7 +252,9 @@ describe("Quest reminders through an automation (#Q3626)", () => {
       )
     ).data;
     expect(
-      (await persistence.rules.getById(rule.id)).rule.actions[0],
+      (await persistence.rules.getById(rule.id)).rule.nodes.find(
+        (node) => node.id === "action-1",
+      )?.config,
     ).toMatchObject({
       channels: [channel.id],
     });

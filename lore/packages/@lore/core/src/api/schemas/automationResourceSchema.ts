@@ -1,6 +1,6 @@
 import { type Infer, z } from "alepha";
 
-import { automationRuleSchema } from "./automationRuleSchema.ts";
+import { automationGraphSchema } from "./automationGraphSchema.ts";
 import { automationRunStatusSchema } from "./automationRunStatusSchema.ts";
 
 /**
@@ -19,7 +19,7 @@ export const automationResourceSchema = z
     requiresApproval: z.boolean(),
     reason: z.string().max(1024).optional(),
     revision: z.integer().nonnegative(),
-    rule: automationRuleSchema.nullable(),
+    rule: automationGraphSchema.nullable(),
     redacted: z.boolean(),
     redactionReason: z.string().max(255).optional(),
     presetKey: z.string().max(128).optional(),

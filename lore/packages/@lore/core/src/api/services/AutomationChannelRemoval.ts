@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
 
-import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationHealth } from "./AutomationHealth.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
@@ -18,6 +18,7 @@ export class AutomationChannelRemoval {
   protected readonly database = $inject(AutomationDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly health = $inject(AutomationHealth);
+  protected readonly graphs = $inject(AutomationGraph);
 
   /**
    * Remove `channelId` from every rule of the project. Returns how many
@@ -32,25 +33,27 @@ export class AutomationChannelRemoval {
       let changed = 0;
       for (const rule of rules) {
         if (
-          !rule.rule.actions.some((action) =>
-            AutomationRuleChannels.of(action).includes(channelId),
+          !rule.rule.nodes.some((node) =>
+            this.graphs.channels(node).includes(channelId),
           )
         )
           continue;
         await this.persistence.rules.updateById(rule.id, {
           rule: {
             ...rule.rule,
-            actions: rule.rule.actions.map((action) =>
-              action.kind === "notify"
-                ? {
-                    ...action,
-                    channel: undefined,
-                    channels: AutomationRuleChannels.of(action).filter(
-                      (id) => id !== channelId,
-                    ),
-                  }
-                : action,
-            ),
+            nodes: rule.rule.nodes.map((node) => {
+              if (!this.graphs.channels(node).length) return node;
+              const { channel: _channel, ...config } = node.config;
+              return {
+                ...node,
+                config: {
+                  ...config,
+                  channels: this.graphs
+                    .channels(node)
+                    .filter((id) => id !== channelId),
+                },
+              };
+            }),
           },
         });
         changed++;

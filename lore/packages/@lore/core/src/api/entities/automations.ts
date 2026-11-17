@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-import { automationRuleSchema } from "../schemas/automationRuleSchema.ts";
+import { automationGraphSchema } from "../schemas/automationGraphSchema.ts";
 import { automationSafeFieldsSchema } from "../schemas/automationSafeFieldsSchema.ts";
 import { automationVariableApprovalSchema } from "../schemas/automationVariableApprovalSchema.ts";
 import { projects } from "./projects.ts";
@@ -38,7 +38,7 @@ export const automations = $entity({
     reason: z.string().max(1024).optional(),
     healthCheckedAt: db.default(z.int64().nonnegative(), 0),
     requiresApproval: db.default(z.boolean(), false),
-    rule: automationRuleSchema,
+    rule: automationGraphSchema,
     // Configuration revision is independent of scheduler/baseline writes.
     // The ORM version protects all row updates, including runtime bookkeeping.
     revision: db.default(z.integer().nonnegative(), 0),

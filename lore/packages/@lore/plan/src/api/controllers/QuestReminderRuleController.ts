@@ -34,8 +34,10 @@ export class QuestReminderRuleController {
         columns: ["id", "enabled", "rule"],
         limit: 500,
       });
-      const rule = rules.find(
-        (row) => row.rule.select?.key === "quests.remindersDue",
+      const rule = rules.find((row) =>
+        row.rule.nodes.some(
+          (node) => node.kind === "read" && node.type === "quests.remindersDue",
+        ),
       );
       return rule
         ? { exists: true, enabled: rule.enabled, automationId: rule.id }

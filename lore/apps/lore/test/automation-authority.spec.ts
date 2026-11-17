@@ -4,8 +4,11 @@ import {
   AutomationDependencies,
   AutomationPersistence,
 } from "@lore/core/api";
-import type { AutomationRule } from "@lore/core/schemas";
-import { createPresetRanks } from "@lore/core/testing";
+import {
+  type AutomationLineSpec,
+  automationLine,
+  createPresetRanks,
+} from "@lore/core/testing";
 import { Alepha, AlephaError } from "alepha";
 import { apiKeyEntity } from "alepha/api/keys";
 import { RankService } from "alepha/api/organizations";
@@ -46,8 +49,7 @@ describe("Current automation authority", () => {
   let project: Awaited<ReturnType<typeof createTestProject>>;
   let user: UserAccountToken;
   let repositories: AuthorityRepositories;
-  const config = (): AutomationRule => ({
-    version: 1,
+  const config = (): AutomationLineSpec => ({
     trigger: { kind: "event", event: "feedback.created" },
     select: null,
     guard: null,
@@ -69,7 +71,7 @@ describe("Current automation authority", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Rule",
-      rule: config(),
+      rule: automationLine(config()),
       ...extra,
     });
     return persistence.rules.updateById(row.id, { enabled: true });
@@ -364,7 +366,7 @@ describe("Current automation authority", () => {
           projectId: project.id,
           authorUserId: user.id,
           title: "Unsafe",
-          rule: unsafe,
+          rule: automationLine(unsafe),
         }),
       ).rejects.toThrow();
     }

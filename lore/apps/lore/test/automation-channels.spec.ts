@@ -6,7 +6,7 @@ import {
   AutomationPersistence,
   AutomationService,
 } from "@lore/core/api";
-import { createPresetRanks } from "@lore/core/testing";
+import { automationLine, createPresetRanks } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { JobQueueProvider } from "alepha/api/jobs";
 import {
@@ -198,8 +198,7 @@ describe("Automation channels (#Q3614)", () => {
       .create(project.id, user, {
         title: "Releases",
         enabled: true,
-        rule: {
-          version: 1,
+        rule: automationLine({
           trigger: { kind: "event", event: "release.published" },
           select: null,
           guard: null,
@@ -213,22 +212,21 @@ describe("Automation channels (#Q3614)", () => {
               text: "t",
             },
           ],
-        },
+        }),
       });
     // Named directly: the Discord adapter (#Q3615) is what would offer it.
+    const graph = (await persistence.rules.getById(rule.id)).rule;
     await persistence.rules.updateById(rule.id, {
       rule: {
-        ...(await persistence.rules.getById(rule.id)).rule,
-        actions: [
-          {
-            kind: "notify",
-            recipient: user.id,
-            channels: ["inbox", alerts.id],
-            category: "releases",
-            title: "t",
-            text: "t",
-          },
-        ],
+        ...graph,
+        nodes: graph.nodes.map((node) =>
+          node.id === "action-1"
+            ? {
+                ...node,
+                config: { ...node.config, channels: ["inbox", alerts.id] },
+              }
+            : node,
+        ),
       },
     });
     await api.deleteAutomationChannel.fetch(
@@ -236,7 +234,9 @@ describe("Automation channels (#Q3614)", () => {
       { user },
     );
     const stored = await persistence.rules.getById(rule.id);
-    expect(stored.rule.actions[0]).toMatchObject({ channels: ["inbox"] });
+    expect(
+      stored.rule.nodes.find((node) => node.id === "action-1"),
+    ).toMatchObject({ type: "notify", config: { channels: ["inbox"] } });
     expect(stored).toMatchObject({ enabled: true, health: "active" });
     expect(await persistence.channels.count({ projectId: project.id })).toBe(0);
   });

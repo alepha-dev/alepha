@@ -2,7 +2,11 @@ import {
   AutomationPresetRegistry,
   type AutomationPresetValues,
 } from "@lore/core/api";
-import { AutomationVocabulary, type AutomationRule } from "@lore/core/schemas";
+import {
+  AutomationVocabulary,
+  AutomationGraphBuilder,
+  type AutomationGraphValue,
+} from "@lore/core/schemas";
 import { $inject } from "alepha";
 
 /**
@@ -21,6 +25,7 @@ type HostAlertEvent =
  * host (that host's bell binds it); unset, every host of the project.
  */
 export class HostAutomationPresets {
+  protected readonly builder = new AutomationGraphBuilder();
   protected readonly presets = $inject(AutomationPresetRegistry);
   protected readonly vocabulary = new AutomationVocabulary();
   constructor() {
@@ -110,18 +115,13 @@ export class HostAutomationPresets {
     event: HostAlertEvent,
     message: { title: string; text: string },
     values: AutomationPresetValues,
-  ): AutomationRule {
-    return {
-      version: 1,
-      trigger: {
-        kind: "event",
-        event,
-        ...(values.host !== undefined && values.host !== ""
+  ): AutomationGraphValue {
+    return this.builder.line({
+      source: event,
+      filters:
+        values.host !== undefined && values.host !== ""
           ? { host: String(values.host) }
-          : {}),
-      },
-      select: null,
-      guard: null,
+          : {},
       actions: [
         {
           kind: "notify",
@@ -134,6 +134,6 @@ export class HostAutomationPresets {
           text: message.text,
         },
       ],
-    };
+    });
   }
 }

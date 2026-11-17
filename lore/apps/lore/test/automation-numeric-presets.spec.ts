@@ -11,7 +11,11 @@ import {
   AutomationSchedules,
   AutomationWorker,
 } from "@lore/core/api";
-import type { AutomationResource } from "@lore/core/schemas";
+import type {
+  AutomationGraphNode,
+  AutomationGraphValue,
+  AutomationResource,
+} from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
 import { projectErrors, qualityRuns, sigils } from "@lore/ship/schemas";
 import { Alepha, AlephaError } from "alepha";
@@ -38,6 +42,19 @@ class NumericPresetRows {
   public readonly sigils = $repository(sigils);
   public readonly jobs = $repository(jobExecutionEntity);
 }
+
+const node = (graph: AutomationGraphValue, id: string) =>
+  graph.nodes.find((item) => item.id === id);
+const withNode = (
+  graph: AutomationGraphValue,
+  id: string,
+  patch: Partial<AutomationGraphNode>,
+): AutomationGraphValue => ({
+  ...graph,
+  nodes: graph.nodes.map((item) =>
+    item.id === id ? { ...item, ...patch } : item,
+  ),
+});
 
 describe("Numeric automation presets through actual registered metrics", () => {
   let alepha: Alepha;
@@ -179,9 +196,13 @@ describe("Numeric automation presets through actual registered metrics", () => {
     const rule = await arm("coverage-regression", { threshold: 5 });
     const next = (await persistence.rules.getById(rule.id)).nextRunAt!;
     expect(next.slice(11)).toBe("00:10:00.000Z");
-    expect(rule.rule).toMatchObject({
-      select: { key: "quality.coverage.lines", filters: { branch: "main" } },
-      guard: { operator: "delta", value: 5 },
+    expect(node(rule.rule!, "read")).toMatchObject({
+      type: "quality.coverage.lines",
+      config: { filters: { branch: "main" } },
+    });
+    expect(node(rule.rule!, "condition")?.config).toMatchObject({
+      operator: "delta",
+      value: 5,
     });
     // Whole UTC days off the instant: a zoned subtract crosses a DST change
     // an hour short, which lands on the evening of the day before.
@@ -350,7 +371,9 @@ describe("Numeric automation presets through actual registered metrics", () => {
     expect(await notificationCount()).toBe(2);
     rule = await service.update(project.id, rule.id, user, rule.revision, {
       title: rule.title,
-      rule: { ...rule.rule!, guard: { ...rule.rule!.guard!, value: 3 } },
+      rule: withNode(rule.rule!, "condition", {
+        config: { ...node(rule.rule!, "condition")!.config, value: 3 },
+      }),
     });
     expect((await persistence.rules.getById(rule.id)).baseline).toBeUndefined();
     await time.travel([5, "minutes"]);
@@ -361,14 +384,10 @@ describe("Numeric automation presets through actual registered metrics", () => {
     expect(await notificationCount()).toBe(3);
     rule = await service.update(project.id, rule.id, user, rule.revision, {
       title: rule.title,
-      rule: {
-        ...rule.rule!,
-        select: {
-          kind: "scalar",
-          key: "openErrors",
-          filters: { status: "all" },
-        },
-      },
+      rule: withNode(rule.rule!, "read", {
+        type: "openErrors",
+        config: { filters: { status: "all" } },
+      }),
     });
     expect((await persistence.rules.getById(rule.id)).baseline).toBeUndefined();
     await time.travel([5, "minutes"]);

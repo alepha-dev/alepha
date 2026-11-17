@@ -14,8 +14,11 @@ import {
   AutomationEvents,
   AutomationWorker,
 } from "@lore/core/api";
-import type { AutomationRule } from "@lore/core/schemas";
-import { createPresetRanks } from "@lore/core/testing";
+import {
+  type AutomationLineSpec,
+  automationLine,
+  createPresetRanks,
+} from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { audits } from "alepha/api/audits";
 import { ApiKeyService, apiKeyEntity } from "alepha/api/keys";
@@ -85,8 +88,7 @@ describe("Shared automation application service and HTTP actions", () => {
   let time: DateTimeProvider;
   let project: Awaited<ReturnType<typeof createTestProject>>;
   let user: UserAccountToken;
-  const ast = (): AutomationRule => ({
-    version: 1,
+  const ast = (): AutomationLineSpec => ({
     trigger: { kind: "event", event: "quest.completed" },
     select: null,
     guard: null,
@@ -104,7 +106,10 @@ describe("Shared automation application service and HTTP actions", () => {
   const create = async (rule = ast(), actor = user) =>
     (
       await api.createAutomation.fetch(
-        { params: { projectId: project.id }, body: { title: "Rule", rule } },
+        {
+          params: { projectId: project.id },
+          body: { title: "Rule", rule: automationLine(rule) },
+        },
         { user: actor },
       )
     ).data;
@@ -198,7 +203,7 @@ describe("Shared automation application service and HTTP actions", () => {
       canDisable: true,
       canDelete: true,
       redacted: false,
-      rule: ast(),
+      rule: automationLine(ast()),
     });
     expect(rule).not.toHaveProperty("authorKeyId");
     expect(rule).not.toHaveProperty("authorSessionId");
@@ -206,7 +211,11 @@ describe("Shared automation application service and HTTP actions", () => {
       await api.updateAutomation.fetch(
         {
           params: { projectId: project.id, id: rule.id },
-          body: { title: "Changed", rule: ast(), expectedRevision: 0 },
+          body: {
+            title: "Changed",
+            rule: automationLine(ast()),
+            expectedRevision: 0,
+          },
         },
         { user },
       )
@@ -278,7 +287,11 @@ describe("Shared automation application service and HTTP actions", () => {
     await api.updateAutomation.fetch(
       {
         params: { projectId: project.id, id: rule.id },
-        body: { title: "First", rule: ast(), expectedRevision: 0 },
+        body: {
+          title: "First",
+          rule: automationLine(ast()),
+          expectedRevision: 0,
+        },
       },
       { user },
     );
@@ -286,7 +299,11 @@ describe("Shared automation application service and HTTP actions", () => {
       api.updateAutomation.fetch(
         {
           params: { projectId: project.id, id: rule.id },
-          body: { title: "Overwrite", rule: ast(), expectedRevision: 0 },
+          body: {
+            title: "Overwrite",
+            rule: automationLine(ast()),
+            expectedRevision: 0,
+          },
         },
         { user },
       ),
@@ -306,7 +323,7 @@ describe("Shared automation application service and HTTP actions", () => {
           params: { projectId: project.id },
           body: {
             title: "Injected",
-            rule: ast(),
+            rule: automationLine(ast()),
             authorUserId: crypto.randomUUID(),
           } as never,
         },
@@ -335,7 +352,11 @@ describe("Shared automation application service and HTTP actions", () => {
       api.updateAutomation.fetch(
         {
           params: { projectId: project.id, id: rule.id },
-          body: { title: "Take over", rule: ast(), expectedRevision: 1 },
+          body: {
+            title: "Take over",
+            rule: automationLine(ast()),
+            expectedRevision: 1,
+          },
         },
         { user: actor },
       ),
@@ -628,8 +649,7 @@ describe("Shared automation application service and HTTP actions", () => {
   it("preserves scalar baselines for prose/cadence edits and resets changed predicates", async ({
     expect,
   }) => {
-    const rule: AutomationRule = {
-      version: 1,
+    const rule: AutomationLineSpec = {
       trigger: { kind: "schedule", cron: "*/5 * * * *" },
       select: { kind: "scalar", key: "openErrors", filters: {} },
       guard: { field: "value", operator: "crossesAbove", value: 5 },
@@ -643,10 +663,10 @@ describe("Shared automation application service and HTTP actions", () => {
       ...rule,
       trigger: { kind: "schedule" as const, cron: "10 * * * *" },
       actions: [{ ...rule.actions[0], title: "Reworded" }],
-    } as AutomationRule;
+    } as AutomationLineSpec;
     await service.update(project.id, created.id, user, 0, {
       title: "Prose",
-      rule: prose,
+      rule: automationLine(prose),
     });
     expect((await persistence.rules.getById(created.id)).baseline).toEqual({
       signature: "kept",
@@ -654,14 +674,17 @@ describe("Shared automation application service and HTTP actions", () => {
     });
     await service.update(project.id, created.id, user, 1, {
       title: "Threshold",
-      rule: { ...prose, guard: { ...rule.guard!, value: 6 } },
+      rule: automationLine({
+        ...prose,
+        guard: { ...rule.guard!, value: 6 },
+      }),
     });
     expect(
       (await persistence.rules.getById(created.id)).baseline,
     ).toBeUndefined();
     await service.update(project.id, created.id, user, 2, {
       title: "Back",
-      rule,
+      rule: automationLine(rule),
     });
     expect(
       (await persistence.rules.getById(created.id)).baseline,
@@ -677,7 +700,7 @@ describe("Shared automation application service and HTTP actions", () => {
     const before = await persistence.runs.count({ automationId: created.id });
     await service.update(project.id, created.id, user, 0, {
       title: "Repaired",
-      rule: ast(),
+      rule: automationLine(ast()),
     });
     expect(await persistence.rules.getById(created.id)).toMatchObject({
       health: "active",
@@ -688,7 +711,7 @@ describe("Shared automation application service and HTTP actions", () => {
     );
     await service.update(project.id, created.id, user, 1, {
       title: "No health change",
-      rule: ast(),
+      rule: automationLine(ast()),
     });
     expect(await persistence.runs.count({ automationId: created.id })).toBe(
       before + 1,
@@ -757,7 +780,7 @@ describe("Shared automation application service and HTTP actions", () => {
       await api.createAutomation.fetch(
         {
           params: { projectId: project.id },
-          body: { title: "Scoped", rule: ast() },
+          body: { title: "Scoped", rule: automationLine(ast()) },
         },
         { request: { headers } },
       )
@@ -772,12 +795,12 @@ describe("Shared automation application service and HTTP actions", () => {
           params: { projectId: project.id },
           body: {
             title: "Too broad",
-            rule: {
+            rule: automationLine({
               ...ast(),
               actions: [
                 { kind: "appendFolio", folio: folio.id, text: "No grant" },
               ],
-            },
+            }),
           },
         },
         { request: { headers } },
@@ -812,7 +835,7 @@ describe("Shared automation application service and HTTP actions", () => {
       await api.createAutomation.fetch(
         {
           params: { projectId: project.id },
-          body: { title: "OAuth", rule: ast() },
+          body: { title: "OAuth", rule: automationLine(ast()) },
         },
         {
           request: {
@@ -878,12 +901,15 @@ describe("Shared automation application service and HTTP actions", () => {
       });
     };
     await expect(
-      service.create(project.id, user, { title: "Stale approval", rule }),
+      service.create(project.id, user, {
+        title: "Stale approval",
+        rule: automationLine(rule),
+      }),
     ).rejects.toThrow("configuration changed");
     expect(await persistence.rules.count({ projectId: project.id })).toBe(0);
     const created = await service.create(project.id, user, {
       title: "Current approval",
-      rule,
+      rule: automationLine(rule),
     });
     alepha.inject(ApiConfigurationRace).before = async () => {
       await variables.set(project.id, actor, "message", {
@@ -920,7 +946,7 @@ describe("Shared automation application service and HTTP actions", () => {
     alepha.inject(ApiConfigurationRace).before = async () => {
       await service.create(project.id, user, {
         title: "Concurrent consumer",
-        rule,
+        rule: automationLine(rule),
       });
     };
     await expect(
@@ -964,7 +990,7 @@ describe("Shared automation application service and HTTP actions", () => {
       await expect(
         service.create(project.id, user, {
           title: "Must roll back",
-          rule: ast(),
+          rule: automationLine(ast()),
         }),
       ).rejects.toThrow("Atomic automation batch failed");
       expect(await persistence.rules.count()).toBe(1);

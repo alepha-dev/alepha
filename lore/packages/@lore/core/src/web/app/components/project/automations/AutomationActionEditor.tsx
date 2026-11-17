@@ -4,17 +4,16 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
 import { automationActionKindFormSchema } from "../../../../../api/schemas/automationActionKindFormSchema.ts";
+import type { AutomationAction } from "../../../../../api/schemas/automationActionSchema.ts";
 import { automationAudienceFormSchema } from "../../../../../api/schemas/automationAudienceFormSchema.ts";
 import type { AutomationDescriptor } from "../../../../../api/schemas/automationDescriptorSchema.ts";
-import { AutomationRuleChannels } from "../../../../../api/schemas/AutomationRuleChannels.ts";
-import type { AutomationRule } from "../../../../../api/schemas/automationRuleSchema.ts";
 import type { AutomationSlotKind } from "../../../../../api/schemas/automationSlotKindSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import AutomationValueControl from "./AutomationValueControl.tsx";
 
 export interface AutomationActionEditorProps {
   index: number;
-  action: AutomationRule["actions"][number];
+  action: AutomationAction;
   entries: AutomationDescriptor[];
   bindings: { key: string; kind: AutomationSlotKind }[];
   channels: string[];
@@ -37,7 +36,11 @@ export interface AutomationActionEditorProps {
 }
 const AutomationActionEditor = (props: AutomationActionEditorProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const chosen = AutomationRuleChannels.of(props.action);
+  const chosen =
+    props.action.kind !== "notify"
+      ? []
+      : (props.action.channels ??
+        (props.action.channel !== undefined ? [props.action.channel] : []));
   const onlyRooms =
     chosen.length > 0 &&
     chosen.every((value) => props.rooms?.includes(value) === true);

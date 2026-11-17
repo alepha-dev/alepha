@@ -49,7 +49,7 @@ export class AutomationEventDispatch {
     const listening = rules.map((rule) => ({
       rule,
       sources: this.graphs
-        .sources(AutomationGraph.of(rule.rule))
+        .sources(rule.rule)
         .filter((node) => node.type === event.name && node.enabled !== false),
     }));
     const filterKeys = [

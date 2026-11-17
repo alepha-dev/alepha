@@ -6,7 +6,7 @@ import {
   AutomationService,
   AutomationWorker,
 } from "@lore/core/api";
-import { createPresetRanks } from "@lore/core/testing";
+import { automationLine, createPresetRanks } from "@lore/core/testing";
 import { ReleaseController } from "@lore/plan/api";
 import { DeployRegistry } from "@lore/ship/api";
 import { appInstances, deployments } from "@lore/ship/schemas";
@@ -152,8 +152,7 @@ describe("Discord delivery (#Q3615)", () => {
     await alepha.inject(AutomationService).create(project.id, user, {
       title: "Failed deploys to Discord",
       enabled: true,
-      rule: {
-        version: 1,
+      rule: automationLine({
         trigger: { kind: "event", event: "deploy.failed", app: "site" },
         select: null,
         guard: null,
@@ -166,7 +165,7 @@ describe("Discord delivery (#Q3615)", () => {
             text: "@everyone {{app}} failed: {{reason}}",
           },
         ],
-      },
+      }),
     });
 
     const deployment = await rows.deployments.create({
@@ -226,8 +225,7 @@ describe("Discord delivery (#Q3615)", () => {
     await alepha.inject(AutomationService).create(project.id, user, {
       title: "Long",
       enabled: true,
-      rule: {
-        version: 1,
+      rule: automationLine({
         trigger: { kind: "event", event: "release.published" },
         select: null,
         guard: null,
@@ -240,7 +238,7 @@ describe("Discord delivery (#Q3615)", () => {
             text: "x".repeat(3000),
           },
         ],
-      },
+      }),
     });
     await publish("1.0.0");
     await step();

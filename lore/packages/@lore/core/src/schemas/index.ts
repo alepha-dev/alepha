@@ -135,10 +135,6 @@ export { projectDashboardCards } from "../api/entities/projectDashboardCards.ts"
 export { projectDashboards } from "../api/entities/projectDashboards.ts";
 
 export {
-  type AutomationRule,
-  automationRuleSchema,
-} from "../api/schemas/automationRuleSchema.ts";
-export {
   AutomationVocabulary,
   type AutomationNodeKind,
 } from "../api/schemas/AutomationVocabulary.ts";
@@ -150,6 +146,14 @@ export {
   type AutomationGraphStep,
   type AutomationGraphOutput,
 } from "../api/schemas/AutomationGraph.ts";
+export {
+  AutomationGraphBuilder,
+  type AutomationLine,
+} from "../api/schemas/AutomationGraphBuilder.ts";
+export {
+  type AutomationAction,
+  automationActionSchema,
+} from "../api/schemas/automationActionSchema.ts";
 export {
   automationGraphSchema,
   type AutomationGraphValue,
@@ -167,7 +171,6 @@ export {
   type AutomationGraphPosition,
 } from "../api/schemas/automationGraphPositionSchema.ts";
 export { automationGraphNodeIdSchema } from "../api/schemas/automationGraphNodeIdSchema.ts";
-export { AutomationRuleChannels } from "../api/schemas/AutomationRuleChannels.ts";
 export { AutomationTemplateTokens } from "../api/schemas/AutomationTemplateTokens.ts";
 export {
   AutomationTemplateBindings,
@@ -228,6 +231,10 @@ export {
   automationSubscriptionSetBodySchema,
   type AutomationSubscriptionSetBody,
 } from "../api/schemas/automationSubscriptionSetBodySchema.ts";
+export {
+  automationCatalogNodeTypeSchema,
+  type AutomationCatalogNodeType,
+} from "../api/schemas/automationCatalogNodeTypeSchema.ts";
 export { automationCatalogPresetSchema } from "../api/schemas/automationCatalogPresetSchema.ts";
 
 export { AutomationPresetForms } from "../api/schemas/AutomationPresetForms.ts";

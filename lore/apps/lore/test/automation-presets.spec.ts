@@ -157,9 +157,14 @@ describe("Stock automation presets", () => {
     expect(inbox).toMatchObject({
       enabled: false,
       presetKey: "feedback-created",
-      rule: { actions: [{ recipient: user.id, channels: ["inbox"] }] },
     });
-    expect(email.rule!.actions[0]).toMatchObject({ channels: ["email"] });
+    const action = (rule: typeof inbox) =>
+      rule.rule!.nodes.find((node) => node.id === "action-1")?.config;
+    expect(action(inbox)).toMatchObject({
+      recipient: user.id,
+      channels: ["inbox"],
+    });
+    expect(action(email)).toMatchObject({ channels: ["email"] });
     expect(await persistence.variables.count({ projectId: project.id })).toBe(
       0,
     );
@@ -188,7 +193,7 @@ describe("Stock automation presets", () => {
     const outsider = await entities.users.create({ roles: ["user"] });
     await expect(
       create("feedback-created", { recipient: outsider.id }),
-    ).rejects.toThrow("actions[0].recipient");
+    ).rejects.toThrow("action-1[inbox].recipient");
     await entities.capabilities.updateMany(
       { projectId: { eq: project.id }, key: { eq: "plan" } },
       { options: {} },
@@ -315,11 +320,11 @@ describe("Stock automation presets", () => {
         title: "Truncated refusal",
         rule: {
           ...rule.rule!,
-          actions: [
-            { ...rule.rule!.actions[0], text: "{{url}}" } as NonNullable<
-              typeof rule.rule
-            >["actions"][number],
-          ],
+          nodes: rule.rule!.nodes.map((node) =>
+            node.id === "action-1"
+              ? { ...node, config: { ...node.config, text: "{{url}}" } }
+              : node,
+          ),
         },
       });
     const beforePreview = await persistence.runs.count();

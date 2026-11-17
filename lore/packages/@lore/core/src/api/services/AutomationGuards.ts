@@ -8,7 +8,6 @@ import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationGraphNode } from "../schemas/automationGraphNodeSchema.ts";
 import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import type { AutomationGuard } from "../schemas/automationGuardSchema.ts";
-import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
 import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
@@ -36,14 +35,18 @@ export class AutomationGuards {
   protected readonly time = $inject(DateTimeProvider);
   protected readonly graphs = $inject(AutomationGraph);
 
+  /**
+   * Whether what a crossing compares changed: the graph's reads and
+   * conditions. A change resets the baseline.
+   */
   public configurationChanged(
-    before: AutomationRule,
-    after: AutomationRule,
+    before: AutomationGraphValue,
+    after: AutomationGraphValue,
   ): Promise<boolean> {
-    const predicate = (rule: AutomationRule) => ({
-      select: rule.select,
-      guard: rule.guard,
-    });
+    const predicate = (rule: AutomationGraphValue) =>
+      rule.nodes
+        .filter((node) => node.kind === "read" || node.kind === "condition")
+        .map(({ id, type, config }) => ({ id, type, config }));
     return Promise.all([
       this.identity.hash(predicate(before)),
       this.identity.hash(predicate(after)),
@@ -53,7 +56,7 @@ export class AutomationGuards {
   public async evaluate(
     input: AutomationGuardInput,
   ): Promise<AutomationGuardResult> {
-    const graph = input.graph ?? AutomationGraph.of(input.rule.rule);
+    const graph = input.graph ?? input.rule.rule;
     // Absent, the graph's one condition, as the v1 guard was.
     const node = input.node ?? this.graphs.conditions(graph)[0];
     if (!node) return { matched: true, noData: false };

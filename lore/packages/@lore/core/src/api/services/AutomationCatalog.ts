@@ -3,16 +3,17 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
 import type { AutomationVariable } from "../entities/automationVariables.ts";
+import type { AutomationAction } from "../schemas/automationActionSchema.ts";
+import type { AutomationCatalogNodeType } from "../schemas/automationCatalogNodeTypeSchema.ts";
 import { automationCatalogSchema } from "../schemas/automationCatalogSchema.ts";
 import { AutomationCron } from "../schemas/AutomationCron.ts";
 import type { AutomationDescriptor } from "../schemas/automationDescriptorSchema.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
-import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
-import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import {
-  automationRuleSchema,
-  type AutomationRule,
-} from "../schemas/automationRuleSchema.ts";
+  automationGraphSchema,
+  type AutomationGraphValue,
+} from "../schemas/automationGraphSchema.ts";
+import type { AutomationGuard } from "../schemas/automationGuardSchema.ts";
 import type { AutomationSlotKind } from "../schemas/automationSlotKindSchema.ts";
 import type { AutomationSlot } from "../schemas/automationSlotSchema.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
@@ -86,6 +87,64 @@ export class AutomationCatalog {
     ];
   }
 
+  /**
+   * Every node type a graph may hold (#Q3805): each vocabulary entry as the
+   * node it is (an event a source, a selection or a metric a read, an
+   * action an action), and the two built-in types, `schedule` and
+   * `compare`. Availability is the caller's, added by {@link describe}.
+   */
+  public nodeTypes(): Omit<
+    AutomationCatalogNodeType,
+    "available" | "reason"
+  >[] {
+    return [
+      {
+        type: AutomationVocabulary.SCHEDULE,
+        kind: "source",
+        ports: ["out"],
+        fields: {},
+        slots: { cron: { kind: "text", required: true, max: 128 } },
+      },
+      {
+        type: AutomationVocabulary.COMPARE,
+        kind: "condition",
+        ports: ["true", "false"],
+        fields: {},
+        slots: {
+          field: { kind: "text", required: true, bindable: false },
+          operator: {
+            kind: "text",
+            required: true,
+            bindable: false,
+            values: [
+              "eq",
+              "ne",
+              "lt",
+              "lte",
+              "gt",
+              "gte",
+              "delta",
+              "crossesAbove",
+            ],
+          },
+          value: { kind: "text", required: true },
+        },
+      },
+      ...this.entries().map((entry) => ({
+        type: entry.key,
+        kind: (entry.type === "event"
+          ? "source"
+          : entry.type === "action"
+            ? "action"
+            : "read") as AutomationCatalogNodeType["kind"],
+        ports: ["out" as const],
+        fields: entry.fields,
+        slots: entry.slots,
+        ...(entry.outputs ? { outputs: entry.outputs } : {}),
+      })),
+    ];
+  }
+
   public async describe(projectId: number, user: UserAccountToken) {
     const context = await this.access.authorize(
       projectId,
@@ -105,6 +164,11 @@ export class AutomationCatalog {
         const reason = this.unavailable(context, entry);
         return { ...entry, available: !reason, ...(reason ? { reason } : {}) };
       }),
+      nodeTypes: this.nodeTypes().map((type) => {
+        const entry = this.entries().find((item) => item.key === type.type);
+        const reason = entry ? this.unavailable(context, entry) : undefined;
+        return { ...type, available: !reason, ...(reason ? { reason } : {}) };
+      }),
       presets: this.presets.all().map((preset) => {
         const reason = this.unavailable(context, {
           ...preset,
@@ -120,6 +184,9 @@ export class AutomationCatalog {
       limits: {
         selectedRows: 50,
         actions: 5,
+        sources: AutomationGraph.MAX_SOURCES,
+        nodes: AutomationGraph.MAX_NODES,
+        actionsPerSource: AutomationGraph.MAX_ACTIONS_PER_SOURCE,
         deliveries: 100,
         renderedBytes: 16_384,
         snapshotBytes: 65_536,
@@ -131,13 +198,20 @@ export class AutomationCatalog {
 
   public async validate(
     ...args: Parameters<AutomationCatalog["compile"]>
-  ): Promise<AutomationRule> {
+  ): Promise<AutomationGraphValue> {
     return (await this.compile(...args)).rule;
   }
+
+  /**
+   * A graph as its author may store it (#Q3805): what `AutomationGraph`
+   * checks (structure, the fields each node may use, the runner's bounds),
+   * then each node's own checks: its entry is available to this author in
+   * this project (sources included), its slots resolve, its targets exist.
+   */
   public async compile(
     projectId: number,
     user: UserAccountToken,
-    input: AutomationRule,
+    input: AutomationGraphValue,
     overrides: Map<string, AutomationVariable> = new Map(),
     subject?: AutomationAccessSubject,
     /**
@@ -150,10 +224,13 @@ export class AutomationCatalog {
   ) {
     const targets = options.targets !== false;
     let scheduleCron: string | undefined;
-    const parsedRule = automationRuleSchema.safeParse(input);
+    const parsedRule = automationGraphSchema.safeParse(input);
     if (!parsedRule.success)
       throw new BadRequestError(`rule: ${parsedRule.error.message}`);
     const rule = parsedRule.data;
+    const entries = this.entries();
+    const [issue] = this.graphs.check(rule, entries);
+    if (issue) throw new BadRequestError(this.graphs.message(issue));
     const context = await this.access.authorize(
       projectId,
       user,
@@ -182,203 +259,146 @@ export class AutomationCatalog {
         )
       ).map((row) => [row.key, row]),
     );
-    let source: AutomationDescriptor;
-    if (rule.trigger.kind === "event") {
-      source = this.require(
-        context,
-        rule.trigger.event,
-        "event",
-        "trigger.event",
-      );
-      const values = {
-        ...(rule.trigger.app !== undefined ? { app: rule.trigger.app } : {}),
-        ...(rule.trigger.monitor !== undefined
-          ? { monitor: rule.trigger.monitor }
-          : {}),
-        ...(rule.trigger.host !== undefined ? { host: rule.trigger.host } : {}),
-      };
-      await this.slots(projectId, source, values, {}, variables, "trigger");
-    } else {
-      const resolvedCron = await this.value(
-        projectId,
-        { kind: "text", required: true, max: 128 },
-        rule.trigger.cron,
-        {},
-        variables,
-        "trigger.cron",
-        false,
-        targets,
-      );
-      if (resolvedCron.complete) {
-        try {
-          scheduleCron = this.cron.validate(resolvedCron.value as string);
-        } catch (error) {
-          throw new BadRequestError(
-            error instanceof Error ? error.message : "Invalid UTC cron",
-          );
-        }
-      }
-      source = this.require(context, rule.select!.key, undefined, "select.key");
-      if (source.type !== "selection" && source.type !== "metric")
-        throw new BadRequestError(
-          "select.key must name a registered selection or scalar metric",
-        );
-      if (source.result !== rule.select!.kind)
-        throw new BadRequestError(
-          `select.kind must be '${source.result}' for '${source.key}'`,
-        );
-      const resolved = await this.slots(
-        projectId,
-        source,
-        rule.select!.filters,
-        {},
-        variables,
-        "select.filters",
-        false,
-        targets,
-      );
-      if (source.type === "metric" && resolved.complete) {
-        const schema = this.metrics.get(source.key).filters;
-        if (schema.type !== "object")
-          throw new BadRequestError(
-            `Metric '${source.key}' has no object filter contract`,
-          );
-        this.parseFilters(schema as ZObject, resolved.values);
-      }
-    }
-    if (rule.guard) {
-      const kind = Object.hasOwn(source.fields, rule.guard.field)
-        ? source.fields[rule.guard.field]
-        : undefined;
-      if (!kind)
-        throw new BadRequestError(
-          `guard.field '${rule.guard.field}' is not exposed by '${source.key}'`,
-        );
-      if (
-        kind !== "number" &&
-        rule.guard.operator !== "eq" &&
-        rule.guard.operator !== "ne"
-      )
-        throw new BadRequestError(
-          `guard.operator '${rule.guard.operator}' requires a numeric field`,
-        );
-      if (
-        ["delta", "crossesAbove"].includes(rule.guard.operator) &&
-        (rule.trigger.kind !== "schedule" ||
-          source.result !== "scalar" ||
-          !source.operators.includes(rule.guard.operator))
-      )
-        throw new BadRequestError(
-          `guard.operator '${rule.guard.operator}' is not supported by this scalar selection`,
-        );
-      if (rule.guard.operator === "delta" && rule.guard.field !== "value")
-        throw new BadRequestError(
-          "Delta compares the scalar value with its previous closed day",
-        );
-      await this.value(
-        projectId,
-        {
-          kind,
-          required: true,
-          ...(rule.guard.operator === "delta" ? { min: 0 } : {}),
-        },
-        rule.guard.value,
-        source.fields,
-        variables,
-        "guard.value",
-        false,
-        targets,
-      );
-    }
-    // Validated one channel at a time (#Q3613): the vocabulary's notify takes
-    // one `channel`, and a run holds the expanded rule.
     const addressable = new Map(
       (await this.channels.all(projectId)).map((entry) => [
         entry.key,
         entry.addressable,
       ]),
     );
-    // An action also sees the outputs of the actions before it (#Q3814):
-    // in a v1 rule, a straight line, every earlier one.
-    const line = AutomationGraph.fromV1(rule);
-    const entries = this.entries();
-    const origin = rule.actions.flatMap((action, position) =>
-      action.kind === "notify" && action.channels
-        ? action.channels.map(() => position)
-        : [position],
-    );
-    for (const [index, action] of AutomationRuleChannels.expand(
-      rule,
-    ).actions.entries()) {
-      const fields = {
-        ...source.fields,
-        ...this.graphs.outputs(line, `action-${origin[index] + 1}`, entries),
-      };
-      if (
-        action.kind === "notify" &&
-        !action.recipient &&
-        !action.audience &&
-        addressable.get(String(action.channel)) !== false
-      )
-        throw new BadRequestError(
-          `actions[${index}].recipient: an addressable channel needs a member`,
-        );
-      const descriptor = this.require(
-        context,
-        action.kind,
-        "action",
-        `actions[${index}].kind`,
-      );
-      const { kind, ...values } = action;
-      const resolved = await this.slots(
-        projectId,
-        descriptor,
-        values,
-        Object.fromEntries(
-          Object.entries(fields).map(([name, field]) => [
-            name,
-            typeof field === "string" ? field : field.kind,
-          ]),
-        ),
-        variables,
-        `actions[${index}]`,
-        false,
-        targets,
-      );
-      if (kind === "notify") {
-        if (
-          action.audience &&
-          (rule.trigger.kind !== "event" ||
-            rule.trigger.event !== "release.published" ||
-            action.category !== "releases")
-        )
-          throw new BadRequestError(
-            "Project audience requires release.published and the releases category",
-          );
-        if (targets && typeof resolved.values.recipient === "string") {
-          const reason = await this.coreReferences.recipientReason(
+    for (const node of rule.nodes) {
+      const path = node.id;
+      if (node.kind === "source") {
+        if (node.type === AutomationVocabulary.SCHEDULE) {
+          const resolvedCron = await this.value(
             projectId,
-            resolved.values.recipient,
-            source,
+            { kind: "text", required: true, max: 128 },
+            node.config.cron,
+            {},
+            variables,
+            `${path}.cron`,
+            false,
+            targets,
           );
-          if (reason)
-            throw new BadRequestError(`actions[${index}].recipient: ${reason}`);
+          if (resolvedCron.complete) {
+            try {
+              scheduleCron = this.cron.validate(resolvedCron.value as string);
+            } catch (error) {
+              throw new BadRequestError(
+                error instanceof Error ? error.message : "Invalid UTC cron",
+              );
+            }
+          }
+          continue;
         }
+        const source = this.require(context, node.type, "event", path);
+        await this.slots(
+          projectId,
+          source,
+          node.config,
+          {},
+          variables,
+          path,
+          false,
+          targets,
+        );
+        continue;
+      }
+      if (node.kind === "read") {
+        const source = this.require(context, node.type, undefined, path);
+        if (source.type !== "selection" && source.type !== "metric")
+          throw new BadRequestError(
+            `${path}: '${node.type}' is not a registered selection or scalar metric`,
+          );
+        const resolved = await this.slots(
+          projectId,
+          source,
+          node.config.filters as Record<string, unknown>,
+          {},
+          variables,
+          `${path}.filters`,
+          false,
+          targets,
+        );
+        if (source.type === "metric" && resolved.complete) {
+          const schema = this.metrics.get(source.key).filters;
+          if (schema.type !== "object")
+            throw new BadRequestError(
+              `Metric '${source.key}' has no object filter contract`,
+            );
+          this.parseFilters(schema as ZObject, resolved.values);
+        }
+        continue;
+      }
+      const fields = this.graphs.names(rule, node.id, entries);
+      if (node.kind === "condition") {
+        const guard = node.config as AutomationGuard;
+        await this.value(
+          projectId,
+          {
+            kind: fields[guard.field],
+            required: true,
+            ...(guard.operator === "delta" ? { min: 0 } : {}),
+          },
+          guard.value,
+          fields,
+          variables,
+          `${path}.value`,
+          false,
+          targets,
+        );
+        continue;
+      }
+      const sources = this.graphs
+        .reachingSources(rule, node.id)
+        .map((id) => this.graphs.sourceKey(rule, id))
+        .map((key) => entries.find((entry) => entry.key === key)!);
+      const descriptor = this.require(context, node.type, "action", path);
+      // Validated one channel at a time (#Q3613): the vocabulary's notify
+      // takes one `channel`, and a run takes one step per channel.
+      const config = node.config as { channel?: string; channels?: string[] };
+      const steps: Array<{ node: string; channel?: string }> =
+        node.type !== "notify"
+          ? [{ node: node.id }]
+          : (config.channels ?? (config.channel ? [config.channel] : [])).map(
+              (channel) => ({ node: node.id, channel }),
+            );
+      for (const step of steps) {
+        const action = this.graphs.action(rule, step);
+        const label = step.channel ? `${path}[${step.channel}]` : path;
         if (
-          action.category === "releases" &&
-          (rule.trigger.kind !== "event" ||
-            rule.trigger.event !== "release.published")
+          action.kind === "notify" &&
+          !action.recipient &&
+          !action.audience &&
+          addressable.get(String(action.channel)) !== false
         )
           throw new BadRequestError(
-            "actions: the releases category requires release.published",
+            `${label}.recipient: an addressable channel needs a member`,
           );
+        const { kind: _kind, ...values } = action;
+        const resolved = await this.slots(
+          projectId,
+          descriptor,
+          values,
+          fields,
+          variables,
+          label,
+          false,
+          targets,
+        );
         if (
-          action.category === "reminders" &&
-          rule.select?.key !== "quests.remindersDue"
+          targets &&
+          action.kind === "notify" &&
+          typeof resolved.values.recipient === "string"
         )
-          throw new BadRequestError(
-            "actions: the reminders category requires quests.remindersDue",
-          );
+          for (const source of sources) {
+            const reason = await this.coreReferences.recipientReason(
+              projectId,
+              resolved.values.recipient,
+              source,
+            );
+            if (reason)
+              throw new BadRequestError(`${label}.recipient: ${reason}`);
+          }
       }
     }
     return { rule, scheduleCron };
@@ -387,7 +407,7 @@ export class AutomationCatalog {
   public async sourceAvailability(
     projectId: number,
     user: UserAccountToken,
-    rule: AutomationRule | AutomationGraphValue,
+    rule: AutomationGraphValue,
   ): Promise<string | undefined> {
     const context = await this.access.authorize(
       projectId,
@@ -404,10 +424,10 @@ export class AutomationCatalog {
    */
   public sourceAvailabilityIn(
     context: AutomationCatalogContext,
-    rule: AutomationRule | AutomationGraphValue,
+    rule: AutomationGraphValue,
   ): string | undefined {
     // Every source of the graph; a run's subgraph has one (#Q3804).
-    const graph = AutomationGraph.of(rule);
+    const graph = rule;
     for (const source of this.graphs.sources(graph)) {
       const key = this.graphs.sourceKey(graph, source.id);
       const entry = this.entries().find((item) => item.key === key);
@@ -424,10 +444,10 @@ export class AutomationCatalog {
    * destinations and domain IDs immediately before an adapter is invoked.
    */
   public async validateEffect(
-    rule: AutomationRule | AutomationGraphValue,
+    rule: AutomationGraphValue,
     projectId: number,
     user: UserAccountToken,
-    action: AutomationRule["actions"][number],
+    action: AutomationAction,
     subject?: AutomationAccessSubject,
     sourceNode?: string,
     /**
@@ -438,7 +458,7 @@ export class AutomationCatalog {
      */
     targets = true,
   ) {
-    const graph = AutomationGraph.of(rule);
+    const graph = rule;
     const origin = this.graphs.source(graph, sourceNode);
     const context = await this.access.authorize(
       projectId,

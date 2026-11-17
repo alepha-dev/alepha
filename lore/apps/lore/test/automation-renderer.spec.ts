@@ -6,7 +6,7 @@ import {
   AutomationTemplateBindings,
   AutomationTemplateTokens,
   type AutomationTemplateVariable,
-  type AutomationRule,
+  type AutomationAction,
 } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -22,7 +22,7 @@ describe("Automation template boundary", () => {
   let builder: AutomationContextBuilder;
   let renderer: AutomationTemplateRenderer;
   let project: Awaited<ReturnType<typeof createTestProject>>;
-  const notify = (text: string): AutomationRule["actions"][number] => ({
+  const notify = (text: string): AutomationAction => ({
     kind: "notify",
     recipient: project.createdBy,
     channel: "inbox",

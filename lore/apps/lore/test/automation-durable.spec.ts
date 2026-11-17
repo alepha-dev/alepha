@@ -11,7 +11,7 @@ import {
   AutomationWorker,
   AutomationWorkerJobs,
 } from "@lore/core/api";
-import type { AutomationRule } from "@lore/core/schemas";
+import { type AutomationLineSpec, automationLine } from "@lore/core/testing";
 import { $hook, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { DatabaseProvider, sql } from "alepha/orm";
@@ -52,8 +52,7 @@ describe("Durable automation dispatch", () => {
   let claims: AutomationClaims;
   let evidence: AutomationRunEvidence;
   let provider: DatabaseProvider;
-  const config = (): AutomationRule => ({
-    version: 1,
+  const config = (): AutomationLineSpec => ({
     trigger: { kind: "event", event: "feedback.created" },
     select: null,
     guard: null,
@@ -73,7 +72,7 @@ describe("Durable automation dispatch", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Rule",
-      rule: config(),
+      rule: automationLine(config()),
     });
     return persistence.rules.updateById(row.id, { enabled: true });
   };
@@ -334,7 +333,7 @@ describe("Durable automation dispatch", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Scheduled",
-      rule: configuration,
+      rule: automationLine(configuration),
       nextRunAt: "2026-10-15T10:00:00.000Z",
     });
     const rule = await persistence.rules.updateById(created.id, {

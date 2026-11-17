@@ -52,7 +52,7 @@ export class AutomationNotificationSender extends NotificationSenderService {
         .rules.getById(variables.automationId);
       // The source its run started at (#Q3804): a node may be reached
       // from several.
-      const graph = AutomationGraph.of(stored.rule);
+      const graph = stored.rule;
       const graphs = new AutomationGraph();
       const sourceKey = graphs.sourceKey(
         graph,
