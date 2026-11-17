@@ -138,7 +138,33 @@ export {
   type AutomationRule,
   automationRuleSchema,
 } from "../api/schemas/automationRuleSchema.ts";
-export { AutomationVocabulary } from "../api/schemas/AutomationVocabulary.ts";
+export {
+  AutomationVocabulary,
+  type AutomationNodeKind,
+} from "../api/schemas/AutomationVocabulary.ts";
+export {
+  AutomationGraph,
+  type AutomationGraphIssue,
+  type AutomationGraphNameInput,
+  type AutomationGraphNameProvider,
+} from "../api/schemas/AutomationGraph.ts";
+export {
+  automationGraphSchema,
+  type AutomationGraphValue,
+} from "../api/schemas/automationGraphSchema.ts";
+export {
+  automationGraphNodeSchema,
+  type AutomationGraphNode,
+} from "../api/schemas/automationGraphNodeSchema.ts";
+export {
+  automationGraphEdgeSchema,
+  type AutomationGraphEdge,
+} from "../api/schemas/automationGraphEdgeSchema.ts";
+export {
+  automationGraphPositionSchema,
+  type AutomationGraphPosition,
+} from "../api/schemas/automationGraphPositionSchema.ts";
+export { automationGraphNodeIdSchema } from "../api/schemas/automationGraphNodeIdSchema.ts";
 export { AutomationRuleChannels } from "../api/schemas/AutomationRuleChannels.ts";
 export { AutomationTemplateTokens } from "../api/schemas/AutomationTemplateTokens.ts";
 export {

@@ -14,6 +14,32 @@ export class AutomationVocabulary {
     "prototype",
     "constructor",
   ] as const;
+  /**
+   * The kinds of node an automation graph holds (#Q3803): a `source` starts
+   * a run, a `read` selects what a schedule reads, a `condition` sends the
+   * run down its `true` or `false` port, an `action` has an effect.
+   * `transform` is reserved for steps that do not exist yet (an AI
+   * transform, a sandbox run): the graph schema refuses it until a node type
+   * registers it, so adding one needs no new storage.
+   */
+  public static readonly KINDS = [
+    "source",
+    "read",
+    "condition",
+    "action",
+    "transform",
+  ] as const;
+  public static readonly RESERVED_KINDS: readonly AutomationNodeKind[] = [
+    "transform",
+  ];
+  /**
+   * The built-in source type that runs on a UTC cron rather than an event.
+   */
+  public static readonly SCHEDULE = "schedule";
+  /**
+   * The built-in condition type: one comparison of a field, the v1 guard.
+   */
+  public static readonly COMPARE = "compare";
   protected readonly entries = new Map<string, AutomationDescriptor>();
   protected readonly common: Record<string, AutomationSlotKind> = {
     project: "text",
@@ -319,3 +345,5 @@ export class AutomationVocabulary {
     });
   }
 }
+
+export type AutomationNodeKind = (typeof AutomationVocabulary.KINDS)[number];
