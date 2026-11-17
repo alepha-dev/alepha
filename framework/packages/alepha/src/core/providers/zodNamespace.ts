@@ -1,6 +1,6 @@
 import type { z as zod } from "zod";
 import * as mini from "zod/mini";
-import { config as zodConfig } from "zod/v4/core";
+import { globalRegistry, config as zodConfig } from "zod/v4/core";
 import enLocale from "zod/v4/locales/en.js";
 
 import { ZodJitObjectFactory } from "../helpers/zodJitObject.ts";
@@ -128,25 +128,21 @@ export const Z_LIMITS = {
 
 /**
  * Attach metadata + default without changing the schema's inferred type.
+ *
+ * Only for a schema this module built in the same call: the metadata is
+ * recorded in zod's registry on that very node, where `.meta()` would build
+ * a copy and leave the original behind. A cold start builds thousands of
+ * these schemas, and each copy costs as much as the schema itself. A schema
+ * that came from a caller goes through `.meta()`, which never touches it.
  */
 const meta = <T extends zod.ZodType>(schema: T, options?: SchemaOptions): T => {
   if (!options) return schema;
   const { default: def, ...rest } = options;
   let s: any = schema;
   if (def !== undefined) s = s.default(def as never);
-  if (Object.keys(rest).length > 0) s = s.meta(rest as Record<string, unknown>);
+  if (Object.keys(rest).length > 0)
+    globalRegistry.add(s, { ...globalRegistry.get(s), ...rest });
   return s as T;
-};
-
-const applyString = (base: zod.ZodString, o?: StringOptions): zod.ZodString => {
-  let s = base;
-  if (o?.minLength != null) s = s.min(o.minLength);
-  if (o?.maxLength != null) s = s.max(o.maxLength);
-  if (o?.pattern)
-    s = s.regex(
-      typeof o.pattern === "string" ? new RegExp(o.pattern) : o.pattern,
-    );
-  return s;
 };
 
 /**
@@ -344,10 +340,22 @@ const textSchema = (options: TextOptions = {}) => {
   // both `.max()` calls stack and zod keeps the smaller — silently capping
   // a `maxLength: 1_000_000` field at 255).
   const max = maxLength ?? Z_LIMITS[size] ?? Z_LIMITS.regular;
-  let s: any = (mini.string() as any).max(max);
-  if (trim) s = s.trim();
-  if (lowercase) s = s.toLowerCase();
-  return meta(applyString(s, rest), {
+  // One `.check()` for all of them: each chained call would build a copy.
+  // They run in this order, and the order is part of the contract: the cap
+  // applies to the raw value, before trimming.
+  const checks: any[] = [mini.maxLength(max)];
+  if (trim) checks.push(mini.trim());
+  if (lowercase) checks.push(mini.toLowerCase());
+  if (rest.minLength != null) checks.push(mini.minLength(rest.minLength));
+  if (rest.pattern)
+    checks.push(
+      mini.regex(
+        typeof rest.pattern === "string"
+          ? new RegExp(rest.pattern)
+          : rest.pattern,
+      ),
+    );
+  return meta(mini.string().check(...checks) as unknown as zod.ZodString, {
     ...rest,
     maxLength: max,
     "~options": { trim, lowercase },
@@ -419,11 +427,12 @@ const dateSchema = () => strFmt(mini.iso.date(), "date");
  */
 const dateRangeSchema = () =>
   meta(
-    (mini.array(strFmt(mini.iso.date(), "date")) as any)
-      .length(2)
-      .refine((value: string[]) => (value[1] ?? "") >= (value[0] ?? ""), {
+    mini.array(strFmt(mini.iso.date(), "date")).check(
+      mini.length(2),
+      mini.refine((value: string[]) => (value[1] ?? "") >= (value[0] ?? ""), {
         message: "The end of a date range cannot be before its start.",
       }),
+    ) as any,
     { format: "date-range" },
   ) as unknown as zod.ZodArray<zod.ZodString>;
 
@@ -433,7 +442,7 @@ const timeSchema = () => strFmt(mini.iso.time(), "time");
  * bigint as a validated string (no codec).
  */
 const bigintSchema = () =>
-  strFmt((mini.string() as any).regex(/^-?\d+$/), "bigint");
+  strFmt(mini.string().check(mini.regex(/^-?\d+$/)), "bigint");
 
 const binarySchema = () => strFmt(mini.string(), "binary");
 
@@ -446,15 +455,23 @@ const bcp47Schema = () => textSchema({ pattern: "^[a-z]{2,3}(?:-[A-Z]{2})?$" });
 const constantCaseSchema = () => textSchema({ pattern: "^[A-Z_-]+$" });
 
 const int32Schema = () =>
-  (mini.int() as any).min(-2147483648).max(2147483647) as ReturnType<
-    typeof zod.int
-  >;
+  mini
+    .int()
+    .check(
+      mini.gte(-2147483648),
+      mini.lte(2147483647),
+    ) as unknown as ReturnType<typeof zod.int>;
 
 const int64Schema = () =>
-  (mini.int() as any)
-    .min(-9007199254740991)
-    .max(9007199254740991)
-    .meta({ format: "int64" }) as ReturnType<typeof zod.int>;
+  meta(
+    mini
+      .int()
+      .check(
+        mini.gte(-9007199254740991),
+        mini.lte(9007199254740991),
+      ) as unknown as ReturnType<typeof zod.int>,
+    { format: "int64" },
+  );
 
 /**
  * A file field. `maxBytes` caps what the transport will accept for it.
@@ -467,7 +484,7 @@ const int64Schema = () =>
  * the reverse refuses everything.
  */
 const fileSchema = (options?: { maxBytes?: number }) =>
-  (mini.any() as any).meta({ format: "binary", ...options }) as zod.ZodAny;
+  meta(mini.any() as unknown as zod.ZodAny, { format: "binary", ...options });
 
 /**
  * The bytes as they arrive, consumed once.
@@ -478,7 +495,7 @@ const fileSchema = (options?: { maxBytes?: number }) =>
  * without knowing what any particular route is for.
  */
 const streamSchema = (options?: { maxBytes?: number }) =>
-  (mini.any() as any).meta({ format: "stream", ...options }) as zod.ZodAny;
+  meta(mini.any() as unknown as zod.ZodAny, { format: "stream", ...options });
 
 const valueLabelSchema = () =>
   mini.object({
