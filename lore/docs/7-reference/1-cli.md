@@ -221,7 +221,6 @@ The others manage the release's own record:
 | `lore releases update`      | Edit an open release.                                                                    | `--tag` (required), `--new-tag`, `--title`, `--description`, `--target-date` (empty clears it) |
 | `lore releases attach`      | Put an epic or a quest in a release. An epic carries its quests.                         | `--tag` (required), `--epic` or `--quest`                                                      |
 | `lore releases detach`      | Take an epic or a quest out. An epic takes the quests that followed it.                  | `--tag` (required), `--epic` or `--quest`                                                      |
-| `lore releases reopen`      | Undo a publication made by mistake. To ship a fix, create the next release instead.      | `--tag` (required)                                                                             |
 | `lore releases set default` | Choose the release that work filed without one lands in. A published release is refused. | `--tag`, or `--clear`                                                                          |
 | `lore releases delete`      | Delete a release. What is in it is detached, never deleted.                              | `--tag`, `--yes` (both required)                                                               |
 

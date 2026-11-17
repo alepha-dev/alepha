@@ -164,7 +164,6 @@ export const LorePlanApi = $module({
     // Turns `@name` in a comment into a message. Injected by the quest and
     // feedback comment controllers.
     MentionNotifier,
-    // The release fan-out. Publish only; reopen notifies nobody.
     FeedbackRateLimiter,
     QuestCsvFormatter,
     QuestService,

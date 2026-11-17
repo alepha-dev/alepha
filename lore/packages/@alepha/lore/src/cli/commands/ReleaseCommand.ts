@@ -686,33 +686,6 @@ export class ReleaseCommand {
     },
   });
 
-  public readonly reopen = $command({
-    name: "reopen",
-    description:
-      "Undo a publication: the date, the frozen changelog and counts go. A fix is a new release instead",
-    flags: z.object({
-      ...ReleaseCommand.PROJECT_FLAG,
-      ...ReleaseCommand.TAG_FLAG,
-      ...LoreOutput.FLAGS,
-    }),
-    handler: async ({ flags, print }) => {
-      const context: LoreRefusalContext = {};
-      await this.refusals.guard(context, async () => {
-        const { release } = await this.byTag(flags.tag, flags.project, context);
-        const reopened = await this.api.reopenRelease({
-          params: { id: release.id },
-        });
-
-        this.render.written(
-          print,
-          flags.output,
-          reopened,
-          `Reopened release ${flags.tag}`,
-        );
-      });
-    },
-  });
-
   public readonly attach = $command({
     name: "attach",
     description:
@@ -876,7 +849,6 @@ export class ReleaseCommand {
       this.get,
       this.create,
       this.update,
-      this.reopen,
       this.attach,
       this.detach,
       this.delete,

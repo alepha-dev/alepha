@@ -267,7 +267,9 @@ describe("Lore domain audits", () => {
     expect(declared?.retentionDays).toBe(730);
   });
 
-  it("records publishing and reopening a release", async ({ expect }) => {
+  it("records publishing a release and moving its default", async ({
+    expect,
+  }) => {
     const user = await aUser();
     const project = await aProject(user);
 
@@ -282,15 +284,18 @@ describe("Lore domain audits", () => {
       { params: { id: release.id }, body: {} },
       { user },
     );
-    await ctx.releaseController.reopenRelease.fetch(
-      { params: { id: release.id } },
-      { user },
-    );
-    // Pointing intake at a release, and taking it away again: from the first
+    // Published releases cannot be the default, so a second release takes
+    // it. Pointing intake at a release, and taking it away again: from the first
     // of those, every quest completed without a release of its own lands
     // here, so who decided it is worth a row.
+    const next = (
+      await ctx.releaseController.createRelease.fetch(
+        { params: { projectId: project.id }, body: { tag: "0.29.0" } },
+        { user },
+      )
+    ).data;
     await ctx.releaseController.setDefaultRelease.fetch(
-      { params: { projectId: project.id }, body: { releaseId: release.id } },
+      { params: { projectId: project.id }, body: { releaseId: next.id } },
       { user },
     );
     await ctx.releaseController.setDefaultRelease.fetch(
@@ -303,9 +308,11 @@ describe("Lore domain audits", () => {
       rows
         .map((row) => row.action as string)
         .sort((a, b) => a.localeCompare(b)),
-    ).toEqual(["create", "default", "publish", "reopen", "undefault"]);
+    ).toEqual(["create", "create", "default", "publish", "undefault"]);
     // The tag, not the id: it is what a release is called everywhere else.
-    expect(rows[0]?.description).toBe("0.28.0");
+    expect(rows.find((row) => row.action === "publish")?.description).toBe(
+      "0.28.0",
+    );
     // Scoped, so the release's own project's Activity page can find it.
     expect(rows[0]?.scopeType).toBe("project");
     expect(rows[0]?.scopeId).toBe(String(project.id));

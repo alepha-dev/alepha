@@ -18,8 +18,7 @@ import { ReleaseAttachmentService } from "./ReleaseAttachmentService.ts";
  * outside `0.29.0` while all ten of its quests were in it, which made the
  * release read 224/234 with ten open quests an hour before it was due to be
  * dispatched. `publishRelease` calls `assertOpen` and no completeness check,
- * then FREEZES the counts - so that release would have been wrong forever,
- * and `release_reopen` the only way back.
+ * then FREEZES the counts - so that release would have been wrong forever.
  *
  * ## The rule: the cascade is a DEFAULT, not an override
  *

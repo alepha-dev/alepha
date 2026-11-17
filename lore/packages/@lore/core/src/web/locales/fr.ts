@@ -1839,11 +1839,6 @@ export default {
   "release.publish.description":
     "Publier $1 fige son journal et ses compteurs d'avancement, et plus aucune épopée ni quête ne pourra y être rattachée. Si $1 est la version par défaut, elle cesse de l'être. C'est irréversible : la rouvrir efface tout ce qu'elle a figé, et ne la remet pas par défaut.",
   "release.publish.confirm": "Publier",
-  "release.reopen.action": "Rouvrir",
-  "release.reopen.title": "Rouvrir cette version ?",
-  "release.reopen.description":
-    "Pour une version publiée par erreur. La rouvrir efface le journal et les compteurs figés, et la version redevient calculée à partir de ce qu'elle contient.",
-  "release.reopen.confirm": "Rouvrir",
   "release.start.tag.placeholder": "0.1.0",
   "release.start.cancel": "Annuler",
   "release.detail.error": "Impossible d'enregistrer la version.",
@@ -1947,8 +1942,7 @@ export default {
   "release.kpi.target.none":
     "Aucune date visée. Ce ne serait de toute façon qu'une estimation : rien ne l'impose et aucun traitement ne la lit.",
   "release.kpi.shipped.label": "Livrée",
-  "release.kpi.shipped.note":
-    "Publiée le $1. La rouvrir est le seul retour en arrière.",
+  "release.kpi.shipped.note": "Publiée le $1. La publication est définitive.",
   "release.kpi.artifacts.label": "Artefacts",
   "release.kpi.artifacts.built": "Construits et conservés pour $1.",
 

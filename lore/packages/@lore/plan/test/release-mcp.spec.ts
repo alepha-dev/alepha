@@ -289,7 +289,7 @@ describe("MCP release tools", () => {
     ).rejects.toThrow(/published/i);
   });
 
-  it("publishes and reopens, and the changelog says which it is", async ({
+  it("publishes for good, and the changelog says it is frozen", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
@@ -319,14 +319,8 @@ describe("MCP release tools", () => {
     );
     expect(frozen.frozen).toBe(true);
 
-    const reopened = await call(user, () =>
-      ctx.tools.release_reopen.execute({ project: project.id, tag: "0.28.0" }),
-    );
-    // The tag and the number survive a reopen, which is why it exists rather
-    // than delete-and-recreate.
-    expect(reopened.releasedAt).toBeUndefined();
-    expect(reopened.tag).toBe("0.28.0");
-    expect(reopened.number).toBe(published.number);
+    // Publishing is final (#Q3836): no tool takes a release back to open.
+    expect(ctx.tools).not.toHaveProperty("release_reopen");
   });
 
   it("deletes without taking its contents with it", async ({ expect }) => {
@@ -467,7 +461,7 @@ describe("MCP release tools", () => {
           tag: "0.28.0",
         }),
       ),
-    ).rejects.toThrow(/published\. Reopen it first\./);
+    ).rejects.toThrow(/it has been published\.$/);
   });
 
   it("names the default in project_context, and in quest_complete's result", async ({

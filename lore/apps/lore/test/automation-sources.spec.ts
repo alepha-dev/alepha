@@ -339,7 +339,7 @@ describe.skipIf(onPostgres)("Automation domain source integration", () => {
     expect((await rows.epics.getById(ready.id)).status).toBe("ready");
     expect(await persistence.events.count({ name: "epic.completed" })).toBe(1);
   });
-  it("freezes publication data and uses a fresh identity after reopening", async ({
+  it("freezes publication data, and a published release publishes once", async ({
     expect,
   }) => {
     const controller = alepha.inject(ReleaseController);
@@ -363,22 +363,19 @@ describe.skipIf(onPostgres)("Automation domain source integration", () => {
     expect(first.payload.fields.changelog).toBe(
       (await rows.releases.getById(release.data.id)).changelog,
     );
-    await controller.reopenRelease.fetch(
-      { params: { id: release.data.id } },
-      { user },
-    );
-    await controller.publishRelease.fetch(
-      {
-        params: { id: release.data.id },
-        body: { title: "Second publication" },
-      },
-      { user },
-    );
+    await expect(
+      controller.publishRelease.fetch(
+        {
+          params: { id: release.data.id },
+          body: { title: "Second publication" },
+        },
+        { user },
+      ),
+    ).rejects.toThrow(/published/i);
     const events = await persistence.events.findMany({
       where: { name: "release.published" },
     });
-    expect(events).toHaveLength(2);
-    expect(new Set(events.map((event) => event.identity)).size).toBe(2);
+    expect(events).toHaveLength(1);
     expect((await persistence.events.getById(first.id)).payload).toEqual(
       first.payload,
     );

@@ -217,9 +217,9 @@ export class LoreAudits {
 
   /**
    * Publishing is one-way and freezes the record, so it is exactly the kind of
-   * thing somebody comes back to. `reopen` is its undo and belongs beside it:
-   * a release that was published, reopened and published again reads as one
-   * event without it.
+   * thing somebody comes back to. `reopen` is no longer written: publishing
+   * is final since #Q3836. It stays listed so the rows written before then
+   * still read as history.
    *
    * `default` / `undefault` are the pair that points the project's intake at
    * a release, or away from it (`ReleaseController.setDefaultRelease`). Worth

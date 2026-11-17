@@ -332,37 +332,6 @@ describe("ReleaseController.getReleaseChangelog", () => {
     expect(result.data.groups[0].quests[0].title).toBe("Original title");
   });
 
-  it("goes back to live on a reopened release", async ({ expect }) => {
-    const user = await createTestUser(ctx);
-    const project = await createTestProject(ctx, user);
-    const release = await aRelease(user, project.id, "0.28.0");
-
-    await ctx.releaseController.publishRelease.fetch(
-      { params: { id: release.id }, body: {} },
-      { user },
-    );
-    await ctx.releaseController.reopenRelease.fetch(
-      { params: { id: release.id } },
-      { user },
-    );
-
-    const late = await completeQuest(ctx, user, project.id, {
-      title: "Added after reopening",
-      area: "orm",
-      priority: "high",
-    });
-    await attach(ctx, late.id, release.id);
-
-    const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: release.id } },
-      { user },
-    );
-
-    // Reopening clears the snapshot, so the changelog is computed again -
-    // otherwise the release would keep a frozen copy nothing agrees with.
-    expect(result.data.groups[0].quests[0].title).toBe("Added after reopening");
-  });
-
   it("returns no groups when nothing attached has shipped", async ({
     expect,
   }) => {

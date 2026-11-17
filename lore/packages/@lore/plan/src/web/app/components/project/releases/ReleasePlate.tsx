@@ -11,7 +11,6 @@ import {
   Inbox,
   Layers,
   Pencil,
-  RotateCcw,
   Send,
   SquareCheckBig,
   Target,
@@ -114,27 +113,8 @@ const ReleasePlate = (props: ReleasePlateProps) => {
     ],
   );
 
-  const reopenAction = useAction<[], void>(
-    {
-      handler: async () => {
-        const ok = await dialog.confirm({
-          title: tr("release.reopen.title"),
-          description: tr("release.reopen.description"),
-          confirmLabel: tr("release.reopen.confirm"),
-          cancelLabel: tr("common.cancel"),
-          destructive: true,
-        });
-        if (!ok) return;
-        await releaseApi.reopenRelease({ params: { id: release.id } });
-        props.onChanged();
-      },
-    },
-    [releaseApi, dialog, release.id, props.onChanged, tr],
-  );
-
-  // Page-wide across the plate's three writes.
-  const submitting =
-    publishAction.loading || reopenAction.loading || defaultRelease.busy;
+  // Page-wide across the plate's writes.
+  const submitting = publishAction.loading || defaultRelease.busy;
 
   const meta: Array<{ icon: LucideIcon; text: string; divide?: boolean }> = [
     {
@@ -289,20 +269,9 @@ const ReleasePlate = (props: ReleasePlateProps) => {
             button. The rule for the whole epic is hide by default and disable
             only where absence would make the layout lie - this row has other
             content, so it does not. */}
-        {!releaseApi.publishRelease.can() ? null : published ? (
-          // Quieter than Publish was, and deliberately not a toggle beside
-          // it: reopening is what you do when you published by mistake, and
-          // it clears the frozen record.
-          <Button
-            variant="minimal"
-            size="lg"
-            disabled={submitting}
-            onClick={() => void reopenAction.run()}
-          >
-            <RotateCcw className="size-4" />
-            {tr("release.reopen.action")}
-          </Button>
-        ) : (
+        {/* Publishing is final (#Q3836): a published release offers no
+            way back, so the button goes with the publication. */}
+        {!releaseApi.publishRelease.can() || published ? null : (
           <Button
             size="lg"
             disabled={submitting}

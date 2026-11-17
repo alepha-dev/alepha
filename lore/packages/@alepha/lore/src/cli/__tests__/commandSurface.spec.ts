@@ -276,7 +276,6 @@ describe("the Lore CLI command surface", () => {
         "get",
         "create",
         "update",
-        "reopen",
         "attach",
         "detach",
         "delete",
