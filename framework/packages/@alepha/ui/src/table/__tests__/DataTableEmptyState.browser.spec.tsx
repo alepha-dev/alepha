@@ -148,6 +148,51 @@ describe("DataTable (empty states)", () => {
     expect(screen.queryByText("Nothing here yet.")).toBeNull();
   });
 
+  it("keeps emptyMessage off a page a filter emptied (#Q3820)", async () => {
+    // "No epics yet." was shown under a filter that hid every epic: false,
+    // since the project had epics. The no-match state says what happened.
+    await mount(
+      <DataTable<Row, typeof filterFields>
+        data={[]}
+        columns={columns}
+        filters={{
+          fields: filterFields,
+          seedValues: { search: "nobody" },
+          render: () => null,
+        }}
+        emptyMessage="Nothing attached"
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("No match")).toBeTruthy());
+    expect(
+      screen.getByText("Try adjusting or clearing the filters."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Nothing attached")).toBeNull();
+  });
+
+  it("keeps emptyMessage on the table's default view (initialValues)", async () => {
+    // An inbox that opens on `status: open` and has nothing open says so in
+    // its own words: the reader filtered nothing.
+    await mount(
+      <DataTable<Row, typeof filterFields>
+        data={[]}
+        columns={columns}
+        filters={{
+          fields: filterFields,
+          initialValues: { search: "open" },
+          render: () => null,
+        }}
+        emptyMessage="Nothing attached"
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText("Nothing attached")).toBeTruthy(),
+    );
+    expect(screen.queryByText("No match")).toBeNull();
+  });
+
   it("takes per-mode wording from emptyState", async () => {
     await mount(
       <DataTable<Row>

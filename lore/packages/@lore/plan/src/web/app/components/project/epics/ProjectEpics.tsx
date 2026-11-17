@@ -837,6 +837,7 @@ const ProjectEpics = () => {
         bulkActions={bulkActions}
         defaultSort={{ field: "updatedAt", direction: "desc" }}
         emptyMessage={tr("epic.list.empty")}
+        noMatchState={{ title: tr("epic.list.noMatch") }}
         refreshSignal={reload}
         filters={{
           fields: filterFields,

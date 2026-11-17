@@ -3672,6 +3672,7 @@ export default {
   "epic.status.completed": "Terminée",
   "epic.status.shelved": "Mise de côté",
   "epic.list.empty": "Aucune épopée pour le moment.",
+  "epic.list.noMatch": "Aucune épopée ne correspond à ces filtres",
   "epic.list.column.title": "Épopée",
   "epic.list.column.updated": "Mise à jour",
   "epic.filter.status": "Statut",

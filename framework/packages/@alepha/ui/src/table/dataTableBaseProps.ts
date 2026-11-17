@@ -409,13 +409,15 @@ export interface DataTableBaseProps<
    */
   cellPadding?: DataTableCellPadding;
   /**
-   * Title shown in both empty states, replacing their defaults.
+   * Title of the empty state shown when NO filter is set, replacing its
+   * default "No items".
    *
    * Kept as the one-line escape hatch it has always been, so it also
    * suppresses the default description: a caller who wrote the whole message
-   * in here does not want "Nothing here yet." underneath it. For a title AND
-   * a description, or for wording that differs between the two states, use
-   * {@link emptyState} and {@link noMatchState}.
+   * in here does not want "Nothing here yet." underneath it. A filtered page
+   * that came back empty never shows it, since "No epics yet." is false
+   * there: it shows {@link noMatchState}, or its defaults. For a title AND a
+   * description, use {@link emptyState}.
    */
   emptyMessage?: string;
   /**
