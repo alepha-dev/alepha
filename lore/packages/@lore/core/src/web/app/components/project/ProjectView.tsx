@@ -328,13 +328,16 @@ const ProjectView = () => {
                     </div>
                   ) : fullWidth ? (
                     <div className="flex min-h-0 w-full flex-1 flex-col">
-                      {/* The page of the project being left stays mounted but
-                    hidden, so the view still hears the end of the navigation
-                    and swaps the next page in. */}
-                      {leaving && <ProjectPageSkeleton />}
-                      <div className={leaving ? "hidden" : "contents"}>
-                        <NestedView />
-                      </div>
+                      {/* The page of the project being left unmounts at the
+                    click (#Q3823). Hidden instead, it re-rendered when the
+                    loader wrote the next project's atoms and fetched its own
+                    data for that project, in the batch the next page's read
+                    waits on. Nothing needs it to hear the end of the
+                    navigation: a project's layout is keyed by its slug, so
+                    the next project mounts a view of its own, and a
+                    navigation that stays here after all mounts this one
+                    again from the committed state. */}
+                      {leaving ? <ProjectPageSkeleton /> : <NestedView />}
                     </div>
                   ) : (
                     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col p-2">
