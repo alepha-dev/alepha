@@ -6,11 +6,14 @@ import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { RequirementController } from "../../api/controllers/RequirementController.ts";
+import { RequirementCoverageController } from "../../api/controllers/RequirementCoverageController.ts";
 import type { RequirementInput } from "../../api/schemas/requirementInputSchema.ts";
 import type { RequirementMetric } from "../../api/schemas/requirementMetricSchema.ts";
 import {
   criterionVerifyLinkParamsSchema,
   criterionVerifyLinkResultSchema,
+  requirementCoverageParamsSchema,
+  requirementCoverageResultSchema,
   requirementCreateParamsSchema,
   requirementDeleteParamsSchema,
   requirementDeleteResultSchema,
@@ -33,6 +36,7 @@ import {
 export class RequirementTools {
   protected readonly requirements = $inject(RequirementController);
   protected readonly releaseController = $inject(ReleaseController);
+  protected readonly coverage = $inject(RequirementCoverageController);
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly projectTools = $inject(ProjectTools);
 
@@ -217,6 +221,39 @@ export class RequirementTools {
       const row = await this.requirements.byNumber(projectId, params.number);
       await this.requirements.deleteRequirement({ params: { id: row.id } });
       return { ok: true, number: params.number };
+    },
+  });
+
+  requirement_coverage = $tool({
+    description:
+      "A project's requirement coverage, for one release or all: Must and Should verified out of all, the failing Musts (and whether they block the publish), and the gaps: requirements not verified, use cases without a requirement, personas without a passing use case, epics without a use case.",
+    title: "Requirement coverage",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: requirementCoverageParamsSchema,
+      result: requirementCoverageResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.projectId(
+        params.project,
+        params.project_name,
+      );
+      let releaseId: number | undefined;
+      if (params.release_tag) {
+        const release = (
+          await this.releaseController.getReleases({ params: { projectId } })
+        ).find((it) => it.tag === params.release_tag);
+        if (!release) {
+          throw new NotFoundError(
+            `Release '${params.release_tag}' not found in this project`,
+          );
+        }
+        releaseId = release.id;
+      }
+      return await this.coverage.getRequirementCoverage({
+        params: { projectId },
+        query: releaseId ? { releaseId } : {},
+      });
     },
   });
 

@@ -282,7 +282,7 @@ export class UseCaseTools {
 
   usecase_prompt = $tool({
     description:
-      "The Verify prompt of a use case, a persona or a specification, as the project wrote it: play the criteria and record a run (test), write the tagged e2e spec (spec), a demo script (demo), explore as a persona (explore), or import a specification folio into requirements (import). Lore runs nothing: follow the prompt yourself.",
+      "The Verify prompt of a use case, a persona or a specification, as the project wrote it: play the criteria and record a run (test), write the tagged e2e spec (spec), a demo script (demo), explore as a persona (explore), import a specification folio into requirements (import), or draft the use cases of a requirement or an epic (draft). Lore runs nothing: follow the prompt yourself.",
     title: "Use case prompt",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -300,6 +300,7 @@ export class UseCaseTools {
         demo: "useCaseDemo",
         explore: "personaExplore",
         import: "requirementImport",
+        draft: "useCaseDraft",
       }[params.mode] as "useCaseTest";
       return await this.prompts.renderRequirementsPrompt({
         params: { projectId },
@@ -313,6 +314,12 @@ export class UseCaseTools {
             : {}),
           ...(params.folio_shortId !== undefined
             ? { folioShortId: params.folio_shortId }
+            : {}),
+          ...(params.requirement_number !== undefined
+            ? { requirementNumber: params.requirement_number }
+            : {}),
+          ...(params.epic_number !== undefined
+            ? { epicNumber: params.epic_number }
             : {}),
           ...(params.stale ? { staleOnly: true } : {}),
           ...(params.app ? { app: params.app } : {}),

@@ -35,6 +35,8 @@ export class RequirementsPromptController {
         useCaseNumber: z.integer().optional(),
         personaNumber: z.integer().optional(),
         folioShortId: z.integer().optional(),
+        requirementNumber: z.integer().optional(),
+        epicNumber: z.integer().optional(),
         staleOnly: z.boolean().optional(),
         app: z.text().optional(),
         env: z.text().optional(),

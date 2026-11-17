@@ -6,6 +6,7 @@ import {
   renderPromptTemplate,
 } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
+import { epics, quests } from "@lore/plan/schemas";
 import { folios } from "@lore/remember/schemas";
 import { appInstances } from "@lore/ship/schemas";
 import { $inject, Alepha } from "alepha";
@@ -13,6 +14,8 @@ import { $repository } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
 
 import { personas } from "../entities/personas.ts";
+import { requirements } from "../entities/requirements.ts";
+import { useCaseCriteria } from "../entities/useCaseCriteria.ts";
 import { useCases } from "../entities/useCases.ts";
 import { RequirementsPromptDefaults } from "../schemas/RequirementsPromptDefaults.ts";
 import type { RequirementsPromptKind } from "../schemas/requirementsPromptKindSchema.ts";
@@ -33,6 +36,10 @@ export class RequirementsPromptService {
   protected readonly personas = $repository(personas);
   protected readonly folios = $repository(folios);
   protected readonly instances = $repository(appInstances);
+  protected readonly requirements = $repository(requirements);
+  protected readonly criteria = $repository(useCaseCriteria);
+  protected readonly epics = $repository(epics);
+  protected readonly quests = $repository(quests);
   protected readonly scenario = $inject(UseCaseService);
   protected readonly security = $inject(ProjectSecurityService);
 
@@ -42,6 +49,8 @@ export class RequirementsPromptService {
     useCaseNumber?: number;
     personaNumber?: number;
     folioShortId?: number;
+    requirementNumber?: number;
+    epicNumber?: number;
     staleOnly?: boolean;
     app?: string;
     env?: string;
@@ -70,7 +79,97 @@ export class RequirementsPromptService {
     let subject: AgentPromptScenarioSubject;
     let ref: string;
 
-    if (input.kind === "requirementImport") {
+    if (input.kind === "useCaseDraft") {
+      // From a coverage gap (#Q3774): a requirement to verify, or an epic
+      // with no use case.
+      if (input.requirementNumber !== undefined) {
+        const [row] = await this.requirements.findMany({
+          where: {
+            projectId: { eq: input.project.id },
+            number: { eq: input.requirementNumber },
+          },
+          limit: 1,
+        });
+        if (!row) {
+          throw new NotFoundError(
+            `Requirement #S${input.requirementNumber} not found`,
+          );
+        }
+        const verifying = await this.criteria.findMany({
+          where: { requirementId: { eq: row.id } },
+        });
+        const cases = verifying.length
+          ? await this.useCases.findMany({
+              where: {
+                id: {
+                  inArray: [...new Set(verifying.map((it) => it.useCaseId))],
+                },
+              },
+              columns: ["id", "number"],
+            })
+          : [];
+        ref = `S${row.number}`;
+        subject = {
+          project: input.project.title,
+          slug,
+          url: `${base}/${slug}/requirements?requirement=${row.number}`,
+          number: row.number,
+          id: row.id,
+          reference: formatReference("requirement", row.number),
+          title: row.statement,
+          steps: [row.statement, row.description].filter(Boolean).join("\n\n"),
+          criteria:
+            verifying
+              .map(
+                (c) =>
+                  `- ${formatReference("usecase", cases.find((it) => it.id === c.useCaseId)?.number ?? 0)} ${c.key}: ${this.criterionText(c)}`,
+              )
+              .join("\n") || "Nothing yet.",
+          persona: played ? this.personaLine(played) : "",
+          demoAccount: played?.demoAccount ?? "",
+          ...where,
+        };
+      } else if (input.epicNumber !== undefined) {
+        const [epic] = await this.epics.findMany({
+          where: {
+            projectId: { eq: input.project.id },
+            number: { eq: input.epicNumber },
+          },
+          limit: 1,
+        });
+        if (!epic)
+          throw new NotFoundError(`Epic #E${input.epicNumber} not found`);
+        const theirs = await this.quests.findMany({
+          where: { epicId: { eq: epic.id } },
+          columns: ["shortId", "title"],
+          orderBy: [{ column: "shortId", direction: "asc" }],
+        });
+        ref = `E${epic.number}`;
+        subject = {
+          project: input.project.title,
+          slug,
+          url: `${base}/${slug}/epics/${epic.number}`,
+          number: epic.number,
+          id: epic.id,
+          reference: formatReference("epic", epic.number),
+          title: epic.title,
+          steps:
+            theirs
+              .map(
+                (it) => `- ${formatReference("quest", it.shortId)} ${it.title}`,
+              )
+              .join("\n") || epic.description,
+          criteria: "Nothing yet: no use case covers this epic.",
+          persona: played ? this.personaLine(played) : "",
+          demoAccount: played?.demoAccount ?? "",
+          ...where,
+        };
+      } else {
+        throw new NotFoundError(
+          "Draft use cases names a requirement or an epic",
+        );
+      }
+    } else if (input.kind === "requirementImport") {
       if (input.folioShortId === undefined) {
         throw new NotFoundError("Import a specification names a folio");
       }
@@ -220,14 +319,19 @@ export class RequirementsPromptService {
       useCaseDemo: "demo",
       personaExplore: "explore",
       requirementImport: "import",
+      useCaseDraft: "draft",
     }[input.kind];
     const command = [
       "lore usecase prompt",
       input.kind === "requirementImport"
         ? `--folio ${ref}`
-        : ref.startsWith("A")
-          ? `--persona ${ref}`
-          : ref,
+        : input.kind === "useCaseDraft"
+          ? ref.startsWith("E")
+            ? `--epic ${ref}`
+            : `--requirement ${ref}`
+          : ref.startsWith("A")
+            ? `--persona ${ref}`
+            : ref,
       `--mode ${mode}`,
       input.app ? `--app ${input.app}` : "",
       input.env ? `--env ${input.env}` : "",

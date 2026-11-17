@@ -85,6 +85,11 @@ class StubPages {
     path: "/:projectSlug/requirements",
     component: () => null,
   });
+  projectRequirementsTestBook = $page({
+    name: "projectRequirementsTestBook",
+    path: "/:projectSlug/requirements/test-book",
+    component: () => null,
+  });
 }
 
 /**

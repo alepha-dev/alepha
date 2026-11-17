@@ -14,6 +14,7 @@ import { personas } from "../entities/personas.ts";
 import { requirementMetricDays } from "../entities/requirementMetricDays.ts";
 import { requirements } from "../entities/requirements.ts";
 import { requirementsComments } from "../entities/requirementsComments.ts";
+import { technicalEpics } from "../entities/technicalEpics.ts";
 import { useCaseRuns } from "../entities/useCaseRuns.ts";
 import { useCases } from "../entities/useCases.ts";
 
@@ -34,6 +35,7 @@ export class RequirementsProjectMerge {
   protected readonly requirements = $repository(requirements);
   protected readonly runs = $repository(useCaseRuns);
   protected readonly metricDays = $repository(requirementMetricDays);
+  protected readonly technical = $repository(technicalEpics);
 
   constructor() {
     this.merge.registerStep({
@@ -50,6 +52,7 @@ export class RequirementsProjectMerge {
         "requirements_comments",
         "use_case_runs",
         "requirement_metric_days",
+        "requirement_technical_epics",
       ],
       plan: (context) => this.plan(context),
       rewrite: (context, rewriter) => this.rewrite(context, rewriter),
@@ -144,6 +147,18 @@ export class RequirementsProjectMerge {
     });
     plan.statements.push(
       this.metricDays.updateStatement(
+        { projectId: { eq: context.sourceProjectId } },
+        { projectId: context.targetProjectId },
+        projectMergeWrite,
+      ),
+    );
+    // An epic keeps its id through Plan's step, so its technical mark
+    // follows it.
+    plan.moved.requirement_technical_epics = await this.technical.count({
+      projectId: { eq: context.sourceProjectId },
+    });
+    plan.statements.push(
+      this.technical.updateStatement(
         { projectId: { eq: context.sourceProjectId } },
         { projectId: context.targetProjectId },
         projectMergeWrite,

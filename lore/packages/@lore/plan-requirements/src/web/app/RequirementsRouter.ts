@@ -81,6 +81,25 @@ export class RequirementsRouter {
    * bar (decision 77), under its tab's URL. `personaNumber`, never `number`:
    * route params are unique across the whole route table.
    */
+  /**
+   * The test book (#Q3774): the requirements per chapter with their
+   * criteria and last results, styled for print.
+   */
+  projectRequirementsTestBook = $pageProject({
+    loading: ProjectPageSkeleton,
+    name: "projectRequirementsTestBook",
+    path: "/requirements/test-book",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Test book`,
+    }),
+    lazy: () => import("./components/traceability/TestBookPage.tsx"),
+    loader: async () => {
+      this.gate();
+      this.gateTab("requirement:read");
+      return {};
+    },
+  });
+
   projectPersona = $pageProject({
     loading: ProjectPageSkeleton,
     name: "projectPersona",

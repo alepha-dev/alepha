@@ -67,4 +67,17 @@ Scenario:
 2. For each requirement it states (a "must", "should" or "can" sentence, a numbered rule), create one with \`requirement_create\`: its statement in one sentence, its type (functional, non_functional, constraint), its MoSCoW priority, its chapter and paragraph as the folio numbers them, the folio as \`source_folio_shortId\` and the slug of its heading as \`sourceAnchor\`.
 3. Do not invent requirements the folio does not state; list the ambiguities you met in one comment on the folio's epic or in your reply.
 4. Check \`requirement_list\` afterwards: one requirement per statement, none twice.`;
+
+  public static readonly useCaseDraft = `Draft the use cases for {{reference}}, "{{title}}", of the Lore project {{project}} ({{url}}): the ones that would verify this requirement, or that this epic delivers.
+
+What it says:
+{{steps}}
+
+What already verifies it:
+{{criteria}}
+
+1. Read it in full (\`requirement_get\` or \`epic_get\`, number {{number}}) and the project's personas with \`persona_list\`.
+2. For each goal a persona reaches through it, create one use case with \`usecase_create\`: a title, its actors, numbered steps, alternatives, and acceptance criteria in Given / When / Then.
+3. Link each criterion that verifies a requirement with \`criterion_verify_link\`, and each use case to the epic that delivers it with \`usecase_link_epic\`.
+4. Leave them in draft: a person validates a use case. Report what you created and what you were unsure of.`;
 }

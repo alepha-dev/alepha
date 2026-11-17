@@ -10,6 +10,7 @@ export const requirementsPromptKindSchema = z.enum([
   "useCaseDemo",
   "personaExplore",
   "requirementImport",
+  "useCaseDraft",
 ]);
 
 export type RequirementsPromptKind = Infer<typeof requirementsPromptKindSchema>;

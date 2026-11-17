@@ -1,4 +1,7 @@
-import type { RequirementController } from "@lore/plan-requirements/api";
+import type {
+  RequirementController,
+  RequirementCoverageController,
+} from "@lore/plan-requirements/api";
 import type { ReleaseController } from "@lore/plan/api";
 import type { FolioController } from "@lore/remember/api";
 import { $inject, z } from "alepha";
@@ -41,6 +44,9 @@ export class RequirementCommand {
     this.client.scope(),
   );
   protected readonly folioApi = $client<FolioController>(this.client.scope());
+  protected readonly coverageApi = $client<RequirementCoverageController>(
+    this.client.scope(),
+  );
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -463,6 +469,81 @@ export class RequirementCommand {
     },
   });
 
+  public readonly coverage = $command({
+    name: "coverage",
+    description:
+      "A release's readiness (Must and Should verified, failing Musts) and the coverage gaps, or the whole project's",
+    flags: z.object({
+      ...RequirementCommand.PROJECT_FLAG,
+      release: z
+        .text({ description: "A release's tag, 2.4.0. Omitted, all." })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        let releaseId: number | undefined;
+        if (flags.release) {
+          const release = (
+            await this.releaseApi.getReleases({ params: { projectId } })
+          ).find((it) => it.tag === flags.release);
+          if (!release) {
+            throw new UsageError(`Release '${flags.release}' not found`);
+          }
+          releaseId = release.id;
+        }
+        const it = await this.coverageApi.getRequirementCoverage({
+          params: { projectId },
+          query: releaseId ? { releaseId } : {},
+        });
+        if (flags.output === "json") {
+          this.render.json(print, it);
+          return;
+        }
+        this.render.entity(print, {
+          fields: [
+            ["release", it.release?.tag ?? it.release?.title ?? "all"],
+            ["must", `${it.must.verified} / ${it.must.total} verified`],
+            ["should", `${it.should.verified} / ${it.should.total} verified`],
+            [
+              "failing must",
+              it.failingMust.map((s) => `S${s.number}`).join(", ") || undefined,
+            ],
+            ["blocks publish", it.blocking ? "yes" : "no"],
+          ],
+          sections: [
+            {
+              title: "Requirements not verified",
+              lines: it.gaps.requirementsNotVerified.map(
+                (s) => `S${s.number} ${s.statement}  (${s.status})`,
+              ),
+            },
+            {
+              title: "Use cases without a requirement",
+              lines: it.gaps.useCasesWithoutRequirement.map(
+                (u) => `U${u.number} ${u.title}`,
+              ),
+            },
+            {
+              title: "Personas without a passing use case",
+              lines: it.gaps.personasWithoutPassingUseCase.map(
+                (a) => `A${a.number} ${a.name}`,
+              ),
+            },
+            {
+              title: "Epics without a use case",
+              lines: it.gaps.epicsWithoutUseCase.map(
+                (e) => `E${e.number} ${e.title}`,
+              ),
+            },
+          ].filter((section) => section.lines.length > 0),
+        });
+      });
+    },
+  });
+
   public readonly set = $command({
     name: "set",
     description: "Set a requirement's release",
@@ -479,7 +560,7 @@ export class RequirementCommand {
   public readonly requirement = $command({
     name: "requirement",
     description:
-      "A project's requirements, the lines of its specification: list, read, create, update, delete and set their release",
+      "A project's requirements, the lines of its specification: list, read, create, update, delete, set their release and read their coverage",
     children: [
       this.list,
       this.get,
@@ -487,6 +568,7 @@ export class RequirementCommand {
       this.update,
       this.delete,
       this.set,
+      this.coverage,
     ],
     handler: async ({ help }) => {
       help();

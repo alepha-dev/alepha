@@ -62,6 +62,7 @@ import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { ReleaseForecast } from "./services/ReleaseForecast.ts";
 import { ReleaseOutlookMetric } from "./services/ReleaseOutlookMetric.ts";
 import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
+import { ReleasePublishGuards } from "./services/ReleasePublishGuards.ts";
 import { ReleasesToPublishMetric } from "./services/ReleasesToPublishMetric.ts";
 import { RemindersDueMetric } from "./services/RemindersDueMetric.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
@@ -121,6 +122,7 @@ export const LorePlanApi = $module({
     WorkPlanDashboardMetrics,
     WorkYourDashboardMetrics,
     ReleaseAttachmentService,
+    ReleasePublishGuards,
     ReleaseContentService,
     RoadmapService,
     EpicDependencyService,
@@ -262,6 +264,10 @@ export { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 export { QuestService } from "./services/QuestService.ts";
 export { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 export { ReleaseContentService } from "./services/ReleaseContentService.ts";
+export {
+  type ReleasePublishGuard,
+  ReleasePublishGuards,
+} from "./services/ReleasePublishGuards.ts";
 
 export { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 export { EpicReviewService } from "./services/EpicReviewService.ts";

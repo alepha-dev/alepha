@@ -16,6 +16,7 @@ import {
   FileCode,
   FileInput,
   ListChecks,
+  PenLine,
   Presentation,
   UsersRound,
 } from "lucide-react";
@@ -92,6 +93,7 @@ export class RequirementsShell {
       ["personaExplore", Compass, "requirements.prompt.personaExplore"],
       ["useCaseDemo", Presentation, "requirements.prompt.useCaseDemo"],
       ["requirementImport", FileInput, "requirements.prompt.requirementImport"],
+      ["useCaseDraft", PenLine, "requirements.prompt.useCaseDraft"],
     ] as const) {
       this.prompts.register({
         kind,
