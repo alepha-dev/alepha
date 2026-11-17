@@ -1,5 +1,6 @@
 import type {
   AdminHostController,
+  HostCommandController,
   HostController,
   ProjectHostController,
 } from "@lore/ship/api";
@@ -43,7 +44,8 @@ import { HostProviders } from "../services/providers/HostProviders.ts";
  * `stats` reads a machine's CPU and memory over time (#Q3047), `get` and
  * `wait` (#Q3133) read one host, the second polling until it is online.
  * `update` and `rotate` (#Q3134) change the deploy switch and the label, and
- * mint a new secret. `delete` (#Q3131) removes one: refused while an app or a
+ * mint a new secret. `upgrade` (#Q3740) upgrades the Bay a host runs and
+ * waits for the new version to serve. `delete` (#Q3131) removes one: refused while an app or a
  * stack still deploys to it, and nothing on the machine stops. `move`
  * (#Q3282) gives it another home, and `assign` is the instance admin's, for
  * a host with no home.
@@ -70,6 +72,9 @@ export class HostCommand {
   );
   protected readonly hosts = $client<HostController>(this.client.scope());
   protected readonly admin = $client<AdminHostController>(this.client.scope());
+  protected readonly commands = $client<HostCommandController>(
+    this.client.scope(),
+  );
 
   protected readonly projectFlag = z
     .text({
@@ -453,6 +458,15 @@ export class HostCommand {
                 .join(" "),
               [
                 host.deployAllowed ? "deploys allowed" : "deploys off",
+                // Which Bay it runs, and the release it is behind when it
+                // is: read with the list, nothing per host.
+                host.bayVersion
+                  ? `Bay ${host.bayVersion}${
+                      host.upgradeAvailable && host.targetBayVersion
+                        ? ` (${host.targetBayVersion} available)`
+                        : ""
+                    }`
+                  : undefined,
                 host.provider
                   ? `${host.provider} ${host.providerServerType ?? ""}`.trim()
                   : undefined,
@@ -608,6 +622,7 @@ export class HostCommand {
                 : undefined,
             ],
             ["Deploys", host.deployAllowed ? "allowed" : "off"],
+            ["Bay", this.bayLine(host.slug, inventory)],
             [
               "Lent to",
               host.projects.length
@@ -766,6 +781,109 @@ export class HostCommand {
           updated,
           `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}${updated.label ? `, label "${updated.label}"` : ""}${updated.expiresAt ? `, expires ${updated.expiresAt}` : ""}${updated.statsIntervalSeconds ? `, stats every ${this.intervalLabel(updated.statsIntervalSeconds)}${updated.collectSeries ? " with history" : ""}` : ""}`,
         );
+      });
+    },
+  });
+
+  public readonly upgrade = $command({
+    name: "upgrade",
+    description:
+      "Upgrade the Bay a host of the project runs to the version this Lore installs, and wait until the new version serves",
+    args: z.text({
+      title: "host",
+      description:
+        "The host's slug, among the hosts the project is the home of",
+    }),
+    flags: z.object({
+      project: this.projectFlag,
+      version: z
+        .text({
+          description:
+            "Another version, as x.y.z, newer than the one the host runs. An older one is installed on the machine, with install.sh.",
+        })
+        .optional(),
+      wait: z
+        .boolean()
+        .describe(
+          "Wait for the upgrade to settle, which is the default; --no-wait returns once it is queued",
+        )
+        .optional(),
+      timeout: z
+        .integer()
+        .min(1)
+        .describe("How long to wait, in seconds. Default 360.")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { project, projectId } = await this.projects.named(
+          flags.project,
+          context,
+        );
+        const { id, slug } = await this.owned.managed(args, projectId, project);
+        // Every refusal is the server's own sentence (deploys off, the host
+        // offline, a version Lore cannot compare, an older one, a host that
+        // is upgraded by hand, with the command to run on it), printed as it
+        // is by the guard, with exit 1 or 4.
+        let command = await this.commands.enqueueHostCommand({
+          params: { hostId: id },
+          body: {
+            kind: "upgrade",
+            ...(flags.version === undefined ? {} : { version: flags.version }),
+          },
+        });
+        const to = command.payload.version ?? flags.version ?? "";
+        const from = command.payload.fromVersion;
+
+        if (flags.wait === false) {
+          this.render.written(
+            print,
+            flags.output,
+            command,
+            `Queued the upgrade of ${slug}${from ? ` from Bay ${from}` : ""} to ${to}. lore host get ${slug} shows what it runs.`,
+          );
+          return;
+        }
+
+        const seconds = flags.timeout ?? 360;
+        const deadline = this.dateTime.nowMillis() + seconds * 1000;
+        while (
+          command.status !== "done" &&
+          command.status !== "failed" &&
+          this.dateTime.nowMillis() < deadline
+        ) {
+          await this.dateTime.wait(this.pollMillis);
+          const { items } = await this.commands.listHostCommands({
+            params: { hostId: id },
+            query: {},
+          });
+          command = items.find((item) => item.id === command.id) ?? command;
+        }
+        if (flags.output === "json") {
+          this.render.json(print, command);
+        }
+        if (command.status === "failed") {
+          throw new CommandError(
+            { exitCode: LoreRefusals.EXIT_FAILURE },
+            {
+              // The machine's own sentence, as it wrote it.
+              message: `${slug} was not upgraded to Bay ${to}: ${command.reason ?? "no reason given"}`,
+            },
+          );
+        }
+        if (command.status !== "done") {
+          throw new CommandError(
+            { exitCode: LoreRefusals.EXIT_FAILURE },
+            {
+              message: `The upgrade of ${slug} to Bay ${to} has not settled after ${seconds}s (${command.step || command.status}). lore host get ${slug} shows what it runs.`,
+            },
+          );
+        }
+        if (flags.output !== "json") {
+          print(`${slug} now runs Bay ${to}${from ? ` (was ${from})` : ""}.`);
+        }
       });
     },
   });
@@ -1036,7 +1154,7 @@ export class HostCommand {
   public readonly host = $command({
     name: "host",
     description:
-      "The machines your projects deploy to: provision a server, add one by hand, list them, read one, wait for it, read its stats, lend or unlend it, update, rotate, move or delete it, and, for an admin, assign one",
+      "The machines your projects deploy to: provision a server, add one by hand, list them, read one, wait for it, read its stats, lend or unlend it, update it, upgrade its Bay, rotate, move or delete it, and, for an admin, assign one",
     children: [
       this.provision,
       this.add,
@@ -1047,6 +1165,7 @@ export class HostCommand {
       this.lend,
       this.unlend,
       this.update,
+      this.upgrade,
       this.rotate,
       this.move,
       this.delete,
@@ -1241,6 +1360,37 @@ export class HostCommand {
       }
       throw error;
     }
+  }
+
+  /**
+   * `lore host get`'s Bay line: the version, the release it is behind when
+   * it is, and how it can be upgraded (the mode the machine reports).
+   */
+  protected bayLine(
+    slug: string,
+    inventory:
+      | {
+          bayVersion?: string;
+          upgradeMode?: string;
+          targetBayVersion?: string;
+          upgradeAvailable: boolean;
+          upgradeByHand: boolean;
+        }
+      | null
+      | undefined,
+  ): string | undefined {
+    if (!inventory?.bayVersion) {
+      return undefined;
+    }
+    const mode = inventory.upgradeMode ?? "none reported";
+    if (!inventory.upgradeAvailable || !inventory.targetBayVersion) {
+      return `${inventory.bayVersion} (upgrade mode: ${mode})`;
+    }
+    return `${inventory.bayVersion}, ${inventory.targetBayVersion} available (upgrade mode: ${mode}): ${
+      inventory.upgradeByHand
+        ? "upgraded by hand, on the machine"
+        : `lore host upgrade ${slug}`
+    }`;
   }
 
   protected percent(value: number): string {
