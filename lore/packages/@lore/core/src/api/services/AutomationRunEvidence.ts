@@ -116,6 +116,7 @@ export class AutomationRunEvidence {
         ruleRevision: input.rule.revision,
         occurrenceId: input.occurrenceId,
         triggeredAt: input.triggeredAt,
+        ...(snapshot.sourceNode ? { sourceNode: snapshot.sourceNode } : {}),
         status,
         ...(reason ? { reason: reason.slice(0, 1024) } : {}),
         snapshot: automationRunSnapshotSchema.parse(snapshot),

@@ -4530,6 +4530,7 @@ export default {
   "automation.effect.failed": "Failed",
   "automation.effect.unknown": "Unknown, review required",
   "automation.effect.queued": "Queued, awaiting delivery",
+  "automation.test.source": "Start from",
   "automation.test.unvalidated":
     "Known only when the run is real, not checked here: $1",
   "automation.node.source": "Source",

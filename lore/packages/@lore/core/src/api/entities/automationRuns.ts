@@ -19,6 +19,11 @@ export const automationRuns = $entity({
     }),
     ruleRevision: z.integer().nonnegative(),
     occurrenceId: z.string().min(1).max(255),
+    /**
+     * The source node that started the run (#Q3807); absent on a health
+     * record. The run list filters on it.
+     */
+    sourceNode: z.string().max(64).optional(),
     triggeredAt: z.datetime(),
     status: automationRunStatusSchema.meta({ mode: "text" }),
     reason: z.string().max(1024).optional(),

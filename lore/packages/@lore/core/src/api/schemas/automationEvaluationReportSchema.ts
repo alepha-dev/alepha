@@ -2,6 +2,7 @@ import { type Infer, z } from "alepha";
 
 import { automationActionSchema } from "./automationActionSchema.ts";
 import { automationAudiencePreviewSchema } from "./automationAudiencePreviewSchema.ts";
+import { automationNodeOutcomeSchema } from "./automationNodeOutcomeSchema.ts";
 import { automationRunSnapshotSchema } from "./automationRunSnapshotSchema.ts";
 import { automationSafeFieldsSchema } from "./automationSafeFieldsSchema.ts";
 import { automationSourceProvenanceSchema } from "./automationSourceProvenanceSchema.ts";
@@ -72,6 +73,12 @@ export const automationEvaluationReportSchema = z
       )
       .max(250),
     operationsOmitted: z.integer().min(0).max(250),
+    /**
+     * The source the test started from, and the path it would walk
+     * (#Q3807): a planned step reads `ran`.
+     */
+    sourceNode: z.string().max(64).optional(),
+    nodes: z.array(automationNodeOutcomeSchema).max(500),
     disclaimer: z.string().max(255),
   })
   .strict();

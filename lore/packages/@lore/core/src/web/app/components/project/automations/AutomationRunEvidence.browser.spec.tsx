@@ -64,6 +64,7 @@ describe("Automation run evidence", () => {
           { node: "action-4", status: "skipped", result: {} },
         ],
       },
+      nodes: [],
       notifications: [
         {
           node: "action-1",

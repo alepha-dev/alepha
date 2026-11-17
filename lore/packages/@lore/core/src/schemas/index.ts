@@ -147,6 +147,14 @@ export {
   type AutomationGraphOutput,
 } from "../api/schemas/AutomationGraph.ts";
 export {
+  automationNodeOutcomeSchema,
+  type AutomationNodeOutcome,
+} from "../api/schemas/automationNodeOutcomeSchema.ts";
+export {
+  automationRunListQuerySchema,
+  type AutomationRunListQuery,
+} from "../api/schemas/automationRunListQuerySchema.ts";
+export {
   AutomationGraphBuilder,
   type AutomationLine,
 } from "../api/schemas/AutomationGraphBuilder.ts";

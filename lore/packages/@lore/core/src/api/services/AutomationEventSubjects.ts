@@ -82,9 +82,13 @@ export class AutomationEventSubjects {
     const run = await this.persistence.runs.getOne({
       where: { id: source.id, projectId: rule.projectId },
     });
+    // A run's own source, and no other (#Q3807).
     if (
       !run.snapshot.rule ||
-      new AutomationGraph().sourceKey(run.snapshot.rule) !== key
+      new AutomationGraph().sourceKey(run.snapshot.rule) !== key ||
+      (node !== undefined &&
+        run.snapshot.sourceNode !== undefined &&
+        run.snapshot.sourceNode !== node)
     )
       throw new ForbiddenError(
         "Historical run does not match this event source",

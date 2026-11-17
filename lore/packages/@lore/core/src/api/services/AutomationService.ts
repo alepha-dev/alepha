@@ -21,11 +21,11 @@ import {
   type AutomationListQuery,
 } from "../schemas/automationListQuerySchema.ts";
 import { automationOutboxIdsSchema } from "../schemas/automationOutboxIdsSchema.ts";
-import {
-  automationPageQuerySchema,
-  type AutomationPageQuery,
-} from "../schemas/automationPageQuerySchema.ts";
 import { automationResourceSchema } from "../schemas/automationResourceSchema.ts";
+import {
+  automationRunListQuerySchema,
+  type AutomationRunListQuery,
+} from "../schemas/automationRunListQuerySchema.ts";
 import { automationRunResourceSchema } from "../schemas/automationRunResourceSchema.ts";
 import type { AutomationTestSource } from "../schemas/automationTestSourceSchema.ts";
 import type { AutomationVariableApproval } from "../schemas/automationVariableApprovalSchema.ts";
@@ -570,7 +570,7 @@ export class AutomationService {
     projectId: number,
     id: string,
     user: UserAccountToken,
-    input: Partial<AutomationPageQuery> = {},
+    input: Partial<AutomationRunListQuery> = {},
   ) {
     return this.database.primary(async () => {
       const rule = await this.stored(projectId, id, true);
@@ -579,9 +579,14 @@ export class AutomationService {
         user,
         "automation:read",
       );
-      const query = automationPageQuerySchema.parse(input);
+      const query = automationRunListQuerySchema.parse(input);
       const rows = await this.persistence.runs.findMany({
-        where: { automationId: id },
+        // The source is a column, under the (automationId, createdAt, id)
+        // index: never a filter on the JSON snapshot (#Q3807).
+        where: {
+          automationId: id,
+          ...(query.source ? { sourceNode: query.source } : {}),
+        },
         orderBy: [
           { column: "createdAt", direction: "desc" },
           { column: "id", direction: "desc" },
@@ -657,8 +662,21 @@ export class AutomationService {
       ...action,
       ...outcomes.get(action.outboxId),
     }));
+    const snapshot = run.snapshot;
     return automationRunResourceSchema.parse({
       notifications,
+      ...(stored.sourceNode ? { sourceNode: stored.sourceNode } : {}),
+      nodes:
+        snapshot?.rule && snapshot.sourceNode
+          ? this.graphs
+              .outcomes({
+                graph: snapshot.rule,
+                source: snapshot.sourceNode,
+                conditions: snapshot.conditions ?? [],
+                steps: snapshot.actions,
+              })
+              .slice(0, 500)
+          : [],
       id: run.id,
       projectId: run.projectId,
       automationId: run.automationId,
@@ -681,10 +699,11 @@ export class AutomationService {
     id: string,
     user: UserAccountToken,
     source?: AutomationTestSource,
+    node?: string,
   ) {
     return this.database.primary(async () => {
       await this.stored(projectId, id);
-      return this.evaluator.test(id, user, source);
+      return this.evaluator.test(id, user, source, node);
     });
   }
   public catalogue(projectId: number, user: UserAccountToken) {

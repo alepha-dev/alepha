@@ -4550,6 +4550,7 @@ export default {
   "automation.effect.failed": "Échouée",
   "automation.effect.unknown": "Inconnue, vérification requise",
   "automation.effect.queued": "En file, livraison en attente",
+  "automation.test.source": "Partir de",
   "automation.test.unvalidated":
     "Connu seulement quand l'exécution est réelle, non vérifié ici : $1",
   "automation.node.source": "Source",
