@@ -125,8 +125,10 @@ export const PlateFolderTabs = (props: PlateFolderTabsProps) => {
         : // Hovered, a resting tab lights a rounded button floating inside
           // it, as a browser's tabs do, rather than a tile like the active
           // one. `isolate` keeps the button above the band and below the
-          // label.
-          "text-muted-foreground hover:text-foreground isolate border-transparent after:absolute after:inset-x-0.5 after:top-1 after:bottom-1.5 after:-z-10 after:rounded-lg after:transition-colors after:duration-150 after:content-[''] hover:after:bg-[color-mix(in_oklab,var(--muted),transparent_20%)]",
+          // label. Its fill is the kit's own hover (`bg-hover`, a minimal
+          // button's), and its inset is the same top and bottom, so the
+          // label sits centred in it (#Q3842).
+          "text-muted-foreground hover:text-foreground hover:after:bg-hover isolate border-transparent after:absolute after:inset-x-0.5 after:inset-y-1 after:-z-10 after:rounded-lg after:transition-colors after:duration-150 after:content-['']",
       divided &&
         "before:bg-border before:absolute before:start-0 before:top-[30%] before:h-[40%] before:w-px before:content-[''] hover:before:opacity-0 [:hover+&]:before:opacity-0",
     );
