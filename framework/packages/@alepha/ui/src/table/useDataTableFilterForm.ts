@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { DataTableBaseProps } from "./dataTableBaseProps.ts";
 import {
   dataTableFilterKeys,
+  dataTableKeptFilterKeys,
   dataTableFilterMode,
   dataTableFilterOperatorKey,
   buildDataTableFilterSchema,
@@ -54,6 +55,10 @@ export interface DataTableFilterDefinition {
    * The mode of each field, keyed by field.
    */
   modes: Record<string, DataTableFilterMode>;
+  /**
+   * The keys a preset leaves alone. See `dataTableKeptFilterKeys`.
+   */
+  kept: string[];
 }
 
 /**
@@ -86,6 +91,7 @@ export const useDataTableFilterForm = <T>(
       schema: buildDataTableFilterSchema(fields),
       keys: dataTableFilterKeys(fields),
       modes,
+      kept: dataTableKeptFilterKeys(fields),
     };
   }, []);
 

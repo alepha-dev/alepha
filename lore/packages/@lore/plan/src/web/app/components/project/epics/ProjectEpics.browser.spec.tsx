@@ -573,6 +573,49 @@ describe("ProjectEpics - the status filter", () => {
     });
 
     /**
+     * A preset keeps the release (#Q3854, feedback #P2373): "what is ready
+     * in 0.29.0" is browsed preset by preset, the preset stays lit beside
+     * the release, and the badges count the release's epics only.
+     */
+    it("is kept by a preset, which stays lit and counts within it", async () => {
+      await mount(RELEASES, [
+        ...EPICS,
+        epicOf(4, "Ready in next", "ready", 8),
+        epicOf(5, "Ready elsewhere", "ready"),
+      ]);
+      const preset = (key: string) =>
+        document.querySelector(`[data-preset="${key}"]`) as HTMLElement;
+      const count = (key: string) =>
+        preset(key)?.querySelector('[data-slot="data-table-preset-count"]')
+          ?.textContent;
+      await waitFor(() => expect(count("ready")).toBe("2"));
+
+      await openFilter();
+      fireEvent.click(await screen.findByRole("option", { name: "0.29.0" }));
+      await waitFor(() => expect(row("#E5 - Ready elsewhere")).toBeNull());
+      // Counted over the release's epics, never the project's.
+      await waitFor(() => expect(count("ready")).toBe("1"));
+      expect(count("active")).toBe("1");
+
+      fireEvent.click(preset("ready"));
+      await waitFor(() => expect(row("#E2 - Next epic")).toBeNull());
+      expect(row("#E4 - Ready in next")).not.toBeNull();
+      expect(row("#E5 - Ready elsewhere")).toBeNull();
+      expect(preset("ready").getAttribute("aria-pressed")).toBe("true");
+
+      // The next preset keeps it too.
+      fireEvent.click(preset("active"));
+      await waitFor(() => expect(row("#E2 - Next epic")).not.toBeNull());
+      expect(row("#E4 - Ready in next")).toBeNull();
+      expect(preset("active").getAttribute("aria-pressed")).toBe("true");
+
+      // All clears it with the rest.
+      fireEvent.click(screen.getByRole("button", { name: /^All/ }));
+      await waitFor(() => expect(row("#E5 - Ready elsewhere")).not.toBeNull());
+      expect(row("#E1 - Shipped epic")).not.toBeNull();
+    });
+
+    /**
      * ⚠️ The opposite of the bulk menu's rule, deliberately. A published
      * release is excluded THERE because attaching to one is refused server
      * side, so the entry could only ever fail. It is included HERE because a

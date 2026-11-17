@@ -440,6 +440,15 @@ export interface DataTableFilterFieldOptions {
    */
   mode?: DataTableFilterMode;
   /**
+   * A preset leaves this filter as it is: a click on the rail sets the
+   * preset's filters and keeps this one's value, and the preset stays lit
+   * whatever this one holds. For a filter that scopes the list rather than
+   * picks a view of it, a release or the search, so "what is ready in
+   * 1.2.0" is browsed preset by preset. All and Reset filters still clear
+   * it. `false` when absent.
+   */
+  keepOnPreset?: boolean;
+  /**
    * `false` keeps the filter out of the "Add filters" menu. Meant for a
    * filter naming its `column`: it then opens only from that column's
    * header, and still joins the bar while it holds a value. When no field is

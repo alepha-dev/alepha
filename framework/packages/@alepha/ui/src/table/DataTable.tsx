@@ -583,6 +583,7 @@ export const DataTable = <
       <DataTablePresetRail
         form={form}
         keys={filterDefinition.keys}
+        kept={filterDefinition.kept}
         presets={presets}
         onApply={(preset) => {
           const values = preset.values as Record<string, unknown>;
@@ -590,18 +591,25 @@ export const DataTable = <
             string,
             { set?: (value: unknown) => void } | undefined
           >;
-          // Every key, so a preset is the whole filter: what it does not
-          // name is cleared, the way Reset filters clears it.
+          const kept = filterDefinition.kept;
+          const current = (form.currentValues ?? {}) as Record<string, unknown>;
+          // Every key but the kept ones (`keepOnPreset`), so a preset is
+          // the whole filter: what it does not name is cleared, the way
+          // Reset filters clears it.
           for (const key of filterDefinition.keys) {
+            if (kept.includes(key)) continue;
             inputs[key]?.set?.(values[key]);
           }
-          // The bar then shows the preset's filters and nothing else.
+          // The bar then shows the preset's filters, and a kept one still
+          // holding a value, and nothing else.
           filterVisibility.setShown(
-            Object.keys(values).filter(
-              (key) =>
-                !isEmptyFilterValue(values[key]) &&
-                filterDefinition.modes[key] !== "locked",
-            ),
+            [
+              ...Object.keys(values).filter(
+                (key) =>
+                  !kept.includes(key) && !isEmptyFilterValue(values[key]),
+              ),
+              ...kept.filter((key) => !isEmptyFilterValue(current[key])),
+            ].filter((key) => filterDefinition.modes[key] !== "locked"),
             true,
           );
         }}

@@ -20,6 +20,11 @@ export interface DataTablePresetRailProps {
    * Every filter key, operator keys included: what a preset is compared on.
    */
   keys: readonly string[];
+  /**
+   * The keys a preset leaves alone (`keepOnPreset`): never compared, so a
+   * preset stays lit whatever they hold. All still needs them empty.
+   */
+  kept?: readonly string[];
   presets: DataTablePresets<DataTableFilterFields>;
   onApply: (preset: DataTablePreset<DataTableFilterFields>) => void;
   onAll: () => void;
@@ -29,7 +34,7 @@ export interface DataTablePresetRailProps {
 /**
  * The table's presets, as a narrow rail of buttons, icon above label (see
  * `DataTablePresets`). A button is lit while the form's values are exactly
- * its preset's, which is read from the form itself, so a filter changed by
+ * its preset's, the kept filters aside, which is read from the form itself, so a filter changed by
  * hand turns it off and a link carrying the same values turns it on.
  */
 export const DataTablePresetRail = (props: DataTablePresetRailProps) => {
@@ -37,6 +42,11 @@ export const DataTablePresetRail = (props: DataTablePresetRailProps) => {
   const values = useFormValues(props.form) as Record<string, unknown>;
   const all = props.presets.all;
   const items = props.presets.items;
+  const kept = props.kept ?? [];
+  const presetKeys =
+    kept.length > 0
+      ? props.keys.filter((key) => !kept.includes(key))
+      : props.keys;
 
   return (
     <nav
@@ -65,7 +75,7 @@ export const DataTablePresetRail = (props: DataTablePresetRailProps) => {
             active={presetMatches(
               values,
               preset.values as Record<string, unknown>,
-              props.keys,
+              presetKeys,
             )}
             onClick={() => props.onApply(preset)}
           />

@@ -34,6 +34,23 @@ export const dataTableFilterKeys = <F extends DataTableFilterFields>(
 };
 
 /**
+ * The keys a preset leaves alone (`keepOnPreset`), each field's operator key
+ * with it.
+ */
+export const dataTableKeptFilterKeys = (
+  fields: DataTableFilterFields,
+): string[] => {
+  const keys: string[] = [];
+  for (const [key, field] of Object.entries(fields)) {
+    if (!field.keepOnPreset) continue;
+    keys.push(key);
+    const operatorKey = dataTableFilterOperatorKey(key, field);
+    if (operatorKey) keys.push(operatorKey);
+  }
+  return keys;
+};
+
+/**
  * The key a field's operator is stored under, or `undefined` for a field
  * without operators.
  */

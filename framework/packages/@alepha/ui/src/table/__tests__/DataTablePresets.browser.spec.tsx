@@ -54,6 +54,12 @@ const fields = {
     label: "Area",
     mode: "default",
   },
+  // Scopes the list rather than picking a view of it: a preset keeps it.
+  scope: {
+    schema: z.array(z.string()),
+    label: "Scope",
+    keepOnPreset: true,
+  },
 } satisfies DataTableFilterFields;
 
 const presets: DataTablePreset<typeof fields>[] = [
@@ -187,6 +193,41 @@ describe("DataTable (presets)", () => {
     expect(preset("all").getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("leaves a keepOnPreset filter as it is, lit beside it, and All clears it", async () => {
+    const seen: Array<Record<string, any> | undefined> = [];
+    await mount("/list?scope=web", seen);
+    await waitFor(() => expect(seen.at(-1)?.scope).toEqual(["web"]));
+    // A kept filter set alone lights nothing: All needs it empty too.
+    expect(preset("all").getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(preset("mine"));
+    await waitFor(() =>
+      expect(seen.at(-1)).toMatchObject({
+        owner: "me",
+        status: ["todo", "doing"],
+        scope: ["web"],
+      }),
+    );
+    expect(preset("mine").getAttribute("aria-pressed")).toBe("true");
+    // Still on the bar beside the preset's own filters.
+    expect(slot("scope")).toBeTruthy();
+    expect(slot("owner")).toBeTruthy();
+
+    fireEvent.click(preset("done"));
+    await waitFor(() =>
+      expect(seen.at(-1)).toMatchObject({
+        status: ["done"],
+        scope: ["web"],
+      }),
+    );
+    expect(preset("done").getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(preset("all"));
+    await waitFor(() => expect(seen.at(-1)?.scope).toBeUndefined());
+    expect(seen.at(-1)?.status).toBeUndefined();
+    expect(preset("all").getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("lights the preset a link's values match, and the link replaces stored filters", async () => {
     // A filter the reader set last time, which a link must not add to.
     window.localStorage.setItem(
@@ -228,6 +269,14 @@ describe("preset matching", () => {
     expect(sameFilterValue([], undefined)).toBe(true);
     expect(sameFilterValue("", undefined)).toBe(true);
     expect(sameFilterValue(["a"], ["a", "b"])).toBe(false);
+  });
+
+  it("compares only the keys it is given, so a kept key is left out by the caller", () => {
+    expect(
+      presetMatches({ status: ["x"], scope: ["web"] }, { status: ["x"] }, [
+        "status",
+      ]),
+    ).toBe(true);
   });
 
   it("needs every other filter empty", () => {
