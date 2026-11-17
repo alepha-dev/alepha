@@ -2350,6 +2350,18 @@ export default {
   "app.sigil.feedbackButton.bottomRight": "Bottom right",
   "app.sigil.feedbackButton.bottomLeft": "Bottom left",
   "app.sigil.feedbackButton.hidden": "Hidden",
+  "app.sigil.feedbackButtonShape": "Button shape",
+  "app.sigil.feedbackButtonShape.desc":
+    "A round icon, a labelled pill, or a tab on the edge of the page.",
+  "app.sigil.feedbackButtonShape.circle": "Circle",
+  "app.sigil.feedbackButtonShape.pill": "Pill with a label",
+  "app.sigil.feedbackButtonShape.tab": "Edge tab",
+  "app.sigil.feedbackButtonTheme": "Button colour",
+  "app.sigil.feedbackButtonTheme.desc": "The built-in button's colours.",
+  "app.sigil.feedbackButtonTheme.indigo": "Indigo",
+  "app.sigil.feedbackButtonTheme.red": "Red",
+  "app.sigil.feedbackButtonTheme.ink": "Ink",
+  "app.sigil.feedbackButtonTheme.light": "Light",
   "app.sigil.excludedPaths": "Hide the button on",
   "app.sigil.excludedPaths.desc":
     "One path per line. * matches within a segment, ** across segments.",

@@ -18,6 +18,8 @@ const renderRoot = async (config: {
   feedbackUrl?: string;
   excludedPaths?: string[];
   feedbackButton?: string;
+  feedbackButtonShape?: string;
+  feedbackButtonTheme?: string;
 }) => {
   const alepha = Alepha.create();
   await alepha.start();
@@ -26,6 +28,8 @@ const renderRoot = async (config: {
     feedbackButtonExcludedPaths: config.excludedPaths ?? [],
     feedbackUrl: config.feedbackUrl,
     feedbackButton: config.feedbackButton,
+    feedbackButtonShape: config.feedbackButtonShape,
+    feedbackButtonTheme: config.feedbackButtonTheme,
     configAt: Date.now(),
   });
   render(
@@ -77,6 +81,80 @@ describe("SigilRoot", () => {
       feedbackButton: "top-left",
     });
     expect(screen.getByLabelText("Feedback")).toBeTruthy();
+  });
+
+  it("is an indigo circle on the right when the app sets nothing", async () => {
+    await renderRoot({ feedbackUrl: "https://lore.alepha.app/alepha/request" });
+    const button = screen.getByLabelText("Feedback");
+    expect(button.dataset.shape).toBe("circle");
+    expect(button.dataset.theme).toBe("indigo");
+    expect(button.dataset.side).toBe("right");
+    // An icon alone: the label belongs to the two shapes with room for it.
+    expect(button.textContent).toBe("");
+  });
+
+  it("takes the shape, the theme and the side the config names", async () => {
+    await renderRoot({
+      feedbackUrl: "https://lore.alepha.app/alepha/request",
+      feedbackButton: "bottom-left",
+      feedbackButtonShape: "pill",
+      feedbackButtonTheme: "red",
+    });
+    const button = screen.getByLabelText("Feedback");
+    expect(button.dataset.shape).toBe("pill");
+    expect(button.dataset.theme).toBe("red");
+    expect(button.dataset.side).toBe("left");
+    expect(button.textContent).toBe("Feedback");
+    expect(button.querySelector("svg")).toBeTruthy();
+  });
+
+  it("draws a tab as a label with no icon", async () => {
+    await renderRoot({
+      feedbackUrl: "https://lore.alepha.app/alepha/request",
+      feedbackButtonShape: "tab",
+    });
+    const button = screen.getByLabelText("Feedback");
+    expect(button.dataset.shape).toBe("tab");
+    expect(button.textContent).toBe("Feedback");
+    expect(button.querySelector("svg")).toBeNull();
+  });
+
+  it("falls back to the defaults for a shape or a theme it does not know", async () => {
+    // Both values select rules in a stylesheet on a third-party page. Anything
+    // off the list must never reach an attribute, let alone the CSS.
+    await renderRoot({
+      feedbackUrl: "https://lore.alepha.app/alepha/request",
+      feedbackButtonShape: "star",
+      feedbackButtonTheme: "red} body{display:none",
+    });
+    const button = screen.getByLabelText("Feedback");
+    expect(button.dataset.shape).toBe("circle");
+    expect(button.dataset.theme).toBe("indigo");
+    expect(document.body.innerHTML).not.toContain("display:none");
+  });
+
+  it("ships its own stylesheet, with the hover and focus states inline styles could not express", async () => {
+    await renderRoot({ feedbackUrl: "https://lore.alepha.app/alepha/request" });
+    const css = Array.from(document.querySelectorAll("style"))
+      .map((style) => style.textContent)
+      .join("");
+    expect(css).toContain("button.alepha-sigil-fb[data-shape]:hover");
+    expect(css).toContain("button.alepha-sigil-fb[data-shape]:focus-visible");
+  });
+
+  it("puts the thank-you on the button's side", async () => {
+    await renderRoot({
+      feedbackUrl: "https://lore.alepha.app/alepha/request",
+      feedbackButton: "bottom-left",
+    });
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: SIGIL_FEEDBACK_SUBMITTED_MESSAGE },
+        }),
+      );
+    });
+    expect(screen.getByRole("status").dataset.side).toBe("left");
   });
 
   it("hides the button on a path matching an excluded glob", async () => {

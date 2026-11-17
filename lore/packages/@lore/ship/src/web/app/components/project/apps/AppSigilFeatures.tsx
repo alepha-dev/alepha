@@ -1,4 +1,8 @@
-import { SIGIL_FEEDBACK_POSITIONS } from "@alepha/lore/sigil";
+import {
+  SIGIL_FEEDBACK_POSITIONS,
+  SIGIL_FEEDBACK_SHAPES,
+  SIGIL_FEEDBACK_THEMES,
+} from "@alepha/lore/sigil";
 import { useDialog, useToast } from "@alepha/ui";
 import { AutoForm } from "@alepha/ui/form";
 import { currentProjectAtom, type I18n, useRank } from "@lore/core/web";
@@ -68,6 +72,8 @@ const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
       vitals: z.boolean(),
       feedback: z.boolean(),
       feedbackButton: z.enum(["hidden", ...SIGIL_FEEDBACK_POSITIONS]),
+      feedbackButtonShape: z.enum(SIGIL_FEEDBACK_SHAPES),
+      feedbackButtonTheme: z.enum(SIGIL_FEEDBACK_THEMES),
       // One glob per line: a textarea reads better than an add-a-row list
       // for what is usually zero or one entry.
       feedbackButtonExcludedPaths: z.string().max(2_000).optional(),
@@ -163,6 +169,8 @@ const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
               "vitals",
               "feedback",
               "feedbackButton",
+              "feedbackButtonShape",
+              "feedbackButtonTheme",
               "feedbackButtonExcludedPaths",
             ],
           },
@@ -199,6 +207,46 @@ const AppSigilFeatures = (props: AppSigilFeaturesProps) => {
               {
                 value: "hidden",
                 label: tr("app.sigil.feedbackButton.hidden"),
+              },
+            ],
+          },
+          feedbackButtonShape: {
+            label: tr("app.sigil.feedbackButtonShape"),
+            description: tr("app.sigil.feedbackButtonShape.desc"),
+            items: [
+              {
+                value: "circle",
+                label: tr("app.sigil.feedbackButtonShape.circle"),
+              },
+              {
+                value: "pill",
+                label: tr("app.sigil.feedbackButtonShape.pill"),
+              },
+              {
+                value: "tab",
+                label: tr("app.sigil.feedbackButtonShape.tab"),
+              },
+            ],
+          },
+          feedbackButtonTheme: {
+            label: tr("app.sigil.feedbackButtonTheme"),
+            description: tr("app.sigil.feedbackButtonTheme.desc"),
+            items: [
+              {
+                value: "indigo",
+                label: tr("app.sigil.feedbackButtonTheme.indigo"),
+              },
+              {
+                value: "red",
+                label: tr("app.sigil.feedbackButtonTheme.red"),
+              },
+              {
+                value: "ink",
+                label: tr("app.sigil.feedbackButtonTheme.ink"),
+              },
+              {
+                value: "light",
+                label: tr("app.sigil.feedbackButtonTheme.light"),
               },
             ],
           },

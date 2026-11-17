@@ -90,8 +90,9 @@ reaches the browser, and there is no cross-origin request to allow.
 
 `SIGIL_CONFIG` takes `analytics`, `blights`, `vitals` and `feedback` (booleans,
 all on by default), `feedbackButton` (`bottom-right`, `bottom-left` or
-`hidden`), `feedbackButtonExcludedPaths` and `reportOutsideProduction` (off by
-default).
+`hidden`), `feedbackButtonShape` (`circle`, `pill` or `tab`),
+`feedbackButtonTheme` (`indigo`, `red`, `ink` or `light`),
+`feedbackButtonExcludedPaths` and `reportOutsideProduction` (off by default).
 
 An app deployed by Lore needs none of this by hand. The deploy creates the
 sigil and writes `SIGIL_KEY` into the copy's environment when the build

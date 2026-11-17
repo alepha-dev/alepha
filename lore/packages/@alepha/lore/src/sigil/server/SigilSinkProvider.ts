@@ -257,6 +257,8 @@ export class SigilSinkProvider {
         this.config?.feedbackButtonExcludedPaths ?? [],
       feedbackUrl: this.feedbackUrl(),
       feedbackButton: this.config?.feedbackButton,
+      feedbackButtonShape: this.config?.feedbackButtonShape,
+      feedbackButtonTheme: this.config?.feedbackButtonTheme,
       configAt,
     };
   }

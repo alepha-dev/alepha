@@ -64,7 +64,33 @@ describe("sigilEnv", () => {
     expect(env.SIGIL_CONFIG?.vitals).toBe(true);
     expect(env.SIGIL_CONFIG?.feedback).toBe(true);
     expect(env.SIGIL_CONFIG?.feedbackButton).toBe("bottom-right");
+    expect(env.SIGIL_CONFIG?.feedbackButtonShape).toBe("circle");
+    expect(env.SIGIL_CONFIG?.feedbackButtonTheme).toBe("indigo");
     expect(env.SIGIL_CONFIG?.feedbackButtonExcludedPaths).toEqual([]);
+  });
+
+  it("reads the feedback button's shape and theme", () => {
+    const alepha = Alepha.create({
+      env: {
+        SIGIL_CONFIG:
+          '{"feedbackButtonShape":"pill","feedbackButtonTheme":"red"}',
+      },
+    });
+
+    const env = alepha.parseEnv(sigilEnv);
+
+    expect(env.SIGIL_CONFIG?.feedbackButtonShape).toBe("pill");
+    expect(env.SIGIL_CONFIG?.feedbackButtonTheme).toBe("red");
+  });
+
+  it("refuses a theme that is not one of the presets", () => {
+    // A free colour would have to be written into a stylesheet on someone
+    // else's page. The app says so at boot instead.
+    const alepha = Alepha.create({
+      env: { SIGIL_CONFIG: '{"feedbackButtonTheme":"#ff0000"}' },
+    });
+
+    expect(() => alepha.parseEnv(sigilEnv)).toThrow();
   });
 
   it("reads the switches an operator actually turns off", () => {

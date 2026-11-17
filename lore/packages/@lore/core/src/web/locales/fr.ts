@@ -2349,6 +2349,18 @@ export default {
   "app.sigil.feedbackButton.bottomRight": "En bas à droite",
   "app.sigil.feedbackButton.bottomLeft": "En bas à gauche",
   "app.sigil.feedbackButton.hidden": "Masqué",
+  "app.sigil.feedbackButtonShape": "Forme du bouton",
+  "app.sigil.feedbackButtonShape.desc":
+    "Une icône ronde, une pastille avec un libellé, ou un onglet sur le bord de la page.",
+  "app.sigil.feedbackButtonShape.circle": "Cercle",
+  "app.sigil.feedbackButtonShape.pill": "Pastille avec libellé",
+  "app.sigil.feedbackButtonShape.tab": "Onglet sur le bord",
+  "app.sigil.feedbackButtonTheme": "Couleur du bouton",
+  "app.sigil.feedbackButtonTheme.desc": "Les couleurs du bouton intégré.",
+  "app.sigil.feedbackButtonTheme.indigo": "Indigo",
+  "app.sigil.feedbackButtonTheme.red": "Rouge",
+  "app.sigil.feedbackButtonTheme.ink": "Encre",
+  "app.sigil.feedbackButtonTheme.light": "Clair",
   "app.sigil.excludedPaths": "Masquer le bouton sur",
   "app.sigil.excludedPaths.desc":
     "Un chemin par ligne. * correspond à un segment, ** à plusieurs.",
