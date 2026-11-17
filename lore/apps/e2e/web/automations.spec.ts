@@ -317,28 +317,26 @@ test.describe("Automations", () => {
       new RegExp(`/${project.slug}/automations/${created.id}$`),
     );
     await expect(page.getByText("Disabled", { exact: true })).toBeVisible();
-    // The graph on a read-only canvas (#Q3810): the schedule, what it
-    // reads, the notification with its recipient and channel; a node opens
-    // its full configuration.
-    const canvas = page.getByTestId("automation-canvas");
-    await expect(canvas.getByTestId("automation-node-source")).toContainText(
-      "Daily at",
-    );
-    await expect(canvas.getByTestId("automation-node-read")).toContainText(
-      "daily",
-    );
-    const notify = canvas.getByTestId("automation-node-action-1");
+    // The graph as a read-only outline (#Q3847): the schedule and what it
+    // reads, the notification with its recipient and channel; a row opens
+    // to its whole configuration.
+    const outline = page.getByTestId("automation-outline");
+    await expect(
+      outline.getByTestId("automation-outline-row-source"),
+    ).toContainText("Daily at");
+    await expect(
+      outline.getByTestId("automation-outline-row-source"),
+    ).toContainText("daily");
+    const notify = outline.getByTestId("automation-outline-row-action-1");
     await expect(notify).toContainText(owner.label);
     await expect(notify).toContainText("In-app");
-    await expect(canvas.locator(".react-flow__node")).toHaveCount(
-      created.rule.nodes.length,
-    );
-    await notify.click();
-    const panel = page.getByTestId("automation-node-panel");
-    await expect(panel).toContainText("recipient");
-    await expect(panel).toContainText(me.id);
-    await page.keyboard.press("Escape");
-    await expect(panel).toBeHidden();
+    await expect(outline).not.toContainText("action-1");
+    await notify.getByRole("button").first().click();
+    const details = notify.getByTestId("automation-outline-details");
+    await expect(details).toContainText("Recipient");
+    await expect(details).toContainText(owner.label);
+    await notify.getByRole("button").first().click();
+    await expect(details).toBeHidden();
     const getPath = (await apiPath(page, "getAutomation"))
       .replace(":projectId", String(project.id))
       .replace(":id", created.id);
@@ -479,10 +477,10 @@ test.describe("Automations", () => {
     await expect(page).toHaveURL(
       new RegExp(`/${project.slug}/automations/${created.id}$`),
     );
-    // The notification's recipient is the shared variable, on the canvas.
+    // The notification's recipient is the shared variable, as a chip.
     await expect(
-      page.getByTestId("automation-node-action-1-target"),
-    ).toHaveText("{{recipient}}");
+      page.getByTestId("automation-outline-row-action-1").locator("code"),
+    ).toHaveText("recipient");
   });
 
   test("previews release publication through same-project folio and source pickers without appending", async ({
@@ -910,13 +908,12 @@ test.describe("Automations", () => {
         ),
       ).toHaveLength(1);
       await page.goto(`/${project.slug}/automations/runs/${runId}`);
-      // The run painted on the graph its snapshot holds (#Q3810).
-      await expect(page.getByTestId("automation-node-source")).toHaveAttribute(
-        "data-outcome",
-        "ran",
-      );
+      // The run's block, one outcome badge per row (#Q3847).
       await expect(
-        page.getByTestId("automation-node-action-1"),
+        page.getByTestId("automation-outline-outcome-source"),
+      ).toHaveAttribute("data-outcome", "ran");
+      await expect(
+        page.getByTestId("automation-outline-outcome-action-1"),
       ).toHaveAttribute("data-outcome", "ran");
       await expect(
         page.getByRole("link", {
