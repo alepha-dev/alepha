@@ -38,16 +38,18 @@ const VERIFY_BY_LABEL_KEYS = {
   vital: "requirements.requirement.metric.kind.vital",
   availability: "requirements.requirement.metric.kind.availability",
   latency: "requirements.requirement.metric.kind.latency",
+  api: "requirements.requirement.metric.kind.api",
 } as const;
 
 /**
  * The metric fields of the form, flat, and the metric they make.
  */
 const metricFields = {
-  verifyBy: z.enum(["usecases", "vital", "availability", "latency"]),
+  verifyBy: z.enum(["usecases", "vital", "availability", "latency", "api"]),
   metricVital: z.enum(["lcp", "inp", "cls"]).optional(),
   metricPercentile: z.integer().min(1).max(99).optional(),
   metricPath: z.text().optional(),
+  metricMethod: z.text().optional(),
   metricMonitorId: z.text().optional(),
   metricApp: z.text().optional(),
   metricEnv: z.text().optional(),
@@ -101,6 +103,7 @@ const RequirementSheet = (props: RequirementSheetProps) => {
             metricVital: it.metric?.vital,
             metricPercentile: it.metric?.percentile,
             metricPath: it.metric?.path ?? "",
+            metricMethod: it.metric?.method ?? "",
             metricMonitorId: it.metric?.monitorId ?? "",
             metricApp: it.metric?.app ?? "",
             metricEnv: it.metric?.env ?? "",
@@ -118,6 +121,7 @@ const RequirementSheet = (props: RequirementSheetProps) => {
           metricVital,
           metricPercentile,
           metricPath,
+          metricMethod,
           metricMonitorId,
           metricApp,
           metricEnv,
@@ -137,7 +141,12 @@ const RequirementSheet = (props: RequirementSheetProps) => {
                       vital: metricVital ?? "lcp",
                       path: metricPath || undefined,
                     }
-                  : { monitorId: metricMonitorId || undefined }),
+                  : verifyBy === "api"
+                    ? {
+                        path: metricPath || undefined,
+                        method: metricMethod?.toUpperCase() || undefined,
+                      }
+                    : { monitorId: metricMonitorId || undefined }),
                 percentile:
                   verifyBy === "availability" ? undefined : metricPercentile,
                 app: metricApp || undefined,
@@ -250,7 +259,7 @@ const RequirementSheet = (props: RequirementSheetProps) => {
               icon={ClipboardCheck}
               select
               items={(
-                ["usecases", "vital", "availability", "latency"] as const
+                ["usecases", "vital", "availability", "latency", "api"] as const
               ).map((value) => ({
                 value,
                 label: tr(VERIFY_BY_LABEL_KEYS[value]),
@@ -273,6 +282,17 @@ const RequirementSheet = (props: RequirementSheetProps) => {
                     <Control
                       label={tr("requirements.requirement.metric.path")}
                       input={form.input.metricPath}
+                    />
+                  </div>
+                ) : verifyBy === "api" ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <Control
+                      label={tr("requirements.requirement.metric.route")}
+                      input={form.input.metricPath}
+                    />
+                    <Control
+                      label={tr("requirements.requirement.metric.method")}
+                      input={form.input.metricMethod}
                     />
                   </div>
                 ) : (

@@ -120,6 +120,22 @@ const readVitals = async (analytics: DeployAnalytics, sigilId: string) => {
   }>;
 };
 
+const readRequests = async (analytics: DeployAnalytics, sigilId: string) => {
+  const result = await analytics.requests.query({
+    since: "2000-01-01",
+    where: { sigilId: { inArray: [sigilId] } },
+    groupBy: ["route", "method", "status", "bucket"],
+    select: { samples: "sum" },
+  });
+  return result.rows as unknown as Array<{
+    route: string;
+    method: string;
+    status: string;
+    bucket: number;
+    samples: number;
+  }>;
+};
+
 /**
  * Every capability switched on, which is what most tests here want as a
  * baseline so their subject is the one thing they vary.
@@ -697,6 +713,32 @@ describe("sigil ingest", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].path).toBe("/search");
     expect(rows[0].count).toBe(2);
+  });
+
+  it("stores server request durations as a histogram, behind the vitals kind (#Q3777)", async () => {
+    const { analytics, sigil, post } = await setup();
+    const line = {
+      route: "/api/orders/:id",
+      method: "get",
+      status: "2xx" as const,
+      bucket: 2,
+      count: 3,
+    };
+
+    await post({ requests: [line, line] });
+    await post({ requests: [{ ...line, bucket: 40, count: 1 }] });
+
+    const rows = await readRequests(analytics, sigil.id);
+    const byBucket = new Map(rows.map((row) => [row.bucket, row]));
+    // Folded within an envelope and summed across two.
+    expect(byBucket.get(2)?.samples).toBe(6);
+    expect(byBucket.get(2)?.method).toBe("GET");
+    // A bucket past the overflow is clamped onto it.
+    expect(byBucket.get(9)?.samples).toBe(1);
+
+    const other = await setup({ kinds: ["beacon", "errors"] });
+    await other.post({ requests: [line] });
+    expect(await readRequests(other.analytics, other.sigil.id)).toHaveLength(0);
   });
 
   it("keeps vitals as bucket counts rather than samples", async () => {

@@ -1,4 +1,4 @@
-import { VITALS_BUCKETS } from "@alepha/lore/sigil";
+import { REQUEST_BUCKETS, VITALS_BUCKETS } from "@alepha/lore/sigil";
 import { ProjectSecurityService } from "@lore/core/api";
 import { DeployAnalytics } from "@lore/ship/api";
 import { appInstances, monitors } from "@lore/ship/schemas";
@@ -24,7 +24,8 @@ export interface MetricEvaluation {
 
 /**
  * Metric requirements (#E153, #Q3773): evaluates a requirement's measure
- * from what Ship already stores (`sigil_vitals`, `uptime_probes`) and writes
+ * from what Ship already stores (`sigil_vitals`, `sigil_requests`,
+ * `uptime_probes`) and writes
  * the result on the requirement, so no screen queries the analytics. The
  * hourly job calls {@link evaluateAll}; a save calls {@link evaluateOne}.
  *
@@ -133,9 +134,13 @@ export class RequirementMetricService {
         ? ship?.track
           ? await this.vital(projectId, metric, since)
           : undefined
-        : ship?.uptime
-          ? await this.monitor(projectId, metric, since)
-          : undefined;
+        : metric.kind === "api"
+          ? ship?.track
+            ? await this.api(projectId, metric, since)
+            : undefined
+          : ship?.uptime
+            ? await this.monitor(projectId, metric, since)
+            : undefined;
     if (value === undefined) return { status: "no_data" };
     return {
       value,
@@ -196,6 +201,65 @@ export class RequirementMetricService {
   }
 
   /**
+   * An API latency (#Q3777): the percentile of the server's request
+   * durations on the routes the pattern matches, from `sigil_requests`.
+   * Only `2xx` answers count: a fast error would make a route look faster
+   * than it serves.
+   */
+  protected async api(
+    projectId: number,
+    metric: RequirementMetric,
+    since: string,
+  ): Promise<number | undefined> {
+    const copy = await this.copyOf(projectId, metric);
+    if (!copy?.sigilId) return undefined;
+    const method = metric.method?.toUpperCase();
+    const result = await this.analytics.requests.query({
+      since,
+      where: {
+        sigilId: copy.sigilId,
+        status: "2xx",
+        ...(method ? { method } : {}),
+      },
+      groupBy: ["route", "bucket"],
+      select: { samples: "sum" },
+    });
+    const histogram = new Map<number, number>();
+    for (const row of result.rows) {
+      if (!this.matchesPath(metric.path, String(row.route))) continue;
+      const bucket = Number(row.bucket);
+      histogram.set(bucket, (histogram.get(bucket) ?? 0) + Number(row.samples));
+    }
+    return this.percentileOf(
+      REQUEST_BUCKETS,
+      histogram,
+      metric.percentile ?? 95,
+    );
+  }
+
+  /**
+   * The percentile of a histogram over `boundaries`, as the upper boundary
+   * of the bucket it lands in (the last one for the overflow bucket).
+   */
+  public percentileOf(
+    boundaries: number[],
+    histogram: Map<number, number>,
+    percentile: number,
+  ): number | undefined {
+    const total = [...histogram.values()].reduce((a, b) => a + b, 0);
+    if (total === 0) return undefined;
+    const target = Math.ceil((percentile / 100) * total);
+    let cumulative = 0;
+    for (let index = 0; index <= boundaries.length; index++) {
+      cumulative += histogram.get(index) ?? 0;
+      if (cumulative >= target) {
+        return boundaries[Math.min(index, boundaries.length - 1)];
+      }
+    }
+    return boundaries[boundaries.length - 1];
+  }
+
+  /**
    * The percentile of a bucket histogram, as the upper boundary of the
    * bucket it lands in.
    */
@@ -204,19 +268,13 @@ export class RequirementMetricService {
     histogram: Map<number, number>,
     percentile: number,
   ): number | undefined {
-    const total = [...histogram.values()].reduce((a, b) => a + b, 0);
-    if (total === 0) return undefined;
-    const boundaries = VITALS_BUCKETS[metric];
-    const scale = metric === "cls" ? 1000 : 1;
-    const target = Math.ceil((percentile / 100) * total);
-    let cumulative = 0;
-    for (let index = 0; index <= boundaries.length; index++) {
-      cumulative += histogram.get(index) ?? 0;
-      if (cumulative >= target) {
-        return boundaries[Math.min(index, boundaries.length - 1)] / scale;
-      }
-    }
-    return boundaries[boundaries.length - 1] / scale;
+    const value = this.percentileOf(
+      VITALS_BUCKETS[metric],
+      histogram,
+      percentile,
+    );
+    if (value === undefined) return undefined;
+    return metric === "cls" ? value / 1000 : value;
   }
 
   /**

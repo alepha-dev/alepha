@@ -12,6 +12,7 @@
 export * from "./schemas/sigilConfig.ts";
 export * from "./schemas/sigilEnvelope.ts";
 export * from "./schemas/sigilReportedConfig.ts";
+export * from "./schemas/sigilRequestBuckets.ts";
 export * from "./schemas/sigilVitalsBuckets.ts";
 export * from "./sigilBrowserName.ts";
 export * from "./sigilCampaign.ts";

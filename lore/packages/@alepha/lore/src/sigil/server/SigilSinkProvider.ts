@@ -75,6 +75,7 @@ export class SigilSinkProvider {
     views: 50,
     errors: 20,
     vitals: 50,
+    requests: 200,
     engagements: 50,
   } as const;
 
@@ -426,6 +427,16 @@ export class SigilSinkProvider {
     if (envelope.vitals?.length && enabled.vitals) {
       batch.vitals.push(...envelope.vitals);
     }
+    // Behind the vitals gate, like the envelope field says: the server's
+    // half of "is this app fast".
+    if (envelope.requests?.length && enabled.vitals) {
+      for (const request of envelope.requests) {
+        const key = `${request.method} ${request.route}\u0000${request.status}\u0000${request.bucket}`;
+        const existing = batch.requests.get(key);
+        if (existing) existing.count += request.count;
+        else batch.requests.set(key, { ...request });
+      }
+    }
     // Behind the views gate, not one of its own: engagement is a fact about a
     // view, and an `engaged` total that outlived the `count` it divides into
     // would be worse than not collecting it.
@@ -550,6 +561,7 @@ export class SigilSinkProvider {
         vitals: [],
         engagements: [],
         errors: new Map(),
+        requests: new Map(),
       };
       this.pending.set(key, batch);
     }
@@ -559,6 +571,7 @@ export class SigilSinkProvider {
   protected batchHasPending(batch: PendingBatch): boolean {
     return (
       batch.errors.size > 0 ||
+      batch.requests.size > 0 ||
       batch.views.length > 0 ||
       batch.vitals.length > 0 ||
       batch.engagements.length > 0
@@ -583,6 +596,7 @@ export class SigilSinkProvider {
       if (batch.errors.size >= this.caps.errors) return true;
       if (batch.views.length >= this.caps.views) return true;
       if (batch.vitals.length >= this.caps.vitals) return true;
+      if (batch.requests.size >= this.caps.requests) return true;
       if (batch.engagements.length >= this.caps.engagements) return true;
     }
     return now - (this.oldestPendingAt ?? now) >= this.flushWindowMs;
@@ -634,6 +648,13 @@ export class SigilSinkProvider {
         this.caps.errors,
       );
       for (const [errorKey] of errorEntries) batch.errors.delete(errorKey);
+      const requestEntries = [...batch.requests.entries()].slice(
+        0,
+        this.caps.requests,
+      );
+      for (const [requestKey] of requestEntries) {
+        batch.requests.delete(requestKey);
+      }
 
       outgoing.push({
         stamp: batch.stamp,
@@ -643,6 +664,9 @@ export class SigilSinkProvider {
           ...(engagements.length ? { engagements } : {}),
           ...(errorEntries.length
             ? { errors: errorEntries.map(([, error]) => error) }
+            : {}),
+          ...(requestEntries.length
+            ? { requests: requestEntries.map(([, request]) => request) }
             : {}),
         },
       });
@@ -792,4 +816,9 @@ interface PendingBatch {
    * Errors waiting to be sent, keyed by fingerprint source.
    */
   errors: Map<string, AggregatedError>;
+  /**
+   * Request durations waiting to be sent, folded by route, method, status
+   * class and bucket (#Q3777).
+   */
+  requests: Map<string, NonNullable<SigilEnvelope["requests"]>[number]>;
 }

@@ -24,9 +24,15 @@ export const metricLine = (metric: RequirementMetric): string => {
       ? undefined
       : `p${metric.percentile ?? (metric.kind === "vital" ? 75 : 95)}`;
   const what =
-    metric.kind === "vital" ? (metric.vital ?? "lcp").toUpperCase() : undefined;
+    metric.kind === "vital"
+      ? (metric.vital ?? "lcp").toUpperCase()
+      : metric.kind === "api"
+        ? metric.method?.toUpperCase()
+        : undefined;
   const target =
-    metric.kind === "vital" ? (metric.path ?? "*") : metric.monitorId;
+    metric.kind === "vital" || metric.kind === "api"
+      ? (metric.path ?? "*")
+      : metric.monitorId;
   const copy = [metric.app, metric.env ?? "production"]
     .filter(Boolean)
     .join(" ");

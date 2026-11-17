@@ -145,6 +145,61 @@ describe("metric requirements", () => {
     expect(p75.status).toBe("verified");
   });
 
+  it("verifies an API latency from the server's request histogram (#Q3777)", async ({
+    expect,
+  }) => {
+    const t = await setup({ track: true, uptime: false });
+    // REQUEST_BUCKETS: 25, 50, 100, 200, 400, ...
+    const line = (
+      route: string,
+      method: string,
+      status: string,
+      bucket: number,
+      samples: number,
+    ) => ({ sigilId: t.sigil.id, route, method, status, bucket, samples });
+    await t.analytics.requests.recordMany([
+      // The orders API: 90 answers within 100 ms, 10 within 400 ms.
+      line("/api/orders/:id", "GET", "2xx", 2, 90),
+      line("/api/orders/:id", "GET", "2xx", 4, 10),
+      // Fast failures, which must not pull the percentile down.
+      line("/api/orders/:id", "GET", "5xx", 0, 1000),
+      // A slow write on the same routes, and another route entirely.
+      line("/api/orders", "POST", "2xx", 6, 50),
+      line("/api/users", "GET", "2xx", 8, 500),
+    ] as never);
+
+    const reads = await t.create({
+      kind: "api",
+      path: "/api/orders/*",
+      method: "get",
+      percentile: 95,
+      threshold: 300,
+    });
+    expect(reads.metricValue).toBe(400);
+    expect(reads.status).toBe("failing");
+
+    const p90 = (
+      await t.api.updateRequirement.fetch(
+        {
+          params: { id: reads.id },
+          body: { metric: { ...reads.metric, percentile: 90 } as never },
+        },
+        t.as,
+      )
+    ).data;
+    expect(p90.metricValue).toBe(100);
+    expect(p90.status).toBe("verified");
+
+    // Every method on the orders routes: the slow POSTs come in.
+    const all = await t.create({
+      kind: "api",
+      path: "/api/orders*",
+      threshold: 1000,
+    });
+    expect(all.metricValue).toBe(1600);
+    expect(all.status).toBe("failing");
+  });
+
   it("reads a monitor's availability and latency, and the hourly job stores them", async ({
     expect,
   }) => {

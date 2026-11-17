@@ -72,17 +72,22 @@ requirements.
 
 A non-functional requirement is verified by a measure rather than a use case.
 In the form, **Verified by** offers **A web vital**, **A monitor's
-availability** and **A monitor's latency**:
+availability**, **A monitor's latency** and **An API's latency**:
 
 - a web vital (LCP, INP or CLS) at a percentile, for a path pattern of the
   app's sigil (`/checkout/*`);
 - the availability of a monitor, in percent;
-- the latency of a monitor, at a percentile.
+- the latency of a monitor, at a percentile;
+- the latency of the app's server at a percentile (95 by default), for a
+  pattern of its route patterns (`/api/orders/*`, `/api/orders/:id`) and
+  optionally one method. Only successful answers count, so a fast error
+  never makes a route look fast.
 
 Each is read on an app copy (production by default), against a threshold,
 over a window (7 days by default). Lore evaluates every measure once an hour
 and when you save it, and the pane shows the value, since when it holds, and
-the last 14 days. A vital needs Ship's **Track** option, a monitor needs
+the last 14 days. A vital or an API's latency needs Ship's **Track** option,
+a monitor needs
 **Uptime**; without them, or without a point in the window, the requirement
 shows **No data**. These measures need an app built with Alepha, whose sigil
 and monitors report them.
@@ -95,6 +100,7 @@ lore requirement create --statement "The discount is visible before payment" --p
 lore criterion link --usecase U7 --key C2 --requirement S5
 lore requirement set release S5 --release 2.4.0
 lore requirement update S15 --metric-kind latency --metric-threshold 300
+lore requirement update S16 --metric-kind api --metric-path "/api/orders/*" --metric-threshold 400
 ```
 
 See [The lore CLI](/lore/docs/reference-cli).

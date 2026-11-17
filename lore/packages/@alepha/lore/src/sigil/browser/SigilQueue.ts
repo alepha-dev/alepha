@@ -10,7 +10,8 @@ import type { SigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
  * envelope disagrees with the endpoint's is a compile that passes and a 400
  * that does not.
  */
-type Envelope = SigilEnvelope;
+// `requests` is the server's half (#Q3777): a browser never sends it.
+type Envelope = Omit<SigilEnvelope, "requests">;
 type View = NonNullable<Envelope["views"]>[number];
 type Engagement = NonNullable<Envelope["engagements"]>[number];
 type ErrEvt = NonNullable<Envelope["errors"]>[number];

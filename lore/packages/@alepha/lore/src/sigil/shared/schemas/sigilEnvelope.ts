@@ -145,6 +145,30 @@ export const sigilEnvelope = z.object({
     )
     .max(50)
     .optional(),
+  /**
+   * Server request durations, folded (#Q3777): one line per route pattern,
+   * method, status class and duration bucket, with how many requests fell
+   * there since the last flush.
+   *
+   * Sent by the app's own server, never by a browser, and only ever with a
+   * route PATTERN (`/api/users/:id`, the `$action`'s path): a concrete URL
+   * would carry ids and fragment the histogram. Behind the `vitals` tracker,
+   * since a request's duration is the server's half of the same question.
+   *
+   * Optional, and it stays optional: an older sender sends none.
+   */
+  requests: z
+    .array(
+      z.object({
+        route: z.string().max(512),
+        method: z.string().max(16),
+        status: z.enum(["2xx", "3xx", "4xx", "5xx"]).meta({ mode: "text" }),
+        bucket: z.integer().min(0).max(64),
+        count: z.integer().min(1).max(1_000_000),
+      }),
+    )
+    .max(200)
+    .optional(),
 });
 
 export type SigilEnvelope = Infer<typeof sigilEnvelope>;

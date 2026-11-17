@@ -92,9 +92,9 @@ export class RequirementCommand {
       .text({ description: "The heading slug of its section in that folio." })
       .optional(),
     "metric-kind": z
-      .enum(["vital", "availability", "latency"])
+      .enum(["vital", "availability", "latency", "api"])
       .describe(
-        "Verify it by a measure: a web vital, or a monitor's availability or latency. Needs an app built with Alepha.",
+        "Verify it by a measure: a web vital, a monitor's availability or latency, or api, the server's latency on the routes --metric-path matches. Needs an app built with Alepha.",
       )
       .optional(),
     "metric-vital": z
@@ -109,8 +109,12 @@ export class RequirementCommand {
       .optional(),
     "metric-path": z
       .text({
-        description: "A path pattern of the sigil, * matching anything.",
+        description:
+          "A path pattern of the sigil, * matching anything; for api, of the server's route patterns.",
       })
+      .optional(),
+    "metric-method": z
+      .text({ description: "The HTTP method, for --metric-kind api." })
       .optional(),
     "metric-monitor": z
       .text({ description: "The monitor's id; else the copy's first monitor." })
@@ -169,6 +173,7 @@ export class RequirementCommand {
           ["metric-vital", "vital"],
           ["metric-percentile", "percentile"],
           ["metric-path", "path"],
+          ["metric-method", "method"],
           ["metric-monitor", "monitorId"],
           ["metric-app", "app"],
           ["metric-env", "env"],
