@@ -72,7 +72,7 @@ const PersonasTab = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-3 border-b p-3">
+      <div className="chrome flex flex-wrap items-center gap-3 border-b p-3">
         <Segmented
           size="sm"
           value={kind}
