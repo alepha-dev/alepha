@@ -136,9 +136,19 @@ export const PlateLayout = (props: PlateLayoutProps) => (
       <div
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scroll region must take focus for the keyboard to scroll it (WCAG 2.1.1); the lint rule does not know scroll containers
         tabIndex={0}
-        // `bg-muted`, the folder tab's own fill: the active tile opens into
-        // the body, so the two must be one surface.
-        className="bg-muted focus-visible:ring-ring/50 min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-[3px] focus-visible:ring-inset"
+        // Under folder tabs, a fade from `--muted`, the active tile's own
+        // fill, to transparent (#Q3837): at the top the tile opens into the
+        // body with no seam, and the page shows through below. The
+        // gradient is the scroll container's own background, so it spans
+        // the visible region and stays put while the content scrolls: the
+        // top always matches the tile. Underline tabs have no tile to join
+        // and keep the flat fill.
+        className={cn(
+          "focus-visible:ring-ring/50 min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-[3px] focus-visible:ring-inset",
+          props.tabsVariant === "underline"
+            ? "bg-muted"
+            : "from-muted bg-linear-to-b to-transparent",
+        )}
       >
         {props.children}
       </div>
