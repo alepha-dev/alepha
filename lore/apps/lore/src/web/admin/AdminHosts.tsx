@@ -7,10 +7,18 @@ import {
 } from "@alepha/ui/table";
 import type { AdminHostController } from "@lore/ship/api";
 import type { AdminHostResource } from "@lore/ship/schemas";
+import { z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { FolderInput, Pencil, Trash2 } from "lucide-react";
+import {
+  CircleDot,
+  FolderInput,
+  KeyRound,
+  Pencil,
+  Server,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import AdminHostAssignDialog from "./AdminHostAssignDialog.tsx";
@@ -38,6 +46,38 @@ export const AdminHosts = () => {
       placeholder: "Search hosts…",
       control: { inputProps: { "aria-label": "Search hosts by slug" } },
     },
+    // Applied server-side by `findHosts` (#Q3800), so paging stays exact.
+    type: {
+      // The entity's `HOST_TYPES`, which the browser cannot import.
+      schema: z.enum(["bay", "cloudflare"]),
+      label: "Type",
+      icon: Server,
+      items: [
+        { value: "bay", label: "bay" },
+        { value: "cloudflare", label: "cloudflare" },
+      ],
+      control: { clearLabel: "All types" },
+    },
+    state: {
+      schema: z.enum(["online", "offline"]),
+      label: "State",
+      icon: CircleDot,
+      items: [
+        { value: "online", label: "Online" },
+        { value: "offline", label: "Offline" },
+      ],
+      control: { clearLabel: "Any state" },
+    },
+    credentialStatus: {
+      schema: z.enum(["valid", "invalid"]),
+      label: "Credential",
+      icon: KeyRound,
+      items: [
+        { value: "valid", label: "Valid" },
+        { value: "invalid", label: "Invalid" },
+      ],
+      control: { clearLabel: "Any credential" },
+    },
   } satisfies DataTableFilterFields;
   const [assigning, setAssigning] = useState<AdminHostResource>();
   const [renaming, setRenaming] = useState<AdminHostResource>();
@@ -56,6 +96,9 @@ export const AdminHosts = () => {
           size: params.size,
           sort: params.sort,
           search: params.filters?.search || undefined,
+          type: params.filters?.type || undefined,
+          state: params.filters?.state || undefined,
+          credentialStatus: params.filters?.credentialStatus || undefined,
         },
       });
     },

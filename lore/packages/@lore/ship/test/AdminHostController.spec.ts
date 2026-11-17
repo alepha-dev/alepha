@@ -150,6 +150,55 @@ describe("AdminHostController", () => {
     expect(result.content.map((item) => item.slug)).toEqual(["hetzner"]);
   });
 
+  it("filters by type, state and credential, server-side, composing with the search and paging", async ({
+    expect,
+  }) => {
+    const alice = await createUser(ctx, "alice");
+    const live = await createTestHost(ctx.alepha, alice, { slug: "ovh-live" });
+    await createTestHost(ctx.alepha, alice, { slug: "ovh-idle" });
+    await createTestHost(ctx.alepha, alice, { slug: "hetzner-live" });
+    const now = new Date().toISOString();
+    for (const host of await ctx.repos.hosts.findMany({})) {
+      if (host.slug.endsWith("-live")) {
+        await ctx.repos.hosts.updateById(host.id, {
+          connectedAt: now,
+          lastSeenAt: now,
+        });
+      }
+    }
+    const find = (query: Record<string, unknown>) =>
+      ctx.admin.findHosts(
+        { query: { ...page, sort: "slug", ...query } },
+        { user: adminToken() },
+      );
+
+    const online = await find({ state: "online" });
+    expect(online.content.map((item) => item.slug)).toEqual([
+      "hetzner-live",
+      "ovh-live",
+    ]);
+    expect(online.content.every((item) => item.online)).toBe(true);
+
+    expect(
+      (await find({ state: "offline" })).content.map((item) => item.slug),
+    ).toEqual(["ovh-idle"]);
+    expect(
+      (await find({ state: "online", search: "ovh" })).content.map(
+        (item) => item.id,
+      ),
+    ).toEqual([live.id]);
+
+    // Paging and the count run over the filtered set, not over a page.
+    const first = await find({ state: "online", size: 1 });
+    expect(first.content).toHaveLength(1);
+    expect(first.page.totalElements).toBe(2);
+
+    expect((await find({ type: "bay" })).content).toHaveLength(3);
+    expect((await find({ type: "cloudflare" })).content).toHaveLength(0);
+    // A bay host has no credential status, so it matches neither value.
+    expect((await find({ credentialStatus: "valid" })).content).toHaveLength(0);
+  });
+
   it("is closed to a plain user, owner of hosts or not", async ({ expect }) => {
     const alice = await createUser(ctx, "alice");
     await createTestHost(ctx.alepha, alice, { slug: "ovh-1" });
