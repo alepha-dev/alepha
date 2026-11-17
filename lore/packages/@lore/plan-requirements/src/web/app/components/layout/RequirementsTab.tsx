@@ -192,7 +192,10 @@ const RequirementsTab = () => {
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <form {...filters.props} className="flex flex-col gap-3 border-b p-3">
+        <form
+          {...filters.props}
+          className="[&_:is(input,[role=combobox])]:bg-background chrome flex flex-col gap-3 border-b p-3"
+        >
           <div className="flex flex-wrap items-center gap-3">
             <Segmented
               size="sm"

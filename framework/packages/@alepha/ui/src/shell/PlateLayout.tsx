@@ -123,7 +123,13 @@ export const PlateLayout = (props: PlateLayoutProps) => (
     </div>
 
     {props.scroll === false ? (
-      props.children
+      // A body that owns its scroll is a page of content under a toolbar of
+      // its own: the toolbar takes `chrome` (the folder tile's fill, so the
+      // active tile opens into it) and the content sits on the page's
+      // background. Without a fill here the shell behind it shows through.
+      <div className="bg-background flex min-h-0 flex-1 flex-col">
+        {props.children}
+      </div>
     ) : (
       // Focusable, so a keyboard can scroll it when nothing inside it takes
       // focus (axe `scrollable-region-focusable`, WCAG 2.1.1).
