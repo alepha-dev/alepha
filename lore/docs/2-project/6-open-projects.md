@@ -27,7 +27,8 @@ be mentioned. They cannot be assigned a quest.
 ## Opening a project
 
 1. Open **Settings ▸ General**.
-2. Under **Joining**, turn **Public project** on, and confirm.
+2. Under **Joining**, turn **Public project** on, and confirm by typing the
+   project's slug, the name it has in its URL.
 3. Copy the **Link to share** and send it where your audience is.
 
 The switch is off when your Lore does not allow open projects, or when the

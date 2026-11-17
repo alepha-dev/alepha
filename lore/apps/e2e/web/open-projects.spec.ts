@@ -73,6 +73,14 @@ const openProject = async (page: Page, slug: string) => {
   const publicProject = page.getByRole("switch", { name: "Public project" });
   await expect(publicProject).not.toBeChecked();
   await publicProject.click();
+  // Opening is confirmed by typing the slug (#Q3819).
+  const dialog = page.getByRole("alertdialog");
+  const confirm = dialog.getByRole("button", {
+    name: "Open the project",
+    exact: true,
+  });
+  await expect(confirm).toBeDisabled();
+  await dialog.getByLabel(`Type ${slug} to confirm`).fill(slug);
   await confirmDialog(page, "Open the project");
   await expect(publicProject).toBeChecked();
 };

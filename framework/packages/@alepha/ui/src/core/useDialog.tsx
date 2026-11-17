@@ -48,6 +48,12 @@ export interface ConfirmOptions {
    * `await dialog.confirm(...)` is too late. Not called on cancel.
    */
   onConfirm?: () => void;
+  /**
+   * A text the user must type, exactly, before the confirm button enables:
+   * for an act too heavy for one click, such as exposing or deleting a
+   * whole project. Usually the name of what is acted on.
+   */
+  confirmText?: string;
 }
 
 export interface AlertOptions {
@@ -116,6 +122,7 @@ export const DialogProvider = (props: DialogProviderProps) => {
   const [pending, setPending] = useState<Pending | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [promptError, setPromptError] = useState<string | null>(null);
+  const [typed, setTyped] = useState("");
   const resolverRef = useRef<{
     kind: Kind;
     resolve: (value: unknown) => void;
@@ -134,6 +141,7 @@ export const DialogProvider = (props: DialogProviderProps) => {
         kind,
         resolve: resolve as (value: unknown) => void,
       };
+      setTyped("");
       if (kind === "prompt") {
         const o = options as PromptOptions;
         setPromptValue(o.defaultValue ?? "");
@@ -183,6 +191,21 @@ export const DialogProvider = (props: DialogProviderProps) => {
   };
 
   const cancelValue = pending?.kind === "prompt" ? null : false;
+
+  // A confirm that asks for a typed text stays disabled until it matches.
+  const confirmText =
+    pending?.kind === "confirm"
+      ? (opts as ConfirmOptions)?.confirmText
+      : undefined;
+  const confirmBlocked =
+    confirmText !== undefined && typed.trim() !== confirmText;
+
+  const handleConfirm = () => {
+    if (confirmBlocked) return;
+    // In the click itself: see `ConfirmOptions.onConfirm`.
+    (opts as ConfirmOptions)?.onConfirm?.();
+    resolve(true);
+  };
 
   return (
     <Ctx.Provider value={api}>
@@ -244,6 +267,31 @@ export const DialogProvider = (props: DialogProviderProps) => {
               )}
             </div>
           )}
+          {confirmText !== undefined && (
+            <div className="flex flex-col gap-2">
+              <label htmlFor="alepha-dialog-confirm-input" className="text-sm">
+                {tr("useDialog.typeToConfirm", {
+                  default: "Type $1 to confirm",
+                  args: [confirmText],
+                })}
+              </label>
+              <Input
+                id="alepha-dialog-confirm-input"
+                autoComplete="off"
+                spellCheck={false}
+                value={typed}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setTyped(e.target.value)
+                }
+                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleConfirm();
+                  }
+                }}
+              />
+            </div>
+          )}
           <AlertDialogFooter>
             {pending?.kind !== "alert" && (
               <AlertDialogCancel onClick={() => resolve(cancelValue)}>
@@ -258,11 +306,10 @@ export const DialogProvider = (props: DialogProviderProps) => {
                 } else if (pending?.kind === "alert") {
                   resolve(undefined);
                 } else {
-                  // In the click itself: see `ConfirmOptions.onConfirm`.
-                  (opts as ConfirmOptions)?.onConfirm?.();
-                  resolve(true);
+                  handleConfirm();
                 }
               }}
+              disabled={confirmBlocked}
               intent={
                 (opts as ConfirmOptions)?.destructive ? "danger" : "primary"
               }
@@ -282,7 +329,8 @@ export const DialogProvider = (props: DialogProviderProps) => {
 /**
  * Imperative dialog API. Returns an object with:
  *
- * - `confirm({ title, description? })` → `Promise<boolean>`
+ * - `confirm({ title, description?, confirmText? })` → `Promise<boolean>`;
+ *   with `confirmText`, the user types it before the button enables
  * - `alert({ title, description? })` → `Promise<void>`
  * - `prompt({ title, label?, defaultValue?, validate? })` → `Promise<string | null>`
  *

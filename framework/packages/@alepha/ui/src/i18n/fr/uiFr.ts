@@ -81,6 +81,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "useDialog.cancel": "Annuler",
   "useDialog.confirm": "Confirmer",
   "useDialog.ok": "OK",
+  "useDialog.typeToConfirm": "Saisissez $1 pour confirmer",
   "undoable.undo": "Annuler",
 
   // The data table: toolbar, selection, empty state.

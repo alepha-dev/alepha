@@ -33,8 +33,8 @@ import type { I18n } from "../../../services/I18n.ts";
  * Public is offered only when it can be applied: while the launch gate is
  * off the switch is disabled with the reason, and while the Viewer rank
  * holds more than reads of the project's memory the section says so and
- * links to the rank. Making it public is confirmed, since it lets strangers
- * in.
+ * links to the rank. Making it public is confirmed by typing the project's
+ * slug, since it lets strangers in.
  */
 const ProjectSettingsJoinSection = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -69,6 +69,9 @@ const ProjectSettingsJoinSection = () => {
             title: tr("project.settings.join.openConfirm.title"),
             description: tr("project.settings.join.openConfirm.description"),
             confirmLabel: tr("project.settings.join.openConfirm.confirm"),
+            // Too heavy for one click: the whole project becomes readable
+            // by anyone with an account, so its slug is typed (#Q3819).
+            confirmText: project.slug,
           });
           if (!confirmed) return;
         }
