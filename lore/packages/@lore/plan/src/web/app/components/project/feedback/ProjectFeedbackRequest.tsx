@@ -607,12 +607,13 @@ const ProjectFeedbackRequest = () => {
               <div className="border-border bg-muted/30 mb-4 flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                 <div className="flex min-w-0 items-center gap-3">
                   <UserAvatar public fileId={userPicture} className="size-8" />
+                  {/* The label leads: "Submitting as" reads before the name. */}
                   <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-medium">
-                      {userLabel}
-                    </span>
                     <span className="text-muted-foreground truncate text-xs">
                       {tr("feedback.request.submittingAs")}
+                    </span>
+                    <span className="truncate text-sm font-medium">
+                      {userLabel}
                     </span>
                   </div>
                 </div>
@@ -620,11 +621,11 @@ const ProjectFeedbackRequest = () => {
                 {project && (
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex min-w-0 flex-col items-end text-right">
-                      <span className="truncate text-sm font-medium">
-                        {project.title}
-                      </span>
                       <span className="text-muted-foreground truncate text-xs">
                         {tr("feedback.request.forProject")}
+                      </span>
+                      <span className="truncate text-sm font-medium">
+                        {project.title}
                       </span>
                     </div>
                     <ProjectIcon
