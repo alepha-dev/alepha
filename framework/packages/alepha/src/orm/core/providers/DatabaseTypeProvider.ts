@@ -25,20 +25,44 @@ import {
   type PgIdentityOptions,
   type PgPrimaryKey,
   type PgRef,
+  type PgSymbolKeys,
+  type PgSymbols,
 } from "../constants/PG_SYMBOLS.ts";
 import type { PgAttr } from "../helpers/pgAttr.ts";
 import { pgAttr } from "../helpers/pgAttr.ts";
 import type { ForeignKeyAction } from "../interfaces/ForeignKeyAction.ts";
 
 export class DatabaseTypeProvider {
+  /**
+   * Tags a schema with a Postgres attribute in place, and returns it.
+   *
+   * Only for a type a helper of this class builds in the same expression
+   * (`DatabaseTypeProvider.tag(z.datetime(), PG_CREATED_AT)`): nothing else
+   * holds it, so a copy would only cost a second schema. It stays off the
+   * public API because it mutates what it is given; a schema that came from
+   * a caller goes through {@link pgAttr}, which leaves it alone.
+   */
+  protected static tag<T extends ZType, Attr extends PgSymbolKeys>(
+    type: T,
+    attr: Attr,
+    value?: PgSymbols[Attr],
+  ): PgAttr<T, Attr> {
+    Object.assign(type, { [attr]: value ?? {} });
+    return type as PgAttr<T, Attr>;
+  }
+
   public readonly attr = pgAttr;
 
   /**
    * Creates a primary key with an identity column.
    */
   public readonly identityPrimaryKey = (identity?: PgIdentityOptions) =>
-    pgAttr(
-      pgAttr(pgAttr(z.integer(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+    DatabaseTypeProvider.tag(
+      DatabaseTypeProvider.tag(
+        DatabaseTypeProvider.tag(z.integer(), PG_PRIMARY_KEY),
+        PG_IDENTITY,
+        identity,
+      ),
       PG_DEFAULT,
     );
 
@@ -46,8 +70,12 @@ export class DatabaseTypeProvider {
    * Creates a primary key with a big identity column. (default)
    */
   public readonly bigIdentityPrimaryKey = (identity?: PgIdentityOptions) =>
-    pgAttr(
-      pgAttr(pgAttr(z.int64(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+    DatabaseTypeProvider.tag(
+      DatabaseTypeProvider.tag(
+        DatabaseTypeProvider.tag(z.int64(), PG_PRIMARY_KEY),
+        PG_IDENTITY,
+        identity,
+      ),
       PG_DEFAULT,
     );
 
@@ -55,7 +83,10 @@ export class DatabaseTypeProvider {
    * Creates a primary key with a UUID column.
    */
   public readonly uuidPrimaryKey = () =>
-    pgAttr(pgAttr(z.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
+    DatabaseTypeProvider.tag(
+      DatabaseTypeProvider.tag(z.uuid(), PG_PRIMARY_KEY),
+      PG_DEFAULT,
+    );
 
   /**
    * Creates a primary key for a given type. Supports:
@@ -90,30 +121,48 @@ export class DatabaseTypeProvider {
     identity?: PgIdentityOptions,
   ): PgAttr<PgAttr<ZType, PgPrimaryKey>, PgDefault> {
     if (!type) {
-      return pgAttr(pgAttr(z.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
+      return DatabaseTypeProvider.tag(
+        DatabaseTypeProvider.tag(z.uuid(), PG_PRIMARY_KEY),
+        PG_DEFAULT,
+      );
     }
 
     if (z.schema.isInteger(type)) {
-      return pgAttr(
-        pgAttr(pgAttr(z.integer(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+      return DatabaseTypeProvider.tag(
+        DatabaseTypeProvider.tag(
+          DatabaseTypeProvider.tag(z.integer(), PG_PRIMARY_KEY),
+          PG_IDENTITY,
+          identity,
+        ),
         PG_DEFAULT,
       );
     }
 
     if (z.schema.isString(type) && z.schema.format(type) === "uuid") {
-      return pgAttr(pgAttr(z.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
+      return DatabaseTypeProvider.tag(
+        DatabaseTypeProvider.tag(z.uuid(), PG_PRIMARY_KEY),
+        PG_DEFAULT,
+      );
     }
 
     if (z.schema.isNumber(type) && z.schema.format(type) === "int64") {
-      return pgAttr(
-        pgAttr(pgAttr(z.number(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+      return DatabaseTypeProvider.tag(
+        DatabaseTypeProvider.tag(
+          DatabaseTypeProvider.tag(z.number(), PG_PRIMARY_KEY),
+          PG_IDENTITY,
+          identity,
+        ),
         PG_DEFAULT,
       );
     }
 
     if (z.schema.isBigInt(type)) {
-      return pgAttr(
-        pgAttr(pgAttr(z.bigint(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
+      return DatabaseTypeProvider.tag(
+        DatabaseTypeProvider.tag(
+          DatabaseTypeProvider.tag(z.bigint(), PG_PRIMARY_KEY),
+          PG_IDENTITY,
+          identity,
+        ),
         PG_DEFAULT,
       );
     }
@@ -172,20 +221,32 @@ export class DatabaseTypeProvider {
    * @see {@link RepositoryPrimitive#save}
    * @see {@link PgVersionMismatchError}
    */
-  public readonly version = () =>
-    this.default(pgAttr(z.integer(), PG_VERSION), 0);
+  public readonly version = () => {
+    const type = DatabaseTypeProvider.tag(
+      DatabaseTypeProvider.tag(z.integer(), PG_VERSION),
+      PG_DEFAULT,
+    );
+    Object.assign(type, { default: 0 });
+    return type;
+  };
 
   /**
    * Creates a column Created At. So just a datetime column with a default value of the current timestamp.
    */
   public readonly createdAt = () =>
-    pgAttr(pgAttr(z.datetime(), PG_CREATED_AT), PG_DEFAULT);
+    DatabaseTypeProvider.tag(
+      DatabaseTypeProvider.tag(z.datetime(), PG_CREATED_AT),
+      PG_DEFAULT,
+    );
 
   /**
    * Creates a column Updated At. Like createdAt, but it is updated on every update of the row.
    */
   public readonly updatedAt = () =>
-    pgAttr(pgAttr(z.datetime(), PG_UPDATED_AT), PG_DEFAULT);
+    DatabaseTypeProvider.tag(
+      DatabaseTypeProvider.tag(z.datetime(), PG_UPDATED_AT),
+      PG_DEFAULT,
+    );
 
   /**
    * Creates a column Deleted At for soft delete functionality.
@@ -193,7 +254,7 @@ export class DatabaseTypeProvider {
    * The column is nullable - NULL means not deleted, timestamp means deleted.
    */
   public readonly deletedAt = () =>
-    pgAttr(z.datetime().optional(), PG_DELETED_AT);
+    DatabaseTypeProvider.tag(z.datetime().optional(), PG_DELETED_AT);
 
   /**
    * Creates a reference to another table or schema. Basically a foreign key.
