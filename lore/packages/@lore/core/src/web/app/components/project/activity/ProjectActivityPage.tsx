@@ -320,7 +320,14 @@ const ProjectActivityPage = ({
             label: tr("activity.col.who"),
             cell: (row) => (
               <span className="text-sm">
-                {row.actor ?? tr("activity.actor.unknown")}
+                {/* No user behind the event (an automation, a job, the
+                    server itself) is the system; a user the project can no
+                    longer name (a deleted account) is a former member,
+                    never "Someone" (#Q3828). */}
+                {row.actor ??
+                  (row.userId
+                    ? tr("activity.actor.former")
+                    : tr("activity.actor.system"))}
               </span>
             ),
           },

@@ -4387,7 +4387,8 @@ export default {
   "common.close": "Close",
   "common.save": "Save",
 
-  "activity.actor.unknown": "Someone",
+  "activity.actor.system": "System",
+  "activity.actor.former": "Former member",
   "activity.empty": "Nothing recorded yet.",
   "activity.col.when": "When",
   "activity.col.who": "Who",

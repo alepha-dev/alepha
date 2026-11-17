@@ -4412,7 +4412,8 @@ export default {
   "common.close": "Fermer",
   "common.save": "Enregistrer",
 
-  "activity.actor.unknown": "Quelqu'un",
+  "activity.actor.system": "Système",
+  "activity.actor.former": "Ancien membre",
   "activity.empty": "Rien d'enregistré pour l'instant.",
   "activity.col.when": "Quand",
   "activity.col.who": "Qui",
