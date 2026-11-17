@@ -275,7 +275,9 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
   return (
     <div
       className={cn(
-        "grid min-h-0 flex-1 p-6",
+        // Full-bleed (#Q3799): the panes fill the content area as a split
+        // view, separated by single dividers, not floating cards.
+        "grid min-h-0 flex-1",
         // Desktop-first 3-pane (tree | editor | history). Columns narrow on
         // laptops (lg) and reach full width at xl; below lg the panes stack
         // into a single scrollable column. The history pane only appears once
@@ -325,7 +327,7 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
             default: "Show history",
           })}
           onExpand={toggleHistory}
-          className="bg-card hidden rounded-e-lg border lg:flex"
+          className="bg-card hidden border-s lg:flex"
         />
       )}
       {selected && (

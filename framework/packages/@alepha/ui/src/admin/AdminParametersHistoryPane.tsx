@@ -42,7 +42,7 @@ export const AdminParametersHistoryPane = (
   return (
     <div
       className={cn(
-        "bg-card flex min-h-0 flex-col overflow-hidden rounded-e-lg border",
+        "bg-card flex min-h-0 flex-col overflow-hidden border-t lg:border-s lg:border-t-0",
         props.className,
       )}
     >

@@ -92,7 +92,7 @@ export const AdminParametersEditorForm = (
         form={form}
         fields={props.fields}
         fill
-        card="rounded-none ring-0 border-y"
+        card="rounded-none ring-0 border-0"
         // Two columns, not three: every field now carries help text under it,
         // and a third of a row turns that help into an unreadable ribbon.
         gridClassName="grid-cols-1 lg:grid-cols-2"

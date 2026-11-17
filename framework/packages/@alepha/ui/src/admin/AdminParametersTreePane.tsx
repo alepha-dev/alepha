@@ -36,7 +36,7 @@ export const AdminParametersTreePane = (
 ) => {
   const { tr } = useI18n();
   return (
-    <div className="bg-card flex min-h-0 flex-col gap-2 rounded-s-lg border p-2">
+    <div className="bg-card flex min-h-0 flex-col gap-2 border-b p-2 lg:border-e lg:border-b-0">
       <div className="text-muted-foreground flex items-center gap-1.5 px-2 py-1 text-xs font-medium tracking-wide uppercase">
         <Settings2 className="size-3.5" />
         {tr("admin.parameters.treeTitle", { default: "Parameters" })}
