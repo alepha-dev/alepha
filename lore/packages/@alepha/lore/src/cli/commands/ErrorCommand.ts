@@ -143,10 +143,16 @@ export class ErrorCommand {
   public readonly forward = $command({
     name: "forward",
     description:
-      "Turn an error into a new quest and close it. One error, one quest",
+      "Turn an error into a new quest and close it, or link a quest already filed with --quest. One error, one quest",
     args: ErrorCommand.REF_ARG,
     flags: z.object({
       ...ErrorCommand.PROJECT_FLAG,
+      quest: z
+        .text({
+          description:
+            "A quest already filed for this error, linked instead of creating one: 12 or Q12.",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -157,6 +163,10 @@ export class ErrorCommand {
 
         const result = await this.projectErrorApi.forwardProjectErrorToQuest({
           params: { projectId, errorId },
+          body:
+            flags.quest === undefined
+              ? {}
+              : { questShortId: this.refs.quest(flags.quest) },
         });
 
         this.render.written(

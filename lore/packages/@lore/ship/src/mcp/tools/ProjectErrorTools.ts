@@ -89,7 +89,7 @@ export class ProjectErrorTools {
   error_forward = $tool({
     title: "Forward an error to a quest",
     description:
-      "Turn an error into a NEW quest and close it. The quest carries the failure's name and message as its title and the stack in its description, links back to the error, and lands in a dedicated triage area. Fails if the error was already forwarded: one error, one quest. Needs `error:triage`.",
+      "Close an error by forwarding it to a quest. Without `quest_shortId` it creates a NEW quest carrying the failure's name and message as its title and the stack in its description, in a dedicated triage area. After `quest_create`, pass that quest's number as `quest_shortId` to link it instead: one quest, not two. The quest links back to the error either way. Fails if the error was already forwarded (one error, one quest), and refuses a quest of another project or one that already has a source. Needs `error:triage`.",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: projectErrorForwardParamsSchema,
@@ -102,6 +102,10 @@ export class ProjectErrorTools {
       );
       const res = await this.projectErrors.forwardProjectErrorToQuest({
         params: { projectId, errorId: params.error_id },
+        body:
+          params.quest_shortId === undefined
+            ? {}
+            : { questShortId: params.quest_shortId },
       });
       return { questId: res.questId, questShortId: res.questShortId };
     },

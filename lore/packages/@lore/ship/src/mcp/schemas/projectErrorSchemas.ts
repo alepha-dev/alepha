@@ -54,6 +54,12 @@ export const projectErrorResolveResultSchema = z.object({ ok: z.boolean() });
 
 export const projectErrorForwardParamsSchema = projectParamsSchema.extend({
   error_id: z.integer().describe("The error id, from `error_list`."),
+  quest_shortId: z
+    .integer()
+    .describe(
+      "A quest you already filed for this error, by its per-project number (the #Q12 you see). Pass it after `quest_create` to link that quest instead of creating a new one.",
+    )
+    .optional(),
 });
 
 export const projectErrorForwardResultSchema = z.object({

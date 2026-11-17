@@ -240,7 +240,7 @@ See [Apps and instances](/lore/docs/ship-instances) and
 | `insights_read`       | Analytics, Web Vitals and the error budget, over 1, 7 or 30 days.                  |
 | `error_list`          | The open errors; `include_resolved` for the rest.                                  |
 | `error_resolve`       | Close an error. A later report does not reopen it.                                 |
-| `error_forward`       | Turn an error into a new quest.                                                    |
+| `error_forward`       | Turn an error into a new quest, or link one already filed with `quest_shortId`.    |
 
 ## Uptime
 

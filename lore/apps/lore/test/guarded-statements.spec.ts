@@ -174,7 +174,10 @@ describe.skipIf(onPostgres)(
         ctx.alepha
           .inject(ProjectErrorController)
           .forwardProjectErrorToQuest.fetch(
-            { params: { projectId: ctx.projectId, errorId: projectError.id } },
+            {
+              params: { projectId: ctx.projectId, errorId: projectError.id },
+              body: {},
+            },
             { user: ctx.user },
           );
 
