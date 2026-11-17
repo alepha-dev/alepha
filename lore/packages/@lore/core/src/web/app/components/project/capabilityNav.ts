@@ -33,7 +33,7 @@ export interface CapabilityNavEntry {
   /**
    * Which of the sidebar's bands this sits in.
    */
-  group: "activity" | "work" | "record" | "ops" | "config";
+  group: "activity" | "work" | "requirements" | "record" | "ops" | "config";
   /**
    * Position within the band, ascending.
    *
@@ -90,6 +90,10 @@ export interface CapabilityNavEntry {
 export const NAV_BANDS: CapabilityNavEntry["group"][] = [
   "activity",
   "work",
+  // Requirements alone, between Errors (the end of Work) and Folios (the
+  // start of Record), with the groups' own gap on each side (#Q3830). Empty
+  // without Plan's Requirements option, and an empty group is dropped.
+  "requirements",
   "record",
   "ops",
   "config",

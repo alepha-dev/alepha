@@ -58,13 +58,14 @@ export class RequirementsShell {
   constructor() {
     this.shell.extendNav("plan", [
       {
-        // Right after Epics (30), before Feedback (40).
+        // A band of its own, between Errors and Folios (#Q3830, revising
+        // F1515's "the sidebar is not reworked" for this entry only).
         route: "projectRequirements",
         permission: "requirement:read",
         labelKey: "project.menu.requirements",
         icon: ClipboardList,
-        group: "work",
-        order: 35,
+        group: "requirements",
+        order: 10,
         option: "requirements",
         // Lit on every tab and on every persona, use case and requirement
         // page. No badge.
