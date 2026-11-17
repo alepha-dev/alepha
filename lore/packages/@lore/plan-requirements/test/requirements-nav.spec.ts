@@ -64,20 +64,25 @@ describe("the Requirements sidebar entry", () => {
     );
   });
 
-  it("sits in the work band right after Epics and before Feedback", ({
+  it("sits alone in its own band, between Work (Errors) and Record (Folios)", ({
     expect,
   }) => {
     const plan = boot().navOf("plan");
-    const order = (route: string) =>
-      plan.find((entry) => entry.route === route)?.order ?? Number.NaN;
     const entry = plan.find((it) => it.route === "projectRequirements");
 
-    expect(entry?.group).toBe("work");
+    expect(entry?.group).toBe("requirements");
+    expect(
+      plan.filter((it) => it.group === "requirements").map((it) => it.route),
+    ).toEqual(["projectRequirements"]);
+    expect(NAV_BANDS.indexOf("requirements")).toBe(
+      NAV_BANDS.indexOf("work") + 1,
+    );
+    expect(NAV_BANDS.indexOf("record")).toBe(
+      NAV_BANDS.indexOf("requirements") + 1,
+    );
     expect(entry?.option).toBe("requirements");
     expect(entry?.permission).toBe("requirement:read");
     expect(entry?.badge).toBeUndefined();
-    expect(order("projectRequirements")).toBeGreaterThan(order("projectEpics"));
-    expect(order("projectRequirements")).toBeLessThan(order("projectFeedback"));
   });
 
   it("stays lit on every tab and on a persona or use case page", ({
@@ -114,7 +119,14 @@ describe("the Requirements sidebar entry", () => {
       .map((it) => [it.route, it.group, it.order]);
 
     expect(after).toEqual(before);
-    expect(NAV_BANDS).toEqual(["activity", "work", "record", "ops", "config"]);
+    expect(NAV_BANDS).toEqual([
+      "activity",
+      "work",
+      "requirements",
+      "record",
+      "ops",
+      "config",
+    ]);
   });
 
   it("extends Plan's entries: registerNav still refuses a second registration", ({
