@@ -114,6 +114,68 @@ test.describe("Dock", () => {
     await other.close();
   });
 
+  test("a drag grabbed by the icon's right edge stays under the pointer, at a human pace", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const t = Date.now();
+    await registerAndVerify(page, `dock-edge${t}@example.com`, PASSWORD);
+
+    const alpha = `Alpha${t}`.slice(0, 20);
+    const beta = `Beta${t}`.slice(0, 20);
+    await createProjectViaWizard(page, alpha);
+    const { slug } = await createProjectViaWizard(page, beta);
+    await expect.poll(() => pins(page)).toEqual([alpha, beta]);
+    await page.goto(`/${slug}`);
+    await page.waitForLoadState("networkidle");
+
+    // #Q3839: grabbed near its right edge, an icon sat in the dock's
+    // horizontal auto-scroll zone, and every scroll step pushed it further
+    // right. A person holds the button for a while, which the quick drag
+    // above never did.
+    const from = pin(page, beta);
+    await from.hover();
+    const a = (await from.boundingBox())!;
+    const b = (await pin(page, alpha).boundingBox())!;
+    const box = (await rail(page).boundingBox())!;
+    const x = a.x + a.width - 3;
+    await page.mouse.move(x, a.y + a.height / 2);
+    await page.mouse.down();
+    const slot = rail(page)
+      .getByTestId("project-rail-slot")
+      .filter({ has: page.getByLabel(beta) });
+    const target = b.y + b.height / 2;
+    const steps = 12;
+    for (let i = 1; i <= steps; i++) {
+      const y =
+        a.y + a.height / 2 + ((target - (a.y + a.height / 2)) * i) / steps;
+      // A hand drifts: the pointer wanders a few pixels to the right.
+      await page.mouse.move(x + Math.min(i * 3, 24), y);
+      await page.waitForTimeout(60);
+      const now = (await slot.boundingBox())!;
+      // The runaway was the column scrolling sideways under the icon.
+      expect(
+        await page
+          .getByTestId("project-rail-pins")
+          .evaluate((el) => el.scrollLeft),
+      ).toBe(0);
+      // Under the pointer, and inside the dock.
+      expect(now.x).toBeGreaterThanOrEqual(box.x - 1);
+      expect(now.x + now.width).toBeLessThanOrEqual(box.x + box.width + 1);
+      expect(Math.abs(now.y + now.height / 2 - y)).toBeLessThan(a.height);
+    }
+    const saved = page.waitForResponse(
+      (res) =>
+        res.url().includes("/users/me/dock") &&
+        res.request().method() === "PUT",
+    );
+    await page.mouse.up();
+    expect((await saved).ok()).toBe(true);
+    await expect.poll(() => pins(page)).toEqual([beta, alpha]);
+    await page.reload();
+    await expect.poll(() => pins(page)).toEqual([beta, alpha]);
+  });
+
   test("unpin from the menu, open from All projects into the temporary slot, pin it back", async ({
     page,
   }) => {
