@@ -545,6 +545,8 @@ Do not reintroduce progression mechanics without an explicit decision — the go
   - ⚠️ **`@mdxeditor/editor` and the whole Lexical tree were removed.** Anything you read describing a formatting toolbar, `renderToolbar`, an editor "realm", `useEditorRealmCommands`, `normalizeEditorMarkdown` or the `.lore-mdx` CSS predates this and is wrong. The reader-side `rehypeSafeImg` in `@alepha/ui` went with it, so **no raw HTML is rendered as markup anywhere** now.
   - ⚠️ **`yarn dedupe '@codemirror/*'` after touching these deps** — `yarn add` will happily resolve a second `@codemirror/view` alongside the nested copy other packages pin, and two copies means incompatible `KeyBinding` types and a typecheck failure in `keymap.of([...])`.
 
+- **React Flow** (`@xyflow/react` 12, MIT) — the automation canvas (#E155). Lazy and client-only like CodeMirror: `AutomationCanvas` imports `AutomationCanvasInner.client.tsx` through `lazy()`, which imports the library and its stylesheet, themed with Lore's tokens in `AutomationCanvas.css`. The preset cards' drawings are plain SVG, never a React Flow instance.
+
 ## No transactions in Lore (#E69)
 
 **Lore holds no `$transactional`, and `check:conventions` refuses one under
@@ -607,6 +609,51 @@ What this package holds, with the notes that are not obvious from the code. Move
 **MCP tools (1)** - `ProjectTools` (including `project_activity`, the one call for everything that moved since a timestamp).
 
 Organization membership, rank definitions, and invitations are owned by `alepha/api/organizations`; Lore's own `members`, `rank_definitions` and `invitations` tables were dropped with #E74.
+
+## Automations are graphs (#E155)
+
+An automation's `rule` column holds a graph (`automationGraphSchema`, version
+2): `nodes` of a `kind` (`source`, `read`, `condition`, `action`; `transform`
+is reserved for a later epic and refused today) with a `type`, a `config`, an
+optional `position`, and on a source its own `enabled`; `edges` from a node's
+`port` (`out`, or `true` / `false` from a condition) to another node. The v1
+four-slot rule, its runs and receipts were deleted by the #Q3805 migration.
+
+- **`AutomationGraph`** (`api/schemas`, browser-safe) is the one validator,
+  run by the server on every write and by the canvas on every change: kinds
+  and types from the catalog, wiring rules (nothing into a source, a read
+  only after a schedule, a schedule alone and followed by exactly one read, no
+  condition after an action, no cycle), every node reached, the names a node
+  may use (the intersection of its reaching sources' fields, plus the
+  outputs of actions on every path to it), and the caps: 8 sources, 40 nodes,
+  5 actions reachable from one source, 8 channels per notification. Its
+  `layout` is the one layout (presets, a graph saved without positions, the
+  card sketches).
+- **A run starts at one source and walks its subgraph** (#Q3804). The run's
+  snapshot freezes that subgraph, the conditions' ports and one step per
+  action and channel; a step's id is its node (receipts carry `node_id`). A
+  failed step stops only what follows it on its path; an unknown outcome or a
+  loss of authority stops the run; a vanished target refuses only its step.
+- **Outputs** (#Q3814): a descriptor's `outputs` name what an action gives
+  the actions after it (`created_quest_id`, `appended_folio_id`); a consumer
+  of an output its producer did not give is skipped and says so.
+- **Each source has its own switch and health** (#Q3806): `node.enabled`, and
+  `automations.source_health` beside `health`, outside the revision.
+  `AutomationDependencies` breaks a source whose own needs, or every path
+  from it, are gone; the automation is broken only when every enabled source
+  is, and its resource is redacted only when every source is unavailable to
+  the reader.
+- **Runs name their source** (`automation_runs.source_node`) and derive what
+  each node did from the frozen plan (`AutomationGraph.outcomes`), never
+  stored twice (#Q3807). Run test takes the source to start at.
+- **Presets build graphs** with `AutomationGraphBuilder` (`line`, `compact`);
+  a bell is one automation whose sources are its presets' merged nodes, ids
+  `<presetKey>.<id>` (#Q3808). `draftAutomationFromPreset` builds a preset
+  without storing it, for the editor (#Q3812).
+- **The canvas** (`web/.../automations/canvas`) is React Flow behind a lazy
+  `AutomationCanvas` whose inner half is `AutomationCanvasInner.client.tsx`:
+  only the automation detail, run and new pages load it, the server bundle
+  never does, and the web barrel exports neither. See "Automations UI".
 
 ## Automation notification delivery (#E43, #Q2030)
 
@@ -704,8 +751,10 @@ from collection summary fields, with truthful exact or lower-bound totals.
 
 `AutomationWorkerJobs` resumes a durable occurrence through the normal queue
 and reschedules after at most five ordered steps. `AutomationWorker` freezes
-plans before effects, observes crossings once, reconciles committed receipts
-before retry and stops later steps after failure or authority loss. Runs split
+plans before effects, walks the run's subgraph in topological order, observes
+crossings once, reconciles committed receipts before retry, stops the steps
+after a failure on its own path, and stops the run on an unknown outcome or a
+loss of authority. Runs split
 at 100 recipient-channel attempts while retaining the same selected contexts,
 configuration revision and operation identities. Ordinary selectors never fetch
 a hidden fifty-first row. Queued edits, disables and soft deletions refuse the
@@ -721,9 +770,11 @@ expensive target reads belong to the bounded worker.
 `AutomationService` and `AutomationVariableService` own policy for the HTTP actions
 and MCP tools. Client writes carry an expected configuration revision; variable
 writes also carry the immutable variable UUID and version. Clients never supply
-an author or credential. A rule is created disabled, a draft, unless the create
-asks for `enabled: true` (the web gallery's **Create and enable**, #Q3573). A manager can stop or delete
-another author's rule, but cannot rewrite or enable it.
+an author or credential. An automation is created disabled, a draft, unless
+the create asks for `enabled: true` (the web gallery's **Create and enable**,
+#Q3573). A manager can stop or delete another author's automation, and switch
+one of its sources off, but cannot rewrite or enable it. A write whose every
+enabled source lacks what it needs is a 400 naming the source (#Q3811).
 
 Authoring and effects reconstruct current account, membership, rank and capability
 permissions. API keys retain their immutable key identity; OAuth rules retain the
@@ -750,9 +801,14 @@ while revision checks cancel queued and following effects.
 `AutomationTools` resolves project titles, slugs and IDs through `ProjectTools`
 and calls the shared application services with the authenticated current caller.
 Strict input schemas reject author or credential injection. CRUD responses use
-the same complete, redacted public DTOs as HTTP. Configuration updates and explicit
-enable changes are separate revisioned calls; managers retain only foreign-rule
-stop and delete controls. Creation is a draft unless `enabled: true` is passed.
+the same complete, redacted public DTOs as HTTP. A graph is written as `nodes`
+and `edges`, or compactly as `sources` and `actions` (every source wired to
+every action, laid out by the server), through `AutomationGraphParams`; a
+partly positioned graph is refused. Configuration updates, explicit enable
+changes and `automation_source_set` are separate revisioned calls; managers
+retain only foreign-automation stop and delete controls. Creation is a draft
+unless `enabled: true` is passed. The `lore automation` commands mirror them
+(`--graph`, or `--source` and `--action`).
 
 Variable tools expose immutable IDs, versions, bounded pages and a dedicated
 `automation_variable_dependents` read. Set reports affected consumers; delete is
@@ -784,15 +840,16 @@ Every page under `/automations` but the list renders through `AutomationPage`
 
 - **List** (`AutomationOverviewPage`): the house `DataTable` (Releases, Apps).
   Primary **New automation**, icon actions for Shared variables and Built-in
-  notifications, row click opens the rule, Enable / Disable / Delete in the row
+  notifications, row click opens the automation, Enable / Disable / Delete in the row
   menu. Bounded server pages through a project-keyed `QueryCache.dedupe`; the
   total stays unknown. Both writes refresh on success AND failure, so the row
   never shows an unconfirmed state (a revision conflict included).
-- **New automation** (`AutomationGalleryPage`): the presets this project, rank
-  and configured channels allow, as cards. A card opens its inputs in place;
-  **Create and enable** saves the rule enabled in one write (#Q3573) and
-  **Save as draft** saves it disabled; both navigate to its page, where a draft
-  is tested and enabled.
+- **Presets** (`AutomationGalleryPage`): the presets this project, rank and
+  configured channels allow, as cards, each with an SVG sketch of its graph
+  (`AutomationPresetSketch`, from the catalog's configuration-free `sketch`).
+  A card opens its inputs in place; **Create and enable** saves the automation
+  enabled in one write (#Q3573), **Save as draft** saves it disabled, and
+  **Open in canvas** opens it unsaved in the editor.
 - **Preset inputs** (`AutomationPresetForm`): a field belongs to the rule unless
   **Share with other automations** is chosen, which reveals the
   only-this-rule / shared / new-shared choice. Explicit binding carries the
@@ -810,18 +867,39 @@ Every page under `/automations` but the list renders through `AutomationPage`
   switches the picker to server search. `useAutomationOptionLabels` names saved
   members and folios in read-only summaries. Never page a picker with
   Previous / Next buttons.
-- **Rule page** (`AutomationDetailPage`): header Edit / Delete / Enable or
-  Disable; `AutomationRuleSummary` reads the rule as When / Only if / Then;
-  `AutomationTestPanel` is the zero-write dry run with timestamped, capped
-  evidence; `AutomationRunList` below. The editor keeps a revisioned draft of
-  the four slots; only a 409 offers the discard-and-reload panel, any other
-  refusal is the toaster's and keeps the draft. The guard field is a
-  `clearable` select whose clear label is "Always": an empty-string option
-  cannot be picked in Base UI.
+- **Automation page** (`AutomationDetailPage`): header Edit / Delete /
+  Enable or Disable; the read-only canvas (`AutomationCanvas`): click a node
+  for its whole configuration (`AutomationNodePanel`), where a source's switch
+  calls `setAutomationSourceEnabled` at once; `AutomationTestPanel` is the
+  zero-write dry run from a chosen source; `AutomationRunList` below. A phone
+  sees the canvas read-only.
+- **Editor** (`AutomationGraphEditor`, #Q3811): one draft per page
+  (`useAutomationDraft`, with undo and redo), saved against the revision
+  opened; only a 409 offers Discard draft and reload, and any other refusal
+  lands on the node it names. `AutomationGraph.check` runs on every change.
+  `AutomationCanvasEdits` holds the pure operations (ids, new nodes' config,
+  placement, the wire refusals while dragging, merging a preset). The
+  inspector reuses `AutomationActionEditor` and `AutomationValueControl`.
+  Run test reads "Save to test" while the draft is dirty: it tests what is
+  saved. Leaving a dirty draft asks first (`useAutomationLeaveGuard`: the
+  router has no blocker, so in-app link clicks are caught on their way down).
+- **New automation** (`/automations/new`, #Q3812): the editor on an unsaved
+  draft, empty (Start from scratch) or a preset's graph (Open in canvas,
+  handed over through `automationDraftAtom`); the first save creates it
+  disabled. The palette also adds a preset into a draft.
+- ⚠️ **The canvas owns its nodes, so it hands React Flow back what it
+  measured** (the `dimensions` changes, kept in state), and asks it to measure
+  again after each change (`AutomationCanvasMeasure`): a node given back
+  without its size loses its handles' places, and its wires are not drawn.
+  jsdom has no `ResizeObserver`: a browser spec installs a no-op one, and the
+  graph-to-canvas mapping (`AutomationCanvasMap`) has its own spec.
 - **Variables and runs**: shared variables keep UUID/version stamps after a
   write, list their users and delete only when unused; exact-key links filter
   the list. Run pages separate frozen per-action enqueue intent from live
   transport receipts and explain the 30-day detail and 90-day replay windows.
+
+The Trigger column reads the resource's `sources` (the first two, then
+"+N", and how many are switched off); the list reads no graph.
 
 Catalogue sources, action kinds and guard operators are named through
 `automation.source.*`, `automation.action.*` and `automation.operator.*`, all
@@ -883,6 +961,7 @@ cursors,
 with the original evaluation time and a durable page witness; each due-state
 identity couples one email enqueue to one interval/history update.
 
-The advanced editor exposes one-member versus release-roster addressing, and
-Test remains read-only. The adoption engine that once replaced built-in
+The canvas inspector exposes one-member versus release-roster addressing on a
+notification every reaching source of which is `release.published`, and Test
+remains read-only. The adoption engine that once replaced built-in
 notifications with these rules is gone (#Q3628): nothing is sent without a rule.
