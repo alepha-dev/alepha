@@ -363,7 +363,9 @@ test.describe("Automations", () => {
     await page.getByRole("button", { name: "Enable", exact: true }).click();
     expect((await enabled).ok()).toBe(true);
     // The header's badge; the canvas's source dot reads "Active" too.
-    await expect(page.getByText("Active", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByText("Active", { exact: true }).first(),
+    ).toBeVisible();
     expect((await (await page.request.get(getPath)).json()).enabled).toBe(true);
     const variablesPath = (
       await apiPath(page, "listAutomationVariables")
@@ -478,9 +480,9 @@ test.describe("Automations", () => {
       new RegExp(`/${project.slug}/automations/${created.id}$`),
     );
     // The notification's recipient is the shared variable, on the canvas.
-    await expect(page.getByTestId("automation-node-action-1-target")).toHaveText(
-      "{{recipient}}",
-    );
+    await expect(
+      page.getByTestId("automation-node-action-1-target"),
+    ).toHaveText("{{recipient}}");
   });
 
   test("previews release publication through same-project folio and source pickers without appending", async ({
@@ -1404,5 +1406,109 @@ test.describe("Automations", () => {
     } finally {
       await admin.close();
     }
+  });
+
+  test("opens a preset in the canvas, adds another preset to it, creates it on the first save, and starts from scratch", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await registerAndVerify(
+      page,
+      `automation-new-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(page, "Automation new");
+    await setCapability(page, project.id, "plan", {
+      options: { feedback: true },
+    });
+    const me = await (await page.request.get("/api/users/me")).json();
+    const optionsPath = (
+      await apiPath(page, "getAutomationSetupOptions")
+    ).replace(":projectId", String(project.id));
+    const owner = (
+      await (await page.request.get(`${optionsPath}?kind=member`)).json()
+    ).items.find((item: { value: string }) => item.value === me.id);
+
+    // Each card draws its preset's graph.
+    await page.goto(`/${project.slug}/automations/presets`);
+    const card = page.getByTestId("automation-preset-feedback-created");
+    await expect(card.getByTestId("automation-preset-sketch")).toBeVisible();
+
+    // Open in canvas: the preset's graph, unsaved, in the editor.
+    await card.click();
+    await page
+      .getByRole("combobox", { name: "Recipient", exact: true })
+      .click();
+    await page.getByRole("option", { name: owner.label, exact: true }).click();
+    await page.getByTestId("automation-preset-open-canvas").click();
+    await expect(page).toHaveURL(
+      new RegExp(`/${project.slug}/automations/new\\?preset=feedback-created$`),
+    );
+    const canvas = page.getByTestId("automation-canvas");
+    await expect(canvas.getByTestId("automation-node-source")).toBeVisible();
+    await expect(canvas.getByTestId("automation-node-action-1")).toBeVisible();
+    expect(
+      (
+        await (
+          await page.request.get(`/api/projects/${project.id}/automations`)
+        ).json()
+      ).items,
+    ).toHaveLength(0);
+
+    // Add from a preset: its nodes join the draft under the preset's key.
+    await page.getByTestId("automation-canvas-add").click();
+    await page
+      .getByTestId("automation-palette-preset-feedback-created")
+      .click();
+    const merge = page.getByTestId("automation-preset-merge");
+    await merge
+      .getByRole("combobox", { name: "Recipient", exact: true })
+      .click();
+    await page.getByRole("option", { name: owner.label, exact: true }).click();
+    await merge
+      .getByRole("button", { name: "Add to the automation", exact: true })
+      .click();
+    await expect(
+      canvas.getByTestId("automation-node-feedback-created.source"),
+    ).toBeVisible();
+
+    // The first save creates it, disabled, and lands on its page.
+    const created = page.waitForResponse(
+      (response) =>
+        (response.request().method() === "POST" &&
+          new URL(response.url()).pathname.endsWith(
+            `/projects/${project.id}/automations`,
+          )) ||
+        (response.url().includes("/api/_batch") &&
+          response
+            .request()
+            .postData()
+            ?.includes('"action":"createAutomation"') === true),
+    );
+    await page.getByTestId("automation-canvas-save").click();
+    expect((await created).ok()).toBe(true);
+    await expect(page).toHaveURL(
+      new RegExp(`/${project.slug}/automations/[0-9a-f-]{36}$`),
+    );
+    const list = (
+      await (
+        await page.request.get(`/api/projects/${project.id}/automations`)
+      ).json()
+    ).items as Array<{ enabled: boolean; sources: Array<{ node: string }> }>;
+    expect(list).toHaveLength(1);
+    expect(list[0].enabled).toBe(false);
+    expect(list[0].sources.map((source) => source.node).sort()).toEqual([
+      "feedback-created.source",
+      "source",
+    ]);
+
+    // Start from scratch: an empty canvas, its palette open.
+    await page.goto(`/${project.slug}/automations/presets`);
+    await page.getByTestId("automation-start-scratch").click();
+    await expect(page).toHaveURL(
+      new RegExp(`/${project.slug}/automations/new$`),
+    );
+    await expect(page.getByTestId("automation-node-palette")).toBeVisible();
+    await expect(page.getByTestId("automation-canvas-save")).toBeDisabled();
   });
 });

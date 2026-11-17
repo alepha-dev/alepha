@@ -149,6 +149,7 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
         requires: "automation:read",
         alsoOn: [
           "projectAutomationGallery",
+          "projectAutomationNew",
           "projectAutomationDetail",
           "projectAutomationVariables",
           "projectAutomationRun",

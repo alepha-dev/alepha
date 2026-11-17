@@ -15,12 +15,14 @@ import {
 } from "@alepha/ui";
 import {
   useAction,
+  useAlepha,
   useClient,
   useQuery,
   useQueryClient,
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { ReactRouter } from "alepha/react/router";
 import { Bell, BellRing } from "lucide-react";
 import { useState } from "react";
 
@@ -88,6 +90,9 @@ export const AutomationSubscriptionBell = (
   const api = useClient<AutomationController>();
   const queries = useQueryClient();
   const dialog = useDialog();
+  // The router is resolved on click: the bell renders where no router
+  // runs (a module's page specs).
+  const alepha = useAlepha();
   const [project] = useStore(currentProjectAtom);
   const [open, setOpen] = useState(false);
   // Several at once (#Q3602): every notification of the bell goes to all
@@ -295,6 +300,24 @@ export const AutomationSubscriptionBell = (
                 ))}
               </div>
             </div>
+          )}
+          {state.data?.automationId && project && (
+            // The graph the bell made, one click away (#Q3812).
+            <Button
+              variant="link"
+              className="self-start px-0"
+              data-testid="automation-subscription-open"
+              onClick={() => {
+                setOpen(false);
+                void alepha
+                  .inject(ReactRouter)
+                  .push(
+                    `/${project.slug}/automations/${state.data!.automationId!}`,
+                  );
+              }}
+            >
+              {tr("automation.subscription.open")}
+            </Button>
           )}
           <DialogFooter>
             {live ? (

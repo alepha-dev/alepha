@@ -205,4 +205,46 @@ describe("AutomationCanvasEdits", () => {
       y: 21,
     });
   });
+
+  it("prefixes a preset added twice, and places it below the draft", ({
+    expect,
+  }) => {
+    const empty: AutomationGraphValue = { version: 2, nodes: [], edges: [] };
+    expect(edits.prefix(empty, "host-offline")).toBe("host-offline");
+    const addition: AutomationGraphValue = {
+      version: 2,
+      nodes: [
+        {
+          id: "host-offline.source",
+          kind: "source",
+          type: "host.offline",
+          config: {},
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: "host-offline.action-1",
+          kind: "action",
+          type: "notify",
+          config: {},
+          position: { x: 280, y: 0 },
+        },
+      ],
+      edges: [
+        {
+          from: "host-offline.source",
+          port: "out",
+          to: "host-offline.action-1",
+        },
+      ],
+    };
+    const once = edits.merge(graph(), addition);
+    expect(edits.prefix(once, "host-offline")).toBe("host-offline-2");
+    expect(
+      once.nodes.find((node) => node.id === "host-offline.source")?.position,
+    ).toEqual({
+      x: 0,
+      y: 280,
+    });
+    expect(once.edges).toHaveLength(graph().edges.length + 1);
+  });
 });

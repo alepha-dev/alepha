@@ -21,12 +21,16 @@ interface DraftState {
  * frame, so the drag's start is the `checkpoint` and its frames are not
  * steps. `dirty` compares the draft with what was last saved.
  */
-export const useAutomationDraft = (initial: AutomationGraphValue) => {
+export const useAutomationDraft = (
+  initial: AutomationGraphValue,
+  options: { saved?: boolean } = {},
+) => {
+  // A new automation's draft is unsaved from the start (#Q3812).
   const [state, setState] = useState<DraftState>(() => ({
     past: [],
     present: initial,
     future: [],
-    saved: JSON.stringify(initial),
+    saved: options.saved === false ? "" : JSON.stringify(initial),
   }));
   const change = useCallback(
     (

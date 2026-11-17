@@ -7,7 +7,7 @@ import {
   useFormValues,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 import { automationFilterValueSchema } from "../../../../../api/schemas/automationFilterValueSchema.ts";
 import { automationPresetCreateSchema } from "../../../../../api/schemas/automationPresetCreateSchema.ts";
@@ -58,9 +58,24 @@ export interface AutomationPresetFormProps {
     value: AutomationVariableValue,
   ) => Promise<AutomationVariableResource>;
   onCancel?: () => void;
+  /**
+   * Open in canvas (#Q3812): the same values, built as an unsaved draft in
+   * the editor instead of saved.
+   */
+  onOpenInCanvas?: (
+    values: ReturnType<typeof automationPresetCreateSchema.shape.values.parse>,
+    bindings: Record<string, AutomationVariableApproval>,
+  ) => Promise<unknown>;
+  /**
+   * One submit button with this label instead of Create and enable / Save
+   * as draft: the editor's Add from a preset (#Q3812).
+   */
+  submitLabel?: string;
 }
 
 const AutomationPresetForm = (props: AutomationPresetFormProps) => {
+  // Which submit button was clicked (#Q3812): a save, or Open in canvas.
+  const intent = useRef<"save" | "canvas">("save");
   const { tr, l } = useI18n<I18n, "en">();
   const model = useMemo(() => new AutomationPresetForms(), []);
   const literalSchema = useMemo(
@@ -151,7 +166,10 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
           } else if (raw[name] !== undefined)
             values[name] = automationFilterValueSchema.parse(raw[name]);
         }
-        await props.onSubmit(values, bindings, raw.enableOnCreate !== false);
+        if (intent.current === "canvas" && props.onOpenInCanvas)
+          await props.onOpenInCanvas(values, bindings);
+        else
+          await props.onSubmit(values, bindings, raw.enableOnCreate !== false);
       },
     },
     [schema],
@@ -327,26 +345,62 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
         {tr("automation.setup.enableOrDraft")}
       </p>
       <div className="flex gap-2">
-        <Button
-          type="submit"
-          intent="primary"
-          loading={loading}
-          disabled={busy}
-          // Which of the two submit buttons was clicked: a click runs
-          // before the submit it causes, so each says what it wants first
-          // (#Q3573).
-          onClick={() => form.input.enableOnCreate.set(true)}
-        >
-          {tr("automation.preset.createAndEnable")}
-        </Button>
-        <Button
-          type="submit"
-          variant="outlined"
-          disabled={busy}
-          onClick={() => form.input.enableOnCreate.set(false)}
-        >
-          {tr("automation.preset.saveDraft")}
-        </Button>
+        {props.submitLabel ? (
+          <Button
+            type="submit"
+            intent="primary"
+            loading={loading}
+            disabled={busy}
+            onClick={() => {
+              intent.current = "save";
+              form.input.enableOnCreate.set(false);
+            }}
+          >
+            {props.submitLabel}
+          </Button>
+        ) : (
+          <>
+            <Button
+              type="submit"
+              intent="primary"
+              loading={loading}
+              disabled={busy}
+              // Which of the submit buttons was clicked: a click runs before
+              // the submit it causes, so each says what it wants first
+              // (#Q3573).
+              onClick={() => {
+                intent.current = "save";
+                form.input.enableOnCreate.set(true);
+              }}
+            >
+              {tr("automation.preset.createAndEnable")}
+            </Button>
+            <Button
+              type="submit"
+              variant="outlined"
+              disabled={busy}
+              onClick={() => {
+                intent.current = "save";
+                form.input.enableOnCreate.set(false);
+              }}
+            >
+              {tr("automation.preset.saveDraft")}
+            </Button>
+            {props.onOpenInCanvas && (
+              <Button
+                type="submit"
+                variant="outlined"
+                disabled={busy}
+                data-testid="automation-preset-open-canvas"
+                onClick={() => {
+                  intent.current = "canvas";
+                }}
+              >
+                {tr("automation.preset.openInCanvas")}
+              </Button>
+            )}
+          </>
+        )}
         {props.onCancel && (
           <Button
             type="button"

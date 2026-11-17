@@ -1,10 +1,19 @@
 import type { SelectOption } from "@alepha/ui/form";
-import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
+import {
+  useAlepha,
+  useClient,
+  useQuery,
+  useQueryClient,
+  useStore,
+} from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
+import type { AutomationFilterValue } from "../../../../../api/schemas/automationFilterValueSchema.ts";
 import type { AutomationPresetDescriptor } from "../../../../../api/schemas/automationPresetDescriptorSchema.ts";
+import type { AutomationVariableApproval } from "../../../../../api/schemas/automationVariableApprovalSchema.ts";
+import { automationDraftAtom } from "../../../atoms/automationDraftAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
@@ -15,6 +24,14 @@ export interface AutomationPresetSetupProps {
   preset: AutomationPresetDescriptor;
   channels: Array<{ key: string; available: boolean }>;
   onCancel: () => void;
+  /**
+   * In the editor (#Q3812): the preset's values go to this callback, to be
+   * built and merged into the draft, instead of creating an automation.
+   */
+  onMerge?: (
+    values: Record<string, AutomationFilterValue>,
+    bindings: Record<string, AutomationVariableApproval>,
+  ) => Promise<unknown>;
 }
 
 /**
@@ -27,6 +44,7 @@ const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
   const api = useClient<AutomationController>();
   const queries = useQueryClient();
   const router = useRouter();
+  const alepha = useAlepha();
   const slots = Object.values(props.preset.slots);
   const members = useAutomationOptions("member");
   const folios = useAutomationOptions("folio");
@@ -91,7 +109,33 @@ const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
         queries.invalidate(["automation-catalog", project.id]);
         return result.variable;
       }}
+      submitLabel={
+        props.onMerge ? tr("automation.preset.addToDraft") : undefined
+      }
+      onOpenInCanvas={
+        props.onMerge
+          ? undefined
+          : async (values, bindings) => {
+              // The preset's graph, unsaved, opened in the editor (#Q3812).
+              const draft = await api.draftAutomationFromPreset({
+                params: { projectId: project.id },
+                body: { key: props.preset.key, values, bindings },
+              });
+              alepha.store.set(automationDraftAtom, {
+                preset: props.preset.key,
+                ...draft,
+              });
+              await router.push("projectAutomationNew", {
+                params: { projectSlug: project.slug },
+                query: { preset: props.preset.key },
+              });
+            }
+      }
       onSubmit={async (values, bindings, enabled) => {
+        if (props.onMerge) {
+          await props.onMerge(values, bindings);
+          return;
+        }
         const result = await api.createAutomationFromPreset({
           params: { projectId: project.id },
           body: { key: props.preset.key, values, bindings, enabled },

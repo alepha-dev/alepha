@@ -200,6 +200,7 @@ describe("route guards on a capability", () => {
     for (const [name, args] of [
       ["projectAutomations", {}],
       ["projectAutomationGallery", {}],
+      ["projectAutomationNew", { query: {} }],
       ["projectAutomationVariables", { query: {} }],
       ["projectAutomationRun", { params: { runId: "x" } }],
       ["projectAutomationDetail", { params: { automationId: "x" } }],

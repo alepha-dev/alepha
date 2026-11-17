@@ -1,6 +1,7 @@
 import { Button } from "@alepha/ui";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import {
   ArrowLeft,
   Bug,
@@ -10,6 +11,7 @@ import {
   Inbox,
   Layers,
   ListTodo,
+  PenTool,
   Rocket,
   Zap,
 } from "lucide-react";
@@ -22,6 +24,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationPresetSetup from "./AutomationPresetSetup.tsx";
+import AutomationPresetSketch from "./AutomationPresetSketch.tsx";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
 
 /**
@@ -36,6 +39,7 @@ const AutomationGalleryPage = () => {
   // The trail ends with this page (#Q3408).
   usePageCrumb("projectAutomationGallery", tr("automation.new"));
   const labels = useAutomationLabels();
+  const router = useRouter();
   const [selected, setSelected] = useState<AutomationPresetDescriptor>();
   const catalogue = useQuery(
     {
@@ -101,6 +105,22 @@ const AutomationGalleryPage = () => {
     <AutomationPage
       title={tr("automation.new")}
       description={tr("automation.gallery.description")}
+      actions={
+        // An empty canvas, its palette open (#Q3812).
+        <Button
+          variant="outlined"
+          data-testid="automation-start-scratch"
+          onClick={() =>
+            router.push("projectAutomationNew", {
+              params: { projectSlug: project.slug },
+              query: {},
+            })
+          }
+        >
+          <PenTool className="size-4" />
+          {tr("automation.gallery.scratch")}
+        </Button>
+      }
     >
       {catalogue.loading && !catalogue.data && (
         <p className="text-muted-foreground text-sm">
@@ -130,6 +150,14 @@ const AutomationGalleryPage = () => {
               <span className="text-muted-foreground text-sm">
                 {description(preset)}
               </span>
+              {preset.sketch && (
+                <AutomationPresetSketch
+                  sketch={preset.sketch}
+                  label={tr("automation.gallery.sketch", {
+                    args: [title(preset)],
+                  })}
+                />
+              )}
               <span className="text-muted-foreground mt-auto flex items-center gap-1.5 pt-1 text-xs">
                 {preset.schedule ? (
                   <Clock className="size-3" />

@@ -3,10 +3,15 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   useDialog,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
-import { useAction, useClient } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { isHttpError } from "alepha/server";
@@ -15,13 +20,19 @@ import { useEffect, useState } from "react";
 
 import type { AutomationController } from "../../../../../../api/controllers/AutomationController.ts";
 import type { AutomationCatalogNodeType } from "../../../../../../api/schemas/automationCatalogNodeTypeSchema.ts";
+import type { automationCatalogPresetSchema } from "../../../../../../api/schemas/automationCatalogPresetSchema.ts";
 import type { automationCatalogSchema } from "../../../../../../api/schemas/automationCatalogSchema.ts";
 import { automationEditorHeaderSchema } from "../../../../../../api/schemas/automationEditorHeaderSchema.ts";
+import type { AutomationFilterValue } from "../../../../../../api/schemas/automationFilterValueSchema.ts";
 import { AutomationGraph } from "../../../../../../api/schemas/AutomationGraph.ts";
 import type { AutomationGraphEdge } from "../../../../../../api/schemas/automationGraphEdgeSchema.ts";
+import type { AutomationGraphValue } from "../../../../../../api/schemas/automationGraphSchema.ts";
 import type { AutomationResource } from "../../../../../../api/schemas/automationResourceSchema.ts";
+import type { AutomationVariableApproval } from "../../../../../../api/schemas/automationVariableApprovalSchema.ts";
 import { AutomationVocabulary } from "../../../../../../api/schemas/AutomationVocabulary.ts";
+import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
+import AutomationPresetSetup from "../AutomationPresetSetup.tsx";
 import AutomationCanvas from "./AutomationCanvas.tsx";
 import {
   AutomationCanvasEdits,
@@ -34,23 +45,40 @@ import AutomationNodePalette, {
 import { useAutomationDraft } from "./useAutomationDraft.ts";
 import { useAutomationLeaveGuard } from "./useAutomationLeaveGuard.ts";
 
+type AutomationCatalogPreset = ReturnType<
+  typeof automationCatalogPresetSchema.parse
+>;
+
+/**
+ * A new automation's empty draft.
+ */
+const EMPTY: AutomationGraphValue = { version: 2, nodes: [], edges: [] };
+
 export interface AutomationGraphEditorProps {
-  resource: AutomationResource;
+  /**
+   * The automation edited; absent, the editor draws a new one (#Q3812),
+   * created disabled by its first save.
+   */
+  resource?: AutomationResource;
+  /**
+   * A new automation's starting point: a preset's graph, or nothing.
+   */
+  initial?: { title: string; rule: AutomationGraphValue };
   catalog: ReturnType<typeof automationCatalogSchema.parse>;
   onSaved: (resource: AutomationResource) => void;
   onClose: () => void;
   /**
    * The draft against what is saved: Run test tests what is saved.
    */
-  onDirtyChange: (dirty: boolean) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   /**
    * The source selected on the canvas, where Run test starts.
    */
-  onSourceChange: (node: string | undefined) => void;
+  onSourceChange?: (node: string | undefined) => void;
   /**
    * Discards the draft and reads the automation again, after a conflict.
    */
-  onReload: () => void;
+  onReload?: () => void;
 }
 
 /**
@@ -64,29 +92,40 @@ const AutomationGraphEditor = (props: AutomationGraphEditorProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<AutomationController>();
   const dialog = useDialog();
-  const draft = useAutomationDraft(props.resource.rule!);
-  const [title, setTitle] = useState(props.resource.title);
+  const [project] = useStore(currentProjectAtom);
+  const resource = props.resource;
+  const draft = useAutomationDraft(
+    resource?.rule ?? props.initial?.rule ?? EMPTY,
+    { saved: !!resource },
+  );
+  const savedTitle = resource?.title ?? "";
+  const [title, setTitle] = useState(
+    resource?.title ?? props.initial?.title ?? "",
+  );
   const [selected, setSelected] = useState<string>();
-  const [adding, setAdding] = useState<{
-    node?: string;
-    port?: AutomationGraphEdge["port"];
-  }>();
+  // An empty draft opens with the palette (#Q3812).
+  const [adding, setAdding] = useState<
+    { node?: string; port?: AutomationGraphEdge["port"] } | undefined
+  >(() => (draft.graph.nodes.length ? undefined : {}));
+  const [merging, setMerging] = useState<AutomationCatalogPreset>();
   const [server, setServer] = useState<{ node?: string; message: string }>();
   const [conflict, setConflict] = useState(false);
   const edits = new AutomationCanvasEdits();
   const graphs = new AutomationGraph();
   const graph = draft.graph;
   const catalog = props.catalog;
-  const dirty = draft.dirty || title !== props.resource.title;
+  const dirty = draft.dirty || title !== savedTitle;
   useAutomationLeaveGuard(dirty);
-  useEffect(() => props.onDirtyChange(dirty), [dirty, props.onDirtyChange]);
+  useEffect(() => props.onDirtyChange?.(dirty), [dirty, props.onDirtyChange]);
   const node = graph.nodes.find((item) => item.id === selected);
   useEffect(
-    () => props.onSourceChange(node?.kind === "source" ? node.id : undefined),
+    () => props.onSourceChange?.(node?.kind === "source" ? node.id : undefined),
     [node?.id, node?.kind, props.onSourceChange],
   );
 
-  const found = graphs.check(graph, catalog.entries);
+  // An empty draft is a start, not an error: it says what to do first.
+  const empty = graph.nodes.length === 0;
+  const found = empty ? [] : graphs.check(graph, catalog.entries);
   const issues: Record<string, string[]> = {};
   const general: string[] = [];
   for (const issue of found)
@@ -152,6 +191,55 @@ const AutomationGraphEditor = (props: AutomationGraphEditorProps) => {
       : catalog.nodeTypes.filter((item) => item.kind !== "transform")
   ).map((nodeType) => ({ nodeType, reason: unavailable(nodeType) }));
 
+  /**
+   * Why a preset cannot be added to this draft, or nothing: a schedule is
+   * the only source of its automation (#Q3812).
+   */
+  const presetUnavailable = (preset: AutomationCatalogPreset) => {
+    if (!preset.available)
+      return preset.reason ?? tr("automation.canvas.unavailable");
+    const sources = graphs.sources(graph);
+    if (
+      sources.length > 0 &&
+      (!!preset.schedule ||
+        sources.some((item) => item.type === AutomationVocabulary.SCHEDULE))
+    )
+      return tr("automation.canvas.unavailable.schedule");
+    if (sources.length >= AutomationGraph.MAX_SOURCES)
+      return tr("automation.canvas.unavailable.sources", {
+        args: [String(AutomationGraph.MAX_SOURCES)],
+      });
+    return undefined;
+  };
+  const presets = adding?.node
+    ? undefined
+    : catalog.presets.map((preset) => ({
+        preset,
+        reason: presetUnavailable(preset),
+      }));
+  const merge = async (
+    preset: AutomationCatalogPreset,
+    values: Record<string, AutomationFilterValue>,
+    bindings: Record<string, AutomationVariableApproval>,
+  ) => {
+    const built = await api.draftAutomationFromPreset({
+      params: { projectId: project!.id },
+      body: {
+        key: preset.key,
+        values,
+        bindings,
+        prefix: edits.prefix(graph, preset.key),
+      },
+    });
+    draft.change((current) => edits.merge(current, built.rule));
+    if (!title.trim()) {
+      setTitle(built.title);
+      header.input.title.set(built.title);
+    }
+    setMerging(undefined);
+    changed();
+  };
+
   const add = (nodeType: AutomationCatalogNodeType) => {
     const from = adding?.node
       ? { node: adding.node, port: adding.port ?? ("out" as const) }
@@ -171,7 +259,7 @@ const AutomationGraphEditor = (props: AutomationGraphEditorProps) => {
   const header = useForm({
     schema: automationEditorHeaderSchema,
     handler: () => undefined,
-    initialValues: { title: props.resource.title },
+    initialValues: { title: resource?.title ?? props.initial?.title ?? "" },
     onChange: (name, value) => {
       if (name === "title") setTitle(String(value ?? ""));
     },
@@ -180,17 +268,20 @@ const AutomationGraphEditor = (props: AutomationGraphEditorProps) => {
     {
       handler: async () => {
         try {
-          const saved = await api.updateAutomation({
-            params: {
-              projectId: props.resource.projectId,
-              id: props.resource.id,
-            },
-            body: {
-              title: title.trim(),
-              rule: graph,
-              expectedRevision: props.resource.revision,
-            },
-          });
+          const saved = resource
+            ? await api.updateAutomation({
+                params: { projectId: resource.projectId, id: resource.id },
+                body: {
+                  title: title.trim(),
+                  rule: graph,
+                  expectedRevision: resource.revision,
+                },
+              })
+            : // The first save creates it, disabled (#Q3812).
+              await api.createAutomation({
+                params: { projectId: project!.id },
+                body: { title: title.trim(), rule: graph },
+              });
           draft.reset(saved.rule ?? graph);
           setServer(undefined);
           props.onSaved(saved);
@@ -215,7 +306,7 @@ const AutomationGraphEditor = (props: AutomationGraphEditorProps) => {
       // The refusal is shown on its node, or above the canvas.
       onError: () => {},
     },
-    [api, props.resource, graph, title, props.onSaved],
+    [api, resource, project?.id, graph, title, props.onSaved],
   );
   const close = async () => {
     if (
@@ -255,7 +346,7 @@ const AutomationGraphEditor = (props: AutomationGraphEditorProps) => {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [history.undo, history.redo]);
-  const blocked = found.length > 0 || !title.trim();
+  const blocked = empty || found.length > 0 || !title.trim();
 
   return (
     <section
@@ -326,13 +417,18 @@ const AutomationGraphEditor = (props: AutomationGraphEditorProps) => {
               intent="danger"
               onClick={() => {
                 setConflict(false);
-                props.onReload();
+                props.onReload?.();
               }}
             >
               {tr("automation.editor.reload")}
             </Button>
           </AlertDescription>
         </Alert>
+      )}
+      {empty && (
+        <p className="text-muted-foreground text-sm">
+          {tr("automation.canvas.empty")}
+        </p>
       )}
       {general.length > 0 && (
         <ul
@@ -349,7 +445,7 @@ const AutomationGraphEditor = (props: AutomationGraphEditorProps) => {
         <div className="min-w-0 flex-1">
           <AutomationCanvas
             graph={graph}
-            sources={props.resource.sources}
+            sources={resource?.sources}
             selected={selected}
             onSelect={setSelected}
             editing={{
@@ -400,9 +496,46 @@ const AutomationGraphEditor = (props: AutomationGraphEditorProps) => {
         open={!!adding}
         after={adding?.node}
         entries={palette}
+        presets={presets}
         onPick={add}
+        onPickPreset={(preset) => {
+          setAdding(undefined);
+          setMerging(preset);
+        }}
         onClose={() => setAdding(undefined)}
       />
+      <Dialog
+        open={!!merging}
+        onOpenChange={(open) => {
+          if (!open) setMerging(undefined);
+        }}
+      >
+        <DialogContent
+          className="max-h-[85vh] overflow-y-auto"
+          data-testid="automation-preset-merge"
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {merging &&
+                tr(`automation.preset.${merging.key}.title`, {
+                  default: merging.title,
+                })}
+            </DialogTitle>
+            <DialogDescription>
+              {tr("automation.canvas.mergeDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          {merging && (
+            <AutomationPresetSetup
+              key={merging.key}
+              preset={merging}
+              channels={catalog.channels}
+              onCancel={() => setMerging(undefined)}
+              onMerge={(values, bindings) => merge(merging, values, bindings)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };

@@ -9,6 +9,7 @@ import {
 import { useI18n } from "alepha/react/i18n";
 
 import type { AutomationCatalogNodeType } from "../../../../../../api/schemas/automationCatalogNodeTypeSchema.ts";
+import type { automationCatalogPresetSchema } from "../../../../../../api/schemas/automationCatalogPresetSchema.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import { useAutomationLabels } from "../useAutomationLabels.ts";
 
@@ -21,6 +22,10 @@ export interface AutomationPaletteEntry {
   reason?: string;
 }
 
+type AutomationCatalogPreset = ReturnType<
+  typeof automationCatalogPresetSchema.parse
+>;
+
 export interface AutomationNodePaletteProps {
   open: boolean;
   /**
@@ -29,7 +34,13 @@ export interface AutomationNodePaletteProps {
    */
   after?: string;
   entries: AutomationPaletteEntry[];
+  /**
+   * Presets that can be added whole (#Q3812), each with why not when not;
+   * absent when adding after a node.
+   */
+  presets?: Array<{ preset: AutomationCatalogPreset; reason?: string }>;
   onPick: (nodeType: AutomationCatalogNodeType) => void;
+  onPickPreset?: (preset: AutomationCatalogPreset) => void;
   onClose: () => void;
 }
 
@@ -119,6 +130,38 @@ const AutomationNodePalette = (props: AutomationNodePaletteProps) => {
             </section>
           );
         })}
+        {props.presets && props.presets.length > 0 && (
+          <section className="flex flex-col gap-1.5">
+            <h3 className="text-muted-foreground text-xs font-medium uppercase">
+              {tr("automation.canvas.group.presets")}
+            </h3>
+            <div className="flex flex-col gap-1">
+              {props.presets.map((entry) => (
+                <Button
+                  key={entry.preset.key}
+                  variant="outlined"
+                  className="h-auto justify-start py-2 text-start whitespace-normal"
+                  disabled={!!entry.reason}
+                  data-testid={`automation-palette-preset-${entry.preset.key}`}
+                  onClick={() => props.onPickPreset?.(entry.preset)}
+                >
+                  <span className="flex flex-col items-start">
+                    <span>
+                      {tr(`automation.preset.${entry.preset.key}.title`, {
+                        default: entry.preset.title,
+                      })}
+                    </span>
+                    {entry.reason && (
+                      <span className="text-muted-foreground text-xs">
+                        {entry.reason}
+                      </span>
+                    )}
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </section>
+        )}
       </DialogContent>
     </Dialog>
   );

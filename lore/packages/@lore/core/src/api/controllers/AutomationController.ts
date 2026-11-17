@@ -11,6 +11,8 @@ import { automationPageQuerySchema } from "../schemas/automationPageQuerySchema.
 import { automationPageSchema } from "../schemas/automationPageSchema.ts";
 import { automationParamsSchema } from "../schemas/automationParamsSchema.ts";
 import { automationPresetCreateSchema } from "../schemas/automationPresetCreateSchema.ts";
+import { automationPresetDraftBodySchema } from "../schemas/automationPresetDraftBodySchema.ts";
+import { automationPresetDraftSchema } from "../schemas/automationPresetDraftSchema.ts";
 import { automationProjectParamsSchema } from "../schemas/automationProjectParamsSchema.ts";
 import { automationResourceSchema } from "../schemas/automationResourceSchema.ts";
 import { automationRevisionBodySchema } from "../schemas/automationRevisionBodySchema.ts";
@@ -118,6 +120,22 @@ export class AutomationController {
     },
     handler: ({ params, body, user }) =>
       this.presets.create(params.projectId, user, body),
+  });
+  /**
+   * A preset's graph, built and stored nowhere (#Q3812): what Open in canvas
+   * opens as a draft, and what Add from a preset merges into one.
+   */
+  draftAutomationFromPreset = $action({
+    use: [this.gate("automation:write")],
+    method: "POST",
+    path: "/projects/:projectId/automation-presets/draft",
+    schema: {
+      params: automationProjectParamsSchema,
+      body: automationPresetDraftBodySchema,
+      response: automationPresetDraftSchema,
+    },
+    handler: ({ params, body, user }) =>
+      this.presets.draft(params.projectId, user, body),
   });
   /**
    * The caller's subscription to the presets one toggle names, within its

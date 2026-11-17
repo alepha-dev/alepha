@@ -82,6 +82,12 @@ test.describe("Every notification through automations", () => {
     expect(rules.items).toHaveLength(1);
     expect(rules.items[0].title).toMatch(/^Uptime alerts: /);
     const automation = `/api/projects/${id}/automations/${rules.items[0].id}`;
+    // The bell's dialog opens the automation it made (#Q3812).
+    await bell.click();
+    await page.getByTestId("automation-subscription-open").click();
+    await expect(page).toHaveURL(
+      new RegExp(`/${slug}/automations/${rules.items[0].id}$`),
+    );
     // Each event's runs, by the source that started them (#Q3807).
     const down = "monitor-down.source";
     const up = "monitor-up.source";

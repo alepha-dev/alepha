@@ -40,6 +40,29 @@ export class AutomationRouter {
         );
     },
   });
+  /**
+   * A new automation drawn on the canvas (#Q3812): empty, or a preset's
+   * graph as an unsaved draft (`?preset=`, its graph in
+   * `automationDraftAtom`). A static child, tried before `:automationId`.
+   */
+  projectAutomationNew = $pageProject({
+    name: "projectAutomationNew",
+    path: "/automations/new",
+    schema: { query: z.object({ preset: z.string().max(128).optional() }) },
+    lazy: () =>
+      import("./components/project/automations/AutomationNewPage.tsx"),
+    loader: ({ query }) => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (
+        !canInProject(project, "automation:read") ||
+        !canInProject(project, "automation:write")
+      )
+        throw new NotFoundError(
+          "Automations cannot be created in this project with this rank",
+        );
+      return { preset: query.preset };
+    },
+  });
   projectAutomationVariables = $pageProject({
     name: "projectAutomationVariables",
     path: "/automations/variables",

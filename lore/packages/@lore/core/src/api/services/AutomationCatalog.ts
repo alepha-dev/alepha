@@ -176,7 +176,13 @@ export class AutomationCatalog {
           result: "scalar",
           operators: [],
         });
-        return { ...preset, available: !reason, ...(reason ? { reason } : {}) };
+        const sketch = this.presets.sketch(preset.key);
+        return {
+          ...preset,
+          available: !reason,
+          ...(reason ? { reason } : {}),
+          ...(sketch ? { sketch } : {}),
+        };
       }),
       variables,
       variablesHasMore: rows.length > 100,
