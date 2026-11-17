@@ -10,6 +10,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationRunEvidence from "./AutomationRunEvidence.tsx";
+import AutomationCanvas from "./canvas/AutomationCanvas.tsx";
 
 export interface AutomationRunPageProps {
   runId: string;
@@ -100,6 +101,11 @@ const AutomationRunPage = (props: AutomationRunPageProps) => {
               ],
             })}
           </p>
+          {snapshot.rule && (
+            // The automation as it was at the run's revision (#Q3804),
+            // painted with what each node did (#Q3807).
+            <AutomationCanvas graph={snapshot.rule} outcomes={run!.nodes} />
+          )}
           <AutomationRunEvidence run={run!} />
         </>
       )}

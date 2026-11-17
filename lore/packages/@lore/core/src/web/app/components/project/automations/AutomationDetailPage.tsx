@@ -25,9 +25,9 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
-import AutomationRuleSummary from "./AutomationRuleSummary.tsx";
 import AutomationRunList from "./AutomationRunList.tsx";
 import AutomationTestPanel from "./AutomationTestPanel.tsx";
+import AutomationCanvas from "./canvas/AutomationCanvas.tsx";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
 
 export interface AutomationDetailPageProps {
@@ -228,7 +228,9 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
         </p>
       ) : (
         <>
-          <AutomationRuleSummary rule={rule} />
+          {rule.rule && (
+            <AutomationCanvas graph={rule.rule} sources={rule.sources} />
+          )}
           {referencedKeys.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">
