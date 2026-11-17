@@ -13,6 +13,10 @@ export const automationResourceSourceSchema = z
     enabled: z.boolean(),
     health: z.enum(["active", "broken"]),
     reason: z.string().max(1024).optional(),
+    /**
+     * What it does in one line (#Q3809): `host.offline -> notify inbox`.
+     */
+    summary: z.string().max(255).optional(),
   })
   .strict();
 export type AutomationResourceSource = Infer<

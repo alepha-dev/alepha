@@ -62,6 +62,64 @@ export class AutomationGraphBuilder {
     }
     return AutomationGraph.layout({ version: 2, nodes, edges });
   }
+
+  /**
+   * "When X or Y, do Z" in one call (#Q3809): every source wired to every
+   * action, laid out. Ids are the given ones, or the type with its dots
+   * for a source (`host.offline`) and `action-N` for an action. It invents
+   * no per-source copy: an action naming a field one source lacks is the
+   * validator's refusal.
+   */
+  public compact(input: AutomationCompact): AutomationGraphValue {
+    const taken = new Set<string>();
+    const unique = (id: string) => {
+      let candidate = id;
+      for (let index = 2; taken.has(candidate); index++)
+        candidate = `${id}-${index}`;
+      taken.add(candidate);
+      return candidate;
+    };
+    const sources = input.sources.map((source): AutomationGraphNode => ({
+      id: unique(source.id ?? source.type.toLowerCase()),
+      kind: "source",
+      type: source.type,
+      config: source.config ?? {},
+    }));
+    const actions = input.actions.map((action, index): AutomationGraphNode => ({
+      id: unique(action.id ?? `action-${index + 1}`),
+      kind: "action",
+      type: action.type,
+      config: action.config,
+    }));
+    return AutomationGraph.layout({
+      version: 2,
+      nodes: [...sources, ...actions],
+      edges: sources.flatMap((source) =>
+        actions.map((action) => ({
+          from: source.id,
+          port: "out" as const,
+          to: action.id,
+        })),
+      ),
+    });
+  }
+}
+
+/**
+ * The compact form an agent or a command line writes (#Q3809): sources and
+ * actions, every source wired to every action.
+ */
+export interface AutomationCompact {
+  sources: Array<{
+    type: string;
+    config?: Record<string, unknown>;
+    id?: string;
+  }>;
+  actions: Array<{
+    type: string;
+    config: Record<string, unknown>;
+    id?: string;
+  }>;
 }
 
 /**

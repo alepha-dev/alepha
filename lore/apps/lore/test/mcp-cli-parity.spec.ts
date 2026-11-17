@@ -91,6 +91,9 @@ const NOT_A_FLAG: Record<string, string[]> = {
   // `--latency-budget`, `--cert-warning-days`.
   monitor_create: ["expect"],
   monitor_update: ["expect"],
+  // One `--graph` file holds both: a graph is JSON (#Q3809).
+  automation_create: ["nodes", "edges"],
+  automation_update: ["nodes", "edges"],
 };
 
 const tools = (): any[] => {

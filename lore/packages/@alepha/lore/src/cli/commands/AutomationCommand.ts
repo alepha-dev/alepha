@@ -20,16 +20,21 @@ import {
  *
  * ```bash
  * lore automation catalog -p alepha
- * lore automation create -p alepha --title "Release note" --rule @rule.json
+ * lore automation create -p alepha --title "Release note" --graph @graph.json
+ * lore automation create -p alepha --title "Hosts" --source host.offline \
+ *   --source host.online --action @notify.json
  * lore automation test 0190... -p alepha
  * lore automation update 0190... --enabled --expected-revision 1 -p alepha
  * ```
  *
- * ## ⚠️ A rule is JSON, in a file
+ * ## ⚠️ An automation is a graph, in a file
  *
- * A rule is four typed slots, which `automation catalog` describes. Flags for
- * them would be a second vocabulary, so `--rule` takes the JSON the action
- * takes, and the server validates it.
+ * An automation is a graph of sources, reads, conditions and actions
+ * (#Q3809), whose node types `automation catalog` describes. Flags for them
+ * would be a second vocabulary, so `--graph` takes the JSON (`nodes` and
+ * `edges`) and the server validates it. The compact form is flags: each
+ * `--source` an event type or `{ type, config }`, each `--action`
+ * `{ type, config }`, every source wired to every action.
  *
  * ## ⚠️ `--expected-revision` is the tool's fence, not a detail
  *
@@ -97,13 +102,27 @@ export class AutomationCommand {
     .enum(["release-notifications"])
     .meta({ title: "policy" });
 
-  protected static readonly RULE_FLAG = {
-    rule: z.text({
-      size: "rich",
-      atFile: true,
-      description:
-        "The whole four-slot rule, as JSON. lore automation catalog names what it may hold.",
-    }),
+  protected static readonly GRAPH_FLAGS = {
+    graph: z
+      .text({
+        size: "rich",
+        atFile: true,
+        description:
+          "The whole graph, as JSON: { nodes, edges }. lore automation catalog names the node types it may hold. Positions are optional: the server lays out a graph with none.",
+      })
+      .optional(),
+    source: z
+      .array(z.text())
+      .describe(
+        "The compact form, with --action: a source, repeatable, as an event type (host.offline) or JSON { type, config }. Every source is wired to every action.",
+      )
+      .optional(),
+    action: z
+      .array(z.text({ atFile: true }))
+      .describe(
+        "The compact form, with --source: an action, repeatable, as JSON { type, config }.",
+      )
+      .optional(),
   };
 
   protected static readonly REVISION_FLAG = {
@@ -208,7 +227,14 @@ export class AutomationCommand {
           sections: rule.rule
             ? [
                 {
-                  title: "Rule",
+                  title: "Sources",
+                  lines: (rule.sources ?? []).map(
+                    (source) =>
+                      `${source.node}: ${source.summary ?? source.type}${source.enabled ? "" : " (off)"}${source.health === "broken" ? ` (broken: ${source.reason})` : ""}`,
+                  ),
+                },
+                {
+                  title: "Graph",
                   lines: [JSON.stringify(rule.rule, null, 2)],
                 },
               ]
@@ -224,8 +250,8 @@ export class AutomationCommand {
       "Create an automation as yourself, as a draft, or enabled in the same write with --enabled",
     flags: z.object({
       ...AutomationCommand.PROJECT_FLAG,
-      title: z.text({ description: "What the rule is for." }),
-      ...AutomationCommand.RULE_FLAG,
+      title: z.text({ description: "What the automation is for." }),
+      ...AutomationCommand.GRAPH_FLAGS,
       enabled: z
         .boolean()
         .describe(
@@ -237,7 +263,11 @@ export class AutomationCommand {
     handler: async ({ flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
-        const rule = this.parsed(flags.rule, "--rule");
+        const graph = this.graphOf(flags);
+        if (!graph)
+          throw new UsageError(
+            "Pass --graph, or --source and --action for the compact form.",
+          );
         const { projectId } = await this.projects.named(flags.project, context);
 
         // One write (#Q3573): enabled or a draft, never a draft left behind
@@ -246,7 +276,7 @@ export class AutomationCommand {
           params: { projectId },
           body: {
             title: flags.title,
-            rule: rule as any,
+            ...graph,
             ...(flags.enabled ? { enabled: true } : {}),
           },
         });
@@ -263,13 +293,13 @@ export class AutomationCommand {
   public readonly update = $command({
     name: "update",
     description:
-      "Change a rule: --title with --rule, or --enabled / --no-enabled alone",
+      "Change an automation: --title with --graph (or --source and --action), or --enabled / --no-enabled alone",
     args: AutomationCommand.ID_ARG,
     flags: z.object({
       ...AutomationCommand.PROJECT_FLAG,
       ...AutomationCommand.REVISION_FLAG,
       title: z.text({ description: "A new title." }).optional(),
-      rule: AutomationCommand.RULE_FLAG.rule.optional(),
+      ...AutomationCommand.GRAPH_FLAGS,
       enabled: z
         .boolean()
         .describe("Enable the rule, or --no-enabled to stop it and keep it.")
@@ -280,12 +310,12 @@ export class AutomationCommand {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const expectedRevision = flags["expected-revision"];
-        const configuring =
-          flags.title !== undefined || flags.rule !== undefined;
+        const graph = this.graphOf(flags);
+        const configuring = flags.title !== undefined || graph !== undefined;
         if (flags.enabled === undefined) {
-          if (flags.title === undefined || flags.rule === undefined) {
+          if (flags.title === undefined || graph === undefined) {
             throw new UsageError(
-              "Pass --title and --rule together, or --enabled / --no-enabled alone.",
+              "Pass --title with --graph (or --source and --action), or --enabled / --no-enabled alone.",
             );
           }
         } else if (configuring) {
@@ -294,10 +324,6 @@ export class AutomationCommand {
           );
         }
 
-        const rule =
-          flags.rule === undefined
-            ? undefined
-            : this.parsed(flags.rule, "--rule");
         const { projectId } = await this.projects.named(flags.project, context);
         const params = { projectId, id: args };
 
@@ -308,7 +334,7 @@ export class AutomationCommand {
                 body: {
                   expectedRevision,
                   title: flags.title as string,
-                  rule: rule as any,
+                  ...graph!,
                 },
               })
             : await this.api.setAutomationEnabled({
@@ -368,6 +394,9 @@ export class AutomationCommand {
     flags: z.object({
       ...AutomationCommand.PROJECT_FLAG,
       ...AutomationCommand.PAGE_FLAGS,
+      source: z
+        .text({ description: "Only the runs this source node started." })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
@@ -377,7 +406,11 @@ export class AutomationCommand {
 
         const page = await this.api.listAutomationRuns({
           params: { projectId, id: args },
-          query: { offset: flags.offset, limit: flags.limit },
+          query: {
+            offset: flags.offset,
+            limit: flags.limit,
+            ...(flags.source === undefined ? {} : { source: flags.source }),
+          },
         });
 
         if (flags.output === "json") {
@@ -390,7 +423,7 @@ export class AutomationCommand {
           page.items.map((run) => ({
             handle: run.id,
             title: run.status,
-            fields: [run.triggeredAt, run.reason],
+            fields: [run.sourceNode, run.triggeredAt, run.reason],
           })),
           this.pageOf(page, flags.offset),
           "No retained runs.",
@@ -402,7 +435,7 @@ export class AutomationCommand {
   public readonly catalog = $command({
     name: "catalog",
     description:
-      "What a rule may say here: events, selections, metrics, actions, channels, variables and limits",
+      "What an automation may hold here: node types (sources, reads, conditions, actions) with their ports and outputs, channels, variables and limits",
     flags: z.object({ ...AutomationCommand.PROJECT_FLAG }),
     handler: async ({ flags, print }) => {
       const context: LoreRefusalContext = {};
@@ -419,7 +452,7 @@ export class AutomationCommand {
   public readonly test = $command({
     name: "test",
     description:
-      "Preview a saved rule with no writes, no delivery and no audit",
+      "Preview a saved automation from one source, with no writes, no delivery and no audit",
     args: AutomationCommand.ID_ARG,
     flags: z.object({
       ...AutomationCommand.PROJECT_FLAG,
@@ -428,6 +461,12 @@ export class AutomationCommand {
           atFile: true,
           description:
             "What to test against, as JSON: a same-project subject id or a retained event or run id.",
+        })
+        .optional(),
+      node: z
+        .text({
+          description:
+            "The source node to start from, required when the automation has several.",
         })
         .optional(),
     }),
@@ -444,7 +483,10 @@ export class AutomationCommand {
           print,
           await this.api.testAutomation({
             params: { projectId, id: args },
-            body: { source: source as any },
+            body: {
+              source: source as any,
+              ...(flags.node === undefined ? {} : { node: flags.node }),
+            },
           }),
         );
       });
@@ -632,6 +674,53 @@ export class AutomationCommand {
     },
   });
 
+  public readonly sourceSet = $command({
+    name: "set",
+    description:
+      "Switch one source of an automation off or on: off stops it alone, on asks for its author",
+    args: AutomationCommand.ID_ARG,
+    flags: z.object({
+      ...AutomationCommand.PROJECT_FLAG,
+      ...AutomationCommand.REVISION_FLAG,
+      node: z.text({
+        description: "The source node, as lore automation get lists it.",
+      }),
+      enabled: z
+        .boolean()
+        .describe("--enabled to switch it on, --no-enabled to switch it off."),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { projectId } = await this.projects.named(flags.project, context);
+        const updated = await this.api.setAutomationSourceEnabled({
+          params: { projectId, id: args },
+          body: {
+            node: flags.node,
+            enabled: flags.enabled,
+            expectedRevision: flags["expected-revision"],
+          },
+        });
+        this.render.written(
+          print,
+          flags.output,
+          updated,
+          `Source ${flags.node} of ${updated.id} is ${flags.enabled ? "on" : "off"}, revision ${updated.revision}`,
+        );
+      });
+    },
+  });
+
+  public readonly source = $command({
+    name: "source",
+    description: "One source of an automation: switch it off or on",
+    children: [this.sourceSet],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
   /**
    * ⚠️ Declared after its children. `CliProvider.findCommand` resolves by
    * `findLast`, so a second class declaring `automation` would shadow this one
@@ -650,6 +739,7 @@ export class AutomationCommand {
       this.runs,
       this.catalog,
       this.test,
+      this.source,
       this.variable,
       this.channel,
     ],
@@ -657,6 +747,39 @@ export class AutomationCommand {
       help();
     },
   });
+
+  /**
+   * The write body the graph flags make: `--graph` as the rule, or the
+   * compact `--source` / `--action` as is, expanded by the server.
+   */
+  protected graphOf(flags: {
+    graph?: string;
+    source?: string[];
+    action?: string[];
+  }): Record<string, unknown> | undefined {
+    if (flags.graph !== undefined) {
+      if (flags.source || flags.action)
+        throw new UsageError(
+          "Pass --graph, or --source and --action, not both.",
+        );
+      const graph = this.parsed(flags.graph, "--graph") as Record<
+        string,
+        unknown
+      >;
+      return { rule: { version: 2, edges: [], ...graph } };
+    }
+    if (!flags.source && !flags.action) return undefined;
+    if (!flags.source?.length || !flags.action?.length)
+      throw new UsageError("The compact form takes --source and --action.");
+    return {
+      sources: flags.source.map((value) =>
+        value.trim().startsWith("{")
+          ? this.parsed(value, "--source")
+          : { type: value.trim() },
+      ),
+      actions: flags.action.map((value) => this.parsed(value, "--action")),
+    };
+  }
 
   /**
    * A flag holding JSON. Refused here rather than sent, so a typo costs no

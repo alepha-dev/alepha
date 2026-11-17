@@ -352,25 +352,30 @@ A measure takes `--metric-kind` (`vital`, `availability` or `latency`),
 
 ## Automations
 
-A rule is JSON, usually in a file (`--rule @rule.json`), and
-`lore automation catalog` names what it may hold. A write takes the
-`--expected-revision` you read with `lore automation get`, so a rule edited
-since is refused rather than overwritten.
+An automation is a graph of sources, reads, conditions and actions, written
+as JSON, usually in a file (`--graph @graph.json`, with its `nodes` and
+`edges`), and `lore automation catalog` names the node types it may hold.
+The compact form needs no file: each `--source` is an event type
+(`host.offline`) or `{ "type", "config" }`, each `--action` a
+`{ "type", "config" }`, and every source is wired to every action. A write
+takes the `--expected-revision` you read with `lore automation get`, so an
+automation edited since is refused rather than overwritten.
 
-| Command                                     | What it does                                                                                 | Flags                                                                               |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `lore automation catalog`                   | What a rule may say in this project: events, selections, metrics, actions, channels, limits. |                                                                                     |
-| `lore automation list`                      | The project's rules.                                                                         | `--search`, `--state`, `--author-user-id`, `--limit` (1 to 50), `--offset`          |
-| `lore automation get <id>`                  | One rule: its health, author, revision, last run and JSON.                                   |                                                                                     |
-| `lore automation create`                    | Create a rule as yourself, as a draft, or enabled in the same write with `--enabled`.        | `--title`, `--rule` (both required), `--enabled`                                    |
-| `lore automation update <id>`               | Change a rule: `--title` with `--rule`, or `--enabled` / `--no-enabled` alone.               | `--expected-revision` (required), `--title`, `--rule`, `--enabled` / `--no-enabled` |
-| `lore automation delete <id>`               | Delete a rule. To stop one and keep it, use `lore automation update --no-enabled`.           | `--expected-revision`, `--yes` (both required)                                      |
-| `lore automation test <id>`                 | Preview a saved rule, with no writes and no delivery.                                        | `--source` (JSON: what to test against)                                             |
-| `lore automation runs <id>`                 | A rule's retained runs, newest first.                                                        | `--limit`, `--offset`                                                               |
-| `lore automation variable list`             | The project's shared variables.                                                              | `--key` (only this exact key), `--limit`, `--offset`                                |
-| `lore automation variable set <key>`        | Create or change a shared variable. Other authors' rules that use it pause for approval.     | `--variable` (required: JSON, with the variable's id and version when it exists)    |
-| `lore automation variable dependents <key>` | The rules that use a shared variable.                                                        | `--limit`, `--offset`                                                               |
-| `lore automation variable delete <key>`     | Delete an unused shared variable.                                                            | `--id`, `--version` (both required, and both have to match)                         |
+| Command                                     | What it does                                                                                  | Flags                                                                                                        |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `lore automation catalog`                   | What an automation may hold here: node types with their ports and outputs, channels, limits.  |                                                                                                              |
+| `lore automation list`                      | The project's automations.                                                                    | `--search`, `--state`, `--author-user-id`, `--limit` (1 to 50), `--offset`                                   |
+| `lore automation get <id>`                  | One automation: its sources in a line each, its health, author, revision, last run and graph. |                                                                                                              |
+| `lore automation create`                    | Create one as yourself, as a draft, or enabled in the same write with `--enabled`.            | `--title` (required), `--graph`, or `--source` and `--action` (repeatable), `--enabled`                      |
+| `lore automation update <id>`               | Change one: `--title` with a graph, or `--enabled` / `--no-enabled` alone.                    | `--expected-revision` (required), `--title`, `--graph`, `--source`, `--action`, `--enabled` / `--no-enabled` |
+| `lore automation source set <id>`           | Switch one source off or on: off stops that source alone.                                     | `--node`, `--enabled` / `--no-enabled`, `--expected-revision` (all required)                                 |
+| `lore automation delete <id>`               | Delete one. To stop one and keep it, use `lore automation update --no-enabled`.               | `--expected-revision`, `--yes` (both required)                                                               |
+| `lore automation test <id>`                 | Preview a saved automation from one source, with no writes and no delivery.                   | `--node` (the source, when there are several), `--source` (JSON: what to test against)                       |
+| `lore automation runs <id>`                 | Its retained runs, newest first.                                                              | `--source` (only those one source started), `--limit`, `--offset`                                            |
+| `lore automation variable list`             | The project's shared variables.                                                               | `--key` (only this exact key), `--limit`, `--offset`                                                         |
+| `lore automation variable set <key>`        | Create or change a shared variable. Other authors' rules that use it pause for approval.      | `--variable` (required: JSON, with the variable's id and version when it exists)                             |
+| `lore automation variable dependents <key>` | The rules that use a shared variable.                                                         | `--limit`, `--offset`                                                                                        |
+| `lore automation variable delete <key>`     | Delete an unused shared variable.                                                             | `--id`, `--version` (both required, and both have to match)                                                  |
 
 `--state` is `disabled`, `active`, `paused` or `broken`. `catalog` and `test`
 always print JSON.

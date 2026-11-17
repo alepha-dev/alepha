@@ -162,7 +162,7 @@ describe("Automation sources, one by one", () => {
     const rule = await create();
     const off = await switchSource(rule.id, "offline", false, rule.revision);
     expect(off.revision).toBe(rule.revision + 1);
-    expect(off.sources).toEqual([
+    expect(off.sources).toMatchObject([
       {
         node: "offline",
         type: "host.offline",

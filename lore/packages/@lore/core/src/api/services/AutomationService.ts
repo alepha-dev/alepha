@@ -10,12 +10,14 @@ import type { AutomationRun } from "../entities/automationRuns.ts";
 import { automations, type Automation } from "../entities/automations.ts";
 import type { AutomationVariable } from "../entities/automationVariables.ts";
 import { users, type User } from "../entities/users.ts";
+import type { AutomationCompactInput } from "../schemas/automationCompactSchema.ts";
 import {
   automationCreateBodySchema,
   type AutomationCreateBody,
 } from "../schemas/automationCreateBodySchema.ts";
 import { AutomationCron } from "../schemas/AutomationCron.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
+import { AutomationGraphBuilder } from "../schemas/AutomationGraphBuilder.ts";
 import {
   automationListQuerySchema,
   type AutomationListQuery,
@@ -737,12 +739,45 @@ export class AutomationService {
    * The authored form of a rule (#Q3613): every notify carries `channels`,
    * and at most five actions.
    */
-  protected authored<T extends { rule: Automation["rule"] }>(body: T): T {
+  protected authored<
+    T extends {
+      rule?: Automation["rule"];
+      sources?: AutomationCompactInput["sources"];
+      actions?: AutomationCompactInput["actions"];
+    },
+  >(input: T): Omit<T, "sources" | "actions"> & { rule: Automation["rule"] } {
+    const { sources, actions, ...body } = input;
+    if (body.rule ? sources || actions : !sources || !actions)
+      throw new BadRequestError(
+        "Write the whole graph as rule, or sources and actions together, not both",
+      );
+    if (!body.rule) {
+      const graph = new AutomationGraphBuilder().compact({
+        sources: sources!,
+        actions: actions!,
+      });
+      // The compact form invents no per-source copy (#Q3809): an action
+      // naming what one source lacks is refused, and says how to write it.
+      const [issue] = this.graphs.check(graph, this.catalog.entries());
+      if (issue?.source)
+        throw new BadRequestError(
+          `${this.graphs.message(issue)}. The compact form wires every source to every action: write nodes and edges to give that source its own action`,
+        );
+      return this.normalized({ ...body, rule: graph });
+    }
+    return this.normalized({ ...body, rule: body.rule });
+  }
+
+  protected normalized<T extends { rule: Automation["rule"] }>(body: T): T {
     try {
-      // A graph saved without positions is laid out (#Q3809).
-      const graph = body.rule.nodes.every((node) => !node.position)
-        ? AutomationGraph.layout(body.rule)
-        : body.rule;
+      // A graph saved without positions is laid out (#Q3809); one with some
+      // and not others is refused: half a layout is nobody's.
+      const placed = body.rule.nodes.filter((node) => node.position).length;
+      if (placed && placed < body.rule.nodes.length)
+        throw new BadRequestError(
+          "Give every node a position, or none: the server lays out a graph that has none",
+        );
+      const graph = placed ? body.rule : AutomationGraph.layout(body.rule);
       return { ...body, rule: this.graphs.normalize(graph) };
     } catch (error) {
       if (error instanceof AlephaError)
@@ -894,6 +929,7 @@ export class AutomationService {
         enabled: node.enabled !== false,
         health: health?.health ?? ("active" as const),
         ...(health?.reason ? { reason: health.reason } : {}),
+        summary: this.summary(rule.rule, node.id),
       };
     });
     return {
@@ -902,6 +938,31 @@ export class AutomationService {
         rule.health === "active" &&
         sources.some((source) => source.enabled && source.health === "broken"),
     };
+  }
+
+  /**
+   * One source in one line (#Q3809), for an agent or a terminal:
+   * `host.offline -> notify inbox, email; addTag`.
+   */
+  protected summary(graph: Automation["rule"], source: string): string {
+    const actions = [...this.graphs.reachable(graph, source)]
+      .map((id) => this.graphs.node(graph, id)!)
+      .filter((node) => node.kind === "action")
+      .map((node) =>
+        this.graphs.channels(node).length
+          ? `${node.type} ${this.graphs.channels(node).join(", ")}`
+          : node.type,
+      );
+    const origin = this.graphs.node(graph, source)!;
+    const head =
+      origin.type === "schedule"
+        ? `schedule ${String(origin.config.cron)}${this.graphs.read(graph, source) ? ` (${this.graphs.read(graph, source)!.type})` : ""}`
+        : origin.type;
+    const guarded = this.graphs.conditions(graph).length ? " if ..." : "";
+    return `${head}${guarded} -> ${actions.join("; ") || "nothing"}`.slice(
+      0,
+      255,
+    );
   }
 
   protected async resource(
