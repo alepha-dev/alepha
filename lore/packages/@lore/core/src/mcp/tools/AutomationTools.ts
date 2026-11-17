@@ -53,7 +53,7 @@ export class AutomationTools {
 
   automation_create = $tool({
     description:
-      'Create an automation as yourself: a graph of sources (an event or a schedule) wired through optional reads and conditions to actions. Discover node types, their slots, ports and outputs with automation_catalog. Pass the graph as nodes + edges, or the compact sources + actions (every source wired to every action), which is enough for "when X or Y, notify me". With enabled=true it is created enabled in one atomic write, after the checks enabling runs; if they refuse, nothing is created and the refusal says why and names the node. Without it it is a draft. The author and credential are immutable. No AI executes inside an automation.',
+      'Create an automation as yourself: a graph of sources (an event or a schedule) wired through optional reads and conditions to actions. Discover node types, their slots, ports and outputs with automation_catalog. Pass the graph as nodes + edges, or the compact sources + actions (every source wired to every action), which is enough for "when X or Y, notify me". The graph is an outline of blocks: each block is its events (or one schedule and its read), at most one condition, then independent sequences of actions on the true and false sides of the condition; nothing joins (wire an action on both sides instead), a condition leads to actions only, and an action is followed by one action at most. With enabled=true it is created enabled in one atomic write, after the checks enabling runs; if they refuse, nothing is created and the refusal says why and names the node. Without it it is a draft. The author and credential are immutable. No AI executes inside an automation.',
     schema: {
       params: automationCreateParamsSchema,
       result: automationResourceSchema,
@@ -99,7 +99,7 @@ export class AutomationTools {
   });
   automation_update = $tool({
     description:
-      "Update your automation using expectedRevision. Supply title with the complete graph (nodes + edges, or the compact sources + actions), or enabled alone. Explicit enable revalidates current authority, dependencies and shared variables. To switch one source, use automation_source_set. Managers may disable another author's automation but cannot edit or enable it. Reload after a revision conflict.",
+      "Update your automation using expectedRevision. Supply title with the complete graph (nodes + edges, or the compact sources + actions), or enabled alone. The graph is an outline of blocks: each block is its events (or one schedule and its read), at most one condition, then independent sequences of actions on the true and false sides of the condition; nothing joins (wire an action on both sides instead), a condition leads to actions only, and an action is followed by one action at most. Explicit enable revalidates current authority, dependencies and shared variables. To switch one source, use automation_source_set. Managers may disable another author's automation but cannot edit or enable it. Reload after a revision conflict.",
     schema: {
       params: automationUpdateParamsSchema,
       result: automationResourceSchema,

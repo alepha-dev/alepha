@@ -230,6 +230,44 @@ describe("Automation enable intent and health", () => {
     await health.project(project.id);
     expect((await persistence.rules.getById(rule.id)).health).toBe("active");
   });
+  it("reads a stored graph the outline rules refuse as broken, and stops nothing else", async ({
+    expect,
+  }) => {
+    // An action followed by two actions: what the previous editor could
+    // draw, which the outline rules refuse (#Q3845). Written past the
+    // service, as a row stored before the rules landed.
+    const valid = await create();
+    const line = automationLine(ast());
+    const [source, action] = line.nodes;
+    const refused = await persistence.rules.create({
+      projectId: project.id,
+      authorUserId: user.id,
+      title: "Drawn on the canvas",
+      rule: {
+        version: 2,
+        nodes: [
+          source,
+          action,
+          { ...action, id: "action-2" },
+          { ...action, id: "action-3" },
+        ],
+        edges: [
+          { from: source.id, port: "out", to: action.id },
+          { from: action.id, port: "out", to: "action-2" },
+          { from: action.id, port: "out", to: "action-3" },
+        ],
+      },
+    });
+    await persistence.rules.updateById(refused.id, { enabled: true });
+    await expect(
+      alepha
+        .inject(AutomationCatalog)
+        .validate(project.id, user, refused.rule, undefined, refused),
+    ).rejects.toThrow("An action is followed by one action at most");
+    await health.project(project.id);
+    expect((await persistence.rules.getById(refused.id)).health).toBe("broken");
+    expect((await persistence.rules.getById(valid.id)).health).toBe("active");
+  });
   it("leaves a rule as it was when the check itself fails, and asks again on the next sweep", async ({
     expect,
   }) => {

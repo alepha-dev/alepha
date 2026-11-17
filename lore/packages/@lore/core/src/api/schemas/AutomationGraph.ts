@@ -371,6 +371,9 @@ export class AutomationGraph {
         this.outgoing(graph, node.id).length === 0
       )
         add({ node: node.id, message: "This node leads nowhere" });
+    if (issues.length) return issues;
+    this.checkShape(graph, add);
+    if (issues.length) return issues;
 
     for (const source of sources) {
       const actions = [...this.reachable(graph, source.id)].filter(
@@ -407,6 +410,19 @@ export class AutomationGraph {
       if (node.kind === "action")
         this.checkAction(graph, node, entries, describe, add);
     }
+    return issues;
+  }
+
+  /**
+   * The outline rules alone (#Q3845), on a graph that parses: what a stored
+   * graph drawn before them may break, with no catalogue needed. Empty for a
+   * graph that does not parse, which {@link check} reports.
+   */
+  public shape(input: unknown): AutomationGraphIssue[] {
+    const parsed = automationGraphSchema.safeParse(input);
+    if (!parsed.success) return [];
+    const issues: AutomationGraphIssue[] = [];
+    this.checkShape(parsed.data, (issue) => issues.push(issue));
     return issues;
   }
 
@@ -825,6 +841,90 @@ export class AutomationGraph {
     for (const node of graph.nodes)
       if (node.kind === "read" && this.incoming(graph, node.id).length !== 1)
         add({ node: node.id, message: "A read has exactly one way in" });
+  }
+
+  /**
+   * The four rules that keep a graph an outline (#E156, #Q3845): a list of
+   * blocks, each its events (or one schedule and its read), at most one
+   * condition, then independent sequences of actions on each side. Each
+   * refusal names its node and says what to do instead.
+   */
+  protected checkShape(
+    graph: AutomationGraphValue,
+    add: (issue: AutomationGraphIssue) => void,
+  ): void {
+    const kind = (id: string) => this.node(graph, id)?.kind;
+    const targets = (id: string) =>
+      [...new Set(this.outgoing(graph, id).map((edge) => edge.to))]
+        .sort()
+        .join("\n");
+
+    // 1. One way in.
+    for (const node of graph.nodes) {
+      if (node.kind === "source") continue;
+      const incoming = this.incoming(graph, node.id);
+      if (incoming.length <= 1) continue;
+      const froms = incoming.map((edge) => edge.from);
+      if (froms.every((id) => kind(id) === "source")) {
+        if (new Set(froms.map(targets)).size > 1)
+          add({
+            node: node.id,
+            message:
+              "The events wired here lead to different steps: events of one block share everything after them, so give each event a block of its own",
+          });
+        continue;
+      }
+      add({
+        node: node.id,
+        message:
+          node.kind === "action"
+            ? "An action has one way in: branches do not join, so add the action on both sides"
+            : `A ${node.kind} has one way in: give each way its own block`,
+      });
+    }
+
+    // 2. A block starts one way.
+    const starts = graph.nodes.filter(
+      (node) =>
+        (node.kind === "source" &&
+          node.type !== AutomationVocabulary.SCHEDULE) ||
+        node.kind === "read",
+    );
+    for (const start of starts) {
+      const next = this.outgoing(graph, start.id).map((edge) => kind(edge.to));
+      const conditions = next.filter((item) => item === "condition").length;
+      const label = start.kind === "read" ? "A read" : "An event";
+      if (conditions > 1)
+        add({
+          node: start.id,
+          message: `${label} leads to one condition at most: a block holds one condition, so use two blocks of the same event`,
+        });
+      else if (conditions === 1 && next.length > 1)
+        add({
+          node: start.id,
+          message: `${label} leads to one condition or to actions, never both: use two blocks of the same event, or put the action on both sides of the condition`,
+        });
+    }
+
+    for (const node of graph.nodes) {
+      // 3. One condition per path.
+      if (
+        node.kind === "condition" &&
+        this.outgoing(graph, node.id).some((edge) => kind(edge.to) !== "action")
+      )
+        add({
+          node: node.id,
+          message:
+            "A condition leads to actions only: a block holds one condition, so fold the second one into another block",
+        });
+      // 4. An action has at most one next action.
+      if (node.kind === "action" && this.outgoing(graph, node.id).length > 1)
+        add({
+          node: node.id,
+          message:
+            "An action is followed by one action at most: chain the others after it in one sequence, or start a sequence of their own",
+        });
+    }
   }
 
   protected checkCondition(
