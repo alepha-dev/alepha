@@ -230,18 +230,22 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         inputs: source.event.payload.fields,
         selected: [source.event.payload.fields],
         matched: 1,
-        planned: [{ index: 0 }],
+        planned: [{ node: "action-1" }],
       });
       const request = {
         automationId: enabled.id,
         revision: 0,
-        source: { kind: "event" as const, eventId: source.event.id },
+        source: {
+          kind: "event" as const,
+          eventId: source.event.id,
+          node: "source",
+        },
         prepared,
       };
       const reserved = await claims.reserve({
         automationId: enabled.id,
         revision: 0,
-        source: { kind: "event", eventId: source.event.id },
+        source: { kind: "event", eventId: source.event.id, node: "source" },
       });
       expect(reserved.status).toBe("ready");
       const first = await claims.claim(request);
@@ -267,7 +271,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       };
       await expect(
         claims.atomicEffect(occurrence.id, oldToken, {
-          index: 0,
+          node: "action-1",
           action,
           statements: [
             sql`INSERT INTO automation_d1_effects VALUES ('old-worker', 1)`,
@@ -276,7 +280,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         }),
       ).rejects.toThrow("lease");
       const effect = {
-        index: 0,
+        node: "action-1",
         action,
         statements: [
           sql`INSERT INTO automation_d1_effects VALUES ('effect', 1) ON CONFLICT (id) DO UPDATE SET hits = automation_d1_effects.hits + 1`,
@@ -359,7 +363,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         occurrence.id,
         occurrence.leaseToken!,
         {
-          index: 0,
+          node: "action-1",
           channels: ["inbox", "email"],
           excludeUserId: project.createdBy,
         },
@@ -405,19 +409,19 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         inputs: notificationContext.values,
         selected: [notificationContext.values],
         matched: 1,
-        planned: [{ index: 0 }],
+        planned: [{ node: "action-1" }],
       });
       const notificationClaim = await claims.claim({
         automationId: notifyEnabled.id,
         revision: notifyEnabled.revision,
-        source: { kind: "event", eventId: captured.id },
+        source: { kind: "event", eventId: captured.id, node: "source" },
         prepared: notificationEvidence,
       });
       expect(notificationClaim.state).toBe("claimed");
       const notifyInput = {
         occurrenceId: notificationClaim.receipt!.id,
         token: notificationClaim.receipt!.leaseToken!,
-        index: 0,
+        node: "action-1",
         context: notificationContext,
       };
       await expect(
@@ -515,7 +519,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         inputs: domainContext.values,
         selected: [domainContext.values],
         matched: 1,
-        planned: [{ index: 0 }, { index: 1 }],
+        planned: [{ node: "action-1" }, { node: "action-2" }],
       });
       const domainClaim = await claims.claim({
         automationId: domainEnabled.id,
@@ -532,7 +536,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       const domainActions = alepha.inject(AutomationDomainActions);
       const appended = await domainActions.execute({
         ...domainInput,
-        index: 0,
+        node: "action-1",
       });
       expect(appended.result).toMatchObject({
         folio_id: domainFolio.id,
@@ -544,15 +548,15 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         "D1 baseline\n\nD1 append",
       );
       expect(
-        (await domainActions.execute({ ...domainInput, index: 0 })).id,
+        (await domainActions.execute({ ...domainInput, node: "action-1" })).id,
       ).toBe(appended.id);
       await claims.advance(domainInput.occurrenceId, domainInput.token, {
-        index: 0,
+        node: "action-1",
         receiptId: appended.id,
       });
       const questCreated = await domainActions.execute({
         ...domainInput,
-        index: 1,
+        node: "action-2",
       });
       expect(questCreated.result).toMatchObject({
         changed: true,
@@ -567,7 +571,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         area: "native-domain",
       });
       expect(
-        (await domainActions.execute({ ...domainInput, index: 1 })).id,
+        (await domainActions.execute({ ...domainInput, node: "action-2" })).id,
       ).toBe(questCreated.id);
       const [nativeAuditCount] = await provider.execute(
         sql`SELECT COUNT(*) AS count FROM audits WHERE scope_type = 'project' AND scope_id = ${String(project.id)} AND json_extract(metadata, '$.automationId') = ${domainEnabled.id}`,

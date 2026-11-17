@@ -54,25 +54,25 @@ describe("Automation run evidence", () => {
           hasMore: true,
         },
         actions: [
-          { index: 0, status: "queued", result: { enqueued: true } },
+          { node: "action-1", status: "queued", result: { enqueued: true } },
           {
-            index: 1,
+            node: "action-2",
             status: "unknown",
             result: { reason: "Interrupted external effect" },
           },
-          { index: 2, status: "refused", result: {} },
-          { index: 3, status: "skipped", result: {} },
+          { node: "action-3", status: "refused", result: {} },
+          { node: "action-4", status: "skipped", result: {} },
         ],
       },
       notifications: [
         {
-          index: 0,
+          node: "action-1",
           outboxId: first,
           status: "delivered",
           receiptId: crypto.randomUUID(),
         },
         {
-          index: 1,
+          node: "action-2",
           outboxId: second,
           status: "queued",
           lastAttempt: "deferred",
@@ -86,8 +86,8 @@ describe("Automation run evidence", () => {
     );
     expect(screen.getByText(/Queued, awaiting delivery/)).toBeTruthy();
     expect(screen.getByText(/Unknown, review required/)).toBeTruthy();
-    expect(screen.getByText(/Action 3: Refused/)).toBeTruthy();
-    expect(screen.getByText(/Action 4: Skipped/)).toBeTruthy();
+    expect(screen.getByText(/Step action-3: Refused/)).toBeTruthy();
+    expect(screen.getByText(/Step action-4: Skipped/)).toBeTruthy();
     expect(
       screen
         .getByRole("link", { name: "Delivery receipt: Delivered" })

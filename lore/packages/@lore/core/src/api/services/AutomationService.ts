@@ -518,7 +518,10 @@ export class AutomationService {
     // has authorized the immutable run payload.
     const enqueues = (run.snapshot?.actions ?? [])
       .flatMap((action) => {
-        if (run.snapshot?.rule?.actions[action.index]?.kind !== "notify")
+        if (
+          run.snapshot?.rule?.nodes.find((node) => node.id === action.node)
+            ?.type !== "notify"
+        )
           return [];
         let ids =
           typeof action.result.outbox_id === "string"
@@ -534,7 +537,8 @@ export class AutomationService {
           }
         }
         return ids.map((outboxId) => ({
-          index: action.index,
+          node: action.node,
+          ...(action.channel === undefined ? {} : { channel: action.channel }),
           ...(action.row === undefined ? {} : { row: action.row }),
           outboxId,
         }));

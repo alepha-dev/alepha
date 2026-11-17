@@ -175,7 +175,7 @@ describe("Deployment and release publication presets", () => {
     const claimed = await alepha.inject(AutomationClaims).claim({
       automationId: rule.id,
       revision: rule.revision,
-      source: { kind: "event", eventId: event.id },
+      source: { kind: "event", eventId: event.id, node: "source" },
       prepared: evaluation.prepared!,
     });
     if (claimed.state !== "claimed")
@@ -401,7 +401,7 @@ describe("Deployment and release publication presets", () => {
       alepha.inject(AutomationDomainActions).execute({
         occurrenceId: opened.occurrence.id,
         token: opened.occurrence.leaseToken!,
-        index: 0,
+        node: "action-1",
         context: opened.context,
       }),
     ).rejects.toThrow("Interrupted after publication append committed");
@@ -444,7 +444,7 @@ describe("Deployment and release publication presets", () => {
       alepha.inject(AutomationDomainActions).execute({
         occurrenceId: opened.occurrence.id,
         token: opened.occurrence.leaseToken!,
-        index: 0,
+        node: "action-1",
         context: opened.context,
       });
     await expect(execute()).rejects.toThrow("Atomic automation batch failed");

@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
-import { automationRuleSchema } from "./automationRuleSchema.ts";
+import { automationGraphNodeIdSchema } from "./automationGraphNodeIdSchema.ts";
+import { automationGraphSchema } from "./automationGraphSchema.ts";
 import { automationSafeFieldsSchema } from "./automationSafeFieldsSchema.ts";
 import { automationSelectionCursorSchema } from "./automationSelectionCursorSchema.ts";
 import { automationSourceProvenanceSchema } from "./automationSourceProvenanceSchema.ts";
@@ -12,7 +13,15 @@ import { automationVariableValueSchema } from "./automationVariableValueSchema.t
  */
 export const automationRunSnapshotSchema = z
   .object({
-    rule: automationRuleSchema.nullable(),
+    /**
+     * What the run can walk (#Q3804): its source and the nodes that source
+     * reaches, positions stripped. A health record holds the whole graph.
+     */
+    rule: automationGraphSchema.nullable(),
+    /**
+     * The source node the run started at; absent on a health record.
+     */
+    sourceNode: automationGraphNodeIdSchema.optional(),
     ruleHash: z
       .string()
       .regex(/^[a-f0-9]{64}$/)
@@ -56,11 +65,33 @@ export const automationRunSnapshotSchema = z
         hasMore: z.boolean(),
       })
       .strict(),
+    /**
+     * Every condition decided at plan time, per row: the port it took, or
+     * none when it had no data. The nodes behind an untaken port were
+     * skipped by it.
+     */
+    conditions: z
+      .array(
+        z
+          .object({
+            node: automationGraphNodeIdSchema,
+            row: z.integer().min(0).max(49).optional(),
+            port: z.enum(["true", "false"]).optional(),
+          })
+          .strict(),
+      )
+      .max(250)
+      .optional(),
+    /**
+     * The planned steps, in walk order: one per action node reached, per
+     * channel of a notification, per row.
+     */
     actions: z
       .array(
         z
           .object({
-            index: z.integer().min(0).max(4),
+            node: automationGraphNodeIdSchema,
+            channel: z.string().max(255).optional(),
             row: z.integer().min(0).max(49).optional(),
             status: z.enum([
               "pending",
@@ -71,7 +102,12 @@ export const automationRunSnapshotSchema = z
               "failed",
               "unknown",
               "queued",
+              "not_reached",
             ]),
+            /**
+             * The failed or refused node that stopped this step's branch.
+             */
+            after: automationGraphNodeIdSchema.optional(),
             result: automationSafeFieldsSchema,
             receiptId: z.string().max(255).optional(),
           })

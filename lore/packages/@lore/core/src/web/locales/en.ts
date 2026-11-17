@@ -4619,6 +4619,8 @@ export default {
   "automation.effect.failed": "Failed",
   "automation.effect.unknown": "Unknown, review required",
   "automation.effect.queued": "Queued, awaiting delivery",
+  "automation.effect.not_reached": "Not reached: an earlier step failed",
+  "automation.history.step": "Step $1",
   "automation.delivery.queued": "Queued",
   "automation.delivery.unknown": "Unknown",
   "automation.delivery.sent": "Sent",

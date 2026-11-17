@@ -13,6 +13,7 @@ import { BadRequestError, ConflictError } from "alepha/server";
 import type { AutomationRun } from "../entities/automationRuns.ts";
 import { automationRuns } from "../entities/automationRuns.ts";
 import { automations, type Automation } from "../entities/automations.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import {
   automationRunSnapshotSchema,
   type AutomationRunSnapshot,
@@ -50,6 +51,7 @@ export class AutomationRunEvidence {
   protected readonly access = $inject(AutomationAccess);
   protected readonly attention = $inject(AutomationAttentionNotifier);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly graphs = $inject(AutomationGraph);
   protected readonly terminal: AutomationRun["status"][] = [
     "succeeded",
     "skipped",
@@ -140,10 +142,15 @@ export class AutomationRunEvidence {
     input: AutomationEvidenceInput,
   ): Promise<AutomationPreparedEvidence> {
     const rule = input.rule;
-    const key =
-      rule.rule.trigger.kind === "event"
-        ? rule.rule.trigger.event
-        : rule.rule.select!.key;
+    // A run holds what its source reaches; a health record, the whole graph.
+    const whole = AutomationGraph.of(rule.rule);
+    const node =
+      input.node ??
+      (input.occurrenceId === "health"
+        ? undefined
+        : this.graphs.sources(whole)[0]?.id);
+    const graph = node ? this.graphs.subgraph(whole, node) : whole;
+    const key = this.graphs.sourceKey(graph, node);
     const descriptor = this.catalog.entries().find((item) => item.key === key);
     const fields = descriptor?.fields ?? {};
     const rows = input.selected ?? [];
@@ -178,27 +185,32 @@ export class AutomationRunEvidence {
       throw new BadRequestError(
         "At most 250 row/action positions may be planned",
       );
-    const referenced = this.catalog.names(rule.rule);
-    const perRow = rule.rule.select?.kind === "rows";
+    const referenced = this.catalog.names(graph);
+    const perRow = descriptor?.result === "rows";
+    const steps = node ? this.graphs.steps(graph, node) : [];
     if (
       planned.some((action) =>
         perRow ? action.row === undefined : action.row !== undefined,
       ) ||
-      planned.length >
-        (perRow ? matched : matched ? 1 : 0) * rule.rule.actions.length ||
+      planned.length > (perRow ? matched : matched ? 1 : 0) * steps.length ||
       (perRow && new Set(planned.map((action) => action.row)).size > matched)
     )
       throw new BadRequestError(
         "Planned effects do not match selection cardinality and matched count",
       );
     const identities = new Set(
-      planned.map((action) => `${action.row ?? -1}:${action.index}`),
+      planned.map(
+        (action) =>
+          `${action.row ?? -1}:${action.node}:${action.channel ?? ""}`,
+      ),
     );
     if (
       identities.size !== planned.length ||
       planned.some(
         (action) =>
-          !rule.rule.actions[action.index] ||
+          !steps.some((step) =>
+            this.graphs.sameStep(step, { ...action, row: undefined }),
+          ) ||
           (action.row !== undefined && !selected[action.row]),
       )
     )
@@ -206,8 +218,10 @@ export class AutomationRunEvidence {
         "Planned actions must identify distinct selected row/action positions",
       );
     const snapshot: AutomationRunSnapshot = {
-      rule: rule.rule,
-      ruleHash: await this.hash(rule.rule),
+      rule: graph,
+      ruleHash: await this.hash(graph),
+      ...(node ? { sourceNode: node } : {}),
+      ...(input.conditions ? { conditions: input.conditions } : {}),
       evaluatedAt: input.evaluatedAt ?? this.dateTime.nowISOString(),
       ...(input.health ? { health: input.health } : {}),
       ...(input.source ? { source: input.source } : {}),
@@ -249,6 +263,7 @@ export class AutomationRunEvidence {
       snapshot.variables = [];
       snapshot.selected = [];
       snapshot.actions = [];
+      if (snapshot.conditions) snapshot.conditions = [];
       snapshot.omitted =
         "Snapshot budget exceeded before effects; rule hash and revision retained";
     }
@@ -314,7 +329,8 @@ export class AutomationRunEvidence {
   public async action(
     id: string,
     input: {
-      index: number;
+      node: string;
+      channel?: string;
       row?: number;
       status: AutomationRunSnapshot["actions"][number]["status"];
       result?: Record<string, unknown>;
@@ -333,8 +349,8 @@ export class AutomationRunEvidence {
     const run = await this.persistence.runs.getById(id);
     if (this.terminal.includes(run.status) || !run.snapshot.rule)
       throw new ConflictError("A terminal run cannot execute another action");
-    const position = run.snapshot.actions.findIndex(
-      (action) => action.index === input.index && action.row === input.row,
+    const position = run.snapshot.actions.findIndex((action) =>
+      this.graphs.sameStep(action, input),
     );
     const previous = run.snapshot.actions[position];
     if (!previous)
@@ -374,7 +390,7 @@ export class AutomationRunEvidence {
       throw new BadRequestError(
         "Receipt identifier exceeds the reserved evidence budget",
       );
-    const kind = run.snapshot.rule.actions[input.index].kind;
+    const kind = this.graphs.node(run.snapshot.rule, input.node)?.type ?? "";
     const result = this.safeResult(kind, input.result ?? {});
     if (kind === "notify" && input.status === "queued") {
       result.enqueued = true;
@@ -382,7 +398,8 @@ export class AutomationRunEvidence {
     }
     const snapshot = structuredClone(run.snapshot);
     snapshot.actions[position] = {
-      index: input.index,
+      node: input.node,
+      ...(input.channel !== undefined ? { channel: input.channel } : {}),
       ...(input.row !== undefined ? { row: input.row } : {}),
       status: input.status,
       result,
@@ -397,6 +414,39 @@ export class AutomationRunEvidence {
     return this.swap(run, {
       status: "running",
       snapshot: automationRunSnapshotSchema.parse(snapshot),
+    });
+  }
+
+  /**
+   * A failed or refused step stops its own branch (#Q3804, the owner's
+   * ruling): every planned step after its node, for the same row, is not
+   * reached, naming it. Sibling branches still run.
+   */
+  public async unreach(
+    id: string,
+    failed: { node: string; row?: number },
+  ): Promise<AutomationRun> {
+    return this.retrying(async () => {
+      const run = await this.persistence.runs.getById(id);
+      if (this.terminal.includes(run.status) || !run.snapshot.rule) return run;
+      const after = this.graphs.downstream(run.snapshot.rule, failed.node);
+      const snapshot = structuredClone(run.snapshot);
+      let changed = false;
+      for (const action of snapshot.actions)
+        if (
+          action.status === "pending" &&
+          action.row === failed.row &&
+          after.has(action.node)
+        ) {
+          action.status = "not_reached";
+          action.after = failed.node;
+          action.result = {};
+          changed = true;
+        }
+      if (!changed) return run;
+      return this.swap(run, {
+        snapshot: automationRunSnapshotSchema.parse(snapshot),
+      });
     });
   }
 
@@ -786,7 +836,12 @@ export interface AutomationEvidenceInput {
   total?: number;
   totalIsExact?: boolean;
   hasMore?: boolean;
-  planned?: Array<{ index: number; row?: number }>;
+  /**
+   * The source node a run starts at; absent on a health record.
+   */
+  node?: string;
+  conditions?: AutomationRunSnapshot["conditions"];
+  planned?: Array<{ node: string; channel?: string; row?: number }>;
   status?: AutomationRun["status"];
   reason?: string;
   health?: AutomationRunSnapshot["health"];

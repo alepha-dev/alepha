@@ -3,8 +3,10 @@ import { DateTimeProvider } from "alepha/datetime";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationSourceProvenance } from "../schemas/automationSourceProvenanceSchema.ts";
 import type { AutomationTestSource } from "../schemas/automationTestSourceSchema.ts";
+import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 
 /**
@@ -26,13 +28,19 @@ export class AutomationEventSubjects {
   public async resolve(
     rule: Automation,
     source: AutomationTestSource,
+    node?: string,
   ): Promise<{
     fields: Record<string, unknown>;
     provenance: AutomationSourceProvenance;
   }> {
-    if (rule.rule.trigger.kind !== "event")
+    // The event of the source a test starts from (#Q3804).
+    const origin = new AutomationGraph().source(
+      AutomationGraph.of(rule.rule),
+      node,
+    );
+    if (origin.type === AutomationVocabulary.SCHEDULE)
       throw new BadRequestError("Scheduled rules do not accept event subjects");
-    const key = rule.rule.trigger.event;
+    const key = origin.type;
     if (source.kind === "subject") {
       const handler = this.handlers.get(key);
       if (!handler)
@@ -54,7 +62,7 @@ export class AutomationEventSubjects {
     }
     if (source.kind === "event") {
       const event = await this.persistence.events.getOne({
-        where: { id: source.id, projectId: rule.projectId, name: key },
+        where: { id: source.id, projectId: rule.projectId, name: key as never },
       });
       if (
         event.replayUntil <= this.time.nowISOString() ||
@@ -78,8 +86,8 @@ export class AutomationEventSubjects {
       where: { id: source.id, projectId: rule.projectId },
     });
     if (
-      run.snapshot.rule?.trigger.kind !== "event" ||
-      run.snapshot.rule.trigger.event !== key
+      !run.snapshot.rule ||
+      new AutomationGraph().sourceKey(run.snapshot.rule) !== key
     )
       throw new ForbiddenError(
         "Historical run does not match this event source",

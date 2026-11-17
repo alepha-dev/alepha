@@ -2,6 +2,7 @@ import { $inject, AlephaError } from "alepha";
 import { BadRequestError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
@@ -20,6 +21,7 @@ import { AutomationTemplateRenderer } from "./AutomationTemplateRenderer.ts";
  * immutable author. A receipt is checked before any controller is invoked.
  */
 export class AutomationDomainActions {
+  protected readonly graphs = $inject(AutomationGraph);
   protected readonly handlers = new Map<
     AutomationDomainAction["kind"],
     AutomationDomainHandler
@@ -69,7 +71,7 @@ export class AutomationDomainActions {
   public async execute(input: {
     occurrenceId: string;
     token: string;
-    index: number;
+    node: string;
     row?: number;
     context: AutomationRenderContext;
   }): Promise<AutomationReceipt> {
@@ -81,9 +83,11 @@ export class AutomationDomainActions {
       const rule = await this.persistence.rules.getById(
         occurrence.automationId!,
       );
-      const ast = occurrence.snapshot?.rule?.actions[input.index];
-      if (!ast)
+      if (!occurrence.snapshot?.rule)
         throw new BadRequestError("Action was not frozen in the occurrence");
+      const ast = this.graphs.action(occurrence.snapshot.rule, {
+        node: input.node,
+      });
       const rendered = this.renderer.render(
         ast,
         input.context,
@@ -96,13 +100,17 @@ export class AutomationDomainActions {
         automationId: rule.id,
         revision: occurrence.ruleRevision,
         variables: occurrence.snapshot!.variables,
-        effect: { index: input.index, action },
+        effect: {
+          node: input.node,
+          action,
+          source: occurrence.snapshot.sourceNode,
+        },
       });
       const operation = await this.claims.beginAction(
         occurrence.id,
         input.token,
         {
-          index: input.index,
+          node: input.node,
           row: input.row,
           action,
           mode: "atomic",
@@ -111,7 +119,7 @@ export class AutomationDomainActions {
       if (operation.status !== "claimed") return operation;
       if (rendered.suppressed)
         return this.claims.atomicEffect(occurrence.id, input.token, {
-          index: input.index,
+          node: input.node,
           row: input.row,
           action,
           statements: [],
@@ -122,7 +130,7 @@ export class AutomationDomainActions {
       const plan = await handler.prepare({ rule, user: current.user, action });
       if (plan.unchanged)
         return this.claims.atomicEffect(occurrence.id, input.token, {
-          index: input.index,
+          node: input.node,
           row: input.row,
           action,
           statements: [],
@@ -134,7 +142,7 @@ export class AutomationDomainActions {
         occurrence,
         operation,
         token: input.token,
-        index: input.index,
+        node: input.node,
         row: input.row,
         action,
         target: plan.target,

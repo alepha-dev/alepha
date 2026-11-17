@@ -2,8 +2,8 @@ import { $inject } from "alepha";
 import { ConflictError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { automationOutboxIdsSchema } from "../schemas/automationOutboxIdsSchema.ts";
-import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import type { AutomationRenderContext } from "./AutomationContextBuilder.ts";
@@ -18,6 +18,7 @@ import { CoreAutomationReferences } from "./CoreAutomationReferences.ts";
  * At most five recipient attempts per step. Receipts reconstruct evidence after every crash boundary.
  */
 export class AutomationRosterWorker {
+  protected readonly graphs = $inject(AutomationGraph);
   protected readonly renderer = $inject(AutomationTemplateRenderer);
   protected readonly authority = $inject(AutomationAuthority);
   protected readonly roster = $inject(AutomationRoster);
@@ -29,7 +30,7 @@ export class AutomationRosterWorker {
   public async step(
     occurrence: AutomationReceipt,
     token: string,
-    index: number,
+    step: { node: string; channel?: string },
     context: AutomationRenderContext,
   ): Promise<{ done: boolean; receiptId?: string }> {
     await this.authority.check({
@@ -37,7 +38,7 @@ export class AutomationRosterWorker {
       revision: occurrence.ruleRevision,
       variables: occurrence.snapshot!.variables,
     });
-    const action = occurrence.snapshot!.rule!.actions[index];
+    const action = this.graphs.action(occurrence.snapshot!.rule!, step);
     if (action.kind !== "notify" || !action.audience)
       throw new ConflictError("Roster step no longer matches its program");
     const publisherId =
@@ -53,8 +54,10 @@ export class AutomationRosterWorker {
     if (rendered.raw.kind !== "notify" || rendered.suppressed)
       throw new ConflictError("Roster notification cannot be rendered");
     const frozen = await this.roster.freeze(occurrence.id, token, {
-      index,
-      channels: AutomationRuleChannels.of(rendered.raw),
+      node: step.node,
+      channel: step.channel,
+      channels:
+        rendered.raw.channel !== undefined ? [rendered.raw.channel] : [],
       excludeUserId: publisherId,
     });
     if (frozen.status === "committed")
@@ -85,7 +88,8 @@ export class AutomationRosterWorker {
         const sent = await this.notifications.enqueue({
           occurrenceId: occurrence.id,
           token,
-          index,
+          node: step.node,
+          channel: step.channel,
           context,
           delivery: {
             recipient: recipient.recipientUserId!,
@@ -128,7 +132,8 @@ export class AutomationRosterWorker {
       const latest = await this.persistence.runs.getById(page.run.id);
       const deliveries = ids.length - latest.snapshot.counts.deliveries;
       await this.evidence.action(page.run.id, {
-        index,
+        node: step.node,
+        ...(step.channel !== undefined ? { channel: step.channel } : {}),
         status: ids.length ? "queued" : remaining ? "running" : "skipped",
         receiptId: page.chunk.id,
         deliveries,

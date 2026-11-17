@@ -165,7 +165,7 @@ describe("Pure automation evaluation and durable worker", () => {
       automationId: rule.id,
       revision: rule.revision,
       source: event
-        ? { kind: "event", eventId: event.id }
+        ? { kind: "event", eventId: event.id, node: "source" }
         : { kind: "schedule", scheduledAt: time.nowISOString() },
     });
   };
@@ -500,6 +500,55 @@ describe("Pure automation evaluation and durable worker", () => {
         actions: [{ status: "succeeded" }, { status: "skipped" }],
       },
     });
+  });
+  it("stops a refused step's own branch and still finishes the run: what follows it is not reached", async ({
+    expect,
+  }) => {
+    const folio = await createTestFolio(alepha, project, { content: "Before" });
+    const quest = await createTestQuest(alepha, project, {
+      title: "Tag me",
+      area: "ops",
+    });
+    const rule = ast();
+    rule.actions = [
+      { kind: "appendFolio", folio: folio.id, text: "Once" },
+      { kind: "addTag", quest: quest.id, tag: "late" },
+      {
+        kind: "createQuest",
+        title: "Behind the refusal",
+        description: "",
+        area: "ops",
+      },
+    ];
+    const stored = await create(rule);
+    const occurrence = await reserve(stored);
+    // The tag's quest goes between the first effect and the second.
+    alepha.inject(EvaluationFaults).after = async () => {
+      await entities.quests.deleteById(quest.id);
+    };
+    await finish(occurrence.id);
+    expect((await entities.folios.getById(folio.id)).content).toBe(
+      "Before\n\nOnce",
+    );
+    expect(await entities.quests.count({ projectId: project.id })).toBe(0);
+    const [run] = await persistence.runs.findMany({
+      where: { automationId: stored.id, occurrenceId: occurrence.occurrenceId },
+    });
+    expect(run).toMatchObject({
+      status: "partial",
+      snapshot: {
+        counts: { executed: 1 },
+        actions: [
+          { node: "action-1", status: "succeeded" },
+          { node: "action-2", status: "refused" },
+          { node: "action-3", status: "not_reached", after: "action-2" },
+        ],
+      },
+    });
+    // The run finished; the occurrence was completed, not stopped.
+    expect((await persistence.receipts.getById(occurrence.id)).status).toBe(
+      "committed",
+    );
   });
   it("uses the original crossing observation and writes no baseline during repeated previews", async ({
     expect,

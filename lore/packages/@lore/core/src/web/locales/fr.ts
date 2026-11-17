@@ -4642,6 +4642,9 @@ export default {
   "automation.effect.failed": "Échouée",
   "automation.effect.unknown": "Inconnue, vérification requise",
   "automation.effect.queued": "En file, livraison en attente",
+  "automation.effect.not_reached":
+    "Non atteinte : une étape précédente a échoué",
+  "automation.history.step": "Étape $1",
   "automation.delivery.queued": "En file",
   "automation.delivery.unknown": "Inconnue",
   "automation.delivery.sent": "Envoyée",

@@ -1,0 +1,1 @@
+ALTER TABLE `automation_receipts` ADD `node_id` text;

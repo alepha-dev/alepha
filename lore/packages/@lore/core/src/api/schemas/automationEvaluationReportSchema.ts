@@ -22,6 +22,13 @@ export const automationEvaluationReportSchema = z
       .array(
         z
           .object({
+            /**
+             * The condition node, the row it was decided for, and the port
+             * it took (none with no data).
+             */
+            node: z.string().max(64),
+            row: z.integer().min(0).max(49).optional(),
+            port: z.enum(["true", "false"]).optional(),
             matched: z.boolean(),
             noData: z.boolean(),
             signature: z.string().max(64).optional(),
@@ -30,12 +37,13 @@ export const automationEvaluationReportSchema = z
           })
           .strict(),
       )
-      .max(50),
+      .max(250),
     operations: z
       .array(
         z
           .object({
-            index: z.integer().min(0).max(4),
+            node: z.string().max(64),
+            channel: z.string().max(255).optional(),
             row: z.integer().min(0).max(49).optional(),
             action: automationActionSchema,
             rendered: automationActionSchema,

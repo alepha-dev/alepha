@@ -2,6 +2,7 @@ import { $inject } from "alepha";
 import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
 
 import type { AutomationEvent } from "../entities/automationEvents.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
 import { AutomationTemplateTokens } from "../schemas/AutomationTemplateTokens.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
@@ -18,6 +19,7 @@ export class AutomationEventDispatch {
   protected readonly events = $inject(AutomationEvents);
   protected readonly claims = $inject(AutomationClaims);
   protected readonly persistence = $inject(AutomationPersistence);
+  protected readonly graphs = $inject(AutomationGraph);
   constructor() {
     this.events.register((event, limit) => this.consume(event, limit));
   }
@@ -40,19 +42,30 @@ export class AutomationEventDispatch {
       orderBy: [{ column: "id", direction: "asc" }],
       limit: size,
     });
-    // A trigger filters on `app` (deploy.*) or `monitor` (monitor.*,
-    // #Q3610), each compared to the event's field of the same name.
+    // A source filters on `app` (deploy.*), `monitor` (monitor.*, #Q3610)
+    // or `host` (host.*), each compared to the event's field of that name.
+    // Each enabled source node listening to the event is its own
+    // occurrence (#Q3804): two sources of one rule may share an event.
+    const listening = rules.map((rule) => ({
+      rule,
+      sources: this.graphs
+        .sources(AutomationGraph.of(rule.rule))
+        .filter((node) => node.type === event.name && node.enabled !== false),
+    }));
     const filterKeys = [
       ...new Set(
-        rules.flatMap((rule) => {
-          const trigger = rule.rule.trigger;
-          if (trigger.kind !== "event") return [];
-          return (["app", "monitor", "host"] as const).flatMap((name) => {
-            const value = trigger[name];
-            const key = value ? this.tokens.whole(value) : undefined;
-            return key ? [key] : [];
-          });
-        }),
+        listening.flatMap(({ sources }) =>
+          sources.flatMap((node) =>
+            (["app", "monitor", "host"] as const).flatMap((name) => {
+              const value = node.config[name];
+              const key =
+                typeof value === "string"
+                  ? this.tokens.whole(value)
+                  : undefined;
+              return key ? [key] : [];
+            }),
+          ),
+        ),
       ),
     ];
     const values = filterKeys.length
@@ -68,58 +81,54 @@ export class AutomationEventDispatch {
       ]),
     );
     let claimed = 0;
-    for (const rule of rules) {
-      if (
-        rule.rule.trigger.kind !== "event" ||
-        rule.rule.trigger.event !== event.name
-      )
-        continue;
-      try {
-        const trigger = rule.rule.trigger;
-        let skip = false;
-        for (const name of ["app", "monitor", "host"] as const) {
-          const filter = trigger[name];
-          if (filter === undefined) continue;
-          let resolved: unknown;
-          try {
-            resolved = this.bindings.resolve({
-              slot: { kind: "text", required: true },
-              value: filter,
-              fields: {},
-              variables,
-              path: `trigger.${name}`,
-            }).value;
-          } catch {
-            // The worker records an invalid binding under current authority.
+    for (const { rule, sources } of listening)
+      for (const node of sources) {
+        try {
+          let skip = false;
+          for (const name of ["app", "monitor", "host"] as const) {
+            const filter = node.config[name];
+            if (filter === undefined) continue;
+            let resolved: unknown;
+            try {
+              resolved = this.bindings.resolve({
+                slot: { kind: "text", required: true },
+                value: filter,
+                fields: {},
+                variables,
+                path: `${node.id}.${name}`,
+              }).value;
+            } catch {
+              // The worker records an invalid binding under current authority.
+            }
+            const field =
+              name === "monitor"
+                ? event.payload.fields.monitor_id
+                : name === "host"
+                  ? event.payload.fields.host_id
+                  : event.payload.fields.app;
+            if (resolved !== undefined && resolved !== field) skip = true;
           }
-          const field =
-            name === "monitor"
-              ? event.payload.fields.monitor_id
-              : name === "host"
-                ? event.payload.fields.host_id
-                : event.payload.fields.app;
-          if (resolved !== undefined && resolved !== field) skip = true;
+          if (skip) continue;
+          await this.claims.reserve({
+            automationId: rule.id,
+            revision: rule.revision,
+            source: { kind: "event", eventId: event.id, node: node.id },
+          });
+          claimed += 1;
+        } catch (error) {
+          // A refusal for this one source (its rule changed, lost its grant
+          // or its guard, or no longer listens to this event) skips it.
+          // Anything else leaves the event undispatched for the next tick;
+          // reserving is idempotent, so sources already reserved are not
+          // reserved twice.
+          if (
+            !(error instanceof ForbiddenError) &&
+            !(error instanceof ConflictError) &&
+            !(error instanceof BadRequestError)
+          )
+            throw error;
         }
-        if (skip) continue;
-        await this.claims.reserve({
-          automationId: rule.id,
-          revision: rule.revision,
-          source: { kind: "event", eventId: event.id },
-        });
-        claimed += 1;
-      } catch (error) {
-        // A refusal for this one rule (it changed, lost its grant or its
-        // guard, or no longer listens to this event) skips it. Anything else
-        // leaves the event undispatched for the next tick; reserving is
-        // idempotent, so rules already reserved are not reserved twice.
-        if (
-          !(error instanceof ForbiddenError) &&
-          !(error instanceof ConflictError) &&
-          !(error instanceof BadRequestError)
-        )
-          throw error;
       }
-    }
     return { done: rules.length < size, cursor: rules.at(-1)?.id, claimed };
   }
 }

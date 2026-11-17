@@ -1018,7 +1018,7 @@ describe("Shared automation application service and HTTP actions", () => {
     const ready = await alepha.inject(AutomationClaims).reserve({
       automationId: rule.id,
       revision: enabled.revision,
-      source: { kind: "event", eventId: event.id },
+      source: { kind: "event", eventId: event.id, node: "source" },
     });
     await service.remove(project.id, rule.id, user, enabled.revision);
     await alepha.inject(AutomationWorker).step({ receiptId: ready.id }, 3);

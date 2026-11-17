@@ -18,6 +18,7 @@ const AutomationRunEvidence = (props: AutomationRunEvidenceProps) => {
     failed: tr("automation.effect.failed"),
     unknown: tr("automation.effect.unknown"),
     queued: tr("automation.effect.queued"),
+    not_reached: tr("automation.effect.not_reached"),
   };
   const deliveryLabels = {
     queued: tr("automation.delivery.queued"),
@@ -73,8 +74,12 @@ const AutomationRunEvidence = (props: AutomationRunEvidenceProps) => {
       {snapshot.actions.map((action, index) => (
         <section key={index} className="border-border rounded-md border p-4">
           <p>
-            {tr("automation.editor.action", {
-              args: [String(action.index + 1)],
+            {tr("automation.history.step", {
+              args: [
+                action.channel
+                  ? `${action.node} (${action.channel})`
+                  : action.node,
+              ],
             })}
             {action.row !== undefined && ` (${action.row + 1})`}:{" "}
             {effectLabels[action.status]}
@@ -85,7 +90,8 @@ const AutomationRunEvidence = (props: AutomationRunEvidenceProps) => {
           {props.run.notifications
             .filter(
               (notification) =>
-                notification.index === action.index &&
+                notification.node === action.node &&
+                notification.channel === action.channel &&
                 notification.row === action.row,
             )
             .map((notification) => (
@@ -114,8 +120,12 @@ const AutomationRunEvidence = (props: AutomationRunEvidenceProps) => {
           className="border-border rounded-md border p-4 text-sm"
         >
           <p>
-            {tr("automation.editor.action", {
-              args: [String(notification.index + 1)],
+            {tr("automation.history.step", {
+              args: [
+                notification.channel
+                  ? `${notification.node} (${notification.channel})`
+                  : notification.node,
+              ],
             })}
             : {deliveryLabels[notification.status]}
           </p>

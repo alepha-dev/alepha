@@ -11,7 +11,7 @@ import {
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
-import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationApprovalFence } from "./AutomationApprovalFence.ts";
@@ -40,6 +40,7 @@ export class AutomationClaims {
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly identity = $inject(AutomationIdentity);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly graphs = $inject(AutomationGraph);
 
   protected recoveryConsumer?: (receipt: AutomationReceipt) => Promise<void>;
 
@@ -98,15 +99,14 @@ export class AutomationClaims {
   public async reserve(input: {
     automationId: string;
     revision: number;
-    source:
-      | { kind: "event"; eventId: string }
-      | { kind: "schedule"; scheduledAt: string };
+    source: AutomationOccurrenceSource;
     condition?: SQLLike;
     mutation?: SQLLike;
     changedTables?: string[];
   }): Promise<AutomationReceipt> {
     return this.database.primary(async () => {
       const rule = await this.persistence.rules.getById(input.automationId);
+      const node = this.sourceNode(rule.rule, input.source);
       let occurredAt: string;
       let occurrenceId: string;
       let fields: Record<string, unknown> = {};
@@ -115,16 +115,12 @@ export class AutomationClaims {
         const event = await this.persistence.events.getById(
           input.source.eventId,
         );
-        if (
-          event.projectId !== rule.projectId ||
-          rule.rule.trigger.kind !== "event" ||
-          rule.rule.trigger.event !== event.name
-        )
+        if (event.projectId !== rule.projectId || node.type !== event.name)
           throw new BadRequestError(
             "Event does not belong to this rule's project and source",
           );
         occurredAt = event.occurredAt;
-        occurrenceId = `event:${event.id}`;
+        occurrenceId = this.occurrenceOf(input.source);
         fields = event.payload.fields;
         source = {
           mode: "live",
@@ -134,10 +130,6 @@ export class AutomationClaims {
           omitted: event.payload.omitted,
         };
       } else {
-        if (rule.rule.trigger.kind !== "schedule")
-          throw new BadRequestError(
-            "Event rules cannot reserve scheduled occurrences",
-          );
         const date = new Date(input.source.scheduledAt);
         if (!Number.isFinite(date.getTime()))
           throw new BadRequestError("Invalid scheduled occurrence");
@@ -153,6 +145,7 @@ export class AutomationClaims {
       if (existing) return existing;
       const frame = await this.evidence.prepare({
         rule,
+        node: node.id,
         occurrenceId,
         triggeredAt: occurredAt,
         inputs: fields,
@@ -233,6 +226,68 @@ export class AutomationClaims {
     });
   }
 
+  /**
+   * The source an occurrence starts at: the event source it names, or the
+   * schedule. Refused when the automation has no such source.
+   */
+  protected sourceNode(
+    rule: Parameters<typeof AutomationGraph.of>[0],
+    source: AutomationOccurrenceSource,
+  ) {
+    const graph = AutomationGraph.of(rule);
+    const node =
+      source.kind === "event"
+        ? this.graphs.node(graph, source.node)
+        : this.graphs
+            .sources(graph)
+            .find(
+              (item) =>
+                item.type === "schedule" &&
+                (!source.node || item.id === source.node),
+            );
+    if (
+      !node ||
+      node.kind !== "source" ||
+      (source.kind === "event") === (node.type === "schedule")
+    )
+      throw new BadRequestError(
+        source.kind === "event"
+          ? "Event rules cannot reserve this occurrence: no such event source"
+          : "Event rules cannot reserve scheduled occurrences",
+      );
+    return node;
+  }
+
+  /**
+   * An occurrence's identity (#Q3804): an event at one source node, so two
+   * sources of one automation listening to the same event are two
+   * occurrences; a schedule's tick. No revision: it survives rule edits.
+   */
+  public occurrenceOf(source: AutomationOccurrenceSource): string {
+    return source.kind === "event"
+      ? `event:${source.eventId}:${source.node}`
+      : `schedule:${new Date(source.scheduledAt).toISOString()}`;
+  }
+
+  /**
+   * The occurrence's source, read back from its identity.
+   */
+  public sourceOf(
+    occurrenceId: string,
+    node?: string,
+  ): AutomationOccurrenceSource {
+    const [kind, ...rest] = occurrenceId.split(":");
+    if (kind === "event") {
+      const id = rest[0];
+      return { kind: "event", eventId: id, node: rest[1] ?? node ?? "" };
+    }
+    return {
+      kind: "schedule",
+      scheduledAt: rest.join(":"),
+      ...(node ? { node } : {}),
+    };
+  }
+
   public async refuseReady(id: string, reason: string): Promise<void> {
     return this.database.primary(async () => {
       const updated = await this.persistence.receipts.updateMany(
@@ -273,9 +328,12 @@ export class AutomationClaims {
       if (
         prepared.snapshot.rule &&
         (await this.identity.hash(prepared.snapshot.rule)) !==
-          // A snapshot holds the expanded rule, one notify per channel.
+          // A snapshot holds the subgraph its source reaches.
           (await this.identity.hash(
-            AutomationRuleChannels.expand(current.rule.rule),
+            this.graphs.subgraph(
+              AutomationGraph.of(current.rule.rule),
+              prepared.snapshot.sourceNode ?? "",
+            ),
           ))
       )
         throw new ConflictError(
@@ -325,9 +383,7 @@ export class AutomationClaims {
   public async claim(input: {
     automationId: string;
     revision: number;
-    source:
-      | { kind: "event"; eventId: string }
-      | { kind: "schedule"; scheduledAt: string };
+    source: AutomationOccurrenceSource;
     prepared: AutomationPreparedEvidence;
   }): Promise<{
     state: "claimed" | "busy" | "terminal";
@@ -335,6 +391,7 @@ export class AutomationClaims {
   }> {
     return this.database.primary(async () => {
       const rule = await this.persistence.rules.getById(input.automationId);
+      const node = this.sourceNode(rule.rule, input.source);
       let occurredAt: string;
       let occurrenceId: string;
       let dispatched = false;
@@ -342,22 +399,14 @@ export class AutomationClaims {
         const event = await this.persistence.events.getById(
           input.source.eventId,
         );
-        if (
-          event.projectId !== rule.projectId ||
-          rule.rule.trigger.kind !== "event" ||
-          rule.rule.trigger.event !== event.name
-        )
+        if (event.projectId !== rule.projectId || node.type !== event.name)
           throw new BadRequestError(
             "Event does not belong to this rule's project and source",
           );
         dispatched = !!event.dispatchedAt;
         occurredAt = event.occurredAt;
-        occurrenceId = `event:${event.id}`;
+        occurrenceId = this.occurrenceOf(input.source);
       } else {
-        if (rule.rule.trigger.kind !== "schedule")
-          throw new BadRequestError(
-            "Event rules cannot claim scheduled occurrences",
-          );
         const parsed = new Date(input.source.scheduledAt);
         if (!Number.isFinite(parsed.getTime()))
           throw new BadRequestError("Invalid scheduled occurrence");
@@ -402,8 +451,11 @@ export class AutomationClaims {
         });
         if (
           input.prepared.snapshot.rule &&
-          (await this.identity.hash(input.prepared.snapshot.rule)) !==
-            (await this.identity.hash(AutomationRuleChannels.expand(rule.rule)))
+          (input.prepared.snapshot.sourceNode !== node.id ||
+            (await this.identity.hash(input.prepared.snapshot.rule)) !==
+              (await this.identity.hash(
+                this.graphs.subgraph(AutomationGraph.of(rule.rule), node.id),
+              )))
         )
           throw new ConflictError(
             "Prepared rule differs from the claimed revision",
@@ -654,11 +706,11 @@ export class AutomationClaims {
   public async advance(
     id: string,
     token: string,
-    input: { index: number; row?: number; receiptId: string },
+    input: AutomationStepInput & { receiptId: string },
   ): Promise<number> {
     const occurrence = await this.lease(id, token);
     const planned = occurrence.snapshot?.actions[occurrence.cursor];
-    if (!planned || planned.index !== input.index || planned.row !== input.row)
+    if (!planned || !this.graphs.sameStep(planned, input))
       throw new ConflictError("Program cursor changed");
     const next = occurrence.cursor + 1;
     await this.atomic.guarded(
@@ -669,11 +721,40 @@ export class AutomationClaims {
           parentId: id,
           kind: { inArray: ["action", "roster"] },
           status: { inArray: ["committed", "skipped"] },
-          actionIndex: input.index,
+          nodeId: input.node,
           rowIndex:
             input.row === undefined ? { isNull: true } : { eq: input.row },
         },
       )} AND ${this.atCursor(id, occurrence.cursor)}`,
+      [
+        this.persistence.receipts.updateStatement(
+          { id },
+          { cursor: next },
+          { returning: false },
+        ),
+      ],
+    );
+    return next;
+  }
+
+  /**
+   * Moves the cursor past a step that runs no effect (#Q3804): a step the
+   * run marked failed or refused, or one behind it marked not reached.
+   * Its branch stopped there; the walk goes on with the next step.
+   */
+  public async pass(
+    id: string,
+    token: string,
+    input: AutomationStepInput,
+  ): Promise<number> {
+    const occurrence = await this.lease(id, token);
+    const planned = occurrence.snapshot?.actions[occurrence.cursor];
+    if (!planned || !this.graphs.sameStep(planned, input))
+      throw new ConflictError("Program cursor changed");
+    const next = occurrence.cursor + 1;
+    await this.atomic.guarded(
+      occurrence.projectId,
+      sql`${this.live(occurrence, token)} AND ${this.atCursor(id, occurrence.cursor)}`,
       [
         this.persistence.receipts.updateStatement(
           { id },
@@ -762,12 +843,13 @@ export class AutomationClaims {
 
   public async actionIdentity(
     occurrence: AutomationReceipt,
-    input: { index: number; row?: number; deliveryKey?: string },
+    input: AutomationStepInput & { deliveryKey?: string },
   ) {
     return this.identity.hash([
       "action",
       occurrence.id,
-      input.index,
+      input.node,
+      input.channel ?? null,
       input.row ?? null,
       input.deliveryKey ?? null,
     ]);
@@ -788,12 +870,15 @@ export class AutomationClaims {
         automationId: occurrence.automationId!,
         revision: occurrence.ruleRevision,
         variables: occurrence.snapshot?.variables,
-        effect: { index: input.index, action: input.action },
+        effect: {
+          node: input.node,
+          action: input.action,
+          source: occurrence.snapshot?.sourceNode,
+        },
       });
       if (
-        !occurrence.snapshot?.actions.some(
-          (planned) =>
-            planned.index === input.index && planned.row === input.row,
+        !occurrence.snapshot?.actions.some((planned) =>
+          this.graphs.sameStep(planned, input),
         )
       )
         throw new BadRequestError(
@@ -843,11 +928,7 @@ export class AutomationClaims {
       )
         throw new BadRequestError("Run delivery budget exceeds 100");
       const planned = occurrence.snapshot?.actions[occurrence.cursor];
-      if (
-        !planned ||
-        planned.index !== input.index ||
-        planned.row !== input.row
-      )
+      if (!planned || !this.graphs.sameStep(planned, input))
         throw new ConflictError("Effect is not the next planned program step");
       const now = this.dateTime.nowISOString();
       await this.atomic.guarded(
@@ -886,7 +967,7 @@ export class AutomationClaims {
               runId: input.runId ?? occurrence.runId,
               inputHash,
               mode: input.mode,
-              actionIndex: input.index,
+              nodeId: input.node,
               rowIndex: input.row,
               deliveryKey: input.deliveryKey,
               recipientUserId:
@@ -948,7 +1029,11 @@ export class AutomationClaims {
         automationId: occurrence.automationId!,
         revision: occurrence.ruleRevision,
         variables: occurrence.snapshot?.variables,
-        effect: { index: input.index, action: input.action },
+        effect: {
+          node: input.node,
+          action: input.action,
+          source: occurrence.snapshot?.sourceNode,
+        },
       });
       let rows: Record<string, unknown>[][];
       try {
@@ -1007,7 +1092,11 @@ export class AutomationClaims {
         automationId: occurrence.automationId!,
         revision: occurrence.ruleRevision,
         variables: occurrence.snapshot?.variables,
-        effect: { index: input.index, action: input.action },
+        effect: {
+          node: input.node,
+          action: input.action,
+          source: occurrence.snapshot?.sourceNode,
+        },
       });
       await this.atomic.guarded(
         occurrence.projectId,
@@ -1106,7 +1195,9 @@ export class AutomationClaims {
   ): Promise<AutomationReceipt> {
     const occurrence = await this.lease(id, token);
     if (
-      occurrence.snapshot?.rule?.select?.key !== "quests.remindersDue" ||
+      !occurrence.snapshot?.rule ||
+      this.graphs.read(occurrence.snapshot.rule)?.type !==
+        "quests.remindersDue" ||
       !occurrence.snapshot.selectionNext ||
       occurrence.cursor < occurrence.snapshot.actions.length
     )
@@ -1174,8 +1265,9 @@ export class AutomationClaims {
         const snapshot = structuredClone(occurrence.snapshot!);
         snapshot.actions = snapshot.actions
           .slice(occurrence.cursor)
-          .map(({ index, row }) => ({
-            index,
+          .map(({ node, channel, row }) => ({
+            node,
+            ...(channel !== undefined ? { channel } : {}),
             ...(row !== undefined ? { row } : {}),
             status: "pending",
             result: {},
@@ -1254,8 +1346,10 @@ export class AutomationClaims {
       if (!["pending", "running"].includes(planned.status)) continue;
       const receipts = actions.filter(
         (action) =>
-          action.actionIndex === planned.index &&
-          action.rowIndex === planned.row,
+          action.nodeId === planned.node &&
+          action.rowIndex === planned.row &&
+          (planned.channel === undefined ||
+            action.recipientChannel === planned.channel),
       );
       const committed = receipts.filter(
         (action) => action.status === "committed",
@@ -1263,7 +1357,8 @@ export class AutomationClaims {
       const unknown = receipts.find((action) => action.status === "unknown");
       if (!committed.length && !unknown) continue;
       run = await this.evidence.action(run.id, {
-        index: planned.index,
+        node: planned.node,
+        ...(planned.channel !== undefined ? { channel: planned.channel } : {}),
         ...(planned.row !== undefined ? { row: planned.row } : {}),
         status: unknown
           ? "unknown"
@@ -1609,9 +1704,25 @@ export class AutomationClaims {
   }
 }
 
-export interface AutomationEffectInput {
-  index: number;
+/**
+ * A planned step, as the worker names it: its action node, the channel of a
+ * notification, the row of a `rows` read.
+ */
+export interface AutomationStepInput {
+  node: string;
+  channel?: string;
   row?: number;
+}
+
+/**
+ * What starts a run: an event at one of the automation's sources, or a
+ * schedule's tick.
+ */
+export type AutomationOccurrenceSource =
+  | { kind: "event"; eventId: string; node: string }
+  | { kind: "schedule"; scheduledAt: string; node?: string };
+
+export interface AutomationEffectInput extends AutomationStepInput {
   deliveryKey?: string;
   runId?: string;
   mode: "atomic" | "external";

@@ -5,6 +5,7 @@ import { BadRequestError, ForbiddenError } from "alepha/server";
 import type { Automation } from "../entities/automations.ts";
 import { users } from "../entities/users.ts";
 import { AutomationNotificationTemplates } from "../notifications/AutomationNotificationTemplates.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { automationNotificationVariablesSchema } from "../schemas/automationNotificationVariablesSchema.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
@@ -28,6 +29,7 @@ import { CoreAutomationReferences } from "./CoreAutomationReferences.ts";
  * separately by the ordinary notification outbox and its transport receipts.
  */
 export class AutomationNotifications {
+  protected readonly graphs = $inject(AutomationGraph);
   protected readonly alepha = $inject(Alepha);
   protected readonly renderer = $inject(AutomationTemplateRenderer);
   protected readonly channels = $inject(AutomationChannels);
@@ -49,7 +51,13 @@ export class AutomationNotifications {
    */
   public async prepare(input: {
     rule: Automation;
-    index: number;
+    /**
+     * The action node, the source its run started at, and that source's
+     * vocabulary key, whose read access a recipient must hold.
+     */
+    node: string;
+    sourceNode?: string;
+    sourceKey?: string;
     action: AutomationRule["actions"][number];
     context: AutomationRenderContext;
     variables: AutomationRunSnapshot["variables"];
@@ -105,9 +113,11 @@ export class AutomationNotifications {
         "A concrete notification requires one member recipient",
       );
     const sourceKey =
-      input.rule.rule.trigger.kind === "event"
-        ? input.rule.rule.trigger.event
-        : input.rule.rule.select!.key;
+      input.sourceKey ??
+      this.graphs.sourceKey(
+        AutomationGraph.of(input.rule.rule),
+        input.sourceNode,
+      );
     const source = this.catalog
       .entries()
       .find((entry) => entry.key === sourceKey);
@@ -152,7 +162,8 @@ export class AutomationNotifications {
       scope: `project:${project.id}`,
       automationId: input.rule.id,
       ruleRevision: input.rule.revision,
-      actionIndex: input.index,
+      nodeId: input.node,
+      sourceNode: input.sourceNode,
       recipientUserId: action.recipient,
       channelId: channel,
       category: action.category,
@@ -202,7 +213,8 @@ export class AutomationNotifications {
       scope: `project:${project.id}`,
       automationId: input.rule.id,
       ruleRevision: input.rule.revision,
-      actionIndex: input.index,
+      nodeId: input.node,
+      sourceNode: input.sourceNode,
       channelId: channel,
       category: action.category,
     });
@@ -245,7 +257,8 @@ export class AutomationNotifications {
   public async enqueue(input: {
     occurrenceId: string;
     token: string;
-    index: number;
+    node: string;
+    channel?: string;
     row?: number;
     context: AutomationRenderContext;
     delivery?: { recipient: string; channel: string; key: string };
@@ -264,7 +277,11 @@ export class AutomationNotifications {
       const rule = await this.persistence.rules.getById(
         occurrence.automationId!,
       );
-      const stored = occurrence.snapshot!.rule!.actions[input.index];
+      const graph = occurrence.snapshot!.rule!;
+      const stored = this.graphs.action(graph, {
+        node: input.node,
+        channel: input.channel,
+      });
       if (stored?.kind !== "notify")
         throw new BadRequestError("Claimed step is not NOTIFY");
       const action = input.delivery
@@ -279,7 +296,9 @@ export class AutomationNotifications {
         : stored;
       const prepared = await this.prepare({
         rule,
-        index: input.index,
+        node: input.node,
+        sourceNode: occurrence.snapshot!.sourceNode!,
+        sourceKey: this.graphs.sourceKey(graph),
         action,
         context: input.context,
         variables: occurrence.snapshot!.variables,
@@ -290,10 +309,15 @@ export class AutomationNotifications {
         automationId: rule.id,
         revision: occurrence.ruleRevision,
         variables: occurrence.snapshot!.variables,
-        effect: { index: input.index, action: resolved },
+        effect: {
+          node: input.node,
+          action: resolved,
+          source: occurrence.snapshot!.sourceNode,
+        },
       });
       const operationId = await this.claims.actionIdentity(occurrence, {
-        index: input.index,
+        node: input.node,
+        channel: input.channel,
         row: input.row,
         deliveryKey: input.delivery?.key,
       });
@@ -311,7 +335,8 @@ export class AutomationNotifications {
         input.occurrenceId,
         input.token,
         {
-          index: input.index,
+          node: input.node,
+          channel: input.channel,
           row: input.row,
           deliveryKey: input.delivery?.key,
           action: resolved,

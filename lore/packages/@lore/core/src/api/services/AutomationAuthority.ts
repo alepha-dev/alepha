@@ -2,7 +2,7 @@ import { $inject } from "alepha";
 import { DbEntityNotFoundError, DbError } from "alepha/orm";
 import { ConflictError, ForbiddenError, isHttpError } from "alepha/server";
 
-import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
@@ -27,13 +27,22 @@ export class AutomationAuthority {
   protected readonly access = $inject(AutomationAccess);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly variables = $inject(AutomationVariables);
+  protected readonly graphs = $inject(AutomationGraph);
 
   public async check(input: {
     automationId: string;
     revision: number;
     variables?: Array<{ id?: string; key: string; version: number }>;
     readOnly?: boolean;
-    effect?: { index: number; action: AutomationRule["actions"][number] };
+    /**
+     * The effect about to run: its action node, the action as rendered,
+     * and the source its run started at.
+     */
+    effect?: {
+      node: string;
+      action: AutomationRule["actions"][number];
+      source?: string;
+    };
   }) {
     return this.database.primary(() => this.checkPrimary(input));
   }
@@ -49,6 +58,13 @@ export class AutomationAuthority {
       throw new ConflictError(
         rule.reason ?? "Automation requires author review",
       );
+    let verified:
+      | {
+          rule: typeof rule;
+          user: Awaited<ReturnType<AutomationAccess["author"]>>;
+          variables: Awaited<ReturnType<AutomationVariables["snapshot"]>>;
+        }
+      | undefined;
     try {
       await this.dependencies.assert(rule);
       const user = await this.access.author(rule);
@@ -74,12 +90,12 @@ export class AutomationAuthority {
         );
       this.variables.assertApproved(rule, variables);
       if (input.effect) {
-        // The effect's index is a position in the expanded rule, one
-        // notify per channel (#Q3613).
-        if (
-          AutomationRuleChannels.expand(rule.rule).actions[input.effect.index]
-            ?.kind !== input.effect.action.kind
-        )
+        // The effect names its action node (#Q3804).
+        const node = this.graphs.node(
+          AutomationGraph.of(rule.rule),
+          input.effect.node,
+        );
+        if (node?.kind !== "action" || node.type !== input.effect.action.kind)
           throw new ForbiddenError(
             "Effect does not match the claimed rule action",
           );
@@ -89,6 +105,8 @@ export class AutomationAuthority {
           user,
           input.effect.action,
           rule,
+          input.effect.source,
+          false,
         );
       }
       // Re-read after all asynchronous gates. An edit/disable during validation
@@ -104,7 +122,7 @@ export class AutomationAuthority {
         throw new ConflictError(
           "Automation changed while validating execution",
         );
-      return { rule: latest, user, variables };
+      verified = { rule: latest, user, variables };
     } catch (error) {
       // A transient failure (a driver error, a timeout) says nothing about
       // the author's authority: it propagates without pausing the rule, so
@@ -132,6 +150,19 @@ export class AutomationAuthority {
         );
       throw error;
     }
+    // The effect's targets last, outside the pausing gate: a quest or a
+    // recipient gone refuses this one step and stops its branch (#Q3804);
+    // it says nothing about the author.
+    if (input.effect)
+      await this.catalog.validateEffect(
+        verified.rule.rule,
+        verified.rule.projectId,
+        verified.user,
+        input.effect.action,
+        verified.rule,
+        input.effect.source,
+      );
+    return verified;
   }
 
   /**

@@ -602,6 +602,94 @@ describe("AutomationGraph", () => {
     });
   });
 
+  describe("a run's walk", () => {
+    const condition: AutomationGraphNode = {
+      id: "big",
+      kind: "condition",
+      type: "compare",
+      config: { field: "quest_count", operator: "gt", value: 3 },
+    };
+    const branching = graph(
+      [
+        event("done", "epic.completed"),
+        event("done-too", "epic.completed"),
+        condition,
+        notify("yes"),
+        {
+          id: "tag",
+          kind: "action",
+          type: "addTag",
+          config: { quest: 1, tag: "x" },
+        },
+        notify("no"),
+      ],
+      [
+        ["done", "big"],
+        ["done-too", "yes"],
+        ["big", "yes", "true"],
+        ["big", "tag", "true"],
+        ["big", "no", "false"],
+      ],
+    );
+
+    it("follows the port a condition takes, and fans out from it", ({
+      expect,
+    }) => {
+      const taken = graphs.walk(branching, "done", () => "true");
+      expect([...taken.reached].sort()).toEqual(["big", "done", "tag", "yes"]);
+      expect(taken.decisions).toEqual([{ node: "big", port: "true" }]);
+      const other = graphs.walk(branching, "done", () => "false");
+      expect([...other.reached].sort()).toEqual(["big", "done", "no"]);
+      const none = graphs.walk(branching, "done", () => undefined);
+      expect([...none.reached]).toEqual(["done", "big"]);
+      expect(none.decisions).toEqual([{ node: "big" }]);
+    });
+
+    it("walks each source of one event on its own", ({ expect }) => {
+      expect(graphs.steps(branching, "done").map((step) => step.node)).toEqual([
+        "no",
+        "no",
+        "tag",
+        "yes",
+        "yes",
+      ]);
+      expect(
+        graphs.steps(branching, "done-too").map((step) => step.node),
+      ).toEqual(["yes", "yes"]);
+      const walk = graphs.walk(branching, "done-too", () => "false");
+      expect([...walk.reached]).toEqual(["done-too", "yes"]);
+      expect(graphs.subgraph(branching, "done-too").nodes).toHaveLength(2);
+    });
+
+    it("expands a notification into one step per channel, and names the stopped branch", ({
+      expect,
+    }) => {
+      expect(graphs.steps(branching, "done").slice(0, 2)).toEqual([
+        { node: "no", channel: "inbox" },
+        { node: "no", channel: "email" },
+      ]);
+      expect(
+        graphs.action(branching, { node: "no", channel: "email" }),
+      ).toMatchObject({ kind: "notify", channel: "email" });
+      expect(
+        (
+          graphs.action(branching, {
+            node: "no",
+            channel: "email",
+          }) as never as {
+            channels?: string[];
+          }
+        ).channels,
+      ).toBe(undefined);
+      expect([...graphs.downstream(branching, "big")].sort()).toEqual([
+        "no",
+        "tag",
+        "yes",
+      ]);
+      expect([...graphs.downstream(branching, "tag")]).toEqual([]);
+    });
+  });
+
   describe("fromV1", () => {
     it("turns a v1 rule into a straight line with fixed ids", ({ expect }) => {
       const value = AutomationGraph.fromV1({

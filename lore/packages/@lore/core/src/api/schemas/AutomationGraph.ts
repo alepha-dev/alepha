@@ -309,6 +309,163 @@ export class AutomationGraph {
   }
 
   /**
+   * A stored rule as a graph. A graph is itself; a v1 rule is read through
+   * {@link fromV1}, which is how the runner walks graphs while storage
+   * still holds v1 rules (#Q3804).
+   */
+  public static of(
+    rule: AutomationRule | AutomationGraphValue,
+  ): AutomationGraphValue {
+    return rule.version === 2 ? rule : AutomationGraph.fromV1(rule);
+  }
+
+  /**
+   * The source a run starts at: the one named, or the first of the graph,
+   * which is the only one of a run's subgraph.
+   */
+  public source(graph: AutomationGraphValue, id?: string): AutomationGraphNode {
+    const source = id
+      ? this.node(graph, id)
+      : graph.nodes.find((node) => node.kind === "source");
+    if (!source || source.kind !== "source")
+      throw new AlephaError(
+        id ? `'${id}' is not a source of this automation` : "No source",
+      );
+    return source;
+  }
+
+  /**
+   * The read a schedule source is followed by.
+   */
+  public read(
+    graph: AutomationGraphValue,
+    sourceId?: string,
+  ): AutomationGraphNode | undefined {
+    return this.readOf(graph, this.source(graph, sourceId).id);
+  }
+
+  /**
+   * The vocabulary entry whose fields a run's contexts carry: the event, or
+   * what a schedule reads.
+   */
+  public sourceKey(graph: AutomationGraphValue, sourceId?: string): string {
+    const source = this.source(graph, sourceId);
+    return source.type === AutomationVocabulary.SCHEDULE
+      ? (this.readOf(graph, source.id)?.type ?? source.type)
+      : source.type;
+  }
+
+  public conditions(graph: AutomationGraphValue): AutomationGraphNode[] {
+    return graph.nodes.filter((node) => node.kind === "condition");
+  }
+
+  /**
+   * The steps a run from a source can take, in walk order: one per action
+   * node, and one per channel for a notification (#Q3613).
+   */
+  public steps(
+    graph: AutomationGraphValue,
+    sourceId?: string,
+  ): AutomationGraphStep[] {
+    const source = this.source(graph, sourceId);
+    return this.order(graph, source.id).flatMap((id) => {
+      const node = this.node(graph, id)!;
+      if (node.kind !== "action") return [];
+      if (node.type !== "notify") return [{ node: id }];
+      const config = node.config as { channels?: string[] };
+      // A notification naming one `channel` (the form before #Q3613) is
+      // one step; a list of channels is one step per channel.
+      if (!config.channels) return [{ node: id }];
+      return config.channels.map((channel) => ({ node: id, channel }));
+    });
+  }
+
+  /**
+   * A step's action, as the adapters take it: the node's type as its kind,
+   * and for a notification the one channel of the step.
+   */
+  public action(
+    graph: AutomationGraphValue,
+    step: AutomationGraphStep,
+  ): AutomationRule["actions"][number] {
+    const node = this.node(graph, step.node);
+    if (!node || node.kind !== "action")
+      throw new AlephaError(`Step '${step.node}' is not an action of this run`);
+    const {
+      channels: _channels,
+      channel: _channel,
+      ...rest
+    } = node.config as Record<string, unknown>;
+    return (
+      node.type === "notify"
+        ? {
+            kind: "notify",
+            ...rest,
+            channel:
+              step.channel ?? (node.config as { channel?: string }).channel,
+          }
+        : { kind: node.type, ...node.config }
+    ) as AutomationRule["actions"][number];
+  }
+
+  public sameStep(
+    left: AutomationGraphStep & { row?: number },
+    right: AutomationGraphStep & { row?: number },
+  ): boolean {
+    return (
+      left.node === right.node &&
+      left.channel === right.channel &&
+      left.row === right.row
+    );
+  }
+
+  /**
+   * The nodes after a node, the node itself excluded.
+   */
+  public downstream(graph: AutomationGraphValue, id: string): Set<string> {
+    const after = this.reachable(graph, id);
+    after.delete(id);
+    return after;
+  }
+
+  /**
+   * One walk from a source: a condition sends it down the port `decide`
+   * answers, or down neither when it answers nothing (no data). Every
+   * condition is decided before the first effect, so the walk is a plan.
+   */
+  public walk(
+    graph: AutomationGraphValue,
+    sourceId: string,
+    decide: (node: AutomationGraphNode) => "true" | "false" | undefined,
+  ): {
+    reached: Set<string>;
+    decisions: Array<{ node: string; port?: "true" | "false" }>;
+  } {
+    const reached = new Set([sourceId]);
+    const ports = new Map<string, "true" | "false" | undefined>();
+    const decisions: Array<{ node: string; port?: "true" | "false" }> = [];
+    for (const id of this.order(graph, sourceId)) {
+      if (id === sourceId) continue;
+      const node = this.node(graph, id)!;
+      const way = this.incoming(graph, id).some(
+        (edge) =>
+          reached.has(edge.from) &&
+          (this.node(graph, edge.from)?.kind === "condition"
+            ? ports.get(edge.from) === edge.port
+            : true),
+      );
+      if (!way) continue;
+      reached.add(id);
+      if (node.kind === "condition") {
+        const port = decide(node);
+        ports.set(id, port);
+        decisions.push({ node: id, ...(port ? { port } : {}) });
+      }
+    }
+    return { reached, decisions };
+  }
+
+  /**
    * A v1 rule as a straight-line graph: its source, its read, its guard,
    * then its actions in order, each wired to the next, so a failure still
    * stops everything after it. Node ids are fixed: `source`, `read`,
@@ -689,6 +846,14 @@ export class AutomationGraph {
       .map((edge) => this.node(graph, edge.to))
       .find((node) => node?.kind === "read");
   }
+}
+
+/**
+ * One step of a run: an action node, and the channel of a notification.
+ */
+export interface AutomationGraphStep {
+  node: string;
+  channel?: string;
 }
 
 export interface AutomationGraphIssue {

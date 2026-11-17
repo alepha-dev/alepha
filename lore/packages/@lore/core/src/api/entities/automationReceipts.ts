@@ -65,7 +65,13 @@ export const automationReceipts = $entity({
     // A channel instance id, up to 64 characters since #Q3613.
     recipientChannel: z.string().max(64).optional(),
     position: z.integer().nonnegative().optional(),
+    // Written by no run since #Q3804, which keys a step by its node; the
+    // column is dropped with the v1 data (#Q3805).
     actionIndex: z.integer().min(0).max(4).optional(),
+    /**
+     * The action node of an action, roster or chunk receipt (#Q3804).
+     */
+    nodeId: z.string().max(64).optional(),
     rowIndex: z.integer().min(0).max(49).optional(),
     deliveryKey: z.string().max(255).optional(),
     cursor: db.default(z.integer().nonnegative(), 0),

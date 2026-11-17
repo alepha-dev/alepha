@@ -5,6 +5,7 @@ import { DbConflictError } from "alepha/orm";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreCoreApi } from "../src/api/index.ts";
+import { AutomationGraph } from "../src/api/schemas/AutomationGraph.ts";
 import { AutomationRuleChannels } from "../src/api/schemas/AutomationRuleChannels.ts";
 import {
   automationRuleSchema,
@@ -48,7 +49,8 @@ describe("Automation persistence", () => {
   });
 
   const snapshot = (rule: AutomationRule): AutomationRunSnapshot => ({
-    rule,
+    rule: AutomationGraph.fromV1(rule),
+    sourceNode: "source",
     inputs: { title: "Safe title" },
     variables: [
       {
@@ -71,7 +73,8 @@ describe("Automation persistence", () => {
     },
     actions: [
       {
-        index: 0,
+        node: "action-1",
+        channel: "inbox",
         status: "queued",
         result: { delivery: "enqueued" },
         receiptId: "receipt-1",

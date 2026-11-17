@@ -12,6 +12,7 @@ import {
 } from "alepha/server";
 
 import { users } from "../entities/users.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { automationNotificationVariablesSchema } from "../schemas/automationNotificationVariablesSchema.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
@@ -49,10 +50,17 @@ export class AutomationNotificationSender extends NotificationSenderService {
       const stored = await this.alepha
         .inject(AutomationPersistence)
         .rules.getById(variables.automationId);
-      const sourceKey =
-        stored.rule.trigger.kind === "event"
-          ? stored.rule.trigger.event
-          : stored.rule.select!.key;
+      // The source its run started at (#Q3804): a node may be reached
+      // from several.
+      const graph = AutomationGraph.of(stored.rule);
+      const graphs = new AutomationGraph();
+      const sourceKey = graphs.sourceKey(
+        graph,
+        variables.sourceNode &&
+          graphs.node(graph, variables.sourceNode)?.kind === "source"
+          ? variables.sourceNode
+          : undefined,
+      );
       const source = this.alepha
         .inject(AutomationCatalog)
         .entries()
@@ -67,7 +75,8 @@ export class AutomationNotificationSender extends NotificationSenderService {
         automationId: variables.automationId,
         revision: variables.ruleRevision,
         effect: {
-          index: variables.actionIndex,
+          node: variables.nodeId ?? "",
+          ...(variables.sourceNode ? { source: variables.sourceNode } : {}),
           action: {
             kind: "notify",
             ...(variables.recipientUserId
