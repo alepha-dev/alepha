@@ -41,14 +41,16 @@ It stops there on purpose: the systemd unit, the base domain, the ACME email
 and the deploy group need decisions a `curl | sh` cannot make for you.
 
 | Variable             | Default              | Effect                                       |
-| -------------------- | -------------------- | -------------------------------------------- |
+| -------------------- | -------------------- | ---------------------------------------------------------------- |
 | `BAY_VERSION`        | `latest`             | a version such as `1.0.0`, or `latest`       |
 | `BAY_PREFIX`         | `/opt/bay`           | install root                                 |
 | `BAY_BIN_LINK`       | `/usr/local/bin/bay` | symlink put on the PATH                      |
 | `BAY_INSTALL_DOCKER` | `yes`                | `no` stops instead of installing Docker      |
+| `BAY_UPDATE_UNIT`    | `no`                 | `yes` adds the handoff drop-in to a host that already has a unit |
 
 Re-running the script upgrades in place: the binary is replaced atomically and
-a running `bay` service is restarted.
+a running `bay` service is restarted. See [Upgrading Bay](#upgrading-bay) for
+the upgrade that closes no port.
 
 Check the host before the first start, as root:
 
@@ -232,15 +234,87 @@ The adapter's own options are documented in
 
 ## Upgrading Bay
 
-Run the installer again, or replace the binary and restart:
+Bay replaces itself without closing a port. The process that runs hands its
+listening sockets (`:80`, `:443` and every raw TCP port a stack opened) to the
+new one, keeps serving until the new one says it is ready, then drains and
+leaves. Nothing is refused in between.
+
+- **Apps keep running.** A Bay that starts adopts every app container that is
+  already the one it would create, instead of creating it again. An app whose
+  container the new version would build differently restarts, once; an app
+  that was stopped on purpose stays stopped.
+- **A new version that fails to start changes nothing.** If it exits, or is
+  not ready within 60 seconds, it is stopped and the version that was running
+  carries on, with the reason in its log (`journalctl -u bay`).
+- `/opt/bay/data` is the only directory that must survive an upgrade, and it
+  is untouched.
+
+### From Lore
+
+On a host connected to Lore, the host's page shows the version it runs and an
+**Upgrade Bay** button when a newer release exists; `lore host upgrade <host>`
+does the same from a shell. Bay fetches that release, checks it against the
+release's `SHA256SUMS`, keeps the binary it replaces as `bay.previous` beside
+it, and hands over. Lore is told the upgrade is done once the new version
+serves.
+
+Bay takes that command only when all of this holds:
+
+- the host accepts deploys: with deploys off, Lore cannot replace the binary;
+- the version is newer than the one running. **Bay never goes back to an older
+  version from Lore**: that is done on the machine, by hand (below);
+- Bay runs under systemd with the handoff drop-in (below). Otherwise it
+  answers with the command to run on the machine instead.
+
+### By hand
+
+Run the installer again, on the machine. `BAY_VERSION` picks the version, and
+this is also how to go back to an older one:
 
 ```bash
-sudo install -m 0755 bay /opt/bay/bin/bay && sudo systemctl restart bay
+curl -sSL https://alepha.dev/bay/install.sh | sudo BAY_VERSION=0.40.0 BAY_UPDATE_UNIT=yes sh
 ```
 
-`/opt/bay/data` is the only directory that must survive an upgrade, and it is
-untouched. Hosted apps keep running until the restart cycles them; an app that
-was stopped on purpose stays stopped.
+The installer replaces the binary and restarts the service. `BAY_UPDATE_UNIT=yes`
+also installs the handoff drop-in on a host that has a unit already, so the
+next upgrade can be started from Lore.
+
+With a binary of your own, replace it and reload:
+
+```bash
+sudo install -m 0755 bay /opt/bay/bin/bay && sudo systemctl reload bay
+```
+
+### The handoff drop-in
+
+For systemd to follow Bay from one process to the next, the unit needs two
+settings. The installer writes them as a drop-in, never as an edit of your
+unit:
+
+```ini
+# /etc/systemd/system/bay.service.d/handoff.conf
+[Service]
+PIDFile=/run/bay/bay.pid
+ExecReload=/bin/kill -HUP $MAINPID
+```
+
+Bay writes its PID to `bay.pid` in the unit's runtime directory
+(`RuntimeDirectory=bay`), and `systemctl reload bay` is the handoff itself:
+use it after replacing the binary, or to restart Bay at no cost.
+
+- A host installed by the script from the start has the drop-in. A host that
+  already had a unit gets it with `BAY_UPDATE_UNIT=yes`, or by writing the
+  file above and running `systemctl daemon-reload && systemctl restart bay`.
+- `sudo bay doctor` has a `handoff` line: `ok` with the drop-in, a `WARN`
+  naming what to run without it.
+- **Without the drop-in, Bay refuses a reload.** systemd would see its main
+  process leave, stop the new one with it, and start Bay again: the
+  interruption the handoff exists to avoid. `systemctl restart bay` still
+  works, and closes the ports for the second or two it takes.
+- A Bay started outside systemd is upgraded by hand: nothing there knows how
+  it is kept running.
+
+### Versions
 
 **Keep the host's Bay at least as new as the `alepha` CLI deploying to it.**
 The CLI names the version gate it hit (`bay` too old to read the artifact from
@@ -248,4 +322,5 @@ stdin, or not knowing `--secrets-file`), and in both cases nothing was
 deployed: the release that was serving still is.
 
 `bay --version` prints `dev` for a binary you built yourself, so the file's
-date (`ls -l /opt/bay/bin/bay`) is the practical answer there.
+date (`ls -l /opt/bay/bin/bay`) is the practical answer there. Lore cannot
+upgrade such a build: it has no version to compare.

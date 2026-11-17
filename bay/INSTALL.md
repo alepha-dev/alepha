@@ -280,8 +280,8 @@ history keeps it: clear that entry.
 
 ### What the machine will do, and nothing else
 
-What Lore may make the machine do is a **closed vocabulary of twelve verbs**, each naming one instance
-or stack environment. `deploy` and `stack-deploy` create what they name; the others refuse an
+What Lore may make the machine do is a **closed vocabulary of thirteen verbs**, each naming one instance
+or stack environment, or, for `upgrade`, the machine's own Bay. `deploy` and `stack-deploy` create what they name; the others refuse an
 instance this Bay does not run:
 
 | verb            | what it does                                                                                                                             |
@@ -298,6 +298,7 @@ instance this Bay does not run:
 | `target-probe`  | checks the S3 bucket now and reports whether it answers                                                                                  |
 | `backup-policy` | sets or clears the instance's operator backup policy, which wins over the app's and the host's                                           |
 | `restore`       | brings a backup back (by key, by time, or from another instance); needs a reason unless it is a dry run                                  |
+| `upgrade`       | replaces Bay's own binary with a newer release, named by its version, and hands over to it (step 7). Never an older version              |
 
 Deploys stay refused until the host's owner allows them on the host, and the machine honours
 that switch on its own side too.
@@ -307,7 +308,11 @@ can ask of this machine. Every verb names an instance and takes no path, no shel
 argument list; `logs` carries a line count, a window and a pattern, all bounded and validated.
 `backup-policy` carries a policy checked like `bay backup config`'s, and `restore` a backup key or a
 time, the instance to restore from and a reason; both are held to the same switch as `deploy`, Lore
-refuses them while the machine is offline rather than queueing them, and a restore first backs up what it replaces (and says so when it could not). Adding a verb widens what a
+refuses them while the machine is offline rather than queueing them, and a restore first backs up what it replaces (and says so when it could not).
+`upgrade` carries a version and nothing else: no address, no path and no checksum come from Lore, the
+release is fetched from the repository the installer uses, and a version older than the one running
+is refused, so a Lore that was taken over cannot put a host back on an old release. It is held to the
+deploy switch too. Adding a verb widens what a
 compromised Lore is worth, so it is a decision about that, not a feature.
 
 The secret points the other way. It is on the host in cleartext, and it is the bearer the machine
@@ -347,12 +352,49 @@ so a secret never crosses a network in clear.
 
 ## 7. Upgrading Bay
 
-Replace the binary and restart. `/opt/bay/data` is untouched, and hosted apps keep running until the
-restart cycles them.
+Bay replaces itself without closing a port: the running process hands its listening sockets to the
+new one, serves until the new one is ready, then drains and leaves. Apps keep running, since a Bay
+that starts adopts every container that is already the one it would create; an app whose container
+the new version would build differently restarts once. A new version that exits, or is not ready
+within 60 seconds, is stopped and the old one carries on, with the reason in `journalctl -u bay`.
+`/opt/bay/data` is untouched.
+
+systemd has to follow Bay from one process to the next, which takes two settings. Put them in a
+drop-in beside the unit of step 3:
+
+```ini
+# /etc/systemd/system/bay.service.d/handoff.conf
+[Service]
+PIDFile=/run/bay/bay.pid
+ExecReload=/bin/kill -HUP $MAINPID
+```
 
 ```bash
-sudo install -m 0755 bay /opt/bay/bin/bay && sudo systemctl restart bay
+systemctl daemon-reload && systemctl restart bay
+sudo bay doctor   # its `handoff` line says ok
 ```
+
+The installer writes that file itself on a host with no unit yet, and on one that has a unit when
+run with `BAY_UPDATE_UNIT=yes`. From then on:
+
+```bash
+# A binary you built: replace it, then hand over to it.
+sudo install -m 0755 bay /opt/bay/bin/bay && sudo systemctl reload bay
+
+# A release, by its version. Also the way back to an older one.
+curl -sSL https://alepha.dev/bay/install.sh | sudo BAY_VERSION=0.40.0 sh
+```
+
+On a host connected to Lore (step 6b), the host's page has an **Upgrade Bay** button when a newer
+release exists, and `lore host upgrade <host>` does the same. Bay fetches the release, checks it
+against its `SHA256SUMS`, keeps the binary it replaces as `bay.previous`, and hands over. It takes
+that command only on a host that accepts deploys, only towards a newer version (going back is the
+installer line above, on the machine), and only with the drop-in in place: otherwise it answers
+with the command to run here.
+
+Without the drop-in, Bay refuses `systemctl reload` (systemd would stop the new process and start
+Bay again), and `systemctl restart bay` still works, closing the ports for the second or two it
+takes. A Bay started outside systemd is upgraded by hand.
 
 **Keep the host's Bay at least as new as the `alepha` CLI deploying to it.** The CLI streams the
 deploy artifact to `bay deploy -`, reading it from stdin; a Bay predating that support tries to open
@@ -451,7 +493,7 @@ console is the same stop, with the same durability.
 The Alepha CLI's pre-flight distinguishes these for you, so read its message before digging:
 
 | Message                                    | Fix                                                          |
-| ------------------------------------------ | ------------------------------------------------------------ |
+| ------------------------------------------ | --------------------------------------------------------- |
 | `bay` is not on that user's PATH           | §5b — symlink into `/usr/local/bin`                          |
 | `connect: permission denied` on the socket | §5a — add the user to `bay-control`, then reconnect          |
 | too old to read the artifact from stdin    | §7 — upgrade the host binary                                 |

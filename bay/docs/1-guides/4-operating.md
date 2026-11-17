@@ -144,7 +144,7 @@ bay config registry-mirror --clear
 An archive app runs locked down by default:
 
 | Default                       | Why                                                                    |
-| ----------------------------- | ---------------------------------------------------------------------- |
+| --------------------------- | ------------------------------------------------------------ |
 | its own uid (from 20000 up)   | one compromised app cannot read another's files on disk                 |
 | no Linux capabilities         | nothing an Alepha app needs                                             |
 | read-only root filesystem     | code cannot be rewritten at runtime; `/tmp` is a 64 MB tmpfs           |
@@ -177,7 +177,10 @@ sudo bay doctor
 ```
 
 One line per check: Docker reachable and at least 25 (API 1.44), cgroup v2, the
-compose plugin, ports 80 and 443, free disk. It exits with status 1 when one
+compose plugin, ports 80 and 443, free disk, and, on a host with a `bay` unit,
+whether systemd follows Bay through an upgrade (`handoff`: a `WARN` without
+the [drop-in](/bay/docs/guides-installation#the-handoff-drop-in), which does
+not change the exit status). It exits with status 1 when one
 fails, so it fits a monitoring script. It needs no running Bay, and on a live
 host it needs the socket, which it dials: if no Bay answers there, ports 80 and
 443 read as held by another program, and both checks fail. Before the first
@@ -194,7 +197,7 @@ warns.
 ## Troubleshooting
 
 | Symptom                                                        | Cause and fix                                                                                         |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `no control socket found`                                      | the socket is neither at `./bay-data/control.sock` nor at `/run/bay/control.sock`: export `BAY_SOCKET`            |
 | `connect: permission denied` on the socket                    | the user is not in `bay-control`, or the SSH session predates it: reconnect (`ssh -O exit HOST`)      |
 | `control api unreachable` as root                              | `bay serve` is not running: `systemctl status bay`, `journalctl -u bay`                               |
