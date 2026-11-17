@@ -1,5 +1,5 @@
 import { useEvents } from "alepha/react";
-import { useState } from "react";
+import { startTransition, useState } from "react";
 
 /**
  * The root segment a navigation is on its way to, when it leaves the project
@@ -21,6 +21,13 @@ import { useState } from "react";
  * A reserved root (`/new-project`) counts as leaving too, which only shows the
  * skeleton for the moment the next page takes. Home, `/`, has no segment and
  * does not: the project layout leaves with the page.
+ *
+ * ⚠️ The end is a transition, never an urgent update (#Q3823). The router's
+ * views swap the next page in inside `startTransition`, one commit after the
+ * event, and the layout of the project being left is still mounted until
+ * then: clearing urgently took its skeleton away a frame early, and what was
+ * under it showed for that frame. In a transition the two land in one commit,
+ * where a switch to another project unmounts this layout anyway.
  */
 export const useLeavingProject = (
   slug: string | undefined,
@@ -34,7 +41,9 @@ export const useLeavingProject = (
         setLeaving(slug && target !== slug ? target : undefined);
       },
       "react:transition:end": () => {
-        setLeaving(undefined);
+        startTransition(() => {
+          setLeaving(undefined);
+        });
       },
     },
     [slug],

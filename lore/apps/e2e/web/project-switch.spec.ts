@@ -36,8 +36,7 @@ test.describe("Project switch", () => {
         const active = document.querySelector(
           '[data-testid="project-rail-item"][aria-current="page"]',
         );
-        // Visible only: the page being left stays mounted, hidden, under
-        // the skeleton, and its Plate's folder tabs are a nav of links too.
+        // Visible only: a Plate's folder tabs are a nav of links too.
         const quests = [
           ...document.querySelectorAll<HTMLElement>(
             'nav a[aria-current="page"][href$="/quests"]',
@@ -73,5 +72,78 @@ test.describe("Project switch", () => {
       () => (window as unknown as { __stale: string[] }).__stale,
     );
     expect(stale).toEqual([]);
+  });
+
+  /**
+   * The same switch, on the network and frame by frame (#Q3823). No API call
+   * is held here: the batch a request rides in is the subject.
+   */
+  test("from /quests, the quests page neither comes back nor reads the next project", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const t = Date.now();
+    await registerAndVerify(page, `trips${t}@example.com`, "SwitchTest123!");
+    const alpha = `Gamma${t}`.slice(0, 20);
+    const beta = `Delta${t}`.slice(0, 20);
+    const a = await createProjectViaWizard(page, alpha);
+    const b = await createProjectViaWizard(page, beta);
+
+    await page.goto(`/${a.slug}/quests`);
+    await expect(page.getByTestId("quests-table")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    // Every frame from the click on: is the quests page on screen again? It
+    // unmounts at the click, and the frame the navigation ends on used to
+    // show it once more, over the next project's quests.
+    await page.evaluate(() => {
+      const w = window as unknown as { __back: string[]; __clicked: boolean };
+      w.__back = [];
+      w.__clicked = false;
+      document.addEventListener("click", () => (w.__clicked = true), {
+        capture: true,
+        once: true,
+      });
+      let gone = false;
+      const tick = () => {
+        const table = document.querySelector<HTMLElement>(
+          '[data-testid="quests-table"]',
+        );
+        const visible = !!table?.checkVisibility();
+        if (w.__clicked && !visible) gone = true;
+        if (gone && visible) w.__back.push(location.pathname);
+        requestAnimationFrame(tick);
+      };
+      tick();
+    });
+
+    const requests: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.startsWith("/api/")) {
+        requests.push(url.pathname + url.search);
+      }
+    });
+
+    await page
+      .getByTestId("project-rail-item")
+      .and(page.getByLabel(beta))
+      .click();
+    await page.waitForURL((url) => url.pathname === `/${b.slug}`);
+    await expect(page.getByTestId("project-page-skeleton")).toHaveCount(0);
+    await page.waitForLoadState("networkidle");
+
+    const actionsOf = (request: string) =>
+      new URLSearchParams(request.split("?")[1] ?? "").get("actions") ?? "";
+
+    // The page being left read nothing in the project being opened.
+    expect(
+      requests.filter((it) => actionsOf(it).split(",").includes("getQuests")),
+    ).toEqual([]);
+
+    const back = await page.evaluate(
+      () => (window as unknown as { __back: string[] }).__back,
+    );
+    expect(back).toEqual([]);
   });
 });
