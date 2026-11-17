@@ -8,9 +8,18 @@ import {
   SIGIL_FEEDBACK_POSITION_DEFAULT,
   type SigilFeedbackPosition,
 } from "../../shared/sigilFeedbackPosition.ts";
+import {
+  SIGIL_FEEDBACK_SHAPE_DEFAULT,
+  type SigilFeedbackShape,
+} from "../../shared/sigilFeedbackShape.ts";
+import {
+  SIGIL_FEEDBACK_THEME_DEFAULT,
+  type SigilFeedbackTheme,
+} from "../../shared/sigilFeedbackTheme.ts";
 import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "../../shared/sigilMessages.ts";
 import { sigilScrubUrl } from "../../shared/sigilScrubUrl.ts";
 import { sigilUserAgent } from "../../shared/sigilUserAgent.ts";
+import { SIGIL_FEEDBACK_BUTTON_CSS } from "./sigilFeedbackButtonCss.ts";
 
 /**
  * Props for the SigilFeedbackButton component.
@@ -27,6 +36,16 @@ export interface SigilFeedbackButtonProps {
    * button has always been.
    */
   position?: SigilFeedbackPosition;
+  /**
+   * A round `circle` (the default), a `pill` with a label, or a `tab` on the
+   * edge of the page. A tab sits at mid-height, so `position` only picks its
+   * side.
+   */
+  shape?: SigilFeedbackShape;
+  /**
+   * The colour preset. Defaults to `indigo`.
+   */
+  theme?: SigilFeedbackTheme;
 }
 
 /**
@@ -37,7 +56,8 @@ export interface SigilFeedbackButtonProps {
  * query string. There used to be a same-origin proxy here that resolved a
  * secret sigil id to a project server-side; there is no such id any more,
  * the sink now hands out a ready-to-use URL directly, so the popup can point
- * straight at it. Styled entirely inline — no stylesheet dependency.
+ * straight at it. It renders its own `<style>` element (see
+ * `sigilFeedbackButtonCss.ts`), so the host app imports no stylesheet.
  *
  * When the popup submits feedback it posts a
  * {@link SIGIL_FEEDBACK_SUBMITTED_MESSAGE} message back to this window and
@@ -49,11 +69,13 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
   const [showThanks, setShowThanks] = useState(false);
   const hideTimer = useRef<number | undefined>(undefined);
 
-  // One edge object for both the button and the "thank you" pill. They are
-  // separate fixed-position elements, so a position applied to only one of them
-  // detaches the pill from the button it belongs to.
+  // One side and one shape for both the button and the "thank you" pill. They
+  // are separate fixed-position elements, so a placement applied to only one of
+  // them detaches the pill from the button it belongs to.
   const position = props.position ?? SIGIL_FEEDBACK_POSITION_DEFAULT;
-  const edge = position === "bottom-left" ? { left: 16 } : { right: 16 };
+  const side = position === "bottom-left" ? "left" : "right";
+  const shape = props.shape ?? SIGIL_FEEDBACK_SHAPE_DEFAULT;
+  const theme = props.theme ?? SIGIL_FEEDBACK_THEME_DEFAULT;
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -104,37 +126,21 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
 
   return (
     <>
+      <style>{SIGIL_FEEDBACK_BUTTON_CSS}</style>
       {showThanks && (
         <div
           role="status"
           aria-live="polite"
-          style={{
-            position: "fixed",
-            bottom: 68,
-            ...edge,
-            zIndex: 2147483000,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 12px",
-            background: "#111827",
-            color: "#fff",
-            fontFamily:
-              "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-            fontSize: 13,
-            fontWeight: 600,
-            lineHeight: 1,
-            borderRadius: 9999,
-            boxShadow: "0 4px 12px rgba(0,0,0,.25)",
-            pointerEvents: "none",
-          }}
+          className="alepha-sigil-fb-thanks"
+          data-shape={shape}
+          data-side={side}
         >
           {/* lucide Check */}
           <svg
             aria-hidden="true"
             xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#34d399"
@@ -150,42 +156,32 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
       <button
         type="button"
         aria-label="Feedback"
+        title="Send feedback"
         onClick={openFeedback}
-        style={{
-          position: "fixed",
-          bottom: 16,
-          ...edge,
-          zIndex: 2147483000,
-          width: 44,
-          height: 44,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#4f46e5",
-          color: "#fff",
-          border: 0,
-          borderRadius: 9999,
-          cursor: "pointer",
-          boxShadow: "0 4px 12px rgba(0,0,0,.25)",
-        }}
+        className="alepha-sigil-fb"
+        data-shape={shape}
+        data-theme={theme}
+        data-side={side}
       >
-        {/* lucide MessageSquareWarning — chat bubble with a "!" */}
-        <svg
-          aria-hidden="true"
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-          <line x1="12" x2="12" y1="8" y2="12" />
-          <line x1="12" x2="12.01" y1="16" y2="16" />
-        </svg>
+        {/* lucide MessageSquare. A plain bubble: the "!" it used to carry read
+            as a warning about the page rather than an invitation to write. */}
+        {shape !== "tab" && (
+          <svg
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        )}
+        {shape !== "circle" && (
+          <span className="alepha-sigil-fb-label">Feedback</span>
+        )}
       </button>
     </>
   );

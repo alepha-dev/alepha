@@ -5,6 +5,8 @@ import {
   SIGIL_FEEDBACK_HIDDEN,
   sigilFeedbackPositionOf,
 } from "../../shared/sigilFeedbackPosition.ts";
+import { sigilFeedbackShapeOf } from "../../shared/sigilFeedbackShape.ts";
+import { sigilFeedbackThemeOf } from "../../shared/sigilFeedbackTheme.ts";
 import { sigilAnyGlobMatch } from "../../shared/sigilGlobMatch.ts";
 import { useCurrentPath } from "../useCurrentPath.ts";
 import { useFeedbackUrl } from "../useFeedbackUrl.ts";
@@ -49,6 +51,8 @@ export const SigilRoot = () => {
     <SigilFeedbackButton
       feedbackUrl={feedbackUrl}
       position={sigilFeedbackPositionOf(config.feedbackButton)}
+      shape={sigilFeedbackShapeOf(config.feedbackButtonShape)}
+      theme={sigilFeedbackThemeOf(config.feedbackButtonTheme)}
     />
   );
 };

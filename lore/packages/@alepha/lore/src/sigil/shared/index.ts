@@ -20,6 +20,8 @@ export * from "./sigilDeviceClass.ts";
 export * from "./sigilFeatures.ts";
 export * from "./sigilFeedbackContext.ts";
 export * from "./sigilFeedbackPosition.ts";
+export * from "./sigilFeedbackShape.ts";
+export * from "./sigilFeedbackTheme.ts";
 export * from "./sigilFingerprint.ts";
 export * from "./sigilGlobMatch.ts";
 export * from "./sigilHost.ts";

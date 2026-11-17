@@ -147,14 +147,20 @@ wiring. Any other app uses the link above.
 
 The sigil mounts a floating button that opens the form in a popup, carrying
 the page, the browser and the viewport the report was made from. When the
-report is sent, the popup closes by itself. Three keys of `SIGIL_CONFIG`
+report is sent, the popup closes by itself. Five keys of `SIGIL_CONFIG`
 control the button:
 
 | Key                           | Default        | What it does                                              |
 | ----------------------------- | -------------- | --------------------------------------------------------- |
 | `feedback`                    | `true`         | Whether the app offers feedback at all.                   |
 | `feedbackButton`              | `bottom-right` | `bottom-right`, `bottom-left`, or `hidden` for no button. |
+| `feedbackButtonShape`         | `circle`       | `circle`, `pill` (with a label), or `tab` (on the edge).  |
+| `feedbackButtonTheme`         | `indigo`       | `indigo`, `red`, `ink` or `light`.                        |
 | `feedbackButtonExcludedPaths` | none           | Pages the button stays off, as path globs.                |
+
+A `tab` sits at mid-height on the edge of the page, so `feedbackButton` only
+picks its side. On a narrow screen a `pill` drops its label and shows the icon
+alone.
 
 To place the link yourself, hide the button and read `useFeedbackUrl()`.
 

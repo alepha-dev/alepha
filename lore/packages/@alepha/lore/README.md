@@ -68,8 +68,9 @@ SIGIL_CONFIG={"vitals":false,"feedbackButton":"hidden"}
 ```
 
 Fields: `analytics`, `blights`, `vitals`, `feedback` (booleans, all default
-true), `feedbackButton` (a corner, or `hidden`), and
-`feedbackButtonExcludedPaths` (path globs the button stays off).
+true), `feedbackButton` (a corner, or `hidden`), `feedbackButtonShape`
+(`circle`, `pill` or `tab`), `feedbackButtonTheme` (`indigo`, `red`, `ink` or
+`light`), and `feedbackButtonExcludedPaths` (path globs the button stays off).
 
 The exception is `reportOutsideProduction` (default `false`), which turns
 something **on**. Both halves are production-only: a key is a credential, not

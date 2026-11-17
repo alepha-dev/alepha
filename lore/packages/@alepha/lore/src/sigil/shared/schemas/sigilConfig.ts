@@ -1,6 +1,8 @@
 import { type Infer, z } from "alepha";
 
 import { SIGIL_FEEDBACK_POSITIONS } from "../sigilFeedbackPosition.ts";
+import { SIGIL_FEEDBACK_SHAPES } from "../sigilFeedbackShape.ts";
+import { SIGIL_FEEDBACK_THEMES } from "../sigilFeedbackTheme.ts";
 
 /**
  * What an app collects.
@@ -81,6 +83,21 @@ export const sigilConfig = z.object({
   feedbackButton: z
     .enum(["hidden", ...SIGIL_FEEDBACK_POSITIONS])
     .default("bottom-right"),
+
+  /**
+   * What the built-in button looks like: a round `circle`, a `pill` with a
+   * label, or a `tab` on the edge of the page.
+   *
+   * A `tab` sits at mid-height, so {@link feedbackButton} only picks its side.
+   */
+  feedbackButtonShape: z.enum(SIGIL_FEEDBACK_SHAPES).default("circle"),
+
+  /**
+   * The built-in button's colours, as a named preset.
+   *
+   * Not a free colour: see `sigilFeedbackTheme.ts`.
+   */
+  feedbackButtonTheme: z.enum(SIGIL_FEEDBACK_THEMES).default("indigo"),
 
   /**
    * Pages the button stays off, as path globs: `*` within a segment, `**`

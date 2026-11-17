@@ -69,6 +69,8 @@ export const sigilClientAtom = $atom({
     feedbackButtonExcludedPaths: z.array(z.string()),
     feedbackUrl: z.string().optional(),
     feedbackButton: z.string().optional(),
+    feedbackButtonShape: z.string().optional(),
+    feedbackButtonTheme: z.string().optional(),
     /**
      * When the server last resolved this, in epoch millis.
      *
