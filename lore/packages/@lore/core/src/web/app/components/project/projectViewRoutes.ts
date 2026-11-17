@@ -162,6 +162,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectPersonas",
   "projectPersona",
   "projectUseCase",
+  "projectRequirementsTestBook",
   ...ROUTES_APP,
   ...ROUTES_SETTINGS,
 ]);
@@ -211,6 +212,7 @@ export const SECTION_HREF_ROUTES: Record<
   // Reports' does.
   projectPersona: "projectRequirements",
   projectUseCase: "projectRequirements",
+  projectRequirementsTestBook: "projectRequirements",
   projectAutomationGallery: "projectAutomations",
   projectAutomationDetail: "projectAutomations",
   projectAutomationVariables: "projectAutomations",
@@ -286,6 +288,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectPersonas: "project.menu.requirements",
   projectPersona: "project.menu.requirements",
   projectUseCase: "project.menu.requirements",
+  projectRequirementsTestBook: "project.menu.requirements",
   projectReports: "project.menu.reports",
   reportsSummary: "project.menu.reports",
   reportsFlow: "project.menu.reports",

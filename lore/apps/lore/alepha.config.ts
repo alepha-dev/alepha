@@ -327,6 +327,7 @@ export default defineConfig({
         "agentPrompts.settings.personaExplore.",
         "agentPrompts.settings.useCaseDemo.",
         "agentPrompts.settings.requirementImport.",
+        "agentPrompts.settings.useCaseDraft.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
         // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail

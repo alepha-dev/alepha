@@ -42,6 +42,7 @@ export const agentPromptKindSchema = z.enum([
   "personaExplore",
   "useCaseDemo",
   "requirementImport",
+  "useCaseDraft",
 ]);
 
 export type AgentPromptKind = Infer<typeof agentPromptKindSchema>;

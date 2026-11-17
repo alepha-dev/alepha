@@ -31,10 +31,12 @@ import {
   type ReleaseContents,
   ReleaseContentService,
 } from "../services/ReleaseContentService.ts";
+import { ReleasePublishGuards } from "../services/ReleasePublishGuards.ts";
 import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
 
 export class ReleaseController {
   protected readonly automationSources = $inject(WorkAutomationSources);
+  protected readonly publishGuards = $inject(ReleasePublishGuards);
   releases = $repository(releases);
   quests = $repository(quests);
   dt = $inject(DateTimeProvider);
@@ -388,6 +390,10 @@ export class ReleaseController {
     handler: async ({ body, user }) => {
       const release = this.owned.get<Release>();
       this.assertOpen(release);
+      // What a package building on Plan refuses (#E153: a failing Must
+      // requirement, when the project turns that on). Before anything is
+      // read or frozen; a guard throws to refuse.
+      await this.publishGuards.assertCanPublish(release);
 
       const withTitle = body.title
         ? { ...release, title: body.title }

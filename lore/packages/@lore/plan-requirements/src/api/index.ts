@@ -6,6 +6,7 @@ import { $module } from "alepha";
 import { PersonaController } from "./controllers/PersonaController.ts";
 import { PersonaInsightController } from "./controllers/PersonaInsightController.ts";
 import { RequirementController } from "./controllers/RequirementController.ts";
+import { RequirementCoverageController } from "./controllers/RequirementCoverageController.ts";
 import { RequirementsPromptController } from "./controllers/RequirementsPromptController.ts";
 import { RunController } from "./controllers/RunController.ts";
 import { UseCaseController } from "./controllers/UseCaseController.ts";
@@ -15,6 +16,7 @@ import { PersonaResourceKind } from "./resources/PersonaResourceKind.ts";
 import { RequirementResourceKind } from "./resources/RequirementResourceKind.ts";
 import { UseCaseResourceKind } from "./resources/UseCaseResourceKind.ts";
 import { PersonaInsightService } from "./services/PersonaInsightService.ts";
+import { RequirementCoverageService } from "./services/RequirementCoverageService.ts";
 import { RequirementMetricService } from "./services/RequirementMetricService.ts";
 import { RequirementsBuckets } from "./services/RequirementsBuckets.ts";
 import { RequirementsCommentService } from "./services/RequirementsCommentService.ts";
@@ -23,6 +25,7 @@ import { RequirementsFileAccess } from "./services/RequirementsFileAccess.ts";
 import { RequirementSourceWatcher } from "./services/RequirementSourceWatcher.ts";
 import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts";
 import { RequirementsPromptService } from "./services/RequirementsPromptService.ts";
+import { RequirementsReleaseGuard } from "./services/RequirementsReleaseGuard.ts";
 import { RunService } from "./services/RunService.ts";
 import { SourceSectionService } from "./services/SourceSectionService.ts";
 import { UseCaseService } from "./services/UseCaseService.ts";
@@ -59,6 +62,8 @@ export const LorePlanRequirementsApi = $module({
     RequirementMetricService,
     RequirementMetricJobs,
     RequirementService,
+    RequirementCoverageService,
+    RequirementsReleaseGuard,
     SourceSectionService,
     // Source changed: Remember's `folio:revision:created`, listened to here.
     RequirementSourceWatcher,
@@ -76,6 +81,7 @@ export const LorePlanRequirementsApi = $module({
     RunController,
     RequirementsPromptController,
     PersonaInsightController,
+    RequirementCoverageController,
   ],
 });
 
@@ -86,6 +92,8 @@ export { UseCaseController } from "./controllers/UseCaseController.ts";
 export { RequirementController } from "./controllers/RequirementController.ts";
 export { RunController } from "./controllers/RunController.ts";
 export { PersonaInsightController } from "./controllers/PersonaInsightController.ts";
+export { RequirementCoverageController } from "./controllers/RequirementCoverageController.ts";
+export { RequirementCoverageService } from "./services/RequirementCoverageService.ts";
 export { PersonaInsightService } from "./services/PersonaInsightService.ts";
 export { RequirementMetricService } from "./services/RequirementMetricService.ts";
 export { RequirementsPromptController } from "./controllers/RequirementsPromptController.ts";

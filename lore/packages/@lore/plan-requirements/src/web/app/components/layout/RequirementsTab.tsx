@@ -1,7 +1,8 @@
-import { Badge, Button } from "@alepha/ui";
+import { Badge, Button, Segmented } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import {
   canInProject,
+  capabilityOption,
   currentProjectAtom,
   formatReference,
   type I18n,
@@ -11,11 +12,27 @@ import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { FileInput, Plus, TriangleAlert } from "lucide-react";
+import {
+  BookOpen,
+  Download,
+  FileInput,
+  Plus,
+  TriangleAlert,
+} from "lucide-react";
 import { useState } from "react";
 
+import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
 import type { RequirementController } from "../../../../api/controllers/RequirementController.ts";
+import type { RequirementCoverageController } from "../../../../api/controllers/RequirementCoverageController.ts";
+import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
+import {
+  readinessOf,
+  requirementsOfRelease,
+} from "../../../../api/requirementReadiness.ts";
+import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
+import type { RequirementCoverage } from "../../../../api/schemas/requirementCoverageSchema.ts";
 import type { RequirementResource } from "../../../../api/schemas/requirementResourceSchema.ts";
+import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import RequirementDetail from "../requirements/RequirementDetail.tsx";
 import {
   REQUIREMENT_PRIORITY_LABEL_KEYS,
@@ -24,6 +41,10 @@ import {
 } from "../requirements/requirementLabels.ts";
 import RequirementSheet from "../requirements/RequirementSheet.tsx";
 import RequirementStatusChips from "../requirements/RequirementStatusChips.tsx";
+import CoverageGaps from "../traceability/CoverageGaps.tsx";
+import ImpactChain from "../traceability/ImpactChain.tsx";
+import ReadinessBanner from "../traceability/ReadinessBanner.tsx";
+import TraceabilityMatrix from "../traceability/TraceabilityMatrix.tsx";
 import VerifyDialog from "../verify/VerifyDialog.tsx";
 
 const TYPES = ["functional", "non_functional", "constraint"] as const;
@@ -33,14 +54,17 @@ const STATUSES = [
   "in_development",
   "covered",
   "not_covered",
+  "no_data",
 ] as const;
 
 /**
  * The Requirements tab of the Requirements page (#E153): counters, type,
  * verified-by and release filters, the list grouped by chapter, the detail
  * pane of the selected requirement (`?requirement=15`), a banner naming the
- * requirements whose source changed, and the List / Matrix switch (the
- * matrix arrives with traceability).
+ * requirements whose source changed, the List / Matrix switch, a release's
+ * readiness, and the exports (CSV, the test book). In the Matrix view the
+ * pane holds the selected requirement's impact chain and the coverage
+ * gaps (#Q3774).
  */
 const RequirementsTab = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -79,40 +103,73 @@ const RequirementsTab = () => {
     [api, projectId],
   );
 
+  const [status, setStatus] = useState("all");
+  const [view, setView] = useState<"list" | "matrix">("list");
   const filters = useForm({
     id: "requirement-filters",
     schema: z.object({
-      view: z.enum(["list", "matrix"]),
-      status: z.text(),
-      type: z.text(),
-      verifiedBy: z.text(),
-      release: z.text(),
+      type: z.text().optional(),
+      verifiedBy: z.text().optional(),
+      release: z.text().optional(),
     }),
-    initialValues: {
-      view: "list" as const,
-      status: "",
-      type: "",
-      verifiedBy: "",
-      release: "",
-    },
+    initialValues: { type: "all", verifiedBy: "all", release: "all" },
     handler: async () => {},
   });
   const values = useFormValues(filters);
+  const type = values.type && values.type !== "all" ? values.type : "";
+  const verifiedBy =
+    values.verifiedBy && values.verifiedBy !== "all" ? values.verifiedBy : "";
+  const release =
+    values.release && values.release !== "all" ? values.release : "";
+  const matrix = view === "matrix";
+  const releaseId = release ? Number(release) : undefined;
+  const useCaseApi = useClient<UseCaseController>();
+  const personaApi = useClient<PersonaController>();
+  const coverageApi = useClient<RequirementCoverageController>();
+  const useCases = useQuery<UseCaseResource[]>(
+    {
+      key: ["use-cases", projectId],
+      enabled: projectId > 0 && matrix,
+      handler: async () =>
+        await useCaseApi.getUseCases({ params: { projectId }, query: {} }),
+    },
+    [useCaseApi, projectId, matrix],
+  );
+  const personas = useQuery<PersonaResource[]>(
+    {
+      key: ["personas", projectId],
+      enabled: projectId > 0 && matrix,
+      handler: async () =>
+        await personaApi.getPersonas({ params: { projectId }, query: {} }),
+    },
+    [personaApi, projectId, matrix],
+  );
+  const coverage = useQuery<RequirementCoverage>(
+    {
+      key: ["requirement-coverage", projectId, releaseId ?? 0],
+      enabled: projectId > 0 && matrix,
+      handler: async () =>
+        await coverageApi.getRequirementCoverage({
+          params: { projectId },
+          query: releaseId ? { releaseId } : {},
+        }),
+    },
+    [coverageApi, projectId, matrix, releaseId],
+  );
 
   if (!project) return null;
   const all = list.data ?? [];
   const rows = all.filter(
     (it) =>
-      (!values.status || it.status === values.status) &&
-      (!values.type || it.type === values.type) &&
-      (!values.verifiedBy ||
-        (values.verifiedBy === "usecases"
+      (status === "all" || it.status === status) &&
+      (!type || it.type === type) &&
+      (!verifiedBy ||
+        (verifiedBy === "usecases"
           ? it.criteria.length > 0
-          : values.verifiedBy === "metric"
+          : verifiedBy === "metric"
             ? !!it.metric
             : it.criteria.length === 0 && !it.metric)) &&
-      (!values.release ||
-        String(it.targetRelease?.id ?? "") === values.release),
+      (!releaseId || it.targetRelease?.id === releaseId),
   );
   const chapters = new Map<string, RequirementResource[]>();
   for (const row of rows) {
@@ -133,16 +190,18 @@ const RequirementsTab = () => {
   };
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <form {...filters.props} className="flex flex-col gap-3 border-b p-3">
           <div className="flex flex-wrap items-center gap-3">
-            <Control
-              input={filters.input.status}
-              segmented
-              items={[
+            <Segmented
+              size="sm"
+              className="max-w-full overflow-x-auto"
+              value={status}
+              onChange={setStatus}
+              options={[
                 {
-                  value: "",
+                  value: "all",
                   label: `${all.length} ${tr("requirements.requirement.counter.all")}`,
                 },
                 ...STATUSES.map((it) => ({
@@ -152,10 +211,11 @@ const RequirementsTab = () => {
               ]}
             />
             <div className="flex-1" />
-            <Control
-              input={filters.input.view}
-              segmented
-              items={[
+            <Segmented
+              size="sm"
+              value={view}
+              onChange={(value) => setView(value as "list" | "matrix")}
+              options={[
                 {
                   value: "list",
                   label: tr("requirements.requirement.view.list"),
@@ -190,7 +250,7 @@ const RequirementsTab = () => {
               select
               items={[
                 {
-                  value: "",
+                  value: "all",
                   label: tr("requirements.requirement.filter.anyType"),
                 },
                 ...TYPES.map((it) => ({
@@ -205,7 +265,7 @@ const RequirementsTab = () => {
               select
               items={[
                 {
-                  value: "",
+                  value: "all",
                   label: tr("requirements.requirement.filter.anyVerification"),
                 },
                 {
@@ -228,7 +288,7 @@ const RequirementsTab = () => {
               select
               items={[
                 {
-                  value: "",
+                  value: "all",
                   label: tr("requirements.requirement.filter.allReleases"),
                 },
                 ...(releases.data ?? []).map((r) => ({
@@ -258,7 +318,29 @@ const RequirementsTab = () => {
               </span>
             </div>
           ) : null}
-          {values.view === "matrix" ? null : list.data && rows.length === 0 ? (
+          {releaseId ? (
+            <div className="mb-4">
+              <ReadinessBanner
+                release={
+                  releases.data?.find((it) => it.id === releaseId)?.tag ??
+                  release
+                }
+                readiness={readinessOf(requirementsOfRelease(all, releaseId))}
+                blocks={
+                  capabilityOption(project, "plan", "blockFailingMust") === true
+                }
+              />
+            </div>
+          ) : null}
+          {matrix ? (
+            <TraceabilityMatrix
+              requirements={rows}
+              useCases={useCases.data ?? []}
+              personas={personas.data ?? []}
+              selected={selected || undefined}
+              onSelect={(number) => select(number)}
+            />
+          ) : list.data && rows.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               {tr(
                 all.length === 0
@@ -361,9 +443,45 @@ const RequirementsTab = () => {
               ))}
             </table>
           )}
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outlined"
+              size="sm"
+              href={router.path("projectRequirementsTestBook", {
+                params: { projectSlug: project.slug },
+              })}
+            >
+              <BookOpen className="size-4" />
+              {tr("requirements.trace.export.testBook")}
+            </Button>
+            <Button
+              variant="outlined"
+              size="sm"
+              href={`/api/projects/${projectId}/requirements/export${releaseId ? `?releaseId=${releaseId}` : ""}`}
+            >
+              <Download className="size-4" />
+              {tr("requirements.trace.export.csv")}
+            </Button>
+          </div>
         </div>
       </div>
-      {current ? (
+      {matrix ? (
+        <aside
+          className="flex w-96 shrink-0 flex-col gap-3 overflow-y-auto border-l p-3"
+          data-testid="traceability-pane"
+        >
+          {current ? (
+            <ImpactChain projectId={projectId} requirement={current} />
+          ) : null}
+          {coverage.data ? (
+            <CoverageGaps
+              projectId={projectId}
+              canWrite={canWrite}
+              coverage={coverage.data}
+            />
+          ) : null}
+        </aside>
+      ) : current ? (
         <aside className="w-96 shrink-0 overflow-y-auto border-l">
           <RequirementDetail
             key={current.id}

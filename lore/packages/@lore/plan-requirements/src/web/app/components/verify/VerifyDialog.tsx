@@ -29,7 +29,8 @@ export type VerifySubject =
   | { kind: "usecase"; number: number }
   | { kind: "persona"; number: number }
   | { kind: "allStale" }
-  | { kind: "import"; folioShortId?: number };
+  | { kind: "import"; folioShortId?: number }
+  | { kind: "draft"; requirement?: number; epic?: number };
 
 export interface VerifyDialogProps {
   subject: VerifySubject;
@@ -42,6 +43,7 @@ const MISSIONS = {
   persona: ["test", "explore"],
   allStale: ["test"],
   import: ["import"],
+  draft: ["draft"],
 } as const;
 
 const MISSION_LABEL_KEYS = {
@@ -50,6 +52,7 @@ const MISSION_LABEL_KEYS = {
   demo: "requirements.verify.mission.demo",
   explore: "requirements.verify.mission.explore",
   import: "requirements.verify.mission.import",
+  draft: "requirements.verify.mission.draft",
 } as const;
 
 const KIND_OF = {
@@ -58,6 +61,7 @@ const KIND_OF = {
   demo: "useCaseDemo",
   explore: "personaExplore",
   import: "requirementImport",
+  draft: "useCaseDraft",
 } as const;
 
 /**
@@ -85,18 +89,20 @@ const VerifyDialog = (props: VerifyDialogProps) => {
   const options = useForm({
     id: "verify-options",
     schema: z.object({
-      mission: z.enum(["test", "spec", "demo", "explore", "import"]),
-      app: z.text(),
-      env: z.text(),
-      as: z.text(),
-      stale: z.boolean(),
-      folio: z.text(),
+      mission: z
+        .enum(["test", "spec", "demo", "explore", "import", "draft"])
+        .optional(),
+      app: z.text().optional(),
+      env: z.text().optional(),
+      as: z.text().optional(),
+      stale: z.boolean().optional(),
+      folio: z.text().optional(),
     }),
     initialValues: {
       mission: missions[0],
       app: "",
       env: "",
-      as: "",
+      as: "default",
       stale: false,
       folio:
         props.subject.kind === "import" && props.subject.folioShortId
@@ -146,12 +152,20 @@ const VerifyDialog = (props: VerifyDialogProps) => {
               ? { personaNumber: props.subject.number }
               : {}),
             ...(props.subject.kind === "import" ? { folioShortId: folio } : {}),
+            ...(props.subject.kind === "draft" && props.subject.requirement
+              ? { requirementNumber: props.subject.requirement }
+              : {}),
+            ...(props.subject.kind === "draft" && props.subject.epic
+              ? { epicNumber: props.subject.epic }
+              : {}),
             ...(props.subject.kind === "persona" && values.stale
               ? { staleOnly: true }
               : {}),
             ...(values.app ? { app: values.app } : {}),
             ...(values.env ? { env: values.env } : {}),
-            ...(values.as ? { asPersona: Number(values.as) } : {}),
+            ...(values.as && values.as !== "default"
+              ? { asPersona: Number(values.as) }
+              : {}),
           },
         }),
     },
@@ -195,7 +209,18 @@ const VerifyDialog = (props: VerifyDialogProps) => {
           })
         : props.subject.kind === "allStale"
           ? tr("requirements.verify.title.allStale")
-          : tr("requirements.verify.title.import");
+          : props.subject.kind === "draft"
+            ? tr("requirements.verify.title.draft", {
+                args: [
+                  props.subject.epic
+                    ? formatReference("epic", props.subject.epic)
+                    : formatReference(
+                        "requirement",
+                        props.subject.requirement ?? 0,
+                      ),
+                ],
+              })
+            : tr("requirements.verify.title.import");
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -238,7 +263,10 @@ const VerifyDialog = (props: VerifyDialogProps) => {
                 input={options.input.as}
                 select
                 items={[
-                  { value: "", label: tr("requirements.verify.as.default") },
+                  {
+                    value: "default",
+                    label: tr("requirements.verify.as.default"),
+                  },
                   ...(personas.data ?? []).map((p) => ({
                     value: String(p.number),
                     label: `${formatReference("persona", p.number)} ${p.name}`,

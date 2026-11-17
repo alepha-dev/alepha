@@ -265,9 +265,9 @@ export const useCasePromptParamsSchema = projectParamsSchema.extend({
     .optional()
     .describe("The use case (7 for #U7), for the test, spec and demo modes."),
   mode: z
-    .enum(["test", "spec", "demo", "explore", "import"])
+    .enum(["test", "spec", "demo", "explore", "import", "draft"])
     .describe(
-      "test: play the criteria and record a run; spec: write the tagged e2e spec; demo: a demo script; explore: exploratory testing as a persona (needs persona); import: split a specification folio into requirements (needs folio_shortId).",
+      "test: play the criteria and record a run; spec: write the tagged e2e spec; demo: a demo script; explore: exploratory testing as a persona (needs persona); import: split a specification folio into requirements (needs folio_shortId); draft: draft the use cases of a requirement or an epic (needs requirement_number or epic_number).",
     ),
   persona: z
     .integer()
@@ -279,6 +279,14 @@ export const useCasePromptParamsSchema = projectParamsSchema.extend({
     .integer()
     .optional()
     .describe("The specification folio, for import."),
+  requirement_number: z
+    .integer()
+    .optional()
+    .describe("The requirement (15 for #S15), for draft."),
+  epic_number: z
+    .integer()
+    .optional()
+    .describe("The epic (5 for #E5), for draft."),
   stale: z
     .boolean()
     .optional()

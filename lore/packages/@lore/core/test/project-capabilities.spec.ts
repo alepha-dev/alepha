@@ -110,6 +110,7 @@ describe("Project capabilities", () => {
       agentPrompts: false,
       feedback: false,
       requirements: false,
+      blockFailingMust: false,
     });
   });
 

@@ -41,6 +41,11 @@ export const planCapabilityOptionsSchema = z.object({
   agentPrompts: z.boolean().default(false),
   feedback: z.boolean().default(false),
   requirements: z.boolean().default(false),
+  /**
+   * Refuse to publish a release while one of its Must requirements fails
+   * (#E153). Read only while `requirements` is on.
+   */
+  blockFailingMust: z.boolean().default(false),
 });
 
 export type PlanCapabilityOptions = Infer<typeof planCapabilityOptionsSchema>;

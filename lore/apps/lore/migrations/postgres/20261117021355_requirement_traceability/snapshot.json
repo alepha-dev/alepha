@@ -1,0 +1,259 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "26e5215e-2d14-453a-b6b1-6adb95864586",
+  "prevIds": ["47dd8784-ff3f-4f00-9a95-71cf312b03bb"],
+  "footprints": [
+    {
+      "statementType": "alter_enum",
+      "statementTarget": ["enum", "public", "project_prompts_kind_enum"],
+      "writes": ["s|enum|public.project_prompts_kind_enum"],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "requirement_technical_epics"],
+      "writes": [
+        "s|tbl|public.requirement_technical_epics",
+        "n|tbl|public.requirement_technical_epics",
+        "e|tbl|public.requirement_technical_epics",
+        "n|rel|public.requirement_technical_epics",
+        "n|type|public.requirement_technical_epics",
+        "n|rel|public.requirement_technical_epics_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "requirement_technical_epics",
+        "requirement_technical_epics_epic_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.requirement_technical_epics_epic_id_idx",
+        "n|idx|public.requirement_technical_epics_epic_id_idx",
+        "e|idx|public.requirement_technical_epics_epic_id_idx",
+        "n|rel|public.requirement_technical_epics_epic_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.requirement_technical_epics",
+        "n|sch|public",
+        "n|col|public.requirement_technical_epics.epic_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "requirement_technical_epics"],
+      "writes": [
+        "s|fk|public.requirement_technical_epics.requirement_technical_epics_project_id_projects_id_fkey",
+        "n|fk|public.requirement_technical_epics.requirement_technical_epics_project_id_projects_id_fkey",
+        "e|fk|public.requirement_technical_epics.requirement_technical_epics_project_id_projects_id_fkey",
+        "n|con|public.requirement_technical_epics.requirement_technical_epics_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.requirement_technical_epics",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.requirement_technical_epics.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "requirement_technical_epics"],
+      "writes": [
+        "s|fk|public.requirement_technical_epics.requirement_technical_epics_epic_id_epics_id_fkey",
+        "n|fk|public.requirement_technical_epics.requirement_technical_epics_epic_id_epics_id_fkey",
+        "e|fk|public.requirement_technical_epics.requirement_technical_epics_epic_id_epics_id_fkey",
+        "n|con|public.requirement_technical_epics.requirement_technical_epics_epic_id_epics_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.requirement_technical_epics",
+        "n|sch|public",
+        "n|tbl|public.epics",
+        "n|sch|public",
+        "n|col|public.requirement_technical_epics.epic_id",
+        "n|col|public.epics.id",
+        "e|uniqueness|public.epics.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "requirement_technical_epics",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_technical_epics",
+        "name": "id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": {
+          "type": "always",
+          "name": "requirement_technical_epics_id_seq",
+          "increment": "1",
+          "startWith": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": 1,
+          "cycle": false
+        },
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_technical_epics",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_technical_epics",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_technical_epics",
+        "name": "epic_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_technical_epics",
+        "name": "requirement_technical_epics_epic_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "epic_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_technical_epics",
+        "name": "requirement_technical_epics_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_technical_epics",
+        "name": "requirement_technical_epics_epic_id_epics_id_fkey",
+        "nameExplicit": false,
+        "columns": ["epic_id"],
+        "schemaTo": "public",
+        "tableTo": "epics",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "requirement_technical_epics",
+        "name": "requirement_technical_epics_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "enums\u0000[\"public\",\"project_prompts_kind_enum\"]",
+      "set": {
+        "values": [
+          "epicReview",
+          "epicActivate",
+          "questWork",
+          "feedbackWork",
+          "feedbackLoop",
+          "errorTriage",
+          "questLoop",
+          "weeklyStatus",
+          "useCaseTest",
+          "useCaseSpec",
+          "personaExplore",
+          "useCaseDemo",
+          "requirementImport",
+          "useCaseDraft"
+        ]
+      }
+    }
+  ]
+}

@@ -50,6 +50,11 @@ export interface CapabilityOptionDescriptor {
    * a planned surface means the reader who wants it never learns it is coming.
    */
   soon?: boolean;
+  /**
+   * Another option of the same capability this one only means anything
+   * with: Settings draws it disabled while that one is off.
+   */
+  requires?: string;
 }
 
 /**
@@ -247,6 +252,18 @@ export class CapabilityRegistry {
           wizard: true,
           preselected: false,
         },
+        {
+          // Off by default: a release's readiness is a warning until a
+          // project turns this on (#E153, #Q3774). A capability option reads
+          // off when absent, which is exactly that.
+          key: "blockFailingMust",
+          labelKey: "project.capability.plan.option.blockFailingMust.label",
+          descriptionKey:
+            "project.capability.plan.option.blockFailingMust.description",
+          wizard: false,
+          preselected: false,
+          requires: "requirements",
+        },
         // Automations were an option here until #Q3594, and a baseline of
         // Plan until #Q3629: they are Core now. A stored `automations` key is
         // stripped on read by the lax options schema and dropped on the row's
@@ -349,6 +366,7 @@ export class CapabilityRegistry {
         usecase_run_record: "requirements",
         usecase_prompt: "requirements",
         requirement_list: "requirements",
+        requirement_coverage: "requirements",
         requirement_get: "requirements",
         requirement_create: "requirements",
         requirement_update: "requirements",

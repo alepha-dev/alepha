@@ -124,6 +124,7 @@ const ProjectSettingsCapabilitySection = (
           // way to see what turning it on would give you.
           disabled={!master.enabled || option.soon === true}
           soon={option.soon === true}
+          requires={option.requires}
         />
       ))}
     </SettingsSection>
@@ -140,6 +141,10 @@ interface CapabilityOptionRowProps {
   disabled: boolean;
   soon: boolean;
   className?: string;
+  /**
+   * The option this one depends on: disabled while it is off.
+   */
+  requires?: string;
 }
 
 /**
@@ -149,6 +154,13 @@ interface CapabilityOptionRowProps {
 const CapabilityOptionRow = (props: CapabilityOptionRowProps) => {
   const { tr } = useI18n<I18n, "en">();
   const option = useCapabilityOption(props.capability, props.option);
+  // Always called, on itself when there is no dependency: a hook's order
+  // cannot depend on a prop.
+  const parent = useCapabilityOption(
+    props.capability,
+    props.requires ?? props.option,
+  );
+  const parentOff = props.requires !== undefined && !parent.enabled;
 
   return (
     <SettingsRow
@@ -162,7 +174,9 @@ const CapabilityOptionRow = (props: CapabilityOptionRowProps) => {
     >
       <Switch
         checked={option.enabled}
-        disabled={props.disabled || !option.canToggle || option.busy}
+        disabled={
+          props.disabled || parentOff || !option.canToggle || option.busy
+        }
         onCheckedChange={(value) => {
           void option.toggle(value);
         }}

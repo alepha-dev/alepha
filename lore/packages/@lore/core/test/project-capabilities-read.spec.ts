@@ -126,6 +126,7 @@ describe("CapabilityRegistry", () => {
       agentPrompts: false,
       feedback: false,
       requirements: false,
+      blockFailingMust: false,
     });
     expect(ctx.registry.optionsOf("ship", { track: true })).toEqual({
       track: true,
@@ -172,6 +173,7 @@ describe("CapabilityRegistry", () => {
       agentPrompts: false,
       feedback: false,
       requirements: false,
+      blockFailingMust: false,
     });
     expect(ctx.registry.preselectedOptionsOf("ship")).toEqual({
       track: true,

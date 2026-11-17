@@ -665,7 +665,7 @@ export class UseCaseCommand {
   public readonly prompt = $command({
     name: "prompt",
     description:
-      "Print the Verify prompt of a use case (test, spec, demo), a persona (--persona, explore) or a specification (--folio, import)",
+      "Print the Verify prompt of a use case (test, spec, demo), a persona (--persona, explore), a specification (--folio, import), or the use cases to draft for a requirement or an epic (--requirement or --epic, draft)",
     args: z
       .text({
         title: "ref",
@@ -676,9 +676,9 @@ export class UseCaseCommand {
     flags: z.object({
       ...UseCaseCommand.PROJECT_FLAG,
       mode: z
-        .enum(["test", "spec", "demo", "explore", "import"])
+        .enum(["test", "spec", "demo", "explore", "import", "draft"])
         .describe(
-          "test, spec, demo, explore (with --persona) or import (with --folio).",
+          "test, spec, demo, explore (with --persona), import (with --folio) or draft (with --requirement or --epic).",
         ),
       persona: z
         .text({
@@ -688,6 +688,10 @@ export class UseCaseCommand {
       folio: z
         .text({ description: "The specification folio, F12, for import." })
         .optional(),
+      requirement: z
+        .text({ description: "The requirement, S15, for draft." })
+        .optional(),
+      epic: z.text({ description: "The epic, E5, for draft." }).optional(),
       stale: z
         .boolean()
         .describe("With --persona: only its stale use cases.")
@@ -708,6 +712,7 @@ export class UseCaseCommand {
           demo: "useCaseDemo",
           explore: "personaExplore",
           import: "requirementImport",
+          draft: "useCaseDraft",
         }[flags.mode] as "useCaseTest";
         const rendered = await this.promptApi.renderRequirementsPrompt({
           params: { projectId },
@@ -720,6 +725,10 @@ export class UseCaseCommand {
             ...(flags.folio
               ? { folioShortId: this.refs.folio(flags.folio) }
               : {}),
+            ...(flags.requirement
+              ? { requirementNumber: this.refs.requirement(flags.requirement) }
+              : {}),
+            ...(flags.epic ? { epicNumber: this.refs.epic(flags.epic) } : {}),
             ...(flags.stale ? { staleOnly: true } : {}),
             ...(flags.app ? { app: flags.app } : {}),
             ...(flags.env ? { env: flags.env } : {}),

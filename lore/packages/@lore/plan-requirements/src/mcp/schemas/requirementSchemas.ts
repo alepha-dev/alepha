@@ -2,6 +2,7 @@ import { projectParamsSchema } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 
 import { releaseMoveSchema } from "../../api/schemas/releaseMoveSchema.ts";
+import { requirementCoverageSchema } from "../../api/schemas/requirementCoverageSchema.ts";
 import { requirementPrioritySchema } from "../../api/schemas/requirementPrioritySchema.ts";
 import { requirementResourceSchema } from "../../api/schemas/requirementResourceSchema.ts";
 import { requirementTypeSchema } from "../../api/schemas/requirementTypeSchema.ts";
@@ -143,6 +144,16 @@ export const requirementDeleteResultSchema = z.object({
   ok: z.boolean(),
   number: z.integer(),
 });
+
+export const requirementCoverageParamsSchema = projectParamsSchema.extend({
+  release_tag: z
+    .string()
+    .optional()
+    .describe(
+      "A release's tag (2.4.0): its readiness and gaps. Omitted, the whole project.",
+    ),
+});
+export const requirementCoverageResultSchema = requirementCoverageSchema;
 
 export const requirementSetReleaseParamsSchema = projectParamsSchema.extend({
   number: numberSchema,
