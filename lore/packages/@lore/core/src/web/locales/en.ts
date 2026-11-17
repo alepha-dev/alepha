@@ -3455,6 +3455,32 @@ export default {
   "requirements.persona.form.update": "Save",
   "requirements.persona.overview.empty":
     "Nothing written about this persona yet.",
+  "requirements.persona.tab.changes": "Changes",
+  "requirements.persona.tab.showcase": "Showcase",
+  "requirements.persona.scopeChanged":
+    "Scope changed since the last run: $1 use cases to re-verify.",
+  "requirements.persona.changes.title": "Changes since the last run",
+  "requirements.persona.changes.none":
+    "Nothing completed since the last run touches this persona.",
+  "requirements.persona.changes.neverRun":
+    "No run yet: changes count from the first run.",
+  "requirements.persona.changes.viaEpic": "via epic $1",
+  "requirements.persona.changes.viaMention": "mentions $1",
+  "requirements.persona.changes.card": "$1 changes since the last run",
+  "requirements.persona.changes.open": "See the changes",
+  "requirements.persona.whatsNew": "What's new for $1",
+  "requirements.persona.release.none": "Not in a release yet",
+  "requirements.persona.openAs": "Open as $1",
+  "requirements.persona.openAs.production":
+    "Open as is refused on a production copy.",
+  "requirements.persona.openAs.help":
+    "Lore signs no one in: sign in with the demo account.",
+  "requirements.persona.showcase.stale": "Stale",
+  "requirements.persona.showcase.removed": "Recording no longer kept",
+  "requirements.persona.showcase.current": "Current release",
+  "requirements.persona.showcase.chapters": "Steps",
+  "requirements.persona.toCover":
+    "To cover: $1 personas with no passing use case, $2 use cases never run.",
   "requirements.persona.tab.activity": "Activity",
   "requirements.persona.tab.overview": "Overview",
   "requirements.persona.toast.created": "Persona created",

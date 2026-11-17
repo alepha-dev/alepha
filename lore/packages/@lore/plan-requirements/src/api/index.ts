@@ -4,13 +4,16 @@ import { LoreShipApi } from "@lore/ship/api";
 import { $module } from "alepha";
 
 import { PersonaController } from "./controllers/PersonaController.ts";
+import { PersonaInsightController } from "./controllers/PersonaInsightController.ts";
 import { RequirementController } from "./controllers/RequirementController.ts";
 import { RequirementsPromptController } from "./controllers/RequirementsPromptController.ts";
 import { RunController } from "./controllers/RunController.ts";
 import { UseCaseController } from "./controllers/UseCaseController.ts";
+import { RequirementsRetentionJobs } from "./jobs/RequirementsRetentionJobs.ts";
 import { PersonaResourceKind } from "./resources/PersonaResourceKind.ts";
 import { RequirementResourceKind } from "./resources/RequirementResourceKind.ts";
 import { UseCaseResourceKind } from "./resources/UseCaseResourceKind.ts";
+import { PersonaInsightService } from "./services/PersonaInsightService.ts";
 import { RequirementsBuckets } from "./services/RequirementsBuckets.ts";
 import { RequirementsCommentService } from "./services/RequirementsCommentService.ts";
 import { RequirementService } from "./services/RequirementService.ts";
@@ -49,6 +52,8 @@ export const LorePlanRequirementsApi = $module({
     RequirementsPromptService,
     RequirementsCommentService,
     UseCaseService,
+    PersonaInsightService,
+    RequirementsRetentionJobs,
     RequirementService,
     SourceSectionService,
     // Source changed: Remember's `folio:revision:created`, listened to here.
@@ -66,6 +71,7 @@ export const LorePlanRequirementsApi = $module({
     RequirementController,
     RunController,
     RequirementsPromptController,
+    PersonaInsightController,
   ],
 });
 
@@ -75,5 +81,7 @@ export { PersonaController } from "./controllers/PersonaController.ts";
 export { UseCaseController } from "./controllers/UseCaseController.ts";
 export { RequirementController } from "./controllers/RequirementController.ts";
 export { RunController } from "./controllers/RunController.ts";
+export { PersonaInsightController } from "./controllers/PersonaInsightController.ts";
+export { PersonaInsightService } from "./services/PersonaInsightService.ts";
 export { RequirementsPromptController } from "./controllers/RequirementsPromptController.ts";
 export { RequirementsBuckets } from "./services/RequirementsBuckets.ts";
