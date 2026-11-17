@@ -1,12 +1,14 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
-import { $action } from "alepha/server";
+import { $action, ForbiddenError } from "alepha/server";
 
 import { projectPrompts } from "../entities/projectPrompts.ts";
 import { agentPromptKindSchema } from "../schemas/agentPromptKindSchema.ts";
 import { projectPromptResourceSchema } from "../schemas/projectPromptResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { LoreViewerAllowlist } from "../security/LoreViewerAllowlist.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * A project's customised agent prompts: read them, write one, reset one.
@@ -20,11 +22,13 @@ import { LoreAudits } from "../services/LoreAudits.ts";
  *
  * Reading is member-gated and writing is owner-gated, the split the rest of
  * the project's configuration already uses: a member reads what the project
- * hands agents, the owner decides it.
+ * hands agents, the owner decides it. A member whose rank grants reads only
+ * (Viewer) reads none of it (#Q3797).
  */
 export class ProjectPromptController {
   protected readonly prompts = $repository(projectPrompts);
   protected readonly audits = $inject(LoreAudits);
+  protected readonly security = $inject(ProjectSecurityService);
 
   /**
    * Declared above the actions on purpose: a `use: [...]` entry reading
@@ -51,7 +55,21 @@ export class ProjectPromptController {
       params: z.object({ projectId: z.integer() }),
       response: z.array(projectPromptResourceSchema),
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, user }) => {
+      // A template is the project's configuration, and may hold internal
+      // instructions: a rank of reads only (Viewer, an open project's
+      // joiners) reads the project's memory and none of it (#Q3797). Every
+      // rank that writes anything keeps it, so no stored rank changes. The
+      // web app falls back to the built-in defaults on a refusal.
+      const permissions = await this.security.permissionsIn(
+        params.projectId,
+        user.id,
+      );
+      if (permissions && LoreViewerAllowlist.isReadOnly(permissions)) {
+        throw new ForbiddenError(
+          "Your rank reads this project only, and its agent prompt templates are part of its configuration.",
+        );
+      }
       const rows = await this.prompts.findMany({
         where: { projectId: { eq: params.projectId } },
       });

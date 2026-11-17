@@ -4527,6 +4527,15 @@ export default {
   "project.settings.join.openConfirm.description":
     "Anyone with an account can then join it by themselves, as a viewer, and read its quests, epics, folios and releases.",
   "project.settings.join.openConfirm.confirm": "Open the project",
+  "project.settings.join.closeRemove.title": "Remove the people who joined?",
+  "project.settings.join.closeRemove.description":
+    "The project is closed to new joiners. People who joined it by themselves stay members, on Viewer: $1. Remove them too?",
+  "project.settings.join.closeRemove.confirm": "Remove them",
+  "project.settings.join.closeRemove.cancel": "Keep them",
+  "project.settings.join.closeRemove.done": "Removed: $1",
+  "rank.viewer.selfJoined.title": "People who joined by themselves hold Viewer",
+  "rank.viewer.selfJoined.description":
+    "$1 member(s) joined this project by themselves while it was open, and still hold Viewer. Whatever you add to Viewer, they get.",
   "project.settings.join.url.label": "Link to share",
   "project.settings.join.url.copy": "Copy the link",
   "project.settings.join.url.copied": "Link copied",

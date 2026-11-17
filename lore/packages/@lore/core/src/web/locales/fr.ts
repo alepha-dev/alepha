@@ -4549,6 +4549,17 @@ export default {
   "project.settings.join.openConfirm.description":
     "Toute personne ayant un compte pourra alors le rejoindre d’elle-même, en lecture seule, et lire ses quêtes, épopées, folios et versions.",
   "project.settings.join.openConfirm.confirm": "Ouvrir le projet",
+  "project.settings.join.closeRemove.title":
+    "Retirer les personnes qui l’ont rejoint ?",
+  "project.settings.join.closeRemove.description":
+    "Le projet n’accepte plus de nouveaux membres. Les personnes qui l’ont rejoint d’elles-mêmes restent membres, en Lecteur : $1. Les retirer aussi ?",
+  "project.settings.join.closeRemove.confirm": "Les retirer",
+  "project.settings.join.closeRemove.cancel": "Les garder",
+  "project.settings.join.closeRemove.done": "Retirés : $1",
+  "rank.viewer.selfJoined.title":
+    "Des personnes qui ont rejoint d’elles-mêmes ont le rang Lecteur",
+  "rank.viewer.selfJoined.description":
+    "$1 membre(s) ont rejoint ce projet d’eux-mêmes pendant qu’il était ouvert, et ont toujours le rang Lecteur. Tout ce que vous ajoutez à Lecteur, ils l’obtiennent.",
   "project.settings.join.url.label": "Lien à partager",
   "project.settings.join.url.copy": "Copier le lien",
   "project.settings.join.url.copied": "Lien copié",
