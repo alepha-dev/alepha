@@ -225,8 +225,11 @@ const ProjectView = () => {
           the rail shows (md and up); below that the shell is the whole page.
         */}
         {/* `md:mt-2 md:border-t` is the frame's top, which the assistant's
-            dock slot in `Layout` repeats so the dock lines up (#Q3584). */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden md:mt-2 md:rounded-tl-2xl md:border-t md:border-l">
+            dock slot in `Layout` repeats so the dock lines up (#Q3584).
+            The edge is the sidebar's against the page (`SidebarInset`):
+            the theme's border colour plus `shadow-sm`, so the two
+            separations read as one system (#Q3841). */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden md:mt-2 md:rounded-tl-2xl md:border-t md:border-l md:shadow-sm">
           <AppShell
             embedded
             fill
