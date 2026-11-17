@@ -150,18 +150,19 @@ describe("Automation subscriptions with a scope (#Q3635)", () => {
   }) => {
     const on = await set(true, { app: "site" });
     expect(on).toMatchObject({ subscribed: true });
+    // One automation (#Q3808), marked with the canonical key of its
+    // presets, one source per preset, each bound to the scope.
     const rules = await live();
-    expect(
-      rules
-        .map((rule) => rule.presetKey)
-        .sort((a, b) => String(a).localeCompare(String(b))),
-    ).toEqual(presets);
-    for (const rule of rules) {
-      expect(rule.subscriptionScope).toBe("app=site");
-      expect(
-        rule.rule.nodes.find((node) => node.kind === "source")?.config,
-      ).toMatchObject({ app: "site" });
-    }
+    expect(rules).toHaveLength(1);
+    const [rule] = rules;
+    expect(rule.presetKey).toBe(presets.join("+"));
+    expect(rule.subscriptionScope).toBe("app=site");
+    const sources = rule.rule.nodes.filter((node) => node.kind === "source");
+    expect(sources.map((node) => node.id)).toEqual(
+      presets.map((key) => `${key}.source`),
+    );
+    for (const source of sources)
+      expect(source.config).toMatchObject({ app: "site" });
     expect(await get("app=site")).toEqual(on);
   });
 
@@ -170,13 +171,13 @@ describe("Automation subscriptions with a scope (#Q3635)", () => {
   }) => {
     await set(true, { app: "site" });
     await set(true, { app: "api" });
-    expect(await live()).toHaveLength(4);
+    expect(await live()).toHaveLength(2);
 
     await set(false, { app: "site" });
-    expect(await get("app=site")).toEqual({ subscribed: false });
+    expect(await get("app=site")).toMatchObject({ subscribed: false });
     expect(await get("app=api")).toMatchObject({ subscribed: true });
     const left = await live();
-    expect(left).toHaveLength(2);
+    expect(left).toHaveLength(1);
     expect(left.every((rule) => rule.subscriptionScope === "app=api")).toBe(
       true,
     );
@@ -188,21 +189,80 @@ describe("Automation subscriptions with a scope (#Q3635)", () => {
     await set(true, { app: "site" });
     // The list bell binds nothing, so it reads off while an object bell is
     // on, and turning it off touches no object bell.
-    expect(await get()).toEqual({ subscribed: false });
+    expect(await get()).toMatchObject({ subscribed: false });
     await set(false);
     expect(await get("app=site")).toMatchObject({ subscribed: true });
   });
 
-  it("reads off when one of its presets' rules is disabled by hand", async ({
+  it("reads partly on when one event is switched off, and on again puts it back", async ({
     expect,
   }) => {
-    await set(true, { app: "site" });
-    const [first] = await live();
-    await persistence.rules.updateById(first.id, { enabled: false });
-    expect(await get("app=site")).toEqual({ subscribed: false });
-    // On again replaces the stray rather than keeping it beside.
-    await set(true, { app: "site" });
-    expect(await live()).toHaveLength(2);
+    const on = await set(true, { app: "site" });
+    const [rule] = await live();
+    // The per-event checkbox is the source switch (#Q3806).
+    await api.setAutomationSourceEnabled.fetch(
+      {
+        params: { projectId: project.id, id: rule.id },
+        body: {
+          node: `${presets[0]}.source`,
+          enabled: false,
+          expectedRevision: rule.revision,
+        },
+      },
+      { user },
+    );
+    expect(await get("app=site")).toMatchObject({
+      subscribed: false,
+      partial: true,
+      automationId: on.automationId,
+      events: [
+        { preset: presets[0], enabled: false },
+        { preset: presets[1], enabled: true },
+      ],
+    });
+    // On with every event ticks it again, in the same automation.
+    expect(await set(true, { app: "site" })).toMatchObject({
+      subscribed: true,
+      automationId: on.automationId,
+    });
+    // `events` keeps only some of them on.
+    const some = (
+      await api.setAutomationSubscription.fetch(
+        {
+          params: { projectId: project.id },
+          body: {
+            presets,
+            subscribed: true,
+            scope: { app: "site" },
+            events: [presets[1]],
+          },
+        },
+        { user },
+      )
+    ).data;
+    expect(some).toMatchObject({ partial: true });
+    expect(await live()).toHaveLength(1);
+    // A bell source deleted by hand reads as off, and ticking it puts it
+    // back.
+    const current = (await live())[0];
+    const without = presets[1];
+    await persistence.rules.updateById(current.id, {
+      rule: {
+        ...current.rule,
+        nodes: current.rule.nodes.filter(
+          (node) => !node.id.startsWith(`${without}.`),
+        ),
+        edges: current.rule.edges.filter(
+          (edge) => !edge.from.startsWith(`${without}.`),
+        ),
+      },
+    });
+    expect(
+      (await get("app=site")).events.find((event) => event.preset === without),
+    ).toMatchObject({ enabled: false });
+    expect(await set(true, { app: "site" })).toMatchObject({
+      subscribed: true,
+    });
   });
 
   it("refuses a setup value that the scope already binds", async ({

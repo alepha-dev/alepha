@@ -68,8 +68,8 @@ test.describe("Every notification through automations", () => {
     const monitorId = ((await made.json()) as { monitor: { id: string } })
       .monitor.id;
 
-    // The bell on the app's Uptime tab: two rules of the viewer's own, in-app,
-    // one on the outage and one on the recovery.
+    // The bell on the app's Uptime tab: one automation of the viewer's own
+    // (#Q3808), in-app, with a source on the outage and one on the recovery.
     await page.goto(`/${slug}/apps/web/production/uptime`);
     const bell = page.getByTestId("monitor-subscription-bell");
     await expect(bell).toBeEnabled();
@@ -79,14 +79,12 @@ test.describe("Every notification through automations", () => {
     const rules = (await (
       await page.request.get(`/api/projects/${id}/automations`)
     ).json()) as { items: Array<{ id: string; title: string }> };
-    expect(rules.items.map((it) => it.title).sort()).toEqual([
-      "Monitor down",
-      "Monitor recovered",
-    ]);
-    const ruleOf = (title: string) =>
-      `/api/projects/${id}/automations/${rules.items.find((it) => it.title === title)!.id}`;
-    const down = ruleOf("Monitor down");
-    const up = ruleOf("Monitor recovered");
+    expect(rules.items).toHaveLength(1);
+    expect(rules.items[0].title).toMatch(/^Uptime alerts: /);
+    const automation = `/api/projects/${id}/automations/${rules.items[0].id}`;
+    // Each event's runs, by the source that started them (#Q3807).
+    const down = "monitor-down.source";
+    const up = "monitor-up.source";
 
     const admin = await browser.newContext({ baseURL });
     try {
@@ -130,9 +128,11 @@ test.describe("Every notification through automations", () => {
           )
           .toBe(status);
       };
-      const runs = async (rulePath: string): Promise<Run[]> =>
+      const runs = async (source: string): Promise<Run[]> =>
         (
-          (await (await page.request.get(`${rulePath}/runs`)).json()) as {
+          (await (
+            await page.request.get(`${automation}/runs?source=${source}`)
+          ).json()) as {
             items: Run[];
           }
         ).items.filter((run) => run.occurrenceId.startsWith("event:"));
@@ -141,7 +141,7 @@ test.describe("Every notification through automations", () => {
        * finished, and returns the newest one's delivery evidence.
        */
       const settled = async (
-        rulePath: string,
+        source: string,
         count: number,
       ): Promise<RunEvidence> => {
         let latest: Run | undefined;
@@ -151,7 +151,7 @@ test.describe("Every notification through automations", () => {
               // One pass reserves events, the next queues the ready worker.
               await job("automations.dispatch");
               await job("automations.dispatch");
-              const all = await runs(rulePath);
+              const all = await runs(source);
               latest = all[0];
               return (
                 all.length === count &&
@@ -222,9 +222,9 @@ test.describe("Every notification through automations", () => {
       const discord = channels.items.find((it) => it.name === "alerts")!;
       expect(JSON.stringify(channels)).not.toContain("e2e-token_value");
 
-      // The outage rule also posts there: one delivery per channel.
+      // The outage's notification also posts there: one delivery per channel.
       const read = async () =>
-        (await (await page.request.get(down)).json()) as {
+        (await (await page.request.get(automation)).json()) as {
           revision: number;
           title: string;
           enabled: boolean;
@@ -238,11 +238,10 @@ test.describe("Every notification through automations", () => {
         };
       const before = await read();
       const rule = structuredClone(before.rule);
-      rule.nodes.find((node) => node.id === "action-1")!.config.channels = [
-        "inbox",
-        discord.id,
-      ];
-      const edited = await page.request.put(down, {
+      rule.nodes.find(
+        (node) => node.id === "monitor-down.action-1",
+      )!.config.channels = ["inbox", discord.id];
+      const edited = await page.request.put(automation, {
         data: {
           title: before.title,
           rule,
@@ -266,14 +265,16 @@ test.describe("Every notification through automations", () => {
       expect(kept.enabled).toBe(true);
       expect(kept.health).toBe("active");
       expect(
-        kept.rule.nodes.find((node) => node.id === "action-1")?.config.channels,
+        kept.rule.nodes.find((node) => node.id === "monitor-down.action-1")
+          ?.config.channels,
       ).toEqual(["inbox"]);
       await check(`${baseURL}/`, "up");
       await settled(up, 2);
       await check(missing, "down");
       expect((await settled(down, 3)).notifications).toHaveLength(1);
 
-      // Disabled on the Automations page, the rule sends nothing more.
+      // Disabled on the Automations page, the automation sends nothing more,
+      // from either source: the bell is one automation (#Q3808).
       await page.goto(`/${slug}/automations`);
       const listed = page.getByRole("row").filter({ hasText: kept.title });
       await listed.getByRole("button", { name: "Open row actions" }).click();
@@ -283,9 +284,9 @@ test.describe("Every notification through automations", () => {
         .click();
       await expect(listed.getByText("Disabled", { exact: true })).toBeVisible();
       await check(`${baseURL}/`, "up");
-      await settled(up, 3);
       await check(missing, "down");
       for (let index = 0; index < 3; index++) await job("automations.dispatch");
+      expect(await runs(up)).toHaveLength(2);
       expect(await runs(down)).toHaveLength(3);
     } finally {
       await admin.close();

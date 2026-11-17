@@ -2,6 +2,7 @@ import { $inject, AlephaError } from "alepha";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
 
+import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import {
   automationPresetCreateSchema,
   type AutomationPresetCreate,
@@ -74,6 +75,66 @@ export class AutomationPresetService {
         throw new BadRequestError(error.message);
       throw error;
     }
+    return this.write(projectId, user, body, built, options);
+  }
+
+  /**
+   * Several presets as one automation (#Q3808): what a bell makes. Each
+   * preset contributes its own nodes, prefixed with its key; `edit` adjusts
+   * the merged graph (the channels, which sources are on) before it is
+   * written.
+   */
+  public async createMerged(
+    projectId: number,
+    user: UserAccountToken,
+    input: {
+      keys: string[];
+      key: string;
+      values: Record<string, string>;
+      title?: string;
+      enabled?: boolean;
+      edit?: (rule: AutomationGraphValue) => AutomationGraphValue;
+    },
+    options: { subscription?: boolean; subscriptionScope?: string } = {},
+  ) {
+    await this.access.assert(projectId, user, "automation:write", {
+      subscription: options.subscription,
+    });
+    let built: ReturnType<AutomationPresetRegistry["merge"]>;
+    try {
+      built = this.presets.merge(
+        input.keys.map((key) => ({ key, values: input.values })),
+      );
+    } catch (error) {
+      if (error instanceof AlephaError)
+        throw new BadRequestError(error.message);
+      throw error;
+    }
+    return this.service.create(
+      projectId,
+      user,
+      {
+        title: input.title ?? built.descriptors[0].title,
+        rule: input.edit ? input.edit(built.rule) : built.rule,
+        enabled: input.enabled,
+      },
+      options.subscription
+        ? {
+            key: input.key,
+            subscription: true,
+            subscriptionScope: options.subscriptionScope ?? "",
+          }
+        : input.key,
+    );
+  }
+
+  protected write(
+    projectId: number,
+    user: UserAccountToken,
+    body: ReturnType<typeof automationPresetCreateSchema.parse>,
+    built: ReturnType<AutomationPresetRegistry["build"]>,
+    options: { subscription?: boolean; subscriptionScope?: string },
+  ) {
     const { descriptor: preset, rule } = built;
     return this.service.create(
       projectId,

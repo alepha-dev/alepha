@@ -27,12 +27,20 @@ export const automationSubscriptionSetBodySchema = z
       .refine((values) => Object.keys(values).length <= 16)
       .optional(),
     /**
-     * The channels to notify on, at least one (#Q3602): the subscription is
-     * one marked rule per preset and channel, each a copy of the preset with
-     * its own `channel`. Read when turning the subscription on; sending a different
-     * set to a live subscription replaces its rules.
+     * The channels to notify on, at least one (#Q3602): every notification
+     * the bell made goes to all of them (#Q3808). Sending another set to a
+     * live subscription edits it in place.
      */
     channels: z.array(z.string().min(1).max(64)).min(1).max(8).optional(),
+    /**
+     * The presets to keep on, all of them when absent (#Q3808).
+     */
+    events: z.array(z.string().min(1).max(128)).max(8).optional(),
+    /**
+     * What the bell is called, its label and its scope's name ("Host
+     * alerts: box"); absent, the first preset's title.
+     */
+    title: z.string().min(1).max(255).optional(),
   })
   .strict();
 export type AutomationSubscriptionSetBody = Infer<

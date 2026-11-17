@@ -77,10 +77,16 @@ describe("Automation subscriptions (#Q3576)", () => {
   it("turns on as one enabled rule marked as the caller's subscription, and reads on after a reload", async ({
     expect,
   }) => {
-    expect(await get()).toEqual({ subscribed: false });
+    expect(await get()).toMatchObject({ subscribed: false, partial: false });
 
     const on = await set(true, { channel: "email" });
-    expect(on).toMatchObject({ subscribed: true, channel: "email" });
+    expect(on).toMatchObject({
+      subscribed: true,
+      partial: false,
+      channels: ["email"],
+      events: [{ preset: key, node: `${key}.source`, enabled: true }],
+      additions: false,
+    });
 
     const rules = await live();
     expect(rules).toHaveLength(1);
@@ -91,7 +97,7 @@ describe("Automation subscriptions (#Q3576)", () => {
       authorUserId: user.id,
     });
     expect(
-      rules[0].rule.nodes.find((node) => node.id === "action-1")?.config,
+      rules[0].rule.nodes.find((node) => node.id === `${key}.action-1`)?.config,
     ).toMatchObject({ recipient: user.id, channels: ["email"] });
 
     // A reload asks the server again: the state is not the client's.
@@ -113,7 +119,7 @@ describe("Automation subscriptions (#Q3576)", () => {
     expect(await live()).toHaveLength(1);
   });
 
-  it("notifies on in-app and email at once, one marked rule per channel, and changes channels in place (#Q3602)", async ({
+  it("notifies on in-app and email at once from one automation, and changes channels in place, keeping nodes added on the canvas (#Q3602, #Q3808)", async ({
     expect,
   }) => {
     const channels = (subscribed: boolean, list: string[]) =>
@@ -130,47 +136,81 @@ describe("Automation subscriptions (#Q3576)", () => {
       subscribed: true,
       channels: ["email", "inbox"],
     });
-    const rules = await live();
-    expect(rules).toHaveLength(2);
-    expect(rules.every((rule) => rule.enabled && rule.subscription)).toBe(true);
+    const [rule] = await live();
+    expect(await live()).toHaveLength(1);
     expect(
-      rules
-        .map(
-          (rule) =>
-            (
-              rule.rule.nodes.find((node) => node.id === "action-1")!
-                .config as { channels: string[] }
-            ).channels[0],
-        )
-        .sort(),
-    ).toEqual(["email", "inbox"]);
+      rule.rule.nodes.find((node) => node.id === `${key}.action-1`)?.config
+        .channels,
+    ).toEqual(["inbox", "email"]);
     // Reopening reads the same channels back.
     expect((await get()).channels).toEqual(["email", "inbox"]);
 
-    // The same set again changes nothing.
+    // The same set again changes nothing, not even the revision.
     await channels(true, ["email", "inbox"]);
-    expect((await live()).map((rule) => rule.id).sort()).toEqual(
-      rules.map((rule) => rule.id).sort(),
-    );
+    expect((await live())[0].revision).toBe(rule.revision);
 
-    // Another set replaces the rules.
+    // Its author adds a node of their own on the canvas.
+    const added = {
+      ...rule.rule,
+      nodes: [
+        ...rule.rule.nodes,
+        {
+          id: "mine",
+          kind: "action" as const,
+          type: "notify",
+          config: {
+            recipient: user.id,
+            channels: ["inbox"],
+            title: "Mine",
+            text: "{{title}}",
+            category: "automations",
+          },
+          position: { x: 0, y: 400 },
+        },
+      ],
+      edges: [
+        ...rule.rule.edges,
+        { from: `${key}.source`, port: "out" as const, to: "mine" },
+      ],
+    };
+    await alepha
+      .inject(AutomationService)
+      .update(project.id, rule.id, user, rule.revision, {
+        title: rule.title,
+        rule: added,
+      });
+    expect((await get()).additions).toBe(true);
+
+    // Another set edits the bell's own nodes in place: same automation,
+    // one revision, the added node untouched.
     const one = (await channels(true, ["inbox"])).data;
     expect(one).toMatchObject({ subscribed: true, channels: ["inbox"] });
-    expect(await live()).toHaveLength(1);
+    const [edited] = await live();
+    expect(edited.id).toBe(rule.id);
+    expect(edited.revision).toBe(rule.revision + 2);
+    expect(
+      edited.rule.nodes.find((node) => node.id === "mine")?.config.channels,
+    ).toEqual(["inbox"]);
+    expect(
+      edited.rule.nodes.find((node) => node.id === `${key}.action-1`)?.config
+        .channels,
+    ).toEqual(["inbox"]);
 
     // An empty set is refused: at least one channel.
     await expect(channels(true, [])).rejects.toThrow();
 
-    // Off removes every marked rule.
-    await channels(true, ["inbox", "email"]);
-    expect(await set(false)).toEqual({ subscribed: false });
+    // Off deletes the automation, what was added included.
+    expect(await set(false)).toMatchObject({ subscribed: false });
     expect(await live()).toHaveLength(0);
   });
 
   it("turns off by deleting the rule", async ({ expect }) => {
     await set(true);
-    expect(await set(false)).toEqual({ subscribed: false });
-    expect(await get()).toEqual({ subscribed: false });
+    expect(await set(false)).toMatchObject({
+      subscribed: false,
+      partial: false,
+    });
+    expect(await get()).toMatchObject({ subscribed: false, partial: false });
     expect(await live()).toHaveLength(0);
   });
 
@@ -184,19 +224,19 @@ describe("Automation subscriptions (#Q3576)", () => {
       },
       { user },
     );
-    expect(await get()).toEqual({ subscribed: false });
+    expect(await get()).toMatchObject({ subscribed: false, partial: false });
 
     const on = await set(true);
     const rule = (await live()).find((row) => row.id === on.automationId)!;
     await alepha
       .inject(AutomationService)
       .setEnabled(project.id, rule.id, user, false, rule.revision);
-    expect(await get()).toEqual({ subscribed: false });
+    expect(await get()).toMatchObject({ subscribed: false, partial: false });
 
-    // On again replaces the disabled one rather than adding beside it.
+    // On again switches the same automation back on (#Q3808).
     const again = await set(true);
     expect(again.subscribed).toBe(true);
-    expect(again.automationId).not.toBe(on.automationId);
+    expect(again.automationId).toBe(on.automationId);
     const marked = (await live()).filter((row) => row.subscription);
     expect(marked.map((row) => row.id)).toEqual([again.automationId]);
     // The hand-made rule is left alone, by on and by off.
@@ -220,7 +260,7 @@ describe("Automation subscriptions (#Q3576)", () => {
       projectId: project.id,
       key: "plan",
     });
-    expect(await get()).toEqual({ subscribed: false });
+    expect(await get()).toMatchObject({ subscribed: false, partial: false });
     await expect(set(true)).rejects.toThrow("plan");
     expect(await live()).toHaveLength(0);
   });
@@ -264,7 +304,7 @@ describe("Automation subscriptions (#Q3576)", () => {
         requiresApproval: false,
       });
       expect(
-        rule.rule.nodes.find((node) => node.id === "action-1")?.config,
+        rule.rule.nodes.find((node) => node.id === `${key}.action-1`)?.config,
       ).toMatchObject({ recipient: reader.id });
 
       // Its own rule, kept as the toggle made it: editing asks for
@@ -283,7 +323,10 @@ describe("Automation subscriptions (#Q3576)", () => {
         ),
       ).rejects.toThrow("automation:write");
 
-      expect((await setAs(reader, false)).data).toEqual({ subscribed: false });
+      expect((await setAs(reader, false)).data).toMatchObject({
+        subscribed: false,
+        partial: false,
+      });
       expect(
         await persistence.rules.findMany({
           where: { projectId: project.id, authorUserId: reader.id },

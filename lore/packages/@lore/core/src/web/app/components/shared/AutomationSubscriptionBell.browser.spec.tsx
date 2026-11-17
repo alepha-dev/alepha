@@ -55,15 +55,29 @@ class FakeLinkProvider extends LinkProvider {
     return this.subscribed
       ? {
           subscribed: true,
+          partial: false,
           automationId: RULE,
-          channel: "email",
+          revision: 0,
           channels: ["email", "inbox"],
+          events: [EVENT(true)],
+          additions: false,
         }
-      : { subscribed: false };
+      : {
+          subscribed: false,
+          partial: false,
+          events: [EVENT(false)],
+          additions: false,
+        };
   }
 }
 
 const RULE = "00000000-0000-4000-8000-000000000042";
+const EVENT = (enabled: boolean) => ({
+  preset: "feedback-created",
+  title: "New feedback",
+  node: "feedback-created.source",
+  enabled,
+});
 
 describe("AutomationSubscriptionBell", () => {
   let alepha: Alepha | undefined;
@@ -162,6 +176,7 @@ describe("AutomationSubscriptionBell", () => {
           presets: ["feedback-created"],
           subscribed: true,
           channels: ["inbox", "email"],
+          events: ["feedback-created"],
         },
       ]),
     );

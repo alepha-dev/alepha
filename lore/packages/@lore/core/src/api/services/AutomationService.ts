@@ -197,10 +197,23 @@ export class AutomationService {
     user: UserAccountToken,
     expectedRevision: number,
     input: AutomationWriteBody,
+    /**
+     * A bell's own write (#Q3808): `AutomationSubscriptionService` edits the
+     * nodes it made, under the self-subscription gate, for its author only.
+     * A member may hold a bell without `automation:write`; every other edit
+     * asks for it.
+     */
+    options: { subscription?: boolean } = {},
   ) {
     return this.database.primary(async () => {
       const rule = await this.stored(projectId, id);
-      await this.access.assertMutation(rule, user, "edit");
+      if (
+        options.subscription &&
+        rule.subscription &&
+        rule.authorUserId === user.id
+      )
+        await this.access.assert(projectId, user, "automation:write", rule);
+      else await this.access.assertMutation(rule, user, "edit");
       this.revision(rule, expectedRevision);
       const body = this.authored(automationWriteBodySchema.parse(input));
       const provenance = await this.access.provenance(user);
