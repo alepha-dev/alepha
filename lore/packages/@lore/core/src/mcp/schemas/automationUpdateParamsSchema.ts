@@ -1,6 +1,7 @@
 import { z } from "alepha";
 
 import { automationWriteBodySchema } from "../../api/schemas/automationWriteBodySchema.ts";
+import { AutomationGraphParams } from "./AutomationGraphParams.ts";
 import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 export const automationUpdateParamsSchema = projectParamsSchema
@@ -8,17 +9,20 @@ export const automationUpdateParamsSchema = projectParamsSchema
     id: z.uuid(),
     expectedRevision: z.integer().nonnegative(),
     title: automationWriteBodySchema.shape.title.optional(),
-    rule: automationWriteBodySchema.shape.rule.optional(),
+    ...AutomationGraphParams.SHAPE,
     enabled: z.boolean().optional(),
   })
   .strict()
   .refine(
     (value) =>
       value.enabled === undefined
-        ? value.title !== undefined && value.rule !== undefined
-        : value.title === undefined && value.rule === undefined,
+        ? value.title !== undefined &&
+          (value.nodes !== undefined || value.sources !== undefined)
+        : value.title === undefined &&
+          value.nodes === undefined &&
+          value.sources === undefined,
     {
       message:
-        "Supply title and rule together, or only enabled. Configuration and enable changes require separate revisioned calls.",
+        "Supply title with nodes and edges (or sources and actions), or only enabled. Configuration and enable changes require separate revisioned calls.",
     },
   );

@@ -18,8 +18,10 @@ import { AutomationVariableService } from "../../api/services/AutomationVariable
 import { automationCreateParamsSchema } from "../schemas/automationCreateParamsSchema.ts";
 import { automationDeleteParamsSchema } from "../schemas/automationDeleteParamsSchema.ts";
 import { automationGetParamsSchema } from "../schemas/automationGetParamsSchema.ts";
+import { AutomationGraphParams } from "../schemas/AutomationGraphParams.ts";
 import { automationListParamsSchema } from "../schemas/automationListParamsSchema.ts";
 import { automationRunsParamsSchema } from "../schemas/automationRunsParamsSchema.ts";
+import { automationSourceSetParamsSchema } from "../schemas/automationSourceSetParamsSchema.ts";
 import { automationTestParamsSchema } from "../schemas/automationTestParamsSchema.ts";
 import { automationUpdateParamsSchema } from "../schemas/automationUpdateParamsSchema.ts";
 import { automationVariableDeleteParamsSchema } from "../schemas/automationVariableDeleteParamsSchema.ts";
@@ -51,7 +53,7 @@ export class AutomationTools {
 
   automation_create = $tool({
     description:
-      "Create a typed automation as yourself. Discover slots with automation_catalog. With enabled=true the rule is created enabled in one atomic write, after the checks enabling runs; if they refuse, nothing is created and the refusal says why. Without it the rule is a draft, disabled until automation_update enables it. The author and credential are immutable. No AI executes inside a rule.",
+      'Create an automation as yourself: a graph of sources (an event or a schedule) wired through optional reads and conditions to actions. Discover node types, their slots, ports and outputs with automation_catalog. Pass the graph as nodes + edges, or the compact sources + actions (every source wired to every action), which is enough for "when X or Y, notify me". With enabled=true it is created enabled in one atomic write, after the checks enabling runs; if they refuse, nothing is created and the refusal says why and names the node. Without it it is a draft. The author and credential are immutable. No AI executes inside an automation.',
     schema: {
       params: automationCreateParamsSchema,
       result: automationResourceSchema,
@@ -60,14 +62,14 @@ export class AutomationTools {
       const projectId = await this.project(params);
       return this.service.create(projectId, this.user(), {
         title: params.title,
-        rule: params.rule,
+        ...AutomationGraphParams.body(params),
         enabled: params.enabled,
       });
     },
   });
   automation_list = $tool({
     description:
-      "List authorized automation metadata and configuration with bounded offset pagination, search, state and author filters. Credentials are never exposed.",
+      'List authorized automations with bounded offset pagination, search, state and author filters: each with its graph, each source\'s switch, health and a one-line summary ("host.offline -> notify inbox, email"). Credentials are never exposed.',
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: automationListParamsSchema,
@@ -86,7 +88,7 @@ export class AutomationTools {
   });
   automation_get = $tool({
     description:
-      "Read an automation, current health, author, revision, last run and permitted controls. Configuration is redacted when current source access is missing.",
+      "Read an automation: its graph (nodes + edges), each source's switch, health and one-line summary, its health, author, revision, last run and permitted controls. The graph is redacted when current source access is missing.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: automationGetParamsSchema,
@@ -97,7 +99,7 @@ export class AutomationTools {
   });
   automation_update = $tool({
     description:
-      "Update your automation using expectedRevision. Supply title and the complete four-slot rule together, or enabled alone. Explicit enable revalidates current authority, dependencies and shared variables. Managers may disable another author's rule but cannot edit or enable it. Reload after a revision conflict.",
+      "Update your automation using expectedRevision. Supply title with the complete graph (nodes + edges, or the compact sources + actions), or enabled alone. Explicit enable revalidates current authority, dependencies and shared variables. To switch one source, use automation_source_set. Managers may disable another author's automation but cannot edit or enable it. Reload after a revision conflict.",
     schema: {
       params: automationUpdateParamsSchema,
       result: automationResourceSchema,
@@ -113,8 +115,13 @@ export class AutomationTools {
           params.enabled,
           params.expectedRevision,
         );
-      if (params.title === undefined || params.rule === undefined)
-        throw new BadRequestError("Configuration requires title and rule");
+      if (
+        params.title === undefined ||
+        (params.nodes === undefined && params.sources === undefined)
+      )
+        throw new BadRequestError(
+          "Configuration requires title with nodes and edges, or sources and actions",
+        );
       return this.service.update(
         projectId,
         params.id,
@@ -122,10 +129,27 @@ export class AutomationTools {
         params.expectedRevision,
         {
           title: params.title,
-          rule: params.rule,
+          ...AutomationGraphParams.body(params),
         },
       );
     },
+  });
+  automation_source_set = $tool({
+    description:
+      "Switch one source of an automation off or on, using expectedRevision. Off: the automation's author, a manager, or the owner of their own bell; it stops that source alone and leaves the others running. On: the author only, after the checks enabling runs. A bell's per-event switch is this.",
+    schema: {
+      params: automationSourceSetParamsSchema,
+      result: automationResourceSchema,
+    },
+    handler: async ({ params }) =>
+      this.service.setSourceEnabled(
+        await this.project(params),
+        params.id,
+        this.user(),
+        params.node,
+        params.enabled,
+        params.expectedRevision,
+      ),
   });
   automation_delete = $tool({
     description:
@@ -224,7 +248,7 @@ export class AutomationTools {
   });
   automation_runs = $tool({
     description:
-      "Read bounded retained run pages for an automation ID. Snapshots show exact or capped counts and per-action outcomes. notifications contains live receipt status separately from enqueue: queued is not delivery, email sent is transport acceptance, and inbox delivery is delivered. Payloads and receipt identities are redacted without current source-read access. Details retain 30 days; replay receipts retain 90 days.",
+      "Read bounded retained run pages for an automation ID, optionally only those one source started (source). Each run names its source (sourceNode) and what each node did (nodes: ran, skipped, refused, failed, unknown, not_reached, with the port a condition took); snapshots show exact or capped counts and per-step outcomes. notifications contains live receipt status separately from enqueue: queued is not delivery, email sent is transport acceptance, and inbox delivery is delivered. Payloads and receipt identities are redacted without current source-read access. Details retain 30 days; replay receipts retain 90 days.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: automationRunsParamsSchema,
@@ -234,11 +258,12 @@ export class AutomationTools {
       this.service.runs(await this.project(params), params.id, this.user(), {
         offset: params.offset,
         limit: params.limit,
+        ...(params.source === undefined ? {} : { source: params.source }),
       }),
   });
   automation_catalog = $tool({
     description:
-      "Discover the current authorized automation vocabulary: typed event, selection, metric and action slots; fields, cardinalities, operators, required capabilities and permissions; configured channels, shared variables, the preset setups offered in this project and execution limits. Unavailable entries explain why. Presets are listed for reference: they are applied from the web gallery, while MCP composes the equivalent four-slot rule with automation_create.",
+      "Discover what an automation may hold here: nodeTypes (each node type's kind: source, read, condition or action; its ports, the fields it brings, its slots and, for an action, the outputs it gives the actions after it, such as created_quest_id), the vocabulary entries behind them with required capabilities and permissions, configured channels, shared variables, the presets offered in this project, and the limits (8 sources, 40 nodes, 5 actions reachable from one source). Unavailable entries explain why. A node may use the fields every source reaching it provides, and the outputs of an action on every path to it. Presets are applied from the web gallery; compose the graph yourself with automation_create.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: projectParamsSchema.strict(),
@@ -249,7 +274,7 @@ export class AutomationTools {
   });
   automation_test = $tool({
     description:
-      "Preview a saved rule without writes, audit, delivery, health, cursor or baseline changes. Event input is a same-project subject ID or a retained event/run ID, never caller JSON. Returns timestamped typed inputs, counts, guards and rendered planned effects. A preview is not delivery confirmation.",
+      "Preview a saved automation from one of its sources (node, required when it has several) without writes, audit, delivery, health, cursor or baseline changes. Event input is a same-project subject ID or a retained event/run ID, never caller JSON; a past run starts from its own source. Returns timestamped typed inputs, counts, the conditions decided, the path it would walk (nodes) and rendered planned effects; a slot bound to an earlier action's output is reported as known only when the run is real. A preview is not delivery confirmation.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: automationTestParamsSchema,
@@ -261,6 +286,7 @@ export class AutomationTools {
         params.id,
         this.user(),
         params.source,
+        params.node,
       ),
   });
 }

@@ -87,6 +87,14 @@ interface McpReply {
   error?: { message: string };
 }
 
+/**
+ * A graph as the tools take it (#Q3809): nodes and edges.
+ */
+const graphOf = (graph: { nodes: unknown[]; edges: unknown[] }) => ({
+  nodes: graph.nodes,
+  edges: graph.edges,
+});
+
 describe("Automation MCP transport uses shared application policy", () => {
   let alepha: Alepha;
   let entities: TestEntityRepositories;
@@ -152,7 +160,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     value(
       await call("automation_create", {
         title: "MCP rule",
-        rule: automationLine(ast),
+        ...graphOf(automationLine(ast)),
         ...extra,
       }),
     ) as AutomationResource;
@@ -322,7 +330,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       failed(
         await call("automation_create", {
           title: "Spoofed",
-          rule: automationLine(rule()),
+          ...graphOf(automationLine(rule())),
           authorUserId: user.id,
         }),
       ),
@@ -332,7 +340,7 @@ describe("Automation MCP transport uses shared application policy", () => {
         id: made.id,
         expectedRevision: 0,
         title: "Changed",
-        rule: automationLine(rule()),
+        ...graphOf(automationLine(rule())),
       }),
     );
     expect(changed.revision).toBe(1);
@@ -356,7 +364,7 @@ describe("Automation MCP transport uses shared application policy", () => {
             id: made.id,
             expectedRevision: 1,
             title: "Foreign",
-            rule: automationLine(rule()),
+            ...graphOf(automationLine(rule())),
           },
           manager,
         ),
@@ -474,7 +482,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     const enabled = value(
       await call("automation_create", {
         title: "On at once",
-        rule: automationLine(rule()),
+        ...graphOf(automationLine(rule())),
         enabled: true,
       }),
     );
@@ -488,7 +496,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     const draft = value(
       await call("automation_create", {
         title: "A draft",
-        rule: automationLine(rule()),
+        ...graphOf(automationLine(rule())),
       }),
     );
     expect(draft.enabled).toBe(false);
@@ -517,7 +525,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     const refusal = failed(
       await call("automation_create", {
         title: "Needs a channel",
-        rule: automationLine(unavailable),
+        ...graphOf(automationLine(unavailable)),
         enabled: true,
       }),
     );
@@ -539,7 +547,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       failed(
         await call("automation_create", {
           title: "Invalid",
-          rule: automationLine(invalid),
+          ...graphOf(automationLine(invalid)),
         }),
       ),
     ).toMatch(/select|unknown|key/i);
@@ -551,7 +559,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       failed(
         await call("automation_create", {
           title: "Foreign",
-          rule: automationLine(ast),
+          ...graphOf(automationLine(ast)),
         }),
       ),
     ).toMatch(/folio|project|found/i);
@@ -565,7 +573,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       failed(
         await call(
           "automation_create",
-          { title: "No source", rule: automationLine(rule()) },
+          { title: "No source", ...graphOf(automationLine(rule())) },
           scoped,
         ),
       ),
@@ -993,5 +1001,87 @@ describe("Automation MCP transport uses shared application policy", () => {
       available: false,
     });
     expect(limited.variables[0]).not.toHaveProperty("value");
+  });
+
+  it("authors graphs: the compact form, a refusal that names the source, positions, and one source switched", async ({
+    expect,
+  }) => {
+    const notify = {
+      type: "notify",
+      config: {
+        recipient: user.id,
+        channels: ["inbox"],
+        title: "Done",
+        text: "{{project}}",
+        category: "automations",
+      },
+    };
+    // "When a quest or an epic completes, notify me", in one call.
+    const compact = value(
+      await call("automation_create", {
+        title: "Compact",
+        sources: [{ type: "quest.completed" }, { type: "release.published" }],
+        actions: [notify],
+      }),
+    ) as AutomationResource;
+    expect(compact.rule?.nodes.map((node) => node.id)).toEqual([
+      "quest.completed",
+      "release.published",
+      "action-1",
+    ]);
+    expect(compact.rule?.nodes.every((node) => node.position)).toBe(true);
+    expect(compact.sources?.map((source) => source.summary)).toEqual([
+      "quest.completed -> notify inbox",
+      "release.published -> notify inbox",
+    ]);
+    // An action naming a field one source lacks: the compact form never
+    // invents per-source copies, and says so.
+    expect(
+      failed(
+        await call("automation_create", {
+          title: "Dishonest",
+          sources: [{ type: "quest.completed" }, { type: "release.published" }],
+          actions: [
+            {
+              ...notify,
+              config: { ...notify.config, text: "{{quest_count}}" },
+            },
+          ],
+        }),
+      ),
+    ).toContain("write nodes and edges to give that source its own action");
+    // Some positions and not others: refused.
+    const line = automationLine(rule());
+    expect(
+      failed(
+        await call("automation_create", {
+          title: "Half laid out",
+          nodes: [line.nodes[0], { ...line.nodes[1], position: undefined }],
+          edges: line.edges,
+        }),
+      ),
+    ).toContain("Give every node a position, or none");
+    // One source switched off, through its own tool.
+    const off = value(
+      await call("automation_source_set", {
+        id: compact.id,
+        node: "release.published",
+        enabled: false,
+        expectedRevision: compact.revision,
+      }),
+    ) as AutomationResource;
+    expect(off.sources?.map((source) => source.enabled)).toEqual([true, false]);
+    // A test names its source when there are several.
+    expect(failed(await call("automation_test", { id: compact.id }))).toContain(
+      "Choose the source to start from",
+    );
+    expect(
+      value(
+        await call("automation_runs", {
+          id: compact.id,
+          source: "quest.completed",
+        }),
+      ),
+    ).toMatchObject({ items: [] });
   });
 });

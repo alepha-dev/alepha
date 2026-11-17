@@ -474,7 +474,7 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
   it("writes, tests and deletes an automation, by the revision it read", async () => {
     const { owner, lore } = await ownProject();
     await lore.fs.writeFile(
-      "/work/rule.json",
+      "/work/graph.json",
       JSON.stringify(
         automationLine({
           trigger: { kind: "event", event: "feedback.created" },
@@ -500,10 +500,42 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     const created = await lore.json("automation create", [
       "--title",
       "Tell me",
-      "--rule",
-      "@rule.json",
+      "--graph",
+      "@graph.json",
     ]);
     expect(created.enabled).toBe(false);
+    // The compact form: a source and an action, wired by the server.
+    const compact = await lore.json("automation create", [
+      "--title",
+      "Compact",
+      "--source",
+      "feedback.created",
+      "--action",
+      JSON.stringify({
+        type: "notify",
+        config: {
+          recipient: owner.id,
+          channels: ["inbox"],
+          title: "Feedback",
+          text: "{{title}}",
+          category: "automations",
+        },
+      }),
+    ]);
+    expect(compact.rule.nodes.map((node: { id: string }) => node.id)).toEqual([
+      "feedback.created",
+      "action-1",
+    ]);
+    expect(compact.sources[0].summary).toBe("feedback.created -> notify inbox");
+    const switched = await lore.json("automation source set", [
+      compact.id,
+      "--node",
+      "feedback.created",
+      "--no-enabled",
+      "--expected-revision",
+      String(compact.revision),
+    ]);
+    expect(switched.sources[0].enabled).toBe(false);
     expect(await lore.run("automation list")).toContain("Tell me");
     expect(await lore.run("automation get", [created.id])).toContain(
       "feedback.created",
@@ -515,10 +547,10 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
       String(created.revision),
       "--title",
       "Renamed",
-      "--rule",
+      "--graph",
       "{",
     ]);
-    expect(notJson?.message).toContain("--rule is not JSON");
+    expect(notJson?.message).toContain("--graph is not JSON");
     const mixed = await lore.fail("automation update", [
       created.id,
       "--expected-revision",
@@ -546,6 +578,11 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
 
     const runs = await lore.json("automation runs", [created.id]);
     expect(runs.items[0].automationId).toBe(created.id);
+    // Only health records so far: no run any source started.
+    expect(
+      (await lore.json("automation runs", [created.id, "--source", "source"]))
+        .items,
+    ).toEqual([]);
     expect(await lore.run("automation test", [created.id])).toContain("{");
 
     await lore.run("automation variable set", [
@@ -576,6 +613,12 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
       created.id,
       "--expected-revision",
       String(stopped.revision),
+      "--yes",
+    ]);
+    await lore.run("automation delete", [
+      compact.id,
+      "--expected-revision",
+      String(switched.revision),
       "--yes",
     ]);
     expect(await lore.run("automation list")).toContain("no automations");

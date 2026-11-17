@@ -156,6 +156,7 @@ export {
 } from "../api/schemas/automationRunListQuerySchema.ts";
 export {
   AutomationGraphBuilder,
+  type AutomationCompact,
   type AutomationLine,
 } from "../api/schemas/AutomationGraphBuilder.ts";
 export {
