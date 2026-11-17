@@ -293,7 +293,20 @@ const AutomationOverviewPage = () => {
           trigger: {
             label: tr("automation.column.trigger"),
             className: "whitespace-nowrap",
-            cell: (row) => labels.trigger(row.rule),
+            cell: (row) => {
+              if (!row.sources) return labels.trigger(row.rule);
+              const listed = labels.sources(row.sources);
+              return (
+                <div className="flex flex-col">
+                  <span>{listed.names}</span>
+                  {listed.off && (
+                    <span className="text-muted-foreground text-xs">
+                      {listed.off}
+                    </span>
+                  )}
+                </div>
+              );
+            },
           },
           state: {
             label: tr("automation.column.state"),

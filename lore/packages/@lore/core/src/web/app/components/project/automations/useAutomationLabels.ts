@@ -3,6 +3,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { AutomationGraphNode } from "../../../../../api/schemas/automationGraphNodeSchema.ts";
 import type { AutomationGraphValue } from "../../../../../api/schemas/automationGraphSchema.ts";
 import type { AutomationResource } from "../../../../../api/schemas/automationResourceSchema.ts";
+import type { AutomationResourceSource } from "../../../../../api/schemas/automationResourceSourceSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 /**
@@ -90,5 +91,22 @@ export const useAutomationLabels = () => {
     const named = sources.slice(0, 2).map(source).join(", ");
     return sources.length > 2 ? `${named} +${sources.length - 2}` : named;
   };
-  return { events, states, tones, schedule, source, trigger };
+  /**
+   * What starts an automation, from its resource's sources (#Q3810): the
+   * first two named, then how many more, and how many are switched off.
+   * A list reads no graph.
+   */
+  const sources = (list: AutomationResourceSource[]) => {
+    const name = (item: AutomationResourceSource) =>
+      item.cron !== undefined
+        ? schedule(item.cron)
+        : (events[item.type] ?? item.type);
+    const named = list.slice(0, 2).map(name).join(", ");
+    const off = list.filter((item) => !item.enabled).length;
+    return {
+      names: list.length > 2 ? `${named} +${list.length - 2}` : named,
+      off: off ? tr("automation.trigger.off", { args: [String(off)] }) : "",
+    };
+  };
+  return { events, states, tones, schedule, source, trigger, sources };
 };

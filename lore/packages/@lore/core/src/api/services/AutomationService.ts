@@ -31,6 +31,7 @@ import {
 import { automationRunResourceSchema } from "../schemas/automationRunResourceSchema.ts";
 import type { AutomationTestSource } from "../schemas/automationTestSourceSchema.ts";
 import type { AutomationVariableApproval } from "../schemas/automationVariableApprovalSchema.ts";
+import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import {
   automationWriteBodySchema,
   type AutomationWriteBody,
@@ -930,6 +931,9 @@ export class AutomationService {
         health: health?.health ?? ("active" as const),
         ...(health?.reason ? { reason: health.reason } : {}),
         summary: this.summary(rule.rule, node.id),
+        ...(node.type === AutomationVocabulary.SCHEDULE
+          ? { cron: String(node.config.cron ?? "") }
+          : {}),
       };
     });
     return {

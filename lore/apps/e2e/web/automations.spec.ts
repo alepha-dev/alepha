@@ -317,6 +317,28 @@ test.describe("Automations", () => {
       new RegExp(`/${project.slug}/automations/${created.id}$`),
     );
     await expect(page.getByText("Disabled", { exact: true })).toBeVisible();
+    // The graph on a read-only canvas (#Q3810): the schedule, what it
+    // reads, the notification with its recipient and channel; a node opens
+    // its full configuration.
+    const canvas = page.getByTestId("automation-canvas");
+    await expect(canvas.getByTestId("automation-node-source")).toContainText(
+      "Daily at",
+    );
+    await expect(canvas.getByTestId("automation-node-read")).toContainText(
+      "daily",
+    );
+    const notify = canvas.getByTestId("automation-node-action-1");
+    await expect(notify).toContainText(owner.label);
+    await expect(notify).toContainText("In-app");
+    await expect(canvas.locator(".react-flow__node")).toHaveCount(
+      created.rule.nodes.length,
+    );
+    await notify.click();
+    const panel = page.getByTestId("automation-node-panel");
+    await expect(panel).toContainText("recipient");
+    await expect(panel).toContainText(me.id);
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
     const getPath = (await apiPath(page, "getAutomation"))
       .replace(":projectId", String(project.id))
       .replace(":id", created.id);
@@ -340,7 +362,8 @@ test.describe("Automations", () => {
     );
     await page.getByRole("button", { name: "Enable", exact: true }).click();
     expect((await enabled).ok()).toBe(true);
-    await expect(page.getByText("Active", { exact: true })).toBeVisible();
+    // The header's badge; the canvas's source dot reads "Active" too.
+    await expect(page.getByText("Active", { exact: true }).first()).toBeVisible();
     expect((await (await page.request.get(getPath)).json()).enabled).toBe(true);
     const variablesPath = (
       await apiPath(page, "listAutomationVariables")
@@ -454,9 +477,10 @@ test.describe("Automations", () => {
     await expect(page).toHaveURL(
       new RegExp(`/${project.slug}/automations/${created.id}$`),
     );
-    await expect(
-      page.getByText(/^Notify shared variable recipient via /),
-    ).toBeVisible();
+    // The notification's recipient is the shared variable, on the canvas.
+    await expect(page.getByTestId("automation-node-action-1-target")).toHaveText(
+      "{{recipient}}",
+    );
   });
 
   test("previews release publication through same-project folio and source pickers without appending", async ({
@@ -884,6 +908,14 @@ test.describe("Automations", () => {
         ),
       ).toHaveLength(1);
       await page.goto(`/${project.slug}/automations/runs/${runId}`);
+      // The run painted on the graph its snapshot holds (#Q3810).
+      await expect(page.getByTestId("automation-node-source")).toHaveAttribute(
+        "data-outcome",
+        "ran",
+      );
+      await expect(
+        page.getByTestId("automation-node-action-1"),
+      ).toHaveAttribute("data-outcome", "ran");
       await expect(
         page.getByRole("link", {
           name: "Delivery receipt: Delivered",

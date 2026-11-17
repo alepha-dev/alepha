@@ -17,6 +17,11 @@ export const automationResourceSourceSchema = z
      * What it does in one line (#Q3809): `host.offline -> notify inbox`.
      */
     summary: z.string().max(255).optional(),
+    /**
+     * A schedule's cron expression, so a list names it without the graph
+     * (#Q3810).
+     */
+    cron: z.string().max(255).optional(),
   })
   .strict();
 export type AutomationResourceSource = Infer<
