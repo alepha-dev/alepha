@@ -2,6 +2,7 @@ import { describe, it } from "vitest";
 
 import type { AutomationDescriptor } from "./automationDescriptorSchema.ts";
 import { AutomationGraph } from "./AutomationGraph.ts";
+import { AutomationGraphBuilder } from "./AutomationGraphBuilder.ts";
 import type { AutomationGraphNode } from "./automationGraphNodeSchema.ts";
 import {
   automationGraphSchema,
@@ -516,7 +517,7 @@ describe("AutomationGraph", () => {
           ),
         ),
       ).toContain(
-        "node 'c1': the comparison 'crossesAbove' follows a scalar read that supports it",
+        "node 'c1': the comparison 'crossesAbove' needs a scalar read that supports it, which this node does not follow",
       );
     });
 
@@ -799,13 +800,13 @@ describe("AutomationGraph", () => {
     });
   });
 
-  describe("fromV1", () => {
-    it("turns a v1 rule into a straight line with fixed ids", ({ expect }) => {
-      const value = AutomationGraph.fromV1({
-        version: 1,
-        trigger: { kind: "event", event: "epic.completed" },
-        select: null,
-        guard: { field: "quest_count", operator: "gt", value: 2 },
+  describe("the builder and the layout", () => {
+    it("builds a straight line with fixed ids, laid out left to right", ({
+      expect,
+    }) => {
+      const value = new AutomationGraphBuilder().line({
+        source: "epic.completed",
+        condition: { field: "quest_count", operator: "gt", value: 2 },
         actions: [
           {
             kind: "notify",
@@ -830,6 +831,64 @@ describe("AutomationGraph", () => {
         { from: "action-1", port: "out", to: "action-2" },
       ]);
       expect(messages(value)).toEqual([]);
+      expect(value.nodes.map((node) => node.position)).toEqual([
+        { x: 0, y: 0 },
+        { x: 280, y: 0 },
+        { x: 560, y: 0 },
+        { x: 840, y: 0 },
+      ]);
+    });
+
+    it("puts a node after the longest path to it, and stacks a column", ({
+      expect,
+    }) => {
+      const value = AutomationGraph.layout(
+        graph(
+          [
+            event("a", "host.offline"),
+            event("b", "host.online"),
+            notify("first"),
+            notify("last"),
+          ],
+          [
+            ["a", "first"],
+            ["first", "last"],
+            ["b", "last"],
+          ],
+        ),
+      );
+      const at = Object.fromEntries(
+        value.nodes.map((node) => [node.id, node.position]),
+      );
+      expect(at).toEqual({
+        a: { x: 0, y: 0 },
+        b: { x: 0, y: 140 },
+        first: { x: 280, y: 0 },
+        last: { x: 560, y: 0 },
+      });
+    });
+
+    it("normalizes a notification to its channels, deduplicated", ({
+      expect,
+    }) => {
+      const value = graphs.normalize(
+        graph(
+          [
+            event("a", "host.offline"),
+            notify("n", "{{host}}", { channels: ["inbox", "inbox", "email"] }),
+          ],
+          [["a", "n"]],
+        ),
+      );
+      expect(value.nodes[1].config.channels).toEqual(["inbox", "email"]);
+      expect(() =>
+        graphs.normalize(
+          graph(
+            [event("a", "host.offline"), notify("n", "x", { channels: [] })],
+            [["a", "n"]],
+          ),
+        ),
+      ).toThrow("names at least one channel");
     });
   });
 });

@@ -4,20 +4,19 @@ import { type UserAccountToken } from "alepha/security";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreCoreApi } from "../src/api/index.ts";
-import type { AutomationRule } from "../src/api/schemas/automationRuleSchema.ts";
 import { CapabilityRegistry } from "../src/api/schemas/CapabilityRegistry.ts";
 import { ProjectRankPresets } from "../src/api/security/ProjectRankPresets.ts";
 import { AutomationAccess } from "../src/api/services/AutomationAccess.ts";
 import { AutomationPersistence } from "../src/api/services/AutomationPersistence.ts";
 import {
+  automationLine,
   CoreTestEntities,
   createPresetRanks,
   createTestMember,
   createTestProject,
 } from "../src/testing/index.ts";
 
-const definition: AutomationRule = {
-  version: 1,
+const definition = automationLine({
   trigger: { kind: "event", event: "feedback.created" },
   select: null,
   guard: null,
@@ -31,7 +30,7 @@ const definition: AutomationRule = {
       category: "automations",
     },
   ],
-};
+});
 
 describe("Automation access", () => {
   let alepha: Alepha;

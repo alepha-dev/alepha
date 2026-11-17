@@ -15,7 +15,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Braces, Pause, Pencil, Play, PowerOff, Trash2 } from "lucide-react";
+import { Braces, Pause, Play, PowerOff, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
@@ -25,7 +25,6 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
-import AutomationRuleEditor from "./AutomationRuleEditor.tsx";
 import AutomationRuleSummary from "./AutomationRuleSummary.tsx";
 import AutomationRunList from "./AutomationRunList.tsx";
 import AutomationTestPanel from "./AutomationTestPanel.tsx";
@@ -49,8 +48,6 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
   const labels = useAutomationLabels();
   const [saved, setSaved] = useState<AutomationResource>();
   const [childBusy, setChildBusy] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [conflict, setConflict] = useState(false);
   const read = useQuery(
     {
       key: ["automation", project?.id, props.automationId],
@@ -161,54 +158,41 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
       }
       description={labels.trigger(rule.rule)}
       actions={
-        !editing && (
-          <>
-            {rule.canEdit && !rule.redacted && (
-              <Button
-                variant="outlined"
-                disabled={busy}
-                onClick={() => {
-                  setSaved(rule);
-                  setEditing(true);
-                }}
-              >
-                <Pencil className="size-4" />
-                {tr("automation.edit")}
-              </Button>
-            )}
-            {rule.canDelete && (
-              <Button
-                variant="outlined"
-                disabled={busy}
-                onClick={() => void remove.run()}
-              >
-                <Trash2 className="size-4" />
-                {tr("automation.delete")}
-              </Button>
-            )}
-            {rule.enabled && rule.canDisable && (
-              <Button
-                variant="outlined"
-                loading={toggle.loading}
-                disabled={busy}
-                onClick={() => void toggle.run(false)}
-              >
-                <Pause className="size-4" />
-                {tr("automation.disable")}
-              </Button>
-            )}
-            {!rule.enabled && rule.canEnable && (
-              <Button
-                loading={toggle.loading}
-                disabled={busy}
-                onClick={() => void toggle.run(true)}
-              >
-                <Play className="size-4" />
-                {tr("automation.enable")}
-              </Button>
-            )}
-          </>
-        )
+        // No editor until the canvas edits (#Q3811): an automation is
+        // created from a preset, switched and deleted.
+        <>
+          {rule.canDelete && (
+            <Button
+              variant="outlined"
+              disabled={busy}
+              onClick={() => void remove.run()}
+            >
+              <Trash2 className="size-4" />
+              {tr("automation.delete")}
+            </Button>
+          )}
+          {rule.enabled && rule.canDisable && (
+            <Button
+              variant="outlined"
+              loading={toggle.loading}
+              disabled={busy}
+              onClick={() => void toggle.run(false)}
+            >
+              <Pause className="size-4" />
+              {tr("automation.disable")}
+            </Button>
+          )}
+          {!rule.enabled && rule.canEnable && (
+            <Button
+              loading={toggle.loading}
+              disabled={busy}
+              onClick={() => void toggle.run(true)}
+            >
+              <Play className="size-4" />
+              {tr("automation.enable")}
+            </Button>
+          )}
+        </>
       }
     >
       {(rule.reason || rule.requiresApproval) && (
@@ -224,7 +208,7 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
           )}
         </div>
       )}
-      {!rule.enabled && !editing && (
+      {!rule.enabled && (
         // Unmistakable (#Q3573): a rule created and never enabled read as
         // "automations are not working". Said as an alert, for every
         // reader; the how-to line only for one who may enable it.
@@ -238,51 +222,10 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
           )}
         </Alert>
       )}
-      {conflict && (
-        <div
-          role="status"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 text-sm"
-        >
-          <p>{tr("automation.editor.conflict")}</p>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              setSaved(undefined);
-              setEditing(false);
-              setConflict(false);
-              queries.invalidate([
-                "automation",
-                project.id,
-                props.automationId,
-              ]);
-            }}
-          >
-            {tr("automation.editor.reload")}
-          </Button>
-        </div>
-      )}
       {rule.redacted ? (
         <p className="text-muted-foreground text-sm">
           {rule.redactionReason || tr("automation.redacted")}
         </p>
-      ) : editing && catalog.data ? (
-        <AutomationRuleEditor
-          key={`${rule.id}:${rule.revision}`}
-          resource={rule}
-          catalogue={catalog.data}
-          onSaved={(value) => {
-            setSaved(value);
-            setEditing(false);
-            setConflict(false);
-            queries.invalidate(["automations", value.projectId]);
-          }}
-          onCancel={() => {
-            setEditing(false);
-            setConflict(false);
-          }}
-          onConflict={() => setConflict(true)}
-          onBusyChange={setChildBusy}
-        />
       ) : (
         <>
           <AutomationRuleSummary rule={rule} />
@@ -318,7 +261,7 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
           />
         </>
       )}
-      {!editing && <AutomationRunList automationId={rule.id} />}
+      <AutomationRunList automationId={rule.id} />
     </AutomationPage>
   );
 };

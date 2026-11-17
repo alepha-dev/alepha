@@ -8,7 +8,8 @@ import {
   AutomationTemplateRenderer,
   AutomationVariables,
 } from "@lore/core/api";
-import { AutomationCron, type AutomationRule } from "@lore/core/schemas";
+import { AutomationCron } from "@lore/core/schemas";
+import { automationLine, type AutomationLineSpec } from "@lore/core/testing";
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { DatabaseProvider, sql } from "alepha/orm";
@@ -65,8 +66,7 @@ describe("Automation schedules and named selections", () => {
   const config = (
     kind: "rows" | "scalar" | "collection" = "rows",
     key = "quests.open",
-  ): AutomationRule => ({
-    version: 1,
+  ): AutomationLineSpec => ({
     trigger: { kind: "schedule", cron: "*/5 * * * *" },
     select: {
       kind,
@@ -90,7 +90,8 @@ describe("Automation schedules and named selections", () => {
       },
     ],
   });
-  const rule = async (ast = config(), enabled = false) => {
+  const rule = async (spec = config(), enabled = false) => {
+    const ast = automationLine(spec);
     const compiled = await alepha
       .inject(AutomationCatalog)
       .compile(project.id, user, ast);
@@ -384,7 +385,7 @@ describe("Automation schedules and named selections", () => {
         ),
     ).toMatchObject({ suppressed: true, reason: "empty_collection" });
     const unsafe = config();
-    unsafe.select!.filters.sql = "SELECT * FROM users";
+    unsafe.select!.filters!.sql = "SELECT * FROM users";
     await expect(rule(unsafe)).rejects.toThrow("unknown slot");
   });
   it("reports summary byte truncation even when the query total is exact", async ({

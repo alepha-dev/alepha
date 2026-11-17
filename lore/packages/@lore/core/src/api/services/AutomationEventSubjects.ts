@@ -34,10 +34,7 @@ export class AutomationEventSubjects {
     provenance: AutomationSourceProvenance;
   }> {
     // The event of the source a test starts from (#Q3804).
-    const origin = new AutomationGraph().source(
-      AutomationGraph.of(rule.rule),
-      node,
-    );
+    const origin = new AutomationGraph().source(rule.rule, node);
     if (origin.type === AutomationVocabulary.SCHEDULE)
       throw new BadRequestError("Scheduled rules do not accept event subjects");
     const key = origin.type;

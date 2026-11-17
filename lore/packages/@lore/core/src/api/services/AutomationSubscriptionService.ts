@@ -3,7 +3,7 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
-import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationSubscription } from "../schemas/automationSubscriptionSchema.ts";
 import { AutomationSubscriptionScope } from "../schemas/AutomationSubscriptionScope.ts";
 import type { AutomationSubscriptionSetBody } from "../schemas/automationSubscriptionSetBodySchema.ts";
@@ -36,6 +36,7 @@ import { AutomationService } from "./AutomationService.ts";
  *   on again replaces it.
  */
 export class AutomationSubscriptionService {
+  protected readonly graphs = $inject(AutomationGraph);
   protected readonly access = $inject(AutomationAccess);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
@@ -174,9 +175,7 @@ export class AutomationSubscriptionService {
     const channels = [
       ...new Set(
         enabled.flatMap((candidate) =>
-          candidate.rule.actions.flatMap((action) =>
-            AutomationRuleChannels.of(action),
-          ),
+          candidate.rule.nodes.flatMap((node) => this.graphs.channels(node)),
         ),
       ),
     ].sort();

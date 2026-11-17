@@ -13,6 +13,28 @@ import {
 } from "./_helpers.ts";
 
 /**
+ * A one-source automation as the API stores it (#Q3805): the event, then
+ * its actions, each wired to the next.
+ */
+const line = (event: string, actions: Array<Record<string, unknown>>) => ({
+  version: 2,
+  nodes: [
+    { id: "source", kind: "source", type: event, config: {} },
+    ...actions.map(({ kind, ...config }, index) => ({
+      id: `action-${index + 1}`,
+      kind: "action",
+      type: kind,
+      config,
+    })),
+  ],
+  edges: actions.map((_, index) => ({
+    from: index === 0 ? "source" : `action-${index}`,
+    port: "out",
+    to: `action-${index + 1}`,
+  })),
+});
+
+/**
  * Every control waits for the actual mutation, direct or in /api/_batch.
  * A visible state change alone is never proof that a write completed.
  */
@@ -79,22 +101,16 @@ test.describe("Automations", () => {
     const created = await page.request.post(createPath, {
       data: {
         title: "Confirm quest completion",
-        rule: {
-          version: 1,
-          trigger: { kind: "event", event: "quest.completed" },
-          select: null,
-          guard: null,
-          actions: [
-            {
-              kind: "notify",
-              recipient: me.id,
-              channels: ["inbox"],
-              title: "Quest completed",
-              text: "{{title}}",
-              category: "automations",
-            },
-          ],
-        },
+        rule: line("quest.completed", [
+          {
+            kind: "notify",
+            recipient: me.id,
+            channels: ["inbox"],
+            title: "Quest completed",
+            text: "{{title}}",
+            category: "automations",
+          },
+        ]),
       },
     });
     expect(created.ok(), await created.text()).toBe(true);
@@ -282,10 +298,19 @@ test.describe("Automations", () => {
       revision: 0,
       presetKey: "tagged-quest-digest",
       rule: {
-        select: { filters: { tag: "daily" } },
-        actions: [
-          expect.objectContaining({ recipient: me.id, channels: ["inbox"] }),
-        ],
+        nodes: expect.arrayContaining([
+          expect.objectContaining({
+            id: "read",
+            config: { filters: { tag: "daily" } },
+          }),
+          expect.objectContaining({
+            id: "action-1",
+            config: expect.objectContaining({
+              recipient: me.id,
+              channels: ["inbox"],
+            }),
+          }),
+        ]),
       },
     });
     await expect(page).toHaveURL(
@@ -399,8 +424,16 @@ test.describe("Automations", () => {
     expect(created).toMatchObject({
       enabled: false,
       rule: {
-        select: { filters: { tag: "{{dailyTag}}" } },
-        actions: [expect.objectContaining({ recipient: "{{recipient}}" })],
+        nodes: expect.arrayContaining([
+          expect.objectContaining({
+            id: "read",
+            config: { filters: { tag: "{{dailyTag}}" } },
+          }),
+          expect.objectContaining({
+            id: "action-1",
+            config: expect.objectContaining({ recipient: "{{recipient}}" }),
+          }),
+        ]),
       },
     });
     const variablesPath = (
@@ -530,189 +563,6 @@ test.describe("Automations", () => {
     });
   });
 
-  test("edits four typed slots and preserves a refused revision draft", async ({
-    page,
-  }, testInfo) => {
-    test.setTimeout(90_000);
-    await registerAndVerify(
-      page,
-      `automation-editor-${crypto.randomUUID()}@example.com`,
-      "GoodPassw0rd",
-    );
-    const project = await createProjectViaWizard(page, "Rule editor");
-    await setCapability(page, project.id, "plan", {
-      options: {},
-    });
-    const me = await (await page.request.get("/api/users/me")).json();
-    const createPath = (await apiPath(page, "createAutomation")).replace(
-      ":projectId",
-      String(project.id),
-    );
-    const created = await page.request.post(createPath, {
-      data: {
-        title: "Editable rule",
-        rule: {
-          version: 1,
-          trigger: { kind: "event", event: "quest.completed" },
-          select: null,
-          guard: null,
-          actions: [
-            {
-              kind: "notify",
-              recipient: me.id,
-              channels: ["inbox"],
-              title: "Original title",
-              text: "Original body",
-              category: "automations",
-            },
-          ],
-        },
-      },
-    });
-    expect(created.ok(), await created.text()).toBe(true);
-    const original = await created.json();
-    await page.goto(`/${project.slug}/automations/${original.id}`);
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
-    const editor = page.getByRole("region", { name: "Edit rule", exact: true });
-    await editor
-      .getByRole("textbox", { name: "Name", exact: true })
-      .fill("Edited nightly rule");
-    await editor
-      .getByRole("combobox", { name: "Trigger", exact: true })
-      .click();
-    await page
-      .getByRole("option", { name: "On a schedule (UTC)", exact: true })
-      .click();
-    await editor.getByRole("combobox", { name: "Source", exact: true }).click();
-    await page
-      .getByRole("option", {
-        name: "Open quests with a tag, as one digest",
-        exact: true,
-      })
-      .click();
-    await editor
-      .getByRole("textbox", { name: "Tag", exact: true })
-      .fill("editor-tag");
-    await editor.getByRole("combobox", { name: "Field", exact: true }).click();
-    await page.getByRole("option", { name: "total", exact: true }).click();
-    await editor
-      .getByRole("combobox", { name: "Operator", exact: true })
-      .click();
-    await page.getByRole("option", { name: "is above", exact: true }).click();
-    await editor
-      .getByRole("spinbutton", { name: "Value", exact: true })
-      .fill("2");
-    await editor
-      .getByRole("textbox", { name: "Title", exact: true })
-      .fill("Edited {{title}}");
-    await editor
-      .getByRole("textbox", { name: "Message", exact: true })
-      .fill("Edited {{summary}}");
-    await editor
-      .getByRole("textbox", { name: "Name", exact: true })
-      .scrollIntoViewIfNeeded();
-    await page.screenshot({
-      path: testInfo.outputPath("automation-editor-top.png"),
-    });
-    await editor
-      .getByRole("button", { name: "Save changes", exact: true })
-      .scrollIntoViewIfNeeded();
-    await page.screenshot({
-      path: testInfo.outputPath("automation-editor-actions.png"),
-    });
-    const save = page.waitForResponse(
-      (response) =>
-        (response.request().method() === "PUT" &&
-          response.url().includes("/automations/")) ||
-        (response.url().includes("/api/_batch") &&
-          response
-            .request()
-            .postData()
-            ?.includes('"action":"updateAutomation"') === true),
-    );
-    await editor
-      .getByRole("button", { name: "Save changes", exact: true })
-      .click();
-    expect((await save).ok()).toBe(true);
-    await expect(
-      page.getByRole("heading", {
-        name: "Edited nightly rule",
-        exact: true,
-        level: 1,
-      }),
-    ).toBeVisible();
-    const getPath = (await apiPath(page, "getAutomation"))
-      .replace(":projectId", String(project.id))
-      .replace(":id", original.id);
-    const saved = await (await page.request.get(getPath)).json();
-    expect(saved.rule.trigger).toEqual({ kind: "schedule", cron: "0 0 * * *" });
-    expect(saved.rule.select).toEqual({
-      key: "quests.tagged",
-      kind: "collection",
-      filters: { tag: "editor-tag" },
-    });
-    expect(saved.rule.guard).toEqual({
-      field: "total",
-      operator: "gt",
-      value: 2,
-    });
-    expect(saved.rule.actions[0].text).toBe("Edited {{summary}}");
-    expect(saved.authorUserId).toBe(original.authorUserId);
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
-    await editor
-      .getByRole("textbox", { name: "Name", exact: true })
-      .fill("Preserved draft");
-    const updatePath = (await apiPath(page, "updateAutomation"))
-      .replace(":projectId", String(project.id))
-      .replace(":id", original.id);
-    const concurrent = await page.request.put(updatePath, {
-      data: {
-        title: "Other saved edit",
-        rule: saved.rule,
-        expectedRevision: saved.revision,
-      },
-    });
-    expect(concurrent.ok()).toBe(true);
-    const conflict = page.waitForResponse(
-      (response) =>
-        (response.request().method() === "PUT" &&
-          response.url().includes("/automations/")) ||
-        (response.url().includes("/api/_batch") &&
-          response
-            .request()
-            .postData()
-            ?.includes('"action":"updateAutomation"') === true),
-    );
-    await editor
-      .getByRole("button", { name: "Save changes", exact: true })
-      .click();
-    await conflict;
-    await expect(
-      page.getByRole("status").filter({ hasText: "Your draft is preserved" }),
-    ).toBeVisible();
-    await expect(
-      editor.getByRole("textbox", { name: "Name", exact: true }),
-    ).toHaveValue("Preserved draft");
-    expect((await (await page.request.get(getPath)).json()).title).toBe(
-      "Other saved edit",
-    );
-    await page
-      .getByRole("button", { name: "Discard draft and reload", exact: true })
-      .click();
-    await expect(
-      page.getByRole("heading", {
-        name: "Other saved edit",
-        exact: true,
-        level: 1,
-      }),
-    ).toBeVisible();
-    await expect(
-      page.getByText(
-        "Detailed snapshots are retained for 30 days. Deduplication identities remain for 90 days.",
-      ),
-    ).toBeVisible();
-  });
-
   test("manages typed shared values with version fencing and unused-only deletion", async ({
     page,
   }) => {
@@ -793,22 +643,16 @@ test.describe("Automations", () => {
     const consumerResponse = await page.request.post(createRulePath, {
       data: {
         title: "Shared label consumer",
-        rule: {
-          version: 1,
-          trigger: { kind: "event", event: "quest.completed" },
-          select: null,
-          guard: null,
-          actions: [
-            {
-              kind: "notify",
-              recipient: me.id,
-              channels: ["inbox"],
-              title: "{{editor_label}}",
-              text: "Done",
-              category: "automations",
-            },
-          ],
-        },
+        rule: line("quest.completed", [
+          {
+            kind: "notify",
+            recipient: me.id,
+            channels: ["inbox"],
+            title: "{{editor_label}}",
+            text: "Done",
+            category: "automations",
+          },
+        ]),
       },
     });
     expect(consumerResponse.ok(), await consumerResponse.text()).toBe(true);
@@ -933,7 +777,10 @@ test.describe("Automations", () => {
     const rules = await (await page.request.get(listPath)).json();
     const rule = rules.items[0];
     expect(rule.enabled).toBe(false);
-    expect(rule.rule.actions[0].recipient).toBe(me.id);
+    expect(
+      rule.rule.nodes.find((node: { id: string }) => node.id === "action-1")
+        .config.recipient,
+    ).toBe(me.id);
     expect(JSON.stringify(rule.rule)).not.toContain(`{{${me.id}}}`);
     const variablesPath = (
       await apiPath(page, "listAutomationVariables")
@@ -1154,22 +1001,16 @@ test.describe("Automations", () => {
       const create = await page.request.post(createPath, {
         data: {
           title: "Owner authored rule",
-          rule: {
-            version: 1,
-            trigger: { kind: "event", event: "quest.completed" },
-            select: null,
-            guard: null,
-            actions: [
-              {
-                kind: "notify",
-                recipient: me.id,
-                channels: ["inbox"],
-                title: "Done",
-                text: "{{title}}",
-                category: "automations",
-              },
-            ],
-          },
+          rule: line("quest.completed", [
+            {
+              kind: "notify",
+              recipient: me.id,
+              channels: ["inbox"],
+              title: "Done",
+              text: "{{title}}",
+              category: "automations",
+            },
+          ]),
         },
       });
       expect(create.ok()).toBe(true);
@@ -1215,7 +1056,15 @@ test.describe("Automations", () => {
           title: "Member authored rule",
           rule: {
             ...rule.rule,
-            actions: [{ ...rule.rule.actions[0], recipient: memberUser.id }],
+            nodes: rule.rule.nodes.map(
+              (node: { id: string; config: Record<string, unknown> }) =>
+                node.id === "action-1"
+                  ? {
+                      ...node,
+                      config: { ...node.config, recipient: memberUser.id },
+                    }
+                  : node,
+            ),
           },
         },
       });

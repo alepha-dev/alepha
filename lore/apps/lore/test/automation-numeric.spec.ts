@@ -8,10 +8,8 @@ import {
   AutomationVariables,
   DashboardMetricRegistry,
 } from "@lore/core/api";
-import {
-  dashboardCardValueSchema,
-  type AutomationRule,
-} from "@lore/core/schemas";
+import { dashboardCardValueSchema } from "@lore/core/schemas";
+import { automationLine, type AutomationLineSpec } from "@lore/core/testing";
 import { QualityController } from "@lore/ship/api";
 import { qualityRuns } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
@@ -42,10 +40,9 @@ describe("Automation numeric guards and shared quality metrics", () => {
   let guards: AutomationGuards;
   const ast = (
     key = "quality.coverage.lines",
-    operator: NonNullable<AutomationRule["guard"]>["operator"] = "delta",
+    operator: NonNullable<AutomationLineSpec["guard"]>["operator"] = "delta",
     threshold: string | number = 5,
-  ): AutomationRule => ({
-    version: 1,
+  ): AutomationLineSpec => ({
     trigger: { kind: "schedule", cron: "10 0 * * *" },
     select: {
       kind: "scalar",
@@ -64,7 +61,8 @@ describe("Automation numeric guards and shared quality metrics", () => {
       },
     ],
   });
-  const create = async (rule = ast()) => {
+  const create = async (spec = ast()) => {
+    const rule = automationLine(spec);
     await alepha.inject(AutomationCatalog).validate(project.id, user, rule);
     const row = await persistence.rules.create({
       projectId: project.id,
@@ -277,14 +275,14 @@ describe("Automation numeric guards and shared quality metrics", () => {
   }) => {
     const catalog = alepha.inject(AutomationCatalog);
     await expect(create(ast("quality.tests.total", "delta"))).rejects.toThrow(
-      "not supported",
+      "the comparison 'delta' needs a scalar read that supports it, which this node does not follow",
     );
     for (const operator of ["eq", "ne", "lt", "lte", "gt", "gte"] as const) {
       await expect(
         catalog.validate(
           project.id,
           user,
-          ast("quality.coverage.lines", operator, "5"),
+          automationLine(ast("quality.coverage.lines", operator, "5")),
         ),
       ).rejects.toThrow();
       const row = await create(ast("quality.coverage.lines", operator));
@@ -299,8 +297,10 @@ describe("Automation numeric guards and shared quality metrics", () => {
     text.guard!.field = "branch";
     text.guard!.operator = "gt";
     text.guard!.value = "main";
-    await expect(catalog.validate(project.id, user, text)).rejects.toThrow(
-      "requires a numeric",
+    await expect(
+      catalog.validate(project.id, user, automationLine(text)),
+    ).rejects.toThrow(
+      "the comparison 'gt' needs a numeric field, and 'branch' is text",
     );
   });
   it("stores crossing observations exactly once, rearms on falling values and resumes the original decision after a crash", async ({
@@ -356,7 +356,7 @@ describe("Automation numeric guards and shared quality metrics", () => {
     expect(await observe(6)).toMatchObject({ matched: true });
     expect(await observe(7)).toMatchObject({ matched: false });
     await persistence.rules.updateById(row.id, {
-      rule: ast("openErrors", "crossesAbove", 6),
+      rule: automationLine(ast("openErrors", "crossesAbove", 6)),
       revision: row.revision + 1,
     });
     expect(await observe(8)).toMatchObject({ matched: false });
@@ -374,24 +374,28 @@ describe("Automation numeric guards and shared quality metrics", () => {
       ...row,
       baseline: { signature: first.signature!, value: 4 },
     };
-    const changed = structuredClone(row.rule);
+    const changed = ast("openErrors", "crossesAbove", 5);
     changed.trigger = { kind: "schedule", cron: "0 * * * *" };
     changed.actions[0] = {
       ...changed.actions[0],
       title: "Changed",
     } as (typeof changed.actions)[0];
     const next = await guards.evaluate({
-      rule: { ...withBaseline, rule: changed },
+      rule: { ...withBaseline, rule: automationLine(changed) },
       context: { value: 6 },
       variables: [],
     });
     expect(next).toMatchObject({ matched: true, signature: first.signature });
-    expect(await guards.configurationChanged(row.rule, changed)).toBe(false);
+    expect(
+      await guards.configurationChanged(row.rule, automationLine(changed)),
+    ).toBe(false);
     changed.guard!.value = 6;
-    expect(await guards.configurationChanged(row.rule, changed)).toBe(true);
+    expect(
+      await guards.configurationChanged(row.rule, automationLine(changed)),
+    ).toBe(true);
     expect(
       await guards.evaluate({
-        rule: { ...withBaseline, rule: changed },
+        rule: { ...withBaseline, rule: automationLine(changed) },
         context: { value: 7 },
         variables: [],
       }),

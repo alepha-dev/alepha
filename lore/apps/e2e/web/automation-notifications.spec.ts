@@ -230,12 +230,18 @@ test.describe("Every notification through automations", () => {
           enabled: boolean;
           health: string;
           rule: {
-            actions: Array<{ kind: string; channels?: string[] }>;
+            nodes: Array<{
+              id: string;
+              config: { channels?: string[] } & Record<string, unknown>;
+            }>;
           } & Record<string, unknown>;
         };
       const before = await read();
       const rule = structuredClone(before.rule);
-      rule.actions[0].channels = ["inbox", discord.id];
+      rule.nodes.find((node) => node.id === "action-1")!.config.channels = [
+        "inbox",
+        discord.id,
+      ];
       const edited = await page.request.put(down, {
         data: {
           title: before.title,
@@ -259,7 +265,9 @@ test.describe("Every notification through automations", () => {
       const kept = await read();
       expect(kept.enabled).toBe(true);
       expect(kept.health).toBe("active");
-      expect(kept.rule.actions[0].channels).toEqual(["inbox"]);
+      expect(
+        kept.rule.nodes.find((node) => node.id === "action-1")?.config.channels,
+      ).toEqual(["inbox"]);
       await check(`${baseURL}/`, "up");
       await settled(up, 2);
       await check(missing, "down");

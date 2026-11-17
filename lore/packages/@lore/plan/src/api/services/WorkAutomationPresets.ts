@@ -5,7 +5,9 @@ import {
 import {
   AutomationVocabulary,
   type AutomationPresetDescriptor,
-  type AutomationRule,
+  AutomationGraphBuilder,
+  type AutomationGraphValue,
+  type AutomationAction,
 } from "@lore/core/schemas";
 import { $inject } from "alepha";
 
@@ -14,6 +16,7 @@ import { $inject } from "alepha";
  * Recipients start as setup literals. Shared values require explicit typed binding.
  */
 export class WorkAutomationPresets {
+  protected readonly builder = new AutomationGraphBuilder();
   protected readonly presets = $inject(AutomationPresetRegistry);
   protected readonly vocabulary = new AutomationVocabulary();
   constructor() {
@@ -108,12 +111,11 @@ export class WorkAutomationPresets {
       (values, bindings) => this.reminder({ ...values, ...bindings }),
     );
   }
-  protected reminder(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: { kind: "schedule", cron: "0 * * * *" },
-      select: { kind: "rows", key: "quests.remindersDue", filters: {} },
-      guard: null,
+  protected reminder(values: AutomationPresetValues): AutomationGraphValue {
+    return this.builder.line({
+      source: "schedule",
+      cron: "0 * * * *",
+      read: { key: "quests.remindersDue" },
       actions: [
         {
           kind: "notify",
@@ -124,14 +126,14 @@ export class WorkAutomationPresets {
           text: "{{project}}: {{title}} (#Q{{shortId}}) is still open. Open quest: {{url}}. Change the cadence or turn reminders off in the quest Settings panel.",
         },
       ],
-    };
+    });
   }
   protected register(
     key: string,
     title: string,
     description: string,
     source: string,
-    build: (values: AutomationPresetValues) => AutomationRule,
+    build: (values: AutomationPresetValues) => AutomationGraphValue,
     schedule?: string,
     extra: AutomationPresetDescriptor["slots"] = {},
     actions: string[] = ["notify"],
@@ -183,7 +185,7 @@ export class WorkAutomationPresets {
     values: AutomationPresetValues,
     title: string,
     text: string,
-  ): Extract<AutomationRule["actions"][number], { kind: "notify" }> {
+  ): Extract<AutomationAction, { kind: "notify" }> {
     return {
       kind: "notify",
       ...(values.recipient !== undefined && values.recipient !== ""
@@ -195,12 +197,9 @@ export class WorkAutomationPresets {
       category: "automations",
     };
   }
-  protected feedback(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: { kind: "event", event: "feedback.created" },
-      select: null,
-      guard: null,
+  protected feedback(values: AutomationPresetValues): AutomationGraphValue {
+    return this.builder.line({
+      source: "feedback.created",
       actions: [
         this.notify(
           values,
@@ -208,40 +207,31 @@ export class WorkAutomationPresets {
           "{{project}} received {{reference}}.\n\n{{description}}",
         ),
       ],
-    };
+    });
   }
-  protected tagged(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: { kind: "schedule", cron: "0 0 * * *" },
-      select: {
-        kind: "collection",
-        key: "quests.tagged",
-        filters: { tag: String(values.tag) },
-      },
-      guard: null,
+  protected tagged(values: AutomationPresetValues): AutomationGraphValue {
+    return this.builder.line({
+      source: "schedule",
+      cron: "0 0 * * *",
+      read: { key: "quests.tagged", filters: { tag: String(values.tag) } },
       actions: [
         this.notify(values, "Tagged quest digest: {{tag}}", "{{summary}}"),
       ],
-    };
+    });
   }
-  protected weekly(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: { kind: "schedule", cron: "0 8 * * 1" },
-      select: { kind: "collection", key: "reports.summary", filters: {} },
-      guard: null,
+  protected weekly(values: AutomationPresetValues): AutomationGraphValue {
+    return this.builder.line({
+      source: "schedule",
+      cron: "0 8 * * 1",
+      read: { key: "reports.summary" },
       actions: [
         this.notify(values, "Weekly report: {{project}}", "{{summary}}"),
       ],
-    };
+    });
   }
-  protected published(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: { kind: "event", event: "release.published" },
-      select: null,
-      guard: null,
+  protected published(values: AutomationPresetValues): AutomationGraphValue {
+    return this.builder.line({
+      source: "release.published",
       actions: [
         {
           ...this.notify(
@@ -252,14 +242,11 @@ export class WorkAutomationPresets {
           category: "releases",
         },
       ],
-    };
+    });
   }
-  protected release(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: { kind: "event", event: "release.published" },
-      select: null,
-      guard: null,
+  protected release(values: AutomationPresetValues): AutomationGraphValue {
+    return this.builder.line({
+      source: "release.published",
       actions: [
         {
           kind: "appendFolio",
@@ -275,14 +262,11 @@ export class WorkAutomationPresets {
           category: "releases",
         },
       ],
-    };
+    });
   }
-  protected epic(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: { kind: "event", event: "epic.completed" },
-      select: null,
-      guard: null,
+  protected epic(values: AutomationPresetValues): AutomationGraphValue {
+    return this.builder.line({
+      source: "epic.completed",
       actions: [
         this.notify(
           values,
@@ -290,6 +274,6 @@ export class WorkAutomationPresets {
           "Epic {{shortId}} completed. Quests: {{quest_count}}.\n{{url}}\n{{project}}",
         ),
       ],
-    };
+    });
   }
 }

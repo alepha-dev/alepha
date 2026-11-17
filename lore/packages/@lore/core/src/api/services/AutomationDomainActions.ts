@@ -2,8 +2,8 @@ import { $inject, AlephaError } from "alepha";
 import { BadRequestError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
+import type { AutomationAction } from "../schemas/automationActionSchema.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
-import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
@@ -159,7 +159,7 @@ export class AutomationDomainActions {
   }
 }
 export type AutomationDomainAction = Exclude<
-  AutomationRule["actions"][number],
+  AutomationAction,
   { kind: "notify" }
 >;
 export interface AutomationDomainHandler {

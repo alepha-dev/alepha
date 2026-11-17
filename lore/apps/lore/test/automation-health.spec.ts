@@ -11,8 +11,11 @@ import {
   LoreInboxRecipientProvider,
   ProjectCapabilityController,
 } from "@lore/core/api";
-import type { AutomationRule } from "@lore/core/schemas";
-import { createPresetRanks } from "@lore/core/testing";
+import {
+  automationLine,
+  type AutomationLineSpec,
+  createPresetRanks,
+} from "@lore/core/testing";
 import { Alepha, AlephaError } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { apiKeyEntity } from "alepha/api/keys";
@@ -75,8 +78,7 @@ describe("Automation enable intent and health", () => {
   let entities: TestEntityRepositories;
   let project: Awaited<ReturnType<typeof createTestProject>>;
   let user: UserAccountToken;
-  const ast = (): AutomationRule => ({
-    version: 1,
+  const ast = (): AutomationLineSpec => ({
     trigger: { kind: "event", event: "feedback.created" },
     select: null,
     guard: null,
@@ -103,7 +105,7 @@ describe("Automation enable intent and health", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Rule",
-      rule: ast(),
+      rule: automationLine(ast()),
     });
     return enabled ? enable(row.id, true) : row;
   };
@@ -422,7 +424,7 @@ describe("Automation enable intent and health", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Shared",
-      rule: config,
+      rule: automationLine(config),
     });
     await enable(rule.id, true);
     const manager = await entities.users.create({ roles: ["user"] });

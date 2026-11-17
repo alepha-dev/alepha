@@ -4,7 +4,7 @@ import {
   AutomationService,
   AutomationWorker,
 } from "@lore/core/api";
-import { createPresetRanks } from "@lore/core/testing";
+import { automationLine, createPresetRanks } from "@lore/core/testing";
 import { UptimeStateService } from "@lore/ship/api";
 import { monitors } from "@lore/ship/schemas";
 import { Alepha, AlephaError } from "alepha";
@@ -69,8 +69,7 @@ describe("Monitor automation events (#Q3610)", () => {
     alepha.inject(AutomationService).create(project.id, user, {
       title: event,
       enabled: true,
-      rule: {
-        version: 1,
+      rule: automationLine({
         trigger: {
           kind: "event",
           event,
@@ -88,7 +87,7 @@ describe("Monitor automation events (#Q3610)", () => {
             text: "{{monitor}} {{target}} {{error}}",
           },
         ],
-      },
+      }),
     });
   const seed = (name = "Website") =>
     rows.monitors.create({

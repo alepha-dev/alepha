@@ -3,9 +3,11 @@ import {
   AutomationPresetRegistry,
   type AutomationPresetValues,
 } from "@lore/core/api";
-import type {
-  AutomationPresetDescriptor,
-  AutomationRule,
+import {
+  type AutomationAction,
+  AutomationGraphBuilder,
+  type AutomationGraphValue,
+  type AutomationPresetDescriptor,
 } from "@lore/core/schemas";
 import { $inject } from "alepha";
 
@@ -17,6 +19,7 @@ import { QualityNumericCatalog } from "./QualityNumericCatalog.ts";
  * neither queries nor ingest hooks, and leave comparison state to the engine.
  */
 export class DeployAutomationNumericPresets {
+  protected readonly builder = new AutomationGraphBuilder();
   protected readonly presets = $inject(AutomationPresetRegistry);
   protected readonly catalog = $inject(AutomationCatalog);
   // Ensure metadata is registered before deriving preset context and needs.
@@ -60,7 +63,7 @@ export class DeployAutomationNumericPresets {
     source: string,
     schedule: string,
     slots: AutomationPresetDescriptor["slots"],
-    build: (values: AutomationPresetValues) => AutomationRule,
+    build: (values: AutomationPresetValues) => AutomationGraphValue,
   ) {
     const entry = this.catalog.entries().find((entry) => entry.key === source)!;
     this.presets.register(
@@ -98,7 +101,7 @@ export class DeployAutomationNumericPresets {
     values: AutomationPresetValues,
     title: string,
     text: string,
-  ): AutomationRule["actions"][number] {
+  ): AutomationAction {
     return {
       kind: "notify",
       ...(values.recipient !== undefined && values.recipient !== ""
@@ -110,16 +113,15 @@ export class DeployAutomationNumericPresets {
       category: "automations",
     };
   }
-  protected coverage(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: { kind: "schedule", cron: "10 0 * * *" },
-      select: {
-        kind: "scalar",
+  protected coverage(values: AutomationPresetValues): AutomationGraphValue {
+    return this.builder.line({
+      source: "schedule",
+      cron: "10 0 * * *",
+      read: {
         key: "quality.coverage.lines",
         filters: { branch: String(values.branch) },
       },
-      guard: {
+      condition: {
         field: "value",
         operator: "delta",
         value:
@@ -134,18 +136,16 @@ export class DeployAutomationNumericPresets {
           `Line coverage regressed on {{branch}}.\n{{previous_day}}: {{previous}}%\n{{day}}: {{value}}%\nAlert threshold: ${typeof values.threshold === "number" ? values.threshold : String(values.threshold)} percentage points.\n{{project}}`,
         ),
       ],
-    };
+    });
   }
-  protected projectErrors(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: { kind: "schedule", cron: "*/5 * * * *" },
-      select: {
-        kind: "scalar",
-        key: "openErrors",
-        filters: { status: "open" },
-      },
-      guard: {
+  protected projectErrors(
+    values: AutomationPresetValues,
+  ): AutomationGraphValue {
+    return this.builder.line({
+      source: "schedule",
+      cron: "*/5 * * * *",
+      read: { key: "openErrors", filters: { status: "open" } },
+      condition: {
         field: "value",
         operator: "crossesAbove",
         value:
@@ -160,6 +160,6 @@ export class DeployAutomationNumericPresets {
           `Open errors: {{value}}.\nCrossed above ${typeof values.threshold === "number" ? values.threshold : String(values.threshold)}.\n{{project}}`,
         ),
       ],
-    };
+    });
   }
 }

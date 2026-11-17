@@ -3,6 +3,7 @@ import {
   ProjectMergeController,
   ProjectMergeService,
 } from "@lore/core/api";
+import { automationLine } from "@lore/core/testing";
 import { appInstances, qualityRuns, sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
@@ -235,8 +236,7 @@ describe("ProjectMergeService across every module", () => {
       projectId: source.id,
       authorUserId: source.createdBy,
       title: "Gone",
-      rule: {
-        version: 1,
+      rule: automationLine({
         trigger: { kind: "event", event: "quest.completed" },
         select: null,
         guard: null,
@@ -250,7 +250,7 @@ describe("ProjectMergeService across every module", () => {
             category: "automations",
           },
         ],
-      },
+      }),
     });
     await rules.deleteById(rule.id);
 

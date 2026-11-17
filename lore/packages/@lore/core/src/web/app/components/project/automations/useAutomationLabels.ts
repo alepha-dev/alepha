@@ -1,7 +1,8 @@
 import { useI18n } from "alepha/react/i18n";
 
+import type { AutomationGraphNode } from "../../../../../api/schemas/automationGraphNodeSchema.ts";
+import type { AutomationGraphValue } from "../../../../../api/schemas/automationGraphSchema.ts";
 import type { AutomationResource } from "../../../../../api/schemas/automationResourceSchema.ts";
-import type { AutomationRule } from "../../../../../api/schemas/automationRuleSchema.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 /**
@@ -72,11 +73,22 @@ export const useAutomationLabels = () => {
       });
     return tr("automation.schedule.cron", { args: [cron] });
   };
-  const trigger = (rule: AutomationRule | undefined | null) =>
-    !rule
-      ? tr("automation.redacted")
-      : rule.trigger.kind === "event"
-        ? (events[rule.trigger.event] ?? rule.trigger.event)
-        : schedule(rule.trigger.cron);
-  return { events, states, tones, schedule, trigger };
+  /**
+   * What starts a source (#Q3805): its event, or its schedule in words.
+   */
+  const source = (node: AutomationGraphNode) =>
+    node.type === "schedule"
+      ? schedule(String(node.config.cron ?? ""))
+      : (events[node.type] ?? node.type);
+  /**
+   * What starts an automation: its sources, the first two named, then how
+   * many more.
+   */
+  const trigger = (rule: AutomationGraphValue | undefined | null) => {
+    if (!rule) return tr("automation.redacted");
+    const sources = rule.nodes.filter((node) => node.kind === "source");
+    const named = sources.slice(0, 2).map(source).join(", ");
+    return sources.length > 2 ? `${named} +${sources.length - 2}` : named;
+  };
+  return { events, states, tones, schedule, source, trigger };
 };

@@ -6,7 +6,7 @@ import { ConflictError, ForbiddenError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
 import type { Automation } from "../entities/automations.ts";
-import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
+import type { AutomationAction } from "../schemas/automationActionSchema.ts";
 import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
 import { AutomationOrigin } from "./AutomationOrigin.ts";
@@ -237,7 +237,7 @@ export interface AutomationMutationState {
    */
   node: string;
   row?: number;
-  action: Exclude<AutomationRule["actions"][number], { kind: "notify" }>;
+  action: Exclude<AutomationAction, { kind: "notify" }>;
   target: { table: string; mode: "create" | "update"; id?: string | number };
   condition?: SQLLike;
   result: (

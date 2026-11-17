@@ -5,6 +5,7 @@ import {
   AutomationOrigin,
   AutomationPersistence,
 } from "@lore/core/api";
+import { automationLine } from "@lore/core/testing";
 import {
   FeedbackController,
   QuestController,
@@ -127,11 +128,8 @@ describe.skipIf(onPostgres)("Automation domain source integration", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Source rule",
-      rule: {
-        version: 1,
+      rule: automationLine({
         trigger: { kind: "event", event },
-        select: null,
-        guard: null,
         actions: [
           {
             kind: "notify",
@@ -142,7 +140,7 @@ describe.skipIf(onPostgres)("Automation domain source integration", () => {
             category: "automations",
           },
         ],
-      },
+      }),
     });
     return persistence.rules.updateById(row.id, { enabled: true });
   };

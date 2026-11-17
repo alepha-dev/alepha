@@ -1,4 +1,4 @@
-import { z } from "alepha";
+import { type Infer, z } from "alepha";
 
 import { automationValueSchema } from "./automationValueSchema.ts";
 
@@ -64,3 +64,5 @@ export const automationActionSchema = z.union([
     })
     .strict(),
 ]);
+
+export type AutomationAction = Infer<typeof automationActionSchema>;

@@ -143,7 +143,7 @@ export class AutomationRunEvidence {
   ): Promise<AutomationPreparedEvidence> {
     const rule = input.rule;
     // A run holds what its source reaches; a health record, the whole graph.
-    const whole = AutomationGraph.of(rule.rule);
+    const whole = rule.rule;
     const node =
       input.node ??
       (input.occurrenceId === "health"

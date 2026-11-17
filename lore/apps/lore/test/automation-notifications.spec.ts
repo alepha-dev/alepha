@@ -13,10 +13,8 @@ import {
   LoreNotificationPreferences,
   NotificationPreferenceController,
 } from "@lore/core/api";
-import {
-  notificationPreferences,
-  type AutomationRule,
-} from "@lore/core/schemas";
+import { notificationPreferences } from "@lore/core/schemas";
+import { automationLine, type AutomationLineSpec } from "@lore/core/testing";
 import { $inject, Alepha, AlephaError } from "alepha";
 import {
   JobQueueProvider,
@@ -45,6 +43,10 @@ import {
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
+
+type EventName = Parameters<
+  AutomationPersistence["events"]["create"]
+>[0]["name"];
 
 class PrimaryInboxRecipientProvider extends LoreInboxRecipientProvider {
   protected readonly alepha = $inject(Alepha);
@@ -98,8 +100,7 @@ describe("Automation configured notifications and durable outbox", () => {
     channel = "inbox",
     category: "automations" | "releases" | "reminders" = "automations",
     recipient = project.createdBy,
-  ): AutomationRule => ({
-    version: 1,
+  ): AutomationLineSpec => ({
     trigger:
       category === "releases"
         ? { kind: "event", event: "release.published" }
@@ -126,12 +127,13 @@ describe("Automation configured notifications and durable outbox", () => {
     ],
   });
   const open = async (ast = config()) => {
-    await alepha.inject(AutomationCatalog).validate(project.id, user, ast);
+    const graph = automationLine(ast);
+    await alepha.inject(AutomationCatalog).validate(project.id, user, graph);
     const row = await persistence.rules.create({
       projectId: project.id,
       authorUserId: user.id,
       title: "Notify",
-      rule: ast,
+      rule: graph,
     });
     let rule = await persistence.rules.updateById(row.id, { enabled: true });
     const sourceKey =
@@ -180,7 +182,7 @@ describe("Automation configured notifications and durable outbox", () => {
       ast.trigger.kind === "event"
         ? await persistence.events.create({
             projectId: project.id,
-            name: ast.trigger.event,
+            name: ast.trigger.event as EventName,
             identity: crypto.randomUUID(),
             occurredAt: at,
             replayUntil: time.now().add(90, "days").toISOString(),
@@ -197,7 +199,13 @@ describe("Automation configured notifications and durable outbox", () => {
     });
     if (claimed.state !== "claimed")
       throw new AlephaError(claimed.receipt?.reason ?? "No test claim");
-    return { rule, context, variables, occurrence: claimed.receipt! };
+    return {
+      rule,
+      rows: ast.select?.kind === "rows",
+      context,
+      variables,
+      occurrence: claimed.receipt!,
+    };
   };
   const enqueue = (
     opened: Awaited<ReturnType<typeof open>>,
@@ -208,7 +216,7 @@ describe("Automation configured notifications and durable outbox", () => {
       occurrenceId: opened.occurrence.id,
       token: opened.occurrence.leaseToken!,
       node: `action-${index + 1}`,
-      ...(opened.rule.rule.select?.kind === "rows" ? { row: 0 } : {}),
+      ...(opened.rows ? { row: 0 } : {}),
       context: opened.context,
       ...extra,
     });

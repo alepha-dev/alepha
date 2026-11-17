@@ -1,5 +1,6 @@
 import { AlephaError } from "alepha";
 
+import type { AutomationAction } from "./automationActionSchema.ts";
 import type { AutomationDescriptor } from "./automationDescriptorSchema.ts";
 import type { AutomationGraphEdge } from "./automationGraphEdgeSchema.ts";
 import type { AutomationGraphNode } from "./automationGraphNodeSchema.ts";
@@ -7,7 +8,6 @@ import {
   automationGraphSchema,
   type AutomationGraphValue,
 } from "./automationGraphSchema.ts";
-import type { AutomationRule } from "./automationRuleSchema.ts";
 import type { AutomationSlotKind } from "./automationSlotKindSchema.ts";
 import { AutomationTemplateTokens } from "./AutomationTemplateTokens.ts";
 import { AutomationVocabulary } from "./AutomationVocabulary.ts";
@@ -34,6 +34,12 @@ export class AutomationGraph {
    * which is what bounded a v1 rule to five actions.
    */
   public static readonly MAX_ACTIONS_PER_SOURCE = 5;
+  public static readonly MAX_CHANNELS = 8;
+  /**
+   * The layout's grid, in canvas units.
+   */
+  public static readonly COLUMN_WIDTH = 280;
+  public static readonly ROW_HEIGHT = 140;
 
   protected readonly tokens = new AutomationTemplateTokens();
   protected readonly providers: AutomationGraphNameProvider[] = [
@@ -422,17 +428,6 @@ export class AutomationGraph {
   }
 
   /**
-   * A stored rule as a graph. A graph is itself; a v1 rule is read through
-   * {@link fromV1}, which is how the runner walks graphs while storage
-   * still holds v1 rules (#Q3804).
-   */
-  public static of(
-    rule: AutomationRule | AutomationGraphValue,
-  ): AutomationGraphValue {
-    return rule.version === 2 ? rule : AutomationGraph.fromV1(rule);
-  }
-
-  /**
    * The source a run starts at: the one named, or the first of the graph,
    * which is the only one of a run's subgraph.
    */
@@ -468,6 +463,16 @@ export class AutomationGraph {
       : source.type;
   }
 
+  /**
+   * The channels a notification node names (#Q3613); none for any other.
+   */
+  public channels(node: AutomationGraphNode): string[] {
+    if (node.kind !== "action" || node.type !== "notify") return [];
+    const config = node.config as { channel?: string; channels?: string[] };
+    if (config.channels) return [...config.channels];
+    return config.channel !== undefined ? [config.channel] : [];
+  }
+
   public conditions(graph: AutomationGraphValue): AutomationGraphNode[] {
     return graph.nodes.filter((node) => node.kind === "condition");
   }
@@ -500,7 +505,7 @@ export class AutomationGraph {
   public action(
     graph: AutomationGraphValue,
     step: AutomationGraphStep,
-  ): AutomationRule["actions"][number] {
+  ): AutomationAction {
     const node = this.node(graph, step.node);
     if (!node || node.kind !== "action")
       throw new AlephaError(`Step '${step.node}' is not an action of this run`);
@@ -518,7 +523,7 @@ export class AutomationGraph {
               step.channel ?? (node.config as { channel?: string }).channel,
           }
         : { kind: node.type, ...node.config }
-    ) as AutomationRule["actions"][number];
+    ) as AutomationAction;
   }
 
   public sameStep(
@@ -579,67 +584,72 @@ export class AutomationGraph {
   }
 
   /**
-   * A v1 rule as a straight-line graph: its source, its read, its guard,
-   * then its actions in order, each wired to the next, so a failure still
-   * stops everything after it. Node ids are fixed: `source`, `read`,
-   * `condition`, `action-1` ... Read by the runner while storage holds v1
-   * rules, deleted with them (#Q3805).
+   * The authored form (#Q3613): every notification names its `channels`,
+   * one to eight, deduplicated. Refuses a graph a run could not honour.
    */
-  public static fromV1(rule: AutomationRule): AutomationGraphValue {
-    const nodes: AutomationGraphNode[] = [];
-    const edges: AutomationGraphEdge[] = [];
-    const { trigger } = rule;
-    nodes.push(
-      trigger.kind === "event"
-        ? {
-            id: "source",
-            kind: "source",
-            type: trigger.event,
-            config: {
-              ...(trigger.app !== undefined ? { app: trigger.app } : {}),
-              ...(trigger.monitor !== undefined
-                ? { monitor: trigger.monitor }
-                : {}),
-              ...(trigger.host !== undefined ? { host: trigger.host } : {}),
-            },
-          }
-        : {
-            id: "source",
-            kind: "source",
-            type: AutomationVocabulary.SCHEDULE,
-            config: { cron: trigger.cron },
-          },
-    );
-    let last = { id: "source", port: "out" as AutomationGraphEdge["port"] };
-    const wire = (id: string, port: AutomationGraphEdge["port"] = "out") => {
-      edges.push({ from: last.id, port: last.port, to: id });
-      last = { id, port };
+  public normalize(graph: AutomationGraphValue): AutomationGraphValue {
+    return {
+      ...graph,
+      nodes: graph.nodes.map((node) => {
+        if (node.kind !== "action" || node.type !== "notify") return node;
+        const { channel, channels, ...config } = node.config as {
+          channel?: string;
+          channels?: string[];
+        };
+        const named = [
+          ...new Set([
+            ...(channels ?? []),
+            ...(channel !== undefined ? [channel] : []),
+          ]),
+        ];
+        if (named.length === 0)
+          throw new AlephaError(
+            `node '${node.id}': a notification names at least one channel`,
+          );
+        if (named.length > AutomationGraph.MAX_CHANNELS)
+          throw new AlephaError(
+            `node '${node.id}': a notification names at most ${AutomationGraph.MAX_CHANNELS} channels`,
+          );
+        return { ...node, config: { ...config, channels: named } };
+      }),
     };
-    if (rule.select) {
-      nodes.push({
-        id: "read",
-        kind: "read",
-        type: rule.select.key,
-        config: { filters: rule.select.filters },
+  }
+
+  /**
+   * A layered left-to-right layout (#Q3805), pure and browser-safe: a
+   * node's column is the longest path to it from a source, its row its
+   * place in the walk order within that column. The one layout: the preset
+   * builder, a graph saved without positions, the canvas's Tidy and the
+   * preset thumbnails all use it.
+   */
+  public static layout(graph: AutomationGraphValue): AutomationGraphValue {
+    const graphs = new AutomationGraph();
+    const order = graphs.order(graph);
+    const column = new Map<string, number>();
+    for (const id of order) {
+      const before = graphs
+        .incoming(graph, id)
+        .map((edge) => column.get(edge.from) ?? 0);
+      column.set(id, before.length ? Math.max(...before) + 1 : 0);
+    }
+    const rows = new Map<number, number>();
+    const at = new Map<string, { x: number; y: number }>();
+    for (const id of order) {
+      const x = column.get(id) ?? 0;
+      const y = rows.get(x) ?? 0;
+      rows.set(x, y + 1);
+      at.set(id, {
+        x: x * AutomationGraph.COLUMN_WIDTH,
+        y: y * AutomationGraph.ROW_HEIGHT,
       });
-      wire("read");
     }
-    if (rule.guard) {
-      nodes.push({
-        id: "condition",
-        kind: "condition",
-        type: AutomationVocabulary.COMPARE,
-        config: { ...rule.guard },
-      });
-      wire("condition", "true");
-    }
-    for (const [index, action] of rule.actions.entries()) {
-      const { kind, ...config } = action;
-      const id = `action-${index + 1}`;
-      nodes.push({ id, kind: "action", type: kind, config });
-      wire(id);
-    }
-    return { version: 2, nodes, edges };
+    return {
+      ...graph,
+      nodes: graph.nodes.map((node) => ({
+        ...node,
+        position: at.get(node.id) ?? { x: 0, y: 0 },
+      })),
+    };
   }
 
   protected describer(
@@ -781,7 +791,7 @@ export class AutomationGraph {
       )
         add({
           node: node.id,
-          message: `the comparison '${guard.operator}' follows a scalar read that supports it`,
+          message: `the comparison '${guard.operator}' needs a scalar read that supports it, which this node does not follow`,
         });
       else if (guard.operator === "delta" && guard.field !== "value")
         add({

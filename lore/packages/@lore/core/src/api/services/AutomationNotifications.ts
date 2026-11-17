@@ -5,9 +5,9 @@ import { BadRequestError, ForbiddenError } from "alepha/server";
 import type { Automation } from "../entities/automations.ts";
 import { users } from "../entities/users.ts";
 import { AutomationNotificationTemplates } from "../notifications/AutomationNotificationTemplates.ts";
+import type { AutomationAction } from "../schemas/automationActionSchema.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { automationNotificationVariablesSchema } from "../schemas/automationNotificationVariablesSchema.ts";
-import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
@@ -58,7 +58,7 @@ export class AutomationNotifications {
     node: string;
     sourceNode?: string;
     sourceKey?: string;
-    action: AutomationRule["actions"][number];
+    action: AutomationAction;
     context: AutomationRenderContext;
     variables: AutomationRunSnapshot["variables"];
     excludeUserId?: string;
@@ -114,10 +114,7 @@ export class AutomationNotifications {
       );
     const sourceKey =
       input.sourceKey ??
-      this.graphs.sourceKey(
-        AutomationGraph.of(input.rule.rule),
-        input.sourceNode,
-      );
+      this.graphs.sourceKey(input.rule.rule, input.sourceNode);
     const source = this.catalog
       .entries()
       .find((entry) => entry.key === sourceKey);
@@ -192,7 +189,7 @@ export class AutomationNotifications {
    */
   protected async room(
     input: Parameters<AutomationNotifications["prepare"]>[0],
-    action: Extract<AutomationRule["actions"][number], { kind: "notify" }>,
+    action: Extract<AutomationAction, { kind: "notify" }>,
     adapter: AutomationChannelAdapter & { kind: string },
     rendered: ReturnType<AutomationTemplateRenderer["render"]>,
     channel: string,

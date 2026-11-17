@@ -1,6 +1,5 @@
 import { AutomationPersistence, AutomationRunEvidence } from "@lore/core/api";
-import { AutomationGraph } from "@lore/core/schemas";
-import type { AutomationRule } from "@lore/core/schemas";
+import { automationLine, type AutomationLineSpec } from "@lore/core/testing";
 import { $hook, Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
@@ -37,8 +36,7 @@ describe("Bounded automation run evidence", () => {
   let persistence: AutomationPersistence;
   let project: Awaited<ReturnType<typeof createTestProject>>;
   let user: UserAccountToken;
-  const config = (): AutomationRule => ({
-    version: 1,
+  const config = (): AutomationLineSpec => ({
     trigger: { kind: "event", event: "feedback.created" },
     select: null,
     guard: null,
@@ -58,7 +56,7 @@ describe("Bounded automation run evidence", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Rule",
-      rule,
+      rule: automationLine(rule),
     });
   const start = async (
     rule: Awaited<ReturnType<typeof create>>,
@@ -118,7 +116,12 @@ describe("Bounded automation run evidence", () => {
       status: "queued",
       snapshot: {
         // The subgraph its source reaches: the whole of a one-source rule.
-        rule: AutomationGraph.fromV1(rule.rule),
+        rule: {
+          ...rule.rule,
+          nodes: rule.rule.nodes.map(
+            ({ position: _position, ...node }) => node,
+          ),
+        },
         sourceNode: "source",
         inputs: { title: "Safe", feedback_id: 12 },
         counts: { selected: 1, matched: 1, executed: 0, totalIsExact: true },

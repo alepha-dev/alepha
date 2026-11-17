@@ -4561,39 +4561,13 @@ export default {
   "rank.viewer.wider.title": "$1 accorde plus qu’un lecteur ne peut avoir",
   "rank.viewer.wider.description":
     "Il accorde aussi $1. Un projet ne peut pas être ouvert à toute personne connectée tant que son rang Lecteur ne donne pas uniquement la lecture des quêtes, épopées, folios, versions et domaines.",
-  "automation.editor.title": "Modifier la règle",
   "automation.editor.loading": "Chargement...",
-  "automation.editor.author":
-    "S'exécute en tant que $1, avec ses permissions au moment de l'exécution.",
-  "automation.editor.trigger": "1. Quand",
-  "automation.editor.event": "Quand quelque chose arrive",
-  "automation.editor.schedule": "Selon un horaire (UTC)",
-  "automation.editor.source": "Source",
-  "automation.editor.cron": "Horaire (cron à cinq champs, UTC)",
-  "automation.editor.select": "2. Enregistrements",
-  "automation.editor.eventSelect":
-    "Un événement fournit un contexte. Aucune sélection nécessaire.",
-  "automation.editor.collection":
-    "Une collection exécute ses actions une fois, avec 50 lignes au maximum. Les collections vides n’envoient rien.",
-  "automation.editor.scalar":
-    "Une valeur scalaire s’exécute une fois. Les échantillons absents ne produisent aucune donnée.",
-  "automation.editor.rows":
-    "Chaque ligne retenue exécute la liste d’actions, dans la limite de 50 lignes.",
-  "automation.editor.guard": "3. Seulement si",
-  "automation.editor.field": "Champ",
-  "automation.editor.always": "Toujours",
-  "automation.editor.operator": "Opérateur",
   "automation.editor.value": "Valeur",
-  "automation.editor.actions": "4. Alors (jusqu'à cinq actions, dans l'ordre)",
   "automation.editor.action": "Action $1",
-  "automation.editor.addAction": "Ajouter une action",
   "automation.editor.removeAction": "Retirer l’action",
   "automation.editor.save": "Enregistrer les modifications",
   "automation.editor.binding": "Variable ou champ de l'événement",
   "automation.editor.templates": "Noms de modèle disponibles :",
-  "automation.editor.conflict":
-    "L’enregistrement a été refusé. Votre brouillon est conservé. Rechargez la révision actuelle avant de réessayer après un conflit ; le rechargement supprime ce brouillon.",
-  "automation.editor.reload": "Supprimer le brouillon et recharger",
   "automation.variables.title": "Variables partagées",
   "automation.variables.description":
     "Des valeurs que plusieurs automatisations peuvent partager, comme un destinataire ou un seuil. En modifier une demande aux autres auteurs de revoir leurs automatisations.",
@@ -4644,6 +4618,11 @@ export default {
   "automation.effect.queued": "En file, livraison en attente",
   "automation.test.unvalidated":
     "Connu seulement quand l'exécution est réelle, non vérifié ici : $1",
+  "automation.node.source": "Source",
+  "automation.node.read": "Lecture",
+  "automation.node.condition": "Seulement si",
+  "automation.node.action": "Alors",
+  "automation.node.transform": "Transformation",
   "automation.effect.not_reached":
     "Non atteinte : une étape précédente a échoué",
   "automation.history.step": "Étape $1",
@@ -4753,25 +4732,11 @@ export default {
   "automation.audience.preview":
     "$1 membres destinataires (auteur de la publication exclu) : ",
   "automation.new": "Nouvelle automatisation",
-  "automation.edit": "Modifier",
   "automation.filter.allStates": "Tous les états",
   "automation.gallery.backToPresets": "Tous les modèles",
   "automation.schedule.minutes": "Toutes les $1 minutes",
   "automation.schedule.daily": "Tous les jours à $1 UTC",
   "automation.schedule.cron": "$1 (cron UTC)",
-  "automation.summary.when": "Quand",
-  "automation.summary.onlyIf": "Seulement si",
-  "automation.summary.then": "Alors",
-  "automation.summary.forApp": "pour $1",
-  "automation.summary.variable": "variable partagée $1",
-  "automation.summary.dropsBy": "baisse de plus de",
-  "automation.summary.crossesAbove": "dépasse",
-  "automation.summary.notify": "Prévenir $1 par $2",
-  "automation.summary.appendFolio": "Ajouter au folio $1",
-  "automation.summary.createQuest": "Créer la quête « $1 »",
-  "automation.summary.assignRelease": "Affecter la quête à la version $1",
-  "automation.summary.addTag": "Étiqueter la quête « $1 »",
-  "automation.summary.nextRun": "Prochaine exécution",
   "automation.setup.enableOrDraft":
     "Créer et activer la met en marche tout de suite. Enregistrer comme brouillon la laisse désactivée : sa page permet de la tester, puis de l'activer.",
   "automation.preset.createAndEnable": "Créer et activer",

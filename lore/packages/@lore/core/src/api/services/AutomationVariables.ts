@@ -12,7 +12,7 @@ import {
   type AutomationVariable,
 } from "../entities/automationVariables.ts";
 import { AutomationCron } from "../schemas/AutomationCron.ts";
-import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
+import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import {
   automationVariableValueSchema,
   type AutomationVariableValue,
@@ -390,7 +390,7 @@ export class AutomationVariables {
       );
   }
 
-  public references(rule: AutomationRule): Set<string> {
+  public references(rule: AutomationGraphValue): Set<string> {
     const reserved = this.catalog.reservedNames();
     return new Set(
       [...this.catalog.names(rule)].filter((key) => !reserved.has(key)),
@@ -430,14 +430,17 @@ export class AutomationVariables {
       cursor = page[page.length - 1].id;
     }
   }
-  protected predicateUses(rule: AutomationRule, key: string): boolean {
-    if (!rule.guard) return false;
+  /**
+   * Whether a variable feeds what a crossing compares: a read's filters or
+   * a condition's value.
+   */
+  protected predicateUses(rule: AutomationGraphValue, key: string): boolean {
     return this.catalog
-      .names({
-        ...rule,
-        trigger: { kind: "schedule", cron: "*/5 * * * *" },
-        actions: [],
-      })
+      .names(
+        rule.nodes.filter(
+          (node) => node.kind === "read" || node.kind === "condition",
+        ),
+      )
       .has(key);
   }
 }

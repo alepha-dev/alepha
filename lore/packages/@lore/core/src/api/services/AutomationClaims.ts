@@ -11,8 +11,9 @@ import {
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
+import type { AutomationAction } from "../schemas/automationActionSchema.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
-import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
+import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationApprovalFence } from "./AutomationApprovalFence.ts";
 import { AutomationAtomic } from "./AutomationAtomic.ts";
@@ -231,10 +232,10 @@ export class AutomationClaims {
    * schedule. Refused when the automation has no such source.
    */
   protected sourceNode(
-    rule: Parameters<typeof AutomationGraph.of>[0],
+    rule: AutomationGraphValue,
     source: AutomationOccurrenceSource,
   ) {
-    const graph = AutomationGraph.of(rule);
+    const graph = rule;
     const node =
       source.kind === "event"
         ? this.graphs.node(graph, source.node)
@@ -331,7 +332,7 @@ export class AutomationClaims {
           // A snapshot holds the subgraph its source reaches.
           (await this.identity.hash(
             this.graphs.subgraph(
-              AutomationGraph.of(current.rule.rule),
+              current.rule.rule,
               prepared.snapshot.sourceNode ?? "",
             ),
           ))
@@ -454,7 +455,7 @@ export class AutomationClaims {
           (input.prepared.snapshot.sourceNode !== node.id ||
             (await this.identity.hash(input.prepared.snapshot.rule)) !==
               (await this.identity.hash(
-                this.graphs.subgraph(AutomationGraph.of(rule.rule), node.id),
+                this.graphs.subgraph(rule.rule, node.id),
               )))
         )
           throw new ConflictError(
@@ -1726,5 +1727,5 @@ export interface AutomationEffectInput extends AutomationStepInput {
   deliveryKey?: string;
   runId?: string;
   mode: "atomic" | "external";
-  action: AutomationRule["actions"][number];
+  action: AutomationAction;
 }

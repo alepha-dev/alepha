@@ -2,7 +2,11 @@ import {
   AutomationPresetRegistry,
   type AutomationPresetValues,
 } from "@lore/core/api";
-import { AutomationVocabulary, type AutomationRule } from "@lore/core/schemas";
+import {
+  AutomationVocabulary,
+  AutomationGraphBuilder,
+  type AutomationGraphValue,
+} from "@lore/core/schemas";
 import { $inject } from "alepha";
 
 /**
@@ -10,6 +14,7 @@ import { $inject } from "alepha";
  * contain the safe frozen fields; raw deployment errors/logs never enter it.
  */
 export class DeployAutomationPresets {
+  protected readonly builder = new AutomationGraphBuilder();
   protected readonly presets = $inject(AutomationPresetRegistry);
   protected readonly vocabulary = new AutomationVocabulary();
   constructor() {
@@ -47,16 +52,10 @@ export class DeployAutomationPresets {
       (values, bindings) => this.failure({ ...values, ...bindings }),
     );
   }
-  protected failure(values: AutomationPresetValues): AutomationRule {
-    return {
-      version: 1,
-      trigger: {
-        kind: "event",
-        event: "deploy.failed",
-        app: String(values.app),
-      },
-      select: null,
-      guard: null,
+  protected failure(values: AutomationPresetValues): AutomationGraphValue {
+    return this.builder.line({
+      source: "deploy.failed",
+      filters: { app: String(values.app) },
       actions: [
         {
           kind: "notify",
@@ -69,6 +68,6 @@ export class DeployAutomationPresets {
           text: "Deployment {{deployment_id}}\nApp: {{app}}\nEnvironment: {{env}}\nTag: {{tag}}\nDigest: {{digest}}\nReason: {{reason}}\n{{url}}",
         },
       ],
-    };
+    });
   }
 }

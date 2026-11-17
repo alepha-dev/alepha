@@ -56,7 +56,11 @@ export class AutomationSelections {
         input.rule,
       );
       // The read node of the run's graph (#Q3804), as a v1 selection.
-      const read = input.graph ? this.graphs.read(input.graph) : undefined;
+      const read = this.graphs
+        .sources(input.graph ?? input.rule.rule)
+        .some((node) => node.type === "schedule")
+        ? this.graphs.read(input.graph ?? input.rule.rule)
+        : undefined;
       const selection = read
         ? {
             kind: this.catalog
@@ -68,7 +72,7 @@ export class AutomationSelections {
             key: read.type,
             filters: read.config.filters as Record<string, never>,
           }
-        : input.rule.rule.select;
+        : undefined;
       if (input.cursor && selection?.kind !== "rows")
         throw new BadRequestError(
           "Only row selectors accept continuation cursors",

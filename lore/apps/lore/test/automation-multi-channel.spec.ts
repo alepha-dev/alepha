@@ -6,7 +6,7 @@ import {
   AutomationService,
   AutomationWorker,
 } from "@lore/core/api";
-import { createPresetRanks } from "@lore/core/testing";
+import { automationLine, createPresetRanks } from "@lore/core/testing";
 import { ReleaseController } from "@lore/plan/api";
 import { Alepha, AlephaError, z } from "alepha";
 import { JobQueueProvider, jobExecutionEntity } from "alepha/api/jobs";
@@ -159,8 +159,7 @@ describe("Multi-channel notify (#Q3613)", () => {
     alepha.inject(AutomationService).create(project.id, user, {
       title: "Releases to the inbox and the room",
       enabled: true,
-      rule: {
-        version: 1,
+      rule: automationLine({
         trigger: { kind: "event", event: "release.published" },
         select: null,
         guard: null,
@@ -174,14 +173,16 @@ describe("Multi-channel notify (#Q3613)", () => {
             text: "{{title}}",
           },
         ],
-      },
+      }),
     });
 
   it("delivers once per channel, the room with no member", async ({
     expect,
   }) => {
     const made = await rule();
-    expect(made.rule!.actions[0]).toMatchObject({
+    expect(
+      made.rule!.nodes.find((node) => node.id === "action-1")!.config,
+    ).toMatchObject({
       channels: ["inbox", "room-1"],
     });
     await publish("1.0.0");
@@ -209,7 +210,9 @@ describe("Multi-channel notify (#Q3613)", () => {
         .remove(project.id, "room-1"),
     ).toBe(1);
     const stored = await persistence.rules.getById(made.id);
-    expect(stored.rule.actions[0]).toMatchObject({ channels: ["inbox"] });
+    expect(
+      stored.rule.nodes.find((node) => node.id === "action-1")!.config,
+    ).toMatchObject({ channels: ["inbox"] });
     expect(stored).toMatchObject({ enabled: true, health: "active" });
     await publish("1.0.0");
     await drain();
@@ -227,8 +230,7 @@ describe("Multi-channel notify (#Q3613)", () => {
       .create(project.id, user, {
         title: "Room only",
         enabled: true,
-        rule: {
-          version: 1,
+        rule: automationLine({
           trigger: { kind: "event", event: "release.published" },
           select: null,
           guard: null,
@@ -241,7 +243,7 @@ describe("Multi-channel notify (#Q3613)", () => {
               text: "{{title}}",
             },
           ],
-        },
+        }),
       });
     rooms = [];
     await alepha.inject(AutomationChannelRemoval).remove(project.id, "room-1");
@@ -257,8 +259,7 @@ describe("Multi-channel notify (#Q3613)", () => {
     const notify = (channels: string[]) =>
       service.create(project.id, user, {
         title: "No member",
-        rule: {
-          version: 1,
+        rule: automationLine({
           trigger: { kind: "event", event: "release.published" },
           select: null,
           guard: null,
@@ -271,7 +272,7 @@ describe("Multi-channel notify (#Q3613)", () => {
               text: "t",
             },
           ],
-        },
+        }),
       });
     await expect(notify(["inbox"])).rejects.toThrow("needs a member");
     await expect(notify(["room-1"])).resolves.toBeDefined();

@@ -9,8 +9,12 @@ import {
   AutomationPersistence,
   AutomationService,
 } from "@lore/core/api";
-import type { AutomationResource, AutomationRule } from "@lore/core/schemas";
-import { createPresetRanks } from "@lore/core/testing";
+import type { AutomationResource } from "@lore/core/schemas";
+import {
+  automationLine,
+  type AutomationLineSpec,
+  createPresetRanks,
+} from "@lore/core/testing";
 import { ReleaseController } from "@lore/plan/api";
 import { Alepha, AlephaError } from "alepha";
 import { audits } from "alepha/api/audits";
@@ -129,8 +133,7 @@ describe("Automation MCP transport uses shared application policy", () => {
   const failed = (reply: McpReply) =>
     reply.error?.message ??
     (reply.result?.isError ? reply.result.content?.[0]?.text : undefined);
-  const rule = (): AutomationRule => ({
-    version: 1,
+  const rule = (): AutomationLineSpec => ({
     trigger: { kind: "event", event: "quest.completed" },
     select: null,
     guard: null,
@@ -149,7 +152,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     value(
       await call("automation_create", {
         title: "MCP rule",
-        rule: ast,
+        rule: automationLine(ast),
         ...extra,
       }),
     ) as AutomationResource;
@@ -237,8 +240,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       kind: "member",
       value: user.id,
     });
-    const ast: AutomationRule = {
-      version: 1,
+    const ast: AutomationLineSpec = {
       trigger: { kind: "event", event: "release.published" },
       select: null,
       guard: null,
@@ -263,7 +265,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       enabled: false,
       authorUserId: user.id,
       revision: 0,
-      rule: ast,
+      rule: automationLine(ast),
     });
     expect(made).not.toHaveProperty("authorKeyId");
     const release = (
@@ -302,7 +304,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     expect(armed).toMatchObject({ enabled: true, revision: 1 });
     expect(value(await call("automation_get", { id: made.id }))).toMatchObject({
       enabled: true,
-      rule: ast,
+      rule: automationLine(ast),
     });
     const page = value(
       await call("automation_list", { limit: 1, search: "MCP" }),
@@ -320,7 +322,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       failed(
         await call("automation_create", {
           title: "Spoofed",
-          rule: rule(),
+          rule: automationLine(rule()),
           authorUserId: user.id,
         }),
       ),
@@ -330,7 +332,7 @@ describe("Automation MCP transport uses shared application policy", () => {
         id: made.id,
         expectedRevision: 0,
         title: "Changed",
-        rule: rule(),
+        rule: automationLine(rule()),
       }),
     );
     expect(changed.revision).toBe(1);
@@ -350,7 +352,12 @@ describe("Automation MCP transport uses shared application policy", () => {
       failed(
         await call(
           "automation_update",
-          { id: made.id, expectedRevision: 1, title: "Foreign", rule: rule() },
+          {
+            id: made.id,
+            expectedRevision: 1,
+            title: "Foreign",
+            rule: automationLine(rule()),
+          },
           manager,
         ),
       ),
@@ -467,7 +474,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     const enabled = value(
       await call("automation_create", {
         title: "On at once",
-        rule: rule(),
+        rule: automationLine(rule()),
         enabled: true,
       }),
     );
@@ -479,7 +486,10 @@ describe("Automation MCP transport uses shared application policy", () => {
     });
 
     const draft = value(
-      await call("automation_create", { title: "A draft", rule: rule() }),
+      await call("automation_create", {
+        title: "A draft",
+        rule: automationLine(rule()),
+      }),
     );
     expect(draft.enabled).toBe(false);
     expect(await persistence.rules.findMany()).toHaveLength(before + 2);
@@ -490,7 +500,7 @@ describe("Automation MCP transport uses shared application policy", () => {
   }) => {
     const before = (await persistence.rules.findMany()).length;
     // A channel nothing provides passes the schema, and enabling refuses it.
-    const unavailable: AutomationRule = {
+    const unavailable: AutomationLineSpec = {
       ...rule(),
       actions: [
         {
@@ -507,7 +517,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     const refusal = failed(
       await call("automation_create", {
         title: "Needs a channel",
-        rule: unavailable,
+        rule: automationLine(unavailable),
         enabled: true,
       }),
     );
@@ -524,10 +534,13 @@ describe("Automation MCP transport uses shared application policy", () => {
       kind: "rows",
       key: "unknown",
       filters: {},
-    } as AutomationRule["select"];
+    } as AutomationLineSpec["select"];
     expect(
       failed(
-        await call("automation_create", { title: "Invalid", rule: invalid }),
+        await call("automation_create", {
+          title: "Invalid",
+          rule: automationLine(invalid),
+        }),
       ),
     ).toMatch(/select|unknown|key/i);
     const foreignProject = await createTestProject(alepha);
@@ -535,7 +548,12 @@ describe("Automation MCP transport uses shared application policy", () => {
     const ast = rule();
     ast.actions = [{ kind: "appendFolio", folio: foreign.id, text: "No" }];
     expect(
-      failed(await call("automation_create", { title: "Foreign", rule: ast })),
+      failed(
+        await call("automation_create", {
+          title: "Foreign",
+          rule: automationLine(ast),
+        }),
+      ),
     ).toMatch(/folio|project|found/i);
     const scoped = await key(user.id, [
       "project:read",
@@ -547,7 +565,7 @@ describe("Automation MCP transport uses shared application policy", () => {
       failed(
         await call(
           "automation_create",
-          { title: "No source", rule: rule() },
+          { title: "No source", rule: automationLine(rule()) },
           scoped,
         ),
       ),
@@ -562,8 +580,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     expect,
   }) => {
     const folio = await createTestFolio(alepha, project);
-    const ast: AutomationRule = {
-      version: 1,
+    const ast: AutomationLineSpec = {
       trigger: { kind: "event", event: "release.published" },
       select: null,
       guard: null,

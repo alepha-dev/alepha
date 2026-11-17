@@ -3,7 +3,7 @@ import {
   AutomationPersistence,
   AutomationVariables,
 } from "@lore/core/api";
-import type { AutomationRule } from "@lore/core/schemas";
+import { automationLine, type AutomationLineSpec } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import type { UserAccountToken } from "alepha/security";
@@ -24,8 +24,7 @@ describe("Shared automation variables", () => {
   let persistence: AutomationPersistence;
   let project: Awaited<ReturnType<typeof createTestProject>>;
   let user: UserAccountToken;
-  const rule = (recipient: string): AutomationRule => ({
-    version: 1,
+  const rule = (recipient: string): AutomationLineSpec => ({
     trigger: { kind: "event", event: "feedback.created" },
     select: null,
     guard: null,
@@ -132,8 +131,7 @@ describe("Shared automation variables", () => {
       key: "release_target",
       value: { kind: "release", value: release.id },
     });
-    const config: AutomationRule = {
-      version: 1,
+    const config: AutomationLineSpec = {
       trigger: { kind: "event", event: "quest.completed" },
       select: null,
       guard: null,
@@ -149,7 +147,7 @@ describe("Shared automation variables", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Assign",
-      rule: config,
+      rule: automationLine(config),
     });
     expect((await variables.snapshot(stored, user))[0]).toMatchObject({
       key: "release_target",
@@ -190,7 +188,7 @@ describe("Shared automation variables", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Removed recipient",
-      rule: config,
+      rule: automationLine(config),
     });
     await entities.organizationMembers.deleteMany({
       organizationId: project.organizationId!,
@@ -215,7 +213,7 @@ describe("Shared automation variables", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Removed folio",
-      rule: config,
+      rule: automationLine(config),
     });
     await entities.folios.deleteById(folio.id);
     await expect(variables.snapshot(append, user)).rejects.toThrow(
@@ -240,13 +238,13 @@ describe("Shared automation variables", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Own",
-      rule: rule(user.id),
+      rule: automationLine(rule(user.id)),
     });
     const foreign = await persistence.rules.create({
       projectId: project.id,
       authorUserId: second.id,
       title: "Foreign",
-      rule: rule(user.id),
+      rule: automationLine(rule(user.id)),
     });
     await persistence.rules.updateById(own.id, { enabled: true });
     await persistence.rules.updateById(foreign.id, { enabled: true });
@@ -310,7 +308,7 @@ describe("Shared automation variables", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Bound",
-      rule: config,
+      rule: automationLine(config),
     });
     await expect(
       variables.set(project.id, user, {
@@ -361,7 +359,9 @@ describe("Shared automation variables", () => {
       },
     ];
     await expect(
-      alepha.inject(AutomationCatalog).validate(project.id, user, config),
+      alepha
+        .inject(AutomationCatalog)
+        .validate(project.id, user, automationLine(config)),
     ).resolves.toBeDefined();
     await alepha.inject(RankService).save(
       project.organizationId!,
@@ -373,7 +373,9 @@ describe("Shared automation variables", () => {
       user,
     );
     await expect(
-      alepha.inject(AutomationCatalog).validate(project.id, user, config),
+      alepha
+        .inject(AutomationCatalog)
+        .validate(project.id, user, automationLine(config)),
     ).rejects.toThrow("Recipient lacks source permission feedback:read");
   });
 
@@ -388,12 +390,14 @@ describe("Shared automation variables", () => {
       projectId: project.id,
       authorUserId: user.id,
       title: "Literal data",
-      rule: rule(user.id),
+      rule: automationLine(rule(user.id)),
     });
     expect(await variables.snapshot(stored, user)).toMatchObject([
       { key: "body", version: 0, value: { value: "{{untrusted}}" } },
     ]);
-    expect([...variables.references(rule(user.id))]).toEqual(["body"]);
+    expect([...variables.references(automationLine(rule(user.id)))]).toEqual([
+      "body",
+    ]);
     await persistence.rules.deleteById(stored.id);
     await expect(variables.remove(project.id, user, "body", 7)).rejects.toThrow(
       "version changed",

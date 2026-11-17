@@ -4,12 +4,12 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
+import type { AutomationAction } from "../schemas/automationActionSchema.ts";
 import type { AutomationAudiencePreview } from "../schemas/automationAudiencePreviewSchema.ts";
 import { automationEvaluationReportSchema } from "../schemas/automationEvaluationReportSchema.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationGraphOutput } from "../schemas/AutomationGraph.ts";
 import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
-import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import type { AutomationSourceProvenance } from "../schemas/automationSourceProvenanceSchema.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
@@ -116,7 +116,7 @@ export class AutomationEvaluator {
   }): Promise<AutomationEvaluation> {
     return this.database.primary(async () => {
       const evaluatedAt = input.evaluatedAt ?? this.time.nowISOString();
-      const whole = AutomationGraph.of(input.rule.rule);
+      const whole = input.rule.rule;
       const node =
         input.graph?.nodes.find((item) => item.kind === "source")?.id ??
         this.graphs.source(whole, input.node).id;
@@ -419,7 +419,7 @@ export class AutomationEvaluator {
                   rule: input.rule,
                   user,
                   action: rendered.raw as Exclude<
-                    AutomationRule["actions"][number],
+                    AutomationAction,
                     { kind: "notify" }
                   >,
                 });
@@ -471,7 +471,7 @@ export class AutomationEvaluator {
     graph: AutomationGraphValue;
     node: string;
     user: UserAccountToken;
-    action: AutomationRule["actions"][number];
+    action: AutomationAction;
     position: Pick<AutomationPlannedOperation, "node" | "channel" | "row">;
     context: AutomationRenderContext;
     variables: AutomationRunSnapshot["variables"];
@@ -531,7 +531,7 @@ export class AutomationEvaluator {
         ? [slot]
         : [],
     );
-    const keep = (action: AutomationRule["actions"][number]) =>
+    const keep = (action: AutomationAction) =>
       ({
         ...action,
         ...Object.fromEntries(
@@ -540,7 +540,7 @@ export class AutomationEvaluator {
             (input.action as unknown as Record<string, unknown>)[slot],
           ]),
         ),
-      }) as AutomationRule["actions"][number];
+      }) as AutomationAction;
     return {
       ...input.position,
       action: keep(rendered.raw),
@@ -630,8 +630,8 @@ export interface AutomationPlannedOperation {
   node: string;
   channel?: string;
   row?: number;
-  action: AutomationRule["actions"][number];
-  rendered: AutomationRule["actions"][number];
+  action: AutomationAction;
+  rendered: AutomationAction;
   bytes: number;
   audience?: AutomationAudiencePreview;
   delivery?: { title: string; text: string; html: string };

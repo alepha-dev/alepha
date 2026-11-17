@@ -2,7 +2,8 @@ import { $inject } from "alepha";
 
 import type { Automation } from "../entities/automations.ts";
 import { AutomationDependencyError } from "../errors/AutomationDependencyError.ts";
-import { AutomationRuleChannels } from "../schemas/AutomationRuleChannels.ts";
+import { AutomationGraph } from "../schemas/AutomationGraph.ts";
+import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
@@ -17,17 +18,24 @@ export class AutomationDependencies {
   protected readonly channels = $inject(AutomationChannels);
   protected readonly security = $inject(AutomationProjectSecurity);
   protected readonly persistence = $inject(AutomationPersistence);
+  protected readonly graphs = $inject(AutomationGraph);
 
   public async assert(rule: Automation): Promise<void> {
     const capabilities = await this.security.capabilitiesOf(rule.projectId);
     // Automations are Core (#Q3629): a rule needs only what its own
     // vocabulary declares.
     const needs: { capability: string; option: string }[] = [];
+    // Every node's entry: its events, its read, its actions (#Q3805).
     const keys = [
-      rule.rule.trigger.kind === "event"
-        ? rule.rule.trigger.event
-        : rule.rule.select!.key,
-      ...rule.rule.actions.map((action) => action.kind),
+      ...new Set(
+        rule.rule.nodes
+          .filter(
+            (node) =>
+              node.type !== AutomationVocabulary.SCHEDULE &&
+              node.type !== AutomationVocabulary.COMPARE,
+          )
+          .map((node) => node.type),
+      ),
     ];
     const entries = this.catalog.entries();
     for (const key of keys) {
@@ -72,9 +80,9 @@ export class AutomationDependencies {
         );
     }
     const channels = await this.channels.all(rule.projectId);
-    for (const action of rule.rule.actions) {
-      if (action.kind !== "notify") continue;
-      const named = AutomationRuleChannels.of(action);
+    for (const node of rule.rule.nodes) {
+      if (node.kind !== "action" || node.type !== "notify") continue;
+      const named = this.graphs.channels(node);
       // A rule left with no channel at all can send nothing (#Q3613).
       if (named.length === 0)
         throw new AutomationDependencyError(
