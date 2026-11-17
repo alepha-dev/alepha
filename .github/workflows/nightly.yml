@@ -48,6 +48,17 @@ concurrency:
 # first. So Lore pushes under its own branch label, `lore/<branch>`, and the
 # Quality tab draws the two as two lines.
 jobs:
+  # Every product's Verify, whatever changed (#Q3832): what Verify All was by
+  # hand, once a day. A called run sees this workflow's event, so Verify's
+  # deploy jobs skip. `pull-requests: read` because Verify's `changes` job
+  # asks for it, and a called job never gets more than its caller grants.
+  verify:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/verify.yml
+    secrets: inherit
+
   framework:
     runs-on: ubuntu-latest
     env:
@@ -153,10 +164,10 @@ jobs:
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
-  # Lore's whole suite on Postgres (#Q3473). Verify Lore runs only the specs
+  # Lore's whole suite on Postgres (#Q3473). Verify runs only the specs
   # reaching Lore's raw SQL there, since the whole suite takes 18 to 27 min on
   # one runner; this catches what that subset misses, once a day with nothing
-  # waiting on it. The Postgres setup is Verify Lore's `test-postgres`, whose
+  # waiting on it. The Postgres setup is Verify's `lore-test-postgres`, whose
   # comments say why the server is started by hand with those flags.
   lore-postgres:
     runs-on: ubuntu-latest
@@ -196,7 +207,7 @@ jobs:
   # timeouts, no detached spawn). Nightly only: nothing waits on it, and a
   # Windows runner is slow.
   #
-  # The same build as Verify Framework's `e2e-cli`. Only `cli.e2e.spec.ts`:
+  # The same build as Verify's `framework-e2e-cli`. Only `cli.e2e.spec.ts`:
   # the other specs need Docker, Redis or a service container, which a
   # Windows runner does not have.
   cli-windows:

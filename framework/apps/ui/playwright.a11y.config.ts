@@ -7,7 +7,7 @@ import base from "./playwright.config.ts";
  * config: every route in four token sets is a few hundred axe runs, which does
  * not fit the main suite's six-minute `globalTimeout`. Same server, same
  * browser, same port allocation as `playwright.config.ts`; only the files and
- * the clock differ. CI runs it in its own job of Verify Framework.
+ * the clock differ. CI runs it in its own job of Verify, `framework-e2e-a11y`.
  */
 export default defineConfig({
   ...base,

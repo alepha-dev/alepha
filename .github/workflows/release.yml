@@ -28,7 +28,7 @@ permissions:
 
 # One release at a time, and never cancel one.
 #
-# `cancel-in-progress: true`  -  what `verify-framework.yml` uses, and right there  -  would be
+# `cancel-in-progress: true`  -  what `verify.yml` uses on a branch, and right there  -  would be
 # actively dangerous here: interrupting the job between `npm publish` and
 # the tag push leaves a published version whose tag exists on no remote, which is
 # the exact tear the step order further down is arranged to avoid. Two
@@ -39,7 +39,7 @@ concurrency:
   cancel-in-progress: false
 
 # Where every `lore` command in this workflow reports, named once so no step
-# can forget. See the same block in `verify-framework.yml` and `deploy-framework.yml`:
+# can forget. See the same block in `verify.yml` and `deploy.yml`:
 # this is the line that replaces four `continue-on-error` steps each relying on
 # whichever `alepha.config.ts` their working directory happened to hold. One of
 # them held none, and Lore's own 0.28.0 artifact was never pushed because of it.
@@ -330,7 +330,7 @@ jobs:
       # the provenance live in the image index, so the image is pushed as it
       # is built, to a registry on this runner, and the publish step below
       # copies that one index to ghcr. A dry run therefore exercises the whole
-      # attested path, and the build Verify Lore runs on every push is this
+      # attested path, and the build Verify's `lore-docker` runs on every change is this
       # one (`image:release`, then `docker-attestations.ts`).
       - name: Start a registry on the runner
         run: docker run -d --name registry -p 127.0.0.1:5000:5000 registry:2
@@ -499,7 +499,7 @@ jobs:
       # changelog page lists only PUBLISHED Lore releases, and the one `yarn
       # copy` built at the top of the job predates this one's publish. Without
       # it, the alepha.dev a release deploys shows every version but its own
-      # until the next `docs.yml` run. A dry run publishes nothing, so its
+      # until the next Deploy of the docs. A dry run publishes nothing, so its
       # rebuild lists the previous release, as the deployed site does today.
       - name: Rebuild docs for workerd
         working-directory: docs
@@ -508,11 +508,11 @@ jobs:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
       # ──────────────────────────────────────────────────────────────
-      # `alepha.dev` at each release. `docs.yml` also deploys it from `main`,
+      # `alepha.dev` at each release. `deploy.yml` also deploys it from `main`,
       # with the framework section pinned to the latest release tag (#Q2766),
       # so between releases it never shows an unreleased framework page.
       #
-      # It used to deploy from `deploy-latest.yml` (now `deploy-framework.yml`) on every green push to
+      # It used to deploy from `deploy-latest.yml` (now `deploy.yml`) on every green push to
       # `main`, so the site documented code no one could install yet: an agent
       # reading `llms.txt` was told about APIs its `node_modules` did not have.
       # The docs now move with the npm version, and a docs-only fix waits for

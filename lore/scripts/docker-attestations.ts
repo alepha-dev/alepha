@@ -4,7 +4,7 @@
  * provenance attestation (SLSA), as `alepha image --sbom --provenance --push`
  * attaches them.
  *
- * Run by Verify Lore's `docker` job and by Release, both against the registry
+ * Run by Verify's `lore-docker` job and by Release, both against the registry
  * container on the runner that `yarn w lore image:release` pushed to. Neither
  * ghcr nor a token is involved: the registry is plain HTTP on the loopback.
  *

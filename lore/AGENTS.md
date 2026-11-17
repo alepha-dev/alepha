@@ -45,11 +45,11 @@ core, plan, remember, ship <- plan-requirements
 
 The repository's workflow is "The workflow" in `../framework/AGENTS.md` (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, naming its `#Q<n>`; `gh pr merge --auto --rebase` through the merge queue, so `main` receives every quest's commit; the commit `main` received recorded with `quest_commit_add` after the merge. A worktree goes under `.claude/worktrees/` at the repository root, never in a sibling folder such as `../alepha-<name>`. A small edit (a few lines, no decision anyone would look for later) needs no quest, but still lands through a pull request.
 
-A pull request touching `lore/`, `framework/` or `bay/` runs **Verify Lore** (`.github/workflows/verify-lore.yml` at the root: `checks`, `test` x2, `e2e-lore` x6, `e2e-cli`, `docker`).
+A pull request touching `lore/`, `framework/` or `bay/` runs Lore's jobs of **Verify** (`.github/workflows/verify.yml` at the root: `lore-checks`, `lore-test` x2, `lore-test-postgres`, `lore-e2e` x6, `lore-e2e-cli`, `lore-docker`, closed by `gate (lore)`).
 
-⚠️ **`main` deploys to production with no human gate.** **Deploy Lore** (`deploy-lore.yml`) runs `alepha deploy` on `lore-production` once **Verify Lore** succeeds on `main` after a push (a merged pull request), unless the repository variable `LORE_DEPLOY`, the kill switch, is set to anything but `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/AGENTS.md` before pushing one.
+⚠️ **`main` deploys to production with no human gate.** Once `gate (lore)` is green on a push to `main` (a merged pull request), Verify calls **Deploy** (`deploy.yml`, job `lore`), which runs `alepha deploy` on `lore-production`, unless the repository variable `LORE_DEPLOY`, the kill switch, is set to anything but `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/AGENTS.md` before pushing one.
 
-**A hotfix can skip the wait** (#Q2707): `gh workflow run deploy-lore.yml --ref main` (or `deploy-all.yml`, which also ships the framework apps and the docs) deploys main as it stands, without waiting for Verify Lore on main. Use it only when every commit main holds beyond the last deploy was green on its own branch, and never when one of them carries a migration. A dispatch from any other ref is skipped.
+**A hotfix can skip the wait** (#Q2707): `gh workflow run deploy.yml --ref main -f target=lore` (or `-f target=all`, which also ships the framework apps and the docs) deploys main as it stands, without waiting for Verify on main. Use it only when every commit main holds beyond the last deploy was green on its own branch, and never when one of them carries a migration. A dispatch from any other ref is skipped.
 
 ### Verifying
 
@@ -121,7 +121,7 @@ Not obvious from the code, so read them before writing any.
 
 ### Core rules
 
-`alepha check` enforces the first three, and `describe` + `it`, no `vi.mock` and no error class, over the whole of `lore/` through `yarn check:conventions` (run by `yarn v` and by Verify Lore). A genuine exception carries `// alepha-allow <rule>: <reason>` on the line above it; `npx alepha check --list` prints the rules.
+`alepha check` enforces the first three, and `describe` + `it`, no `vi.mock` and no error class, over the whole of `lore/` through `yarn check:conventions` (run by `yarn v` and by Verify). A genuine exception carries `// alepha-allow <rule>: <reason>` on the line above it; `npx alepha check --list` prints the rules.
 
 - **Never `Date.now()`**: inject `DateTimeProvider` and call `this.dateTime.nowMillis()`, which makes time testable via `travel()` / `pause()`. Not available inside `alepha/core` or `alepha/datetime`. `travel()` also fires every `$job` cron in the container: assert end state, not call counts.
 - **Never throw `Error`**: always `AlephaError` (from `"alepha"`).

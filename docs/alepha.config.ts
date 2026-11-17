@@ -95,7 +95,7 @@ export default defineConfig({
         production: lore({ project: "alepha" }),
         // latest.alepha.dev: the same site from `main`, with no release pin
         // (#Q3028). ⚠️ Lore keeps one `latest` tag per app, so the two copies
-        // share it: `docs.yml` never runs their deploys at the same time.
+        // share it: `deploy.yml` never runs their deploys at the same time.
         latest: lore({ project: "alepha" }),
       },
     }),
