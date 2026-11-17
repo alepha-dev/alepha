@@ -298,9 +298,22 @@ export class AutomationCatalog {
         entry.addressable,
       ]),
     );
+    // An action also sees the outputs of the actions before it (#Q3814):
+    // in a v1 rule, a straight line, every earlier one.
+    const line = AutomationGraph.fromV1(rule);
+    const entries = this.entries();
+    const origin = rule.actions.flatMap((action, position) =>
+      action.kind === "notify" && action.channels
+        ? action.channels.map(() => position)
+        : [position],
+    );
     for (const [index, action] of AutomationRuleChannels.expand(
       rule,
     ).actions.entries()) {
+      const fields = {
+        ...source.fields,
+        ...this.graphs.outputs(line, `action-${origin[index] + 1}`, entries),
+      };
       if (
         action.kind === "notify" &&
         !action.recipient &&
@@ -321,7 +334,12 @@ export class AutomationCatalog {
         projectId,
         descriptor,
         values,
-        source.fields,
+        Object.fromEntries(
+          Object.entries(fields).map(([name, field]) => [
+            name,
+            typeof field === "string" ? field : field.kind,
+          ]),
+        ),
         variables,
         `actions[${index}]`,
         false,
@@ -547,7 +565,10 @@ export class AutomationCatalog {
   public reservedNames(): Set<string> {
     return new Set([
       ...AutomationVocabulary.RESERVED_KEYS,
-      ...this.entries().flatMap((entry) => Object.keys(entry.fields)),
+      ...this.entries().flatMap((entry) => [
+        ...Object.keys(entry.fields),
+        ...Object.keys(entry.outputs ?? {}),
+      ]),
     ]);
   }
 

@@ -249,6 +249,7 @@ export class AutomationVocabulary {
       },
       ["folio:read", "folio:write"],
       [{ capability: "remember" }],
+      { appended_folio_id: { kind: "folio", from: "folio_id" } },
     );
     this.action(
       "createQuest",
@@ -264,6 +265,10 @@ export class AutomationVocabulary {
       },
       ["quest:create"],
       [{ capability: "plan" }],
+      {
+        created_quest_id: { kind: "number", from: "quest_id" },
+        created_quest_number: { kind: "number", from: "shortId" },
+      },
     );
     this.action(
       "assignRelease",
@@ -304,7 +309,10 @@ export class AutomationVocabulary {
   public reservedNames(): Set<string> {
     return new Set([
       ...AutomationVocabulary.RESERVED_KEYS,
-      ...this.all().flatMap((entry) => Object.keys(entry.fields)),
+      ...this.all().flatMap((entry) => [
+        ...Object.keys(entry.fields),
+        ...Object.keys(entry.outputs ?? {}),
+      ]),
     ]);
   }
 
@@ -332,6 +340,7 @@ export class AutomationVocabulary {
     slots: Record<string, AutomationSlot>,
     permissions: string[],
     needs: AutomationDescriptor["needs"],
+    outputs?: AutomationDescriptor["outputs"],
   ): void {
     this.register({
       key,
@@ -342,6 +351,7 @@ export class AutomationVocabulary {
       permissions,
       needs,
       operators: [],
+      ...(outputs ? { outputs } : {}),
     });
   }
 }

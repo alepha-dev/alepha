@@ -62,6 +62,11 @@ export const automationEvaluationReportSchema = z
             changed: z.boolean(),
             reason: z.string().max(1024).optional(),
             truncated: z.boolean(),
+            /**
+             * The slots bound to an earlier action's output: not validated,
+             * since nothing is created before the run is real (#Q3814).
+             */
+            unvalidated: z.array(z.string().max(64)).max(16).optional(),
           })
           .strict(),
       )
