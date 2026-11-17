@@ -36,6 +36,7 @@ const MonitorDetailBody = (props: MonitorDetailBodyProps) => {
               presets={["monitor-down", "monitor-up"]}
               scope={{ monitor: monitor.id }}
               label={tr("uptime.subscription.label")}
+              title={`${tr("uptime.subscription.title")}: ${monitor.name}`}
               description={tr("uptime.subscription.description")}
               offDescription={tr("uptime.subscription.offDescription")}
               testId="monitor-subscription-bell"

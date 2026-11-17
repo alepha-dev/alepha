@@ -4690,6 +4690,12 @@ export default {
   "uptime.staleAfter": "Stale after (seconds)",
   "automation.guide": "How automations work",
   "automation.audience.recipients": "Recipients",
+  "automation.subscription.partial": "Partly on: some events are off",
+  "automation.subscription.events": "Events",
+  "automation.subscription.offAdditions":
+    "What you added to its automation goes with it.",
+  "hosts.subscription.title": "Host alerts",
+  "uptime.subscription.title": "Uptime alerts",
   "automation.subscription.on":
     "Subscribed: click to change or stop notifications",
   "automation.subscription.channel": "Notify me by",

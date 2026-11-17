@@ -110,6 +110,7 @@ const BayLayout = () => {
                 ]}
                 scope={{ host: host.id }}
                 label={tr("hosts.subscription.label")}
+                title={`${tr("hosts.subscription.title")}: ${host.label ?? host.slug}`}
                 description={tr("hosts.subscription.description")}
                 offDescription={tr("hosts.subscription.offDescription")}
                 testId="host-subscription-bell"

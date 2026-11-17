@@ -53,12 +53,18 @@ export interface AutomationSubscriptionBellProps {
   description: string;
   /** The confirmation's sentence on what turning it off stops. */
   offDescription: string;
+  /**
+   * The automation's title, the bell and its scope's name ("Host alerts:
+   * box"); absent, the first preset's title (#Q3808).
+   */
+  title?: string;
   testId?: string;
 }
 
 /**
- * A bell that subscribes its viewer to a stock preset in the current
- * project, through a rule of their own (#Q3576). On is a dialog naming what
+ * A bell that subscribes its viewer to stock presets in the current
+ * project, through ONE automation of their own (#Q3576, #Q3808), each preset
+ * a source of it with its own checkbox. On is a dialog naming what
  * will happen and offering a channel, then a rule created enabled with the
  * viewer as recipient; off is a confirmation, then the rule is deleted.
  *
@@ -84,8 +90,12 @@ export const AutomationSubscriptionBell = (
   const dialog = useDialog();
   const [project] = useStore(currentProjectAtom);
   const [open, setOpen] = useState(false);
-  // Several at once (#Q3602): one marked rule per channel, at least one.
+  // Several at once (#Q3602): every notification of the bell goes to all
+  // of them, at least one.
   const [channels, setChannels] = useState<Channel[]>(["inbox"]);
+  // The events to turn on with it, before it exists; once it exists, each
+  // checkbox is its source's own switch (#Q3806, #Q3808).
+  const [events, setEvents] = useState<string[]>(props.presets);
   const available =
     !!project &&
     canInProject(project, "automation:read") &&
@@ -115,7 +125,13 @@ export const AutomationSubscriptionBell = (
             presets: props.presets,
             ...(props.scope ? { scope: props.scope } : {}),
             subscribed,
-            ...(subscribed ? { channels } : {}),
+            ...(subscribed
+              ? {
+                  channels,
+                  ...(props.title ? { title: props.title } : {}),
+                  ...(state.data?.automationId ? {} : { events }),
+                }
+              : {}),
           },
         });
         setOpen(false);
@@ -123,26 +139,52 @@ export const AutomationSubscriptionBell = (
         queries.invalidate(["automations", projectId]);
       },
     },
-    [api, projectId, presets, scope, channels, queries],
+    [api, projectId, presets, scope, channels, events, queries],
+  );
+  const mute = useAction<[node: string, enabled: boolean], void>(
+    {
+      handler: async (_ctx, node, enabled) => {
+        if (!state.data?.automationId || state.data.revision === undefined)
+          return;
+        try {
+          await api.setAutomationSourceEnabled({
+            params: { projectId, id: state.data.automationId },
+            body: { node, enabled, expectedRevision: state.data.revision },
+          });
+        } finally {
+          queries.invalidate(key);
+          queries.invalidate(["automations", projectId]);
+        }
+      },
+    },
+    [api, projectId, state.data, queries],
   );
   if (!available) return null;
 
   const subscribed = state.data?.subscribed === true;
-  const label = subscribed ? tr("automation.subscription.on") : props.label;
+  const partial = state.data?.partial === true;
+  const live = subscribed || partial;
+  const label = subscribed
+    ? tr("automation.subscription.on")
+    : partial
+      ? tr("automation.subscription.partial")
+      : props.label;
   // The dialog opens either way: on a live subscription it shows the
   // channels it has, to change them or to turn it off (#Q3602).
   const toggle = () => {
-    const live = (state.data?.channels ?? []).filter(
+    const current = (state.data?.channels ?? []).filter(
       (it): it is Channel => it === "inbox" || it === "email",
     );
-    setChannels(subscribed && live.length ? live : ["inbox"]);
+    setChannels(current.length ? current : ["inbox"]);
     setOpen(true);
   };
   const unsubscribe = async () => {
     if (
       await dialog.confirm({
         title: tr("automation.subscription.offTitle"),
-        description: props.offDescription,
+        description: state.data?.additions
+          ? `${props.offDescription} ${tr("automation.subscription.offAdditions")}`
+          : props.offDescription,
         confirmLabel: tr("automation.subscription.offConfirm"),
         destructive: true,
       })
@@ -163,15 +205,16 @@ export const AutomationSubscriptionBell = (
               variant="minimal"
               size="icon"
               aria-label={label}
-              aria-pressed={subscribed}
+              aria-pressed={live}
               disabled={!state.data || set.loading}
               data-testid={props.testId}
               data-subscribed={subscribed || undefined}
+              data-partial={partial || undefined}
               onClick={() => toggle()}
             />
           }
         >
-          {subscribed ? (
+          {live ? (
             <BellRing className="text-primary size-4" />
           ) : (
             <Bell className="size-4" />
@@ -213,8 +256,48 @@ export const AutomationSubscriptionBell = (
               {tr("automation.subscription.rule")}
             </p>
           </div>
+          {props.presets.length > 1 && state.data && (
+            <div className="flex flex-col gap-1.5">
+              <span
+                id="automation-subscription-events"
+                className="text-sm font-medium"
+              >
+                {tr("automation.subscription.events")}
+              </span>
+              <div
+                role="group"
+                aria-labelledby="automation-subscription-events"
+                className="flex flex-col gap-2"
+              >
+                {(state.data.events ?? []).map((event) => (
+                  <Label key={event.preset} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={
+                        state.data?.automationId
+                          ? event.enabled
+                          : events.includes(event.preset)
+                      }
+                      disabled={mute.loading || set.loading}
+                      onCheckedChange={(checked) =>
+                        state.data?.automationId
+                          ? void mute.run(event.node, checked)
+                          : setEvents((current) =>
+                              props.presets.filter((preset) =>
+                                preset === event.preset
+                                  ? checked
+                                  : current.includes(preset),
+                              ),
+                            )
+                      }
+                    />
+                    {event.title}
+                  </Label>
+                ))}
+              </div>
+            </div>
+          )}
           <DialogFooter>
-            {subscribed ? (
+            {live ? (
               <Button
                 variant="outlined"
                 intent="danger"
@@ -230,10 +313,14 @@ export const AutomationSubscriptionBell = (
             )}
             <Button
               onClick={() => void set.run(true)}
-              disabled={set.loading || channels.length === 0}
+              disabled={
+                set.loading ||
+                channels.length === 0 ||
+                (!state.data?.automationId && events.length === 0)
+              }
               data-testid="automation-subscription-confirm"
             >
-              {subscribed
+              {live
                 ? tr("automation.subscription.save")
                 : tr("automation.subscription.confirm")}
             </Button>

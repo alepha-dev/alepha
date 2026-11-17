@@ -4715,6 +4715,13 @@ export default {
   "uptime.staleAfter": "Silence maximal (secondes)",
   "automation.guide": "Fonctionnement des automatisations",
   "automation.audience.recipients": "Destinataires",
+  "automation.subscription.partial":
+    "Activée en partie : des événements sont coupés",
+  "automation.subscription.events": "Événements",
+  "automation.subscription.offAdditions":
+    "Ce que vous avez ajouté à son automatisation part avec elle.",
+  "hosts.subscription.title": "Alertes de l’hôte",
+  "uptime.subscription.title": "Alertes de disponibilité",
   "automation.subscription.on":
     "Abonné : cliquez pour modifier ou arrêter les notifications",
   "automation.subscription.channel": "Me notifier par",
