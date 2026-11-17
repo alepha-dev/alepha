@@ -2,9 +2,11 @@ import { ResourceLinkService } from "@lore/core/api";
 import { EpicController } from "@lore/plan/api";
 import { compareReleaseTags, epics, releases } from "@lore/plan/schemas";
 import { $inject, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { personas } from "../entities/personas.ts";
+import { requirementMetricDays } from "../entities/requirementMetricDays.ts";
 import { type Requirement, requirements } from "../entities/requirements.ts";
 import { useCaseActors } from "../entities/useCaseActors.ts";
 import { useCaseCriteria } from "../entities/useCaseCriteria.ts";
@@ -36,6 +38,8 @@ export class RequirementService {
   protected readonly releases = $repository(releases);
   protected readonly links = $inject(ResourceLinkService);
   protected readonly runService = $inject(RunService);
+  protected readonly metricDays = $repository(requirementMetricDays);
+  protected readonly dt = $inject(DateTimeProvider);
 
   /**
    * Every requirement of `rows` as a resource, in a fixed number of reads.
@@ -64,9 +68,19 @@ export class RequirementService {
         : [],
       this.links.relationsTo("covers", "usecase", useCaseIds.map(String)),
     ]);
-    const [latest, development] = await Promise.all([
+    const metricIds = rows.filter((it) => it.metric).map((it) => it.id);
+    const [latest, development, days] = await Promise.all([
       this.runService.latestOf(useCaseIds),
       this.runService.developmentOf(useCaseIds),
+      metricIds.length
+        ? this.metricDays.findMany({
+            where: {
+              requirementId: { inArray: metricIds },
+              day: { gte: this.dayOf(-13) },
+            },
+            orderBy: [{ column: "day", direction: "asc" }],
+          })
+        : [],
     ]);
     const epicIds = [...new Set(covers.map((it) => Number(it.fromId)))];
     const personaIds = [...new Set(actors.map((it) => it.personaId))];
@@ -165,9 +179,21 @@ export class RequirementService {
               mode: auto ? ("auto" as const) : ("by_hand" as const),
             }
           : undefined,
-        status: this.statusOf(mine, latest, development),
+        status: row.metric
+          ? (row.metricStatus ?? "no_data")
+          : this.statusOf(mine, latest, development),
+        metricDays: days
+          .filter((it) => it.requirementId === row.id)
+          .map((it) => ({ day: it.day, value: it.value, status: it.status })),
       };
     });
+  }
+
+  /**
+   * `YYYY-MM-DD` (UTC) of today plus `offset` days.
+   */
+  protected dayOf(offset: number): string {
+    return this.dt.now().add(offset, "day").toISOString().slice(0, 10);
   }
 
   /**

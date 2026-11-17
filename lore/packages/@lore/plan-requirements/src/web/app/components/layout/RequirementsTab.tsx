@@ -108,7 +108,9 @@ const RequirementsTab = () => {
       (!values.verifiedBy ||
         (values.verifiedBy === "usecases"
           ? it.criteria.length > 0
-          : it.criteria.length === 0)) &&
+          : values.verifiedBy === "metric"
+            ? !!it.metric
+            : it.criteria.length === 0 && !it.metric)) &&
       (!values.release ||
         String(it.targetRelease?.id ?? "") === values.release),
   );
@@ -209,6 +211,10 @@ const RequirementsTab = () => {
                 {
                   value: "usecases",
                   label: tr("requirements.requirement.filter.useCases"),
+                },
+                {
+                  value: "metric",
+                  label: tr("requirements.requirement.filter.metric"),
                 },
                 {
                   value: "none",
@@ -335,14 +341,16 @@ const RequirementsTab = () => {
                         )}
                       </td>
                       <td className="py-2 pr-3 text-xs">
-                        {row.criteria.length
-                          ? row.criteria
-                              .map(
-                                (c) =>
-                                  `${formatReference("usecase", c.useCaseNumber)} ${c.key}`,
-                              )
-                              .join(" · ")
-                          : "-"}
+                        {row.metric
+                          ? tr("requirements.requirement.metric")
+                          : row.criteria.length
+                            ? row.criteria
+                                .map(
+                                  (c) =>
+                                    `${formatReference("usecase", c.useCaseNumber)} ${c.key}`,
+                                )
+                                .join(" · ")
+                            : "-"}
                       </td>
                       <td className="py-2">
                         <RequirementStatusChips requirement={row} />

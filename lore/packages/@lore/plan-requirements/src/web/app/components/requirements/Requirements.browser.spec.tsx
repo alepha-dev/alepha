@@ -43,6 +43,7 @@ const aRequirement = (
     personas: [{ number: 2, name: "Léa" }],
     targetRelease: { id: 3, number: 2, tag: "2.4.0", mode: "auto" },
     status: "covered",
+    metricDays: [],
     createdAt: "2026-11-10T10:00:00.000Z",
     updatedAt: "2026-11-10T10:00:00.000Z",
     ...over,
@@ -174,5 +175,55 @@ describe("Requirements screens", () => {
     expect(
       screen.queryByRole("button", { name: /Edit requirement/ }),
     ).toBeNull();
+  });
+
+  it("draws a metric requirement: its measure, value, since when and 14 days (#Q3773)", async ({
+    expect,
+  }) => {
+    const app = await boot(["requirement:read"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <RequirementDetail
+            requirement={aRequirement({
+              number: 15,
+              statement: "Checkout paints fast",
+              criteria: [],
+              metric: {
+                kind: "vital",
+                vital: "lcp",
+                path: "/checkout/*",
+                app: "acme",
+                threshold: 2500,
+              },
+              metricValue: 1800,
+              metricStatus: "verified",
+              metricStatusSince: "2026-11-10T10:00:00.000Z",
+              metricEvaluatedAt: "2026-11-16T10:00:00.000Z",
+              metricDays: [
+                { day: "2026-11-15", value: 2500, status: "verified" },
+                { day: "2026-11-16", value: 1800, status: "verified" },
+              ],
+              status: "verified",
+            })}
+            releases={[{ id: 3, tag: "2.4.0" }]}
+            onChange={() => {}}
+            onEdit={() => {}}
+            onDeleted={() => {}}
+          />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const card = await screen.findByTestId("requirement-metric");
+    expect(card.textContent).toContain(
+      "LCP · p75 · /checkout/* · acme production · ≤ 2500 ms",
+    );
+    expect(card.textContent).toContain("1800 ms");
+    expect(card.textContent).toContain("Verified");
+    expect(card.textContent).toContain("Needs an app built with Alepha");
+    expect(
+      screen.getByTestId("metric-sparkline").querySelectorAll("circle"),
+    ).toHaveLength(2);
   });
 });

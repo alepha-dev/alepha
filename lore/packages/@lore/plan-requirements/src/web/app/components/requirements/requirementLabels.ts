@@ -25,4 +25,5 @@ export const REQUIREMENT_STATUS_LABEL_KEYS = {
   in_development: "requirements.requirement.status.in_development",
   covered: "requirements.requirement.status.covered",
   not_covered: "requirements.requirement.status.not_covered",
+  no_data: "requirements.requirement.status.no_data",
 } as const satisfies Record<RequirementStatus, string>;
