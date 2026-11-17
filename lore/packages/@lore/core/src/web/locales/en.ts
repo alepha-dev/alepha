@@ -3654,6 +3654,7 @@ export default {
   "epic.status.completed": "Completed",
   "epic.status.shelved": "Shelved",
   "epic.list.empty": "No epics yet.",
+  "epic.list.noMatch": "No epic matches these filters",
   "epic.list.column.title": "Epic",
   "epic.list.column.updated": "Updated",
   "epic.filter.status": "Status",

@@ -458,6 +458,27 @@ export const DataTable = <
     return Object.keys(cleanFilterValues(form.currentValues ?? {})).length;
   }, [props.filters, form, refreshKey]);
   const hasActiveFilters = activeFilterCount > 0;
+  /**
+   * Whether the filters are the table's declared default view
+   * (`initialValues`), such as an inbox that opens on `status: open`. An
+   * empty page there means the list has nothing, so its `emptyMessage`
+   * still applies (#Q3820): only a filter the reader set is a "no match".
+   */
+  const filtersAtDefault = useMemo(() => {
+    if (!props.filters || !form) return true;
+    const canonical = (values: Record<string, unknown>) => {
+      const clean = cleanFilterValues(values);
+      return JSON.stringify(
+        Object.keys(clean)
+          .sort()
+          .map((key) => [key, clean[key]]),
+      );
+    };
+    return (
+      canonical(form.currentValues ?? {}) ===
+      canonical((props.filters.initialValues ?? {}) as Record<string, unknown>)
+    );
+  }, [props.filters, form, refreshKey]);
 
   // What every cell is told beside its row: the search the rows on screen
   // answer, from the first `preset: "search"` field holding one.
@@ -790,6 +811,7 @@ export const DataTable = <
             hasCheckbox={hasCheckbox}
             hasRowActions={hasRowActions}
             hasActiveFilters={hasActiveFilters}
+            filtersAtDefault={filtersAtDefault}
             selection={selection}
             toggleRow={toggleRow}
             rowCtx={rowCtx}

@@ -53,6 +53,11 @@ export interface DataTableBodyProps<T> {
    * no-items one.
    */
   hasActiveFilters: boolean;
+  /**
+   * Whether the filters are the table's declared `initialValues`: an empty
+   * page there keeps `emptyMessage`.
+   */
+  filtersAtDefault?: boolean;
   selection: ReadonlyMap<string, T>;
   toggleRow: (item: T) => void;
   rowCtx: RowActionContext;
@@ -108,9 +113,18 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
   const emptyOverride =
     (hasActiveFilters ? props.noMatchState : props.emptyState) ?? {};
   const EmptyIcon = emptyOverride.icon ?? (hasActiveFilters ? SearchX : Inbox);
+  // `emptyMessage` is the no-items title only (#Q3820): "No epics yet." is
+  // false of a list whose filter hid every row, so a filtered empty page
+  // falls through to the no-match defaults.
+  // A default view (`initialValues`) is the list as it is meant to be read,
+  // not a reader's filter, so it keeps the message.
+  const emptyMessage =
+    hasActiveFilters && !props.filtersAtDefault
+      ? undefined
+      : props.emptyMessage;
   const emptyTitle =
     emptyOverride.title ??
-    props.emptyMessage ??
+    emptyMessage ??
     String(
       hasActiveFilters
         ? tr("dataTable.noMatchTitle", { default: "No match" })
@@ -122,7 +136,7 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
   // component talking over its caller.
   const emptyDescription =
     emptyOverride.description ??
-    (props.emptyMessage
+    (emptyMessage
       ? undefined
       : String(
           hasActiveFilters
