@@ -51,7 +51,7 @@ export const useHomeSearchHitHref = () => {
       return `/${projectSlug}/requirements/use-cases/${hit.shortId}`;
     }
     if (hit.kind === "requirement") {
-      return `/${projectSlug}/requirements?requirement=${hit.shortId}`;
+      return `/${projectSlug}/requirements/requirement/${hit.shortId}`;
     }
     // A directory has no route of its own: the workspace reaches it.
     return router.path("projectFolios", { params });

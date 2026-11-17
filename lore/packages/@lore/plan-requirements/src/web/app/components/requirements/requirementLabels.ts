@@ -1,3 +1,16 @@
+import {
+  ChevronDown,
+  ChevronsUp,
+  ChevronUp,
+  CircleCheck,
+  CircleDashed,
+  CircleHelp,
+  CircleX,
+  Hammer,
+  Layers,
+  Minus,
+} from "lucide-react";
+
 import type { RequirementPriority } from "../../../../api/schemas/requirementPrioritySchema.ts";
 import type { RequirementStatus } from "../../../../api/schemas/requirementStatusSchema.ts";
 import type { RequirementType } from "../../../../api/schemas/requirementTypeSchema.ts";
@@ -27,3 +40,38 @@ export const REQUIREMENT_STATUS_LABEL_KEYS = {
   not_covered: "requirements.requirement.status.not_covered",
   no_data: "requirements.requirement.status.no_data",
 } as const satisfies Record<RequirementStatus, string>;
+
+/**
+ * A priority's tone and glyph, the pair a quest's priority chip carries.
+ */
+export const REQUIREMENT_PRIORITY_TONE = {
+  must: "danger",
+  should: "warning",
+  could: "info",
+  wont: "neutral",
+} as const satisfies Record<RequirementPriority, string>;
+
+export const REQUIREMENT_PRIORITY_ICONS = {
+  must: ChevronsUp,
+  should: ChevronUp,
+  could: ChevronDown,
+  wont: Minus,
+} as const satisfies Record<RequirementPriority, unknown>;
+
+export const REQUIREMENT_STATUS_TONE = {
+  verified: "success",
+  failing: "danger",
+  in_development: "info",
+  covered: "info",
+  not_covered: "neutral",
+  no_data: "neutral",
+} as const satisfies Record<RequirementStatus, string>;
+
+export const REQUIREMENT_STATUS_ICONS = {
+  verified: CircleCheck,
+  failing: CircleX,
+  in_development: Hammer,
+  covered: Layers,
+  not_covered: CircleDashed,
+  no_data: CircleHelp,
+} as const satisfies Record<RequirementStatus, unknown>;

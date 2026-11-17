@@ -28,7 +28,7 @@ export const REQUIREMENTS_TABS = [
 
 /**
  * Every route under `/requirements`: the layout, its three tabs, the
- * persona and use case pages and the test book, which keep the sidebar
+ * persona, use case and requirement pages and the test book, which keep the sidebar
  * entry lit.
  */
 export const REQUIREMENTS_ROUTES: readonly string[] = [
@@ -36,5 +36,6 @@ export const REQUIREMENTS_ROUTES: readonly string[] = [
   ...REQUIREMENTS_TABS.map((tab) => tab.route),
   "projectPersona",
   "projectUseCase",
+  "projectRequirement",
   "projectRequirementsTestBook",
 ];

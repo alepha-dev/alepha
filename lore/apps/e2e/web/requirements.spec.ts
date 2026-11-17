@@ -240,14 +240,27 @@ test.describe("Requirements", () => {
     });
 
     await test.step("the requirement fails, and the matrix says so", async () => {
-      await page.goto(`/${slug}/requirements?requirement=${ids.req.number}`);
+      await page.goto(`/${slug}/requirements`);
       await page.waitForLoadState("networkidle");
-      await expect(page.getByTestId("requirements-table")).toBeVisible();
+      await expect(page.getByTestId("requirement-row")).toHaveCount(2);
       await shoot(page, "requirements-list");
 
+      // A requirement opens on a page of its own, as an epic does, under a
+      // trail that ends with its reference.
+      await page.getByTestId("requirement-row").first().click();
+      await expect(page).toHaveURL(
+        new RegExp(`/requirements/requirement/${ids.req.number}$`),
+      );
+      await expect(page.getByTestId("requirement-detail")).toBeVisible();
+      await shoot(page, "requirements-requirement");
+
+      await page.goto(`/${slug}/requirements`);
+      await page.waitForLoadState("networkidle");
       await page.getByRole("radio", { name: "Matrix" }).click();
+      await expect(page).toHaveURL(/view=matrix/);
       await expect(page.getByTestId("traceability-matrix")).toBeVisible();
       await expect(page.locator('[data-cell="failing"]').first()).toBeVisible();
+      await page.getByTestId("matrix-row").first().click();
       await expect(page.getByTestId("impact-chain")).toBeVisible();
       await expect(page.getByTestId("coverage-gaps")).toBeVisible();
       await shoot(page, "requirements-matrix");
@@ -256,7 +269,9 @@ test.describe("Requirements", () => {
     await test.step("Verify builds the prompt", async () => {
       await page.goto(`/${slug}/requirements/use-cases/${ids.uc.number}`);
       await page.waitForLoadState("networkidle");
-      await page.getByRole("button", { name: "Verify" }).click();
+      // Verify sits behind the robot glyph, as every agent prompt does.
+      await page.getByTestId("verify-menu").click();
+      await page.getByRole("menuitem", { name: "Test", exact: true }).click();
       await expect(page.getByTestId("verify-preview")).toContainText(
         "Apply a promo code",
       );

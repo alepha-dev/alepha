@@ -46,7 +46,8 @@ fix:
 
 ## Exports
 
-**CSV** downloads the requirements, one row each, with their chapter,
+Both are in the toolbar of the Requirements list. **CSV** downloads the
+requirements, one row each, with their chapter,
 paragraph, priority, status, release and what verifies them. **Test book**
 opens a page with every requirement per chapter, its criteria and their last
 results, styled for print: **Print or save as PDF** saves it from the

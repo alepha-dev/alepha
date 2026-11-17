@@ -1,8 +1,9 @@
 import { Badge, Card, CardContent } from "@alepha/ui";
-import { formatReference, type I18n } from "@lore/core/web";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
+import ReferenceLink from "../shared/ReferenceLink.tsx";
 import { CRITERION_METHOD_LABEL_KEYS } from "./useCaseLabels.ts";
 
 export interface UseCaseCriteriaProps {
@@ -21,7 +22,7 @@ const UseCaseCriteria = (props: UseCaseCriteriaProps) => {
       <CardContent className="flex flex-col gap-3">
         <h2 className="font-semibold">{tr("requirements.usecase.criteria")}</h2>
         {props.useCase.criteria.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm italic">
             {tr("requirements.usecase.criteria.empty")}
           </p>
         ) : (
@@ -37,8 +38,11 @@ const UseCaseCriteria = (props: UseCaseCriteriaProps) => {
                     {tr(CRITERION_METHOD_LABEL_KEYS[c.method])}
                   </Badge>
                   {c.requirementNumber ? (
-                    <span className="text-muted-foreground text-xs">
-                      {formatReference("requirement", c.requirementNumber)}
+                    <span className="text-xs">
+                      <ReferenceLink
+                        kind="requirement"
+                        number={c.requirementNumber}
+                      />
                     </span>
                   ) : null}
                   {c.alternativeKey ? (

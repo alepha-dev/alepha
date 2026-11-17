@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import type { RequirementCoverageController } from "../../../../api/controllers/RequirementCoverageController.ts";
 import type { RequirementCoverage } from "../../../../api/schemas/requirementCoverageSchema.ts";
+import ReferenceLink from "../shared/ReferenceLink.tsx";
 import VerifyDialog, { type VerifySubject } from "../verify/VerifyDialog.tsx";
 
 export interface CoverageGapsProps {
@@ -41,13 +42,23 @@ const CoverageGaps = (props: CoverageGapsProps) => {
     [api, props.projectId],
   );
 
-  const sections = [
+  const sections: Array<{
+    key: string;
+    title: string;
+    items: Array<{
+      kind: "requirement" | "usecase" | "persona" | "epic";
+      number: number;
+      title?: string;
+    }>;
+    action?: React.ReactNode;
+  }> = [
     {
       key: "requirements",
       title: tr("requirements.trace.gap.requirements"),
-      items: gaps.requirementsNotVerified.map((it) =>
-        formatReference("requirement", it.number),
-      ),
+      items: gaps.requirementsNotVerified.map((it) => ({
+        kind: "requirement" as const,
+        number: it.number,
+      })),
       action:
         gaps.requirementsNotVerified[0] !== undefined ? (
           <Button
@@ -68,23 +79,28 @@ const CoverageGaps = (props: CoverageGapsProps) => {
     {
       key: "usecases",
       title: tr("requirements.trace.gap.useCases"),
-      items: gaps.useCasesWithoutRequirement.map((it) =>
-        formatReference("usecase", it.number),
-      ),
+      items: gaps.useCasesWithoutRequirement.map((it) => ({
+        kind: "usecase" as const,
+        number: it.number,
+      })),
     },
     {
       key: "personas",
       title: tr("requirements.trace.gap.personas"),
-      items: gaps.personasWithoutPassingUseCase.map(
-        (it) => `${formatReference("persona", it.number)} ${it.name}`,
-      ),
+      items: gaps.personasWithoutPassingUseCase.map((it) => ({
+        kind: "persona" as const,
+        number: it.number,
+        title: it.name,
+      })),
     },
     {
       key: "epics",
       title: tr("requirements.trace.gap.epics"),
-      items: gaps.epicsWithoutUseCase.map(
-        (it) => `${formatReference("epic", it.number)} ${it.title}`,
-      ),
+      items: gaps.epicsWithoutUseCase.map((it) => ({
+        kind: "epic" as const,
+        number: it.number,
+        title: it.title,
+      })),
       action:
         gaps.epicsWithoutUseCase[0] !== undefined ? (
           <div className="flex flex-wrap gap-2">
@@ -139,9 +155,15 @@ const CoverageGaps = (props: CoverageGapsProps) => {
             </div>
             {section.items.length ? (
               <>
-                <p className="text-muted-foreground text-xs">
-                  {section.items.join(", ")}
-                </p>
+                <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+                  {section.items.map((item) => (
+                    <li key={item.number}>
+                      <ReferenceLink kind={item.kind} number={item.number}>
+                        {item.title}
+                      </ReferenceLink>
+                    </li>
+                  ))}
+                </ul>
                 {section.action ?? null}
               </>
             ) : null}

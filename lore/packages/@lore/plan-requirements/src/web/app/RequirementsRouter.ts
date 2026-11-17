@@ -12,8 +12,10 @@ import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
 import type { PersonaController } from "../../api/controllers/PersonaController.ts";
+import type { RequirementController } from "../../api/controllers/RequirementController.ts";
 import type { UseCaseController } from "../../api/controllers/UseCaseController.ts";
 import { currentPersonaAtom } from "./atoms/currentPersonaAtom.ts";
+import { currentRequirementAtom } from "./atoms/currentRequirementAtom.ts";
 import { currentUseCaseAtom } from "./atoms/currentUseCaseAtom.ts";
 
 /**
@@ -22,14 +24,18 @@ import { currentUseCaseAtom } from "./atoms/currentUseCaseAtom.ts";
  * (`/requirements`, where the entry opens), Use cases
  * (`/requirements/use-cases`) and Personas (`/requirements/personas`).
  *
- * The persona and use case pages are full pages OUTSIDE the tabbed layout,
- * without its tab bar (decision 77), mounted as siblings of it by the quests
- * that bring them.
+ * The persona, use case and requirement pages are full pages OUTSIDE the
+ * tabbed layout, without its tab bar (decision 77), mounted as siblings of
+ * it.
+ *
+ * No route sets a `head`: the document title is the breadcrumb's own trail
+ * (`ProjectTrail`), so the two cannot drift.
  */
 export class RequirementsRouter {
   alepha = $inject(Alepha);
   personaApi = $client<PersonaController>();
   useCaseApi = $client<UseCaseController>();
+  requirementApi = $client<RequirementController>();
 
   /**
    * The tabbed layout: folder tabs and no plate (answer 73), each tab owning
@@ -45,9 +51,6 @@ export class RequirementsRouter {
       this.projectUseCases,
       this.projectPersonas,
     ],
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Requirements`,
-    }),
     loader: async () => this.gate(),
     lazy: () => import("./components/layout/RequirementsLayout.tsx"),
   });
@@ -56,8 +59,10 @@ export class RequirementsRouter {
     name: "projectRequirements",
     // Empty, not "/": the layout's own `/requirements` is this tab's URL.
     path: "",
-    // The requirement whose detail pane is open: what `[[#S15]]` links to.
-    schema: { query: z.object({ requirement: z.text().optional() }) },
+    // `?view=matrix` opens the traceability matrix, so the view is a link
+    // and survives a reload. Read from the URL, never written back by an
+    // effect: the switch itself navigates.
+    schema: { query: z.object({ view: z.enum(["matrix"]).optional() }) },
     loader: async () => this.gateTab("requirement:read"),
     lazy: () => import("./components/layout/RequirementsTab.tsx"),
   });
@@ -89,9 +94,6 @@ export class RequirementsRouter {
     loading: ProjectPageSkeleton,
     name: "projectRequirementsTestBook",
     path: "/requirements/test-book",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Test book`,
-    }),
     lazy: () => import("./components/traceability/TestBookPage.tsx"),
     loader: async () => {
       this.gate();
@@ -105,13 +107,6 @@ export class RequirementsRouter {
     name: "projectPersona",
     path: "/requirements/personas/:personaNumber",
     schema: { params: z.object({ personaNumber: z.integer() }) },
-    head: (props, previous) => {
-      const persona = (props as { persona?: { name?: string } } | undefined)
-        ?.persona;
-      return {
-        title: `${previous?.title ?? ""} › ${persona?.name ?? "Persona"}`,
-      };
-    },
     lazy: () => import("./components/personas/PersonaPage.tsx"),
     loader: async ({ params }) => {
       this.gate();
@@ -143,13 +138,6 @@ export class RequirementsRouter {
     name: "projectUseCase",
     path: "/requirements/use-cases/:useCaseNumber",
     schema: { params: z.object({ useCaseNumber: z.integer() }) },
-    head: (props, previous) => {
-      const useCase = (props as { useCase?: { title?: string } } | undefined)
-        ?.useCase;
-      return {
-        title: `${previous?.title ?? ""} › ${useCase?.title ?? "Use case"}`,
-      };
-    },
     lazy: () => import("./components/usecases/UseCasePage.tsx"),
     loader: async ({ params }) => {
       this.gate();
@@ -163,6 +151,38 @@ export class RequirementsRouter {
     },
     onLeave: () => {
       this.alepha.store.set(currentUseCaseAtom, undefined);
+    },
+    errorHandler: (error) => {
+      if (isHttpError(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+  });
+
+  /**
+   * A requirement's page, like a persona's and a use case's: a full page
+   * outside the tabbed layout, and what `[[#S15]]` links to. Under
+   * `/requirements/requirement/`, since `/requirements/:number` would sit
+   * beside the tabs' own static segments.
+   */
+  projectRequirement = $pageProject({
+    loading: ProjectPageSkeleton,
+    name: "projectRequirement",
+    path: "/requirements/requirement/:requirementNumber",
+    schema: { params: z.object({ requirementNumber: z.integer() }) },
+    lazy: () => import("./components/requirements/RequirementPage.tsx"),
+    loader: async ({ params }) => {
+      this.gate();
+      this.gateTab("requirement:read");
+      const project = this.alepha.store.get(currentProjectAtom)!;
+      const requirement = await this.requirementApi.getRequirementByNumber({
+        params: { projectId: project.id, number: params.requirementNumber },
+      });
+      this.alepha.store.set(currentRequirementAtom, requirement);
+      return { requirement };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentRequirementAtom, undefined);
     },
     errorHandler: (error) => {
       if (isHttpError(error, 404)) {

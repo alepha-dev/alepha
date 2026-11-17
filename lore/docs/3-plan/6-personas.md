@@ -15,8 +15,8 @@ deletes nothing.
 **Requirements** in the sidebar opens a page with three tabs: **Requirements**,
 **Use cases** and **Personas**. The **Personas** tab draws one card per
 persona, numbered `#A1`, `#A2` and so on, with its kind, its role and the
-first line of its goals. The kind filter at the top shows **Human**,
-**System** or **Agent** personas only.
+first line of its goals. The bar at the top holds a search and a kind filter,
+which shows **Human**, **System** or **Agent** personas only.
 
 ![The Personas tab](/screenshots/lore/requirements-personas-light.png)
 
@@ -61,8 +61,9 @@ says the scope changed and how many use cases to verify again.
 **Open as** opens the persona's app copy in a new tab. Lore signs no one in:
 copy the demo account from the identity card and sign in yourself. The button
 is hidden when the persona names no copy, or the copy is gone, and is refused
-on a production copy. **Verify** opens the [Verify dialog](/lore/docs/plan-verify)
-for all the persona's use cases.
+on a production copy. The robot button, **Verify**, offers **Test** and
+**Explore**, and opens the [Verify dialog](/lore/docs/plan-verify) for all the
+persona's use cases. **Delete** is under the three dots.
 
 ## From the command line
 

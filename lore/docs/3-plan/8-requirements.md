@@ -11,10 +11,16 @@ capability. See [Personas](/lore/docs/plan-personas) for turning it on.
 ## The Requirements tab
 
 The **Requirements** tab lists every requirement, numbered `#S1`, `#S2` and so
-on, grouped by chapter. The counters at the top filter by status; below them,
-**Type**, **Verified by** and **Release** narrow the list further.
+on, with its chapter, type, priority, release, what verifies it and its
+status. A click on a column's name sorts the list by it.
 
-![The Requirements tab with a requirement open](/screenshots/lore/requirements-list-light.png)
+The rail at the left filters by status, each button counting its
+requirements, and **Source changed** shows the ones whose folio changed. The
+bar above the list holds a search and the **Status** filter; **+** adds
+**Type**, **Verified by** and **Release**. A filter starts empty and shows
+everything. The list remembers its filters, its sort and its columns.
+
+![The Requirements tab](/screenshots/lore/requirements-list-light.png)
 
 | Status             | Means                                                                           |
 | ------------------ | ------------------------------------------------------------------------------- |
@@ -30,11 +36,22 @@ on, grouped by chapter. The counters at the top filter by status; below them,
 MoSCoW **Priority** (**Must**, **Should**, **Could**, **Won't**), and its
 **Chapter** and **Paragraph** as the specification numbers them.
 
-### The detail pane
+A row's menu offers **Edit requirement** and **Delete**, and ticking several
+rows deletes them together.
 
-Clicking a requirement opens its pane: the epics covering it, the personas
-behind it (through its use cases), its release, and the criteria verifying
-it. A criterion is linked to a requirement from the use case.
+## A requirement's page
+
+Clicking a requirement opens its page. Its identity card shows its status,
+type, priority, chapter, the personas behind it (through its use cases) and
+its release. The tabs:
+
+- **Overview**: its description, and the criteria or the measure verifying
+  it. A criterion is linked to a requirement from the use case.
+- **Impact chain**: the use cases, epics, quests, errors and release it
+  reaches. See [Traceability](/lore/docs/plan-traceability).
+- **Activity**.
+
+![A requirement's page](/screenshots/lore/requirements-requirement-light.png)
 
 **Release** is filled from the epics covering it: when one of them sits in a
 release, the requirement ships there (**auto**). Changing it moves those epics
@@ -45,8 +62,9 @@ release, it is set **by hand**.
 
 A requirement can name the folio it comes from, and the heading of its
 section. When that section changes, the requirement shows **Source changed**
-and the pane shows what changed. **Update the requirement** takes the new
-text, **Keep** dismisses the change. **Import a specification** opens the
+and its **Overview** shows what changed. **Update the requirement** takes the
+new text, **Keep** dismisses the change. **Import a specification**, in the
+list's toolbar, opens the
 [Verify dialog](/lore/docs/plan-verify) with a prompt that splits a folio into
 requirements.
 

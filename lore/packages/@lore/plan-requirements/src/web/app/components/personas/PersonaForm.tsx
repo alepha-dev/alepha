@@ -1,10 +1,27 @@
 import { Button, useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
-import type { I18n } from "@lore/core/web";
-import { useClient } from "alepha/react";
+import {
+  currentProjectAtom,
+  type I18n,
+  useLoreEditorControl,
+} from "@lore/core/web";
+import { useClient, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Plus, Save } from "lucide-react";
+import {
+  AppWindow,
+  Database,
+  Frown,
+  IdCard,
+  KeyRound,
+  Plus,
+  Save,
+  Server,
+  Shapes,
+  Target,
+  UserRound,
+  UserRoundSearch,
+} from "lucide-react";
 
 import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
 import { personaInputSchema } from "../../../../api/schemas/personaInputSchema.ts";
@@ -26,6 +43,7 @@ export interface PersonaFormProps {
 const PersonaForm = (props: PersonaFormProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
+  const [project] = useStore(currentProjectAtom);
   const personaApi = useClient<PersonaController>();
   const persona = props.persona;
 
@@ -76,56 +94,84 @@ const PersonaForm = (props: PersonaFormProps) => {
     ? personaApi.updatePersona.can()
     : personaApi.createPersona.can();
 
+  // One editor for the three bodies: the same element, so the same
+  // component identity, and `[[#Q12]]` and images work in each.
+  const BodyEditor = useLoreEditorControl({
+    kind: "persona",
+    projectId: props.projectId,
+    projectSlug: project?.slug ?? "",
+    id: persona?.id,
+  });
+
   return (
     <form {...form.props} className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
         <Control
           label={tr("requirements.persona.field.name")}
+          description={tr("requirements.persona.field.name.helper")}
           input={form.input.name}
+          icon={UserRound}
         />
         <Control
           label={tr("requirements.persona.field.kind")}
           input={form.input.kind}
+          icon={Shapes}
         />
         <Control
           label={tr("requirements.persona.field.role")}
           description={tr("requirements.persona.field.role.helper")}
           input={form.input.role}
+          icon={IdCard}
         />
         <Control
           label={tr("requirements.persona.field.who")}
+          description={tr("requirements.persona.field.who.helper")}
           input={form.input.who}
+          icon={UserRoundSearch}
+          custom={BodyEditor}
         />
         <Control
           label={tr("requirements.persona.field.goals")}
+          description={tr("requirements.persona.field.goals.helper")}
           input={form.input.goals}
+          icon={Target}
+          custom={BodyEditor}
         />
         <Control
           label={tr("requirements.persona.field.frustrations")}
+          description={tr("requirements.persona.field.frustrations.helper")}
           input={form.input.frustrations}
+          icon={Frown}
+          custom={BodyEditor}
         />
         <Control
           label={tr("requirements.persona.field.alephaRole")}
           description={tr("requirements.persona.field.alephaRole.helper")}
           input={form.input.alephaRole}
+          icon={KeyRound}
         />
         <Control
           label={tr("requirements.persona.field.demoAccount")}
           description={tr("requirements.persona.field.demoAccount.helper")}
           input={form.input.demoAccount}
+          icon={UserRound}
         />
         <Control
           label={tr("requirements.persona.field.demoSeed")}
+          description={tr("requirements.persona.field.demoSeed.helper")}
           input={form.input.demoSeed}
+          icon={Database}
         />
         <div className="grid grid-cols-2 gap-4">
           <Control
             label={tr("requirements.persona.field.environmentApp")}
             input={form.input.environmentApp}
+            icon={AppWindow}
           />
           <Control
             label={tr("requirements.persona.field.environmentEnv")}
             input={form.input.environmentEnv}
+            icon={Server}
           />
         </div>
       </div>

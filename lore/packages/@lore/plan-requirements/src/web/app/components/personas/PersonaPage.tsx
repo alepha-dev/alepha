@@ -1,11 +1,18 @@
-import { Button, Card, CardContent, useDialog } from "@alepha/ui";
-import { MarkdownView } from "@alepha/ui/markdown";
-import { DetailLayout, type DetailTab } from "@alepha/ui/shell";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  useDialog,
+} from "@alepha/ui";
+import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import {
   canInProject,
   currentProjectAtom,
   type I18n,
   LazyProjectActivityPage,
+  LoreViewer,
 } from "@lore/core/web";
 import {
   useAction,
@@ -17,7 +24,6 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
-  ClipboardCheck,
   ExternalLink,
   FileText,
   GitCommitHorizontal,
@@ -37,7 +43,10 @@ import type {
 } from "../../../../api/schemas/personaInsightSchemas.ts";
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
 import { currentPersonaAtom } from "../../atoms/currentPersonaAtom.ts";
-import VerifyDialog from "../verify/VerifyDialog.tsx";
+import DetailMoreMenu from "../shared/DetailMoreMenu.tsx";
+import RequirementsHover from "../shared/RequirementsHover.tsx";
+import WarningNotice from "../shared/WarningNotice.tsx";
+import VerifyMenu from "../verify/VerifyMenu.tsx";
 import PersonaAside from "./PersonaAside.tsx";
 import PersonaChanges from "./PersonaChanges.tsx";
 import PersonaSheet from "./PersonaSheet.tsx";
@@ -65,9 +74,8 @@ const PersonaPage = (props: PersonaPageProps) => {
   // A page of this package, named by string.
   const router = useRouter<any>();
   const [persona, setPersona] = useState(props.persona);
-  const [tab, setTab] = useState<TabKey>("overview");
+  const [tab, setTab] = useDetailTab<TabKey>("overview");
   const [editing, setEditing] = useState(false);
-  const [verifying, setVerifying] = useState(false);
   const insightApi = useClient<PersonaInsightController>();
   const projectId = project?.id ?? 0;
   const params = { projectId, number: props.persona.number };
@@ -190,14 +198,11 @@ const PersonaPage = (props: PersonaPageProps) => {
       onTabChange={(value) => setTab(value as TabKey)}
       actions={
         <>
-          <Button size="sm" onClick={() => setVerifying(true)}>
-            <ClipboardCheck className="size-4" />
-            {tr("requirements.verify")}
-          </Button>
+          <VerifyMenu subject={{ kind: "persona", number: persona.number }} />
           {copy?.state === "ready" && copy.url ? (
             <Button
               variant="outlined"
-              size="sm"
+              size="lg"
               title={tr("requirements.persona.openAs.help")}
               onClick={() =>
                 window.open(copy.url, "_blank", "noopener,noreferrer")
@@ -209,7 +214,7 @@ const PersonaPage = (props: PersonaPageProps) => {
           ) : copy?.state === "production" ? (
             <Button
               variant="outlined"
-              size="sm"
+              size="lg"
               disabled
               title={tr("requirements.persona.openAs.production")}
             >
@@ -221,91 +226,108 @@ const PersonaPage = (props: PersonaPageProps) => {
             <>
               <Button
                 variant="outlined"
-                size="sm"
+                size="lg"
+                disabled={remove.loading}
                 onClick={() => setEditing(true)}
               >
                 <Pencil className="size-4" />
                 {tr("requirements.persona.edit")}
               </Button>
-              <Button
-                variant="outlined"
-                size="sm"
+              <DetailMoreMenu
                 disabled={remove.loading}
-                onClick={() => void remove.run()}
-              >
-                <Trash2 className="size-4" />
-                {tr("requirements.persona.delete")}
-              </Button>
+                items={[
+                  {
+                    key: "delete",
+                    icon: Trash2,
+                    label: tr("requirements.persona.delete"),
+                    destructive: true,
+                    onSelect: () => void remove.run(),
+                  },
+                ]}
+              />
             </>
           ) : null}
         </>
       }
     >
-      {changed > 0 ? (
-        <div
-          className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950"
-          data-testid="scope-changed-banner"
-        >
-          {tr("requirements.persona.scopeChanged", {
-            args: [String(changes.data?.toReverify ?? 0)],
-          })}
-        </div>
-      ) : null}
-      {tab === "overview" ? (
-        <div className="flex flex-col gap-6" data-testid="persona-overview">
-          {changed > 0 ? (
-            <Card data-testid="persona-changes-card">
-              <CardContent className="flex items-center justify-between gap-2 text-sm">
-                <span>
-                  {tr("requirements.persona.changes.card", {
-                    args: [String(changed)],
-                  })}
-                </span>
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  onClick={() => setTab("changes")}
-                >
-                  {tr("requirements.persona.changes.open")}
-                </Button>
-              </CardContent>
-            </Card>
-          ) : null}
-          {sections.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              {tr("requirements.persona.overview.empty")}
-            </p>
-          ) : (
-            sections.map((section) => (
-              <section key={section.key} className="flex flex-col gap-2">
-                <h2 className="text-sm font-semibold">{section.label}</h2>
-                <MarkdownView content={section.body} />
-              </section>
-            ))
-          )}
-        </div>
-      ) : tab === "changes" ? (
-        changes.data ? (
-          <PersonaChanges
-            name={persona.name}
-            number={persona.number}
-            changes={changes.data}
-          />
-        ) : null
-      ) : tab === "showcase" ? (
-        <PersonaShowcase showcase={showcase.data ?? []} />
-      ) : (
+      {tab === "activity" ? (
         <LazyProjectActivityPage
           resource={{ type: "persona", id: String(persona.number) }}
           persistenceKey={`lor.activity.${project.id}.persona.${persona.number}`}
         />
+      ) : (
+        <RequirementsHover className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+          {changed > 0 ? (
+            <WarningNotice data-testid="scope-changed-banner">
+              {tr(
+                (changes.data?.toReverify ?? 0) === 1
+                  ? "requirements.persona.scopeChanged.one"
+                  : "requirements.persona.scopeChanged",
+                { args: [String(changes.data?.toReverify ?? 0)] },
+              )}
+            </WarningNotice>
+          ) : null}
+          {tab === "overview" ? (
+            <div className="flex flex-col gap-4" data-testid="persona-overview">
+              {changed > 0 ? (
+                <Card data-testid="persona-changes-card">
+                  <CardContent className="flex items-center justify-between gap-2 text-sm">
+                    <span>
+                      {tr(
+                        changed === 1
+                          ? "requirements.persona.changes.card.one"
+                          : "requirements.persona.changes.card",
+                        { args: [String(changed)] },
+                      )}
+                    </span>
+                    <Button
+                      variant="outlined"
+                      onClick={() => setTab("changes")}
+                    >
+                      {tr("requirements.persona.changes.open")}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {sections.length === 0 ? (
+                <p className="text-muted-foreground text-sm italic">
+                  {tr("requirements.persona.overview.empty")}
+                </p>
+              ) : (
+                sections.map((section) => (
+                  <Card key={section.key}>
+                    <CardHeader>
+                      <CardTitle>{section.label}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <LoreViewer
+                        element={{
+                          kind: "persona",
+                          projectId: project.id,
+                          projectSlug: project.slug,
+                          id: persona.id,
+                        }}
+                        content={section.body}
+                      />
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          ) : tab === "changes" ? (
+            changes.data ? (
+              <PersonaChanges
+                name={persona.name}
+                number={persona.number}
+                changes={changes.data}
+              />
+            ) : null
+          ) : (
+            <PersonaShowcase showcase={showcase.data ?? []} />
+          )}
+        </RequirementsHover>
       )}
 
-      <VerifyDialog
-        subject={{ kind: "persona", number: persona.number }}
-        open={verifying}
-        onOpenChange={setVerifying}
-      />
       <PersonaSheet
         projectId={project.id}
         persona={persona}

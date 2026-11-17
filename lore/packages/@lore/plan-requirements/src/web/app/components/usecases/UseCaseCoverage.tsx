@@ -1,10 +1,11 @@
 import { Card, CardContent } from "@alepha/ui";
-import { formatReference, type I18n } from "@lore/core/web";
+import type { I18n } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
+import ReferenceLink from "../shared/ReferenceLink.tsx";
 
 export interface UseCaseCoverageProps {
   projectId: number;
@@ -48,7 +49,7 @@ const UseCaseCoverage = (props: UseCaseCoverageProps) => {
             {tr("requirements.usecase.coverage")}
           </h2>
           {done ? (
-            <span className="text-xs font-semibold text-green-700 dark:text-green-400">
+            <span className="text-success-text text-xs font-semibold">
               {tr("requirements.usecase.coverage.done")}
             </span>
           ) : null}
@@ -57,8 +58,8 @@ const UseCaseCoverage = (props: UseCaseCoverageProps) => {
           {tr("requirements.usecase.coverage.help")}
         </p>
         {props.useCase.coveredBy.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            {tr("requirements.usecase.noEpic")}
+          <p className="text-muted-foreground text-sm italic">
+            {tr("requirements.usecase.coverage.none")}
           </p>
         ) : (
           <ul
@@ -68,12 +69,11 @@ const UseCaseCoverage = (props: UseCaseCoverageProps) => {
             {rows.map((quest) => (
               <li key={quest.shortId} className="flex justify-between gap-2">
                 <span>
-                  <span className="font-semibold">
-                    {formatReference("quest", quest.shortId)}
-                  </span>{" "}
-                  {quest.title}{" "}
-                  <span className="text-muted-foreground text-xs">
-                    {formatReference("epic", quest.epicNumber)}
+                  <ReferenceLink kind="quest" number={quest.shortId}>
+                    {quest.title}
+                  </ReferenceLink>{" "}
+                  <span className="text-xs">
+                    <ReferenceLink kind="epic" number={quest.epicNumber} />
                   </span>
                 </span>
                 <span className="text-muted-foreground text-xs">

@@ -51,9 +51,12 @@ const UseCaseReferencePreview = (props: WikiLinkPreviewProps) => {
         ) : null}
         <span>
           ·{" "}
-          {tr("requirements.usecase.criteriaCount", {
-            args: [String(useCase.criteria.length)],
-          })}
+          {tr(
+            useCase.criteria.length === 1
+              ? "requirements.usecase.criteriaCount.one"
+              : "requirements.usecase.criteriaCount",
+            { args: [String(useCase.criteria.length)] },
+          )}
         </span>
       </div>
     </div>

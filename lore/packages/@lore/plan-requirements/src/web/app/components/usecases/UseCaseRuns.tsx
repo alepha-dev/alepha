@@ -44,7 +44,7 @@ const UseCaseRuns = (props: UseCaseRunsProps) => {
   const rows = runs.data ?? [];
   if (runs.data && rows.length === 0) {
     return (
-      <p className="text-muted-foreground text-sm">
+      <p className="text-muted-foreground text-sm italic">
         {tr("requirements.run.none")}
       </p>
     );
@@ -77,7 +77,7 @@ const UseCaseRuns = (props: UseCaseRunsProps) => {
                       it.result === "failed"
                         ? "text-danger-text"
                         : it.result === "passed"
-                          ? "text-green-700 dark:text-green-400"
+                          ? "text-success-text"
                           : "text-muted-foreground"
                     }
                   >

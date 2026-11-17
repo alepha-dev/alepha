@@ -7,8 +7,9 @@ import type { PersonaResource } from "../../../../api/schemas/personaResourceSch
 import type { RequirementResource } from "../../../../api/schemas/requirementResourceSchema.ts";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import { formatMetricValue } from "../requirements/metricText.ts";
+import ReferenceLink from "../shared/ReferenceLink.tsx";
+import MatrixCellDot, { MATRIX_CELL_LABEL_KEYS } from "./MatrixCellDot.tsx";
 import {
-  type MatrixCell,
   personaUseCaseCell,
   requirementEpicCell,
   requirementUseCaseCell,
@@ -22,40 +23,11 @@ export interface TraceabilityMatrixProps {
   onSelect: (number: number) => void;
 }
 
-const CELL_CLASS: Record<MatrixCell, string> = {
-  verified: "bg-green-600",
-  failing: "bg-orange-600",
-  in_development: "bg-sky-400",
-  stale: "bg-green-600 ring-2 ring-amber-500 ring-offset-1",
-  never_run: "border-2 border-muted-foreground/40",
-  none: "bg-muted/60",
-};
-
-const CELL_LABEL_KEYS = {
-  verified: "requirements.trace.cell.verified",
-  failing: "requirements.trace.cell.failing",
-  in_development: "requirements.trace.cell.in_development",
-  stale: "requirements.trace.cell.stale",
-  never_run: "requirements.trace.cell.never_run",
-  none: "requirements.trace.cell.none",
-} as const;
-
 const VIEW_LABEL_KEYS = {
   usecase: "requirements.trace.view.usecase",
   epic: "requirements.trace.view.epic",
   persona: "requirements.trace.view.persona",
 } as const;
-
-const Cell = (props: { state: MatrixCell }) => {
-  const { tr } = useI18n<I18n, "en">();
-  return (
-    <span
-      className={`inline-block size-5 rounded ${CELL_CLASS[props.state]}`}
-      title={tr(CELL_LABEL_KEYS[props.state])}
-      data-cell={props.state}
-    />
-  );
-};
 
 /**
  * The traceability matrix (#E153, #Q3774), three ways: requirement by use
@@ -111,8 +83,8 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
             ] as const
           ).map((it) => (
             <span key={it} className="flex items-center gap-1">
-              <Cell state={it} />
-              {tr(CELL_LABEL_KEYS[it])}
+              <MatrixCellDot state={it} />
+              {tr(MATRIX_CELL_LABEL_KEYS[it])}
             </span>
           ))}
         </span>
@@ -150,14 +122,15 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
                     data-testid="matrix-row"
                   >
                     <td className="p-2">
-                      <span className="font-semibold">
-                        {formatReference("persona", persona.number)}
-                      </span>{" "}
-                      {persona.name}
+                      <ReferenceLink kind="persona" number={persona.number}>
+                        {persona.name}
+                      </ReferenceLink>
                     </td>
                     {props.useCases.map((uc) => (
                       <td key={uc.number} className="p-2 text-center">
-                        <Cell state={personaUseCaseCell(persona.number, uc)} />
+                        <MatrixCellDot
+                          state={personaUseCaseCell(persona.number, uc)}
+                        />
                       </td>
                     ))}
                   </tr>
@@ -172,22 +145,23 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
                     onClick={() => props.onSelect(req.number)}
                   >
                     <td className="p-2">
-                      <span className="font-semibold">
-                        {formatReference("requirement", req.number)}
-                      </span>{" "}
-                      {req.statement}
+                      <ReferenceLink kind="requirement" number={req.number}>
+                        {req.statement}
+                      </ReferenceLink>
                     </td>
                     {view === "epic"
                       ? epics.map((epic) => (
                           <td key={epic.number} className="p-2 text-center">
-                            <Cell
+                            <MatrixCellDot
                               state={requirementEpicCell(req, epic.number)}
                             />
                           </td>
                         ))
                       : props.useCases.map((uc) => (
                           <td key={uc.number} className="p-2 text-center">
-                            <Cell state={requirementUseCaseCell(req, uc)} />
+                            <MatrixCellDot
+                              state={requirementUseCaseCell(req, uc)}
+                            />
                           </td>
                         ))}
                     {metric ? (
@@ -196,8 +170,8 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
                           <span
                             className={`rounded px-1.5 py-0.5 ${
                               req.metricStatus === "verified"
-                                ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300"
-                                : "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300"
+                                ? "bg-success/15 text-success-text"
+                                : "bg-danger/15 text-danger-text"
                             }`}
                             data-testid="matrix-metric"
                           >
