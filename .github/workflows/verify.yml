@@ -1035,14 +1035,24 @@ jobs:
   # commit changes. A skipped Lore deploy (Lore untouched, or its gate red)
   # does not hold them; a failed one does.
   #
+  # ⚠️ And they deploy one at a time: Lore, the framework apps, then the
+  # docs (#Q3843). Started in the same second, they failed on resets and
+  # `fetch failed` talking to Lore on the first two pushes of this workflow,
+  # and a re-run alone passed.
+  #
   # A flaky job on `main`: "Re-run failed jobs" reruns it and the deploys
   # that it skipped.
   # ══════════════════════════════════════════════════════════════════════
 
+  # ⚠️ `!cancelled()` is load-bearing (#Q3843). Without a status function
+  # GitHub applies `success()`, which skips a job when ANY job upstream of it
+  # was skipped, however far back: on a push the merge queue tested, every
+  # check job skips, and so did this deploy, every time.
   deploy-lore:
     needs: [changes, gate-lore]
     if: >-
-      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      !cancelled()
+      && github.event_name == 'push' && github.ref == 'refs/heads/main'
       && needs.changes.outputs.lore == 'true'
       && needs.gate-lore.result == 'success'
     uses: ./.github/workflows/deploy.yml
@@ -1063,8 +1073,10 @@ jobs:
       target: framework
     secrets: inherit
 
+  # After the framework's deploy, whatever its result: the deploys through
+  # Lore run one at a time (#Q3843).
   deploy-docs:
-    needs: [changes, gate-docs, deploy-lore]
+    needs: [changes, gate-docs, deploy-lore, deploy-framework]
     if: >-
       always()
       && github.event_name == 'push' && github.ref == 'refs/heads/main'
