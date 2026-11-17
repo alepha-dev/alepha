@@ -110,6 +110,10 @@ See [Deploying an app](/lore/docs/ship-deploying).
   signed in, with a salt that changes every day. Lore folds the hashes into a
   daily count after two days.
 - **Web Vitals**, as ranges.
+- **Server request durations**, as ranges, per route pattern (never the URL),
+  method and status class. They are what a requirement verified by an API's
+  latency reads; see [Requirements](/lore/docs/plan-requirements). They follow
+  the Web Vitals switch.
 - **Errors**, grouped in the app before they are sent, so the same bug in two
   builds is one error.
 - **Feedback**, when the project also has **Plan** with its **Feedback** option on:

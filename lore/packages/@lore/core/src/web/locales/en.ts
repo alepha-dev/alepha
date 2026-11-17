@@ -3418,6 +3418,8 @@ export default {
   "requirements.requirement.metric.percentile": "Percentile",
   "requirements.requirement.metric.path": "Path pattern",
   "requirements.requirement.metric.monitor": "Monitor id",
+  "requirements.requirement.metric.route": "Route pattern",
+  "requirements.requirement.metric.method": "Method",
   "requirements.requirement.metric.app": "App",
   "requirements.requirement.metric.env": "Env",
   "requirements.requirement.metric.vital": "Web vital",
@@ -3425,6 +3427,7 @@ export default {
   "requirements.requirement.metric.kind.availability":
     "A monitor's availability",
   "requirements.requirement.metric.kind.latency": "A monitor's latency",
+  "requirements.requirement.metric.kind.api": "An API's latency",
   "requirements.requirement.verifyBy": "Verified by",
   "requirements.requirement.verifyBy.usecases": "Use case criteria",
   "requirements.requirement.status.no_data": "No data",

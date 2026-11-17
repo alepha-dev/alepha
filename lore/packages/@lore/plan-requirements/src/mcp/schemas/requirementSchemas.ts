@@ -43,9 +43,9 @@ const fieldsSchema = z.object({
     .describe("The heading slug of its section in that folio.")
     .optional(),
   metric_kind: z
-    .enum(["vital", "availability", "latency"])
+    .enum(["vital", "availability", "latency", "api"])
     .describe(
-      "Verify it by a measure instead of use cases: a web vital of the app copy's sigil, or a monitor's availability or latency. Needs an app built with Alepha.",
+      "Verify it by a measure instead of use cases: a web vital of the app copy's sigil, a monitor's availability or latency, or `api`, the latency of the app's server on the routes metric_path matches (2xx answers only). Needs an app built with Alepha.",
     )
     .optional(),
   metric_vital: z
@@ -61,7 +61,14 @@ const fieldsSchema = z.object({
   metric_path: z
     .string()
     .max(200)
-    .describe("A path pattern of the sigil, `*` matching anything.")
+    .describe(
+      "A path pattern of the sigil, `*` matching anything; for `api`, a pattern of the server's route patterns (`/api/orders/*`, `/api/orders/:id`).",
+    )
+    .optional(),
+  metric_method: z
+    .string()
+    .max(16)
+    .describe("The HTTP method, for metric_kind api: every method if absent.")
     .optional(),
   metric_monitor: z
     .uuid()

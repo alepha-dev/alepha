@@ -1,0 +1,515 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "5b8cb699-832a-4b62-a3b4-b918d5d9c594",
+  "prevIds": ["47373b00-0b6e-46c3-83d0-d730896ca8db"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "analytics_sigil_requests_raw"],
+      "writes": [
+        "s|tbl|public.analytics_sigil_requests_raw",
+        "n|tbl|public.analytics_sigil_requests_raw",
+        "e|tbl|public.analytics_sigil_requests_raw",
+        "n|rel|public.analytics_sigil_requests_raw",
+        "n|type|public.analytics_sigil_requests_raw"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "analytics_sigil_requests_rolled"],
+      "writes": [
+        "s|tbl|public.analytics_sigil_requests_rolled",
+        "n|tbl|public.analytics_sigil_requests_rolled",
+        "e|tbl|public.analytics_sigil_requests_rolled",
+        "n|rel|public.analytics_sigil_requests_rolled",
+        "n|type|public.analytics_sigil_requests_rolled"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "analytics_sigil_requests_raw",
+        "analytics_sigil_requests_raw_time_bucket_bucket_method_route_sigil_id_status_idx"
+      ],
+      "writes": [
+        "s|idx|public.analytics_sigil_requests_raw_time_bucket_bucket_method_route_sigil_id_status_idx",
+        "n|idx|public.analytics_sigil_requests_raw_time_bucket_bucket_method_route_sigil_id_status_idx",
+        "e|idx|public.analytics_sigil_requests_raw_time_bucket_bucket_method_route_sigil_id_status_idx",
+        "n|rel|public.analytics_sigil_requests_raw_time_bucket_bucket_method_route_sigil_id_status_idx"
+      ],
+      "reads": [
+        "n|tbl|public.analytics_sigil_requests_raw",
+        "n|sch|public",
+        "n|col|public.analytics_sigil_requests_raw.time_bucket",
+        "n|col|public.analytics_sigil_requests_raw.bucket",
+        "n|col|public.analytics_sigil_requests_raw.method",
+        "n|col|public.analytics_sigil_requests_raw.route",
+        "n|col|public.analytics_sigil_requests_raw.sigil_id",
+        "n|col|public.analytics_sigil_requests_raw.status"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "analytics_sigil_requests_rolled",
+        "analytics_sigil_requests_rolled_time_bucket_bucket_method_route_sigil_id_status_idx"
+      ],
+      "writes": [
+        "s|idx|public.analytics_sigil_requests_rolled_time_bucket_bucket_method_route_sigil_id_status_idx",
+        "n|idx|public.analytics_sigil_requests_rolled_time_bucket_bucket_method_route_sigil_id_status_idx",
+        "e|idx|public.analytics_sigil_requests_rolled_time_bucket_bucket_method_route_sigil_id_status_idx",
+        "n|rel|public.analytics_sigil_requests_rolled_time_bucket_bucket_method_route_sigil_id_status_idx"
+      ],
+      "reads": [
+        "n|tbl|public.analytics_sigil_requests_rolled",
+        "n|sch|public",
+        "n|col|public.analytics_sigil_requests_rolled.time_bucket",
+        "n|col|public.analytics_sigil_requests_rolled.bucket",
+        "n|col|public.analytics_sigil_requests_rolled.method",
+        "n|col|public.analytics_sigil_requests_rolled.route",
+        "n|col|public.analytics_sigil_requests_rolled.sigil_id",
+        "n|col|public.analytics_sigil_requests_rolled.status"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "analytics_sigil_requests_raw"],
+      "writes": [
+        "s|fk|public.analytics_sigil_requests_raw.analytics_sigil_requests_raw_sigil_id_sigils_id_fkey",
+        "n|fk|public.analytics_sigil_requests_raw.analytics_sigil_requests_raw_sigil_id_sigils_id_fkey",
+        "e|fk|public.analytics_sigil_requests_raw.analytics_sigil_requests_raw_sigil_id_sigils_id_fkey",
+        "n|con|public.analytics_sigil_requests_raw.analytics_sigil_requests_raw_sigil_id_sigils_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.analytics_sigil_requests_raw",
+        "n|sch|public",
+        "n|tbl|public.sigils",
+        "n|sch|public",
+        "n|col|public.analytics_sigil_requests_raw.sigil_id",
+        "n|col|public.sigils.id",
+        "e|uniqueness|public.sigils.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "analytics_sigil_requests_rolled"],
+      "writes": [
+        "s|fk|public.analytics_sigil_requests_rolled.analytics_sigil_requests_rolled_sigil_id_sigils_id_fkey",
+        "n|fk|public.analytics_sigil_requests_rolled.analytics_sigil_requests_rolled_sigil_id_sigils_id_fkey",
+        "e|fk|public.analytics_sigil_requests_rolled.analytics_sigil_requests_rolled_sigil_id_sigils_id_fkey",
+        "n|con|public.analytics_sigil_requests_rolled.analytics_sigil_requests_rolled_sigil_id_sigils_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.analytics_sigil_requests_rolled",
+        "n|sch|public",
+        "n|tbl|public.sigils",
+        "n|sch|public",
+        "n|col|public.analytics_sigil_requests_rolled.sigil_id",
+        "n|col|public.sigils.id",
+        "e|uniqueness|public.sigils.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "analytics_sigil_requests_raw",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "analytics_sigil_requests_rolled",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_raw",
+        "name": "time_bucket",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_raw",
+        "name": "sigil_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_raw",
+        "name": "route",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_raw",
+        "name": "method",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_raw",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_raw",
+        "name": "bucket",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_raw",
+        "name": "samples",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_rolled",
+        "name": "time_bucket",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_rolled",
+        "name": "sigil_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_rolled",
+        "name": "route",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_rolled",
+        "name": "method",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_rolled",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_rolled",
+        "name": "bucket",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_rolled",
+        "name": "samples",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_raw",
+        "name": "analytics_sigil_requests_raw_time_bucket_bucket_method_route_sigil_id_status_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "time_bucket",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "bucket",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "method",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "route",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "sigil_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "status",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_rolled",
+        "name": "analytics_sigil_requests_rolled_time_bucket_bucket_method_route_sigil_id_status_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "time_bucket",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "bucket",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "method",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "route",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "sigil_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "status",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_raw",
+        "name": "analytics_sigil_requests_raw_sigil_id_sigils_id_fkey",
+        "nameExplicit": false,
+        "columns": ["sigil_id"],
+        "schemaTo": "public",
+        "tableTo": "sigils",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_requests_rolled",
+        "name": "analytics_sigil_requests_rolled_sigil_id_sigils_id_fkey",
+        "nameExplicit": false,
+        "columns": ["sigil_id"],
+        "schemaTo": "public",
+        "tableTo": "sigils",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    }
+  ]
+}

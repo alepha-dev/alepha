@@ -119,6 +119,7 @@ describe("SigilAnalyticsController", () => {
     // `sigil_errors` joined on 2026-09-04 (feedback #2085).
     expect(list.map((entry) => entry.name).sort()).toEqual([
       "sigil_errors",
+      "sigil_requests",
       "sigil_views",
       "sigil_vitals",
     ]);

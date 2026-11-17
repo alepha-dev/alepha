@@ -3430,6 +3430,8 @@ export default {
   "requirements.requirement.metric.percentile": "Centile",
   "requirements.requirement.metric.path": "Motif de chemin",
   "requirements.requirement.metric.monitor": "Identifiant du moniteur",
+  "requirements.requirement.metric.route": "Motif de route",
+  "requirements.requirement.metric.method": "Méthode",
   "requirements.requirement.metric.app": "App",
   "requirements.requirement.metric.env": "Env",
   "requirements.requirement.metric.vital": "Indicateur web",
@@ -3437,6 +3439,7 @@ export default {
   "requirements.requirement.metric.kind.availability":
     "La disponibilité d’un moniteur",
   "requirements.requirement.metric.kind.latency": "La latence d’un moniteur",
+  "requirements.requirement.metric.kind.api": "La latence d’une API",
   "requirements.requirement.verifyBy": "Vérifiée par",
   "requirements.requirement.verifyBy.usecases": "Des critères de cas d’usage",
   "requirements.requirement.status.no_data": "Pas de données",

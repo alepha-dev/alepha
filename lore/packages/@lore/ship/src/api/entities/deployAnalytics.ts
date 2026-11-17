@@ -313,6 +313,39 @@ export class DeployAnalytics {
   });
 
   /**
+   * Server request durations as a histogram (#Q3777), the server's half of
+   * `vitals`: one row per route pattern, method, status class and duration
+   * bucket (`REQUEST_BUCKETS`), so an API-latency requirement reads a
+   * percentile from counts alone.
+   *
+   * `route` is the route's pattern as the app declares it, never a URL: the
+   * sender only ever reads the matched route's path.
+   */
+  public readonly requests = $analytics({
+    name: "sigil_requests",
+    index: "sigilId",
+    dimensions: z.object({
+      sigilId: db.ref(z.uuid(), () => sigils.cols.id, {
+        onDelete: "cascade",
+      }),
+      route: z.string(),
+      method: z.string(),
+      status: z.string(),
+      bucket: z.number(),
+    }),
+    measures: z.object({ samples: z.number() }),
+    /**
+     * Pinned from the first row on, alphabetical like the others. Append
+     * only - see `views` above and `AnalyticsSlotMap`.
+     */
+    slots: {
+      dimensions: ["bucket", "method", "route", "sigilId", "status"],
+      measures: ["samples"],
+    },
+    retention: { hot: "30d", rollup: "day", cold: "400d" },
+  });
+
+  /**
    * Error occurrences over time, which `sigilErrorGroups` structurally
    * cannot answer.
    *

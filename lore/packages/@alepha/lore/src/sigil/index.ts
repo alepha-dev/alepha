@@ -7,6 +7,7 @@ import { SigilRoot } from "./browser/components/SigilRoot.tsx";
 import { SigilBrowserProvider } from "./browser/SigilBrowserProvider.ts";
 import { SigilProxyController } from "./server/SigilProxyController.ts";
 import { SigilServerErrors } from "./server/SigilServerErrors.ts";
+import { SigilServerRequests } from "./server/SigilServerRequests.ts";
 import { SigilSinkProvider } from "./server/SigilSinkProvider.ts";
 import { sigilClientAtom } from "./shared/sigilClientAtom.ts";
 
@@ -73,6 +74,7 @@ export const AlephaSigil = $module({
     SigilSinkProvider,
     SigilProxyController,
     SigilServerErrors,
+    SigilServerRequests,
     SigilBrowserProvider,
   ],
   register(alepha) {

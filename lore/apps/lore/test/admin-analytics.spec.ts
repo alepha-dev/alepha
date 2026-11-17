@@ -42,6 +42,7 @@ describe("Lore admin analytics surface", () => {
       "mcp_calls",
       "project_activity",
       "sigil_errors",
+      "sigil_requests",
       "sigil_views",
       "sigil_vitals",
       "uptime_probes",

@@ -2,7 +2,11 @@ import type { SigilForwarded } from "@alepha/lore/sigil";
 import { sigilFingerprintSource } from "@alepha/lore/sigil";
 import { sigilHost, sigilNormalizeReportedConfig } from "@alepha/lore/sigil";
 import { sigilScrubUrl } from "@alepha/lore/sigil";
-import { bucketIndex, type VitalMetric } from "@alepha/lore/sigil";
+import {
+  bucketIndex,
+  REQUEST_BUCKETS,
+  type VitalMetric,
+} from "@alepha/lore/sigil";
 import { ProjectSecurityService } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
@@ -166,6 +170,10 @@ export class SigilIngestService {
     }
     if (envelope.vitals?.length && gates.vitals) {
       sections.push(this.absorbVitals(sigil, envelope.vitals, now));
+    }
+    // The server's half of the vitals (#Q3777), behind the same gate.
+    if (envelope.requests?.length && gates.vitals) {
+      sections.push(this.absorbRequests(sigil, envelope.requests, now));
     }
 
     // `lastSeenHostname` rides along on the update `lastSeenAt` was already
@@ -716,6 +724,58 @@ export class SigilIngestService {
         bucket: sample.bucket,
         samples: sample.count,
         hour: sample.hour,
+      })),
+    );
+  }
+
+  /**
+   * Server request durations (#Q3777), already folded by the sender: one
+   * row per `(route, method, status, bucket)`, folded again here since one
+   * envelope may repeat a line (two flushes merged by a retry, a hostile
+   * sender). The route is cut to the column's bounds and is otherwise the
+   * sender's pattern; a bucket past the overflow is clamped to it.
+   */
+  protected async absorbRequests(
+    sigil: Sigil,
+    requests: NonNullable<SigilForwarded["requests"]>,
+    now: string,
+  ): Promise<void> {
+    const hour = this.hourBucket(now);
+    const rows = new Map<
+      string,
+      {
+        route: string;
+        method: string;
+        status: string;
+        bucket: number;
+        count: number;
+      }
+    >();
+    for (const request of requests) {
+      const route = request.route.trim().slice(0, 512) || "/";
+      const method = request.method.toUpperCase().slice(0, 16);
+      const bucket = Math.min(request.bucket, REQUEST_BUCKETS.length);
+      const key = `${method} ${route}\u0000${request.status}\u0000${bucket}`;
+      const row = rows.get(key);
+      if (row) row.count += request.count;
+      else
+        rows.set(key, {
+          route,
+          method,
+          status: request.status,
+          bucket,
+          count: request.count,
+        });
+    }
+    await this.datasets.requests.recordMany(
+      [...rows.values()].map((row) => ({
+        sigilId: sigil.id,
+        route: row.route,
+        method: row.method,
+        status: row.status,
+        bucket: row.bucket,
+        samples: row.count,
+        hour,
       })),
     );
   }

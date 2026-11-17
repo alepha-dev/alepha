@@ -344,10 +344,10 @@ The commands of Plan's Requirements option. See [Personas](/lore/docs/plan-perso
 | `lore requirement coverage`          | A release's readiness and the coverage gaps, or the whole project's.             | `--release`                                                                                                                                                                         |
 | `lore criterion link`                | Say which requirement a use case's criterion verifies.                           | `--usecase`, `--key`, `--requirement` (empty to unlink)                                                                                                                             |
 
-A measure takes `--metric-kind` (`vital`, `availability` or `latency`),
+A measure takes `--metric-kind` (`vital`, `availability`, `latency` or `api`),
 `--metric-threshold`, and as it needs `--metric-vital`, `--metric-percentile`,
-`--metric-path`, `--metric-monitor`, `--metric-app`, `--metric-env` and
-`--metric-window-days`. Run evidence is pushed with
+`--metric-path`, `--metric-method`, `--metric-monitor`, `--metric-app`,
+`--metric-env` and `--metric-window-days`. Run evidence is pushed with
 `lore attachments push --run <id> [--criterion C2 | --step 3] <file>`.
 
 ## Automations
