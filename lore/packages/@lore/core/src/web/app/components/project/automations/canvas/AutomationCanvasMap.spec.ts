@@ -151,4 +151,14 @@ describe("AutomationCanvasMap", () => {
     expect(folded.get("tell")?.outcome).toBe("unknown");
     expect(folded.get("later")?.outcome).toBe("skipped");
   });
+
+  it("carries each node's issues in the editor", ({ expect }) => {
+    const { nodes } = map.map({
+      graph: branching(),
+      issues: { bay: ["'kind' is not a field"], yes: [] },
+    });
+    const data = Object.fromEntries(nodes.map((node) => [node.id, node.data]));
+    expect(data.bay.issues).toEqual(["'kind' is not a field"]);
+    expect(data.yes.issues).toBeUndefined();
+  });
 });

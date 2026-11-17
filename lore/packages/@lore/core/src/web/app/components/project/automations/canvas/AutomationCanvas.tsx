@@ -5,13 +5,25 @@ import type { AutomationChannelController } from "../../../../../../api/controll
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import { useAutomationOptionLabels } from "../useAutomationOptions.ts";
 import type { AutomationCanvasInnerProps } from "./AutomationCanvasInner.client.tsx";
-import type { AutomationCanvasNames } from "./AutomationCanvasMap.ts";
+import type {
+  AutomationCanvasNames,
+  AutomationSourceSwitches,
+} from "./AutomationCanvasMap.ts";
 import AutomationNodePanel from "./AutomationNodePanel.tsx";
 
-export type AutomationCanvasProps = Omit<
+export interface AutomationCanvasProps extends Omit<
   AutomationCanvasInnerProps,
   "names" | "selected" | "onSelect"
->;
+> {
+  /**
+   * The selected node, when the page owns the selection (the editor's
+   * inspector, #Q3811); absent, the canvas keeps its own and opens the
+   * read-only panel.
+   */
+  selected?: string;
+  onSelect?: (node: string | undefined) => void;
+  switches?: AutomationSourceSwitches;
+}
 
 /**
  * React Flow is browser-only and heavy: imported through `lazy()` from a
@@ -35,7 +47,10 @@ const emptySubscribe = () => () => {};
 const AutomationCanvas = (props: AutomationCanvasProps) => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<AutomationChannelController>();
-  const [selected, setSelected] = useState<string>();
+  const [own, setOwn] = useState<string>();
+  const controlled = props.onSelect !== undefined;
+  const selected = controlled ? props.selected : own;
+  const setSelected = controlled ? props.onSelect! : setOwn;
   const isClient = useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -87,7 +102,10 @@ const AutomationCanvas = (props: AutomationCanvasProps) => {
       {isClient ? (
         <Suspense fallback={placeholder}>
           <Inner
-            {...props}
+            graph={props.graph}
+            sources={props.sources}
+            outcomes={props.outcomes}
+            editing={props.editing}
             names={names}
             selected={selected}
             onSelect={setSelected}
@@ -96,12 +114,15 @@ const AutomationCanvas = (props: AutomationCanvasProps) => {
       ) : (
         placeholder
       )}
-      <AutomationNodePanel
-        node={node}
-        source={props.sources?.find((it) => it.node === selected)}
-        names={names}
-        onClose={() => setSelected(undefined)}
-      />
+      {!controlled && (
+        <AutomationNodePanel
+          node={node}
+          source={props.sources?.find((it) => it.node === selected)}
+          names={names}
+          switches={props.switches}
+          onClose={() => setSelected(undefined)}
+        />
+      )}
     </>
   );
 };

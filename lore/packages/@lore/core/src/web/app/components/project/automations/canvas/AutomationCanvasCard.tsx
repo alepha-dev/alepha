@@ -77,30 +77,34 @@ const AutomationCanvasCard = (props: AutomationCanvasCardProps) => {
     pending: "border-warning",
   };
   const outcome = props.data.outcome;
-  const frame = outcome
-    ? borders[outcome]
-    : props.data.painted
-      ? "opacity-40"
-      : "";
+  const issues = props.data.issues ?? [];
+  const frame = issues.length
+    ? "border-danger"
+    : outcome
+      ? borders[outcome]
+      : props.data.painted
+        ? "opacity-40"
+        : "";
   const ports: Record<string, string> = {
     true: tr("automation.canvas.port.true"),
     false: tr("automation.canvas.port.false"),
   };
   return (
     <div
-      className={`bg-card text-card-foreground flex w-56 flex-col gap-1 rounded-lg border p-3 text-xs shadow-sm ${
+      className={`bg-card text-card-foreground relative flex w-56 flex-col gap-1 rounded-lg border p-3 text-xs shadow-sm ${
         props.selected ? "ring-primary ring-2" : ""
       } ${frame}`}
       data-testid={`automation-node-${node.id}`}
       data-kind={node.kind}
       data-outcome={outcome}
+      data-invalid={issues.length > 0 || undefined}
     >
       {props.target && (
         <Handle
           type="target"
           id="in"
           position={Position.Left}
-          isConnectable={false}
+          isConnectable={!!props.data.onAdd}
         />
       )}
       <div className="text-muted-foreground flex items-center justify-between gap-2">
@@ -124,13 +128,48 @@ const AutomationCanvasCard = (props: AutomationCanvasCardProps) => {
             : ""}
         </Badge>
       )}
+      {issues.length > 0 && (
+        <ul
+          className="text-danger-text flex flex-col gap-0.5"
+          data-testid={`automation-node-${node.id}-issues`}
+        >
+          {issues.map((issue) => (
+            <li key={issue}>{issue}</li>
+          ))}
+        </ul>
+      )}
+      {props.data.onAdd &&
+        props.ports.map((port, index) => (
+          <button
+            key={`add-${port}`}
+            type="button"
+            className="nodrag nopan bg-card hover:bg-muted text-muted-foreground absolute -end-9 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border text-sm"
+            style={{
+              top: `${((index + 1) * 100) / (props.ports.length + 1)}%`,
+            }}
+            aria-label={
+              port === "out"
+                ? tr("automation.canvas.addAfter", { args: [node.id] })
+                : tr("automation.canvas.addAfterPort", {
+                    args: [node.id, ports[port]],
+                  })
+            }
+            data-testid={`automation-node-${node.id}-add-${port}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              props.data.onAdd?.(port);
+            }}
+          >
+            +
+          </button>
+        ))}
       {props.ports.map((port, index) => (
         <Handle
           key={port}
           type="source"
           id={port}
           position={Position.Right}
-          isConnectable={false}
+          isConnectable={!!props.data.onAdd}
           style={
             props.ports.length > 1
               ? { top: `${((index + 1) * 100) / (props.ports.length + 1)}%` }

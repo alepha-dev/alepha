@@ -1,5 +1,7 @@
 import {
   Badge,
+  Checkbox,
+  Label,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -13,7 +15,10 @@ import type { AutomationResourceSource } from "../../../../../../api/schemas/aut
 import { AutomationTemplateTokens } from "../../../../../../api/schemas/AutomationTemplateTokens.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import { useAutomationLabels } from "../useAutomationLabels.ts";
-import type { AutomationCanvasNames } from "./AutomationCanvasMap.ts";
+import type {
+  AutomationCanvasNames,
+  AutomationSourceSwitches,
+} from "./AutomationCanvasMap.ts";
 
 export interface AutomationNodePanelProps {
   /**
@@ -22,6 +27,11 @@ export interface AutomationNodePanelProps {
   node?: AutomationGraphNode;
   source?: AutomationResourceSource;
   names?: AutomationCanvasNames;
+  /**
+   * A source's switch, live on the read-only canvas (#Q3811): it calls the
+   * source's own action at once.
+   */
+  switches?: AutomationSourceSwitches;
   onClose: () => void;
 }
 
@@ -97,6 +107,22 @@ const AutomationNodePanel = (props: AutomationNodePanelProps) => {
                     </span>
                   )}
                 </p>
+              )}
+              {props.source && props.switches && (
+                <Label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={props.source.enabled}
+                    disabled={
+                      props.switches.busy ||
+                      !props.switches.can(!props.source.enabled)
+                    }
+                    data-testid="automation-source-switch"
+                    onCheckedChange={(checked) =>
+                      props.switches?.set(node.id, checked)
+                    }
+                  />
+                  {tr("automation.canvas.source.enabled")}
+                </Label>
               )}
               <dl className="flex flex-col gap-3">
                 {Object.entries(node.config).map(([key, value]) => (

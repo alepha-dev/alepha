@@ -4602,6 +4602,68 @@ export default {
   "automation.node.action": "Then",
   "automation.node.transform": "Transform",
   "automation.effect.not_reached": "Not reached: an earlier step failed",
+  "automation.edit": "Edit",
+  "automation.editor.conflictTitle":
+    "This automation changed since you opened it",
+  "automation.editor.conflict":
+    "The save was refused and your draft is kept. Reloading shows the saved automation and discards this draft.",
+  "automation.editor.reload": "Discard draft and reload",
+  "automation.test.saveToTest": "Save to test",
+  "automation.canvas.editor": "Automation editor",
+  "automation.canvas.editPhone": "Editing an automation needs a wider screen.",
+  "automation.canvas.add": "Add a node",
+  "automation.canvas.addAfter": "Add a step after $1",
+  "automation.canvas.addAfterPort": "Add a step after $1, $2",
+  "automation.canvas.palette.title": "Add a node",
+  "automation.canvas.palette.after": "Add after $1",
+  "automation.canvas.palette.description":
+    "What this automation may hold, in this project, for you.",
+  "automation.canvas.group.sources": "Sources",
+  "automation.canvas.group.reads": "Reads",
+  "automation.canvas.group.conditions": "Conditions",
+  "automation.canvas.group.actions": "Actions",
+  "automation.canvas.schedule": "On a schedule (UTC)",
+  "automation.canvas.compare": "Compare a field",
+  "automation.canvas.undo": "Undo",
+  "automation.canvas.redo": "Redo",
+  "automation.canvas.inspector": "Node settings",
+  "automation.canvas.removeNode": "Delete node $1",
+  "automation.canvas.source.enabled": "Enabled",
+  "automation.canvas.cron": "Schedule (five-field cron, UTC)",
+  "automation.canvas.condition.field": "Field",
+  "automation.canvas.condition.operator": "Comparison",
+  "automation.canvas.wires": "Wires",
+  "automation.canvas.wire.to": "Wire to",
+  "automation.canvas.wire.add": "Wire",
+  "automation.canvas.wire.remove": "Remove the wire to $1",
+  "automation.canvas.placeholders.lacking": "not given by $1",
+  "automation.canvas.unavailable": "Not available in this project",
+  "automation.canvas.unavailable.nodes": "An automation holds at most $1 nodes",
+  "automation.canvas.unavailable.sources":
+    "An automation holds at most $1 sources",
+  "automation.canvas.unavailable.schedule":
+    "A schedule is the only source of its automation",
+  "automation.canvas.refuse.self": "A node does not wire to itself",
+  "automation.canvas.refuse.duplicate": "These two nodes are already wired",
+  "automation.canvas.refuse.port":
+    "A condition leaves by its true or false port",
+  "automation.canvas.refuse.intoSource":
+    "Nothing wires into a source: a source starts a run",
+  "automation.canvas.refuse.readAfterEvent":
+    "A read follows a schedule, and only a schedule",
+  "automation.canvas.refuse.readOneWay": "A read has exactly one way in",
+  "automation.canvas.refuse.scheduleToRead":
+    "A schedule is followed by its read, and nothing else",
+  "automation.canvas.refuse.scheduleOneRead":
+    "A schedule is followed by exactly one read",
+  "automation.canvas.refuse.conditionAfterAction":
+    "A condition never follows an action: conditions are decided before the first effect",
+  "automation.canvas.refuse.cycle": "This wire would close a loop",
+  "automation.canvas.refuse.actions": "A source reaches at most $1 actions",
+  "automation.canvas.leave.title": "Leave without saving?",
+  "automation.canvas.leave.description":
+    "Your changes to this automation are not saved and will be lost.",
+  "automation.canvas.leave.confirm": "Leave",
   "automation.canvas.label": "Automation graph",
   "automation.canvas.ran": "Ran",
   "automation.canvas.notReached": "Not reached",
