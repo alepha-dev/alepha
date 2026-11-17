@@ -50,10 +50,12 @@ concurrency:
 jobs:
   # Every product's Verify, whatever changed (#Q3832): what Verify All was by
   # hand, once a day. A called run sees this workflow's event, so Verify's
-  # deploy jobs skip. `pull-requests: read` because Verify's `changes` job
-  # asks for it, and a called job never gets more than its caller grants.
+  # deploy jobs skip. `actions: read` and `pull-requests: read` because
+  # Verify's `changes` job asks for them, and a called job never gets more
+  # than its caller grants.
   verify:
     permissions:
+      actions: read
       contents: read
       pull-requests: read
     uses: ./.github/workflows/verify.yml
