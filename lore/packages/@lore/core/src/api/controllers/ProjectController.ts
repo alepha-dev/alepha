@@ -900,12 +900,15 @@ export class ProjectController {
         // read as null and every consumer would need the same guard.
         eventCount: row.eventCount ?? 1,
         updatedAt: row.updatedAt,
-        actor: row.userId
-          ? displayName(
-              people.find((person) => person.id === row.userId),
-              row.userId,
-            )
-          : undefined,
+        // Absent with no user (the system acted) and for an account the
+        // project can no longer name: the page words each (#Q3828), and a
+        // raw id was what a deleted account printed before.
+        actor: (() => {
+          const person = row.userId
+            ? people.find((it) => it.id === row.userId)
+            : undefined;
+          return person ? displayName(person, row.userId) : undefined;
+        })(),
       })),
     };
   }

@@ -200,6 +200,31 @@ describe("ProjectActivityPage", () => {
     expect(query).toHaveProperty("userId");
   });
 
+  it("names an event with no user System, and a user it cannot name a former member", async ({
+    expect,
+  }) => {
+    const screen = await show([
+      row({
+        id: "1",
+        userId: undefined,
+        actor: undefined,
+        description: "By a job",
+      }),
+      row({ id: "2", actor: undefined, description: "By a deleted account" }),
+    ]);
+
+    await waitFor(() => {
+      expect(screen.getByText("By a job")).toBeTruthy();
+    });
+    const cellOf = (text: string) =>
+      screen.getByText(text).closest("tr") as HTMLElement;
+    expect(within(cellOf("By a job")).getByText("System")).toBeTruthy();
+    expect(
+      within(cellOf("By a deleted account")).getByText("Former member"),
+    ).toBeTruthy();
+    expect(screen.queryByText("Someone")).toBeNull();
+  });
+
   it("links a row to the page its resource is addressed by", async ({
     expect,
   }) => {
