@@ -177,6 +177,30 @@ See [Feedback](/lore/docs/plan-feedback).
 | `feedback_accept`         | Accept a pending report.                             |
 | `feedback_reject`         | Reject a report.                                     |
 
+## Personas, use cases and requirements
+
+See [Personas](/lore/docs/plan-personas), [Use cases](/lore/docs/plan-use-cases),
+[Requirements](/lore/docs/plan-requirements), [Verify and runs](/lore/docs/plan-verify)
+and [Traceability](/lore/docs/plan-traceability).
+
+| Tool                                                             | What it does                                                                     |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `persona_list`, `persona_get`                                    | A project's personas, and one with its discussion.                               |
+| `persona_create`, `persona_update`, `persona_delete`             | Write a persona.                                                                 |
+| `persona_comment_add`                                            | Comment on a persona.                                                            |
+| `usecase_list`, `usecase_get`                                    | A project's use cases, and one with its scenario, criteria and covering epics.   |
+| `usecase_create`, `usecase_update`, `usecase_delete`             | Write a use case; criteria keys are assigned and never reused.                   |
+| `usecase_comment_add`                                            | Comment on a use case.                                                           |
+| `usecase_link_epic`                                              | Make an epic cover a use case, or stop.                                          |
+| `usecase_validate`                                               | Answer a use case's validation.                                                  |
+| `usecase_run_record`                                             | Record a run: one result per criterion.                                          |
+| `usecase_prompt`                                                 | The Verify prompt: test, spec, demo, explore, import or draft.                   |
+| `requirement_list`, `requirement_get`                            | A project's requirements, and one with its criteria, epics, release and measure. |
+| `requirement_create`, `requirement_update`, `requirement_delete` | Write a requirement; `metric_*` parameters set a measure.                        |
+| `requirement_set_release`                                        | Set the release a requirement ships in.                                          |
+| `requirement_coverage`                                           | Readiness, failing Musts and the coverage gaps, for a release or the project.    |
+| `criterion_verify_link`                                          | Say which requirement a criterion verifies.                                      |
+
 ## Automations
 
 See [Automations](/lore/docs/plan-automations).

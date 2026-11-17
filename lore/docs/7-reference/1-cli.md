@@ -311,6 +311,45 @@ quest: file one with `lore quest create --feedback <ref>`.
 
 See [Feedback](/lore/docs/plan-feedback).
 
+## Personas, use cases and requirements
+
+The commands of Plan's Requirements option. See [Personas](/lore/docs/plan-personas),
+[Use cases](/lore/docs/plan-use-cases), [Requirements](/lore/docs/plan-requirements),
+[Verify and runs](/lore/docs/plan-verify) and [Traceability](/lore/docs/plan-traceability).
+
+| Command                              | What it does                                                                     | Flags                                                                                                                                                                               |
+| ------------------------------------ | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lore persona list`                  | A project's personas.                                                            | `--kind`                                                                                                                                                                            |
+| `lore persona get <ref>`             | One persona: who they are, their goals, their demo account and their discussion. |                                                                                                                                                                                     |
+| `lore persona create`                | Create a persona, numbered `A<n>`.                                               | `--name` (required), `--kind`, `--role`, `--who`, `--goals`, `--frustrations`, `--alepha-role`, `--demo-account`, `--demo-seed`, `--environment-app`, `--environment-env`, `--area` |
+| `lore persona update <ref>`          | Change a persona; omitted flags stay as they are.                                | as `create`                                                                                                                                                                         |
+| `lore persona delete <ref>`          | Delete a persona; its number is never reused.                                    |                                                                                                                                                                                     |
+| `lore persona comment add <ref>`     | Comment on a persona.                                                            | `--body` (required)                                                                                                                                                                 |
+| `lore usecase list`                  | A project's use cases.                                                           | `--status`                                                                                                                                                                          |
+| `lore usecase get <ref>`             | One use case: actors, steps, alternatives, criteria and covering epics.          |                                                                                                                                                                                     |
+| `lore usecase create`                | Create a use case, as a draft.                                                   | `--title` (required), `--actor`, `--step`, `--alternative`, `--criteria`, `--priority`, `--preconditions`                                                                           |
+| `lore usecase update <ref>`          | Change a use case; each list given replaces its own.                             | as `create`, `--status`                                                                                                                                                             |
+| `lore usecase delete <ref>`          | Delete a use case; its number is never reused.                                   |                                                                                                                                                                                     |
+| `lore usecase comment add <ref>`     | Comment on a use case.                                                           | `--body` (required)                                                                                                                                                                 |
+| `lore usecase link epic <ref>`       | Make an epic cover a use case, or stop with `--no-linked`.                       | `--epic` (required), `--linked`                                                                                                                                                     |
+| `lore usecase validate <ref>`        | Answer a use case's validation.                                                  | `--decision` (`validated` or `changes_requested`), `--note`                                                                                                                         |
+| `lore usecase run record <ref>`      | Record a run: one result per criterion, where it ran, and a note.                | `--result` (`C1=passed,C2=failed:why`), `--by`, `--client`, `--app`, `--env`, `--note`                                                                                              |
+| `lore usecase prompt [ref]`          | Print the Verify prompt.                                                         | `--mode` (`test`, `spec`, `demo`, `explore`, `import`, `draft`), `--persona`, `--folio`, `--requirement`, `--epic`, `--stale`, `--app`, `--env`, `--as`                             |
+| `lore requirement list`              | A project's requirements.                                                        | `--type`, `--priority`                                                                                                                                                              |
+| `lore requirement get <ref>`         | One requirement: its criteria, covering epics, release, status and measure.      |                                                                                                                                                                                     |
+| `lore requirement create`            | Create a requirement, numbered `S<n>`.                                           | `--statement` (required), `--type`, `--priority`, `--chapter`, `--paragraph`, `--source-folio`, `--source-anchor`, `--metric-*`                                                     |
+| `lore requirement update <ref>`      | Change a requirement; omitted flags stay as they are.                            | as `create`, `--metric-clear`                                                                                                                                                       |
+| `lore requirement delete <ref>`      | Delete a requirement; its number is never reused.                                |                                                                                                                                                                                     |
+| `lore requirement set release <ref>` | Set the release a requirement ships in; its covering epics move with it.         | `--release` (required), `--confirm`                                                                                                                                                 |
+| `lore requirement coverage`          | A release's readiness and the coverage gaps, or the whole project's.             | `--release`                                                                                                                                                                         |
+| `lore criterion link`                | Say which requirement a use case's criterion verifies.                           | `--usecase`, `--key`, `--requirement` (empty to unlink)                                                                                                                             |
+
+A measure takes `--metric-kind` (`vital`, `availability` or `latency`),
+`--metric-threshold`, and as it needs `--metric-vital`, `--metric-percentile`,
+`--metric-path`, `--metric-monitor`, `--metric-app`, `--metric-env` and
+`--metric-window-days`. Run evidence is pushed with
+`lore attachments push --run <id> [--criterion C2 | --step 3] <file>`.
+
 ## Automations
 
 A rule is JSON, usually in a file (`--rule @rule.json`), and
