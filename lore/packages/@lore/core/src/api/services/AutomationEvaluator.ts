@@ -7,11 +7,13 @@ import type { Automation } from "../entities/automations.ts";
 import type { AutomationAudiencePreview } from "../schemas/automationAudiencePreviewSchema.ts";
 import { automationEvaluationReportSchema } from "../schemas/automationEvaluationReportSchema.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
+import type { AutomationGraphOutput } from "../schemas/AutomationGraph.ts";
 import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import type { AutomationSourceProvenance } from "../schemas/automationSourceProvenanceSchema.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
+import { AutomationTemplateTokens } from "../schemas/AutomationTemplateTokens.ts";
 import {
   automationTestSourceSchema,
   type AutomationTestSource,
@@ -68,6 +70,7 @@ export class AutomationEvaluator {
   protected readonly bindings = $inject(AutomationTemplateBindings);
   protected readonly time = $inject(DateTimeProvider);
   protected readonly graphs = $inject(AutomationGraph);
+  protected readonly tokens = $inject(AutomationTemplateTokens);
 
   public async test(
     id: string,
@@ -307,6 +310,34 @@ export class AutomationEvaluator {
               ...(step.channel !== undefined ? { channel: step.channel } : {}),
               ...(selected.kind === "rows" ? { row } : {}),
             };
+            // A slot bound to an earlier action's output (#Q3814) has no
+            // value before the run is real: it is reported, not validated.
+            const outputs = this.graphs.outputs(
+              graph,
+              step.node,
+              this.catalog.entries(),
+            );
+            const bound = this.tokens
+              .inValue(action)
+              .filter((name) => Object.hasOwn(outputs, name));
+            if (bound.length) {
+              base.operations.push(
+                await this.deferred({
+                  rule: input.rule,
+                  graph,
+                  node,
+                  user,
+                  action,
+                  position,
+                  context,
+                  variables: base.variables,
+                  outputs: Object.fromEntries(
+                    bound.map((name) => [name, outputs[name]]),
+                  ),
+                }),
+              );
+              continue;
+            }
             const rendered = this.renderer.render(
               action,
               context,
@@ -429,6 +460,101 @@ export class AutomationEvaluator {
       return base;
     });
   }
+  /**
+   * A step that names an earlier action's output, planned without it: its
+   * other slots render and validate as any step's, its author's grant for
+   * the action is checked, and the slots bound to an output keep their
+   * placeholder, marked as known only when the run is real.
+   */
+  protected async deferred(input: {
+    rule: Automation;
+    graph: AutomationGraphValue;
+    node: string;
+    user: UserAccountToken;
+    action: AutomationRule["actions"][number];
+    position: Pick<AutomationPlannedOperation, "node" | "channel" | "row">;
+    context: AutomationRenderContext;
+    variables: AutomationRunSnapshot["variables"];
+    outputs: Record<string, AutomationGraphOutput>;
+  }): Promise<AutomationPlannedOperation> {
+    const sentinel: Record<string, unknown> = {
+      number: 1,
+      release: 1,
+      boolean: true,
+      folio: "00000000-0000-4000-8000-000000000000",
+      member: "00000000-0000-4000-8000-000000000000",
+      textArray: [],
+      channel: "inbox",
+    };
+    const rendered = this.renderer.render(
+      input.action,
+      {
+        ...input.context,
+        descriptor: {
+          ...input.context.descriptor,
+          fields: {
+            ...input.context.descriptor.fields,
+            ...Object.fromEntries(
+              Object.entries(input.outputs).map(([name, output]) => [
+                name,
+                output.kind,
+              ]),
+            ),
+          },
+        },
+        values: {
+          ...input.context.values,
+          ...Object.fromEntries(
+            Object.entries(input.outputs).map(([name, output]) => [
+              name,
+              sentinel[output.kind] ?? "",
+            ]),
+          ),
+        } as AutomationRenderContext["values"],
+      },
+      input.variables,
+    );
+    await this.catalog.validateEffect(
+      input.graph,
+      input.rule.projectId,
+      input.user,
+      rendered.raw,
+      input.rule,
+      input.node,
+      false,
+    );
+    const unvalidated = Object.entries(input.action).flatMap(([slot, value]) =>
+      slot !== "kind" &&
+      this.tokens
+        .inValue(value)
+        .some((name) => Object.hasOwn(input.outputs, name))
+        ? [slot]
+        : [],
+    );
+    const keep = (action: AutomationRule["actions"][number]) =>
+      ({
+        ...action,
+        ...Object.fromEntries(
+          unvalidated.map((slot) => [
+            slot,
+            (input.action as unknown as Record<string, unknown>)[slot],
+          ]),
+        ),
+      }) as AutomationRule["actions"][number];
+    return {
+      ...input.position,
+      action: keep(rendered.raw),
+      rendered: keep(rendered.action),
+      bytes: rendered.bytes,
+      lang: "en",
+      skipped: false,
+      changed: true,
+      truncated: rendered.truncated,
+      reason: `Known only when the run is real: ${Object.keys(input.outputs).join(", ")}`,
+      unvalidated,
+    };
+  }
+
   public async prepare(
     evaluation: AutomationEvaluation,
   ): Promise<AutomationPreparedEvidence> {
@@ -514,6 +640,11 @@ export interface AutomationPlannedOperation {
   changed: boolean;
   reason?: string;
   truncated: boolean;
+  /**
+   * The slots bound to an earlier action's output, which only a real run
+   * gives a value (#Q3814).
+   */
+  unvalidated?: string[];
 }
 export interface AutomationEvaluation {
   rule: Automation;

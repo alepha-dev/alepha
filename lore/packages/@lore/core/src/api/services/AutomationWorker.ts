@@ -6,6 +6,8 @@ import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
+import type { AutomationSlotKind } from "../schemas/automationSlotKindSchema.ts";
+import { AutomationTemplateTokens } from "../schemas/AutomationTemplateTokens.ts";
 import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
@@ -40,6 +42,7 @@ export class AutomationWorker {
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly time = $inject(DateTimeProvider);
   protected readonly graphs = $inject(AutomationGraph);
+  protected readonly tokens = $inject(AutomationTemplateTokens);
 
   public async step(
     input: { receiptId: string; token?: string },
@@ -197,18 +200,41 @@ export class AutomationWorker {
           );
           if (
             recorded &&
-            ["not_reached", "failed", "refused"].includes(recorded.status)
+            ["not_reached", "failed", "refused", "skipped"].includes(
+              recorded.status,
+            )
           ) {
             await this.claims.pass(occurrence.id, token, step);
             continue;
           }
           const ast = this.graphs.action(occurrence.snapshot!.rule!, step);
+          // What the actions before it produced, for the same row (#Q3814).
+          // A producer that gave nothing skips the steps that name it.
+          const bound = await this.withOutputs(
+            occurrence,
+            step,
+            this.context(occurrence.snapshot!, planned.row),
+          );
+          if (bound.unavailable) {
+            await this.evidence.action(occurrence.runId!, {
+              ...step,
+              status: "skipped",
+              result: {
+                reason: `Output unavailable: ${bound.unavailable}`.slice(
+                  0,
+                  255,
+                ),
+              },
+            });
+            await this.claims.pass(occurrence.id, token, step);
+            continue;
+          }
           if (ast.kind === "notify" && ast.audience) {
             const progress = await this.rosterWorker.step(
               occurrence,
               token,
               step,
-              this.context(occurrence.snapshot!, planned.row),
+              bound.context,
             );
             if (!progress.done) return { receiptId: occurrence.id, token };
             await this.claims.advance(occurrence.id, token, {
@@ -228,7 +254,7 @@ export class AutomationWorker {
             })) >= 100
           )
             occurrence = await this.claims.continueRun(occurrence.id, token);
-          const context = this.context(occurrence.snapshot!, planned.row);
+          const context = bound.context;
           const rendered = this.renderer.render(
             ast,
             context,
@@ -444,6 +470,68 @@ export class AutomationWorker {
       }
     });
   }
+  /**
+   * A step's context with the outputs it names (#Q3814), read from the
+   * committed receipts of its producers for the same row. A producer that
+   * was skipped or changed nothing gave no output: `unavailable` names it.
+   */
+  protected async withOutputs(
+    occurrence: AutomationReceipt,
+    step: { node: string; channel?: string; row?: number },
+    context: AutomationRenderContext,
+  ): Promise<{ context: AutomationRenderContext; unavailable?: string }> {
+    const graph = occurrence.snapshot!.rule!;
+    const outputs = this.graphs.outputs(
+      graph,
+      step.node,
+      this.catalog.entries(),
+    );
+    if (!Object.keys(outputs).length) return { context };
+    const used = new Set(this.tokens.inValue(this.graphs.action(graph, step)));
+    const needed = Object.entries(outputs).filter(([name]) => used.has(name));
+    if (!needed.length) return { context };
+    const receipts = await this.persistence.receipts.findMany({
+      where: {
+        parentId: occurrence.id,
+        kind: "action",
+        status: "committed",
+        nodeId: {
+          inArray: [...new Set(needed.map(([, output]) => output.producer))],
+        },
+        ...(step.row !== undefined
+          ? { rowIndex: step.row }
+          : { rowIndex: { isNull: true } }),
+      },
+      limit: 50,
+    });
+    const values: Record<string, unknown> = {};
+    const kinds: Record<string, AutomationSlotKind> = {};
+    for (const [name, output] of needed) {
+      const receipt = receipts.find((row) => row.nodeId === output.producer);
+      const value = receipt?.result?.[output.from];
+      if (
+        !receipt ||
+        receipt.result?.skipped === true ||
+        receipt.result?.changed === false ||
+        value === null ||
+        value === undefined
+      )
+        return { context, unavailable: `${name} (from ${output.producer})` };
+      values[name] = value;
+      kinds[name] = output.kind;
+    }
+    return {
+      context: {
+        ...context,
+        descriptor: {
+          ...context.descriptor,
+          fields: { ...context.descriptor.fields, ...kinds },
+        },
+        values: { ...context.values, ...values } as typeof context.values,
+      },
+    };
+  }
+
   /**
    * Whether an error refuses the step rather than failing it: a domain
    * check said no, as opposed to a fault worth retrying.

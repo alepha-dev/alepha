@@ -602,6 +602,115 @@ describe("AutomationGraph", () => {
     });
   });
 
+  describe("outputs", () => {
+    const create: AutomationGraphNode = {
+      id: "create",
+      kind: "action",
+      type: "createQuest",
+      config: { title: "{{title}}", description: "", area: "ops" },
+    };
+    const tag = (id = "tag"): AutomationGraphNode => ({
+      id,
+      kind: "action",
+      type: "addTag",
+      config: { quest: "{{created_quest_id}}", tag: "follow-up" },
+    });
+
+    it("declares flat names that collide with no source field", ({
+      expect,
+    }) => {
+      const vocabulary = new AutomationVocabulary();
+      const fields = new Set(
+        vocabulary.all().flatMap((entry) => Object.keys(entry.fields)),
+      );
+      const outputs = vocabulary
+        .all()
+        .flatMap((entry) => Object.keys(entry.outputs ?? {}));
+      expect(outputs.sort()).toEqual([
+        "appended_folio_id",
+        "created_quest_id",
+        "created_quest_number",
+      ]);
+      expect(outputs.filter((name) => fields.has(name))).toEqual([]);
+      expect(vocabulary.reservedNames().has("created_quest_id")).toBe(true);
+    });
+
+    it("gives an action the outputs of a producer on every path to it", ({
+      expect,
+    }) => {
+      const value = graph(
+        [event("done", "epic.completed"), create, tag()],
+        [
+          ["done", "create"],
+          ["create", "tag"],
+        ],
+      );
+      expect(messages(value)).toEqual([]);
+      expect(graphs.outputs(value, "tag", entries)).toEqual({
+        created_quest_id: {
+          kind: "number",
+          from: "quest_id",
+          producer: "create",
+        },
+        created_quest_number: {
+          kind: "number",
+          from: "shortId",
+          producer: "create",
+        },
+      });
+      expect(graphs.outputs(value, "create", entries)).toEqual({});
+    });
+
+    it("refuses an output whose producer a path goes around", ({ expect }) => {
+      const value = graph(
+        [event("done", "epic.completed"), create, tag()],
+        [
+          ["done", "create"],
+          ["create", "tag"],
+          ["done", "tag"],
+        ],
+      );
+      expect(messages(value)).toEqual([
+        "node 'tag': 'created_quest_id' comes from 'create', which is not on every path to this node: an output reaches only the actions every path passes it on the way to",
+      ]);
+      const twoSources = graph(
+        [
+          event("done", "epic.completed"),
+          event("other", "epic.completed"),
+          create,
+          tag(),
+        ],
+        [
+          ["done", "create"],
+          ["create", "tag"],
+          ["other", "tag"],
+        ],
+      );
+      expect(messages(twoSources)).toHaveLength(1);
+    });
+
+    it("refuses two producers of one name upstream of a node, naming both", ({
+      expect,
+    }) => {
+      const value = graph(
+        [
+          event("done", "epic.completed"),
+          create,
+          { ...create, id: "create-again" },
+          tag(),
+        ],
+        [
+          ["done", "create"],
+          ["create", "create-again"],
+          ["create-again", "tag"],
+        ],
+      );
+      expect(messages(value)).toContain(
+        "node 'tag': 'created_quest_id' is produced twice upstream of this node, by 'create' and 'create-again': keep one",
+      );
+    });
+  });
+
   describe("a run's walk", () => {
     const condition: AutomationGraphNode = {
       id: "big",

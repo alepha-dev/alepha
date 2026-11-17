@@ -38,6 +38,13 @@ export class AutomationGraph {
   protected readonly tokens = new AutomationTemplateTokens();
   protected readonly providers: AutomationGraphNameProvider[] = [
     (input) => this.sourceFields(input),
+    (input) =>
+      Object.fromEntries(
+        Object.entries(this.outputsOf(input)).map(([name, output]) => [
+          name,
+          output.kind,
+        ]),
+      ),
   ];
 
   /**
@@ -175,6 +182,112 @@ export class AutomationGraph {
     for (const provider of this.providers)
       Object.assign(names, provider({ graph, node, sources, describe }));
     return names;
+  }
+
+  /**
+   * What the actions before a node give it (#Q3814): the outputs of every
+   * upstream action that is on EVERY path to it, from every source that
+   * reaches it. An action only: a condition never follows an action.
+   */
+  public outputs(
+    graph: AutomationGraphValue,
+    id: string,
+    entries: readonly AutomationDescriptor[],
+  ): Record<string, AutomationGraphOutput> {
+    const node = this.node(graph, id);
+    if (!node) return {};
+    return this.outputsOf({
+      graph,
+      node,
+      sources: this.reachingSources(graph, id),
+      describe: this.describer(entries),
+    });
+  }
+
+  /**
+   * The nodes that reach a node, the node itself excluded.
+   */
+  public upstream(graph: AutomationGraphValue, id: string): Set<string> {
+    const seen = new Set<string>();
+    const stack = [id];
+    while (stack.length) {
+      const current = stack.pop()!;
+      for (const edge of this.incoming(graph, current))
+        if (!seen.has(edge.from)) {
+          seen.add(edge.from);
+          stack.push(edge.from);
+        }
+    }
+    seen.delete(id);
+    return seen;
+  }
+
+  protected outputsOf(
+    input: AutomationGraphNameInput,
+  ): Record<string, AutomationGraphOutput> {
+    if (input.node.kind !== "action") return {};
+    const outputs: Record<string, AutomationGraphOutput> = {};
+    for (const producer of this.producers(
+      input.graph,
+      input.node.id,
+      input.describe,
+    ))
+      if (
+        input.sources.every(
+          (source) =>
+            !this.reachableWithout(input.graph, source, producer.node.id).has(
+              input.node.id,
+            ),
+        )
+      )
+        for (const [name, output] of Object.entries(producer.outputs))
+          outputs[name] = { ...output, producer: producer.node.id };
+    return outputs;
+  }
+
+  /**
+   * The upstream actions whose type declares outputs, in walk order.
+   */
+  protected producers(
+    graph: AutomationGraphValue,
+    id: string,
+    describe: (type: string) => AutomationDescriptor | undefined,
+  ): Array<{
+    node: AutomationGraphNode;
+    outputs: NonNullable<AutomationDescriptor["outputs"]>;
+  }> {
+    const upstream = this.upstream(graph, id);
+    return this.order(graph)
+      .filter((item) => upstream.has(item))
+      .map((item) => this.node(graph, item)!)
+      .filter((node) => node.kind === "action")
+      .flatMap((node) => {
+        const outputs = describe(node.type)?.outputs;
+        return outputs && Object.keys(outputs).length
+          ? [{ node, outputs }]
+          : [];
+      });
+  }
+
+  /**
+   * What `from` reaches when `without` is taken out of the graph.
+   */
+  protected reachableWithout(
+    graph: AutomationGraphValue,
+    from: string,
+    without: string,
+  ): Set<string> {
+    const seen = new Set<string>();
+    if (from === without) return seen;
+    const stack = [from];
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      for (const edge of this.outgoing(graph, id))
+        if (edge.to !== without) stack.push(edge.to);
+    }
+    return seen;
   }
 
   /**
@@ -687,6 +800,21 @@ export class AutomationGraph {
     add: (issue: AutomationGraphIssue) => void,
   ): void {
     const names = this.names(graph, node.id, entries);
+    const named = new Map<string, string>();
+    for (const producer of this.producers(
+      graph,
+      node.id,
+      this.describer(entries),
+    ))
+      for (const name of Object.keys(producer.outputs)) {
+        const first = named.get(name);
+        if (first)
+          add({
+            node: node.id,
+            message: `'${name}' is produced twice upstream of this node, by '${first}' and '${producer.node.id}': keep one`,
+          });
+        named.set(name, producer.node.id);
+      }
     this.checkNames(graph, node, node.config, names, entries, add);
     if (node.type !== "notify") return;
     const sources = this.reachingSources(graph, node.id).map((id) =>
@@ -779,6 +907,14 @@ export class AutomationGraph {
         message: `'${name}' is not a field of source '${lacking.id}' (${this.node(graph, lacking.id)?.type}): a node sees only the fields every source reaching it provides, so give that source its own action`,
       };
     }
+    const producer = this.producers(graph, node.id, describe).find((item) =>
+      Object.hasOwn(item.outputs, name),
+    );
+    if (producer && node.kind === "action")
+      return {
+        node: node.id,
+        message: `'${name}' comes from '${producer.node.id}', which is not on every path to this node: an output reaches only the actions every path passes it on the way to`,
+      };
     if (having.length) {
       const kinds = [...new Set(having.map((item) => item.fields[name]))];
       return {
@@ -800,7 +936,10 @@ export class AutomationGraph {
   protected reserved(entries: readonly AutomationDescriptor[]): Set<string> {
     return new Set([
       ...AutomationVocabulary.RESERVED_KEYS,
-      ...entries.flatMap((entry) => Object.keys(entry.fields)),
+      ...entries.flatMap((entry) => [
+        ...Object.keys(entry.fields),
+        ...Object.keys(entry.outputs ?? {}),
+      ]),
     ]);
   }
 
@@ -846,6 +985,16 @@ export class AutomationGraph {
       .map((edge) => this.node(graph, edge.to))
       .find((node) => node?.kind === "read");
   }
+}
+
+/**
+ * An output a node may use: its kind, the key of its producer's result it
+ * is read from, and the producer.
+ */
+export interface AutomationGraphOutput {
+  kind: AutomationSlotKind;
+  from: string;
+  producer: string;
 }
 
 /**

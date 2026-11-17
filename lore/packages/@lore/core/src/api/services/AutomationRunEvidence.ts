@@ -74,10 +74,10 @@ export class AutomationRunEvidence {
       "skipped",
       "reason",
     ],
-    appendFolio: ["folio_id", "revision", "changed"],
-    createQuest: ["quest_id", "shortId", "changed"],
-    assignRelease: ["quest_id", "release_id", "changed"],
-    addTag: ["quest_id", "tag", "changed"],
+    appendFolio: ["folio_id", "revision", "changed", "skipped", "reason"],
+    createQuest: ["quest_id", "shortId", "changed", "skipped", "reason"],
+    assignRelease: ["quest_id", "release_id", "changed", "skipped", "reason"],
+    addTag: ["quest_id", "tag", "changed", "skipped", "reason"],
   };
 
   public async start(input: AutomationEvidenceInput): Promise<AutomationRun> {

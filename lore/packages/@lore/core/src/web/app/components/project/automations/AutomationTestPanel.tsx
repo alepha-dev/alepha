@@ -194,6 +194,13 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
                         : operation.rendered.kind}
                   </p>
                 )}
+                {operation.unvalidated?.length ? (
+                  <p className="text-muted-foreground text-xs">
+                    {tr("automation.test.unvalidated", {
+                      args: [operation.unvalidated.join(", ")],
+                    })}
+                  </p>
+                ) : null}
                 {operation.truncated && (
                   <p className="text-muted-foreground text-xs">
                     {tr("automation.test.actionCapped")}
