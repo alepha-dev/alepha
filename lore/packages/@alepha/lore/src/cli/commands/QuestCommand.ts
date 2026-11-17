@@ -3,6 +3,7 @@ import type { FeedbackController } from "@lore/plan/api";
 import type { QuestCommentController } from "@lore/plan/api";
 import type { QuestController } from "@lore/plan/api";
 import type { ReleaseController } from "@lore/plan/api";
+import type { LiveQuestController } from "@lore/ship/api";
 import { $inject, z } from "alepha";
 import { $command, CommandError, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
@@ -79,6 +80,9 @@ export class QuestCommand {
     this.client.scope(),
   );
   protected readonly epicApi = $client<EpicController>(this.client.scope());
+  protected readonly liveApi = $client<LiveQuestController>(
+    this.client.scope(),
+  );
   protected readonly feedbackApi = $client<FeedbackController>(
     this.client.scope(),
   );
@@ -262,11 +266,25 @@ export class QuestCommand {
         const pullRequests = quest.pullRequests?.length
           ? quest.pullRequests
           : epicPullRequests;
+        // Where its commits run (#E154), as `quest_get` carries it. A project
+        // with no deploys answers nothing, not an error.
+        const live = await this.liveApi
+          .getQuestLiveness({ params: { projectId, number: shortId } })
+          .then((answer) =>
+            answer.instances.map((copy) => ({
+              app: copy.app,
+              env: copy.env,
+              dirty: copy.dirty,
+              ...(copy.since ? { since: copy.since } : {}),
+            })),
+          )
+          .catch(() => undefined);
 
         if (flags.output === "json") {
           this.render.json(print, {
             ...quest,
             ...(epicPullRequests.length ? { epicPullRequests } : {}),
+            ...(live ? { live } : {}),
             comments,
             attachments,
           });
@@ -314,6 +332,17 @@ export class QuestCommand {
                     lines: quest.commits.map(
                       (commit) =>
                         `${commit.sha.slice(0, 9)}  ${commit.message ?? ""}`,
+                    ),
+                  },
+                ]
+              : []),
+            ...(live?.length
+              ? [
+                  {
+                    title: "Live on",
+                    lines: live.map(
+                      (copy) =>
+                        `${copy.app}/${copy.env}${copy.since ? `  since ${copy.since}` : ""}${copy.dirty ? "  (unverified: dirty build)" : ""}`,
                     ),
                   },
                 ]

@@ -8,12 +8,15 @@ import {
 import { CapabilityRegistry, DashboardMetricCatalog } from "@lore/core/schemas";
 import { CoreTestEntities } from "@lore/core/testing";
 import { FeedbackController } from "@lore/plan/api";
+import { quests } from "@lore/plan/schemas";
+import { AppController, CommitQuestSetService } from "@lore/ship/api";
+import { deployments } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
-import { AlephaOrm } from "alepha/orm";
+import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterAll, beforeAll, describe, it } from "vitest";
@@ -29,6 +32,15 @@ import { bootLore } from "./fixtures/bootLore.ts";
  * would make it, and repeated as the owner to prove the surface still
  * answers someone whose rank reads it.
  */
+
+/**
+ * The rows the live-quest case writes by hand (#E154): a deployment and the
+ * quest's recorded commit.
+ */
+class LiveRows {
+  public readonly deployments = $repository(deployments);
+  public readonly quests = $repository(quests);
+}
 
 const FEEDBACK = "Checkout crashes on pay";
 const APP = "storefront";
@@ -50,6 +62,7 @@ const setup = async () => {
   alepha.with(AlephaMcp);
   bootLore(alepha, ["api", "mcp"]);
   const repos = alepha.inject(CoreTestEntities);
+  alepha.with(LiveRows);
   await alepha.start();
 
   const baseUrl = alepha.inject(NodeHttpServerProvider).hostname;
@@ -175,6 +188,40 @@ const setup = async () => {
     .inject(ProjectJoinController)
     .joinProject.fetch({ params: { id: projectId } }, as(stranger));
 
+  // The quest is done and live on the app's copy (#E154): its commit is in
+  // the set of the commit the copy's newest succeeded run shipped.
+  const live = alepha.inject(LiveRows);
+  const [quest] = await live.quests.findMany({
+    where: { projectId: { eq: projectId } },
+  });
+  const commit = "c".repeat(40);
+  await live.quests.updateById(quest!.id, {
+    completedAt: "2026-11-01T00:00:00.000Z",
+    commits: [{ sha: commit, at: "2026-11-01T00:00:00.000Z", by: owner }],
+  } as never);
+  const { items } = (
+    await alepha
+      .inject(AppController)
+      .listApps.fetch({ params: { projectId } }, as(owner))
+  ).data;
+  await live.deployments.create({
+    projectId,
+    instanceId: items[0]!.id,
+    app: APP,
+    tag: "latest",
+    sha256: "e".repeat(64),
+    status: "succeeded",
+    commitSha: commit,
+    finishedAt: "2026-11-02T00:00:00.000Z",
+  } as never);
+  await alepha.inject(CommitQuestSetService).record({
+    projectId,
+    commitSha: commit,
+    numbers: [quest!.shortId],
+    walked: [],
+    complete: true,
+  });
+
   return {
     alepha,
     repos,
@@ -212,6 +259,33 @@ describe("a stranger who joined an open project", () => {
       const read = await ctx.http(ctx.ownerToken, "GET", path);
       expect(read.status).toBe(200);
       expect(read.text).toContain("owner@example.com");
+    });
+  });
+
+  describe("live quests (#E154)", () => {
+    it("name no app to a reader without app:read, on the list or quest_get", async ({
+      expect,
+    }) => {
+      const path = `/getQuests/${ctx.projectId}?withLive=true&status=completed`;
+
+      const seen = await ctx.http(ctx.strangerToken, "GET", path);
+      expect(seen.status).toBe(200);
+      expect(seen.text).toContain("Ship the cart");
+      expect(seen.text).not.toContain(APP);
+      const got = await ctx.mcp(ctx.strangerToken, "quest_get", {
+        project: ctx.projectId,
+        shortId: 1,
+      });
+      expect(got).not.toContain(APP);
+
+      const owned = await ctx.http(ctx.ownerToken, "GET", path);
+      expect(owned.text).toContain(APP);
+      expect(
+        await ctx.mcp(ctx.ownerToken, "quest_get", {
+          project: ctx.projectId,
+          shortId: 1,
+        }),
+      ).toContain(APP);
     });
   });
 

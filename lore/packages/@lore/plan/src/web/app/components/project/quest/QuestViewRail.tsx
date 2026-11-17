@@ -4,6 +4,7 @@ import {
   type I18n,
   capabilityOption,
   CommitLink,
+  ResourceRailRegistry,
 } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useQuery, useStore } from "alepha/react";
@@ -40,6 +41,7 @@ import { formatQuestSize } from "./questSize.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewRailEpicLink from "./QuestViewRailEpicLink.tsx";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
+import QuestViewRailSlot from "./QuestViewRailSlot.tsx";
 import QuestViewRailTags from "./QuestViewRailTags.tsx";
 import QuestViewSettings from "./QuestViewSettings.tsx";
 import QuestViewTimer from "./QuestViewTimer.tsx";
@@ -79,6 +81,8 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const router = useRouter();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
+  // Rows other modules register for a quest (#E154): Ship's Live row.
+  const slots = useInject(ResourceRailRegistry).rows("quest");
 
   // Every one of these is an option inside Work: a capability that is off
   // reads its options off, which is the epic's narrow-never-widen rule and
@@ -261,6 +265,15 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             </span>
           ) : undefined}
         </QuestViewRailRow>
+
+        {project?.id != null &&
+          slots.map((entry) => (
+            <QuestViewRailSlot
+              key={entry.key}
+              entry={entry}
+              subject={{ projectId: project.id, number: quest.shortId }}
+            />
+          ))}
 
         <QuestViewRailRow
           icon={GitPullRequest}

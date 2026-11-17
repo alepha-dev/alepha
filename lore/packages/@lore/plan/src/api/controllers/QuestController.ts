@@ -75,6 +75,7 @@ import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
+import { PlanLiveQuests } from "../services/PlanLiveQuests.ts";
 import { QuestDeletionService } from "../services/QuestDeletionService.ts";
 import { QuestEditAccess } from "../services/QuestEditAccess.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
@@ -207,6 +208,7 @@ export class QuestController {
    */
   comments = $repository(questComments);
   protected readonly ranks = $inject(RankService);
+  protected readonly liveQuests = $inject(PlanLiveQuests);
   mentions = $inject(MentionNotifier);
   dt = $inject(DateTimeProvider);
   audits = $inject(LoreAudits);
@@ -1556,6 +1558,18 @@ export class QuestController {
          * specific of the two.
          */
         offset: z.integer().min(0).optional(),
+        /**
+         * `not`: completed quests with a recorded commit that no deployed
+         * copy runs (#E154). Empty while any copy Lore deployed has an
+         * unknown or partial set: "not live" is never claimed from one.
+         * Anything else filters nothing.
+         */
+        live: z.string().optional(),
+        /**
+         * Carry on each row the deployed copies running it
+         * (`metadata.live`), read once for the page from Ship (#E154).
+         */
+        withLive: z.boolean().optional(),
         ...questFilterExtrasShape,
       }),
       response: db.page(questResourceSchema),
@@ -1569,15 +1583,48 @@ export class QuestController {
 
       query.sort ??= "-updatedAt";
 
-      const { offset, ...pageQuery } = query;
+      const {
+        offset,
+        live: askedLive,
+        withLive: askedWithLive,
+        ...pageQuery
+      } = query;
+      // Live data names apps, which is `app:read` (#Q3794): without it both
+      // switches are ignored, as an unknown filter value is.
+      const readsApps =
+        (askedLive === "not" || askedWithLive === true) &&
+        (await this.liveQuests.readsApps(params.projectId, user));
+      const liveFilter = readsApps ? askedLive : undefined;
+      const withLive = readsApps && askedWithLive;
       const result =
-        offset === undefined
-          ? await this.quests.paginate(pageQuery, { where }, { count: true })
-          : await this.rawOffsetPage(pageQuery, where, offset);
+        liveFilter === "not"
+          ? await this.liveQuests.notLivePage(
+              params.projectId,
+              where,
+              pageQuery,
+              offset,
+            )
+          : offset === undefined
+            ? await this.quests.paginate(pageQuery, { where }, { count: true })
+            : await this.rawOffsetPage(pageQuery, where, offset);
+      const live = withLive
+        ? await this.liveQuests.liveByNumber(params.projectId)
+        : undefined;
 
       return {
         ...result,
-        content: result.content.map((quest) => this.mapQuestToResource(quest)),
+        content: result.content.map((quest) => {
+          const resource = this.mapQuestToResource(quest);
+          return live
+            ? {
+                ...resource,
+                metadata: {
+                  ...resource.metadata,
+                  live: live.get(quest.shortId) ?? [],
+                },
+              }
+            : resource;
+        }),
       };
     },
   });

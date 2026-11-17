@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { quests } from "../entities/quests.ts";
+import { questLiveCopySchema } from "./questLiveCopySchema.ts";
 
 /**
  * Quest status derived from completedAt / heldAt / acceptedAt / shelvedAt.
@@ -34,6 +35,12 @@ const questMetadataSchema = z.object({
     total: z.integer(),
   }),
   totalTimeSpent: z.integer(),
+  /**
+   * The deployed copies running the quest's commits (#E154), on a list read
+   * that asked for them (`getQuests` with `withLive`). Absent otherwise, and
+   * an empty list is "on no copy whose set is known", never "not live".
+   */
+  live: z.array(questLiveCopySchema).optional(),
 });
 
 /**

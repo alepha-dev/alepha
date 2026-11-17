@@ -465,17 +465,24 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "Quests",
+    section: "Where a quest is live",
+    url: "https://alepha.dev/lore/docs/plan-quests#where-a-quest-is-live",
+    capability: "plan",
+    text: "In a project that deploys its apps with Lore, a done quest says where it runs.\nThe quest's rail shows a **Live** row with one chip per deployed copy, such as\n`my-app/production · since 2 hours`, linked to that copy.\n\n**Live** means the quest's commit is in the history of the commit the copy runs,\nas Lore recorded it when that build was pushed: the push reads the `#Q12`\nreferences in the history, and the commits recorded on quests\n([What a push records](/lore/docs/ship-artifacts#what-a-push-records)). It\nfollows the copy's newest successful deployment, so a rollback takes the quests\nit removed off at once, and a redeploy of an older build puts them back.\n\n- **unverified** beside a chip: that build was pushed from a working tree with\n  uncommitted changes, so the copy may run code no commit names.\n- **Unknown** is not \"not live\". A copy deployed before Lore recorded commits,\n  or from a build pushed from a shallow clone, cannot say which quests it runs.\n  The rail then shows no chip for it, and nothing claims the quest is missing.\n\nThe quest list has a **Live** column, and a **Live** filter whose **Completed,\nnot live yet** lists the done quests, with at least one recorded commit, th...",
+  },
+  {
+    guide: "Quests",
     section: "From the command line",
     url: "https://alepha.dev/lore/docs/plan-quests#from-the-command-line",
     capability: "plan",
-    text: '```bash\nlore quest list --status in_progress\nlore quest create --title "Add a dark mode toggle" --area web --priority medium --accept\nlore quest complete 12 --message "Redirect fixed" --commit 3f9c2a1\n```\n\nA quest can be named `12`, `Q12` or `\'#Q12\'` (quote it, or the shell reads a\ncomment). `lore project info` lists the project\'s areas. See\n[The lore CLI](/lore/docs/reference-cli#quests) for every command and flag.',
+    text: '```bash\nlore quest list --status in_progress\nlore quest create --title "Add a dark mode toggle" --area web --priority medium --accept\nlore quest complete 12 --message "Redirect fixed" --commit 3f9c2a1\n```\n\nA quest can be named `12`, `Q12` or `\'#Q12\'` (quote it, or the shell reads a\ncomment). `lore quest get 12` also lists the copies the quest is live on.\n`lore project info` lists the project\'s areas. See\n[The lore CLI](/lore/docs/reference-cli#quests) for every command and flag.',
   },
   {
     guide: "Quests",
     section: "From an agent",
     url: "https://alepha.dev/lore/docs/plan-quests#from-an-agent",
     capability: "plan",
-    text: "An agent connected over MCP works quests under the same rules as a person. It\nstarts with `project_context` (the areas, the epics, its active quests and the\nfolio index in one call), accepts a quest with `quest_accept` before its first\ncommit, ticks objectives with `quest_objective_set` as they are met, and closes\nwith `quest_complete`, passing a `message` and its `commits`. It records the\npull request it opened with `quest_pull_request_add`, or with\n`epic_pull_request_add` when the quest is part of an epic.\n\nThe full list is in [MCP tools](/lore/docs/reference-mcp-tools). To hand a\nquest to an agent from the browser, see\n[Agent prompts](/lore/docs/agents-prompts).",
+    text: "An agent connected over MCP works quests under the same rules as a person. It\nstarts with `project_context` (the areas, the epics, its active quests and the\nfolio index in one call), accepts a quest with `quest_accept` before its first\ncommit, ticks objectives with `quest_objective_set` as they are met, and closes\nwith `quest_complete`, passing a `message` and its `commits`. It records the\npull request it opened with `quest_pull_request_add`, or with\n`epic_pull_request_add` when the quest is part of an epic. `quest_get` carries\n`live`, the copies running the quest's commits, as the rail shows them.\n\nThe full list is in [MCP tools](/lore/docs/reference-mcp-tools). To hand a\nquest to an agent from the browser, see\n[Agent prompts](/lore/docs/agents-prompts).",
   },
   {
     guide: "Quests",

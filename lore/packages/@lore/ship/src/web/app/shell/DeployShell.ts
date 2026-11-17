@@ -7,6 +7,7 @@ import {
   DashboardPickerRegistry,
   ProjectShellRegistry,
   ReportsTabRegistry,
+  ResourceRailRegistry,
   ResourceTabRegistry,
   hasCapability,
   canInProject,
@@ -15,7 +16,7 @@ import {
   AssistantSuggestionRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
-import { AppWindow, Bug, Layers, Package } from "lucide-react";
+import { AppWindow, Bug, Layers, Package, Rocket } from "lucide-react";
 
 import { currentErrorCountAtom } from "../atoms/currentErrorCountAtom.ts";
 import { currentHostAtom } from "../atoms/currentHostAtom.ts";
@@ -23,6 +24,7 @@ import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
+import { useQuestLiveRow } from "../components/project/quests/useQuestLiveRow.tsx";
 import { useHomeHostsBlocker } from "../components/project/settings/useHomeHostsBlocker.ts";
 import { errorTriagePromptDefault } from "../prompts/errorTriagePrompt.ts";
 
@@ -36,6 +38,7 @@ import { errorTriagePromptDefault } from "../prompts/errorTriagePrompt.ts";
 export class DeployShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly tabs = $inject(ResourceTabRegistry);
+  protected readonly rails = $inject(ResourceRailRegistry);
   protected readonly prompts = $inject(AgentPromptRegistry);
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly blockers = $inject(ProjectBlockerRegistry);
@@ -289,6 +292,17 @@ export class DeployShell {
         one: "release.edit.tagWarning.artifacts.one",
         many: "release.edit.tagWarning.artifacts.many",
       },
+    });
+
+    // Where a quest is live (#E154): a row on the quest page's rail, read
+    // from the commit each copy's newest succeeded deployment ran.
+    this.rails.register({
+      resource: "quest",
+      key: "live",
+      order: 50,
+      labelKey: "quest.rail.live",
+      icon: Rocket,
+      useValue: useQuestLiveRow,
     });
 
     // `Bug`, not `ListChecks`: both are triage loops, and the surface is

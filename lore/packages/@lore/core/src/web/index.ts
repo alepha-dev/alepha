@@ -18,6 +18,7 @@ import { CoreRouter } from "./app/CoreRouter.ts";
 import { CoreWebBoot } from "./app/CoreWebBoot.ts";
 import { ProjectRouter } from "./app/ProjectRouter.ts";
 import { AssistantSuggestionRegistry } from "./app/registries/AssistantSuggestionRegistry.ts";
+import { ResourceRailRegistry } from "./app/registries/ResourceRailRegistry.ts";
 import { ShellExtensionRegistry } from "./app/registries/ShellExtensionRegistry.ts";
 import { I18n } from "./app/services/I18n.ts";
 import { ThemesProvider } from "./app/services/ThemesProvider.ts";
@@ -62,6 +63,9 @@ export const LoreCoreWeb = $module({
     alepha.inject(ShellExtensionRegistry);
     // Filled by every module's shell at boot, read by the app's assistant.
     alepha.inject(AssistantSuggestionRegistry);
+    // Read by the quest rail on every quest page (#E154), whether or not a
+    // module registers a row on it.
+    alepha.inject(ResourceRailRegistry);
     // Core's boot work (the 401 redirect, the global head, the reports tab
     // and services), apart from its pages so the router holds pages only
     // (#Q3400).
@@ -268,6 +272,11 @@ export {
   type ReportsFilterKey,
   ReportsUrlQuery,
 } from "./app/services/ReportsUrlQuery.ts";
+export {
+  type ResourceRailEntry,
+  ResourceRailRegistry,
+  type ResourceRailSubject,
+} from "./app/registries/ResourceRailRegistry.ts";
 export {
   type LinkedCollection,
   ResourceTabRegistry,
