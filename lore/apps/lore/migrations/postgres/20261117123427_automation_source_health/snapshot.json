@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2657495f-374e-42af-8e1f-49ad32b8ab3d",
+  "prevIds": ["a57aee7f-e8c1-4153-809b-58b5c99f0b27"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "automations", "source_health"],
+      "writes": [
+        "s|col|public.automations.source_health",
+        "n|col|public.automations.source_health",
+        "e|col|public.automations.source_health"
+      ],
+      "reads": ["n|tbl|public.automations", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "automations",
+        "name": "source_health",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

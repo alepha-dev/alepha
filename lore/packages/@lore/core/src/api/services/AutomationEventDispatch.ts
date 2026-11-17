@@ -50,7 +50,14 @@ export class AutomationEventDispatch {
       rule,
       sources: this.graphs
         .sources(rule.rule)
-        .filter((node) => node.type === event.name && node.enabled !== false),
+        // A source switched off or broken is skipped, and nothing else
+        // (#Q3806).
+        .filter(
+          (node) =>
+            node.type === event.name &&
+            node.enabled !== false &&
+            rule.sourceHealth?.[node.id]?.health !== "broken",
+        ),
     }));
     const filterKeys = [
       ...new Set(

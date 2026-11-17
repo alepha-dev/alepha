@@ -3,6 +3,7 @@ import { $entity, db } from "alepha/orm";
 
 import { automationGraphSchema } from "../schemas/automationGraphSchema.ts";
 import { automationSafeFieldsSchema } from "../schemas/automationSafeFieldsSchema.ts";
+import { automationSourceHealthSchema } from "../schemas/automationSourceHealthSchema.ts";
 import { automationVariableApprovalSchema } from "../schemas/automationVariableApprovalSchema.ts";
 import { projects } from "./projects.ts";
 import { users } from "./users.ts";
@@ -36,6 +37,11 @@ export const automations = $entity({
       "active",
     ),
     reason: z.string().max(1024).optional(),
+    /**
+     * Each source's own health (#Q3806). `health` stays what SQL fences on,
+     * and is `broken` only when no enabled source can run.
+     */
+    sourceHealth: automationSourceHealthSchema.optional(),
     healthCheckedAt: db.default(z.int64().nonnegative(), 0),
     requiresApproval: db.default(z.boolean(), false),
     rule: automationGraphSchema,

@@ -378,6 +378,111 @@ export class AutomationService {
       );
     });
   }
+  /**
+   * Switch one source off or on (#Q3806). Off follows the disable rule (the
+   * author, the owner of a self-subscription, a manager) and leaves
+   * `activatedAt` alone, so an event recorded but not dispatched yet still
+   * reaches the other sources; on follows the enable rule (the author, after
+   * the checks enabling runs) and moves it. Both bump the revision, as any
+   * change of what runs does.
+   */
+  public async setSourceEnabled(
+    projectId: number,
+    id: string,
+    user: UserAccountToken,
+    node: string,
+    enabled: boolean,
+    expectedRevision: number,
+  ) {
+    return this.database.primary(async () => {
+      const rule = await this.stored(projectId, id);
+      await this.access.assertMutation(
+        rule,
+        user,
+        enabled ? "enable" : "disable",
+      );
+      const context = await this.access.authorize(
+        projectId,
+        user,
+        rule.authorUserId === user.id
+          ? "automation:write"
+          : "automation:manage",
+        rule,
+      );
+      this.revision(rule, expectedRevision);
+      const source = this.graphs.node(rule.rule, node);
+      if (!source || source.kind !== "source")
+        throw new BadRequestError(
+          `'${node}' is not a source of this automation`,
+        );
+      const graph = {
+        ...rule.rule,
+        nodes: rule.rule.nodes.map((item) => {
+          if (item.id !== node) return item;
+          const { enabled: _enabled, ...rest } = item;
+          return enabled ? rest : { ...rest, enabled: false };
+        }),
+      };
+      const candidate: Automation = { ...rule, rule: graph };
+      const prepared = enabled ? await this.prepare(candidate) : undefined;
+      const now = this.time.nowISOString();
+      const changed = await this.evidence.transition(
+        id,
+        rule.health,
+        rule.reason,
+        rule.requiresApproval,
+        {
+          expectedVersion: rule.version,
+          condition: this.rows.andConditions([
+            sql`TRUE`,
+            ...(prepared
+              ? [this.approvals.current(rule.projectId, prepared.approved)]
+              : []),
+          ]),
+          patch: {
+            rule: graph,
+            revision: rule.revision + 1,
+            ...(enabled
+              ? { activatedAt: now, approvedVariables: prepared!.approved }
+              : {}),
+          },
+          statements: [
+            this.audit.statement(
+              rule.projectId,
+              user,
+              enabled ? "enable" : "disable",
+              id,
+              {
+                revision: rule.revision + 1,
+                authorUserId: rule.authorUserId,
+                source: node,
+              },
+            ),
+          ],
+          changedTables: ["audits"],
+        },
+      );
+      if (!changed)
+        throw new ConflictError(
+          "Automation changed; reload before switching its source",
+        );
+      await this.audit.activity(
+        projectId,
+        user,
+        enabled ? "enable" : "disable",
+      );
+      const updated = await this.persistence.rules.getById(id);
+      await this.health.reconcile(updated);
+      const latest = await this.persistence.rules.getById(id);
+      return this.resource(
+        latest,
+        user,
+        context,
+        await this.lookups(projectId, [latest]),
+      );
+    });
+  }
+
   public async remove(
     projectId: number,
     id: string,
@@ -744,6 +849,29 @@ export class AutomationService {
       inspected: new Map(),
     };
   }
+  /**
+   * Each source's switch and health (#Q3806), and whether an active
+   * automation runs on only some of its enabled sources.
+   */
+  protected sourcesOf(rule: Automation) {
+    const sources = this.graphs.sources(rule.rule).map((node) => {
+      const health = rule.sourceHealth?.[node.id];
+      return {
+        node: node.id,
+        type: node.type,
+        enabled: node.enabled !== false,
+        health: health?.health ?? ("active" as const),
+        ...(health?.reason ? { reason: health.reason } : {}),
+      };
+    });
+    return {
+      sources,
+      partial:
+        rule.health === "active" &&
+        sources.some((source) => source.enabled && source.health === "broken"),
+    };
+  }
+
   protected async resource(
     rule: Automation,
     user: UserAccountToken,
@@ -808,6 +936,7 @@ export class AutomationService {
           : rule.reason,
       revision: rule.revision,
       rule: reason ? null : rule.rule,
+      ...(reason ? {} : this.sourcesOf(rule)),
       redacted: !!reason,
       ...(reason
         ? { redactionReason: "Current source access is unavailable" }

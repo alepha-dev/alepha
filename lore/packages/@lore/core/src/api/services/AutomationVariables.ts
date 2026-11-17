@@ -338,7 +338,7 @@ export class AutomationVariables {
         rule.rule,
         new Map(rows.map((row) => [row.key, row])),
         rule,
-        { targets: false },
+        { targets: false, skip: await this.dependencies.broken(rule) },
       );
       return rows.map(({ id, key, version, value }) => ({
         id,

@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { automationGraphSchema } from "./automationGraphSchema.ts";
+import { automationResourceSourceSchema } from "./automationResourceSourceSchema.ts";
 import { automationRunStatusSchema } from "./automationRunStatusSchema.ts";
 
 /**
@@ -20,6 +21,12 @@ export const automationResourceSchema = z
     reason: z.string().max(1024).optional(),
     revision: z.integer().nonnegative(),
     rule: automationGraphSchema.nullable(),
+    /**
+     * Each source's switch and health (#Q3806); absent when redacted.
+     * `partial`: active, with at least one enabled source that cannot run.
+     */
+    sources: z.array(automationResourceSourceSchema).max(8).optional(),
+    partial: z.boolean().optional(),
     redacted: z.boolean(),
     redactionReason: z.string().max(255).optional(),
     presetKey: z.string().max(128).optional(),
