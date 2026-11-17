@@ -1,24 +1,24 @@
-import { Button } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
+import { Button, Segmented } from "@alepha/ui";
 import { canInProject, currentProjectAtom, type I18n } from "@lore/core/web";
-import { z } from "alepha";
 import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
-import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import type { PersonaController } from "../../../../api/controllers/PersonaController.ts";
+import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
+import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import PersonaCard from "../personas/PersonaCard.tsx";
 import { PERSONA_KIND_LABEL_KEYS } from "../personas/personaKindLabels.ts";
 import PersonaSheet from "../personas/PersonaSheet.tsx";
 
 /**
- * The Personas tab of the Requirements page (#E153): one card per persona,
- * a kind filter and New persona. A viewer reads it and sees no write
- * control.
+ * The Personas tab of the Requirements page (#E153): the "To cover" banner
+ * (personas with no passing use case, use cases never run), one card per
+ * persona, a kind filter and New persona. A viewer reads it and sees no
+ * write control.
  */
 const PersonasTab = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -40,39 +40,51 @@ const PersonasTab = () => {
     [personaApi, projectId],
   );
 
-  const filter = useForm({
-    id: "personas-kind",
-    schema: z.object({
-      kind: z.enum(["all", "human", "system", "agent"]),
-    }),
-    initialValues: { kind: "all" as const },
-    handler: async () => {},
-  });
-  const { kind } = useFormValues(filter);
+  const useCaseApi = useClient<UseCaseController>();
+  const useCases = useQuery<UseCaseResource[]>(
+    {
+      key: ["use-cases", projectId],
+      enabled: projectId > 0,
+      handler: async () =>
+        await useCaseApi.getUseCases({ params: { projectId }, query: {} }),
+    },
+    [useCaseApi, projectId],
+  );
+
+  const [kind, setKind] = useState<"all" | "human" | "system" | "agent">("all");
 
   if (!project) return null;
 
   const rows = (personas.data ?? []).filter(
-    (it) => !kind || kind === "all" || it.kind === kind,
+    (it) => kind === "all" || it.kind === kind,
   );
   const canWrite = canInProject(project, "persona:write");
+  const cases = useCases.data ?? [];
+  const passing = new Set(
+    cases
+      .filter((it) => it.state === "passed")
+      .flatMap((it) => it.actors.map((a) => a.personaId)),
+  );
+  const uncovered = (personas.data ?? []).filter(
+    (it) => !passing.has(it.id),
+  ).length;
+  const neverRun = cases.filter((it) => it.state === "never_run").length;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b p-3">
-        <form {...filter.props}>
-          <Control
-            input={filter.input.kind}
-            segmented
-            items={[
-              { value: "all", label: tr("requirements.persona.filter.all") },
-              ...(["human", "system", "agent"] as const).map((value) => ({
-                value,
-                label: tr(PERSONA_KIND_LABEL_KEYS[value]),
-              })),
-            ]}
-          />
-        </form>
+        <Segmented
+          size="sm"
+          value={kind}
+          onChange={(value) => setKind(value as typeof kind)}
+          options={[
+            { value: "all", label: tr("requirements.persona.filter.all") },
+            ...(["human", "system", "agent"] as const).map((value) => ({
+              value,
+              label: tr(PERSONA_KIND_LABEL_KEYS[value]),
+            })),
+          ]}
+        />
         <div className="flex-1" />
         {canWrite ? (
           <Button onClick={() => setCreating(true)}>
@@ -82,6 +94,16 @@ const PersonasTab = () => {
         ) : null}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {useCases.data && personas.data && (uncovered > 0 || neverRun > 0) ? (
+          <div
+            className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950"
+            data-testid="to-cover-banner"
+          >
+            {tr("requirements.persona.toCover", {
+              args: [String(uncovered), String(neverRun)],
+            })}
+          </div>
+        ) : null}
         {personas.data && rows.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             {tr(

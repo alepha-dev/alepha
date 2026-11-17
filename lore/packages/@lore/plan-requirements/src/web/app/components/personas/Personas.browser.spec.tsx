@@ -45,11 +45,81 @@ const PEOPLE = [
   }),
 ];
 
+let copyState = "ready";
+
+const CHANGES = {
+  lastRunAt: "2026-11-12T10:00:00.000Z",
+  useCases: 1,
+  toReverify: 1,
+  changes: [
+    {
+      questNumber: 12,
+      title: "Faster checkout",
+      completedAt: "2026-11-13T10:00:00.000Z",
+      via: "epic",
+      epicNumber: 3,
+    },
+  ],
+  releases: [
+    {
+      release: { id: 1, tag: "1.2.0", title: "1.2.0" },
+      quests: [
+        {
+          questNumber: 12,
+          title: "Faster checkout",
+          completedAt: "2026-11-13T10:00:00.000Z",
+          via: "epic",
+          epicNumber: 3,
+        },
+      ],
+    },
+  ],
+};
+
+const SHOWCASE = [
+  {
+    release: { id: 1, tag: "1.2.0", title: "1.2.0" },
+    items: [
+      {
+        useCase: { number: 7, title: "Check out" },
+        runId: 4,
+        ranAt: "2026-11-12T10:00:00.000Z",
+        stale: true,
+        removed: false,
+        file: {
+          fileId: "00000000-0000-7000-8000-000000000001",
+          name: "run.webm",
+          mimeType: "video/webm",
+        },
+        chapters: [{ position: 1, text: "Open the cart" }],
+      },
+    ],
+  },
+];
+
 class FakeLinkProvider extends LinkProvider {
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return virtualClientFake({
       getPersonas: async () => PEOPLE,
+      getUseCases: async () => [
+        {
+          id: 7,
+          number: 7,
+          title: "Check out",
+          state: "never_run",
+          stale: false,
+          actors: [{ personaId: 1, role: "primary", number: 1, name: "Léa" }],
+        },
+      ],
+      getPersonaChanges: async () => CHANGES,
+      getPersonaAppCopy: async () => ({
+        state: copyState,
+        app: "acme",
+        env: copyState === "production" ? "production" : "staging",
+        url: copyState === "ready" ? "https://staging.acme.example" : undefined,
+      }),
+      getPersonaShowcase: async () => SHOWCASE,
     });
   }
 }
@@ -85,6 +155,7 @@ describe("Personas screens", () => {
   afterEach(async () => {
     await alepha?.stop();
     alepha = undefined;
+    copyState = "ready";
   });
 
   const boot = async (permissions: string[]) => {
@@ -187,5 +258,80 @@ describe("Personas screens", () => {
     await screen.findByTestId("persona-overview");
     expect(screen.queryByRole("button", { name: /Edit persona/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Delete/ })).toBeNull();
+  });
+
+  it("says what is left to cover: personas with no passing use case, use cases never run (#Q3772)", async ({
+    expect,
+  }) => {
+    const app = await boot(["persona:read"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <PersonasTab />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const banner = await screen.findByTestId("to-cover-banner");
+    expect(banner.textContent).toBe(
+      "To cover: 2 personas with no passing use case, 1 use cases never run.",
+    );
+  });
+
+  it("flags a scope change, lists it, opens the app copy and shows the showcase (#Q3772)", async ({
+    expect,
+  }) => {
+    const app = await boot(["persona:read"]);
+    const opened: unknown[] = [];
+    const open = window.open;
+    window.open = ((...args: unknown[]) => {
+      opened.push(args);
+      return null;
+    }) as typeof window.open;
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <PersonaPage persona={PEOPLE[0]} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const banner = await screen.findByTestId("scope-changed-banner");
+    expect(banner.textContent).toContain("1 use cases to re-verify");
+    expect(screen.getByTestId("persona-changes-card")).toBeTruthy();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Open as Léa/ }));
+    expect(opened).toEqual([
+      ["https://staging.acme.example", "_blank", "noopener,noreferrer"],
+    ]);
+    window.open = open;
+
+    fireEvent.click(screen.getByRole("button", { name: /See the changes/ }));
+    await screen.findByTestId("persona-changes");
+    expect(screen.getAllByTestId("persona-change")).toHaveLength(2);
+    expect(screen.getAllByText("via epic #E3").length).toBe(2);
+    expect(screen.getByText("What's new for Léa")).toBeTruthy();
+
+    fireEvent.click(await screen.findByRole("radio", { name: /Showcase/ }));
+    const item = await screen.findByTestId("showcase-item");
+    expect(item.querySelector("video")?.getAttribute("src")).toBe(
+      "/api/files/00000000-0000-7000-8000-000000000001",
+    );
+    expect(item.textContent).toContain("Stale");
+  });
+
+  it("refuses Open as on a production copy (#Q3772)", async ({ expect }) => {
+    copyState = "production";
+    const app = await boot(["persona:read"]);
+    render(
+      <AlephaContext.Provider value={app}>
+        <DialogProvider>
+          <PersonaPage persona={PEOPLE[0]} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const button = await screen.findByRole("button", { name: /Open as Léa/ });
+    expect(button.hasAttribute("disabled")).toBe(true);
   });
 });

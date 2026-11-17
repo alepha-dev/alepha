@@ -604,6 +604,27 @@ export class ResourceLinkService {
   }
 
   /**
+   * The plain mentions of some targets of one kind (#E153): the rows a body
+   * holds when it names `[[#A2]]`, not the mirror relations. `fromType`
+   * narrows to one source kind (the quests mentioning a persona).
+   */
+  public async mentionsTo(
+    targetType: LinkTargetKind,
+    toIds: string[],
+    fromType?: LinkSourceKind,
+  ): Promise<FolioLink[]> {
+    if (toIds.length === 0) return [];
+    return await this.links.findMany({
+      where: {
+        targetType: { eq: targetType },
+        toId: { inArray: toIds },
+        relation: { isNull: true },
+        ...(fromType ? { fromType: { eq: fromType } } : {}),
+      },
+    });
+  }
+
+  /**
    * Display refs of one kind's target ids, through the kind's own module:
    * what a links list shows. An id nothing answers to is absent, and so is
    * every id of a kind no registered module owns.

@@ -3445,6 +3445,33 @@ export default {
   "requirements.persona.form.update": "Enregistrer",
   "requirements.persona.overview.empty":
     "Rien n’est encore écrit sur ce persona.",
+  "requirements.persona.tab.changes": "Changements",
+  "requirements.persona.tab.showcase": "Vitrine",
+  "requirements.persona.scopeChanged":
+    "Le périmètre a changé depuis le dernier passage : $1 cas d’usage à revérifier.",
+  "requirements.persona.changes.title": "Changements depuis le dernier passage",
+  "requirements.persona.changes.none":
+    "Rien de terminé depuis le dernier passage ne touche ce persona.",
+  "requirements.persona.changes.neverRun":
+    "Aucun passage encore : les changements comptent à partir du premier.",
+  "requirements.persona.changes.viaEpic": "via l’épopée $1",
+  "requirements.persona.changes.viaMention": "mentionne $1",
+  "requirements.persona.changes.card":
+    "$1 changements depuis le dernier passage",
+  "requirements.persona.changes.open": "Voir les changements",
+  "requirements.persona.whatsNew": "Nouveautés pour $1",
+  "requirements.persona.release.none": "Pas encore dans une version",
+  "requirements.persona.openAs": "Ouvrir en tant que $1",
+  "requirements.persona.openAs.production":
+    "Ouvrir en tant que est refusé sur une copie de production.",
+  "requirements.persona.openAs.help":
+    "Lore ne connecte personne : connectez-vous avec le compte de démo.",
+  "requirements.persona.showcase.stale": "Périmé",
+  "requirements.persona.showcase.removed": "Enregistrement non conservé",
+  "requirements.persona.showcase.current": "Version en cours",
+  "requirements.persona.showcase.chapters": "Étapes",
+  "requirements.persona.toCover":
+    "À couvrir : $1 personas sans cas d’usage réussi, $2 cas d’usage jamais joués.",
   "requirements.persona.tab.activity": "Activité",
   "requirements.persona.tab.overview": "Aperçu",
   "requirements.persona.toast.created": "Persona créé",

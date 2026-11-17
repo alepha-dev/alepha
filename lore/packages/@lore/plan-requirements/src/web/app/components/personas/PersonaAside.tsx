@@ -69,11 +69,7 @@ const PersonaAside = (props: PersonaAsideProps) => {
       ? [
           {
             label: tr("requirements.persona.field.demoSeed"),
-            value: (
-              <code className="font-mono text-xs break-all">
-                {persona.demoSeed}
-              </code>
-            ),
+            copy: persona.demoSeed,
           },
         ]
       : []),
