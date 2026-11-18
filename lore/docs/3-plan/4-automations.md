@@ -1,10 +1,10 @@
 # Automations
 
-An automation is a small graph, drawn on a canvas: one or more **sources**
-that start it (something that happens in the project, or a schedule), then
-**conditions** that choose a path, then **actions** that carry it out, such as
-notifying a member, appending to a folio or creating a quest. An automation
-does exactly what its graph says, every time. No AI runs inside it.
+An automation reads top to bottom, like a sentence: **When** something
+happens in the project (or on a schedule), **Only if** a condition holds,
+**Then** do these actions, **Otherwise** do those. An action can be notifying a
+member, appending to a folio or creating a quest. An automation does exactly
+what it says, every time. No AI runs inside it.
 
 Every project has automations, whatever its capabilities, with no switch of
 their own. What an automation can react to follows the project's capabilities
@@ -17,7 +17,7 @@ permissions, which the owner and Admin hold by default (see
 | Permission                                                   | What it allows                                                           |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------ |
 | Read automations                                             | See the automations and their runs.                                      |
-| Create and edit your own automations                         | Draw, test and enable automations of your own.                           |
+| Create and edit your own automations                         | Build, test and enable automations of your own.                          |
 | Manage shared variables and disable or delete any automation | Manage shared variables, and stop or delete another author's automation. |
 
 ## The automations page
@@ -41,59 +41,83 @@ An automation is in one of four states:
 Click a row to open the automation. A row's menu enables, disables or deletes
 it. The page's buttons open **New automation** and **Shared variables**.
 
-## The canvas
+## An automation's page
 
-An automation's page draws its graph. Each box is a node, and each wire says
-what happens next:
+An automation's page shows it as an outline: one card per **block**, each
+section with its coloured rail.
 
-| Node        | What it is                                                                                           |
-| ----------- | ---------------------------------------------------------------------------------------------------- |
-| **Source**  | What starts a run: one event, such as **Host offline**, or a schedule. Its dot shows its own state.  |
-| **Read**    | What a schedule reads: a list of records, or a number. Only a schedule is followed by a read.        |
-| **Only if** | One comparison on a field. It leaves by **If true** or **If false**, and only that wire is followed. |
-| **Then**    | One action. A notification shows its recipient and its channels.                                     |
+![An automation: its event, a condition, and actions on both sides](/screenshots/lore/automation-outline-light.png)
 
-![An automation with two sources on its canvas](/screenshots/lore/automation-canvas-light.png)
+| Section       | What it holds                                                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **When**      | What starts a run: one or more events, such as **Host offline**, each with its own switch, or one schedule and what it reads. |
+| **Only if**   | At most one condition: one comparison on a field the block's events all have.                                                 |
+| **Then**      | The actions that run when the condition holds, or every time when there is none (the section then reads **Do**).              |
+| **Otherwise** | The actions that run when the condition does not hold. Only a block with a condition has one.                                 |
 
-Drag the canvas to move around it, and use its buttons to zoom or fit it to
-the screen. Click a node to read its whole configuration, message text and
-placeholders included. On a phone the canvas is the same, read-only, fitted to
-the width of the screen.
+Click a row to read its whole configuration, message text and placeholders
+included; click it again to close it. An event's switch acts at once.
 
-### Several sources
+### Sequences
 
-An automation can start from up to eight sources. A host bell, for instance,
-makes one automation with four: the host's token invalid, its TTL passed, the
-host offline and the host back online, each wired to its own notification.
+**Then** and **Otherwise** hold numbered **sequences**. Each sequence is one
+action, or several steps one after another:
 
-- **Each source has its own switch.** Click a source and untick **Enabled** to
-  stop that source alone: the others keep running. Disabling the automation
-  stops all of them.
-- **Each source has its own health.** When a source loses what it needs, such
-  as Ship being turned off for a host event, that source is broken and says
-  why, and the automation keeps running on the others. Only when every source
-  is broken is the automation **Broken**.
-- **A node sees the fields every source reaching it gives.** A notification
-  reached from two different events can use only the fields both carry; the
-  editor marks a field one source lacks and names that source. Give each source
-  its own action when their fields differ.
-- **A schedule is the only source of its automation.** A schedule and an event
-  cannot share one: give each its own automation.
+- **Sequences are independent.** One failing does not stop the others.
+- **A step runs only if the one before it succeeded,** and may use what that
+  one produced: a quest created above, then tagged.
 
-### What an action gives the actions after it
+### Several events
 
-Some actions give the actions after them a value to use: **Create a quest**
+An automation can start from up to eight events. A host bell, for instance,
+makes one automation of four blocks: the host's token invalid, its TTL passed,
+the host offline and the host back online, each with its own notification.
+When an automation has several blocks, each shows folded into one line (the
+event, an arrow, its first action): click it to unfold it.
+
+- **Events of one block share everything after them.** A block's actions can
+  use only the fields every one of its events carries. When their fields
+  differ, give each event a block of its own.
+- **Each event has its own switch.** Turn one off to stop that event alone: the
+  others keep running. Disabling the automation stops all of them.
+- **Each event has its own health.** When an event loses what it needs, such as
+  Ship being turned off for a host event, that event is broken and says why,
+  and the automation keeps running on the others. Only when every event is
+  broken is the automation **Broken**.
+- **A schedule runs alone.** A schedule and an event cannot share one
+  automation: give each its own.
+
+### What an automation cannot be
+
+An automation is always a list of blocks, and three shapes do not fit one:
+
+- **Two conditions in a row** ("only if this and that"). A block holds one
+  condition. Use a condition on the field that matters most, or two blocks of
+  the same event.
+- **Then and Otherwise ending in the same action.** Branches do not join: add
+  the action on both sides. It counts twice toward the five actions a block
+  holds.
+- **An action that always runs beside a condition.** Put it on both sides of
+  the condition, or in a second block of the same event.
+
+An automation built with the previous editor that has one of these shapes
+stopped at its next run and reads **Broken**; its page says it was built with
+the previous editor and offers **Delete**. Rebuild it as a new automation.
+
+### What an action gives the steps after it
+
+Some actions give the steps after them a value to use: **Create a quest**
 gives `{{created_quest_id}}` and `{{created_quest_number}}`, **Append to a
-folio** gives `{{appended_folio_id}}`. A later action can use it only when
-every path to it passes the action that gives it. If that action did nothing,
-such as a quest it did not need to create, the action that uses its value is
-skipped and says why.
+folio** gives `{{appended_folio_id}}`. A step after it in the same sequence can
+use it. If that action did nothing, such as a quest it did not need to create,
+the step that uses its value is skipped and says why.
 
 ## Creating an automation
 
 On **Automations**, click **New automation**. Lore offers the presets this
 project's capabilities, your permissions and its notification channels allow,
-each with a drawing of its graph.
+each with the line it reads as: its event, its first action, and how many
+follow.
 
 1. Pick a preset and fill its few inputs. Members, folios and apps are chosen
    from pickers that search the project.
@@ -102,11 +126,12 @@ each with a drawing of its graph.
    is saved and the form says why.
 3. Or click **Save as draft** to keep it **disabled**: on its page, click
    **Run test** to see what it would do, then **Enable** it.
-4. Or click **Open in canvas** to draw on the preset before saving: add a
-   second source, a condition or another action. Nothing is saved until you
-   click **Save changes**, which creates it disabled and opens its page.
+4. Or click **Open in editor** to change the preset before saving: add an
+   event, a condition or another action. Nothing is saved until you click
+   **Save changes**, which creates it disabled and opens its page.
 
-**Start from scratch**, beside the presets, opens an empty canvas.
+**Start from scratch**, beside the presets, opens an empty automation on
+**Choose what starts it**: an event, a schedule, or a preset as a quick start.
 
 The presets:
 
@@ -155,7 +180,7 @@ off, and turning it on again replaces it.
 | On **Settings** > **Hosts**                          | The same, for every host of the project.              |
 
 A bell always notifies you, so it offers your own channels, In-app and Email.
-To post to a Discord channel, add it to the automation on its canvas, or create
+To post to a Discord channel, add it to the automation in its editor, or create
 one from its preset.
 
 ### Testing an automation
@@ -163,8 +188,8 @@ one from its preset.
 **Run test** runs the saved automation against current data from one source,
 and shows what it would select, which way each condition went, the path it
 would walk and the exact messages it would send. Nothing is written, sent or
-remembered, even when the test is refused. With several sources, choose the
-one to start from in **Start from**, or select it on the canvas.
+remembered, even when the test is refused. With several events, choose the
+one to start from in **Start from**, or open its row in the editor.
 
 A source that is an event needs a **Source record** to test against: a
 feedback item, a release, an epic of this project. The record does not change.
@@ -177,35 +202,45 @@ its **Run history** once the real thing has happened.
 
 ## Editing an automation
 
-On an automation's page, **Edit** turns the canvas into an editor.
+On an automation's page, **Edit** opens the same outline as an editor, with a
+narrow column beside it (below it on a phone).
 
-![The canvas editor, a notification's settings open beside it](/screenshots/lore/automation-editor-light.png)
+![The editor: a row open into its form, and the column that says what is left to fill](/screenshots/lore/automation-outline-editor-light.png)
 
-- **Add a node** lists what this automation may hold in this project, for you:
-  sources, reads, conditions and actions. An entry you cannot add says why. The
-  **+** beside a node's wire adds a node after it, already wired. **From a
-  preset** adds a preset's source and steps to the automation.
-- **Wire** two nodes by dragging from the right edge of one to the other. A
-  wire the graph does not allow is refused while you drag, with the reason:
-  nothing wires into a source, a read follows only a schedule, a condition
-  never follows an action, a wire never closes a loop, and a source reaches at
-  most five actions. **Wire to**, in a node's settings, does the same from the
-  keyboard.
-- **Configure** a node by clicking it: its settings open beside the canvas,
-  with the placeholders it may use. A source's **Enabled** box is part of the
-  draft there, saved with everything else.
-- **Delete** a node or a wire by selecting it and pressing Delete, or from the
-  node's settings. **Undo** and **Redo**, or Ctrl+Z and Ctrl+Shift+Z, step
-  through the draft.
+- **A row opens into its form, in place**: an event's filters, a schedule and
+  what it reads, the condition's field, comparison and value, an action's
+  fields. Under an action's fields, the names it may use are chips that say
+  where each comes from (the event, or the step above); a click writes the name
+  into the last field you typed in.
+- **Add** with the buttons where they belong: **Add an event** under **When**,
+  **Add a condition** in its band, **Add an action** for a new sequence, **Add a
+  step after this one** in an action's form, and **Add another event with its
+  own actions** for a new block, empty or from a preset. A menu entry you
+  cannot use says why.
+- **Remove** from a row's form, or a whole block from its band. Removing the
+  condition keeps **Then**, which then runs every time, and removes
+  **Otherwise** after asking.
+- **An event's switch** is part of the draft in the editor, saved with
+  everything else. The automation's own **Enable** and **Disable** stay on its
+  page, and a new automation is saved disabled.
+- **Undo** and **Redo**, or Ctrl+Z and Ctrl+Shift+Z, step through the draft.
 
-The graph is checked on every change: a node with a problem turns red and says
-what is wrong, and **Save changes** waits until nothing is left. **Run test**
-tests what is saved, so it reads **Save to test** while the draft has changes.
+The column beside the blocks has three parts:
 
-Saving applies to the version you opened. If the automation changed in the
-meantime, the save is refused and your draft is kept, so you can compare
-before choosing **Discard draft and reload**. Leaving the page with unsaved
-changes asks first. Editing needs a wider screen than a phone's.
+- **In plain words**: the automation as one sentence per block, as you build it.
+- **Before you save**: what is missing, such as **To fill: Title** on an action.
+  Click a line to open its row. **Save changes** waits until the list is empty.
+  Nothing is an error before you save: what only the server can check, such as
+  a recipient who left the project, comes back when you click **Save
+  changes**, opens its row and is listed first.
+- **How it runs**: sequences are independent, a failed step stops only what
+  follows it, and the condition is decided before anything happens.
+
+**Run test** tests what is saved, so it reads **Save to test** while the draft
+has changes. Saving applies to the version you opened. If the automation
+changed in the meantime, the save is refused and your draft is kept, so you
+can compare before choosing **Discard draft and reload**. Leaving the page with
+unsaved changes asks first. A phone edits too.
 
 The events are new feedback, a release published, an epic completed, a quest
 completed, a deployment failed or succeeded, a monitor down or recovered, and a
@@ -232,8 +267,8 @@ after it. What it already did stays done.
 ### Messages and placeholders
 
 A message can name fields of what started the run, in double braces:
-`Release {{release_tag}} published`. The node's settings list the names
-available. Only those names, the values earlier actions give, and your shared
+`Release {{release_tag}} published`. The chips under an action's fields list
+the names available. Only those names, the values earlier actions give, and your shared
 variables resolve: an unknown name is refused, and a value that itself
 contains `{{...}}` is never read a second time. There are no scripts or
 expressions, and HTML in a value is escaped. Stock messages are in English,
@@ -324,20 +359,22 @@ started it, and how it ended (succeeded, skipped, refused, failed, partially
 completed or with an unknown outcome). **Source** filters the list to one
 source's runs.
 
-Opening a run paints its path on the graph as it was when it ran: what each
-node did (**Ran**, **Skipped**, **Refused**, **Failed**, **Unknown** or **Not
-reached**), which way each condition went, and the wires the run followed.
-Below, each action's outcome and its deliveries.
+Opening a run shows the block of the event that started it, as it was when it
+ran, with one badge per row: **Started this run** on the event, which way the
+condition went, and what each action did (**Ran**, **Skipped**, **Refused**,
+**Failed**, **Unknown** or **Not reached**). A side no item took is dimmed; a
+run over several rows can take both. Below, each action's outcome and its
+deliveries.
 
-![A run painted on its automation's graph](/screenshots/lore/automation-run-light.png)
+![A run's block, one outcome per row](/screenshots/lore/automation-run-light.png)
 
 Actions are carried out in order, and each one stays done. If the folio was
 appended and the notification then failed, the folio stays appended and the
 run is **Partially completed**. A retry does not append the same publication
 twice, and nothing is rolled back to make a run look all-or-nothing.
 
-A failed action stops the actions after it on its own path; actions on the
-run's other paths still run. An action whose target is gone, such as a deleted
+A failed step stops the steps after it in its sequence; the other sequences
+still run. An action whose target is gone, such as a deleted
 folio, is refused alone. An action whose result could not be confirmed is
 **Unknown**: it stops the whole run and pauses the automation. Check the
 destination yourself before enabling it again, since Lore does not resend
@@ -354,9 +391,9 @@ preferences change.
 
 | What                            | Limit                                                                                             |
 | ------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Sources in an automation        | Eight.                                                                                            |
-| Nodes in an automation          | Forty.                                                                                            |
-| Actions one source reaches      | Five, both ways out of a condition counted.                                                       |
+| Events in an automation         | Eight.                                                                                            |
+| Steps in an automation          | Forty, events and conditions included.                                                            |
+| Actions in one block            | Five, Then and Otherwise counted.                                                                 |
 | Channels of one notification    | Eight.                                                                                            |
 | Rows a schedule reads           | 50. Beyond that the run says the selection was capped; the rest is not fetched.                   |
 | One rendered message            | 16 KiB. A longer one is cut, and the run says so.                                                 |
@@ -436,7 +473,7 @@ See [The lore CLI](/lore/docs/reference-cli) for every command.
 
 ## From an agent
 
-An agent can draw an automation for you, and the saved automation then runs
+An agent can build an automation for you, and the saved automation then runs
 without it. It reads `automation_catalog` first (the node types, with their
 ports and the values they give, the channels and the limits this project
 allows), then calls `automation_create`.
@@ -464,8 +501,10 @@ The short form is `sources` and `actions`, every source wired to every action:
 ```
 
 An action may then name only the fields every source has. For anything else,
-such as a condition or one action per source, the agent writes the graph as
-`nodes` and `edges`:
+such as a condition or a step after an action, the agent writes the
+automation as `nodes` and `edges`, which has to read as an outline: each block
+its events, at most one condition, then sequences of actions on its true and
+false sides, with no join. Here, one event, then a sequence of two steps:
 
 ```json
 {
@@ -508,8 +547,9 @@ such as a condition or one action per source, the agent writes the graph as
 ```
 
 The UUIDs stand for a folio and a member of the same project (a member is a
-user id, not an email address). Nodes without a `position` are laid out by
-Lore. The automation is created disabled, a draft; `"enabled": true` creates it
+user id, not an email address). A node has no `position`: an automation
+stores no drawing, and a node given one is refused. The automation is created
+disabled, a draft; `"enabled": true` creates it
 enabled in the same write, or refuses and creates nothing. `automation_test`
 previews it from one source (`node`), with `source: { "kind": "subject", "id":
 12 }` naming a release of the project; `automation_source_set` switches one

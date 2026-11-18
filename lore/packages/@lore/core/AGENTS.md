@@ -610,25 +610,49 @@ What this package holds, with the notes that are not obvious from the code. Move
 
 Organization membership, rank definitions, and invitations are owned by `alepha/api/organizations`; Lore's own `members`, `rank_definitions` and `invitations` tables were dropped with #E74.
 
-## Automations are graphs (#E155)
+## Automations are graphs, read as outlines (#E155, #E156)
 
 An automation's `rule` column holds a graph (`automationGraphSchema`, version
 2): `nodes` of a `kind` (`source`, `read`, `condition`, `action`; `transform`
-is reserved for a later epic and refused today) with a `type`, a `config`, an
-optional `position`, and on a source its own `enabled`; `edges` from a node's
-`port` (`out`, or `true` / `false` from a condition) to another node. The v1
-four-slot rule, its runs and receipts were deleted by the #Q3805 migration.
+is reserved for a later epic and refused today) with a `type`, a `config`, and
+on a source its own `enabled`; `edges` from a node's `port` (`out`, or `true` /
+`false` from a condition) to another node. A node has **no position** (#Q3852):
+the node schema is strict and refuses one, and the
+`20261118003813_automation_positions_out` migration stripped the stored rows.
+The v1 four-slot rule, its runs and receipts were deleted by the #Q3805
+migration.
 
 - **`AutomationGraph`** (`api/schemas`, browser-safe) is the one validator,
-  run by the server on every write and by the canvas on every change: kinds
+  run by the server on every write and by the editor on every change: kinds
   and types from the catalog, wiring rules (nothing into a source, a read
   only after a schedule, a schedule alone and followed by exactly one read, no
   condition after an action, no cycle), every node reached, the names a node
   may use (the intersection of its reaching sources' fields, plus the
   outputs of actions on every path to it), and the caps: 8 sources, 40 nodes,
-  5 actions reachable from one source, 8 channels per notification. Its
-  `layout` is the one layout (presets, a graph saved without positions, the
-  card sketches).
+  5 actions reachable from one source, 8 channels per notification.
+- **Every stored graph is an outline** (#Q3845): `checkShape`'s four rules
+  make it a list of blocks. One way in (a second incoming wire only when every
+  one comes from sources with the same targets: one block's events); a source
+  or a schedule's read leads to one condition or to actions, never both; a
+  condition leads to actions only; an action has at most one next action.
+  `shape(graph)` runs them alone, and `AutomationDependencies` reads a stored
+  graph they refuse as **broken** (built with the canvas, not converted).
+  `structure(graph)` is what the projection needs, with no catalogue and no
+  node configuration checked, so an editor's half-filled draft still reads.
+- **`AutomationOutline`** (`api/schemas`, browser-safe) is the projection,
+  never a second stored form: `read(graph)` gives the blocks (`events`, `read`,
+  `condition`, `sequences` for Then and `otherwise`, in the order
+  `AutomationGraph.order` runs them) or why it is not an outline, never a
+  throw. ⚠️ The Then side is `sequences`, not `then`: lint's `no-thenable`
+  refuses a `then` key. Its pure edits (add or remove an event, a condition,
+  an action, a step, a block; `setConfig`, `setType`, `setEnabled`, `merge`)
+  each return a graph that is an outline again; removing a condition keeps
+  Then and drops Otherwise. New ids (`z-<type>`, `zz-<type>`...) sort after
+  every existing id as strings, so a new sequence runs and shows last. It also
+  holds `fold` (a run's outcomes per node), `unfilled` (the required fields a
+  draft leaves empty, held against `compile` by
+  `automation-outline-required.spec.ts`) and `nodeOf` (the node a refusal
+  names, in its three forms).
 - **A run starts at one source and walks its subgraph** (#Q3804). The run's
   snapshot freezes that subgraph, the conditions' ports and one step per
   action and channel; a step's id is its node (receipts carry `node_id`). A
@@ -648,12 +672,10 @@ four-slot rule, its runs and receipts were deleted by the #Q3805 migration.
   stored twice (#Q3807). Run test takes the source to start at.
 - **Presets build graphs** with `AutomationGraphBuilder` (`line`, `compact`);
   a bell is one automation whose sources are its presets' merged nodes, ids
-  `<presetKey>.<id>` (#Q3808). `draftAutomationFromPreset` builds a preset
-  without storing it, for the editor (#Q3812).
-- **The canvas** (`web/.../automations/canvas`) is React Flow behind a lazy
-  `AutomationCanvas` whose inner half is `AutomationCanvasInner.client.tsx`:
-  only the automation detail, run and new pages load it, the server bundle
-  never does, and the web barrel exports neither. See "Automations UI".
+  `<presetKey>.<id>`, one block per preset (#Q3808). `draftAutomationFromPreset`
+  builds a preset without storing it, for the editor (#Q3812). A preset's
+  catalog `sketch` is the line its block folds into (`source`, `read`,
+  `condition`, `action`, `more`), types only (#Q3851).
 
 ## Automation notification delivery (#E43, #Q2030)
 
@@ -802,9 +824,10 @@ while revision checks cancel queued and following effects.
 and calls the shared application services with the authenticated current caller.
 Strict input schemas reject author or credential injection. CRUD responses use
 the same complete, redacted public DTOs as HTTP. A graph is written as `nodes`
-and `edges`, or compactly as `sources` and `actions` (every source wired to
-every action, laid out by the server), through `AutomationGraphParams`; a
-partly positioned graph is refused. Configuration updates, explicit enable
+and `edges`, which must read as an outline, or compactly as `sources` and
+`actions` (every source wired to every action), through
+`AutomationGraphParams`; a node with a position is refused. Configuration
+updates, explicit enable
 changes and `automation_source_set` are separate revisioned calls; managers
 retain only foreign-automation stop and delete controls. Creation is a draft
 unless `enabled: true` is passed. The `lore automation` commands mirror them
@@ -845,11 +868,12 @@ Every page under `/automations` but the list renders through `AutomationPage`
   total stays unknown. Both writes refresh on success AND failure, so the row
   never shows an unconfirmed state (a revision conflict included).
 - **Presets** (`AutomationGalleryPage`): the presets this project, rank and
-  configured channels allow, as cards, each with an SVG sketch of its graph
-  (`AutomationPresetSketch`, from the catalog's configuration-free `sketch`).
-  A card opens its inputs in place; **Create and enable** saves the automation
-  enabled in one write (#Q3573), **Save as draft** saves it disabled, and
-  **Open in canvas** opens it unsaved in the editor.
+  configured channels allow, as cards, each with the one line its block folds
+  into (`AutomationOutlineFolded`, the component a folded block uses, from the
+  catalog's configuration-free `sketch`). A card opens its inputs in place;
+  **Create and enable** saves the automation enabled in one write (#Q3573),
+  **Save as draft** saves it disabled, and **Open in editor** opens it unsaved
+  in the editor.
 - **Preset inputs** (`AutomationPresetForm`): a field belongs to the rule unless
   **Share with other automations** is chosen, which reveals the
   only-this-rule / shared / new-shared choice. Explicit binding carries the
@@ -867,32 +891,51 @@ Every page under `/automations` but the list renders through `AutomationPage`
   switches the picker to server search. `useAutomationOptionLabels` names saved
   members and folios in read-only summaries. Never page a picker with
   Previous / Next buttons.
+- **The outline** (`web/.../automations/outline/`, #E156): one component
+  family in three modes, from `@alepha/ui` blocks, one component per file. A
+  block is a `Card` of sections (`AutomationOutlineSection`): When (primary),
+  Only if (warning), Then, read Do without a condition (tone `do`, success),
+  Otherwise (neutral), each with a coloured rail and a solid label, on a tinted
+  ground (`AutomationOutlineTones`). A row (`AutomationOutlineRow`) shows icon,
+  label and a one-line summary with placeholders as chips, and opens in place.
+  Several blocks start folded into one line each (`AutomationOutlineFolded`).
+  No node id, port or wire is shown anywhere. `useAutomationOutlineNames`
+  (members, folios, channels) is called by the page and passed down.
 - **Automation page** (`AutomationDetailPage`): header Edit / Delete /
-  Enable or Disable; the read-only canvas (`AutomationCanvas`): click a node
-  for its whole configuration (`AutomationNodePanel`), where a source's switch
-  calls `setAutomationSourceEnabled` at once; `AutomationTestPanel` is the
-  zero-write dry run from a chosen source; `AutomationRunList` below. A phone
-  sees the canvas read-only.
-- **Editor** (`AutomationGraphEditor`, #Q3811): one draft per page
-  (`useAutomationDraft`, with undo and redo), saved against the revision
-  opened; only a 409 offers Discard draft and reload, and any other refusal
-  lands on the node it names. `AutomationGraph.check` runs on every change.
-  `AutomationCanvasEdits` holds the pure operations (ids, new nodes' config,
-  placement, the wire refusals while dragging, merging a preset). The
-  inspector reuses `AutomationActionEditor` and `AutomationValueControl`.
-  Run test reads "Save to test" while the draft is dirty: it tests what is
-  saved. Leaving a dirty draft asks first (`useAutomationLeaveGuard`: the
+  Enable or Disable; the read-only outline (`AutomationOutlineView`), where a
+  row opens to its whole configuration and an event's switch calls
+  `setAutomationSourceEnabled` at once; a graph that is not an outline shows
+  `AutomationOutlineNotice` with Delete instead; `AutomationTestPanel` is the
+  zero-write dry run from a chosen source; `AutomationRunList` below.
+- **Editor** (`AutomationOutlineEditor`, #Q3848): one draft per page
+  (`useAutomationDraft`, with undo and redo), the graph, saved against the
+  revision opened; only a 409 offers Discard draft and reload. Every change is
+  an `AutomationOutline` edit. A row opens into its form in place
+  (`AutomationOutlineEventForm`, `AutomationOutlineConditionForm` over
+  `AutomationOutlineConditionFields`, `AutomationOutlineActionForm` over
+  `AutomationActionEditor`); placeholder chips (`AutomationOutlinePlaceholders`)
+  write into the last focused field through `useAutomationOutlineInsert`. An
+  event's switch is part of the draft; the automation's own switch stays on its
+  page. `AutomationPage`'s `wide` gives the editor its aside
+  (`AutomationOutlineAside`, #Q3849): In plain words, Before you save (the
+  graph's check and `AutomationOutline.unfilled`, each line opening its row; a
+  missing field is a warning, a refusal at Save an error), How it runs. Save
+  waits for an empty list. Run test reads "Save to test" while the draft is
+  dirty. Leaving a dirty draft asks first (`useAutomationLeaveGuard`: the
   router has no blocker, so in-app link clicks are caught on their way down).
+  A phone edits.
 - **New automation** (`/automations/new`, #Q3812): the editor on an unsaved
-  draft, empty (Start from scratch) or a preset's graph (Open in canvas,
-  handed over through `automationDraftAtom`); the first save creates it
-  disabled. The palette also adds a preset into a draft.
-- ⚠️ **The canvas owns its nodes, so it hands React Flow back what it
-  measured** (the `dimensions` changes, kept in state), and asks it to measure
-  again after each change (`AutomationCanvasMeasure`): a node given back
-  without its size loses its handles' places, and its wires are not drawn.
-  jsdom has no `ResizeObserver`: a browser spec installs a no-op one, and the
-  graph-to-canvas mapping (`AutomationCanvasMap`) has its own spec.
+  draft, empty on "Choose what starts it" with presets as quick starts (Start
+  from scratch), or a preset's graph (Open in editor, handed over through
+  `automationDraftAtom`); the first save creates it disabled. "Add another
+  event with its own actions" adds a block, empty or from a preset.
+- **Run page** (`AutomationRunPage`): the outline of the run's frozen
+  subgraph, one block, with one outcome badge per row
+  (`AutomationOutline.fold`); a side no item took is dimmed, both stay lit
+  when a run over several items took both. `AutomationRunEvidence` below.
+- **Deleted with #E156**: the React Flow canvas (`canvas/`, `@xyflow/react`),
+  node positions and `AutomationGraph.layout`, the palette, the wire refusals,
+  the wire list and the preset SVG sketch.
 - **Variables and runs**: shared variables keep UUID/version stamps after a
   write, list their users and delete only when unused; exact-key links filter
   the list. Run pages separate frozen per-action enqueue intent from live
@@ -961,7 +1004,7 @@ cursors,
 with the original evaluation time and a durable page witness; each due-state
 identity couples one email enqueue to one interval/history update.
 
-The canvas inspector exposes one-member versus release-roster addressing on a
+The editor's action form exposes one-member versus release-roster addressing on a
 notification every reaching source of which is `release.published`, and Test
 remains read-only. The adoption engine that once replaced built-in
 notifications with these rules is gone (#Q3628): nothing is sent without a rule.

@@ -177,7 +177,7 @@ The bell above the inbox's status filter notifies you of every new report.
 Turning it on asks how, **In-app** or **Email**, and creates an automation of
 yours from the **New feedback** preset, enabled at once. It stays an ordinary
 automation, listed under [Automations](/lore/docs/plan-automations), where you
-can edit it on its canvas; the bell's dialog links to it with **Open in
+can edit it in its editor; the bell's dialog links to it with **Open in
 Automations**. Turning the bell off, after a confirmation, deletes it. The bell shows
 only to a member who can create automations, in a project with automations on.
 
