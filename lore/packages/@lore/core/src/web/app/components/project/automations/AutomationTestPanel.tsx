@@ -25,12 +25,12 @@ export interface AutomationTestPanelProps {
   rule: AutomationResource;
   disabled?: boolean;
   /**
-   * The canvas holds unsaved changes (#Q3811): Run test tests what is
+   * The editor holds unsaved changes (#Q3811): Run test tests what is
    * saved, so it waits for the save.
    */
   dirty?: boolean;
   /**
-   * The source selected on the canvas, where the test starts.
+   * The event whose row is open in the editor, where the test starts.
    */
   source?: string;
   onBusyChange?: (busy: boolean) => void;

@@ -40,7 +40,7 @@ export const automationSubscriptionSchema = z
       )
       .max(8),
     /**
-     * Whether its author added nodes of their own on the canvas, which off
+     * Whether its author added nodes of their own in the editor, which off
      * deletes with it.
      */
     additions: z.boolean(),

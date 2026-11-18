@@ -5,6 +5,7 @@ import type { AutomationDescriptor } from "../../../../../../api/schemas/automat
 import { AutomationGraph } from "../../../../../../api/schemas/AutomationGraph.ts";
 import type { AutomationGraphValue } from "../../../../../../api/schemas/automationGraphSchema.ts";
 import type { I18n } from "../../../../services/I18n.ts";
+import AutomationOutlinePlaceholderLacking from "./AutomationOutlinePlaceholderLacking.tsx";
 
 export interface AutomationOutlinePlaceholdersProps {
   graph: AutomationGraphValue;
@@ -44,7 +45,14 @@ const AutomationOutlinePlaceholders = (
           : tr("automation.outline.from.event"),
       };
     });
-  if (!items.length) return null;
+  if (!items.length)
+    return (
+      <AutomationOutlinePlaceholderLacking
+        graph={props.graph}
+        node={props.node}
+        entries={props.entries}
+      />
+    );
   return (
     <div
       className="flex flex-col gap-1.5"
@@ -77,6 +85,11 @@ const AutomationOutlinePlaceholders = (
           </Badge>
         ))}
       </div>
+      <AutomationOutlinePlaceholderLacking
+        graph={props.graph}
+        node={props.node}
+        entries={props.entries}
+      />
     </div>
   );
 };

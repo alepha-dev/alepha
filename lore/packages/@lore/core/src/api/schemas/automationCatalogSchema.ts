@@ -10,8 +10,8 @@ export const automationCatalogSchema = z.object({
   presets: z.array(automationCatalogPresetSchema).max(32),
   entries: z.array(automationCatalogEntrySchema),
   /**
-   * The node types a graph may hold (#Q3805), what the canvas's palette
-   * lists.
+   * The node types a graph may hold (#Q3805), what the editor's menus
+   * list.
    */
   nodeTypes: z.array(automationCatalogNodeTypeSchema),
   variables: z.array(automationCatalogVariableSchema).max(100),

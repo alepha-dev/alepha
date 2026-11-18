@@ -99,7 +99,7 @@ export class AutomationPresetService {
 
   /**
    * A preset's graph, built from the values and bindings a create takes and
-   * stored nowhere (#Q3812): what Open in canvas opens, and what Add from a
+   * stored nowhere (#Q3812): what Open in editor opens, and what Add from a
    * preset merges into a draft, its node ids under `prefix`.
    */
   public async draft(

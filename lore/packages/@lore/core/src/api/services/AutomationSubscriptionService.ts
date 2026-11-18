@@ -28,8 +28,8 @@ import { AutomationService } from "./AutomationService.ts";
  *   notification on the chosen channels, the caller as recipient, the
  *   scope's values bound on each source.
  * - **Changing channels or events edits it in place** (one revision) and
- *   touches only the nodes the bell made; what its author added on the
- *   canvas stays. Every bell write goes through here, under the
+ *   touches only the nodes the bell made; what its author added in the
+ *   editor stays. Every bell write goes through here, under the
  *   self-subscription gate: a member may hold a bell without
  *   `automation:write`.
  * - **Off** deletes the whole automation.
@@ -82,7 +82,7 @@ export class AutomationSubscriptionService {
     }
     const rule = await this.marked(projectId, user, keys, scope);
     if (!body.subscribed) {
-      // Off deletes the whole automation, nodes added on the canvas too.
+      // Off deletes the whole automation, nodes added in the editor too.
       if (rule)
         await this.service.remove(projectId, rule.id, user, rule.revision);
       return this.state(keys, undefined);

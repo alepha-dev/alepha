@@ -106,7 +106,7 @@ const AutomationGalleryPage = () => {
       title={tr("automation.new")}
       description={tr("automation.gallery.description")}
       actions={
-        // An empty canvas, its palette open (#Q3812).
+        // An empty draft, on "Choose what starts it" (#Q3812, #Q3848).
         <Button
           variant="outlined"
           data-testid="automation-start-scratch"

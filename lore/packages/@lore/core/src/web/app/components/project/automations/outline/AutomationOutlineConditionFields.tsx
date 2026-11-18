@@ -12,7 +12,7 @@ import type { AutomationSlotKind } from "../../../../../../api/schemas/automatio
 import type { I18n } from "../../../../services/I18n.ts";
 import AutomationValueControl from "../AutomationValueControl.tsx";
 
-export interface AutomationConditionInspectorProps {
+export interface AutomationOutlineConditionFieldsProps {
   graph: AutomationGraphValue;
   node: AutomationGraphNode;
   entries: readonly AutomationDescriptor[];
@@ -24,11 +24,12 @@ export interface AutomationConditionInspectorProps {
 }
 
 /**
- * A condition's inspector (#Q3811): a field the node may compare (one
+ * The condition's fields (#Q3811, the outline's since #Q3850): a field
+ * the block may compare (one
  * every source reaching it gives), how, and the value, literal or bound.
  */
-const AutomationConditionInspector = (
-  props: AutomationConditionInspectorProps,
+const AutomationOutlineConditionFields = (
+  props: AutomationOutlineConditionFieldsProps,
 ) => {
   const { tr } = useI18n<I18n, "en">();
   const graphs = new AutomationGraph();
@@ -80,7 +81,7 @@ const AutomationConditionInspector = (
     <div className="flex flex-col gap-3">
       <Control
         input={form.input.field}
-        label={tr("automation.canvas.condition.field")}
+        label={tr("automation.outline.condition.field")}
         select
         items={Object.keys(fields)
           .sort()
@@ -90,7 +91,7 @@ const AutomationConditionInspector = (
         <>
           <Control
             input={form.input.operator}
-            label={tr("automation.canvas.condition.operator")}
+            label={tr("automation.outline.condition.operator")}
             select
             items={operators.map((value) => ({
               value,
@@ -118,4 +119,4 @@ const AutomationConditionInspector = (
   );
 };
 
-export default AutomationConditionInspector;
+export default AutomationOutlineConditionFields;
