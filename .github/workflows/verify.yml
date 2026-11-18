@@ -4,62 +4,81 @@ permissions:
   contents: read
 
 # ────────────────────────────────────────────────────────────────────────
-# Every product's checks, in one workflow (#Q3832): the framework, Lore, Bay
-# and the docs site run as parallel job chains, each skipped when the change
-# does not touch its part of the tree, and each closed by the `gate` job the
+# Every product's checks, in one workflow: the framework, Lore, Bay and the
+# docs site run as parallel job chains, each closed by the `gate` job the
 # `main` ruleset requires.
 #
-# Four workflows in all: Verify (this one), Deploy, Release and Nightly.
-# Until #Q3832 this was Verify Framework, Verify Lore, Verify Bay, Verify All
-# and the checks half of Docs, five files left over from three repositories,
-# and the deploys followed two of them BY NAME through `workflow_run`.
+# Verify only verifies (#Q3869). It runs every product on every run, with no
+# detection of what a change touches: `alepha-dev` has 60 concurrent hosted
+# jobs since 2026-11-18, a full run is about ten minutes with no job waiting
+# for a runner, and a filter that guesses wrong costs more than the jobs it
+# saves. It deploys nothing by itself: Deploy (`deploy.yml`) does, on the push
+# to `main`.
 #
 # A change runs this twice: on its pull request, then in the merge queue on
 # top of `main`. The push to `main` that follows is the commit the queue
-# tested, so it skips the checks and goes straight to the deploys (#Q3834).
+# tested, and it starts Deploy, not a third Verify.
 #
-# On a push to `main`, a green product calls `deploy.yml` for itself from the
-# `deploy-*` jobs at the bottom. Each deploy waits on its own product's gate
-# only, so a red Bay never holds Lore back, and the framework apps and the
-# docs wait on Lore's deploy, since they deploy THROUGH Lore with the `lore`
-# CLI of the same commit: an API rename used to fail Deploy Framework, which
-# always finished first.
+# Four workflows in all: Verify (this one), Deploy, Release and Nightly.
 # ────────────────────────────────────────────────────────────────────────
 on:
   # A pull request is how every change reaches main, so a branch push alone
-  # runs nothing. No `paths` filter anywhere (#Q3633): a gate is a required
+  # runs nothing. No `paths` filter either (#Q3633): a gate is a required
   # check, and a workflow a `paths` filter skips never reports one, which
-  # leaves a pull request waiting forever. The `changes` job filters instead.
-  push:
-    branches:
-      - main
+  # leaves a pull request waiting forever.
   pull_request:
     branches:
       - main
   # The merge queue (#Q3688): a pull request is tested again on top of main
   # and of every pull request queued ahead of it, and merges only if that is
   # green too. Two pull requests green alone can be red together (four
-  # migrations on one snapshot, 2026-11-15). Nothing deploys from a queue
-  # run: its event is `merge_group` and its ref `gh-readonly-queue/main/...`.
+  # migrations on one snapshot, 2026-11-15). This is the run Deploy looks for
+  # before it ships a push to `main`.
   merge_group:
     types: [checks_requested]
-  # By hand, on any ref: every product, whatever changed. It deploys nothing,
-  # even on `main`: checking is not shipping, and Deploy has its own dispatch.
+  # By hand, on any ref. `product` narrows the run to one product, and
+  # `deploy`, from `main` only, calls Deploy once every gate is green:
   #
   #   gh workflow run verify.yml --ref <branch>
+  #   gh workflow run verify.yml --ref <branch> -f product=framework
+  #   gh workflow run verify.yml --ref main -f deploy=all
   workflow_dispatch:
-  # Nightly, every product. The called run sees Nightly's event, so the
-  # `deploy-*` jobs skip.
+    inputs:
+      product:
+        description: "What to verify"
+        type: choice
+        options:
+          - all
+          - framework
+          - lore
+          - bay
+          - docs
+        default: all
+      deploy:
+        description: "What to deploy once the gates are green (from main only)"
+        type: choice
+        options:
+          - none
+          - all
+          - lore
+          - framework
+          - docs
+        default: none
+  # Nightly, every product. No `deploy` input here on purpose: a called run
+  # has only the inputs declared below, so it can never reach the deploy job.
   workflow_call:
+    inputs:
+      product:
+        description: "What to verify: all, framework, lore, bay or docs"
+        type: string
+        default: all
 
 concurrency:
-  # Namespaced by event, so a dispatch and a push on the same ref never cancel
-  # each other, and per ref, so two pull requests never do either.
+  # Namespaced by event, so a dispatch and a pull request on the same ref
+  # never cancel each other, and per ref, so two pull requests never do either.
   group: verify-${{ github.event_name }}-${{ github.ref }}
-  # A newer push supersedes a branch run, never a main one (#Q3687): with
-  # pull requests merging every few minutes, cancelling on main left no run
-  # to finish, and the deploys a green one calls never ran. GitHub keeps the
-  # main run going and only the newest one waiting.
+  # A newer push supersedes a branch run, never a main one: a dispatch on
+  # `main` may be on its way to a deploy, and a deploy is never cancelled.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Where a `lore` command reports. Not a secret: a project slug is in every URL
@@ -74,95 +93,9 @@ env:
   LORE_PROJECT: alepha
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────
-  # Which products this change touches. A pull request reads its files, a
-  # merge queue group and a push to `main` diff their commits; anything else
-  # (a dispatch, Nightly) runs every product.
-  #
-  # Lore builds on the framework's source and its e2e builds Bay, so a change
-  # to either runs Lore too: that is why the three share one repository.
-  # ──────────────────────────────────────────────────────────────────────
-  changes:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      # `actions: read` for the merge queue run a push to `main` looks up.
-      actions: read
-      contents: read
-      pull-requests: read
-    outputs:
-      framework: ${{ steps.diff.outputs.framework }}
-      lore: ${{ steps.diff.outputs.lore }}
-      bay: ${{ steps.diff.outputs.bay }}
-      docs: ${{ steps.diff.outputs.docs }}
-      tested: ${{ steps.diff.outputs.tested }}
-    steps:
-      - id: diff
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-          GROUP_BASE: ${{ github.event.merge_group.base_sha }}
-          GROUP_HEAD: ${{ github.event.merge_group.head_sha }}
-          PUSH_BEFORE: ${{ github.event.before }}
-          PUSH_AFTER: ${{ github.event.after }}
-        run: |
-          compare() {
-            gh api "repos/$GITHUB_REPOSITORY/compare/$1...$2?per_page=100" --paginate --jq '.files[].filename'
-          }
-          tested=false
-          case "$GITHUB_EVENT_NAME" in
-            pull_request)
-              files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename') ;;
-            merge_group)
-              # Every commit the group adds to main: this pull request's and
-              # those queued ahead of it.
-              files=$(compare "$GROUP_BASE" "$GROUP_HEAD") ;;
-            push)
-              if [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ]; then
-                files=ALL
-              else
-                files=$(compare "$PUSH_BEFORE" "$PUSH_AFTER")
-              fi
-              # The merge queue merges by rebase and moves `main` to the very
-              # commit its run tested (#Q3834), and that run's diff covers
-              # every commit of the group. When it is green, verifying the
-              # same tree again only delays the deploys: the check jobs skip,
-              # the gates pass, and the deploys follow at once. A push the
-              # queue never tested (an admin push, a cancelled queue run)
-              # runs everything as before.
-              green=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&event=merge_group&status=success" \
-                --jq '[.workflow_runs[] | select(.path == ".github/workflows/verify.yml")] | length')
-              if [ "${green:-0}" -gt 0 ]; then
-                tested=true
-                echo "The merge queue verified $GITHUB_SHA: the check jobs skip."
-              fi ;;
-            *)
-              files=ALL ;;
-          esac
-          # The compare API lists 300 files at most: past that, a product
-          # could be missing from the list, so run everything.
-          if [ "$files" != ALL ] && [ "$(printf '%s\n' "$files" | wc -l)" -ge 300 ]; then
-            files=ALL
-          fi
-
-          echo "tested=$tested" >> "$GITHUB_OUTPUT"
-
-          shared='\.github/workflows/verify\.yml$|\.github/actions/|package\.json$|yarn\.lock$|\.yarnrc\.yml$|\.nvmrc$'
-          product() {
-            if [ "$files" = ALL ] || printf '%s\n' "$files" | grep -qE "$2"; then
-              echo "$1=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "$1=false" >> "$GITHUB_OUTPUT"
-              echo "No file of the $1 part of the tree changed: its jobs skip."
-            fi
-          }
-          # The framework, plus the docs generators its `yarn copy` and
-          # `check:docs` run (#Q2766), and Bay's owned env keys, which
-          # `BayAdapter.spec.ts` pins the framework's mirror against (#Q2763).
-          product framework "^(framework/|docs/scripts/|bay/internal/deploy/deploy\.go$|$shared)"
-          product lore "^(lore/|framework/|bay/|$shared)"
-          product bay '^(bay/|\.github/workflows/verify\.yml$)'
-          product docs "^(docs/|framework/docs/|lore/docs/|bay/docs/|$shared)"
+  # ⚠️ Every product job carries the same `if`: its product, or `all`. An
+  # event with no input (a pull request, a merge queue group) reads as `all`.
+  # A job with no `if` would run on a dispatch narrowed to another product.
 
   # ══════════════════════════════════════════════════════════════════════
   # The framework, in `framework/`. Together these jobs are `yarn v`, split so
@@ -180,8 +113,7 @@ jobs:
   # experiment, not a tidy-up.
   # ──────────────────────────────────────────────────────────────────────
   framework-checks:
-    needs: changes
-    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     # A hang detector, not a budget. Public-repo minutes are free and the
     # GitHub cap is 6 hours, so a generous number costs nothing while a tight
@@ -264,8 +196,7 @@ jobs:
   # the reasoning: read it before moving coverage back.
   # ──────────────────────────────────────────────────────────────────────
   framework-test:
-    needs: changes
-    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -341,8 +272,7 @@ jobs:
   # The unit suite again, on Node 24: the floor every public package declares
   # in `engines.node` (#Q2687). This lane keeps `>=24.0.0` a tested claim.
   framework-test-node24:
-    needs: changes
-    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -410,8 +340,7 @@ jobs:
   # localhost inside its container only.
   # ──────────────────────────────────────────────────────────────────────
   framework-mqtt-broker:
-    needs: changes
-    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -460,8 +389,7 @@ jobs:
   # No service containers: every app these jobs build is SQLite or nothing.
   # ──────────────────────────────────────────────────────────────────────
   framework-e2e-apps:
-    needs: changes
-    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -510,8 +438,7 @@ jobs:
   # `apps/ui/e2e/a11y-baseline.ts`: a finding missing from it fails, and so
   # does an entry no finding matches any more.
   framework-e2e-a11y:
-    needs: changes
-    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -546,8 +473,7 @@ jobs:
   # `yarn pack`s the workspace and installs the tarball into a throwaway
   # project, so a failure here means a packaging bug rather than a UI one.
   framework-e2e-cli:
-    needs: changes
-    if: needs.changes.outputs.framework == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -590,8 +516,7 @@ jobs:
   # ══════════════════════════════════════════════════════════════════════
 
   lore-checks:
-    needs: changes
-    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "lore"]'), inputs.product || 'all')
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -628,8 +553,7 @@ jobs:
         run: yarn check:conventions
 
   lore-test:
-    needs: changes
-    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "lore"]'), inputs.product || 'all')
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -661,8 +585,7 @@ jobs:
   # lands and this job is green.
   # ──────────────────────────────────────────────────────────────────────
   lore-test-postgres:
-    needs: changes
-    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "lore"]'), inputs.product || 'all')
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     continue-on-error: true
@@ -728,8 +651,7 @@ jobs:
             packages/@lore/plan/test/quest-count.spec.ts
 
   lore-e2e:
-    needs: changes
-    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "lore"]'), inputs.product || 'all')
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -759,8 +681,7 @@ jobs:
         run: yarn w e2e web --shard=${{ matrix.shard }}/6
 
   lore-e2e-cli:
-    needs: changes
-    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "lore"]'), inputs.product || 'all')
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -792,8 +713,7 @@ jobs:
   # asserted on the index, then the image pulled back for the smoke and the
   # size checks. A fixed port: the daemon pushes, not this shell.
   lore-docker:
-    needs: changes
-    if: needs.changes.outputs.lore == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "lore"]'), inputs.product || 'all')
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     defaults:
@@ -851,8 +771,7 @@ jobs:
   # ══════════════════════════════════════════════════════════════════════
 
   bay-check:
-    needs: changes
-    if: needs.changes.outputs.bay == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "bay"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -915,8 +834,7 @@ jobs:
   # ══════════════════════════════════════════════════════════════════════
 
   docs-check:
-    needs: changes
-    if: needs.changes.outputs.docs == 'true' && needs.changes.outputs.tested != 'true'
+    if: contains(fromJSON('["all", "docs"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -961,8 +879,8 @@ jobs:
 
   # ══════════════════════════════════════════════════════════════════════
   # The gates: the four checks the `main` ruleset and the merge queue require
-  # (#Q3633), by these exact names. Each always runs, so a change that
-  # skipped every job of a product still reports, and fails when any job of
+  # (#Q3633), by these exact names. Each always runs, so a dispatch narrowed
+  # to one product still reports the other three, and fails when any job of
   # its product failed or was cancelled. A skipped job is a pass.
   #
   # ⚠️ A new job joins its product's gate `needs`, or nothing waits for it.
@@ -971,7 +889,6 @@ jobs:
   gate-framework:
     name: gate (framework)
     needs:
-      - changes
       - framework-checks
       - framework-test
       - framework-test-node24
@@ -993,7 +910,6 @@ jobs:
   gate-lore:
     name: gate (lore)
     needs:
-      - changes
       - lore-checks
       - lore-test
       - lore-test-postgres
@@ -1013,7 +929,7 @@ jobs:
 
   gate-bay:
     name: gate (bay)
-    needs: [changes, bay-check]
+    needs: [bay-check]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1027,7 +943,7 @@ jobs:
 
   gate-docs:
     name: gate (docs)
-    needs: [changes, docs-check]
+    needs: [docs-check]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1040,69 +956,37 @@ jobs:
       - run: echo "Green."
 
   # ══════════════════════════════════════════════════════════════════════
-  # The deploys, on a push to `main` only: never on a pull request, a merge
-  # queue group, a dispatch of this workflow or Nightly's call. A product
-  # deploys when this push touched it and its gate is green; Bay deploys from
-  # no workflow, its binaries ship with Release.
+  # Verify, then deploy, by hand (#Q3869): `-f deploy=<target>` on a dispatch
+  # from `main` calls Deploy once every gate is green. Nothing else reaches
+  # this job: not a pull request, not a merge queue group, not Nightly's call
+  # (whose run carries Nightly's name and has no `deploy` input). A push to
+  # `main` starts Deploy by itself.
   #
-  # `deploy.yml` carries the deploy jobs themselves and checks the event and
-  # the ref again: these conditions keep the run graph honest, its own keep
-  # the deploy correct.
-  #
-  # ⚠️ The framework apps and the docs wait on Lore's deploy. They deploy
-  # through Lore with this commit's `lore` CLI, which may read an API this
-  # commit changes. A skipped Lore deploy (Lore untouched, or its gate red)
-  # does not hold them; a failed one does.
-  #
-  # ⚠️ And they deploy one at a time: Lore, the framework apps, then the
-  # docs (#Q3843). Started in the same second, they failed on resets and
-  # `fetch failed` talking to Lore on the first two pushes of this workflow,
-  # and a re-run alone passed.
-  #
-  # A flaky job on `main`: "Re-run failed jobs" reruns it and the deploys
-  # that it skipped.
-  # ══════════════════════════════════════════════════════════════════════
-
   # ⚠️ `!cancelled()` is load-bearing (#Q3843). Without a status function
   # GitHub applies `success()`, which skips a job when ANY job upstream of it
-  # was skipped, however far back: on a push the merge queue tested, every
-  # check job skips, and so did this deploy, every time.
-  deploy-lore:
-    needs: [changes, gate-lore]
+  # was skipped, however far back: a dispatch narrowed to one product skips
+  # the others' jobs, and this one with them.
+  #
+  # ⚠️ `actions: read` because Deploy's `verified` job asks for it, and a
+  # called job never gets more than its caller grants: without it the whole
+  # run fails at startup, on every event.
+  # ══════════════════════════════════════════════════════════════════════
+
+  deploy:
+    needs: [gate-framework, gate-lore, gate-bay, gate-docs]
     if: >-
       !cancelled()
-      && github.event_name == 'push' && github.ref == 'refs/heads/main'
-      && needs.changes.outputs.lore == 'true'
-      && needs.gate-lore.result == 'success'
-    uses: ./.github/workflows/deploy.yml
-    with:
-      target: lore
-    secrets: inherit
-
-  deploy-framework:
-    needs: [changes, gate-framework, deploy-lore]
-    if: >-
-      always()
-      && github.event_name == 'push' && github.ref == 'refs/heads/main'
-      && needs.changes.outputs.framework == 'true'
+      && github.workflow == 'Verify'
+      && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+      && inputs.deploy != '' && inputs.deploy != 'none'
       && needs.gate-framework.result == 'success'
-      && (needs.deploy-lore.result == 'success' || needs.deploy-lore.result == 'skipped')
-    uses: ./.github/workflows/deploy.yml
-    with:
-      target: framework
-    secrets: inherit
-
-  # After the framework's deploy, whatever its result: the deploys through
-  # Lore run one at a time (#Q3843).
-  deploy-docs:
-    needs: [changes, gate-docs, deploy-lore, deploy-framework]
-    if: >-
-      always()
-      && github.event_name == 'push' && github.ref == 'refs/heads/main'
-      && needs.changes.outputs.docs == 'true'
+      && needs.gate-lore.result == 'success'
+      && needs.gate-bay.result == 'success'
       && needs.gate-docs.result == 'success'
-      && (needs.deploy-lore.result == 'success' || needs.deploy-lore.result == 'skipped')
+    permissions:
+      actions: read
+      contents: read
     uses: ./.github/workflows/deploy.yml
     with:
-      target: docs
+      target: ${{ inputs.deploy }}
     secrets: inherit

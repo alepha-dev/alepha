@@ -48,16 +48,15 @@ concurrency:
 # first. So Lore pushes under its own branch label, `lore/<branch>`, and the
 # Quality tab draws the two as two lines.
 jobs:
-  # Every product's Verify, whatever changed (#Q3832): what Verify All was by
-  # hand, once a day. A called run sees this workflow's event, so Verify's
-  # deploy jobs skip. `actions: read` and `pull-requests: read` because
-  # Verify's `changes` job asks for them, and a called job never gets more
-  # than its caller grants.
+  # Every product's Verify, once a day (#Q3832). It deploys nothing: Verify's
+  # `deploy` job wants a run named Verify and a `deploy` input, and a called
+  # run has neither. `actions: read` because that job, skipped or not, calls
+  # Deploy, whose `verified` job asks for it: a called job never gets more
+  # than its caller grants, and the run fails at startup without it.
   verify:
     permissions:
       actions: read
       contents: read
-      pull-requests: read
     uses: ./.github/workflows/verify.yml
     secrets: inherit
 
