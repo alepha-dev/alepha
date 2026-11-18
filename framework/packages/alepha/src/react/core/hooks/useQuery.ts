@@ -127,10 +127,39 @@ export function useQuery<Result>(
   const staleTimeMs = options.staleTime
     ? dateTime.duration(options.staleTime).asMilliseconds()
     : 0;
-  const isFresh =
+  const isFreshNow =
     entry !== undefined &&
     staleTimeMs > 0 &&
     dateTime.nowMillis() - entry.updatedAt < staleTimeMs;
+
+  // What the gate reads: freshness as of the last time something that may
+  // call for a run changed (the entry, the key, `enabled`, `staleTime` or a
+  // dep), not as of this render (#Q3898). Read live, an entry ageing past
+  // `staleTime` flipped `runOnInit` true on the next unrelated re-render, and
+  // `useAction` sent a read nobody asked for. A stale entry is revalidated on
+  // mount, key or deps change, invalidation, `enabled` turning true, a tab
+  // return, a reconnect or `runEvery`; `isStale` below keeps the live value.
+  //
+  // The entry is compared by its write time, not its identity: a write to
+  // ANY key hands every entry of the atom a new object, so an identity
+  // check reopened the gate whenever another query on the page settled.
+  const gateInputs: unknown[] = [
+    entry?.updatedAt,
+    serializedKey,
+    enabled,
+    staleTimeMs,
+    ...deps,
+  ];
+  const freshnessRef = useRef<{ inputs: unknown[]; fresh: boolean }>(undefined);
+  const latched = freshnessRef.current;
+  if (
+    !latched ||
+    latched.inputs.length !== gateInputs.length ||
+    latched.inputs.some((value, i) => !Object.is(value, gateInputs[i]))
+  ) {
+    freshnessRef.current = { inputs: gateInputs, fresh: isFreshNow };
+  }
+  const isFresh = freshnessRef.current!.fresh;
 
   // A fresh cache hit means the initial fetch is skipped entirely — that is
   // the point of `staleTime`. Invalidation removes the entry, which flips
@@ -310,7 +339,7 @@ export function useQuery<Result>(
     error: action.error,
     refetch,
     cancel: action.cancel,
-    isStale: entry !== undefined && !isFresh,
+    isStale: entry !== undefined && !isFreshNow,
   };
 }
 

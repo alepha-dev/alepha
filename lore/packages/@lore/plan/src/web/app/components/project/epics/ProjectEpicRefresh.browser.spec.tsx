@@ -138,9 +138,7 @@ describe("ProjectEpic refresh", () => {
     await travel(15);
     await waitFor(() => expect(server.epicReads).toBe(1));
     // `getQuests` twice per read: the open quests, then the shelved ones.
-    // At least one read; a re-render after the 10 s `staleTime` can add one
-    // (`useQuery` opens its gate on a lapsed entry).
-    await waitFor(() => expect(server.questReads).toBeGreaterThanOrEqual(4));
+    await waitFor(() => expect(server.questReads).toBe(4));
 
     server.served = epicOf("completed", {
       title: "Epic 5, done",
@@ -148,15 +146,18 @@ describe("ProjectEpic refresh", () => {
     });
     await travel(15);
     await waitFor(() => expect(server.epicReads).toBe(2));
+    // The epic's tick lands first (`travel()` runs the timers in order), and
+    // the page, now on a completed epic, stops the quests' timer before it
+    // fires.
+    expect(server.questReads).toBe(4);
     // The page follows it.
     await waitFor(() =>
       expect(screen.getAllByText("Epic 5, done").length).toBeGreaterThan(0),
     );
 
-    const quests = server.questReads;
     await travel(60);
     expect(server.epicReads).toBe(2);
-    expect(server.questReads).toBe(quests);
+    expect(server.questReads).toBe(4);
   });
 
   it("sends no request while the document is hidden", async () => {
