@@ -13,6 +13,11 @@ export default defineConfig({
   ...base,
   testMatch: "a11y.spec.ts",
   testIgnore: [],
+  // The scan is one file, and Playwright hands a file whole to one shard
+  // unless its tests may run in parallel. This is what lets CI split it with
+  // `--shard`; with the base config's single worker it changes nothing else,
+  // and no test here reads another's state.
+  fullyParallel: true,
   timeout: 180_000,
   globalTimeout: 1_200_000,
   maxFailures: 0,
