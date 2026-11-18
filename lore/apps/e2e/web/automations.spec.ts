@@ -1168,7 +1168,7 @@ test.describe("Automations", () => {
     }
   });
 
-  test("builds a two-source automation on the canvas, refuses a bad wire, keeps a draft on conflict, and runs both sources", async ({
+  test("builds two events, a condition and both sides in the outline, keeps a draft on conflict, and runs both events", async ({
     page,
     browser,
     baseURL,
@@ -1176,7 +1176,7 @@ test.describe("Automations", () => {
     test.setTimeout(150_000);
     await registerAndVerify(
       page,
-      `automation-canvas-${crypto.randomUUID()}@example.com`,
+      `automation-outline-${crypto.randomUUID()}@example.com`,
       "GoodPassw0rd",
     );
     const project = await createProjectViaWizard(page, "Automation canvas");
@@ -1225,58 +1225,51 @@ test.describe("Automations", () => {
 
     await page.goto(`/${project.slug}/automations/${rule.id}`);
     await page.getByTestId("automation-edit").click();
-    const canvas = page.getByTestId("automation-canvas");
-    await expect(canvas).toHaveAttribute("data-editing", "true");
+    const editor = page.getByTestId("automation-outline-editor");
+    await expect(editor).toBeVisible();
+    const save = page.getByTestId("automation-outline-save");
 
-    // A wire the graph refuses is refused while dragged, with its reason.
-    const from = canvas
-      .getByTestId("automation-node-source")
-      .locator(".react-flow__handle-right");
-    const to = canvas
-      .getByTestId("automation-node-action-1")
-      .locator(".react-flow__handle-left");
-    const start = (await from.boundingBox())!;
-    const end = (await to.boundingBox())!;
-    await page.mouse.move(
-      start.x + start.width / 2,
-      start.y + start.height / 2,
-    );
-    await page.mouse.down();
-    await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, {
-      steps: 10,
-    });
-    await expect(page.getByTestId("automation-canvas-refusal")).toHaveText(
-      "These two nodes are already wired",
-    );
-    await page.mouse.up();
-    await expect(page.getByTestId("automation-canvas-refusal")).toHaveCount(0);
-
-    // A second source from the palette, then a notification after it from
-    // its "+", configured in the inspector.
-    await page.getByTestId("automation-canvas-add").click();
-    await page.getByTestId("automation-palette-quest.completed").click();
-    const inspector = page.getByTestId("automation-node-inspector");
-    await expect(inspector).toContainText("Quest completed");
-    await expect(canvas.getByTestId("automation-node-completed")).toContainText(
-      "This source reaches no action",
-    );
-    await expect(page.getByTestId("automation-canvas-save")).toBeDisabled();
+    // Built in the outline (#Q3848): a second event in the block, a
+    // condition, and an action on its Otherwise side.
+    const build = async () => {
+      await editor.getByTestId("automation-outline-add-event-source").click();
+      await page
+        .getByTestId("automation-outline-event-quest.completed")
+        .click();
+      await expect(
+        editor.getByTestId("automation-outline-row-z-completed"),
+      ).toContainText("Quest completed");
+      await editor
+        .getByTestId("automation-outline-add-condition-source")
+        .click();
+      const condition = editor.getByTestId("automation-outline-condition-form");
+      await expect(save).toBeDisabled();
+      await condition.getByRole("combobox", { name: "Field" }).click();
+      await page.getByRole("option", { name: "title", exact: true }).click();
+      await condition.getByRole("combobox", { name: "Comparison" }).click();
+      await page
+        .getByRole("option", { name: "differs from", exact: true })
+        .click();
+      await condition.getByRole("textbox", { name: "Value" }).fill("skip");
+      await editor
+        .getByTestId("automation-outline-add-otherwise-source")
+        .click();
+      await page.getByTestId("automation-outline-action-notify").click();
+      const action = editor.getByTestId("automation-outline-action-form");
+      await action.getByRole("combobox", { name: "Recipient" }).click();
+      await page
+        .getByRole("option", { name: owner.label, exact: true })
+        .click();
+      await action.getByRole("textbox", { name: "Title" }).fill("Skipped");
+      await action
+        .getByRole("textbox", { name: "Message" })
+        .fill("{{title}} was skipped");
+      await expect(save).toBeEnabled();
+    };
+    await build();
     await expect(page.getByTestId("automation-test-run")).toHaveText(
       "Save to test",
     );
-    await canvas.getByTestId("automation-node-completed-add-out").click();
-    await expect(
-      page.getByTestId("automation-palette-quest.completed"),
-    ).toHaveCount(0);
-    await page.getByTestId("automation-palette-notify").click();
-    await expect(inspector).toContainText("notify");
-    await inspector.getByRole("combobox", { name: "Recipient" }).click();
-    await page.getByRole("option", { name: owner.label, exact: true }).click();
-    await inspector.getByRole("textbox", { name: "Title" }).fill("Quest done");
-    await inspector
-      .getByRole("textbox", { name: "Message" })
-      .fill("{{title}} is done");
-    await expect(page.getByTestId("automation-canvas-save")).toBeEnabled();
 
     // A save against an older revision keeps the draft and offers a reload.
     const before = await (await page.request.get(getPath)).json();
@@ -1288,32 +1281,27 @@ test.describe("Automations", () => {
       },
     });
     expect(renamed.ok(), await renamed.text()).toBe(true);
-    await page.getByTestId("automation-canvas-save").click();
-    await expect(page.getByTestId("automation-canvas-conflict")).toBeVisible();
-    await expect(canvas.getByTestId("automation-node-notify")).toBeVisible();
+    await save.click();
+    await expect(page.getByTestId("automation-outline-conflict")).toBeVisible();
+    await expect(
+      editor.getByTestId("automation-outline-row-z-completed"),
+    ).toBeVisible();
     await page
       .getByRole("button", { name: "Discard draft and reload", exact: true })
       .click();
-    await expect(page.getByTestId("automation-canvas-conflict")).toHaveCount(0);
-    await expect(canvas.getByTestId("automation-node-completed")).toHaveCount(
+    await expect(page.getByTestId("automation-outline-conflict")).toHaveCount(
       0,
     );
+    await expect(
+      editor.getByTestId("automation-outline-row-z-completed"),
+    ).toHaveCount(0);
 
-    // Drawn again on the reloaded revision, and saved.
-    await page.getByTestId("automation-canvas-add").click();
-    await page.getByTestId("automation-palette-quest.completed").click();
-    await canvas.getByTestId("automation-node-completed-add-out").click();
-    await page.getByTestId("automation-palette-notify").click();
-    await inspector.getByRole("combobox", { name: "Recipient" }).click();
-    await page.getByRole("option", { name: owner.label, exact: true }).click();
-    await inspector.getByRole("textbox", { name: "Title" }).fill("Quest done");
-    await inspector
-      .getByRole("textbox", { name: "Message" })
-      .fill("{{title}} is done");
+    // Built again on the reloaded revision, and saved.
+    await build();
     const saved = page.waitForResponse(isSave);
-    await page.getByTestId("automation-canvas-save").click();
+    await save.click();
     expect((await saved).ok()).toBe(true);
-    await expect(page.getByTestId("automation-canvas-save")).toBeDisabled();
+    await expect(save).toBeDisabled();
     const stored = await (await page.request.get(getPath)).json();
     expect(
       stored.rule.nodes
@@ -1322,8 +1310,8 @@ test.describe("Automations", () => {
         .sort(),
     ).toEqual(["feedback.created", "quest.completed"]);
     expect(
-      stored.rule.nodes.every(
-        (node: { position?: unknown }) => node.position !== undefined,
+      stored.rule.nodes.some(
+        (node: { kind: string }) => node.kind === "condition",
       ),
     ).toBe(true);
     await expect(page.getByTestId("automation-test-run")).toHaveText(
@@ -1342,14 +1330,14 @@ test.describe("Automations", () => {
       String(project.id),
     );
     const feedback = await page.request.post(submitPath, {
-      data: { title: "Canvas feedback", description: "From the canvas" },
+      data: { title: "Outline feedback", description: "From the outline" },
     });
     expect(feedback.ok(), await feedback.text()).toBe(true);
     const quest = await page.request.post(await apiPath(page, "createQuest"), {
       data: {
         projectId: project.id,
-        title: "Canvas quest",
-        description: "Completed for the canvas",
+        title: "skip",
+        description: "Completed, and the condition sends it to Otherwise",
         area: "Main",
         priority: "medium",
         objectives: [],
@@ -1395,7 +1383,7 @@ test.describe("Automations", () => {
               const tick = await adminPage.request.post(trigger, { data: {} });
               expect(tick.ok(), await tick.text()).toBe(true);
             }
-            return [await ran("source"), await ran("completed")];
+            return [await ran("source"), await ran("z-completed")];
           },
           { timeout: 40_000 },
         )
@@ -1405,7 +1393,7 @@ test.describe("Automations", () => {
       const current = await (await page.request.get(getPath)).json();
       const muted = await page.request.patch(`${getPath}/sources`, {
         data: {
-          node: "completed",
+          node: "z-completed",
           enabled: false,
           expectedRevision: current.revision,
         },
@@ -1435,7 +1423,7 @@ test.describe("Automations", () => {
         expect(res.ok(), await res.text()).toBe(true);
       }
       const second = await page.request.post(submitPath, {
-        data: { title: "More canvas feedback", description: "Still heard" },
+        data: { title: "More outline feedback", description: "Still heard" },
       });
       expect(second.ok(), await second.text()).toBe(true);
       await expect
@@ -1445,7 +1433,7 @@ test.describe("Automations", () => {
               const tick = await adminPage.request.post(trigger, { data: {} });
               expect(tick.ok(), await tick.text()).toBe(true);
             }
-            return [await ran("source"), await ran("completed")];
+            return [await ran("source"), await ran("z-completed")];
           },
           { timeout: 40_000 },
         )
@@ -1455,7 +1443,7 @@ test.describe("Automations", () => {
     }
   });
 
-  test("opens a preset in the canvas, adds another preset to it, creates it on the first save, and starts from scratch", async ({
+  test("opens a preset in the editor, adds another preset to it, creates it on the first save, and starts from scratch", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -1481,7 +1469,7 @@ test.describe("Automations", () => {
     const card = page.getByTestId("automation-preset-feedback-created");
     await expect(card.getByTestId("automation-preset-sketch")).toBeVisible();
 
-    // Open in canvas: the preset's graph, unsaved, in the editor.
+    // Open in the editor: the preset's graph, unsaved, as an outline.
     await card.click();
     await page
       .getByRole("combobox", { name: "Recipient", exact: true })
@@ -1491,9 +1479,13 @@ test.describe("Automations", () => {
     await expect(page).toHaveURL(
       new RegExp(`/${project.slug}/automations/new\\?preset=feedback-created$`),
     );
-    const canvas = page.getByTestId("automation-canvas");
-    await expect(canvas.getByTestId("automation-node-source")).toBeVisible();
-    await expect(canvas.getByTestId("automation-node-action-1")).toBeVisible();
+    const editor = page.getByTestId("automation-outline-editor");
+    await expect(
+      editor.getByTestId("automation-outline-row-source"),
+    ).toBeVisible();
+    await expect(
+      editor.getByTestId("automation-outline-row-action-1"),
+    ).toBeVisible();
     expect(
       (
         await (
@@ -1502,10 +1494,10 @@ test.describe("Automations", () => {
       ).items,
     ).toHaveLength(0);
 
-    // Add from a preset: its nodes join the draft under the preset's key.
-    await page.getByTestId("automation-canvas-add").click();
+    // Add from a preset: it arrives as one more block, under its key.
+    await editor.getByTestId("automation-outline-add-block").click();
     await page
-      .getByTestId("automation-palette-preset-feedback-created")
+      .getByTestId("automation-outline-preset-feedback-created")
       .click();
     const merge = page.getByTestId("automation-preset-merge");
     await merge
@@ -1516,7 +1508,7 @@ test.describe("Automations", () => {
       .getByRole("button", { name: "Add to the automation", exact: true })
       .click();
     await expect(
-      canvas.getByTestId("automation-node-feedback-created.source"),
+      editor.getByTestId("automation-outline-block-feedback-created.source"),
     ).toBeVisible();
 
     // The first save creates it, disabled, and lands on its page.
@@ -1532,7 +1524,7 @@ test.describe("Automations", () => {
             .postData()
             ?.includes('"action":"createAutomation"') === true),
     );
-    await page.getByTestId("automation-canvas-save").click();
+    await page.getByTestId("automation-outline-save").click();
     expect((await created).ok()).toBe(true);
     await expect(page).toHaveURL(
       new RegExp(`/${project.slug}/automations/[0-9a-f-]{36}$`),
@@ -1549,13 +1541,15 @@ test.describe("Automations", () => {
       "source",
     ]);
 
-    // Start from scratch: an empty canvas, its palette open.
+    // Start from scratch: an empty outline, on what starts it.
     await page.goto(`/${project.slug}/automations/presets`);
     await page.getByTestId("automation-start-scratch").click();
     await expect(page).toHaveURL(
       new RegExp(`/${project.slug}/automations/new$`),
     );
-    await expect(page.getByTestId("automation-node-palette")).toBeVisible();
-    await expect(page.getByTestId("automation-canvas-save")).toBeDisabled();
+    await expect(page.getByTestId("automation-outline-empty")).toContainText(
+      "Choose what starts it",
+    );
+    await expect(page.getByTestId("automation-outline-save")).toBeDisabled();
   });
 });

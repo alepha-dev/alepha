@@ -1,4 +1,3 @@
-import { useIsMobile } from "@alepha/ui";
 import {
   useAlepha,
   useClient,
@@ -16,21 +15,21 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
-import AutomationGraphEditor from "./canvas/AutomationGraphEditor.tsx";
+import AutomationOutlineEditor from "./outline/AutomationOutlineEditor.tsx";
 
 export interface AutomationNewPageProps {
   /**
-   * The preset opened in the canvas, whose graph `automationDraftAtom`
+   * The preset opened in the editor, whose graph `automationDraftAtom`
    * holds.
    */
   preset?: string;
 }
 
 /**
- * A new automation drawn on the canvas (#Q3812): empty with its palette
- * open (Start from scratch), or a preset's graph as an unsaved draft (Open
- * in canvas). The first save creates it, disabled, and lands on its page,
- * where it is tested and enabled.
+ * A new automation built in the outline editor (#Q3812, #Q3848): empty on
+ * "Choose what starts it" (Start from scratch), or a preset's graph as an
+ * unsaved draft (Open in editor). The first save creates it, disabled, and
+ * lands on its page, where it is tested and enabled.
  */
 const AutomationNewPage = (props: AutomationNewPageProps) => {
   const [project] = useStore(currentProjectAtom);
@@ -38,7 +37,6 @@ const AutomationNewPage = (props: AutomationNewPageProps) => {
   const queries = useQueryClient();
   const router = useRouter();
   const alepha = useAlepha();
-  const phone = useIsMobile();
   const { tr } = useI18n<I18n, "en">();
   usePageCrumb("projectAutomationNew", tr("automation.new"));
   // Read once: the draft is this page's to own from here.
@@ -65,14 +63,10 @@ const AutomationNewPage = (props: AutomationNewPageProps) => {
   return (
     <AutomationPage
       title={tr("automation.new")}
-      description={tr("automation.canvas.newDescription")}
+      description={tr("automation.outline.newDescription")}
     >
-      {phone ? (
-        <p className="text-muted-foreground text-sm">
-          {tr("automation.canvas.editPhone")}
-        </p>
-      ) : catalog.data ? (
-        <AutomationGraphEditor
+      {catalog.data ? (
+        <AutomationOutlineEditor
           initial={initial}
           catalog={catalog.data}
           onSaved={(created) => {

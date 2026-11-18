@@ -5,7 +5,6 @@ import {
   Badge,
   Button,
   useDialog,
-  useIsMobile,
 } from "@alepha/ui";
 import {
   useAction,
@@ -28,7 +27,7 @@ import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationRunList from "./AutomationRunList.tsx";
 import AutomationTestPanel from "./AutomationTestPanel.tsx";
-import AutomationGraphEditor from "./canvas/AutomationGraphEditor.tsx";
+import AutomationOutlineEditor from "./outline/AutomationOutlineEditor.tsx";
 import AutomationOutlineView from "./outline/AutomationOutlineView.tsx";
 import { useAutomationOutlineNames } from "./outline/useAutomationOutlineNames.ts";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
@@ -57,7 +56,6 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
   const [reloads, setReloads] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [testSource, setTestSource] = useState<string>();
-  const phone = useIsMobile();
   const onDirtyChange = useCallback((value: boolean) => setDirty(value), []);
   const onSourceChange = useCallback(
     (node: string | undefined) => setTestSource(node),
@@ -115,7 +113,7 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
     },
     [api, rule, queries],
   );
-  // A source's own switch on the read-only canvas (#Q3806, #Q3811): at
+  // An event's own switch on the read-only outline (#Q3806, #Q3847): at
   // once, and refreshed on success and failure alike.
   const switchSource = useAction<[node: string, enabled: boolean], boolean>(
     {
@@ -201,7 +199,7 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
       description={labels.trigger(rule.rule)}
       actions={
         <>
-          {rule.canEdit && !editing && !phone && rule.rule && (
+          {rule.canEdit && !editing && rule.rule && (
             <Button
               variant="outlined"
               disabled={busy || !catalog.data}
@@ -280,7 +278,7 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
       ) : (
         <>
           {editing && rule.rule && catalog.data ? (
-            <AutomationGraphEditor
+            <AutomationOutlineEditor
               key={`${rule.id}:${rule.revision}:${reloads}`}
               resource={rule}
               catalog={catalog.data}
@@ -300,15 +298,15 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
                 setReloads((count) => count + 1);
                 queries.invalidate(["automation", rule.projectId, rule.id]);
               }}
+              onTest={() =>
+                document
+                  .getElementById("automation-test")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
             />
           ) : (
             rule.rule && (
               <>
-                {rule.canEdit && phone && (
-                  <p className="text-muted-foreground text-sm">
-                    {tr("automation.canvas.editPhone")}
-                  </p>
-                )}
                 <AutomationOutlineView
                   graph={rule.rule}
                   names={names}
@@ -352,14 +350,16 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
               ))}
             </div>
           )}
-          <AutomationTestPanel
-            key={`${rule.id}:${rule.revision}`}
-            rule={rule}
-            dirty={editing && dirty}
-            source={testSource}
-            disabled={toggle.loading || remove.loading}
-            onBusyChange={setChildBusy}
-          />
+          <div id="automation-test" className="scroll-mt-4">
+            <AutomationTestPanel
+              key={`${rule.id}:${rule.revision}`}
+              rule={rule}
+              dirty={editing && dirty}
+              source={testSource}
+              disabled={toggle.loading || remove.loading}
+              onBusyChange={setChildBusy}
+            />
+          </div>
         </>
       )}
       <AutomationRunList automationId={rule.id} />

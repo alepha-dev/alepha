@@ -415,20 +415,41 @@ export class AutomationGraph {
 
   /**
    * What the outline's projection needs of a graph (#Q3846), no catalogue
-   * involved: it parses, its wires are legal, it has no cycle, a source
+   * involved: its nodes and wires are there (a node's configuration may
+   * still be unfilled, as in an editor's draft), its wires are legal, it has no cycle, a source
    * reaches every node, and the outline rules hold. What {@link check} adds
    * (the types, the names, the caps, a block that does nothing yet) is what
    * an editor's draft may still lack.
    */
   public structure(input: unknown): AutomationGraphIssue[] {
-    const parsed = automationGraphSchema.safeParse(input);
-    if (!parsed.success)
-      return parsed.error.issues.map((issue) => ({
-        message: issue.path.length
-          ? `${issue.path.join(".")}: ${issue.message}`
-          : issue.message,
-      }));
-    const graph = parsed.data;
+    // A node's own configuration is not the structure's business: an
+    // editor's draft holds fields not filled yet, and still reads as an
+    // outline. The nodes and wires have to be there, and the ids unique.
+    const value = input as Partial<AutomationGraphValue> | null;
+    if (
+      !value ||
+      value.version !== 2 ||
+      !Array.isArray(value.nodes) ||
+      !Array.isArray(value.edges) ||
+      value.nodes.some(
+        (node) =>
+          !node ||
+          typeof node.id !== "string" ||
+          typeof node.type !== "string" ||
+          !AutomationVocabulary.KINDS.includes(node.kind) ||
+          typeof node.config !== "object",
+      )
+    )
+      return [{ message: "This is not an automation graph" }];
+    const graph = value as AutomationGraphValue;
+    const ids = new Set<string>();
+    for (const node of graph.nodes) {
+      if (ids.has(node.id))
+        return [
+          { node: node.id, message: `node '${node.id}' is declared twice` },
+        ];
+      ids.add(node.id);
+    }
     const issues: AutomationGraphIssue[] = [];
     const add = (issue: AutomationGraphIssue) => issues.push(issue);
     this.checkEdges(graph, add);
