@@ -314,12 +314,8 @@ const AutomationOutlineEditor = (props: AutomationOutlineEditorProps) => {
       params: { projectId: project!.id },
       body: { key: preset.key, values, bindings, prefix },
     });
-    // A preset arrives as one block, without a position.
-    const rule: AutomationGraphValue = {
-      ...built.rule,
-      nodes: built.rule.nodes.map(({ position: _position, ...node }) => node),
-    };
-    draft.change((current) => outline.merge(current, rule));
+    // A preset arrives as one block.
+    draft.change((current) => outline.merge(current, built.rule));
     if (!title.trim()) {
       setTitle(built.title);
       header.input.title.set(built.title);
@@ -339,12 +335,7 @@ const AutomationOutlineEditor = (props: AutomationOutlineEditorProps) => {
   const save = useAction<[], boolean>(
     {
       handler: async () => {
-        // The outline places nothing: a graph is saved without positions,
-        // and the server lays it out until positions leave it (#Q3852).
-        const rule: AutomationGraphValue = {
-          ...graph,
-          nodes: graph.nodes.map(({ position: _position, ...node }) => node),
-        };
+        const rule = graph;
         try {
           const saved = resource
             ? await api.updateAutomation({

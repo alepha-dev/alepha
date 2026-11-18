@@ -136,21 +136,9 @@ export class AutomationSubscriptionService {
       const added = this.registry.merge(
         missing.map((key) => ({ key, values })),
       ).rule;
-      const below =
-        Math.max(0, ...graph.nodes.map((node) => node.position?.y ?? 0)) +
-        AutomationGraph.ROW_HEIGHT;
       graph = {
         ...graph,
-        nodes: [
-          ...graph.nodes,
-          ...added.nodes.map((node) => ({
-            ...node,
-            position: {
-              x: node.position?.x ?? 0,
-              y: (node.position?.y ?? 0) + below,
-            },
-          })),
-        ],
+        nodes: [...graph.nodes, ...added.nodes],
         edges: [...graph.edges, ...added.edges],
       };
     }

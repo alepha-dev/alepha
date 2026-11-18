@@ -15,7 +15,7 @@ export const automationRunSnapshotSchema = z
   .object({
     /**
      * What the run can walk (#Q3804): its source and the nodes that source
-     * reaches, positions stripped. A health record holds the whole graph.
+     * reaches. A health record holds the whole graph.
      */
     rule: automationGraphSchema.nullable(),
     /**

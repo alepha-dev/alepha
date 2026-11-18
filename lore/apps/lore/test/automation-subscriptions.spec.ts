@@ -165,7 +165,6 @@ describe("Automation subscriptions (#Q3576)", () => {
             text: "{{title}}",
             category: "automations",
           },
-          position: { x: 0, y: 400 },
         },
       ],
       edges: [

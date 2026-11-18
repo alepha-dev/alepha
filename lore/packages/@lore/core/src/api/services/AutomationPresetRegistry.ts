@@ -1,7 +1,6 @@
 import { $inject, AlephaError, type Infer } from "alepha";
 
 import type { automationFilterValueSchema } from "../schemas/automationFilterValueSchema.ts";
-import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import {
   automationGraphSchema,
   type AutomationGraphValue,
@@ -137,8 +136,7 @@ export class AutomationPresetRegistry {
 
   /**
    * Several presets as one graph (#Q3808): each preset's nodes, their ids
-   * prefixed with the preset's key (`host-offline.source`), laid out
-   * together. What a bell makes, and what the editor adds from a preset.
+   * prefixed with the preset's key (`host-offline.source`). What a bell makes, and what the editor adds from a preset.
    * Values a preset does not take are left out of its own build.
    */
   public merge(
@@ -165,7 +163,7 @@ export class AutomationPresetRegistry {
       const prefix = part.prefix ?? part.key;
       descriptors.push(built.descriptor);
       nodes.push(
-        ...built.rule.nodes.map(({ position: _position, ...node }) => ({
+        ...built.rule.nodes.map((node) => ({
           ...node,
           id: `${prefix}.${node.id}`,
         })),
@@ -180,9 +178,7 @@ export class AutomationPresetRegistry {
     }
     return {
       descriptors,
-      rule: AutomationGraph.layout(
-        automationGraphSchema.parse({ version: 2, nodes, edges }),
-      ),
+      rule: automationGraphSchema.parse({ version: 2, nodes, edges }),
     };
   }
 }

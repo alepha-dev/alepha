@@ -15,7 +15,7 @@ export class AutomationGraphParams {
       .array(automationGraphNodeSchema)
       .max(40)
       .describe(
-        "The graph's nodes: { id, kind (source | read | condition | action), type (from automation_catalog's nodeTypes), config, position? }. Give every node a position or none: the server lays out a graph with none.",
+        "The graph's nodes: { id, kind (source | read | condition | action), type (from automation_catalog's nodeTypes), config, enabled? on a source }. A node has no position: a graph stores no drawing, and a node posted with one is refused.",
       )
       .optional(),
     edges: z

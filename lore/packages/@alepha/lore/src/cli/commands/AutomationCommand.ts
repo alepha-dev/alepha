@@ -112,7 +112,7 @@ export class AutomationCommand {
         size: "rich",
         atFile: true,
         description:
-          "The whole graph, as JSON: { nodes, edges }. lore automation catalog names the node types it may hold. The graph is an outline of blocks: each block is its events (or one schedule and its read), at most one condition, then independent sequences of actions on the true and false sides of the condition; nothing joins (wire an action on both sides instead), a condition leads to actions only, and an action is followed by one action at most. Positions are optional: the server lays out a graph with none.",
+          "The whole graph, as JSON: { nodes, edges }. lore automation catalog names the node types it may hold. The graph is an outline of blocks: each block is its events (or one schedule and its read), at most one condition, then independent sequences of actions on the true and false sides of the condition; nothing joins (wire an action on both sides instead), a condition leads to actions only, and an action is followed by one action at most. A node has no position: a graph stores no drawing, and a node given one is refused.",
       })
       .optional(),
     source: z

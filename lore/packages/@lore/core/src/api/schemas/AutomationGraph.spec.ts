@@ -739,7 +739,7 @@ describe("AutomationGraph", () => {
         [
           event("b-source", "host.offline"),
           event("a-source", "host.online"),
-          { ...notify("z"), position: { x: 1, y: 2 } },
+          notify("z"),
           notify("y"),
           notify("x"),
         ],
@@ -770,9 +770,6 @@ describe("AutomationGraph", () => {
         "y",
         "x",
       ]);
-      expect(sub.nodes.find((node) => node.id === "z")?.position).toBe(
-        undefined,
-      );
       expect(sub.edges).toHaveLength(3);
     });
   });
@@ -976,10 +973,8 @@ describe("AutomationGraph", () => {
     });
   });
 
-  describe("the builder and the layout", () => {
-    it("builds a straight line with fixed ids, laid out left to right", ({
-      expect,
-    }) => {
+  describe("the builder", () => {
+    it("builds a straight line with fixed ids", ({ expect }) => {
       const value = new AutomationGraphBuilder().line({
         source: "epic.completed",
         condition: { field: "quest_count", operator: "gt", value: 2 },
@@ -1007,41 +1002,24 @@ describe("AutomationGraph", () => {
         { from: "action-1", port: "out", to: "action-2" },
       ]);
       expect(messages(value)).toEqual([]);
-      expect(value.nodes.map((node) => node.position)).toEqual([
-        { x: 0, y: 0 },
-        { x: 280, y: 0 },
-        { x: 560, y: 0 },
-        { x: 840, y: 0 },
-      ]);
     });
 
-    it("puts a node after the longest path to it, and stacks a column", ({
+    it("refuses a node posted with a position: a graph stores no drawing", ({
       expect,
     }) => {
-      const value = AutomationGraph.layout(
-        graph(
-          [
-            event("a", "host.offline"),
-            event("b", "host.online"),
-            notify("first"),
-            notify("last"),
-          ],
-          [
-            ["a", "first"],
-            ["first", "last"],
-            ["b", "last"],
-          ],
-        ),
+      const value = graph(
+        [event("a", "host.offline"), notify("n")],
+        [["a", "n"]],
       );
-      const at = Object.fromEntries(
-        value.nodes.map((node) => [node.id, node.position]),
-      );
-      expect(at).toEqual({
-        a: { x: 0, y: 0 },
-        b: { x: 0, y: 140 },
-        first: { x: 280, y: 0 },
-        last: { x: 560, y: 0 },
-      });
+      const placed = {
+        ...value,
+        nodes: value.nodes.map((node) => ({
+          ...node,
+          position: { x: 0, y: 0 },
+        })),
+      };
+      expect(messages(placed).join("\n")).toContain("position");
+      expect(automationGraphSchema.safeParse(placed).success).toBe(false);
     });
 
     it("normalizes a notification to its channels, deduplicated", ({

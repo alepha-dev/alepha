@@ -56,7 +56,7 @@ describe("Preset drafts", () => {
     });
     expect(result.title.length).toBeGreaterThan(0);
     expect(result.rule.nodes.map((node) => node.id)).toContain("source");
-    expect(result.rule.nodes.every((node) => node.position)).toBe(true);
+    expect(JSON.stringify(result.rule)).not.toContain("position");
     expect(await persistence.rules.count({ projectId: project.id })).toBe(0);
   });
 

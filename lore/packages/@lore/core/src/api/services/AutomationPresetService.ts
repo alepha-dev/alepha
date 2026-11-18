@@ -2,7 +2,6 @@ import { $inject, AlephaError } from "alepha";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
 
-import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import {
   automationPresetCreateSchema,
@@ -124,7 +123,7 @@ export class AutomationPresetService {
       const built = this.presets.build(body.key, values, shared);
       return {
         title: body.title ?? built.descriptor.title,
-        rule: AutomationGraph.layout(built.rule),
+        rule: built.rule,
       };
     } catch (error) {
       if (error instanceof AlephaError)

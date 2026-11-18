@@ -772,15 +772,7 @@ export class AutomationService {
 
   protected normalized<T extends { rule: Automation["rule"] }>(body: T): T {
     try {
-      // A graph saved without positions is laid out (#Q3809); one with some
-      // and not others is refused: half a layout is nobody's.
-      const placed = body.rule.nodes.filter((node) => node.position).length;
-      if (placed && placed < body.rule.nodes.length)
-        throw new BadRequestError(
-          "Give every node a position, or none: the server lays out a graph that has none",
-        );
-      const graph = placed ? body.rule : AutomationGraph.layout(body.rule);
-      return { ...body, rule: this.graphs.normalize(graph) };
+      return { ...body, rule: this.graphs.normalize(body.rule) };
     } catch (error) {
       if (error instanceof AlephaError)
         throw new BadRequestError(error.message);
