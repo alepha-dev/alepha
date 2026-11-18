@@ -427,13 +427,28 @@ jobs:
 
   # `yarn pack`s the workspace and installs the tarball into a throwaway
   # project, so a failure here means a packaging bug rather than a UI one.
+  #
+  # Two legs (#Q3884). Vitest already runs the six spec files side by side,
+  # so the suite lasts as long as its longest file, `infra.e2e.spec.ts`
+  # (180 s on run 44310177164, against 146 s for the next): it runs alone,
+  # and the five others together. Not `--shard`: that splits by a hash of
+  # the path, and nothing would keep the long file by itself.
   framework-e2e-cli:
+    name: framework-e2e-cli (${{ matrix.leg }})
     if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
       run:
         working-directory: framework
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: infra
+            files: src/infra.e2e.spec.ts
+          - leg: rest
+            files: --exclude '**/infra.e2e.spec.ts'
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -448,9 +463,13 @@ jobs:
       - name: Prepare
         run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
 
-      # The tarball carries `dist/`, so the build has to have happened.
-      - name: Build Project
-        run: yarn build
+      # The tarball carries `dist/`, so the build has to have happened. The
+      # packages only (#Q3884): the specs pack `alepha`, `@alepha/*` and
+      # `create-alepha`, and `yarn build` also built nine apps nobody here
+      # reads, most of its 2 min 43. `package:docs` is the other half of
+      # `yarn build`: the docs `alepha docs` prints from the tarball.
+      - name: Build Packages
+        run: yarn alepha package:docs && yarn workspaces foreach -Wpt --include '{alepha,create-alepha,@alepha/*}' run build
 
       # `cli.e2e.spec.ts` serves the node build under Deno and fails without
       # it, on purpose: a skipped test is how a green run lies. Only the
@@ -464,7 +483,7 @@ jobs:
       # images with `alepha image` (#Q3361), on the runner's Docker.
       - name: Run CLI E2E Tests
         timeout-minutes: 10
-        run: yarn e2e-cli
+        run: yarn e2e-cli ${{ matrix.files }}
 
   # ══════════════════════════════════════════════════════════════════════
   # Lore, in `lore/`.
