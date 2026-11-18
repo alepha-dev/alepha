@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { httpClientOptions } from "alepha/server";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
 import { LoreAdapter } from "./adapters/LoreAdapter.ts";
@@ -36,9 +37,26 @@ import { LoreTokenStore } from "./services/LoreTokenStore.ts";
  *
  * @module alepha.lore.deploy
  */
+/**
+ * How many times the `lore` CLI sends a read again when no HTTP answer came
+ * back. With the client's own backoff that is up to 3.5 s of patience.
+ */
+const LORE_NETWORK_RETRIES = 3;
+
 export const AlephaLoreDeploy = $module({
   name: "alepha.lore.deploy",
   imports: [AlephaServerLinksClient],
+  // A read that got no answer is sent again (#Q3910). A CI runner's
+  // connection to Lore's edge is reset now and then, seen as `read
+  // ECONNRESET` on the first read after an artifact push, on a request that
+  // never reached Lore. Writes are not covered: `LoreDeployer.start` and the
+  // artifact push each handle their own.
+  register: (alepha) => {
+    alepha.store.mut(httpClientOptions, (options) => ({
+      ...options,
+      networkRetries: LORE_NETWORK_RETRIES,
+    }));
+  },
   services: [
     LoreClientService,
     LoreTokenStore,
