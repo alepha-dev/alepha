@@ -14,6 +14,7 @@ import {
   useClient,
   useInject,
   useQuery,
+  useQueryClient,
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -34,6 +35,7 @@ import { useEffect, useState } from "react";
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
 import { currentQuestAtom } from "../../../atoms/currentQuestAtom.ts";
+import { isRefresh, liveRefresh } from "../../shared/liveRefresh.ts";
 import { useQuestMutations } from "../../shared/useQuestMutations.ts";
 import { useCurrentEpicRefs } from "../epics/useCurrentEpicRefs.ts";
 import {
@@ -129,6 +131,64 @@ const QuestView = (props: QuestViewProps) => {
       },
       [questApi, quest.id],
     ).data ?? NO_QUESTLINE;
+
+  // The page keeps itself current (#Q3860): a tab return reads the quest
+  // again, and an in-progress quest is read every 15 s while visible, so an
+  // agent ticking objectives or completing it shows without F5. The page
+  // mount only: the board's sheet and the questline popup are glances.
+  //
+  // Keyed `["quest", projectId, shortId]`, which the route loader seeds, so
+  // the first paint is the loader's quest and no request follows it.
+  //
+  // ⚠️ Never over an edit: while the edit sheet, the completion dialog or a
+  // comment draft is open the query is disabled, so neither the poll nor the
+  // tab-return read sends anything, and a read already in flight is held
+  // back until the edit closes, so nothing being typed is replaced.
+  const [drafting, setDrafting] = useState(false);
+  const editing = showDialog || showCompleteDialog || drafting;
+  const queries = useQueryClient();
+  const refresh = liveRefresh(quest.metadata.status === "in_progress");
+  const latest = useQuery(
+    {
+      key: ["quest", quest.projectId, quest.shortId],
+      enabled: (props.context ?? "page") === "page" && !editing,
+      initialData: props.quest,
+      ...refresh,
+      handler: () =>
+        questApi.getQuestByShortId({
+          params: { projectId: quest.projectId, shortId: quest.shortId },
+        }),
+      // Quiet: a missed refresh leaves the page as it was, which is fine.
+      onError: () => {},
+      // A comment does not move the quest's `updatedAt`, so the thread is
+      // read again with each refresh rather than on a timer of its own.
+      onSuccess: () => queries.invalidate(["quest-comments", quest.id]),
+    },
+    [questApi, quest.projectId, quest.shortId],
+  ).data;
+  const [appliedLatest, setAppliedLatest] = useState(latest);
+  if (
+    (props.context ?? "page") === "page" &&
+    latest &&
+    latest !== appliedLatest &&
+    !editing &&
+    latest.id === quest.id
+  ) {
+    setAppliedLatest(latest);
+    if (isRefresh(latest, quest)) {
+      setQuest(latest);
+    }
+  }
+  // The breadcrumb and the route read `currentQuestAtom`: it follows a
+  // refreshed quest. In an effect, since it is a store write.
+  useEffect(() => {
+    if ((props.context ?? "page") !== "page" || !appliedLatest) return;
+    const current = alepha.store.get(currentQuestAtom);
+    if (current?.id !== appliedLatest.id) return;
+    if (isRefresh(appliedLatest, current)) {
+      alepha.store.set(currentQuestAtom, appliedLatest);
+    }
+  }, [alepha, appliedLatest, props.context]);
 
   const [project] = useStore(currentProjectAtom);
   // Read fresh, not the loader's snapshot (#Q3759): an epic readied after
@@ -893,7 +953,7 @@ const QuestView = (props: QuestViewProps) => {
 
               {/* Discussion: the quest's history events and its comments in
                   one feed. Collapsible like its siblings, open by default. */}
-              <QuestDiscussion quest={quest} />
+              <QuestDiscussion quest={quest} onDraftChange={setDrafting} />
             </div>
 
             {/* The card mount stacks the rail under the body: a drawer is a

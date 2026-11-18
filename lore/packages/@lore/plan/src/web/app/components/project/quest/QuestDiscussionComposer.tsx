@@ -4,7 +4,7 @@ import { useAction, useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { QuestCommentController } from "../../../../../api/controllers/QuestCommentController.ts";
 import type { QuestCommentResource } from "../../../../../api/schemas/questCommentResourceSchema.ts";
@@ -20,6 +20,11 @@ export interface QuestDiscussionComposerProps {
    */
   members: string[];
   onPosted: (comment: QuestCommentResource) => void;
+  /**
+   * Called when the draft goes from empty to written and back: the quest
+   * page holds its refresh while a comment is being typed (#Q3860).
+   */
+  onDraftChange?: (drafting: boolean) => void;
 }
 
 /**
@@ -60,6 +65,13 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
   const auth = useAuth();
   const [project] = useStore(currentProjectAtom);
   const [body, setBody] = useState("");
+  const drafting = body.trim() !== "";
+  const onDraftChange = props.onDraftChange;
+  useEffect(() => {
+    onDraftChange?.(drafting);
+  }, [drafting, onDraftChange]);
+  // A draft left on a page being left must not hold the next one's refresh.
+  useEffect(() => () => onDraftChange?.(false), [onDraftChange]);
 
   // A `useAction` (#E59, #Q2328): a refused post is the server's sentence,
   // toasted by the root `ActionErrorToaster`, where it used to be an
