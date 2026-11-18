@@ -27,7 +27,7 @@ import {
   SquareCheckBig,
   Workflow,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { EpicController } from "../../../../../api/controllers/EpicController.ts";
 import type { EpicReviewController } from "../../../../../api/controllers/EpicReviewController.ts";
@@ -37,6 +37,7 @@ import type { EpicReviewAnswer } from "../../../../../api/schemas/epicReviewAnsw
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
 import { currentEpicAtom } from "../../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../../atoms/currentEpicCountAtom.ts";
+import { isRefresh, liveRefresh } from "../../shared/liveRefresh.ts";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import EpicShelveControl from "./EpicShelveControl.tsx";
@@ -141,6 +142,58 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     setEpic(updated);
   };
 
+  // The page keeps itself current (#Q3860), as the quest page does: the
+  // epic and its quests are read again on a tab return, and every 15 s while
+  // the epic is in progress and the page visible. Never while the edit sheet
+  // is open, and a read that lands then waits for it to close. The epic's
+  // key is seeded by the route loader, so the first paint asks nothing.
+  const refresh = liveRefresh(epic.status === "in_progress");
+  const latest = useQuery(
+    {
+      key: ["epic", epic.projectId, epic.number],
+      enabled: !editOpen,
+      initialData: props.epic,
+      ...refresh,
+      handler: () =>
+        epicApi.getEpicByNumber({
+          params: { projectId: epic.projectId, number: epic.number },
+        }),
+      onError: () => {},
+    },
+    [epicApi, epic.projectId, epic.number],
+  ).data;
+  const [seenLatest, setSeenLatest] = useState(latest);
+  // What a refresh replaced, for the store writes the effect below makes.
+  const [refreshed, setRefreshed] = useState<{
+    epic: EpicResource;
+    from: EpicResource["status"];
+  }>();
+  if (latest && latest !== seenLatest && !editOpen) {
+    setSeenLatest(latest);
+    if (latest.id === epic.id && isRefresh(latest, epic)) {
+      setEpic(latest);
+      setRefreshed({ epic: latest, from: epic.status });
+    }
+  }
+  // The store follows a refresh, in an effect since these are writes: the
+  // breadcrumb leaf reads `currentEpicAtom`, and the sidebar's draft badge
+  // moves when someone else readied the epic, as `applyStatusChange` does
+  // for a change made here.
+  useEffect(() => {
+    if (!refreshed) return;
+    const wasDraft = refreshed.from === "draft";
+    const isDraft = refreshed.epic.status === "draft";
+    if (wasDraft !== isDraft) {
+      const count = alepha.store.get(currentEpicCountAtom)?.count ?? 0;
+      alepha.store.set(currentEpicCountAtom, {
+        count: Math.max(0, count + (isDraft ? 1 : -1)),
+      });
+    }
+    if (alepha.store.get(currentEpicAtom)?.id === refreshed.epic.id) {
+      alepha.store.set(currentEpicAtom, refreshed.epic);
+    }
+  }, [alepha, refreshed]);
+
   const questsKey = ["quests", project?.id, { epicId: epic.id }];
 
   // The epic's own quest set: shelved and draft-gated quests included.
@@ -156,8 +209,9 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const questsQuery = useQuery(
     {
       key: questsKey,
-      enabled: !!project,
+      enabled: !!project && !editOpen,
       keepPreviousData: true,
+      ...refresh,
       handler: async () => {
         const projectId = project?.id as number;
         const [rest, shelved] = await Promise.all([

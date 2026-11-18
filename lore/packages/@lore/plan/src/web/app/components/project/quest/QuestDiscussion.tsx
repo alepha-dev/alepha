@@ -18,6 +18,11 @@ import QuestDiscussionEvent from "./QuestDiscussionEvent.tsx";
 
 export interface QuestDiscussionProps {
   quest: QuestResource;
+  /**
+   * Told whether the composer holds an unsent draft, so the page holds its
+   * refresh while one is being written (#Q3860).
+   */
+  onDraftChange?: (drafting: boolean) => void;
 }
 
 /**
@@ -124,6 +129,7 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
           // compares against: a roster built any other way disagrees with
           // the renderer and the notifier about what `@nfo` is.
           members={users.map((user) => mentionHandle(user))}
+          onDraftChange={props.onDraftChange}
           // Written into the thread's cache: the server already answered
           // with the row.
           onPosted={(comment) => {

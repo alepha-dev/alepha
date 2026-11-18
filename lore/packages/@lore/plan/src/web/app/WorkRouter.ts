@@ -13,6 +13,7 @@ import {
   ReportsUrlQuery,
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
+import { QueryCache } from "alepha/react";
 import { $page, NotFound, Redirection } from "alepha/react/router";
 import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -191,6 +192,11 @@ export class WorkRouter {
         },
       });
       this.alepha.store.set(currentQuestAtom, quest);
+      // Seeds the page's own refresh query (#Q3860), so it starts fresh on
+      // the quest just read instead of asking for it a second time.
+      this.alepha
+        .inject(QueryCache)
+        .set(["quest", project.id, params.shortId], quest);
       return { quest };
     },
     onLeave: () => {
@@ -314,6 +320,10 @@ export class WorkRouter {
       // The breadcrumb leaf lives in `ProjectView`, the layout above this
       // route, which can only see `epicNumber`. See `currentEpicAtom`.
       this.alepha.store.set(currentEpicAtom, epic);
+      // Seeds the page's own refresh query (#Q3860), as for a quest.
+      this.alepha
+        .inject(QueryCache)
+        .set(["epic", project.id, params.epicNumber], epic);
       return { epic };
     },
     onLeave: () => {
