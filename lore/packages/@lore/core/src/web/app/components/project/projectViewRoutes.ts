@@ -155,13 +155,13 @@ export const ROUTES_FULL_WIDTH = new Set([
   // that decision lives.
   "projectQuestGraph",
   // Plan's Requirements (#E153): three list pages that own their scroll,
-  // and the persona and use case pages.
+  // and the persona and use case pages. Not the test book: a centred
+  // document with no scroll of its own, which the shell scrolls.
   "projectRequirements",
   "projectUseCases",
   "projectPersonas",
   "projectPersona",
   "projectUseCase",
-  "projectRequirementsTestBook",
   ...ROUTES_APP,
   ...ROUTES_SETTINGS,
 ]);
