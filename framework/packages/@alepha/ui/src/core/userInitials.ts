@@ -89,14 +89,42 @@ export type UserNameParts = Pick<
 >;
 
 /**
+ * A first or last name in capitalized form: the first letter of each word
+ * upper case, the rest lower case. A word starts the name or follows a
+ * space, a hyphen or an apostrophe, so "LEFEVRE" is "Lefevre", "jean-pierre"
+ * is "Jean-Pierre" and "o'brien" is "O'Brien". Accents follow the case
+ * ("ÉLODIE" is "Élodie").
+ *
+ * Applied at display time only: the stored name never changes. It is wrong
+ * for a particle written lower case ("de", "van") and for an inner capital
+ * ("McDonald"); the choice is that every name on screen looks alike.
+ */
+// #Q3886: forced on purpose, and revertable. Lore's own `displayName`
+// (`lore/packages/@lore/core/src/web/app/services/displayName.ts`) does the
+// same; drop the `.map(capitalizeName)` in both to show names as typed again.
+export const capitalizeName = (name: string): string =>
+  name
+    .toLocaleLowerCase()
+    .replace(
+      /(^|[\s'\u2019-])(\p{L})/gu,
+      (_, before: string, letter: string) =>
+        `${before}${letter.toLocaleUpperCase()}`,
+    );
+
+/**
  * The one way a person is named on screen: the first and last name, else
  * the username, else the email. Empty when there is nothing to name them by.
  *
  * A user with a name is shown by that name alone: the username is a login
- * handle, not how a person introduces themselves.
+ * handle, not how a person introduces themselves. The first and last name
+ * are capitalized ({@link capitalizeName}); a username and an email are
+ * handles, shown as typed.
  */
 export const userDisplayName = (user: UserNameParts): string =>
-  [user.firstName?.trim(), user.lastName?.trim()].filter(Boolean).join(" ") ||
+  [user.firstName?.trim(), user.lastName?.trim()]
+    .filter((part): part is string => !!part)
+    .map(capitalizeName)
+    .join(" ") ||
   user.username?.trim() ||
   user.email?.trim() ||
   "";
