@@ -14,6 +14,7 @@ import {
   organizationConfigAtom,
   OrganizationPolicyProvider,
 } from "alepha/api/organizations";
+import { AlephaApiWebhooks } from "alepha/api/webhooks";
 import { DatabaseProvider, DatabaseUrlParser } from "alepha/orm";
 
 import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
@@ -192,6 +193,11 @@ export const LoreCoreApi = $module({
     // Registering this module installs the grants provider used by
     // `$ownsOrganization`, before the controllers whose gates depend on it.
     AlephaApiOrganizations,
+    // Webhook channels (#Q3900): a subscription calls an endpoint of the
+    // framework's `$webhook`. Brings `webhook_endpoints`,
+    // `webhook_deliveries`, its admin routes and its jobs; its purge runs on
+    // `0 * * * *`, which the Worker already has.
+    AlephaApiWebhooks,
   ],
   services: [
     // Every bucket of the package, at boot: an upload looks its bucket up

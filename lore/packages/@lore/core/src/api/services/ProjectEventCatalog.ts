@@ -1,4 +1,5 @@
-import { AlephaError } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
+import { $webhook, WebhookService } from "alepha/api/webhooks";
 
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import type { ProjectEventFields } from "../schemas/projectEventFieldsSchema.ts";
@@ -10,7 +11,22 @@ import type { ProjectEventFields } from "../schemas/projectEventFieldsSchema.ts"
  * `event_catalog` and `event_list` all read this one list.
  */
 export class ProjectEventCatalog {
+  /**
+   * What a webhook channel receives as `data` (#Q3900): the project, the
+   * subject, the event's fields and its link.
+   */
+  public static readonly WEBHOOK_DATA = z.object({
+    project: z.object({ id: z.integer(), title: z.string() }),
+    subject: z.object({ kind: z.string(), id: z.string().nullable() }),
+    fields: z.record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean(), z.null()]),
+    ),
+    url: z.string(),
+  });
+
   protected readonly definitions = new Map<string, ProjectEventDefinition>();
+  protected readonly webhooks = $inject(WebhookService);
 
   public register(definition: ProjectEventDefinition): void {
     if (this.definitions.has(definition.name))
@@ -22,6 +38,20 @@ export class ProjectEventCatalog {
         `Project event '${definition.name}' filters on '${definition.filter.field}', which it does not carry`,
       );
     this.definitions.set(definition.name, definition);
+    // Declared to the framework as a `$webhook` (#Q3900), so its catalog
+    // and OpenAPI describe it. A name the framework's convention refuses
+    // (`host.credential_invalid` has an underscore) is still delivered
+    // under its own name, only not declared.
+    // Registered by hand: a primitive created outside a class field gets
+    // no init of its own.
+    if (this.webhooks.namePattern.test(definition.name))
+      this.webhooks.register(
+        $webhook({
+          name: definition.name,
+          description: `${definition.label}, in a Lore project.`,
+          schema: ProjectEventCatalog.WEBHOOK_DATA,
+        }) as never,
+      );
   }
 
   public all(): ProjectEventDefinition[] {

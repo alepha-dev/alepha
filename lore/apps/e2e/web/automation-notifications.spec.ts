@@ -211,15 +211,15 @@ test.describe("Every notification through automations", () => {
       // A Discord channel, added in Settings: its test post goes to memory.
       await page.goto(`/${slug}/automations/channels`);
       await page
-        .getByRole("button", { name: "Add a Discord channel", exact: true })
+        .getByRole("button", { name: "Add a channel", exact: true })
         .click();
-      const form = page.getByTestId("automation-channel-form");
+      const form = page.getByTestId("notification-channel-form");
       await form.getByRole("textbox", { name: "Name" }).fill("alerts");
       await form
         .getByRole("textbox", { name: "Discord webhook URL" })
         .fill("https://discord.com/api/webhooks/1234567890/e2e-token_value");
       await form.getByRole("button", { name: "Save", exact: true }).click();
-      const row = page.getByTestId("automation-channel-alerts");
+      const row = page.getByTestId("notification-channel-alerts");
       await expect(row).toBeVisible();
       await expect(row).not.toContainText("e2e-token_value");
       const channels = (await (

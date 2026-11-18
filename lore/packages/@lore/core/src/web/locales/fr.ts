@@ -189,30 +189,44 @@ export default {
   "automation.channels.title": "Canaux",
   "automation.channels.description":
     "Où les automatisations publient : In-app et E-mail, intégrés, et les canaux Discord que vous ajoutez. Une règle en nomme un ou plusieurs.",
-  "automation.channels.add": "Ajouter un canal Discord",
-  "automation.channels.name": "Nom",
-  "automation.channels.url": "URL du webhook Discord",
-  "automation.channels.replaceUrl":
-    "Nouvelle URL du webhook (vide pour garder l'actuelle)",
-  "automation.channels.urlHelp":
-    "L'enregistrement publie un message de test dans le canal. L'URL n'est plus jamais affichée.",
-  "automation.channels.save": "Enregistrer",
-  "automation.channels.cancel": "Annuler",
-  "automation.channels.edit": "Renommer ou remplacer l'URL",
-  "automation.channels.delete": "Supprimer",
-  "automation.channels.deleteTitle": "Supprimer le canal $1 ?",
-  "automation.channels.deleteDescription":
-    "Les règles qui le notifient cessent d'y publier et gardent leurs autres canaux.",
-  "automation.channels.builtIn": "Intégré",
-  "automation.channels.kind.inbox": "In-app",
-  "automation.channels.kind.email": "E-mail",
-  "automation.channels.kind.discord": "Discord",
   "automation.preset.deploy-failed.title": "Échec du déploiement",
   "automation.preset.deploy-failed.description":
     "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",
   "automation.previous": "Précédent",
   "automation.next": "Suivant",
 
+  "notifications.channels.add": "Ajouter un canal",
+  "notifications.channels.kind": "Type",
+  "notifications.channels.kind.inbox": "Dans l'application",
+  "notifications.channels.kind.email": "E-mail",
+  "notifications.channels.kind.discord": "Discord",
+  "notifications.channels.kind.webhook": "Webhook",
+  "notifications.channels.name": "Nom",
+  "notifications.channels.discordUrl": "URL du webhook Discord",
+  "notifications.channels.webhookUrl": "URL appelée par Lore",
+  "notifications.channels.replaceUrl":
+    "Nouvelle URL (laisser vide pour garder l'actuelle)",
+  "notifications.channels.discordHelp":
+    "Lore publie un message de test pour la vérifier, puis ne la montre plus jamais.",
+  "notifications.channels.webhookHelp":
+    "Lore signe chaque appel (Standard Webhooks) et le réessaie en cas d'échec. Les adresses privées et de bouclage sont refusées. Un nom d'hôte qui pointe vers une adresse privée n'est pas détecté sur Cloudflare Workers.",
+  "notifications.channels.save": "Enregistrer",
+  "notifications.channels.cancel": "Annuler",
+  "notifications.channels.edit": "Renommer ou remplacer l'URL",
+  "notifications.channels.delete": "Supprimer",
+  "notifications.channels.deleteTitle": "Supprimer le canal $1 ?",
+  "notifications.channels.deleteDescription":
+    "Plus personne n'y est notifié : ses notifications sont supprimées avec lui.",
+  "notifications.channels.builtIn": "Intégré",
+  "notifications.channels.switchedOff": "Désactivé",
+  "notifications.channels.rotate": "Nouveau secret",
+  "notifications.channels.rotateTitle":
+    "Donner un nouveau secret de signature à $1 ?",
+  "notifications.channels.rotateDescription":
+    "Le secret actuel continue de signer pendant 24 heures, pour que le récepteur bascule sans manquer d'appel.",
+  "notifications.channels.secretTitle": "Secret de signature",
+  "notifications.channels.secretHelp":
+    "Copiez-le maintenant : il ne sera plus affiché. Le récepteur vérifie la signature de chaque appel avec lui.",
   "permission.group.subscription": "Notifications",
   "permission.subscription.read": "Voir qui est notifié de quoi",
   "permission.subscription.manage":
