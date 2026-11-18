@@ -80,7 +80,7 @@ Reaching the same end state from a session reused per worker took 2665ms against
 - `errors.spec.ts` - regression guard for the inbox render loop (the ingest path lives in `apps.spec.ts`)
 - `hosts.spec.ts` - a host's lifecycle in its home project's Settings ▸ Apps ▸ Hosts (create with the one-time secret, the console under `/:projectSlug/hosts/:hostSlug`, a switch that follows the server's answer, delete through the dialog that says nothing is undeployed; hosts have no account page since #E126) and the admin `/admin/hosts` list, which shows no credential. No machine connects here: that is #1624 and #1628
 - `quest.spec.ts` — quest lifecycle (open → accept → complete) + reminder UI
-- `attachment-html-preview.spec.ts` - an attached HTML file opens rendered in a sandboxed frame: its own script reports that cookies, storage and the API are out of reach, and the Code tab scrolls on both axes inside the dialog
+- `attachment-html-preview.spec.ts` - an attached HTML file opens rendered in a sandboxed frame: its own script reports that cookies, storage and the API are out of reach, the Code tab scrolls on both axes inside the dialog, and maximized the dialog fills the viewport with the frame and the code view grown to it
 - `quest-comments.spec.ts` — the Discussion: post / list / edit / delete and the membership gate
 - `feedback.spec.ts` — feedback submit → accept → link quests → status progression (renamed from `petition.spec.ts`)
 - `register.spec.ts` — registration form + email verification

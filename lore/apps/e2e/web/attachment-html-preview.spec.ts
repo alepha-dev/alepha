@@ -135,5 +135,63 @@ test.describe("Attachment viewer - an HTML file", () => {
         dialogInView: true,
       });
     });
+
+    // Maximized (#Q3887), the dialog fills the viewport, and both faces of
+    // the file follow it: the layout is the browser's, so it is measured
+    // here rather than read back from a class in jsdom.
+    await test.step("maximized, the frame and the code view grow with the dialog", async () => {
+      const pre = dialog.getByTestId("attachment-text-preview").locator("pre");
+      const before = await pre.evaluate(
+        (el) => el.getBoundingClientRect().height,
+      );
+
+      await dialog.getByTestId("attachment-maximize").click();
+      await expect(dialog.getByTestId("attachment-maximize")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+
+      const measure = () =>
+        page.evaluate(() => {
+          const box = document
+            .querySelector('[role="dialog"]')!
+            .getBoundingClientRect();
+          return {
+            width: box.width / window.innerWidth,
+            height: box.height / window.innerHeight,
+            inView:
+              box.right <= window.innerWidth &&
+              box.bottom <= window.innerHeight &&
+              box.top >= 0,
+          };
+        });
+      // The dialog transitions its size (100ms): every measure is polled.
+      await expect
+        .poll(async () => (await measure()).width)
+        .toBeGreaterThan(0.9);
+      await expect
+        .poll(async () => (await measure()).height)
+        .toBeGreaterThan(0.9);
+      expect((await measure()).inView).toBe(true);
+
+      await expect
+        .poll(() => pre.evaluate((el) => el.getBoundingClientRect().height))
+        .toBeGreaterThan(before);
+      // Still its own scroller, so its scrollbars stay in view.
+      expect(
+        await pre.evaluate((el) => el.scrollHeight > el.clientHeight),
+      ).toBe(true);
+
+      await dialog.getByRole("radio", { name: "Preview" }).click();
+      const frame = dialog.getByTestId("attachment-html-preview");
+      // The unmaximized frame is 70vh tall.
+      await expect
+        .poll(() =>
+          frame.evaluate(
+            (el) => el.getBoundingClientRect().height / window.innerHeight,
+          ),
+        )
+        .toBeGreaterThan(0.75);
+    });
   });
 });

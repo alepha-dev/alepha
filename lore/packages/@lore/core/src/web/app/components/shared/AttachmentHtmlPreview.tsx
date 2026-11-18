@@ -1,8 +1,15 @@
+import { cn } from "@alepha/ui";
+
 export interface AttachmentHtmlPreviewProps {
   /**
    * The file's own text, already fetched by the viewer.
    */
   html: string;
+  /**
+   * Fill the parent's height instead of 70vh: the viewer is maximized
+   * (#Q3887).
+   */
+  fill?: boolean;
   /**
    * The file name, as the frame's accessible name.
    */
@@ -39,7 +46,10 @@ const AttachmentHtmlPreview = (props: AttachmentHtmlPreviewProps) => (
     title={props.title}
     sandbox="allow-scripts"
     srcDoc={props.html}
-    className="border-border h-[70vh] w-full rounded-md border bg-white"
+    className={cn(
+      "border-border w-full rounded-md border bg-white",
+      props.fill ? "h-full" : "h-[70vh]",
+    )}
   />
 );
 
