@@ -1327,20 +1327,35 @@ describe("Alepha CLI E2E", () => {
       const alone = join(WORK_DIR, "compiled");
       await rm(alone, { recursive: true, force: true });
       await mkdir(alone, { recursive: true });
-      await copyFile(binary, join(alone, "e2e"));
-      await chmod(join(alone, "e2e"), 0o755);
+      // The copy keeps the `.exe` on Windows, and `cmd.exe` (what
+      // `shell: true` spawns there) takes neither a `./` path nor a file
+      // whose extension is not in PATHEXT (#Q3857).
+      const name = isWindows ? "e2e.exe" : "e2e";
+      await copyFile(binary, join(alone, name));
+      await chmod(join(alone, name), 0o755);
 
       const port = await freePort();
       const base = `http://127.0.0.1:${port}`;
-      const server = startProcess("./e2e", alone, {
-        SERVER_PORT: String(port),
-        SERVER_HOST: "127.0.0.1",
-        NODE_ENV: "production",
-        APP_SECRET: "e2e-only-not-a-real-secret-0123456789abcdef",
-      });
+      const server = startProcess(
+        isWindows ? `.\\${name}` : `./${name}`,
+        alone,
+        {
+          SERVER_PORT: String(port),
+          SERVER_HOST: "127.0.0.1",
+          NODE_ENV: "production",
+          APP_SECRET: "e2e-only-not-a-real-secret-0123456789abcdef",
+        },
+      );
 
       try {
-        const page = await fetchWithRetry(`${base}/`, 30, 500);
+        const page = await fetchWithRetry(`${base}/`, 30, 500).catch(
+          (error: unknown) => {
+            // A binary that never answers says why on its own output.
+            console.log("BINARY STDOUT:", server.stdout().slice(-2000));
+            console.log("BINARY STDERR:", server.stderr().slice(-2000));
+            throw error;
+          },
+        );
         expect(page.status).toBe(200);
         const entry = (await page.text()).match(
           /<script[^>]*src="(\/[^"]+\.js)"/,
@@ -1376,7 +1391,7 @@ describe("Alepha CLI E2E", () => {
         await server.kill();
       }
 
-      expect(await readdir(alone)).toEqual(["e2e"]);
+      expect(await readdir(alone)).toEqual([name]);
     });
   });
 });
