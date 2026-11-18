@@ -3,7 +3,6 @@ import { type Infer, z } from "alepha";
 import { automationActionSchema } from "./automationActionSchema.ts";
 import { automationFilterValueSchema } from "./automationFilterValueSchema.ts";
 import { automationGraphNodeIdSchema } from "./automationGraphNodeIdSchema.ts";
-import { automationGraphPositionSchema } from "./automationGraphPositionSchema.ts";
 import { automationGuardSchema } from "./automationGuardSchema.ts";
 import { AutomationVocabulary } from "./AutomationVocabulary.ts";
 
@@ -25,7 +24,6 @@ export const automationGraphNodeSchema = z
     kind: z.enum(AutomationVocabulary.KINDS),
     type: z.string().min(1).max(128),
     config: z.record(z.string().max(64), z.any()),
-    position: automationGraphPositionSchema.optional(),
     /**
      * A source's own switch (#Q3806). Only a source carries it.
      */

@@ -116,12 +116,7 @@ describe("Bounded automation run evidence", () => {
       status: "queued",
       snapshot: {
         // The subgraph its source reaches: the whole of a one-source rule.
-        rule: {
-          ...rule.rule,
-          nodes: rule.rule.nodes.map(
-            ({ position: _position, ...node }) => node,
-          ),
-        },
+        rule: rule.rule,
         sourceNode: "source",
         inputs: { title: "Safe", feedback_id: 12 },
         counts: { selected: 1, matched: 1, executed: 0, totalIsExact: true },

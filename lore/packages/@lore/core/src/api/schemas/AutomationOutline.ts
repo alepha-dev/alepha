@@ -673,9 +673,8 @@ export class AutomationOutline {
     node: AutomationOutlineNew & { kind: AutomationGraphNode["kind"] },
   ): AutomationOutlineEdit {
     const id = this.id(graph, node.type);
-    const { position: _position, ...rest } = node as AutomationGraphNode;
     return {
-      graph: { ...graph, nodes: [...graph.nodes, { ...rest, id }] },
+      graph: { ...graph, nodes: [...graph.nodes, { ...node, id }] },
       id,
     };
   }

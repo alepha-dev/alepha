@@ -1015,7 +1015,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     expect(limited.variables[0]).not.toHaveProperty("value");
   });
 
-  it("authors graphs: the compact form, a refusal that names the source, positions, and one source switched", async ({
+  it("authors graphs: the compact form, a refusal that names the source, no position, and one source switched", async ({
     expect,
   }) => {
     const notify = {
@@ -1041,7 +1041,6 @@ describe("Automation MCP transport uses shared application policy", () => {
       "release.published",
       "action-1",
     ]);
-    expect(compact.rule?.nodes.every((node) => node.position)).toBe(true);
     expect(compact.sources?.map((source) => source.summary)).toEqual([
       "quest.completed -> notify inbox",
       "release.published -> notify inbox",
@@ -1062,17 +1061,21 @@ describe("Automation MCP transport uses shared application policy", () => {
         }),
       ),
     ).toContain("write nodes and edges to give that source its own action");
-    // Some positions and not others: refused.
+    // A graph stores no drawing (#Q3852): a node posted with a position is
+    // refused by the strict schema.
     const line = automationLine(rule());
     expect(
       failed(
         await call("automation_create", {
-          title: "Half laid out",
-          nodes: [line.nodes[0], { ...line.nodes[1], position: undefined }],
+          title: "Drawn",
+          nodes: [
+            line.nodes[0],
+            { ...line.nodes[1], position: { x: 0, y: 0 } },
+          ],
           edges: line.edges,
         }),
       ),
-    ).toContain("Give every node a position, or none");
+    ).toContain("position");
     // One source switched off, through its own tool.
     const off = value(
       await call("automation_source_set", {

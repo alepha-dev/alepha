@@ -36,11 +36,6 @@ export class AutomationGraph {
    */
   public static readonly MAX_ACTIONS_PER_SOURCE = 5;
   public static readonly MAX_CHANNELS = 8;
-  /**
-   * The layout's grid, in canvas units.
-   */
-  public static readonly COLUMN_WIDTH = 280;
-  public static readonly ROW_HEIGHT = 140;
 
   protected readonly tokens = new AutomationTemplateTokens();
   protected readonly providers: AutomationGraphNameProvider[] = [
@@ -151,8 +146,8 @@ export class AutomationGraph {
   }
 
   /**
-   * What a run from one source can walk: that source and what it reaches,
-   * positions stripped. A run's snapshot holds this, not the whole graph.
+   * What a run from one source can walk: that source and what it reaches.
+   * A run's snapshot holds this, not the whole graph.
    */
   public subgraph(
     graph: AutomationGraphValue,
@@ -161,9 +156,7 @@ export class AutomationGraph {
     const scope = this.reachable(graph, sourceId);
     return {
       version: 2,
-      nodes: graph.nodes
-        .filter((node) => scope.has(node.id))
-        .map(({ position: _position, ...node }) => node),
+      nodes: graph.nodes.filter((node) => scope.has(node.id)),
       edges: graph.edges.filter(
         (edge) => scope.has(edge.from) && scope.has(edge.to),
       ),
@@ -761,43 +754,6 @@ export class AutomationGraph {
           );
         return { ...node, config: { ...config, channels: named } };
       }),
-    };
-  }
-
-  /**
-   * A layered left-to-right layout (#Q3805), pure and browser-safe: a
-   * node's column is the longest path to it from a source, its row its
-   * place in the walk order within that column. The one layout: the preset
-   * builder, a graph saved without positions, the canvas's Tidy and the
-   * preset thumbnails all use it.
-   */
-  public static layout(graph: AutomationGraphValue): AutomationGraphValue {
-    const graphs = new AutomationGraph();
-    const order = graphs.order(graph);
-    const column = new Map<string, number>();
-    for (const id of order) {
-      const before = graphs
-        .incoming(graph, id)
-        .map((edge) => column.get(edge.from) ?? 0);
-      column.set(id, before.length ? Math.max(...before) + 1 : 0);
-    }
-    const rows = new Map<number, number>();
-    const at = new Map<string, { x: number; y: number }>();
-    for (const id of order) {
-      const x = column.get(id) ?? 0;
-      const y = rows.get(x) ?? 0;
-      rows.set(x, y + 1);
-      at.set(id, {
-        x: x * AutomationGraph.COLUMN_WIDTH,
-        y: y * AutomationGraph.ROW_HEIGHT,
-      });
-    }
-    return {
-      ...graph,
-      nodes: graph.nodes.map((node) => ({
-        ...node,
-        position: at.get(node.id) ?? { x: 0, y: 0 },
-      })),
     };
   }
 

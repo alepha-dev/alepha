@@ -23,7 +23,7 @@ describe("Stock presets as graphs", () => {
     await alepha.stop();
   });
 
-  it("builds every stock preset as a valid, laid-out graph", ({ expect }) => {
+  it("builds every stock preset as a valid graph", ({ expect }) => {
     const registry = alepha.inject(AutomationPresetRegistry);
     const entries = alepha.inject(AutomationCatalog).entries();
     const graphs = new AutomationGraph();
@@ -55,7 +55,6 @@ describe("Stock presets as graphs", () => {
         preset: preset.key,
         issues: [],
       });
-      expect(graph.nodes.every((node) => node.position)).toBe(true);
       expect(graph.nodes.filter((node) => node.kind === "source")).toHaveLength(
         1,
       );

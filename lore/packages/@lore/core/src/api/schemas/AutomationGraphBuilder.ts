@@ -1,6 +1,5 @@
 import type { AutomationAction } from "./automationActionSchema.ts";
 import type { AutomationFilterValue } from "./automationFilterValueSchema.ts";
-import { AutomationGraph } from "./AutomationGraph.ts";
 import type { AutomationGraphEdge } from "./automationGraphEdgeSchema.ts";
 import type { AutomationGraphNode } from "./automationGraphNodeSchema.ts";
 import type { AutomationGraphValue } from "./automationGraphSchema.ts";
@@ -10,8 +9,7 @@ import { AutomationVocabulary } from "./AutomationVocabulary.ts";
 /**
  * The small builder presets are written with (#Q3805), browser-safe: a
  * straight line from one source, through an optional read and condition,
- * to its actions, each wired to the next, laid out by
- * {@link AutomationGraph.layout}. Node ids are fixed: `source`, `read`,
+ * to its actions, each wired to the next. Node ids are fixed: `source`, `read`,
  * `condition`, `action-1` ...
  */
 export class AutomationGraphBuilder {
@@ -60,12 +58,12 @@ export class AutomationGraphBuilder {
       nodes.push({ id, kind: "action", type: kind, config });
       wire(id);
     }
-    return AutomationGraph.layout({ version: 2, nodes, edges });
+    return { version: 2, nodes, edges };
   }
 
   /**
    * "When X or Y, do Z" in one call (#Q3809): every source wired to every
-   * action, laid out. Ids are the given ones, or the type with its dots
+   * action. Ids are the given ones, or the type with its dots
    * for a source (`host.offline`) and `action-N` for an action. It invents
    * no per-source copy: an action naming a field one source lacks is the
    * validator's refusal.
@@ -91,7 +89,7 @@ export class AutomationGraphBuilder {
       type: action.type,
       config: action.config,
     }));
-    return AutomationGraph.layout({
+    return {
       version: 2,
       nodes: [...sources, ...actions],
       edges: sources.flatMap((source) =>
@@ -101,7 +99,7 @@ export class AutomationGraphBuilder {
           to: action.id,
         })),
       ),
-    });
+    };
   }
 }
 

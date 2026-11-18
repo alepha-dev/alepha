@@ -194,10 +194,6 @@ export {
   automationGraphEdgeSchema,
   type AutomationGraphEdge,
 } from "../api/schemas/automationGraphEdgeSchema.ts";
-export {
-  automationGraphPositionSchema,
-  type AutomationGraphPosition,
-} from "../api/schemas/automationGraphPositionSchema.ts";
 export { automationGraphNodeIdSchema } from "../api/schemas/automationGraphNodeIdSchema.ts";
 export { AutomationTemplateTokens } from "../api/schemas/AutomationTemplateTokens.ts";
 export {
