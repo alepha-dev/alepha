@@ -437,6 +437,12 @@ jobs:
   # `framework-e2e-apps`. It blocks the framework deploy, on purpose, against
   # `apps/ui/e2e/a11y-baseline.ts`: a finding missing from it fails, and so
   # does an entry no finding matches any more.
+  #
+  # Three shards (#Q3870): the scan alone took 5.5 to 7 min. It is one spec
+  # file, which Playwright gives whole to one shard unless the config is
+  # `fullyParallel`: `playwright.a11y.config.ts` sets it, for this. Each test
+  # is one page checked against its own baseline entries, so a shard needs
+  # nothing from another.
   framework-e2e-a11y:
     if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
     runs-on: ubuntu-latest
@@ -444,6 +450,10 @@ jobs:
     defaults:
       run:
         working-directory: framework
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -468,7 +478,7 @@ jobs:
 
       - name: Run Accessibility Scan
         timeout-minutes: 22
-        run: yarn w ui e2e:a11y
+        run: yarn w ui e2e:a11y --shard=${{ matrix.shard }}/3
 
   # `yarn pack`s the workspace and installs the tarball into a throwaway
   # project, so a failure here means a packaging bug rather than a UI one.
@@ -552,6 +562,10 @@ jobs:
       - name: Conventions Check
         run: yarn check:conventions
 
+  # Six shards since #Q3870, from two. With no job waiting for a runner, a
+  # Verify run is as long as its longest job, and that was this one: 8.6 and
+  # 10.5 min for the two shards on run 44303211730, about a minute of it
+  # setup. Vitest shards by sha1 of the spec's path into equal counts.
   lore-test:
     if: contains(fromJSON('["all", "lore"]'), inputs.product || 'all')
     runs-on: ubuntu-26.04
@@ -562,7 +576,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -571,7 +585,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Test Project
-        run: yarn alepha test --shard ${{ matrix.shard }}/2
+        run: yarn alepha test --shard ${{ matrix.shard }}/6
 
   # ──────────────────────────────────────────────────────────────────────
   # Lore on Postgres (#Q3473): Lore's migrations/postgres applied to an empty
@@ -583,12 +597,20 @@ jobs:
   # failing the Lore gate, so it never holds a deploy back. Lore's raw SQL is
   # still SQLite-only in places (#E141); drop `continue-on-error` when E141
   # lands and this job is green.
+  #
+  # Three shards (#Q3870): not blocking is not the same as not waited for.
+  # `gate (lore)` needs this job, and at 9.4 min whole it was the second
+  # longest of the run. Each shard starts its own Postgres.
   # ──────────────────────────────────────────────────────────────────────
   lore-test-postgres:
     if: contains(fromJSON('["all", "lore"]'), inputs.product || 'all')
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     defaults:
       run:
         working-directory: lore
@@ -630,7 +652,7 @@ jobs:
       # picks up a new automation spec unasked; a spec for a new raw-SQL
       # module elsewhere needs adding here.
       - name: Test Raw SQL on Postgres
-        run: yarn alepha test --dialect postgres
+        run: yarn alepha test --dialect postgres --shard ${{ matrix.shard }}/3
         env:
           VITEST_ARGS: >-
             apps/lore/test/automation-
