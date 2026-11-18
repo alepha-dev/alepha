@@ -423,17 +423,6 @@ describe("Automation schedules and named selections", () => {
     },
   );
   // SQLite only on purpose: it reads SQLite's EXPLAIN QUERY PLAN.
-  it.skipIf(onPostgres)(
-    "uses the reminder due index to filter before its stable cap",
-    async ({ expect }) => {
-      const plan = await alepha
-        .inject(DatabaseProvider)
-        .execute(
-          sql`EXPLAIN QUERY PLAN SELECT id FROM quests WHERE project_id = ${project.id} AND deleted_at IS NULL AND completed_at IS NULL AND shelved_at IS NULL AND accepted_at IS NOT NULL AND accepted_by IS NOT NULL AND reminder_interval IS NOT NULL AND reminder_next_at IS NOT NULL AND reminder_next_at <= ${time.nowMillis()} ORDER BY reminder_next_at ASC, short_id ASC LIMIT 51`,
-        );
-      expect(JSON.stringify(plan)).toContain("quests_automation_reminders_idx");
-    },
-  );
   it("recompiles a shared cron and rearms only a changed schedule", async ({
     expect,
   }) => {

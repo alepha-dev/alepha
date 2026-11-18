@@ -433,8 +433,10 @@ export const quests = $entity({
   }),
   indexes: [
     {
-      name: "quests_automation_reminders_idx",
-      columns: ["projectId", "reminderNextAt", "shortId"],
+      // Quest reminders (#Q3893): one query for every quest due, across all
+      // projects, so the index leads with `reminderNextAt`.
+      name: "quests_reminders_due_idx",
+      columns: ["reminderNextAt"],
       where: {
         deletedAt: { isNull: true },
         completedAt: { isNull: true },

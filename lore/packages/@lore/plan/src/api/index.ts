@@ -12,11 +12,11 @@ import { ProjectReportsController } from "./controllers/ProjectReportsController
 import { QuestAuthorshipController } from "./controllers/QuestAuthorshipController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
-import { QuestReminderRuleController } from "./controllers/QuestReminderRuleController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
 import { RoadmapController } from "./controllers/RoadmapController.ts";
 import { QuestMemberRemoval } from "./hooks/QuestMemberRemoval.ts";
 import { EpicJobs } from "./jobs/EpicJobs.ts";
+import { QuestReminderNotifications } from "./notifications/QuestReminderNotifications.ts";
 import { EpicResourceKind } from "./resources/EpicResourceKind.ts";
 import { FeedbackResourceKind } from "./resources/FeedbackResourceKind.ts";
 import { QuestResourceKind } from "./resources/QuestResourceKind.ts";
@@ -57,6 +57,7 @@ import { QuestFlowHistory } from "./services/QuestFlowHistory.ts";
 import { QuestFlowService } from "./services/QuestFlowService.ts";
 import { QuestHoldTime } from "./services/QuestHoldTime.ts";
 import { QuestProjectDeletion } from "./services/QuestProjectDeletion.ts";
+import { QuestReminders } from "./services/QuestReminders.ts";
 import { QuestService } from "./services/QuestService.ts";
 import { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 import { RecentlyShippedMetric } from "./services/RecentlyShippedMetric.ts";
@@ -173,6 +174,10 @@ export const LorePlanApi = $module({
     QuestCsvFormatter,
     QuestService,
     QuestEventSources,
+    // Quest reminders, a check of core's hourly job (#Q3893), and the
+    // notifications they send; listed because nothing injects them.
+    QuestReminders,
+    QuestReminderNotifications,
     AreaService,
     // What "open quests" means, shared by the sidebar badge, the dashboard
     // rail and the Active Quests tile — all three are visible together.
@@ -211,7 +216,6 @@ export const LorePlanApi = $module({
     WorkAttentionSources,
     // Controllers
     QuestController,
-    QuestReminderRuleController,
     QuestCommentController,
     FeedbackCommentController,
     ReleaseController,
@@ -261,7 +265,7 @@ export { ProjectReportsController } from "./controllers/ProjectReportsController
 export { QuestAuthorshipController } from "./controllers/QuestAuthorshipController.ts";
 export { QuestCommentController } from "./controllers/QuestCommentController.ts";
 export { QuestController } from "./controllers/QuestController.ts";
-export { QuestReminderRuleController } from "./controllers/QuestReminderRuleController.ts";
+export { QuestReminders } from "./services/QuestReminders.ts";
 export { ReleaseController } from "./controllers/ReleaseController.ts";
 export { RoadmapController } from "./controllers/RoadmapController.ts";
 export { AreaService } from "./services/AreaService.ts";

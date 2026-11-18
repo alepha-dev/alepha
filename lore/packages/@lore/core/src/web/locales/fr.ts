@@ -2141,11 +2141,6 @@ export default {
   "quest.view.reminder.daily": "Quotidien",
   "quest.view.reminder.weekly": "Hebdomadaire",
   "quest.view.reminder.monthly": "Mensuel",
-  "quest.view.reminder.noRule":
-    "Aucune automatisation de rappel ne tourne dans ce projet, donc aucun rappel n'est envoyé. Une personne qui peut gérer les automatisations peut l'activer ici.",
-  "quest.view.reminder.ruleDisabled":
-    "L'automatisation de rappel du projet est désactivée, donc aucun rappel n'est envoyé. Réactivez-la depuis Automatisations.",
-  "quest.view.reminder.createRule": "Activer les rappels",
   "quest.view.reminder.none":
     "Aucun rappel configuré. Aucun e-mail ne vous sera envoyé.",
   "quest.view.reminder.next": "Prochain e-mail $1.",

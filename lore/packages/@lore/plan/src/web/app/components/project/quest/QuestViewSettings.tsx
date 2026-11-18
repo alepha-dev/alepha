@@ -1,21 +1,11 @@
-import { Button, Segmented } from "@alepha/ui";
-import type { AutomationController } from "@lore/core/api";
-import { canInProject, currentProjectAtom, type I18n } from "@lore/core/web";
+import { Segmented } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
-import {
-  useAction,
-  useAlepha,
-  useClient,
-  useInject,
-  useQuery,
-  useQueryClient,
-  useStore,
-} from "alepha/react";
+import { useAction, useAlepha, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { BellOff, BellRing } from "lucide-react";
 
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
-import type { QuestReminderRuleController } from "../../../../../api/controllers/QuestReminderRuleController.ts";
 import type { ReminderInterval } from "../../../../../api/entities/quests.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "../../../atoms/currentAssignedQuestsAtom.ts";
@@ -51,10 +41,6 @@ const REMINDER_PRESETS: ReminderPreset[] = [
 const QuestViewSettings = (props: QuestViewSettingsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<QuestController>();
-  const rules = useClient<QuestReminderRuleController>();
-  const automations = useClient<AutomationController>();
-  const queries = useQueryClient();
-  const [project] = useStore(currentProjectAtom);
   const alepha = useAlepha();
   const dateTime = useInject(DateTimeProvider);
 
@@ -102,47 +88,6 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
     !props.quest.completedAt &&
     client.setQuestReminder.can();
 
-  // Reminders are sent only by the project's reminder automation (#Q3626):
-  // without it, say so beside the control rather than let one be set in
-  // silence.
-  const rule = useQuery(
-    {
-      key: ["quest-reminder-rule", props.quest.projectId],
-      enabled: canEditReminder,
-      handler: ({ signal }) =>
-        rules.getQuestReminderRule(
-          { params: { projectId: props.quest.projectId } },
-          { request: { signal } },
-        ),
-    },
-    [canEditReminder, props.quest.projectId],
-  );
-
-  // The project's reminder automation, created from the quest on first use
-  // (#Q3705), as the feedback page's bell creates its rule: from the stock
-  // preset, enabled, on email (its channel is the automation's to change).
-  // A project holds at most one, and it reminds every quest's holder, so the
-  // button is gone once it exists.
-  const ruleKey = ["quest-reminder-rule", props.quest.projectId];
-  const createRule = useAction<[], void>(
-    {
-      handler: async () => {
-        await automations.createAutomationFromPreset({
-          params: { projectId: props.quest.projectId },
-          body: {
-            key: "quest-reminders",
-            values: { channel: "email" },
-            enabled: true,
-          },
-        });
-        queries.invalidate(ruleKey);
-        queries.invalidate(["automations", props.quest.projectId]);
-      },
-    },
-    [automations, props.quest.projectId, queries],
-  );
-  const canCreateRule = !!project && canInProject(project, "automation:write");
-
   // Nothing at all when the reminder cannot be set (#Q2424). It used to draw
   // the heading and a sentence saying why, a whole block on every unassigned
   // quest that offered nothing to do.
@@ -177,30 +122,6 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
         }))}
       />
       <p className="text-muted-foreground text-xs">{nextLabel}</p>
-      {rule.data && !rule.data.exists && canCreateRule ? (
-        <Button
-          size="sm"
-          variant="outlined"
-          disabled={createRule.loading}
-          onClick={() => void createRule.run()}
-          data-testid="quest-reminder-create-rule"
-        >
-          <BellRing className="size-3.5" />
-          {tr("quest.view.reminder.createRule")}
-        </Button>
-      ) : (
-        rule.data &&
-        !(rule.data.exists && rule.data.enabled) && (
-          <p
-            className="text-xs text-amber-600 dark:text-amber-400"
-            data-testid="quest-reminder-no-rule"
-          >
-            {rule.data.exists
-              ? tr("quest.view.reminder.ruleDisabled")
-              : tr("quest.view.reminder.noRule")}
-          </p>
-        )
-      )}
     </div>
   );
 };

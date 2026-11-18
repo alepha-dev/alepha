@@ -107,6 +107,19 @@ export class WorkProjectEvents {
       }),
     });
     this.catalog.register({
+      name: "quest.reminder_due",
+      label: "Quest reminder due",
+      resource: "quests",
+      subject: "quest",
+      fields: { ...quest, assignee_id: "member" },
+      needs: { capability: "plan", option: "reminder" },
+      permission: "quest:read",
+      message: (it) => ({
+        title: `Reminder: quest #Q${this.text(it.shortId)} ${this.text(it.title)}`,
+        text: "It is still held and still open.",
+      }),
+    });
+    this.catalog.register({
       name: "quest.completed",
       label: "Quest completed",
       resource: "quests",

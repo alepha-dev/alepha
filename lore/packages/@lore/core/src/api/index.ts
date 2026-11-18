@@ -47,6 +47,7 @@ import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
 import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
+import { HourlyJobs } from "./jobs/HourlyJobs.ts";
 import { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
 import { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
 import { AutomationAttentionNotifications } from "./notifications/AutomationAttentionNotifications.ts";
@@ -111,6 +112,7 @@ import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
+import { HourlyChecks } from "./services/HourlyChecks.ts";
 import { LiveQuestRegistry } from "./services/LiveQuestRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
@@ -284,6 +286,9 @@ export const LoreCoreApi = $module({
     ProjectRecipients,
     SubscriptionService,
     SubscriptionController,
+    // The hourly job and its registry of checks (#Q3893).
+    HourlyChecks,
+    HourlyJobs,
     // The catalog as a project sees it, and the filter pickers (#Q3892).
     ProjectEventCatalogService,
     ProjectEventFilters,
@@ -678,6 +683,8 @@ export {
   type ProjectEventInput,
 } from "./services/ProjectEvents.ts";
 export { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
+export { HourlyJobs } from "./jobs/HourlyJobs.ts";
+export { HourlyChecks, type HourlyCheck } from "./services/HourlyChecks.ts";
 export { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
 export { ProjectEventDelivery } from "./services/ProjectEventDelivery.ts";
 export { ProjectEventNotifications } from "./notifications/ProjectEventNotifications.ts";

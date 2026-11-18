@@ -1,0 +1,82 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "08ecdc94-1c6f-42c5-929d-6d7b8696ea82",
+  "prevIds": ["9be13d54-3f7f-49a7-a2b3-65300a2e0c49"],
+  "footprints": [
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "quests",
+        "quests_automation_reminders_idx"
+      ],
+      "writes": [
+        "s|idx|public.quests_automation_reminders_idx",
+        "n|idx|public.quests_automation_reminders_idx",
+        "e|idx|public.quests_automation_reminders_idx",
+        "n|rel|public.quests_automation_reminders_idx"
+      ],
+      "reads": [
+        "e|tbl|public.quests",
+        "n|sch|public",
+        "e|col|public.quests.project_id",
+        "e|col|public.quests.reminder_next_at",
+        "e|col|public.quests.short_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "quests",
+        "quests_reminders_due_idx"
+      ],
+      "writes": [
+        "s|idx|public.quests_reminders_due_idx",
+        "n|idx|public.quests_reminders_due_idx",
+        "e|idx|public.quests_reminders_due_idx",
+        "n|rel|public.quests_reminders_due_idx"
+      ],
+      "reads": [
+        "n|tbl|public.quests",
+        "n|sch|public",
+        "n|col|public.quests.reminder_next_at"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "quests_reminders_due_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "reminder_next_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": "(((\"deleted_at\" is null)) and ((\"completed_at\" is null)) and ((\"shelved_at\" is null)) and ((\"accepted_at\" is not null)) and ((\"accepted_by\" is not null)) and ((\"reminder_interval\" is not null)))",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"quests_automation_reminders_idx\"]"
+    }
+  ]
+}
