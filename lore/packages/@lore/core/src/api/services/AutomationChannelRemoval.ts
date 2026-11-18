@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
+import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationHealth } from "./AutomationHealth.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { LoreDatabase } from "./LoreDatabase.ts";
@@ -19,6 +20,32 @@ export class AutomationChannelRemoval {
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly health = $inject(AutomationHealth);
   protected readonly graphs = $inject(AutomationGraph);
+  protected readonly channels = $inject(AutomationChannels);
+
+  constructor() {
+    // The automation engine's view of a project's Discord channels (#Q3615),
+    // moved here when channels left automations (#Q3891): a room, rendered
+    // for Discord, through `LoreDiscordNotificationChannel`.
+    this.channels.register("discord", {
+      addressable: false,
+      target: "discord",
+      configured: async () => true,
+      templates: {
+        automations: "lore:automation:discord",
+        releases: "lore:automation:release-discord",
+        reminders: "lore:automation:reminder-discord",
+      },
+    });
+    this.channels.registerInstances(async (projectId) =>
+      (
+        await this.persistence.channels.findMany({
+          where: { projectId },
+          orderBy: [{ column: "name", direction: "asc" }],
+          limit: 100,
+        })
+      ).map((row) => ({ id: row.id, kind: row.kind, name: row.name })),
+    );
+  }
 
   /**
    * Remove `channelId` from every rule of the project. Returns how many

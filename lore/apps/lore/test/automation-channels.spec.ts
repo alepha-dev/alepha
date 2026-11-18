@@ -1,7 +1,7 @@
 import { DiscordTransport, MemoryDiscordTransport } from "@alepha/discord";
 import {
-  AutomationChannelController,
-  AutomationChannelService,
+  ProjectChannelController,
+  ProjectChannelService,
   AutomationChannels,
   AutomationPersistence,
   AutomationService,
@@ -39,7 +39,7 @@ const OTHER = "https://discord.com/api/webhooks/9876543210/zyxWVU-tsr_QPO";
  */
 describe("Automation channels (#Q3614)", () => {
   let alepha: Alepha;
-  let api: AutomationChannelController;
+  let api: ProjectChannelController;
   let persistence: AutomationPersistence;
   let entities: TestEntityRepositories;
   let discord: MemoryDiscordTransport;
@@ -47,7 +47,7 @@ describe("Automation channels (#Q3614)", () => {
   let user: UserAccountToken;
   const params = () => ({ projectId: project.id });
   const add = (name: string, url = ALERTS) =>
-    api.createAutomationChannel.fetch(
+    api.createProjectChannel.fetch(
       { params: params(), body: { name, url } },
       { user },
     );
@@ -69,7 +69,7 @@ describe("Automation channels (#Q3614)", () => {
         use: MemoryDestinationProvider,
       });
     bootLore(alepha);
-    api = alepha.inject(AutomationChannelController);
+    api = alepha.inject(ProjectChannelController);
     persistence = alepha.inject(AutomationPersistence);
     entities = alepha.inject(TestEntityRepositories);
     discord = alepha.inject(MemoryDiscordTransport);
@@ -100,7 +100,7 @@ describe("Automation channels (#Q3614)", () => {
     expect(alerts.id.length).toBeLessThanOrEqual(64);
     expect(discord.posts.map((post) => post.webhook)).toEqual([ALERTS, OTHER]);
     const listed = (
-      await api.listAutomationChannels.fetch({ params: params() }, { user })
+      await api.listProjectChannels.fetch({ params: params() }, { user })
     ).data.items;
     expect(listed.map((channel) => channel.name)).toEqual([
       "In-app",
@@ -134,13 +134,13 @@ describe("Automation channels (#Q3614)", () => {
     const alerts = (await add("alerts")).data;
     await add("releases", OTHER);
     await expect(
-      api.updateAutomationChannel.fetch(
+      api.updateProjectChannel.fetch(
         { params: { ...params(), id: alerts.id }, body: { name: "releases" } },
         { user },
       ),
     ).rejects.toThrow("already exists");
     const renamed = (
-      await api.updateAutomationChannel.fetch(
+      await api.updateProjectChannel.fetch(
         {
           params: { ...params(), id: alerts.id },
           body: { name: "ops", url: OTHER },
@@ -157,7 +157,7 @@ describe("Automation channels (#Q3614)", () => {
     await createTestMember(alepha, project, member.id, { rank: "member" });
     const as = { id: member.id, roles: ["user"] };
     await expect(
-      api.createAutomationChannel.fetch(
+      api.createProjectChannel.fetch(
         { params: params(), body: { name: "alerts", url: ALERTS } },
         { user: as },
       ),
@@ -169,7 +169,7 @@ describe("Automation channels (#Q3614)", () => {
   }) => {
     // Through the service, not over HTTP: the spec's own HTTP client logs
     // the request body it sends at trace level, which a browser does not.
-    const service = alepha.inject(AutomationChannelService);
+    const service = alepha.inject(ProjectChannelService);
     const logs = alepha.inject(MemoryDestinationProvider);
     logs.clear();
     const created = await service.add(project.id, user, {
@@ -229,7 +229,7 @@ describe("Automation channels (#Q3614)", () => {
         ),
       },
     });
-    await api.deleteAutomationChannel.fetch(
+    await api.deleteProjectChannel.fetch(
       { params: { ...params(), id: alerts.id } },
       { user },
     );

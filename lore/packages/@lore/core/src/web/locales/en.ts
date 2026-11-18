@@ -176,7 +176,7 @@ export default {
   "automation.preset.host-online.title": "Host back online",
   "automation.preset.host-online.description":
     "Notify one member when a Bay host reported offline reconnects.",
-  "project.settings.tab.automationChannels": "Channels",
+  "project.settings.tab.notificationChannels": "Channels",
   "automation.channels.title": "Channels",
   "automation.channels.description":
     "Where automations deliver: In-app and Email, built in, and the Discord channels you add. A rule names one or more of them.",

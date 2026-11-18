@@ -1,6 +1,6 @@
 import { DiscordTransport, MemoryDiscordTransport } from "@alepha/discord";
 import {
-  AutomationChannelService,
+  ProjectChannelService,
   AutomationEvents,
   AutomationPersistence,
   AutomationService,
@@ -140,7 +140,7 @@ describe("Discord delivery (#Q3615)", () => {
     expect,
   }) => {
     const channel = await alepha
-      .inject(AutomationChannelService)
+      .inject(ProjectChannelService)
       .add(project.id, user, { name: "alerts", url: WEBHOOK });
     const instance = await rows.instances.create({
       projectId: project.id,
@@ -219,7 +219,7 @@ describe("Discord delivery (#Q3615)", () => {
     expect,
   }) => {
     const channel = await alepha
-      .inject(AutomationChannelService)
+      .inject(ProjectChannelService)
       .add(project.id, user, { name: "alerts", url: WEBHOOK });
     discord.clear();
     await alepha.inject(AutomationService).create(project.id, user, {

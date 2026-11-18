@@ -5,13 +5,13 @@ import {
 } from "alepha/api/organizations";
 import { $repository, type SQLLike } from "alepha/orm";
 
-import { automationChannels } from "../entities/automationChannels.ts";
 import { automationEvents } from "../entities/automationEvents.ts";
 import { automationReceipts } from "../entities/automationReceipts.ts";
 import { automationRuns } from "../entities/automationRuns.ts";
 import { automations } from "../entities/automations.ts";
 import { automationVariables } from "../entities/automationVariables.ts";
 import { eventSubscriptions } from "../entities/eventSubscriptions.ts";
+import { notificationChannels } from "../entities/notificationChannels.ts";
 import { projectCapabilities } from "../entities/projectCapabilities.ts";
 import { projectEvents } from "../entities/projectEvents.ts";
 import { projectPrompts } from "../entities/projectPrompts.ts";
@@ -101,7 +101,7 @@ export class CoreProjectMerge {
     // already uses gets a free one (#Q3614).
     {
       kind: "automation channel",
-      entity: automationChannels,
+      entity: notificationChannels,
       keys: ["name"],
       onCollision: "rename",
     },

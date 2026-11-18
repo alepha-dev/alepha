@@ -3,7 +3,7 @@ import { type Infer, z } from "alepha";
 /**
  * A channel as every reader sees it (#Q3614): never its URL.
  */
-export const automationChannelResourceSchema = z
+export const projectChannelResourceSchema = z
   .object({
     id: z.string().max(64),
     kind: z.string().max(32),
@@ -11,6 +11,4 @@ export const automationChannelResourceSchema = z
     builtIn: z.boolean(),
   })
   .strict();
-export type AutomationChannelResource = Infer<
-  typeof automationChannelResourceSchema
->;
+export type ProjectChannelResource = Infer<typeof projectChannelResourceSchema>;

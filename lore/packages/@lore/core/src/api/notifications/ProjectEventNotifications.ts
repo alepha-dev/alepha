@@ -61,4 +61,19 @@ export class ProjectEventNotifications {
         ].join("\n"),
     },
   });
+
+  /**
+   * A project's Discord channel (#Q3891): compact, bold title, the text, the
+   * link. The destination is the channel the subscription names, unsealed
+   * at send time by `LoreDiscordNotificationChannel`; mentions are off.
+   */
+  public readonly discord = $notification({
+    name: "lore:project-event:discord",
+    category: "notifications",
+    description: "A project event posted to a Discord channel.",
+    schema: projectEventNotificationSchema,
+    discord: {
+      message: (it) => `**${it.title}**\n${it.text}\n<${it.url}>`,
+    },
+  });
 }

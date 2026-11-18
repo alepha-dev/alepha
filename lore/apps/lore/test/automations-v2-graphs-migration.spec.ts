@@ -39,13 +39,13 @@ describe("automations v2 graphs migration", () => {
       CREATE TABLE automation_runs (id text PRIMARY KEY, automation_id text NOT NULL REFERENCES automations(id) ON DELETE RESTRICT);
       CREATE TABLE automation_receipts (id text PRIMARY KEY, automation_id text REFERENCES automations(id) ON DELETE RESTRICT, action_index integer, node_id text);
       CREATE TABLE automation_events (id text PRIMARY KEY, dispatched_at text);
-      CREATE TABLE automation_channels (id text PRIMARY KEY);
+      CREATE TABLE notification_channels (id text PRIMARY KEY);
       CREATE TABLE automation_variables (id text PRIMARY KEY);
       INSERT INTO automations VALUES ('live', '{"version":1}', NULL), ('gone', '{"version":1}', '2026-11-01');
       INSERT INTO automation_runs VALUES ('run', 'live'), ('old', 'gone');
       INSERT INTO automation_receipts VALUES ('occurrence', 'live', NULL, NULL), ('action', 'live', 0, NULL), ('origin', NULL, NULL, NULL);
       INSERT INTO automation_events VALUES ('pending', NULL), ('dispatched', '2026-11-16');
-      INSERT INTO automation_channels VALUES ('discord');
+      INSERT INTO notification_channels VALUES ('discord');
       INSERT INTO automation_variables VALUES ('threshold');
     `);
     db.exec(migration("sqlite", "20261117120004_automations_v2_graphs"));
@@ -57,7 +57,7 @@ describe("automations v2 graphs migration", () => {
     expect(db.prepare("SELECT id FROM automation_events").all()).toEqual([
       { id: "dispatched" },
     ]);
-    expect(count("automation_channels")).toBe(1);
+    expect(count("notification_channels")).toBe(1);
     expect(count("automation_variables")).toBe(1);
     expect(
       db

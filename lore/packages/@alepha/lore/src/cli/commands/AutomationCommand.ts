@@ -1,5 +1,5 @@
 import type {
-  AutomationChannelController,
+  ProjectChannelController,
   AutomationController,
 } from "@lore/core/api";
 import { $inject, z } from "alepha";
@@ -65,7 +65,7 @@ export class AutomationCommand {
    * below it sees `undefined`.
    */
   protected readonly api = $client<AutomationController>(this.client.scope());
-  protected readonly channels = $client<AutomationChannelController>(
+  protected readonly channels = $client<ProjectChannelController>(
     this.client.scope(),
   );
 
@@ -632,7 +632,7 @@ export class AutomationCommand {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const { projectId } = await this.projects.named(flags.project, context);
-        const page = await this.channels.listAutomationChannels({
+        const page = await this.channels.listProjectChannels({
           params: { projectId },
         });
         if (flags.output === "json") {

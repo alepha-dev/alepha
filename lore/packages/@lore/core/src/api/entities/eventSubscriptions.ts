@@ -3,12 +3,14 @@ import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 
 import { subscriptionChannelSchema } from "../schemas/subscriptionChannelSchema.ts";
+import { notificationChannels } from "./notificationChannels.ts";
 import { projects } from "./projects.ts";
 
 /**
  * Who is told when a project event happens (#E159, #Q3890): one event, an
  * optional filter (one host, app or monitor, by the catalog's filter field),
- * and a member with the channels they are told on.
+ * and a target: a member with the channels they are told on, or one of the
+ * project's notification channels (#Q3891).
  *
  * - **`key` is the uniqueness.** `filter` is nullable, and both dialects
  *   treat nulls as distinct in a unique index, so the row's identity is
@@ -35,6 +37,16 @@ export const eventSubscriptions = $entity({
     memberId: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "cascade",
     }),
+    /**
+     * The channel told instead of a member (#Q3891): exactly one of
+     * `memberId` and `channelId` is set. Deleting the channel deletes the
+     * row.
+     */
+    channelId: db.ref(
+      z.string().max(64).optional(),
+      () => notificationChannels.cols.id,
+      { onDelete: "cascade" },
+    ),
     channels: z.array(subscriptionChannelSchema).max(2),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",

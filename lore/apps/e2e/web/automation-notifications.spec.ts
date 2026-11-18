@@ -223,7 +223,7 @@ test.describe("Every notification through automations", () => {
       await expect(row).toBeVisible();
       await expect(row).not.toContainText("e2e-token_value");
       const channels = (await (
-        await page.request.get(`/api/projects/${id}/automation-channels`)
+        await page.request.get(`/api/projects/${id}/channels`)
       ).json()) as { items: Array<{ id: string; name: string }> };
       const discord = channels.items.find((it) => it.name === "alerts")!;
       expect(JSON.stringify(channels)).not.toContain("e2e-token_value");

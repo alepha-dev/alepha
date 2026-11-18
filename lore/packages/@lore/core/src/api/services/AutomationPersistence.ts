@@ -1,12 +1,12 @@
 import { $hook, AlephaError } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { automationChannels } from "../entities/automationChannels.ts";
 import { automationEvents } from "../entities/automationEvents.ts";
 import { automationReceipts } from "../entities/automationReceipts.ts";
 import { automationRuns } from "../entities/automationRuns.ts";
 import { automations } from "../entities/automations.ts";
 import { automationVariables } from "../entities/automationVariables.ts";
+import { notificationChannels } from "../entities/notificationChannels.ts";
 
 /**
  * Registers the model before database boot and guards its immutable provenance.
@@ -17,7 +17,7 @@ export class AutomationPersistence {
   public readonly receipts = $repository(automationReceipts);
   public readonly rules = $repository(automations);
   public readonly variables = $repository(automationVariables);
-  public readonly channels = $repository(automationChannels);
+  public readonly channels = $repository(notificationChannels);
   public readonly runs = $repository(automationRuns);
 
   protected readonly immutableAuthor = $hook({
