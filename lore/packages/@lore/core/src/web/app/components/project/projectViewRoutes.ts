@@ -68,6 +68,8 @@ const ROUTES_SETTINGS = [
   "projectSettingsCapabilities",
   "projectSettingsMembers",
   "projectSettingsRanks",
+  "projectSettingsNotifications",
+  "projectSettingsNotificationChannels",
   "projectSettingsWork",
   "projectSettingsAreas",
   "projectSettingsArea",
@@ -109,7 +111,6 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectAutomationNew",
   "projectAutomationDetail",
   "projectAutomationVariables",
-  "projectAutomationChannels",
   "projectAutomationRun",
   "projectEpics",
   "projectEpic",
@@ -218,7 +219,6 @@ export const SECTION_HREF_ROUTES: Record<
   projectAutomationNew: "projectAutomations",
   projectAutomationDetail: "projectAutomations",
   projectAutomationVariables: "projectAutomations",
-  projectAutomationChannels: "projectAutomations",
   projectAutomationRun: "projectAutomations",
   // A monitor belongs to an app (#Q3657): its crumb climbs to Apps.
   projectMonitor: "projectApps",
@@ -266,7 +266,6 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectAutomationNew: "project.settings.nav.automations",
   projectAutomationDetail: "project.settings.nav.automations",
   projectAutomationVariables: "project.settings.nav.automations",
-  projectAutomationChannels: "project.settings.nav.automations",
   projectAutomationRun: "project.settings.nav.automations",
   projectQuests: "project.menu.quests",
   // The layout both Quests tabs render under.

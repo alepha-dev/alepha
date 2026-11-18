@@ -1,6 +1,6 @@
 import { Segmented, cn } from "@alepha/ui";
 import {
-  AutomationSubscriptionBell,
+  SubscriptionBell,
   currentProjectAtom,
   type I18n,
 } from "@lore/core/web";
@@ -321,8 +321,8 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               size="sm"
             />
             <div className="ms-auto shrink-0" />
-            <AutomationSubscriptionBell
-              presets={["feedback-created"]}
+            <SubscriptionBell
+              events={["feedback.created"]}
               label={tr("feedback.subscription.label")}
               description={tr("feedback.subscription.description")}
               offDescription={tr("feedback.subscription.offDescription")}

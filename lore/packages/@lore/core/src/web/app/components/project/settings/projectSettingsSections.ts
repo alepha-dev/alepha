@@ -1,4 +1,10 @@
-import { type LucideIcon, Settings2, Users, Workflow } from "lucide-react";
+import {
+  BellRing,
+  type LucideIcon,
+  Settings2,
+  Users,
+  Workflow,
+} from "lucide-react";
 
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../../../api/schemas/projectResourceSchema.ts";
@@ -56,8 +62,8 @@ export interface SettingsSectionDef {
   key: string;
   /**
    * Position in the Settings group, ascending: General 10, Members 20,
-   * Automations 25, then each capability's section as its module registers
-   * it.
+   * Automations 25, Notifications 26, then each capability's section as its
+   * module registers it.
    */
   order: number;
   /**
@@ -68,6 +74,7 @@ export interface SettingsSectionDef {
     | "project.settings.nav.general"
     | "project.settings.nav.members"
     | "project.settings.nav.automations"
+    | "project.settings.nav.notifications"
     | "project.settings.nav.plan"
     | "project.settings.nav.remember"
     | "project.settings.nav.ship";
@@ -155,11 +162,24 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
           "projectAutomationRun",
         ],
       },
+    ],
+  },
+  {
+    // Core (#Q3892): who is told about what, on which channel. Every member
+    // opens it to manage their own notifications.
+    key: "notifications",
+    order: 26,
+    labelKey: "project.settings.nav.notifications",
+    icon: BellRing,
+    tabs: [
       {
-        // The channels a rule may notify (#Q3614).
-        route: "projectAutomationChannels",
+        route: "projectSettingsNotifications",
+        labelKey: "project.settings.tab.notifications",
+      },
+      {
+        route: "projectSettingsNotificationChannels",
         labelKey: "project.settings.tab.notificationChannels",
-        requires: "automation:read",
+        requires: "subscription:read",
       },
     ],
   },

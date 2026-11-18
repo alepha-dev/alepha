@@ -74,16 +74,6 @@ export class AutomationRouter {
       return { variableKey: query.key };
     },
   });
-  projectAutomationChannels = $pageProject({
-    name: "projectAutomationChannels",
-    path: "/automations/channels",
-    lazy: () =>
-      import("./components/project/automations/AutomationChannelsPage.tsx"),
-    loader: () => {
-      this.checkRead();
-      return {};
-    },
-  });
   projectAutomationRun = $pageProject({
     name: "projectAutomationRun",
     path: "/automations/runs/:runId",

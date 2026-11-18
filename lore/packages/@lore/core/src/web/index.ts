@@ -311,9 +311,9 @@ export {
 } from "./app/services/projectCapabilities.ts";
 export { canInProject } from "./app/services/projectRank.ts";
 export {
-  AutomationSubscriptionBell,
-  type AutomationSubscriptionBellProps,
-} from "./app/components/shared/AutomationSubscriptionBell.tsx";
+  SubscriptionBell,
+  type SubscriptionBellProps,
+} from "./app/components/shared/SubscriptionBell.tsx";
 
 // ---- modules a route or a lazy boundary loads (#E75, #Q2611) ----
 //

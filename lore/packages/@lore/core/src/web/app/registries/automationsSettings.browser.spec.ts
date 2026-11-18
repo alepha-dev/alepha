@@ -44,7 +44,7 @@ describe("Automations in the project settings", () => {
       expect(section?.capability).toBeUndefined();
       expect(
         visibleSettingsTabs(section!, project).map((tab) => tab.route),
-      ).toEqual(["projectAutomations", "projectAutomationChannels"]);
+      ).toEqual(["projectAutomations"]);
     }
   });
 });

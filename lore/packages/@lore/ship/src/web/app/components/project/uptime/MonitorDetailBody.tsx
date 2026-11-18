@@ -1,4 +1,4 @@
-import { AutomationSubscriptionBell, type I18n } from "@lore/core/web";
+import { SubscriptionBell, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 
@@ -32,11 +32,10 @@ const MonitorDetailBody = (props: MonitorDetailBodyProps) => {
             {props.actions}
             {/* This monitor's alerts (#Q3611): down and recovered, scoped to
               it, independent of the bell on /apps. */}
-            <AutomationSubscriptionBell
-              presets={["monitor-down", "monitor-up"]}
-              scope={{ monitor: monitor.id }}
+            <SubscriptionBell
+              events={["monitor.down", "monitor.up"]}
+              filter={monitor.id}
               label={tr("uptime.subscription.label")}
-              title={`${tr("uptime.subscription.title")}: ${monitor.name}`}
               description={tr("uptime.subscription.description")}
               offDescription={tr("uptime.subscription.offDescription")}
               testId="monitor-subscription-bell"
