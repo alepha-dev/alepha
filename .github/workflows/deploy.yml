@@ -175,6 +175,10 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+        # Deploy's first job, on `main`: the cache it saves is the one every
+        # pull request can read (see the setup action).
+        with:
+          save-cache: "true"
 
       # The restore point, in the log, before `alepha deploy` migrates (#Q2603).
       # Time Travel restores to any minute of the last 30 days anyway; the
