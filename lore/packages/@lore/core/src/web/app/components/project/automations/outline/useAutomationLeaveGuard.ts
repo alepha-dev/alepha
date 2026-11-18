@@ -46,9 +46,9 @@ export const useAutomationLeaveGuard = (dirty: boolean) => {
       event.stopPropagation();
       void current.dialog
         .confirm({
-          title: current.tr("automation.canvas.leave.title"),
-          description: current.tr("automation.canvas.leave.description"),
-          confirmLabel: current.tr("automation.canvas.leave.confirm"),
+          title: current.tr("automation.outline.leave.title"),
+          description: current.tr("automation.outline.leave.description"),
+          confirmLabel: current.tr("automation.outline.leave.confirm"),
           destructive: true,
         })
         .then((leave) => {

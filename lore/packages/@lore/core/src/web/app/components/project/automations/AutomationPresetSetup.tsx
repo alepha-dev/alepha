@@ -112,7 +112,7 @@ const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
       submitLabel={
         props.onMerge ? tr("automation.preset.addToDraft") : undefined
       }
-      onOpenInCanvas={
+      onOpenInEditor={
         props.onMerge
           ? undefined
           : async (values, bindings) => {

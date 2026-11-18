@@ -33,8 +33,6 @@ import type { AutomationVariableApproval } from "../../../../../../api/schemas/a
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import AutomationPresetSetup from "../AutomationPresetSetup.tsx";
-import { useAutomationDraft } from "../canvas/useAutomationDraft.ts";
-import { useAutomationLeaveGuard } from "../canvas/useAutomationLeaveGuard.ts";
 import { useAutomationLabels } from "../useAutomationLabels.ts";
 import AutomationOutlineAside, {
   type AutomationOutlineCheck,
@@ -42,6 +40,8 @@ import AutomationOutlineAside, {
 import AutomationOutlineBlockEditor from "./AutomationOutlineBlockEditor.tsx";
 import AutomationOutlineEventMenu from "./AutomationOutlineEventMenu.tsx";
 import { AutomationOutlineTones } from "./AutomationOutlineTones.ts";
+import { useAutomationDraft } from "./useAutomationDraft.ts";
+import { useAutomationLeaveGuard } from "./useAutomationLeaveGuard.ts";
 import { useAutomationOutlineNames } from "./useAutomationOutlineNames.ts";
 import { useAutomationOutlineWords } from "./useAutomationOutlineWords.ts";
 
@@ -314,7 +314,7 @@ const AutomationOutlineEditor = (props: AutomationOutlineEditorProps) => {
       params: { projectId: project!.id },
       body: { key: preset.key, values, bindings, prefix },
     });
-    // A preset arrives as one block, without where the canvas drew it.
+    // A preset arrives as one block, without a position.
     const rule: AutomationGraphValue = {
       ...built.rule,
       nodes: built.rule.nodes.map(({ position: _position, ...node }) => node),

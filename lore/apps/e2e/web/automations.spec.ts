@@ -1475,7 +1475,7 @@ test.describe("Automations", () => {
       .getByRole("combobox", { name: "Recipient", exact: true })
       .click();
     await page.getByRole("option", { name: owner.label, exact: true }).click();
-    await page.getByTestId("automation-preset-open-canvas").click();
+    await page.getByTestId("automation-preset-open-editor").click();
     await expect(page).toHaveURL(
       new RegExp(`/${project.slug}/automations/new\\?preset=feedback-created$`),
     );

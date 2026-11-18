@@ -6,7 +6,7 @@ import type { automationCatalogSchema } from "../../../../../../api/schemas/auto
 import type { AutomationGraphNode } from "../../../../../../api/schemas/automationGraphNodeSchema.ts";
 import type { AutomationGraphValue } from "../../../../../../api/schemas/automationGraphSchema.ts";
 import type { I18n } from "../../../../services/I18n.ts";
-import AutomationConditionInspector from "../canvas/AutomationConditionInspector.tsx";
+import AutomationOutlineConditionFields from "./AutomationOutlineConditionFields.tsx";
 
 export interface AutomationOutlineConditionFormProps {
   graph: AutomationGraphValue;
@@ -30,7 +30,7 @@ const AutomationOutlineConditionForm = (
       className="bg-background/60 flex flex-col gap-3 border-t px-4 py-3"
       data-testid="automation-outline-condition-form"
     >
-      <AutomationConditionInspector
+      <AutomationOutlineConditionFields
         key={props.node.id}
         graph={props.graph}
         node={props.node}

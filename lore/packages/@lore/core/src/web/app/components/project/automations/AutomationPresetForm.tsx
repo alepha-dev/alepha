@@ -59,10 +59,10 @@ export interface AutomationPresetFormProps {
   ) => Promise<AutomationVariableResource>;
   onCancel?: () => void;
   /**
-   * Open in canvas (#Q3812): the same values, built as an unsaved draft in
+   * Open in editor (#Q3812, #Q3850): the same values, built as an unsaved draft in
    * the editor instead of saved.
    */
-  onOpenInCanvas?: (
+  onOpenInEditor?: (
     values: ReturnType<typeof automationPresetCreateSchema.shape.values.parse>,
     bindings: Record<string, AutomationVariableApproval>,
   ) => Promise<unknown>;
@@ -74,8 +74,8 @@ export interface AutomationPresetFormProps {
 }
 
 const AutomationPresetForm = (props: AutomationPresetFormProps) => {
-  // Which submit button was clicked (#Q3812): a save, or Open in canvas.
-  const intent = useRef<"save" | "canvas">("save");
+  // Which submit button was clicked (#Q3812): a save, or Open in editor.
+  const intent = useRef<"save" | "editor">("save");
   const { tr, l } = useI18n<I18n, "en">();
   const model = useMemo(() => new AutomationPresetForms(), []);
   const literalSchema = useMemo(
@@ -166,8 +166,8 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
           } else if (raw[name] !== undefined)
             values[name] = automationFilterValueSchema.parse(raw[name]);
         }
-        if (intent.current === "canvas" && props.onOpenInCanvas)
-          await props.onOpenInCanvas(values, bindings);
+        if (intent.current === "editor" && props.onOpenInEditor)
+          await props.onOpenInEditor(values, bindings);
         else
           await props.onSubmit(values, bindings, raw.enableOnCreate !== false);
       },
@@ -386,17 +386,17 @@ const AutomationPresetForm = (props: AutomationPresetFormProps) => {
             >
               {tr("automation.preset.saveDraft")}
             </Button>
-            {props.onOpenInCanvas && (
+            {props.onOpenInEditor && (
               <Button
                 type="submit"
                 variant="outlined"
                 disabled={busy}
-                data-testid="automation-preset-open-canvas"
+                data-testid="automation-preset-open-editor"
                 onClick={() => {
-                  intent.current = "canvas";
+                  intent.current = "editor";
                 }}
               >
-                {tr("automation.preset.openInCanvas")}
+                {tr("automation.preset.openInEditor")}
               </Button>
             )}
           </>

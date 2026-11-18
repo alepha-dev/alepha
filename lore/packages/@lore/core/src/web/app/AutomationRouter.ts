@@ -41,7 +41,7 @@ export class AutomationRouter {
     },
   });
   /**
-   * A new automation drawn on the canvas (#Q3812): empty, or a preset's
+   * A new automation built in the editor (#Q3812): empty, or a preset's
    * graph as an unsaved draft (`?preset=`, its graph in
    * `automationDraftAtom`). A static child, tried before `:automationId`.
    */

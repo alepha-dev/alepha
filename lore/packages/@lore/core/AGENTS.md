@@ -547,8 +547,6 @@ Do not reintroduce progression mechanics without an explicit decision — the go
   - ⚠️ **`@mdxeditor/editor` and the whole Lexical tree were removed.** Anything you read describing a formatting toolbar, `renderToolbar`, an editor "realm", `useEditorRealmCommands`, `normalizeEditorMarkdown` or the `.lore-mdx` CSS predates this and is wrong. The reader-side `rehypeSafeImg` in `@alepha/ui` went with it, so **no raw HTML is rendered as markup anywhere** now.
   - ⚠️ **`yarn dedupe '@codemirror/*'` after touching these deps** — `yarn add` will happily resolve a second `@codemirror/view` alongside the nested copy other packages pin, and two copies means incompatible `KeyBinding` types and a typecheck failure in `keymap.of([...])`.
 
-- **React Flow** (`@xyflow/react` 12, MIT) — the automation canvas (#E155). Lazy and client-only like CodeMirror: `AutomationCanvas` imports `AutomationCanvasInner.client.tsx` through `lazy()`, which imports the library and its stylesheet, themed with Lore's tokens in `AutomationCanvas.css`. The preset cards' drawings are plain SVG, never a React Flow instance.
-
 ## No transactions in Lore (#E69)
 
 **Lore holds no `$transactional`, and `check:conventions` refuses one under

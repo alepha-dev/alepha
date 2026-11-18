@@ -122,7 +122,7 @@ export class AutomationController {
       this.presets.create(params.projectId, user, body),
   });
   /**
-   * A preset's graph, built and stored nowhere (#Q3812): what Open in canvas
+   * A preset's graph, built and stored nowhere (#Q3812): what Open in editor
    * opens as a draft, and what Add from a preset merges into one.
    */
   draftAutomationFromPreset = $action({
