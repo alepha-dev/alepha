@@ -13,7 +13,9 @@ That is the whole thing, with no environment variable to set. Open
 `http://localhost:3000` and register.
 
 Everything Lore stores lives in the `/data` volume. The image is built for
-`linux/amd64`.
+`linux/amd64` and `linux/arm64`, so it runs as it is on an ARM server, a
+Raspberry Pi or an Apple Silicon Mac: Docker pulls the one that matches the
+machine.
 
 ### Bind mounts and file ownership
 

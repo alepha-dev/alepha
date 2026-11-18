@@ -335,6 +335,13 @@ jobs:
       - name: Start a registry on the runner
         run: docker run -d --name registry -p 127.0.0.1:5000:5000 registry:2
 
+      # amd64 and arm64 (`image.platforms`, #Q3858): the arm64 `RUN` line
+      # needs the binfmt handlers. Runner setup, not a second build (#F1338).
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+
       - name: Build the Lore image
         working-directory: lore/apps/lore
         env:
