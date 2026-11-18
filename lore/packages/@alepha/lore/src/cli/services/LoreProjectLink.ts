@@ -11,6 +11,13 @@ import { FileSystemProvider } from "alepha/system";
  * because a project that squash-merges through GitHub has `(#123)`, a pull
  * request number, in every merged subject.
  *
+ * And `"apps": { "docs": ["docs", "packages/docs"] }` (#Q3868): the paths an
+ * app is built from, as git pathspecs from the repository root. In a
+ * repository holding several apps, the push then also records the quests
+ * whose commits touched those paths, and a quest is live on a copy of that
+ * app only when one did. An app that declares nothing keeps the whole
+ * history.
+ *
  * It is what lets a repository with no `package.json` (a pure compose
  * project) run `lore stack deploy` with no flag and no environment variable.
  * `.alepha/` is the Alepha brand namespace, so the path is right for a user
@@ -50,11 +57,7 @@ export class LoreProjectLink {
   /**
    * The nearest `.alepha/lore.json` from `start` upwards, or undefined.
    */
-  public async find(
-    start: string,
-  ): Promise<
-    { project: string; path: string; bareQuestRefs: boolean } | undefined
-  > {
+  public async find(start: string): Promise<LoreLink | undefined> {
     let dir = this.fs.resolve(start);
     for (let depth = 0; depth < 64; depth++) {
       const path = this.fs.join(dir, LoreProjectLink.DIR, LoreProjectLink.FILE);
@@ -63,12 +66,14 @@ export class LoreProjectLink {
           const json = await this.fs.readJsonFile<{
             project?: unknown;
             bareQuestRefs?: unknown;
+            apps?: unknown;
           }>(path);
           if (typeof json.project === "string" && json.project) {
             return {
               project: json.project,
               path,
               bareQuestRefs: json.bareQuestRefs === true,
+              apps: this.appsOf(json.apps),
             };
           }
         } catch {
@@ -82,6 +87,43 @@ export class LoreProjectLink {
       dir = parent;
     }
     return undefined;
+  }
+
+  /**
+   * `"apps"`, cleaned: each app's pathspecs, trimmed, deduplicated and
+   * sorted, so two spellings of one list are one list. An entry that is not
+   * a list of non-empty strings is dropped, like a key nobody wrote.
+   */
+  protected appsOf(raw: unknown): Record<string, string[]> {
+    const apps: Record<string, string[]> = {};
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return apps;
+    }
+    for (const [app, value] of Object.entries(raw)) {
+      if (!Array.isArray(value)) {
+        continue;
+      }
+      const paths = [
+        ...new Set(
+          value
+            .filter((it): it is string => typeof it === "string")
+            .map((it) => it.trim())
+            // A NUL or a line break cannot be part of a path Lore keeps:
+            // the list travels joined by line breaks.
+            .filter(
+              (it) =>
+                it &&
+                !it.includes("\n") &&
+                !it.includes("\r") &&
+                !it.includes("\0"),
+            ),
+        ),
+      ].sort();
+      if (paths.length > 0) {
+        apps[app.trim().toLowerCase()] = paths;
+      }
+    }
+    return apps;
   }
 
   /**
@@ -113,11 +155,22 @@ export class LoreProjectLink {
       }
     }
     await this.fs.mkdir(folder, { recursive: true });
-    // Every other key is kept (`bareQuestRefs`): relinking a directory is
-    // not a reason to forget how its commits are read.
+    // Every other key is kept (`bareQuestRefs`, `apps`): relinking a
+    // directory is not a reason to forget how its commits are read.
     await this.fs.writeJsonFile(path, { ...current, project });
     this.linked = project;
     this.linkedFrom = path;
     return path;
   }
+}
+
+export interface LoreLink {
+  project: string;
+  path: string;
+  bareQuestRefs: boolean;
+  /**
+   * App name to the git pathspecs it is built from, from the repository
+   * root. Empty when the file declares none.
+   */
+  apps: Record<string, string[]>;
 }

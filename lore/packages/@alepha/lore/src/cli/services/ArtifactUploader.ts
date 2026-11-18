@@ -97,6 +97,14 @@ export class ArtifactUploader {
         .object({ count: z.integer(), complete: z.boolean() })
         .loose()
         .optional(),
+      /**
+       * The set of the commits that touched the app's paths (#Q3868).
+       * Absent from an older Lore, or when the app declares none.
+       */
+      appQuests: z
+        .object({ count: z.integer(), complete: z.boolean() })
+        .loose()
+        .optional(),
     })
     .loose();
 
@@ -124,6 +132,10 @@ export class ArtifactUploader {
     // sent before `file` like `manifest`. An older Lore ignores the field.
     if (input.quests) {
       fields.quests = input.quests;
+    }
+    // The same, for the commits that touched the app's paths (#Q3868).
+    if (input.appQuests) {
+      fields.appQuests = input.appQuests;
     }
     if (input.dirty !== undefined) {
       fields.dirty = input.dirty ? "true" : "false";
@@ -185,6 +197,7 @@ export class ArtifactUploader {
           assets: input.assets,
           schema: input.schema,
           commits: input.commits,
+          appCommits: input.appCommits,
         }),
         schema: { response: ArtifactUploader.RESPONSE },
       } as never,
@@ -237,7 +250,7 @@ export class ArtifactUploader {
     fields: Record<string, string>,
     filename: string,
     file: AsyncIterable<unknown>,
-    { assets, schema, commits }: ArtifactUploadExtras = {},
+    { assets, schema, commits, appCommits }: ArtifactUploadExtras = {},
   ): AsyncGenerator<Uint8Array> {
     const encoder = new TextEncoder();
 
@@ -281,6 +294,18 @@ export class ArtifactUploader {
         "commits",
         "commits.json",
         [encoder.encode(commits)],
+        "application/json",
+      );
+    }
+
+    // The shas the app's own walk read (#Q3868): the same part, for the
+    // commits that touched its paths.
+    if (appCommits) {
+      yield* this.filePart(
+        boundary,
+        "appCommits",
+        "app-commits.json",
+        [encoder.encode(appCommits)],
         "application/json",
       );
     }
@@ -385,6 +410,18 @@ export interface ArtifactUploadInput {
   commits?: string;
 
   /**
+   * The app's own quest set part (#Q3868), JSON: `{ version: 1, paths,
+   * base?, numbers, complete }`, for the commits that touched the paths
+   * `.alepha/lore.json` declares for it.
+   */
+  appQuests?: string;
+
+  /**
+   * The shas that walk read, a JSON array: sent as the `appCommits` part.
+   */
+  appCommits?: string;
+
+  /**
    * Tracked changes in the working tree (#E154). Absent when git could not
    * say.
    */
@@ -398,6 +435,7 @@ export interface ArtifactUploadExtras {
   assets?: string;
   schema?: string;
   commits?: string;
+  appCommits?: string;
 }
 
 export interface ArtifactUploaded {
@@ -416,4 +454,8 @@ export interface ArtifactUploaded {
    * The full quest set Lore keeps for the commit (#E154).
    */
   quests?: { count: number; complete: boolean };
+  /**
+   * The set of the commits that touched the app's paths (#Q3868).
+   */
+  appQuests?: { count: number; complete: boolean };
 }

@@ -20,6 +20,13 @@ import { ShellProvider } from "alepha/system";
  * a true ancestor's, and a push never fails over this. A shallow clone that
  * finds a complete base is complete: the range it walked is all it needed.
  *
+ * ## Only the commits that touched an app's paths
+ *
+ * With `paths` (#Q3868) the walk reads `git log -- <paths>` from the
+ * repository root: the quests of the commits that touched what one app is
+ * built from. Same base rule, asked of Lore for that app and those paths, so
+ * a changed list never builds on a set walked with the old one.
+ *
  * Through `ShellProvider`, so a spec can run it on a real fixture repository.
  */
 export class GitQuestHistory {
@@ -74,6 +81,11 @@ export class GitQuestHistory {
      */
     bare: boolean;
     /**
+     * Git pathspecs from the repository root: read only the commits that
+     * touched them (`.alepha/lore.json`'s `apps`).
+     */
+    paths?: string[];
+    /**
      * Lore's answer for which of the candidates have a set, in the order
      * given. Undefined when it cannot be asked (an older Lore).
      */
@@ -115,12 +127,32 @@ export class GitQuestHistory {
       "--is-shallow-repository",
     ]);
 
+    // Pathspecs are read from the repository root, wherever the app sits.
+    let logRoot = input.root;
+    if (input.paths?.length) {
+      const top = await this.git(input.root, ["rev-parse", "--show-toplevel"]);
+      if (!top.ok || !top.out) {
+        return {
+          ...(base ? { base } : {}),
+          numbers: [],
+          walked: [],
+          complete: false,
+          reason: "git-failed",
+        };
+      }
+      logRoot = top.out;
+    }
+
     // %x1f between the sha and the message, %x1e after each commit: neither
     // can appear in a commit message git would accept from a person.
-    const log = await this.git(input.root, [
+    const log = await this.git(logRoot, [
       "log",
       "--format=%H%x1f%B%x1e",
+      // Every commit that touched the paths, a merged side branch's
+      // included: the default simplification follows one parent only.
+      ...(input.paths?.length ? ["--full-history"] : []),
       base ? `${base}..HEAD` : "HEAD",
+      ...(input.paths?.length ? ["--", ...input.paths] : []),
     ]);
     if (!log.ok) {
       return {

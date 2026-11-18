@@ -1,9 +1,15 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { Alepha } from "alepha";
-import { NodeShellProvider, ShellProvider } from "alepha/system";
+import { LinkProvider } from "alepha/server/links";
+import {
+  FileSystemProvider,
+  NodeFileSystemProvider,
+  NodeShellProvider,
+  ShellProvider,
+} from "alepha/system";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { GitContextService } from "../services/GitContextService.ts";
@@ -75,6 +81,7 @@ describe("GitQuestHistory", () => {
     root: string,
     known: Array<{ sha: string; complete: boolean }> | undefined = [],
     bare = false,
+    paths?: string[],
   ) => {
     const asked: string[][] = [];
     return {
@@ -82,6 +89,7 @@ describe("GitQuestHistory", () => {
       result: alepha.inject(GitQuestHistory).walk({
         root,
         bare,
+        ...(paths ? { paths } : {}),
         known: async (shas) => {
           asked.push(shas);
           return known;
@@ -129,6 +137,97 @@ describe("GitQuestHistory", () => {
     expect(found.numbers).toEqual([3, 4]);
     expect(found.walked).toEqual([shas[3], shas[2]]);
     expect(found.complete).toBe(true);
+  });
+
+  describe("an app's paths (#Q3868)", () => {
+    /**
+     * A repository holding two apps: each commit changes one file, named
+     * with its message. Answers each commit's sha.
+     */
+    const monorepo = async (
+      commits: Array<[path: string, message: string]>,
+    ) => {
+      const root = tempDir("lore-quests-");
+      await git(root, "init", "-q", "-b", "main");
+      await git(root, "config", "user.email", "ci@example.app");
+      await git(root, "config", "user.name", "CI");
+      await git(root, "config", "commit.gpgsign", "false");
+      const shas: string[] = [];
+      for (const [i, [path, message]] of commits.entries()) {
+        mkdirSync(join(root, path, ".."), { recursive: true });
+        writeFileSync(join(root, path), `${i}\n`);
+        await git(root, "add", path);
+        await git(root, "commit", "-q", "-m", message);
+        shas.push(await git(root, "rev-parse", "HEAD"));
+      }
+      return { root, shas };
+    };
+
+    it("reads only the commits that touched them, from the repository root", async ({
+      expect,
+    }) => {
+      const { root, shas } = await monorepo([
+        ["apps/web/a.txt", "web #Q1"],
+        ["apps/docs/a.txt", "docs #Q2"],
+        ["packages/kit/a.txt", "kit #Q3"],
+        ["apps/web/b.txt", "web again #Q4"],
+        ["README.md", "readme #Q5"],
+      ]);
+
+      // Walked from inside the app's own folder, as a push runs: the paths
+      // are still read from the root.
+      const { result, asked } = walk(join(root, "apps/docs"), [], false, [
+        "apps/docs",
+        "packages/kit",
+      ]);
+      const found = await result;
+
+      expect(found).toEqual({
+        numbers: [2, 3],
+        walked: [shas[2], shas[1]],
+        complete: true,
+      });
+      // Every commit is still offered as a base: the newest one Lore knows
+      // need not have touched the paths.
+      expect(asked[0]).toEqual(shas.toReversed());
+    });
+
+    it("walks from the base Lore knows for the app, whatever that commit touched", async ({
+      expect,
+    }) => {
+      const { root, shas } = await monorepo([
+        ["apps/docs/a.txt", "docs #Q1"],
+        ["apps/web/a.txt", "web #Q2"],
+        ["apps/docs/b.txt", "docs #Q3"],
+        ["apps/web/b.txt", "web #Q4"],
+      ]);
+
+      const found = await walk(
+        root,
+        [{ sha: shas[1] as string, complete: true }],
+        false,
+        ["apps/docs"],
+      ).result;
+
+      expect(found).toEqual({
+        base: shas[1],
+        numbers: [3],
+        walked: [shas[2]],
+        complete: true,
+      });
+    });
+
+    it("finds nothing, completely, when no commit touched them", async ({
+      expect,
+    }) => {
+      const { root } = await monorepo([["apps/web/a.txt", "web #Q1"]]);
+
+      expect(await walk(root, [], false, ["apps/docs"]).result).toEqual({
+        numbers: [],
+        walked: [],
+        complete: true,
+      });
+    });
   });
 
   it("finds no base after a rebase rewrote the shas Lore knew, and keeps the refs", async ({
@@ -363,6 +462,158 @@ describe("LoreArtifactPusher's quest line", () => {
   it("names fetch-depth: 0 for a shallow clone", ({ expect }) => {
     expect(pusher().partialReason("shallow")).toMatch(
       /`fetch-depth: 0` on `actions\/checkout`/,
+    );
+  });
+});
+
+/**
+ * The two walks of one push (#Q3868): the whole history as always, and the
+ * commits that touched the paths `.alepha/lore.json` declares for the app.
+ * On a real repository and a real link file; only Lore's answer is stated.
+ */
+describe("LoreArtifactPusher's walks", () => {
+  type Ask = { shas: string[]; app?: string; paths?: string };
+
+  class TestLore extends LinkProvider {
+    public asked: Ask[] = [];
+    /**
+     * A Lore from before the app's sets: it ignores `app` and echoes none.
+     */
+    public old = false;
+    public known: Array<{ sha: string; complete: boolean }> = [];
+
+    override client(): any {
+      return {
+        findKnownCommits: async (config: { body: Ask }) => {
+          this.asked.push(config.body);
+          return config.body.app && !this.old
+            ? { known: [], app: config.body.app }
+            : { known: this.known };
+        },
+      };
+    }
+  }
+
+  class TestPusher extends LoreArtifactPusher {
+    public walksOf(root: string, app: string) {
+      return this.walk(root, 7, app);
+    }
+  }
+
+  let alepha: Alepha;
+  let root: string;
+  let shas: string[];
+
+  const git = async (...args: string[]) => {
+    const result = await alepha
+      .inject(ShellProvider)
+      .capture(["git", ...args], { root });
+    if (result.exitCode !== 0) {
+      throw new Error(`git ${args.join(" ")}: ${result.stderr}`);
+    }
+    return result.stdout.trim();
+  };
+
+  beforeEach(async () => {
+    alepha = Alepha.create({
+      env: { LORE_API_KEY: "k", LORE_URL: "", LORE_PROJECT: "" },
+    })
+      .with({ provide: ShellProvider, use: NodeShellProvider })
+      .with({ provide: FileSystemProvider, use: NodeFileSystemProvider })
+      .with({ provide: LinkProvider, use: TestLore })
+      .with(TestPusher);
+    await alepha.start();
+    root = mkdtempSync(join(tmpdir(), "lore-walks-"));
+    await git("init", "-q", "-b", "main");
+    await git("config", "user.email", "ci@example.app");
+    await git("config", "user.name", "CI");
+    await git("config", "commit.gpgsign", "false");
+    shas = [];
+    for (const [i, [path, message]] of [
+      ["apps/web/a.txt", "web #Q1"],
+      ["apps/docs/a.txt", "docs #Q2"],
+      ["apps/web/b.txt", "web again #Q3"],
+    ].entries()) {
+      mkdirSync(join(root, path as string, ".."), { recursive: true });
+      writeFileSync(join(root, path as string), `${i}\n`);
+      await git("add", path as string);
+      await git("commit", "-q", "-m", message as string);
+      shas.push(await git("rev-parse", "HEAD"));
+    }
+    mkdirSync(join(root, ".alepha"));
+    writeFileSync(
+      join(root, ".alepha/lore.json"),
+      JSON.stringify({ project: "acme", apps: { docs: ["apps/docs"] } }),
+    );
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("walks the whole history, and the app's paths when the link file declares them", async ({
+    expect,
+  }) => {
+    const walks = await alepha
+      .inject(TestPusher)
+      .walksOf(join(root, "apps/docs"), "docs");
+
+    expect(walks.whole.numbers).toEqual([1, 2, 3]);
+    expect(walks.scoped).toEqual({
+      paths: "apps/docs",
+      walk: { numbers: [2], walked: [shas[1]], complete: true },
+    });
+    // Lore is asked twice: for the whole history, then for the app with
+    // the very paths the walk reads.
+    expect(alepha.inject(TestLore).asked).toEqual([
+      { shas: shas.toReversed() },
+      { shas: shas.toReversed(), app: "docs", paths: "apps/docs" },
+    ]);
+  });
+
+  it("walks the whole history only for an app that declares nothing", async ({
+    expect,
+  }) => {
+    const walks = await alepha
+      .inject(TestPusher)
+      .walksOf(join(root, "apps/web"), "web");
+
+    expect(walks.whole.numbers).toEqual([1, 2, 3]);
+    expect(walks.scoped).toBeUndefined();
+    expect(alepha.inject(TestLore).asked).toHaveLength(1);
+  });
+
+  it("takes no base from a Lore that answers the whole-history sets for the app", async ({
+    expect,
+  }) => {
+    // Such a Lore knows HEAD: as a base it would leave the app's walk
+    // empty, and every quest of the app unrecorded.
+    const lore = alepha.inject(TestLore);
+    lore.old = true;
+    lore.known = [{ sha: shas[2] as string, complete: true }];
+
+    const walks = await alepha.inject(TestPusher).walksOf(root, "docs");
+
+    expect(walks.whole).toMatchObject({ base: shas[2], numbers: [] });
+    expect(walks.scoped?.walk).toEqual({
+      numbers: [2],
+      walked: [shas[1]],
+      complete: true,
+    });
+  });
+
+  it("says the app's count on its own line", ({ expect }) => {
+    const pusher = alepha.inject(TestPusher);
+    const walk = { numbers: [2], walked: [], complete: true };
+
+    expect(pusher.appQuestLine("docs", walk, 4)).toBe(
+      "4 of them touch the paths of docs (complete, full history)",
+    );
+    expect(
+      pusher.appQuestLine("docs", { ...walk, base: "a".repeat(40) }, 1),
+    ).toBe(
+      "1 of them touches the paths of docs (complete, since aaaaaaaaaaaa)",
     );
   });
 });

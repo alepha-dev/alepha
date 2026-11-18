@@ -11,7 +11,10 @@ import { artifactDetailSchema } from "../schemas/artifactDetailSchema.ts";
 import { artifactListSchema } from "../schemas/artifactListSchema.ts";
 import { artifactManifestSchema } from "../schemas/artifactManifestSchema.ts";
 import { artifactPushResultSchema } from "../schemas/artifactPushResultSchema.ts";
-import { commitQuestSetPushSchema } from "../schemas/commitQuestSetPushSchema.ts";
+import {
+  appQuestSetPushSchema,
+  commitQuestSetPushSchema,
+} from "../schemas/commitQuestSetPushSchema.ts";
 import { ArtifactDetailService } from "../services/ArtifactDetailService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 import { CommitQuestSetService } from "../services/CommitQuestSetService.ts";
@@ -172,6 +175,15 @@ export class ArtifactController {
          */
         commits: z.file({ maxBytes: 4 * 1024 * 1024 }).optional(),
         /**
+         * The same two parts for the commits that touched the pushed app's
+         * paths (#Q3868), when `.alepha/lore.json` declares them. Kept once
+         * per `(project, commitSha, app)`, beside the whole-history set.
+         *
+         * ⚠️ An object part sent before `file`, for `manifest`'s reason.
+         */
+        appQuests: appQuestSetPushSchema.optional(),
+        appCommits: z.file({ maxBytes: 4 * 1024 * 1024 }).optional(),
+        /**
          * The working tree had tracked changes (#E154). Untracked files
          * never count.
          */
@@ -185,6 +197,9 @@ export class ArtifactController {
       // rather than leaving a build whose quests were dropped.
       const walked = body.commits
         ? await this.questSets.walkedOf(body.commits)
+        : [];
+      const appWalked = body.appCommits
+        ? await this.questSets.walkedOf(body.appCommits)
         : [];
       const { artifact, stored } = await this.artifacts.push({
         projectId: params.projectId,
@@ -212,10 +227,30 @@ export class ArtifactController {
               complete: body.quests.complete,
             })
           : undefined;
+      const appQuests =
+        body.appQuests && body.commitSha
+          ? await this.questSets.record({
+              projectId: params.projectId,
+              commitSha: body.commitSha,
+              scope: { app: body.app, paths: body.appQuests.paths },
+              base: body.appQuests.base,
+              numbers: body.appQuests.numbers,
+              walked: appWalked,
+              complete: body.appQuests.complete,
+            })
+          : undefined;
 
       return {
         artifact: this.resource(artifact),
         stored,
+        ...(appQuests
+          ? {
+              appQuests: {
+                count: appQuests.numbers.size,
+                complete: appQuests.complete,
+              },
+            }
+          : {}),
         ...(quests
           ? {
               quests: { count: quests.numbers.size, complete: quests.complete },

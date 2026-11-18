@@ -1,0 +1,6 @@
+{
+  "project": "alepha",
+  "apps": {
+    "shop": ["framework/packages", "framework/apps/examples/shop", "yarn.lock"]
+  }
+}

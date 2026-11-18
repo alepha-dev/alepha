@@ -16,6 +16,14 @@ import { QuestBitmap } from "./QuestBitmap.ts";
  * No git here: the pusher walked `base..HEAD` and sends what it found. Lore
  * adds the base's set and the quests whose recorded sha the push walked, and
  * keeps the full set of the pushed commit.
+ *
+ * ## Two kinds of set (#Q3868)
+ *
+ * The whole-history set of a commit (`app: ""`), and one per app that
+ * declares its paths: the quests of the commits that touched them. Every
+ * read and write names which it means through a {@link QuestSetScope}, and
+ * the two never mix: an app's set is built on an app's base, walked with the
+ * same paths.
  */
 export class CommitQuestSetService {
   protected readonly rows = $repository(commitQuestSets);
@@ -32,12 +40,16 @@ export class CommitQuestSetService {
   public async known(
     projectId: number,
     shas: string[],
+    scope?: QuestSetScope,
   ): Promise<Array<{ sha: string; complete: boolean }>> {
     const wanted = [...new Set(shas.map((sha) => sha.toLowerCase()))];
-    const found = await this.find(projectId, wanted);
+    const found = await this.find(projectId, wanted, scope?.app);
     return wanted.flatMap((sha) => {
       const row = found.get(sha);
-      return row ? [{ sha, complete: row.complete }] : [];
+      // A set walked with other paths is no base for this walk.
+      return row && this.samePaths(row, scope)
+        ? [{ sha, complete: row.complete }]
+        : [];
     });
   }
 
@@ -62,6 +74,49 @@ export class CommitQuestSetService {
   }
 
   /**
+   * The sets kept for apps that declare their paths (#Q3868), for the
+   * `(app, commit)` pairs given, keyed by {@link appKey}. A pair with no
+   * such set is absent: its copy reads the whole-history set.
+   *
+   * One read per app, and a project has a handful.
+   */
+  public async appSetsOf(
+    projectId: number,
+    pairs: Array<{ app: string; sha: string }>,
+  ): Promise<Map<string, CommitQuests & { paths: string }>> {
+    const byApp = new Map<string, Set<string>>();
+    for (const pair of pairs) {
+      const shas = byApp.get(pair.app);
+      if (shas) {
+        shas.add(pair.sha.toLowerCase());
+      } else {
+        byApp.set(pair.app, new Set([pair.sha.toLowerCase()]));
+      }
+    }
+    const sets = new Map<string, CommitQuests & { paths: string }>();
+    for (const [app, shas] of byApp) {
+      if (!app) {
+        continue;
+      }
+      for (const [sha, row] of await this.find(projectId, [...shas], app)) {
+        sets.set(CommitQuestSetService.appKey(app, sha), {
+          numbers: QuestBitmap.decode(row.quests),
+          complete: row.complete,
+          paths: row.paths ?? "",
+        });
+      }
+    }
+    return sets;
+  }
+
+  /**
+   * The key of one app's set of one commit in {@link appSetsOf}'s answer.
+   */
+  public static appKey(app: string, sha: string): string {
+    return `${app}\n${sha.toLowerCase()}`;
+  }
+
+  /**
    * Compute and keep the full set of a pushed commit:
    * `set(base) + numbers + every quest whose recorded sha prefixes a walked
    * sha`. Complete only when the push says so AND the base's set was.
@@ -70,36 +125,60 @@ export class CommitQuestSetService {
    * complete sets of one commit are equal by construction, so a second write
    * is a no-op; two incomplete ones are merged, since every number either
    * found is a true ancestor's.
+   *
+   * With a `scope` (#Q3868) the same, for one app: the base is that app's
+   * set walked with the same paths, and the pushed commit's own recorded
+   * quests count only when the walk read it, since it may not have touched
+   * the paths.
    */
   public async record(input: CommitQuestSetInput): Promise<CommitQuests> {
     const commitSha = input.commitSha.toLowerCase();
+    const scope = input.scope;
     let complete = input.complete;
     const numbers = new Set(input.numbers);
 
     if (input.base) {
-      const base = (await this.setsOf(input.projectId, [input.base])).get(
-        input.base.toLowerCase(),
+      const sha = input.base.toLowerCase();
+      const row = (await this.find(input.projectId, [sha], scope?.app)).get(
+        sha,
       );
-      if (!base) {
-        // The pusher saw a base Lore no longer has: what it walked is not
-        // the whole history.
+      if (!row || !this.samePaths(row, scope)) {
+        // The pusher saw a base Lore no longer has, or one walked with
+        // other paths: what it walked is not the whole history.
         complete = false;
       } else {
-        for (const n of base.numbers) {
+        for (const n of QuestBitmap.decode(row.quests)) {
           numbers.add(n);
         }
-        complete = complete && base.complete;
+        complete = complete && row.complete;
       }
     }
 
-    for (const n of await this.recordedMatches(input.projectId, [
-      commitSha,
-      ...input.walked,
-    ])) {
+    for (const n of await this.recordedMatches(
+      input.projectId,
+      scope ? input.walked : [commitSha, ...input.walked],
+    )) {
       numbers.add(n);
     }
 
-    return await this.upsert(input.projectId, commitSha, numbers, complete);
+    return await this.upsert(
+      input.projectId,
+      commitSha,
+      numbers,
+      complete,
+      scope,
+    );
+  }
+
+  /**
+   * Whether a row was walked with the scope's paths. A whole-history row
+   * has none, and matches no scope.
+   */
+  protected samePaths(
+    row: CommitQuestSet,
+    scope: QuestSetScope | undefined,
+  ): boolean {
+    return (row.paths ?? "") === (scope?.paths ?? "");
   }
 
   /**
@@ -175,13 +254,19 @@ export class CommitQuestSetService {
     commitSha: string,
     numbers: Set<number>,
     complete: boolean,
+    scope?: QuestSetScope,
   ): Promise<CommitQuests> {
-    const existing = (await this.find(projectId, [commitSha])).get(commitSha);
+    const app = scope?.app ?? "";
+    const existing = (await this.find(projectId, [commitSha], app)).get(
+      commitSha,
+    );
     if (!existing) {
       try {
         await this.rows.create({
           projectId,
           commitSha,
+          app,
+          ...(scope ? { paths: scope.paths } : {}),
           quests: QuestBitmap.encode(numbers),
           complete,
         });
@@ -189,21 +274,34 @@ export class CommitQuestSetService {
       } catch (error) {
         // Two pushes of one commit raced on the unique key: merge into the
         // row the other one wrote.
-        const raced = (await this.find(projectId, [commitSha])).get(commitSha);
+        const raced = (await this.find(projectId, [commitSha], app)).get(
+          commitSha,
+        );
         if (!raced) {
           throw error;
         }
-        return await this.merge(raced, numbers, complete);
+        return await this.merge(raced, numbers, complete, scope);
       }
     }
-    return await this.merge(existing, numbers, complete);
+    return await this.merge(existing, numbers, complete, scope);
   }
 
   protected async merge(
     existing: CommitQuestSet,
     numbers: Set<number>,
     complete: boolean,
+    scope?: QuestSetScope,
   ): Promise<CommitQuests> {
+    if (!this.samePaths(existing, scope)) {
+      // The app's paths changed since this row was written: the old set
+      // answers another question, so it is replaced, complete or not.
+      await this.rows.updateById(existing.id, {
+        quests: QuestBitmap.encode(numbers),
+        complete,
+        paths: scope?.paths,
+      });
+      return { numbers, complete };
+    }
     const current = QuestBitmap.decode(existing.quests);
     if (existing.complete) {
       return { numbers: current, complete: true };
@@ -220,14 +318,19 @@ export class CommitQuestSetService {
     return { numbers, complete };
   }
 
+  /**
+   * The rows of the given commits: the whole-history ones, or one app's.
+   */
   protected async find(
     projectId: number,
     shas: string[],
+    app = "",
   ): Promise<Map<string, CommitQuestSet>> {
     const rows = await this.bound.collect(shas, (batch) =>
       this.rows.findMany({
         where: {
           projectId: { eq: projectId },
+          app: { eq: app },
           commitSha: { inArray: batch },
         },
       }),
@@ -241,9 +344,23 @@ export interface CommitQuests {
   complete: boolean;
 }
 
+/**
+ * One app's sets, walked with its declared paths (#Q3868): git pathspecs
+ * joined by line breaks.
+ */
+export interface QuestSetScope {
+  app: string;
+  paths: string;
+}
+
 export interface CommitQuestSetInput {
   projectId: number;
   commitSha: string;
+  /**
+   * Keep the set for one app instead of the whole history: the walk read
+   * only the commits that touched its paths.
+   */
+  scope?: QuestSetScope;
   /**
    * The newest ancestor the pusher found a complete set for, when it found
    * one. It walked `base..HEAD` only.

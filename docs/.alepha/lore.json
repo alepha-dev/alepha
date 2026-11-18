@@ -1,0 +1,6 @@
+{
+  "project": "alepha",
+  "apps": {
+    "docs": ["docs", "framework/docs", "lore/docs", "bay/docs"]
+  }
+}

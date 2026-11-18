@@ -1,0 +1,151 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "cee83c8a-ffe0-4523-a3ec-807611233d1e",
+  "prevIds": ["575de642-cd35-4a9d-ab85-b176dc7df199"],
+  "footprints": [
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "commit_quest_sets",
+        "commit_quest_sets_project_id_commit_sha_idx"
+      ],
+      "writes": [
+        "s|idx|public.commit_quest_sets_project_id_commit_sha_idx",
+        "n|idx|public.commit_quest_sets_project_id_commit_sha_idx",
+        "e|idx|public.commit_quest_sets_project_id_commit_sha_idx",
+        "n|rel|public.commit_quest_sets_project_id_commit_sha_idx"
+      ],
+      "reads": [
+        "n|tbl|public.commit_quest_sets",
+        "n|sch|public",
+        "e|col|public.commit_quest_sets.project_id",
+        "e|col|public.commit_quest_sets.commit_sha"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.commit_quest_sets.commit_sha.project_id"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "commit_quest_sets", "app"],
+      "writes": [
+        "s|col|public.commit_quest_sets.app",
+        "n|col|public.commit_quest_sets.app",
+        "e|col|public.commit_quest_sets.app"
+      ],
+      "reads": ["n|tbl|public.commit_quest_sets", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "commit_quest_sets", "paths"],
+      "writes": [
+        "s|col|public.commit_quest_sets.paths",
+        "n|col|public.commit_quest_sets.paths",
+        "e|col|public.commit_quest_sets.paths"
+      ],
+      "reads": ["n|tbl|public.commit_quest_sets", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "commit_quest_sets",
+        "commit_quest_sets_project_id_commit_sha_app_idx"
+      ],
+      "writes": [
+        "s|idx|public.commit_quest_sets_project_id_commit_sha_app_idx",
+        "n|idx|public.commit_quest_sets_project_id_commit_sha_app_idx",
+        "e|idx|public.commit_quest_sets_project_id_commit_sha_app_idx",
+        "n|rel|public.commit_quest_sets_project_id_commit_sha_app_idx"
+      ],
+      "reads": [
+        "n|tbl|public.commit_quest_sets",
+        "n|sch|public",
+        "n|col|public.commit_quest_sets.project_id",
+        "n|col|public.commit_quest_sets.commit_sha",
+        "n|col|public.commit_quest_sets.app"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "app",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "''",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "paths",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "commit_quest_sets",
+        "name": "commit_quest_sets_project_id_commit_sha_app_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "commit_sha",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "app",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"commit_quest_sets_project_id_commit_sha_idx\"]"
+    }
+  ]
+}

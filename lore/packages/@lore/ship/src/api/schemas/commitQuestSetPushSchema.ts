@@ -24,3 +24,13 @@ export const commitQuestSetPushSchema = z.object({
 });
 
 export type CommitQuestSetPush = Infer<typeof commitQuestSetPushSchema>;
+
+/**
+ * The same part for the commits that touched the pushed app's paths
+ * (#Q3868), with the paths it walked: git pathspecs joined by line breaks.
+ */
+export const appQuestSetPushSchema = commitQuestSetPushSchema.extend({
+  paths: z.string().min(1).max(2000),
+});
+
+export type AppQuestSetPush = Infer<typeof appQuestSetPushSchema>;

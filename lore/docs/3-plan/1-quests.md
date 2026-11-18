@@ -243,6 +243,11 @@ references in the history, and the commits recorded on quests
 follows the copy's newest successful deployment, so a rollback takes the quests
 it removed off at once, and a redeploy of an older build puts them back.
 
+In a repository holding several apps, every app runs the same history, so a
+quest would be live on all of them. Declare the paths each app is built from
+and a quest is live only on the apps whose paths its commits changed
+([A repository holding several apps](/lore/docs/ship-artifacts#a-repository-holding-several-apps)).
+
 - **unverified** beside a chip: that build was pushed from a working tree with
   uncommitted changes, so the copy may run code no commit names.
 - **Unknown** is not "not live". A copy deployed before Lore recorded commits,

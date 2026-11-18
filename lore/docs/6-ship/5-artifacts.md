@@ -82,6 +82,45 @@ opt in, in `.alepha/lore.json` at the root of the repository:
 every merged subject ends with the pull request's number, `(#123)`, which
 would count as quest 123.
 
+### A repository holding several apps
+
+A commit's history holds every quest, whichever app it was for. So in a
+repository holding several apps, a quest for the `api` would show as live on
+the `docs` too, as soon as the docs are deployed from a later commit.
+
+Say which paths each app is built from, in the same file:
+
+```json
+{
+  "project": "acme",
+  "apps": {
+    "docs": ["apps/docs", "packages/docs"],
+    "web": ["apps/web", "packages", "yarn.lock"]
+  }
+}
+```
+
+A push of `docs` then also records the quests of the commits that changed
+`apps/docs` or `packages/docs`, and a quest is **Live** on a copy of `docs`
+only when one of its commits did. The push says so on a second line, for
+example `3 of them touch the paths of docs (complete, since 3f2a9c1b8e0d)`.
+
+- The key is the app's name, as the push files it. An app with no entry keeps
+  the whole history.
+- A path is a git pathspec read from the root of the repository, wherever the
+  file sits: a folder (`apps/docs`), a file (`yarn.lock`), or a pattern
+  (`:(glob)**/docs/**`).
+- List what the app is built from, the shared packages included: a quest that
+  only changed a package the `web` imports is live on the `web`.
+- Each copy follows its paths from its next push on. A copy still running an
+  older build shows the whole history until then.
+- After the list changes, the next push reads the history again with the new
+  paths.
+
+"Behind" keeps counting every done quest merged since the copy's last
+deployment, whatever it changed: which paths a commit changed is only known
+once a build of it is pushed.
+
 ## From CI
 
 `lore artifacts push` authenticates with an API key in the environment that

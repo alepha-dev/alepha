@@ -22,6 +22,13 @@ export const artifactPushResultSchema = z.object({
   quests: z
     .object({ count: z.integer().min(0), complete: z.boolean() })
     .optional(),
+  /**
+   * The set of the commits that touched the app's declared paths (#Q3868).
+   * Absent when the push sent none.
+   */
+  appQuests: z
+    .object({ count: z.integer().min(0), complete: z.boolean() })
+    .optional(),
 });
 
 export type ArtifactPushResult = Infer<typeof artifactPushResultSchema>;
