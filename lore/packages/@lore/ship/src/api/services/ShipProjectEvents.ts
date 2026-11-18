@@ -1,5 +1,10 @@
-import { ProjectEventCatalog } from "@lore/core/api";
+import { ProjectEventCatalog, ProjectEventFilters } from "@lore/core/api";
 import { $inject } from "alepha";
+import { $repository } from "alepha/orm";
+
+import { appInstances } from "../entities/appInstances.ts";
+import { hosts } from "../entities/hosts.ts";
+import { monitors } from "../entities/monitors.ts";
 
 /**
  * Ship's project events (#Q3889): deploys, monitors and hosts. A filter
@@ -19,8 +24,46 @@ export class ShipProjectEvents {
     "host.online": "It is reporting again.",
   };
   protected readonly catalog = $inject(ProjectEventCatalog);
+  protected readonly filters = $inject(ProjectEventFilters);
+  protected readonly hosts = $repository(hosts);
+  protected readonly instances = $repository(appInstances);
+  protected readonly monitors = $repository(monitors);
 
   constructor() {
+    // What a filter may name, picked on the Notifications page (#Q3892):
+    // the project's own hosts, apps and monitors, by the value each event
+    // carries in its filter field.
+    this.filters.register("host", async (projectId) =>
+      (
+        await this.hosts.findMany({
+          where: { projectId },
+          orderBy: "slug",
+          limit: 500,
+        })
+      ).map((host) => ({ value: host.id, label: host.label ?? host.slug })),
+    );
+    this.filters.register("app", async (projectId) =>
+      [
+        ...new Set(
+          (
+            await this.instances.findMany({
+              where: { projectId },
+              orderBy: "app",
+              limit: 500,
+            })
+          ).map((instance) => instance.app),
+        ),
+      ].map((app) => ({ value: app, label: app })),
+    );
+    this.filters.register("monitor", async (projectId) =>
+      (
+        await this.monitors.findMany({
+          where: { projectId },
+          orderBy: "name",
+          limit: 500,
+        })
+      ).map((monitor) => ({ value: monitor.id, label: monitor.name })),
+    );
     for (const [name, label] of [
       ["deploy.failed", "Deploy failed"],
       ["deploy.succeeded", "Deploy succeeded"],

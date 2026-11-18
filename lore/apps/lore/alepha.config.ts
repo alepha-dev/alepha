@@ -261,6 +261,11 @@ export default defineConfig({
       ],
       dynamicPrefixes: [
         "notifications.channels.kind.",
+        "notifications.event.",
+        "notifications.resource.",
+        "notifications.capability.",
+        "notifications.channel.",
+        "notifications.form.filter.",
         // A table folio's column types (#E144), named after the type.
         "folios.table.type.",
         // The quest preset bar: each button's label and hint, by preset key.

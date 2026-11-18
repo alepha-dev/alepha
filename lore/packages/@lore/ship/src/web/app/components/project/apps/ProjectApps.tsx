@@ -1,7 +1,7 @@
 import { Badge, TimeAgo, Button, Skeleton } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import {
-  AutomationSubscriptionBell,
+  SubscriptionBell,
   capabilityOption,
   useRank,
   currentProjectAtom,
@@ -340,8 +340,8 @@ const ProjectApps = () => {
         // each monitor's own bell (it binds no scope).
         toolbar={
           uptimeOn ? (
-            <AutomationSubscriptionBell
-              presets={["monitor-down", "monitor-up"]}
+            <SubscriptionBell
+              events={["monitor.down", "monitor.up"]}
               label={tr("uptime.subscription.allLabel")}
               description={tr("uptime.subscription.allDescription")}
               offDescription={tr("uptime.subscription.allOffDescription")}

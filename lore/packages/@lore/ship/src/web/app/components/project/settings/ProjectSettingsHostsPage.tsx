@@ -5,7 +5,7 @@ import {
   type RowActionEntry,
 } from "@alepha/ui/table";
 import {
-  AutomationSubscriptionBell,
+  SubscriptionBell,
   currentProjectAtom,
   useRank,
   type I18n,
@@ -238,12 +238,12 @@ const ProjectSettingsHostsPage = () => {
           // Every host's alerts (#Q3627): a Cloudflare host has no page of
           // its own, so this list is where its token alert is subscribed to.
           toolbar={
-            <AutomationSubscriptionBell
-              presets={[
-                "host-credential-invalid",
-                "host-expired",
-                "host-offline",
-                "host-online",
+            <SubscriptionBell
+              events={[
+                "host.credential_invalid",
+                "host.expired",
+                "host.offline",
+                "host.online",
               ]}
               label={tr("hosts.subscription.allLabel")}
               description={tr("hosts.subscription.allDescription")}

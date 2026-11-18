@@ -492,6 +492,35 @@ export class CoreRouter {
   });
 
   /**
+   * Settings > Notifications (#Q3892): who is told about what, by event and
+   * resource. Every member opens it: a member without
+   * `subscription:manage` sees and edits their own rows only.
+   */
+  projectSettingsNotifications = $pageProjectSettings({
+    name: "projectSettingsNotifications",
+    path: "/notifications",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Notifications`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/notifications/ProjectSettingsNotificationsPage.tsx"),
+  });
+
+  /**
+   * Settings > Notifications > Channels (#Q3891, #Q3900): the project's
+   * Discord channels and webhook endpoints.
+   */
+  projectSettingsNotificationChannels = $pageProjectSettings({
+    name: "projectSettingsNotificationChannels",
+    path: "/notifications/channels",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Channels`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/notifications/ProjectSettingsNotificationChannelsPage.tsx"),
+  });
+
+  /**
    * Quests > Agent prompts: the four templates. Renders nothing while the
    * `agentPrompts` option is off, and its tab is listed only while it is on.
    */

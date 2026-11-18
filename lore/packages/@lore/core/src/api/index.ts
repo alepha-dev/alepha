@@ -30,6 +30,7 @@ import { ProjectCapabilityController } from "./controllers/ProjectCapabilityCont
 import { ProjectChannelController } from "./controllers/ProjectChannelController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
+import { ProjectEventController } from "./controllers/ProjectEventController.ts";
 import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
@@ -123,7 +124,9 @@ import { ProjectDashboardCardService } from "./services/ProjectDashboardCardServ
 import { ProjectDashboardPresets } from "./services/ProjectDashboardPresets.ts";
 import { ProjectDashboardService } from "./services/ProjectDashboardService.ts";
 import { ProjectEventCatalog } from "./services/ProjectEventCatalog.ts";
+import { ProjectEventCatalogService } from "./services/ProjectEventCatalogService.ts";
 import { ProjectEventDelivery } from "./services/ProjectEventDelivery.ts";
+import { ProjectEventFilters } from "./services/ProjectEventFilters.ts";
 import { ProjectEvents } from "./services/ProjectEvents.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
@@ -281,6 +284,10 @@ export const LoreCoreApi = $module({
     ProjectRecipients,
     SubscriptionService,
     SubscriptionController,
+    // The catalog as a project sees it, and the filter pickers (#Q3892).
+    ProjectEventCatalogService,
+    ProjectEventFilters,
+    ProjectEventController,
     // The nightly backfill of the Admin and Viewer ranks; nothing injects it.
     DefaultRankJobs,
     AutomationDispatchJobs,
@@ -677,6 +684,12 @@ export { ProjectEventNotifications } from "./notifications/ProjectEventNotificat
 export { ProjectRecipients } from "./services/ProjectRecipients.ts";
 export { SubscriptionService } from "./services/SubscriptionService.ts";
 export { SubscriptionController } from "./controllers/SubscriptionController.ts";
+export { ProjectEventController } from "./controllers/ProjectEventController.ts";
+export { ProjectEventCatalogService } from "./services/ProjectEventCatalogService.ts";
+export {
+  ProjectEventFilters,
+  type ProjectEventFilterSource,
+} from "./services/ProjectEventFilters.ts";
 export {
   eventSubscriptions,
   type EventSubscription,
