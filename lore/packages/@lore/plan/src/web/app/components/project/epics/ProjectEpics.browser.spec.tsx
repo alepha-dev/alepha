@@ -391,6 +391,45 @@ describe("ProjectEpics - the status filter", () => {
     expect(row("#E1 - Building")).toBeTruthy();
   });
 
+  /**
+   * Open (#Q3885): every epic not yet finished, first in the rail, counted
+   * like the others.
+   */
+  it("offers Open first, which keeps draft, ready and in-progress epics", async () => {
+    await mount(
+      [],
+      [
+        epicOf(1, "Building", "in_progress"),
+        epicOf(2, "Waiting", "ready"),
+        epicOf(3, "Sketch", "draft"),
+        epicOf(4, "Finished", "completed"),
+        epicOf(5, "Parked", "shelved"),
+      ],
+    );
+    const presets = () =>
+      Array.from(document.querySelectorAll("[data-preset]")).map((node) =>
+        node.getAttribute("data-preset"),
+      );
+    const preset = (key: string) =>
+      document.querySelector(`[data-preset="${key}"]`) as HTMLElement;
+
+    await waitFor(() =>
+      expect(
+        preset("open")?.querySelector('[data-slot="data-table-preset-count"]')
+          ?.textContent,
+      ).toBe("3"),
+    );
+    expect(presets().find((key) => key !== "all")).toBe("open");
+
+    fireEvent.click(preset("open"));
+    await waitFor(() => expect(row("#E4 - Finished")).toBeNull());
+    expect(row("#E5 - Parked")).toBeNull();
+    expect(row("#E1 - Building")).toBeTruthy();
+    expect(row("#E2 - Waiting")).toBeTruthy();
+    expect(row("#E3 - Sketch")).toBeTruthy();
+    expect(preset("open").getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("asks for brief descriptions, and for the whole text while a search looks inside it", async () => {
     await mount(
       [],

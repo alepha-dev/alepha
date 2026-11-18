@@ -3659,6 +3659,8 @@ export default {
   "epic.filter.allStatuses": "All status",
   "epic.filter.reviews": "Reviews",
   "epic.filter.reviews.open": "Open questions",
+  "epic.presets.open": "Open",
+  "epic.presets.open.hint": "Draft, ready or in progress",
   "epic.presets.active": "Active",
   "epic.presets.active.hint": "In progress",
   "epic.presets.ready": "Ready",
