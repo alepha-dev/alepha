@@ -205,12 +205,25 @@ describe("Automation enable intent and health", () => {
     );
     expect(await health.sweep()).toBe(50);
     expect(await persistence.rules.count({ health: "broken" })).toBe(50);
-    expect(await alepha.inject(RestartedHealth).sweep()).toBe(50);
+    // The next sweep takes the three left, and only them: the fifty were
+    // checked a moment ago (#Q3827).
+    expect(await alepha.inject(RestartedHealth).sweep()).toBe(3);
     expect(await persistence.rules.count({ health: "broken" })).toBe(53);
     const evidence = await persistence.runs.count({ projectId: project.id });
-    await health.sweep();
-    await health.sweep();
-    await health.sweep();
+    expect(await health.sweep()).toBe(0);
+    // An hour on, every rule is due again, and checking it again changes
+    // nothing it records.
+    await persistence.rules.updateMany(
+      { projectId: { eq: project.id } },
+      {
+        healthCheckedAt:
+          alepha.inject(DateTimeProvider).nowMillis() -
+          AutomationHealth.RECHECK_AFTER_MS -
+          1_000,
+      },
+    );
+    expect(await health.sweep()).toBe(50);
+    expect(await health.sweep()).toBe(3);
     expect(await persistence.runs.count({ projectId: project.id })).toBe(
       evidence,
     );

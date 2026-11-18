@@ -8,6 +8,7 @@ import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
   AutomationDependencies,
+  type AutomationDependencyCheck,
   AutomationDependencyError,
 } from "./AutomationDependencies.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
@@ -45,6 +46,7 @@ export class AutomationHealth {
   public async inspect(
     rule: Automation,
     explicit = false,
+    checked?: AutomationDependencyCheck,
   ): Promise<AutomationHealthDecision> {
     if (rule.requiresApproval && !explicit && !this.pausedByFailure(rule))
       return {
@@ -53,11 +55,12 @@ export class AutomationHealth {
         reason: rule.reason ?? "Author review is required",
       };
     try {
-      await this.dependencies.assert(rule);
+      await this.dependencies.assert(rule, checked?.sources);
       const user = await this.access.author(rule);
       await this.access.assert(rule.projectId, user, "automation:write", rule);
       const values = await this.variables.snapshot(rule, user, {
         transition: false,
+        checked,
       });
       if (!explicit) this.variables.assertApproved(rule, values);
       return { health: "active", requiresApproval: false };
@@ -117,10 +120,13 @@ export class AutomationHealth {
       // A check that could not run throws out of here, before anything is
       // written: not even `healthCheckedAt`, so the sweep takes this rule
       // first next time.
-      const decision = await this.inspect(rule);
       // Each source's own health (#Q3806), outside the rule: a write here
       // never bumps the revision. A change names the sources that moved.
-      const sources = await this.dependencies.sources(rule);
+      // Computed once and handed to `inspect`, whose dependency check reads
+      // the same capabilities, channels and variables (#Q3827).
+      const checked = await this.dependencies.check(rule);
+      const sources = checked.sources;
+      const decision = await this.inspect(rule, false, checked);
       // A source never judged was active: filling it in moves nothing.
       const moved = Object.entries(sources).filter(
         ([id, value]) =>
@@ -183,10 +189,27 @@ export class AutomationHealth {
       }
     });
   }
+  /**
+   * How long a rule's health stands before the sweep checks it again.
+   *
+   * The sweep is a safety net, not the propagation (#Q3827): a capability
+   * change revalidates its project at once (`ProjectCapabilityController`),
+   * so does a channel's removal, and every effect checks its author's
+   * authority again, uncached, right before it runs (`AutomationAuthority`).
+   * Re-checking every rule every five minutes cost about 75 statements per
+   * rule per tick on D1, whether or not anything had changed. A check that
+   * could not run stamps nothing, so that rule is still retried each tick.
+   */
+  public static readonly RECHECK_AFTER_MS = 60 * 60 * 1000;
+
   public async sweep(limit = 50): Promise<number> {
     return this.database.primary(async () => {
       const rows = await this.persistence.rules.findMany({
-        where: {},
+        where: {
+          healthCheckedAt: {
+            lt: this.time.nowMillis() - AutomationHealth.RECHECK_AFTER_MS,
+          },
+        },
         orderBy: [
           { column: "healthCheckedAt", direction: "asc" },
           { column: "id", direction: "asc" },
