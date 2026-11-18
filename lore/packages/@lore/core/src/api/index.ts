@@ -36,6 +36,7 @@ import { ProjectReportController } from "./controllers/ProjectReportController.t
 import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
 import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
+import { SubscriptionController } from "./controllers/SubscriptionController.ts";
 import { UserDockController } from "./controllers/UserDockController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
@@ -44,12 +45,14 @@ import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
 import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
+import { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
 import { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
 import { AutomationAttentionNotifications } from "./notifications/AutomationAttentionNotifications.ts";
 import { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
+import { ProjectEventNotifications } from "./notifications/ProjectEventNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
@@ -119,9 +122,11 @@ import { ProjectDashboardCardService } from "./services/ProjectDashboardCardServ
 import { ProjectDashboardPresets } from "./services/ProjectDashboardPresets.ts";
 import { ProjectDashboardService } from "./services/ProjectDashboardService.ts";
 import { ProjectEventCatalog } from "./services/ProjectEventCatalog.ts";
+import { ProjectEventDelivery } from "./services/ProjectEventDelivery.ts";
 import { ProjectEvents } from "./services/ProjectEvents.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
+import { ProjectRecipients } from "./services/ProjectRecipients.ts";
 import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
@@ -129,6 +134,7 @@ import { ReportsDigest } from "./services/ReportsDigest.ts";
 import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
 import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
+import { SubscriptionService } from "./services/SubscriptionService.ts";
 import { UserDockService } from "./services/UserDockService.ts";
 
 /**
@@ -261,6 +267,14 @@ export const LoreCoreApi = $module({
     ProjectEventJobs,
     ProjectEventCatalog,
     ProjectEvents,
+    // Subscriptions and their delivery (#Q3890): the job is listed so the
+    // queue knows it, the templates so the notification registry does.
+    ProjectEventDelivery,
+    ProjectEventDeliveryJobs,
+    ProjectEventNotifications,
+    ProjectRecipients,
+    SubscriptionService,
+    SubscriptionController,
     // The nightly backfill of the Admin and Viewer ranks; nothing injects it.
     DefaultRankJobs,
     AutomationDispatchJobs,
@@ -643,6 +657,7 @@ export {
   ProjectEventCatalog,
   type ProjectEventDefinition,
   type ProjectEventFieldKind,
+  type ProjectEventMessage,
   type ProjectEventResource,
 } from "./services/ProjectEventCatalog.ts";
 export {
@@ -650,6 +665,16 @@ export {
   type ProjectEventInput,
 } from "./services/ProjectEvents.ts";
 export { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
+export { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
+export { ProjectEventDelivery } from "./services/ProjectEventDelivery.ts";
+export { ProjectEventNotifications } from "./notifications/ProjectEventNotifications.ts";
+export { ProjectRecipients } from "./services/ProjectRecipients.ts";
+export { SubscriptionService } from "./services/SubscriptionService.ts";
+export { SubscriptionController } from "./controllers/SubscriptionController.ts";
+export {
+  eventSubscriptions,
+  type EventSubscription,
+} from "./entities/eventSubscriptions.ts";
 export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 

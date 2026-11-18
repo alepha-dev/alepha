@@ -188,8 +188,9 @@ describe.skipIf(onPostgres)("MCP write tools: sequential D1 trips", () => {
     const q = { ...ctx.p, shortId: ctx.quest.shortId };
 
     const accepted = await ctx.measure("quest_accept", q);
-    // It was ten, the epic read twice.
-    expect(accepted.trips).toBe(8);
+    // It was ten, the epic read twice. Nine since #Q3890: the accept
+    // records `quest.assigned`, which reads whether anyone is subscribed.
+    expect(accepted.trips).toBe(9);
     expect(
       accepted.chain.flat().filter((t: string) => t === "epics"),
     ).toHaveLength(1);
@@ -202,8 +203,10 @@ describe.skipIf(onPostgres)("MCP write tools: sequential D1 trips", () => {
         { objectiveId: 1, reason: "r" },
       ],
     });
-    // It was sixteen, the epic read four times.
-    expect(completed.trips).toBe(7);
+    // It was sixteen, the epic read four times. Nine since #Q3890: the
+    // quest's and the epic's completions each read whether anyone is
+    // subscribed before recording their event.
+    expect(completed.trips).toBe(9);
     expect(
       completed.chain.flat().filter((t: string) => t === "epics"),
     ).toHaveLength(1);

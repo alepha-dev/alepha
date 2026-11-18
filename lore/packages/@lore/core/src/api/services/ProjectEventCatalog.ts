@@ -1,6 +1,7 @@
 import { AlephaError } from "alepha";
 
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
+import type { ProjectEventFields } from "../schemas/projectEventFieldsSchema.ts";
 
 /**
  * Every event a project can emit, registered by the package that owns it
@@ -91,4 +92,16 @@ export interface ProjectEventDefinition {
    * names: the app of a deployment, not the deployment.
    */
   filter?: { field: string; resource: "host" | "app" | "monitor" };
+  /**
+   * The event's fixed message (#Q3890), rendered from its fields: a title
+   * (the inbox line, the email subject) and one sentence of text. No user
+   * text and no placeholders. Takes the language so French lands the day
+   * a recipient has one; English only for now.
+   */
+  message: (fields: ProjectEventFields, lang: string) => ProjectEventMessage;
+}
+
+export interface ProjectEventMessage {
+  title: string;
+  text: string;
 }

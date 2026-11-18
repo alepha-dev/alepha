@@ -204,6 +204,10 @@ export default {
   "automation.previous": "Previous",
   "automation.next": "Next",
 
+  "permission.group.subscription": "Notifications",
+  "permission.subscription.read": "See who is notified of what",
+  "permission.subscription.manage":
+    "Notify other members and manage the project's channels",
   "permission.group.automation": "Automations",
   "permission.automation.read": "Read automations",
   "permission.automation.write": "Create and edit your own automations",
