@@ -349,6 +349,19 @@ A measure takes `--metric-kind` (`vital`, `availability`, `latency` or `api`),
 `--metric-env` and `--metric-window-days`. Run evidence is pushed with
 `lore attachments push --run <id> [--criterion C2 | --step 3] <file>`.
 
+## Notifications
+
+Who is told when something changes in a project. Channels are added in the
+browser, so their URLs never land in a shell history. See
+[Notifications](/lore/docs/project-notifications).
+
+| Command                      | What it does                                                                                | Flags                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `lore event catalog`         | The events this project can emit, with what each needs and why an unavailable one is so.    |                                                                        |
+| `lore event list`            | The recent events, newest first, to check that one fired.                                   | `--name`, `--subject`, `--limit` (1 to 100), `--offset`                |
+| `lore subscription list`     | Who is notified of what, on which channel, and the project's channels (never a URL).        |                                                                        |
+| `lore subscription set [id]` | Notify a member (you by default) or a channel of an event, or mute, unmute or remove a row. | `--event`, `--filter`, `--member`, `--channel`, `--channels`, `--verb` |
+
 ## Automations
 
 An automation is a graph of sources, reads, conditions and actions, written

@@ -200,6 +200,21 @@ and [Traceability](/lore/docs/plan-traceability).
 | `requirement_coverage`                                           | Readiness, failing Musts and the coverage gaps, for a release or the project.    |
 | `criterion_verify_link`                                          | Say which requirement a criterion verifies.                                      |
 
+## Notifications
+
+Who is told when something changes in a project. Channels are added in the
+browser, so a webhook or Discord URL never travels through a tool. Lore runs
+no schedules and no multi-step reactions: for those, use a scheduled agent
+session over MCP, or subscribe a webhook channel and react in whatever it
+calls. See [Notifications](/lore/docs/project-notifications).
+
+| Tool                | What it does                                                                                                    |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `event_catalog`     | The events this project can emit: their fields, the capability each needs, and why an unavailable one is so.    |
+| `event_list`        | The recent events, newest first, by name or subject, for "did it fire?". Only those you may read.               |
+| `subscription_list` | Who is notified of what, on which channel, and the project's channels by id, kind and name.                     |
+| `subscription_set`  | Notify a member (you by default) or a channel of an event; `verb` `mute`, `unmute` or `remove` acts on one row. |
+
 ## Automations
 
 See [Automations](/lore/docs/plan-automations).
