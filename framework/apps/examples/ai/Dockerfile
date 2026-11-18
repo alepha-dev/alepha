@@ -3,7 +3,7 @@
 #   entry: index.node.js
 # It is yours now. Edit it freely; `alepha image` reuses it untouched
 # and only warns when the facts above stop matching a later build.
-FROM node:24-alpine
+FROM node:26-alpine
 WORKDIR /app
 
 LABEL "dev.alepha.runtime"="node"

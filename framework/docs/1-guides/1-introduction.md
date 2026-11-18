@@ -9,7 +9,7 @@ Alepha ships with all of it built-in.
 
 ## What is Alepha?
 
-Alepha is an integrated, opinionated, full-stack engine for **Node.js 24+**, **Bun**, and
+Alepha is an integrated, opinionated, full-stack engine for **Node.js 26+**, **Bun**, and
 **Cloudflare Workers**. It automatically selects the right providers (HTTP server, SQL, Redis) based on
 the runtime.
 
@@ -39,7 +39,7 @@ flowchart TD
   C --> J["Async<br/>$job, $topic, $cache"]
   C --> R["React SSR<br/>$page"]
   H & D & J & R --> P["Providers chosen for the runtime"]
-  P --> N["Node.js 24+"]
+  P --> N["Node.js 26+"]
   P --> B["Bun"]
   P --> W["Cloudflare Workers"]
 ```

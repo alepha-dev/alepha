@@ -13,11 +13,10 @@ export default defineConfig({
   // image`. `build.cloudflare` stays under `build`, because `wrangler.jsonc`
   // really is written by the build.
   image: {
-    // ⚠️ Not the framework's `node:24-alpine` default. `.nvmrc` is v26 and
-    // the release workflow runs 26.x, so the default would ship the
-    // container on a Node major nothing in CI exercises, with `node:sqlite`
-    // still moving between majors. Lore pins its own; the framework default
-    // is left alone.
+    // The framework's own default since #Q3882. Spelled out all the same:
+    // `.nvmrc` is v26 and the release workflow runs 26.x, and a default that
+    // moved on would ship the container on a Node major nothing in CI
+    // exercises, with `node:sqlite` still moving between majors.
     from: "node:26-alpine",
     tag: "ghcr.io/alepha-dev/lore",
     oci: true,

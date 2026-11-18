@@ -24,7 +24,7 @@ export const imageOptions = $atom({
     /**
      * Base image for the Dockerfile (FROM instruction).
      *
-     * @default "node:24-alpine" for node runtime
+     * @default "node:26-alpine" for node runtime
      * @default "oven/bun:alpine" for bun runtime
      * @default "gcr.io/distroless/cc-debian12" in `compile` mode
      */

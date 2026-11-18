@@ -50,7 +50,7 @@ const COMPILED_TAG = `alepha-e2e-compiled:${RUN_ID}`;
  * than as a failed assertion about the image.
  */
 const BASES = [
-  "node:24-alpine",
+  "node:26-alpine",
   "gcr.io/distroless/cc-debian12",
   "registry:2",
   // Reads a named volume back, since the compiled image has no shell.
