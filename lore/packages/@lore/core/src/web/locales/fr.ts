@@ -255,6 +255,17 @@ export default {
   "notifications.capability.plan": "Plan",
   "notifications.capability.remember": "Remember",
   "notifications.capability.ship": "Ship",
+  "thresholds.coverage.label": "Seuil d'alerte de couverture (%)",
+  "thresholds.coverage.hint":
+    "Quand un envoi sur main fait passer la couverture des lignes en dessous, les personnes notifiées dans Paramètres > Notifications le sont, une fois. Vide : pas d'alerte.",
+  "thresholds.errors.label": "Seuil d'alerte d'erreurs ouvertes",
+  "thresholds.errors.hint":
+    "Vérifié toutes les heures : quand le nombre d'erreurs ouvertes le dépasse, les personnes notifiées dans Paramètres > Notifications le sont, une fois. Vide : pas d'alerte.",
+  "thresholds.save": "Enregistrer le seuil",
+  "notifications.event.coverage.dropped": "Couverture sous son seuil",
+  "notifications.event.errors.threshold_crossed":
+    "Erreurs ouvertes au-dessus du seuil",
+  "notifications.event.quest.reminder_due": "Rappel de quête",
   "notifications.channels.add": "Ajouter un canal",
   "notifications.channels.kind": "Type",
   "notifications.channels.kind.inbox": "Dans l'application",

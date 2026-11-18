@@ -246,6 +246,17 @@ export default {
   "notifications.capability.plan": "Plan",
   "notifications.capability.remember": "Remember",
   "notifications.capability.ship": "Ship",
+  "thresholds.coverage.label": "Coverage alert threshold (%)",
+  "thresholds.coverage.hint":
+    "When a push on main brings line coverage under it, whoever is notified of it on Settings > Notifications is told, once. Empty means no alert.",
+  "thresholds.errors.label": "Open errors alert threshold",
+  "thresholds.errors.hint":
+    "Checked every hour: when the count of open errors goes over it, whoever is notified of it on Settings > Notifications is told, once. Empty means no alert.",
+  "thresholds.save": "Save threshold",
+  "notifications.event.coverage.dropped": "Coverage under its threshold",
+  "notifications.event.errors.threshold_crossed":
+    "Open errors over their threshold",
+  "notifications.event.quest.reminder_due": "Quest reminder due",
   "notifications.channels.add": "Add a channel",
   "notifications.channels.kind": "Kind",
   "notifications.channels.kind.inbox": "In-app",

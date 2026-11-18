@@ -21,6 +21,7 @@ import { LiveQuestController } from "./controllers/LiveQuestController.ts";
 import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
 import { ProjectHostController } from "./controllers/ProjectHostController.ts";
+import { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
@@ -94,6 +95,7 @@ import { ProjectErrorQuestHandBack } from "./services/ProjectErrorQuestHandBack.
 import { ProjectErrorRuleService } from "./services/ProjectErrorRuleService.ts";
 import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
 import { ProjectReliabilityReportService } from "./services/ProjectReliabilityReportService.ts";
+import { ProjectThresholds } from "./services/ProjectThresholds.ts";
 import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityService } from "./services/QualityService.ts";
@@ -150,6 +152,10 @@ export const LoreShipApi = $module({
     // Ship's project events, in the core catalog (#Q3889); listed because
     // nothing injects them.
     ShipProjectEvents,
+    // The coverage and open-errors thresholds (#Q3894): the hourly check
+    // registers itself, so the class is listed.
+    ProjectThresholds,
+    ProjectThresholdController,
     // The errors a use case run opens and resolves (#E153), written by
     // Plan's Requirements.
     RunErrorService,
@@ -422,3 +428,5 @@ export { MonitorController } from "./controllers/MonitorController.ts";
 export { CredentialSealService } from "@lore/core/api";
 
 export { RunErrorService } from "./services/RunErrorService.ts";
+export { ProjectThresholds } from "./services/ProjectThresholds.ts";
+export { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";

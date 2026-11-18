@@ -266,6 +266,7 @@ export default defineConfig({
         "notifications.capability.",
         "notifications.channel.",
         "notifications.form.filter.",
+        "thresholds.",
         // A table folio's column types (#E144), named after the type.
         "folios.table.type.",
         // The quest preset bar: each button's label and hint, by preset key.

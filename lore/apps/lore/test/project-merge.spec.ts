@@ -51,6 +51,9 @@ const NOT_MOVED: Record<string, string> = {
   // target's flow reads its own rows and shows the merged quests from the
   // first snapshot after the merge.
   quest_flow_daily: "the source's history as it was",
+  // One row per project (#Q3894): the merged project keeps the target's
+  // alert thresholds, as it keeps the target's settings.
+  project_thresholds: "the target's own thresholds stand",
   // A pushed commit's quest numbers (#E154), in the source's numbering. The
   // merge renumbers the source's quests, so moved they would name the wrong
   // quests in the target; left behind, the moved deployments read as unknown

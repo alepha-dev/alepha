@@ -64,6 +64,38 @@ export class ShipProjectEvents {
         })
       ).map((monitor) => ({ value: monitor.id, label: monitor.name })),
     );
+    this.catalog.register({
+      name: "coverage.dropped",
+      label: "Coverage under its threshold",
+      resource: "quality",
+      subject: "commit",
+      fields: {
+        value: "number",
+        previous: "number",
+        threshold: "number",
+        branch: "text",
+        commit: "text",
+      },
+      needs: { capability: "ship" },
+      permission: "quality:read",
+      message: (it) => ({
+        title: `Line coverage dropped to ${this.percent(it.value)}`,
+        text: `Under the ${this.percent(it.threshold)} threshold on ${this.text(it.branch)}${it.previous === null || it.previous === undefined ? "" : `, from ${this.percent(it.previous)}`}.`,
+      }),
+    });
+    this.catalog.register({
+      name: "errors.threshold_crossed",
+      label: "Open errors over their threshold",
+      resource: "errors",
+      subject: "project",
+      fields: { count: "number", threshold: "number" },
+      needs: { capability: "ship" },
+      permission: "error:read",
+      message: (it) => ({
+        title: `${this.text(it.count)} open errors`,
+        text: `Over the threshold of ${this.text(it.threshold)}.`,
+      }),
+    });
     for (const [name, label] of [
       ["deploy.failed", "Deploy failed"],
       ["deploy.succeeded", "Deploy succeeded"],
@@ -172,5 +204,11 @@ export class ShipProjectEvents {
     if (secs < 60) return `${secs} s`;
     if (secs < 3600) return `${Math.round(secs / 60)} min`;
     return `${Math.round(secs / 360) / 10} h`;
+  }
+
+  protected percent(
+    value: string | number | boolean | null | undefined,
+  ): string {
+    return typeof value === "number" ? `${Math.round(value * 10) / 10}%` : "";
   }
 }
