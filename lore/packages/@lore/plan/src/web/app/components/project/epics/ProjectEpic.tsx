@@ -19,6 +19,7 @@ import {
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import {
   ClipboardCheck,
   FileText,
@@ -40,7 +41,7 @@ import { currentEpicCountAtom } from "../../../atoms/currentEpicCountAtom.ts";
 import { isRefresh, liveRefresh } from "../../shared/liveRefresh.ts";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
-import EpicShelveControl from "./EpicShelveControl.tsx";
+import EpicMoreMenu from "./EpicMoreMenu.tsx";
 import EpicStatusControl from "./EpicStatusControl.tsx";
 import ProjectEpicAside from "./ProjectEpicAside.tsx";
 import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
@@ -97,6 +98,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const reviewApi = useClient<EpicReviewController>();
   const registeredTabs = useInject(ResourceTabRegistry).tabs("epic");
   const [project] = useStore(currentProjectAtom);
+  const router = useRouter();
   const [tab, setTab] = useDetailTab<TabKey>("overview");
   const alepha = useAlepha();
   const queries = useQueryClient();
@@ -526,9 +528,15 @@ const ProjectEpic = (props: ProjectEpicProps) => {
             onChange={applyStatusChange}
             onReview={() => setTab("review")}
           />
-          <EpicShelveControl
+          <EpicMoreMenu
             epic={epic}
             onChange={applyStatusChange}
+            onDeleted={() => {
+              if (!project) return;
+              void router.push("projectEpics", {
+                params: { projectSlug: project.slug },
+              });
+            }}
             invalidates={[
               questsKey,
               ["quests", project?.id],

@@ -67,9 +67,11 @@ import {
   STATUS_LABEL_KEYS,
   STATUS_ORDER,
   STATUS_TONE,
+  isDeletable,
   openQuestsOf,
 } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
+import { useConfirmEpicDelete } from "./useConfirmEpicDelete.ts";
 
 /**
  * The Epics list, built on {@link DataTable}.
@@ -115,6 +117,7 @@ const ProjectEpics = () => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const undoable = useUndoable();
+  const confirmDelete = useConfirmEpicDelete();
   const queries = useQueryClient();
   const router = useRouter();
   const epicApi = useClient<EpicController>();
@@ -265,19 +268,9 @@ const ProjectEpics = () => {
     epic: EpicResource,
     ctx: RowActionContext<EpicResource>,
   ) => {
-    // Deleting an epic deletes its quests (#Q2666), so the confirm says how
-    // many, and that the folios stay. Then Undo on top: the delete is held
-    // until the toast closes.
-    const ok = await dialog.confirm({
-      title: tr("epic.delete.title"),
-      description: tr("epic.delete.confirm", {
-        args: [epic.title, String(epic.progress.total)],
-      }),
-      confirmLabel: tr("epic.action.delete"),
-      cancelLabel: tr("common.cancel"),
-      destructive: true,
-    });
-    if (!ok) return;
+    // The confirm the epic page's menu asks too, then Undo on top: the
+    // delete is held until the toast closes.
+    if (!(await confirmDelete(epic))) return;
     void undoable.run({
       message: tr("epic.undo.deleted", { args: [ref(epic)] }),
       undoLabel: tr("board.undo.undo"),
@@ -1434,13 +1427,6 @@ const releaseOf = (
   if (!epic.releaseId) return undefined;
   return releases?.find((release) => release.id === epic.releaseId);
 };
-
-/**
- * Whether the server will delete this epic: only while its plan is open,
- * `draft` or `ready` (`EpicWorkflowService.assertEpicDeletable`, #Q2666).
- */
-const isDeletable = (epic: Pick<EpicResource, "status">): boolean =>
-  epic.status === "draft" || epic.status === "ready";
 
 /**
  * Whether the server will shelve this epic: any status but `completed`,

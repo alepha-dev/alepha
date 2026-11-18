@@ -3828,6 +3828,7 @@ export default {
   "epic.list.column.progress": "Progression",
   "epic.create": "Nouvelle épopée",
   "epic.edit": "Modifier",
+  "epic.more": "Autres actions",
   "epic.create.title.helper": "Un nom court pour l'initiative.",
   "epic.create.description.helper":
     "Ce qu'elle couvre, et pourquoi. Le markdown est pris en charge.",
