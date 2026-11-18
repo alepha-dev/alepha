@@ -1,8 +1,10 @@
 import { describe, it } from "vitest";
 
 import {
+  capitalizeName,
   USER_AVATAR_TONES,
   userAvatarTone,
+  userDisplayName,
   userInitials,
 } from "../userInitials.ts";
 
@@ -85,5 +87,47 @@ describe("userAvatarTone", () => {
       ),
     );
     expect(tones.size).toBeGreaterThan(4);
+  });
+});
+
+/**
+ * A person is named by a capitalized first and last name, whatever case they
+ * typed it in; a username and an email are handles, shown as typed.
+ */
+describe("userDisplayName", () => {
+  it("capitalizes each word of the first and last name", ({ expect }) => {
+    expect(userDisplayName({ firstName: "Thibaut", lastName: "LEFEVRE" })).toBe(
+      "Thibaut Lefevre",
+    );
+    expect(userDisplayName({ firstName: "thibaut", lastName: "lefevre" })).toBe(
+      "Thibaut Lefevre",
+    );
+    expect(
+      userDisplayName({ firstName: "JEAN-PIERRE", lastName: "o'brien" }),
+    ).toBe("Jean-Pierre O'Brien");
+    expect(userDisplayName({ firstName: "ÉLODIE", lastName: "dupré" })).toBe(
+      "Élodie Dupré",
+    );
+    expect(userDisplayName({ firstName: "  ", lastName: "LOVELACE" })).toBe(
+      "Lovelace",
+    );
+  });
+
+  it("leaves a username and an email as typed", ({ expect }) => {
+    expect(userDisplayName({ username: "AdaL" })).toBe("AdaL");
+    expect(userDisplayName({ email: "Ada.L@example.com" })).toBe(
+      "Ada.L@example.com",
+    );
+    expect(userDisplayName({})).toBe("");
+  });
+});
+
+describe("capitalizeName", () => {
+  it("upper-cases the first letter of each word and lower-cases the rest", ({
+    expect,
+  }) => {
+    expect(capitalizeName("LEFEVRE")).toBe("Lefevre");
+    expect(capitalizeName("saint-ÉTIENNE")).toBe("Saint-Étienne");
+    expect(capitalizeName("d\u2019ARTAGNAN")).toBe("D\u2019Artagnan");
   });
 });

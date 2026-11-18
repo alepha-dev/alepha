@@ -23,7 +23,8 @@ export interface DisplayNameUser {
  * value never changes. It is wrong for some names: a particle the person
  * writes lower case ("de", "van"), an inner capital ("McDonald",
  * "DiCaprio"). If those come to matter, delete this function's call in
- * {@link displayName} and names are shown as typed again.
+ * {@link displayName} and names are shown as typed again; `@alepha/ui`'s
+ * `userDisplayName` applies the same rule, so revert both.
  */
 export const capitalizeName = (name: string): string =>
   name
