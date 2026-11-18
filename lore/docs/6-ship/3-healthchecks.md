@@ -125,11 +125,11 @@ reminder while a monitor stays down.
 ### Who is alerted
 
 Nobody, until someone asks. The bell on a monitor's page turns on, for you, one
-automation with two sources, its outages and its recoveries, in-app or by
+automation with two events, its outages and its recoveries, in-app or by
 email; the bell's dialog can switch either one off. The bell on **Apps** does
 the same for every monitor of the project. Each is an ordinary
 [automation](/lore/docs/plan-automations): you can edit, pause or delete it on
-the Automations page, and point it at a Discord channel on its canvas.
+the Automations page, and point it at a Discord channel in its editor.
 
 ## Reading a monitor
 
