@@ -59,7 +59,7 @@ export default defineConfig({
 
 | Setting            | Meaning                                                  |
 | ------------------ | -------------------------------------------------------- |
-| `image.from`       | Base image (default `node:24-alpine`, `oven/bun:alpine`) |
+| `image.from`       | Base image (default `node:26-alpine`, `oven/bun:alpine`) |
 | `image.command`    | Server command (default `node` or `bun`)                 |
 | `image.install`    | Extra packages for the generated standard image          |
 | `image.env`        | Baked defaults, overridden by runtime environment values |
@@ -127,7 +127,7 @@ A `runtime: ["static"]` artifact holds no server code, and its image still
 needs a process. `alepha image` bundles one into `dist/static-server.mjs`:
 Alepha's own static server (`StaticSiteServer` from `alepha/server/static`),
 with nothing of the app in it. The generated Dockerfile runs it like a node
-slice: `node:24-alpine` (or `bun` on a Bun base), as uid `1000`, on
+slice: `node:26-alpine` (or `bun` on a Bun base), as uid `1000`, on
 `SERVER_PORT` (`3000`), with the same healthcheck on `/health`. `image.from`,
 `image.user`, `image.env` and the labels apply as they do to any image;
 `--compile` is refused, since a static artifact has no bun slice.

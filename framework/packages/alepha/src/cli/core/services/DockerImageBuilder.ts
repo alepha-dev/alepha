@@ -263,7 +263,7 @@ export class DockerImageBuilder {
 
     const dockerFrom =
       ctx.image.from ??
-      (ctx.runtime === "bun" ? "oven/bun:alpine" : "node:24-alpine");
+      (ctx.runtime === "bun" ? "oven/bun:alpine" : "node:26-alpine");
     const dockerCommand =
       ctx.image.command ??
       (ctx.runtime === "bun" ||

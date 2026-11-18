@@ -269,66 +269,6 @@ jobs:
         if: matrix.shard == 1
         run: yarn test:bun
 
-  # The unit suite again, on Node 24: the floor every public package declares
-  # in `engines.node` (#Q2687). This lane keeps `>=24.0.0` a tested claim.
-  framework-test-node24:
-    if: contains(fromJSON('["all", "framework"]'), inputs.product || 'all')
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: framework
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6]
-    services:
-      redis:
-        image: redis
-        ports:
-          - 16379:6379
-
-      postgres:
-        image: postgres
-        ports:
-          - 15432:5432
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-
-      s3:
-        image: versity/versitygw:v1.8.0
-        ports:
-          - 19090:7070
-        env:
-          VGW_BACKEND: posix
-          VGW_BACKEND_ARG: /data
-          VGW_REGION: eu-west-1
-          VGW_QUIET: "true"
-          ROOT_ACCESS_KEY: mock
-          ROOT_SECRET_KEY: mock
-        options: --tmpfs /data:size=4g
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup
-        uses: ./.github/actions/setup
-        with:
-          node-version: "24.x"
-
-      - name: Clean
-        run: yarn clean
-
-      # See `framework-test`: the generators and oxfmt, not `yarn lint`.
-      - name: Prepare
-        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
-
-      - name: Test Project
-        run: yarn alepha test --shard ${{ matrix.shard }}/6
-
   # ──────────────────────────────────────────────────────────────────────
   # The MQTT contract suite on a real broker (#E88): `yarn test:broker`, the
   # cases the shards run on `@alepha/mqtt`'s memory broker, here on
@@ -913,7 +853,6 @@ jobs:
     needs:
       - framework-checks
       - framework-test
-      - framework-test-node24
       - framework-mqtt-broker
       - framework-e2e-apps
       - framework-e2e-a11y

@@ -22,7 +22,7 @@ npm run dev
 
 You need one of the following:
 
-- [Node.js 24+](https://nodejs.org/) (recommended for beginners)
+- [Node.js 26+](https://nodejs.org/) (recommended for beginners)
 - [Bun 1.3+](https://bun.sh/)
 
 ## Create a Project

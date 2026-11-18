@@ -99,7 +99,7 @@
     "alepha": "^0.37.0"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=26.0.0"
   },
   "llms": "https://alepha.dev/llms.txt",
   "llmsLocal": "./docs"

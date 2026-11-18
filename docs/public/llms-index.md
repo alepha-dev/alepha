@@ -16,7 +16,7 @@
 - **Dependency Injection**: Built-in DI container manages all service instances
 
 **Built on**: Drizzle (ORM), React (SSR), Vite (bundler), Zod 4 (validation)
-**Runs on**: Node.js 24+, Bun, Cloudflare Workers, Vercel, Docker
+**Runs on**: Node.js 26+, Bun, Cloudflare Workers, Vercel, Docker
 
 ## Creating a Project
 

@@ -134,7 +134,7 @@ describe("DockerImageBuilder", () => {
 
       expect(fs.wasWritten("/project/Dockerfile")).toBe(true);
       expect(
-        fs.wasWrittenMatching("/project/Dockerfile", /FROM node:24-alpine/),
+        fs.wasWrittenMatching("/project/Dockerfile", /FROM node:26-alpine/),
       ).toBe(true);
       // Empty deps → no install line (Vite bundled everything).
       expect(
@@ -322,7 +322,7 @@ describe("DockerImageBuilder", () => {
       await task.run(createCtx(fs, shell, {}, { runtime: "static" }));
 
       const dockerfile = readDockerfile(fs);
-      expect(dockerfile).toContain("FROM node:24-alpine");
+      expect(dockerfile).toContain("FROM node:26-alpine");
       expect(dockerfile).toContain('CMD ["node", "static-server.mjs"]');
       expect(dockerfile).toContain("COPY --chown=1000:1000 . .");
       expect(dockerfile).toContain("USER 1000");
