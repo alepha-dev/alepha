@@ -158,6 +158,7 @@ export {
   type AutomationOutlineNew,
   type AutomationOutlineReading,
   type AutomationOutlineSide,
+  type AutomationOutlineUnfilled,
 } from "../api/schemas/AutomationOutline.ts";
 export {
   automationNodeOutcomeSchema,

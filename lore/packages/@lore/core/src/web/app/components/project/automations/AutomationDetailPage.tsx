@@ -190,6 +190,7 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
       : [];
   return (
     <AutomationPage
+      wide={editing}
       title={rule.title}
       badge={
         <Badge variant="tint" tone={labels.tones[rule.displayState]}>

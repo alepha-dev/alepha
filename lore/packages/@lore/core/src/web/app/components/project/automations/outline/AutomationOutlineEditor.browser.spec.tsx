@@ -31,6 +31,10 @@ import AutomationOutlineEditor from "./AutomationOutlineEditor.tsx";
  */
 class FakeLinkProvider extends LinkProvider {
   public created: Array<{ title: string; rule: AutomationGraphValue }> = [];
+  /**
+   * What the next create is refused with, as compile says it.
+   */
+  public refuse?: string;
 
   override client(): any {
     return new Proxy(
@@ -38,6 +42,7 @@ class FakeLinkProvider extends LinkProvider {
       {
         get: (_target, prop: string) => async (input: any) => {
           if (prop === "createAutomation") {
+            if (this.refuse) throw new Error(this.refuse);
             this.created.push(input.body);
             return {
               id: "00000000-0000-4000-8000-000000000001",
@@ -110,6 +115,8 @@ describe("AutomationOutlineEditor", () => {
   let alepha: Alepha | undefined;
   beforeAll(() => {
     setupJsdomMocks();
+    // jsdom lays nothing out: a line of Before you save scrolls to nothing.
+    Element.prototype.scrollIntoView ??= () => {};
   });
   afterEach(async () => {
     cleanup();
@@ -230,6 +237,109 @@ describe("AutomationOutlineEditor", () => {
     expect(only.otherwise.map((sequence) => sequence[0].config.title)).toEqual([
       "Small epic",
     ]);
+  });
+
+  it("says what is missing before a save, opens the row a line names, and reads the automation in words", async ({
+    expect,
+  }) => {
+    await show();
+    expect(
+      screen.getByTestId("automation-outline-words").textContent,
+    ).toContain("Nothing yet");
+    await pick(
+      "automation-outline-choose",
+      "automation-outline-event-epic.completed",
+    );
+    await pick(
+      "automation-outline-add-action-z-completed",
+      "automation-outline-action-createQuest",
+    );
+    // Closing the row the add opened: the line has to open it again.
+    fireEvent.click(
+      screen
+        .getByTestId("automation-outline-row-z-createquest")
+        .querySelector("button")!,
+    );
+    const lines = () =>
+      screen
+        .getAllByTestId("automation-outline-check")
+        .map((line) => line.textContent);
+    await waitFor(() =>
+      expect(lines()).toEqual([
+        "Give the automation a name",
+        "Create a quest: To fill: Title, Description, Area",
+      ]),
+    );
+    // A missing field is a warning, never an error, before a save.
+    expect(
+      screen
+        .getAllByTestId("automation-outline-check")
+        .every((line) => line.className.includes("text-warning-text")),
+    ).toBe(true);
+    expect(
+      screen
+        .getByTestId("automation-outline-aside")
+        .querySelector(".text-danger-text"),
+    ).toBeNull();
+    expect(
+      screen
+        .getByTestId("automation-outline-issue-z-createquest")
+        .getAttribute("data-tone") ?? "warning",
+    ).not.toBe("danger");
+    expect(
+      screen.getByTestId("automation-outline-save").hasAttribute("disabled"),
+    ).toBe(true);
+    expect(screen.queryByTestId("automation-outline-action-form")).toBeNull();
+    fireEvent.click(
+      screen
+        .getAllByTestId("automation-outline-check")
+        .find((line) => line.dataset.node === "z-createquest")!,
+    );
+    expect(
+      await screen.findByTestId("automation-outline-action-form"),
+    ).toBeDefined();
+    expect(screen.getByTestId("automation-outline-words").textContent).toBe(
+      "When epic completed: create a quest.",
+    );
+  });
+
+  it("opens the row a refusal at Save names, and says it as an error", async ({
+    expect,
+  }) => {
+    const { server } = await show();
+    server.refuse = "z-createquest.area: this area does not exist";
+    await pick(
+      "automation-outline-choose",
+      "automation-outline-event-epic.completed",
+    );
+    await pick(
+      "automation-outline-add-action-z-completed",
+      "automation-outline-action-createQuest",
+    );
+    const action = await screen.findByTestId("automation-outline-action-form");
+    type(action, "Title", "Retro");
+    type(action, "Description", "Look back");
+    type(action, "Area", "nowhere");
+    fireEvent.click(
+      screen
+        .getByTestId("automation-outline-row-z-createquest")
+        .querySelector("button")!,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: /^Name/ }), {
+      target: { value: "Refused" },
+    });
+    const save = screen.getByTestId("automation-outline-save");
+    await waitFor(() => expect(save.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(save);
+    expect(
+      await screen.findByTestId("automation-outline-action-form"),
+    ).toBeDefined();
+    const [line] = screen.getAllByTestId("automation-outline-check");
+    expect(line.textContent).toBe(
+      "Create a quest: Area: this area does not exist",
+    );
+    expect(line.dataset.node).toBe("z-createquest");
+    expect(line.className).toContain("text-danger-text");
   });
 
   it("keeps a schedule alone, and switches an event in the draft", async ({

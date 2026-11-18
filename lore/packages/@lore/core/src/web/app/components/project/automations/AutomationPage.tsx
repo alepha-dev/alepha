@@ -10,6 +10,10 @@ export interface AutomationPageProps {
   actions?: ReactNode;
   children: ReactNode;
   testId?: string;
+  /**
+   * A wider column, for the outline editor and its aside.
+   */
+  wide?: boolean;
 }
 
 /**
@@ -42,7 +46,11 @@ const AutomationPage = (props: AutomationPageProps) => {
         )}
       </header>
       <div className="min-h-0 flex-1 overflow-auto p-5">
-        <div className="flex max-w-3xl flex-col gap-6">{props.children}</div>
+        <div
+          className={`flex flex-col gap-6 ${props.wide ? "max-w-6xl" : "max-w-3xl"}`}
+        >
+          {props.children}
+        </div>
       </div>
     </section>
   );

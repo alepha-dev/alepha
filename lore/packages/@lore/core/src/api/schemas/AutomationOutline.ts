@@ -414,6 +414,101 @@ export class AutomationOutline {
   }
 
   /**
+   * The required fields each node leaves empty (#Q3849), read from the
+   * catalogue's slots: what "Before you save" lists as To fill. A second
+   * reading of what `AutomationCatalog.compile` requires, held against it
+   * by a spec for every action type. `rooms` are the channels addressed to
+   * nobody: a notification naming only rooms needs no recipient.
+   */
+  public unfilled(
+    graph: AutomationGraphValue,
+    nodeTypes: readonly AutomationCatalogNodeType[],
+    rooms: readonly string[] = [],
+  ): AutomationOutlineUnfilled[] {
+    const empty = (value: unknown) =>
+      value === undefined ||
+      value === null ||
+      (typeof value === "string" && value.trim() === "") ||
+      (Array.isArray(value) && value.length === 0);
+    const out: AutomationOutlineUnfilled[] = [];
+    for (const node of graph.nodes) {
+      const config = node.config as Record<string, unknown>;
+      if (node.kind === "condition") {
+        for (const slot of ["field", "value"])
+          if (empty(config[slot])) out.push({ node: node.id, slot });
+        continue;
+      }
+      const nodeType = nodeTypes.find(
+        (item) => item.kind === node.kind && item.type === node.type,
+      );
+      if (!nodeType) continue;
+      if (node.kind === "source" && node.type !== AutomationVocabulary.SCHEDULE)
+        continue;
+      const values =
+        node.kind === "read"
+          ? ((config.filters ?? {}) as Record<string, unknown>)
+          : config;
+      const notify = node.kind === "action" && node.type === "notify";
+      const channels = notify ? this.graphs.channels(node) : [];
+      for (const [key, slot] of Object.entries(nodeType.slots)) {
+        if (!slot.required) continue;
+        // A notification names its `channels` (#Q3613); its `audience`
+        // replaces the recipient, and so does a list of rooms only.
+        if (notify && (key === "channel" || key === "audience")) continue;
+        if (
+          notify &&
+          key === "recipient" &&
+          (config.audience !== undefined ||
+            (channels.length > 0 &&
+              channels.every((channel) => rooms.includes(channel))))
+        )
+          continue;
+        const value = values[key] ?? slot.default;
+        const target = slot.kind === "release" || slot.resource === "quest";
+        if (empty(value) || (target && value === 0))
+          out.push({ node: node.id, slot: key });
+      }
+      // The vocabulary leaves `recipient` optional: compile asks for one
+      // when a channel is addressable and no audience is named.
+      if (
+        notify &&
+        !nodeType.slots.recipient?.required &&
+        config.audience === undefined &&
+        empty(config.recipient) &&
+        channels.some((channel) => !rooms.includes(channel))
+      )
+        out.push({ node: node.id, slot: "recipient" });
+      if (notify && channels.length === 0)
+        out.push({ node: node.id, slot: "channels" });
+    }
+    return out;
+  }
+
+  /**
+   * The node a refusal is about, in the three forms a node id arrives in
+   * (#Q3849): the issue's own `node`; a `node '<id>':` (or `source`)
+   * anywhere in a schema issue; the `<id>[...]` or `<id>.<slot>` prefix of
+   * a `compile` refusal, matched against the graph's ids, longest first,
+   * since an id holds dots.
+   */
+  public nodeOf(
+    graph: AutomationGraphValue,
+    issue: { node?: string; message: string },
+  ): string | undefined {
+    const ids = new Set(graph.nodes.map((node) => node.id));
+    if (issue.node && ids.has(issue.node)) return issue.node;
+    const named = /(?:node|source) '([^']+)'/.exec(issue.message);
+    if (named && ids.has(named[1])) return named[1];
+    return [...ids]
+      .sort((left, right) => right.length - left.length)
+      .find(
+        (id) =>
+          issue.message.startsWith(`${id}.`) ||
+          issue.message.startsWith(`${id}[`),
+      );
+  }
+
+  /**
    * An event's own switch (#Q3806), saved with the draft.
    */
   public setEnabled(
@@ -651,6 +746,14 @@ export interface AutomationOutlineBlock {
 }
 
 export type AutomationOutlineSide = "then" | "otherwise";
+
+/**
+ * A required field a node leaves empty: the node, and the slot.
+ */
+export interface AutomationOutlineUnfilled {
+  node: string;
+  slot: string;
+}
 
 export type AutomationOutlineReading =
   | { outline: true; blocks: AutomationOutlineBlock[] }

@@ -1,7 +1,6 @@
 import { Badge, Button, Card, Switch, useDialog } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronUp, CornerDownRight, Filter, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
 
 import type { AutomationCatalogNodeType } from "../../../../../../api/schemas/automationCatalogNodeTypeSchema.ts";
 import type { automationCatalogSchema } from "../../../../../../api/schemas/automationCatalogSchema.ts";
@@ -17,6 +16,7 @@ import type { I18n } from "../../../../services/I18n.ts";
 import { useAutomationLabels } from "../useAutomationLabels.ts";
 import AutomationOutlineActionForm from "./AutomationOutlineActionForm.tsx";
 import AutomationOutlineActionMenu from "./AutomationOutlineActionMenu.tsx";
+import type { AutomationOutlineCheck } from "./AutomationOutlineAside.tsx";
 import AutomationOutlineCondition from "./AutomationOutlineCondition.tsx";
 import AutomationOutlineConditionForm from "./AutomationOutlineConditionForm.tsx";
 import AutomationOutlineEventForm from "./AutomationOutlineEventForm.tsx";
@@ -35,9 +35,9 @@ export interface AutomationOutlineBlockEditorProps {
   catalog: ReturnType<typeof automationCatalogSchema.parse>;
   names?: AutomationOutlineNames;
   /**
-   * What the checks say, by node id: shown on the row it names.
+   * What "Before you save" says, by node id: shown on the row it names.
    */
-  issues: Record<string, ReactNode[]>;
+  issues: Record<string, AutomationOutlineCheck[]>;
   /**
    * The row open in place, one for the whole editor.
    */
@@ -128,10 +128,14 @@ const AutomationOutlineBlockEditor = (
     return list?.length ? (
       <Badge
         variant="tint"
-        tone="warning"
+        tone={
+          list.some((item) => item.tone === "danger") ? "danger" : "warning"
+        }
+        className="max-w-56 truncate"
+        title={list.map((item) => item.text).join("\n")}
         data-testid={`automation-outline-issue-${node.id}`}
       >
-        {list[0]}
+        {list[0].short}
       </Badge>
     ) : undefined;
   };
@@ -140,11 +144,18 @@ const AutomationOutlineBlockEditor = (
     if (!list?.length) return null;
     return (
       <ul
-        className="text-warning-text flex flex-col gap-0.5 border-t px-4 py-2 text-sm"
+        className="flex flex-col gap-0.5 border-t px-4 py-2 text-sm"
         data-testid={`automation-outline-issues-${node.id}`}
       >
-        {list.map((item, index) => (
-          <li key={index}>{item}</li>
+        {list.map((item) => (
+          <li
+            key={item.text}
+            className={
+              item.tone === "danger" ? "text-danger-text" : "text-warning-text"
+            }
+          >
+            {item.short}
+          </li>
         ))}
       </ul>
     );
