@@ -548,20 +548,98 @@ export class LoreDeployer {
     tag: string,
     sigil?: boolean,
   ): Promise<{ id: string; status: string }> {
-    try {
-      return await this.deploys.startDeploy({
-        params: { projectId, instanceId },
-        body: { tag, ...(sigil === undefined ? {} : { sigil }) },
-      });
-    } catch (error) {
-      // ⚠️ The reason in words, not a status code. Every refusal on this path
-      // is written to be read by somebody who often cannot fix it themselves,
-      // so the message is the deliverable.
-      if (isHttpError(error)) {
-        throw new AlephaError(error.message);
+    const firstAttemptAt = this.dateTime.nowMillis();
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await this.deploys.startDeploy({
+          params: { projectId, instanceId },
+          body: { tag, ...(sigil === undefined ? {} : { sigil }) },
+        });
+      } catch (error) {
+        // ⚠️ The reason in words, not a status code. Every refusal on this path
+        // is written to be read by somebody who often cannot fix it themselves,
+        // so the message is the deliverable. An HTTP answer, 5xx included, is
+        // Lore's word and is never retried.
+        if (isHttpError(error)) {
+          throw new AlephaError(error.message);
+        }
+        const reason = error instanceof Error ? error.message : String(error);
+        if (attempt >= LoreDeployer.START_MAX_ATTEMPTS) {
+          throw new AlephaError(
+            `Could not start the deploy of ${tag}: the connection to Lore was reset ${attempt} times (${reason}). Lore may still have started it: look at the copy's Deploy tab before running this again.`,
+          );
+        }
+        this.log.warn(
+          `The connection to Lore was reset while starting the deploy (${reason}); checking whether it started.`,
+        );
+        await this.dateTime.wait(LoreDeployer.START_RETRY_DELAY_MS);
+        const landed = await this.startedSince(
+          projectId,
+          instanceId,
+          tag,
+          firstAttemptAt,
+        );
+        if (landed) {
+          this.log.info(`Lore had started it: following deploy ${landed.id}.`);
+          return landed;
+        }
       }
-      throw error;
     }
+  }
+
+  /**
+   * How many times `start` asks Lore to start a run, and how long it waits
+   * between two attempts.
+   *
+   * ⚠️ `startDeploy` does not dedupe: every call queues a run. A connection
+   * reset can land after Lore received the POST and only the answer was lost,
+   * so a retry first looks for a run of this tag started since the first
+   * attempt (`startedSince`) and follows it rather than starting a second
+   * one. Seen in CI (#Q3903): a reset from the edge on the start failed a
+   * whole deploy while the follower, which already retries, was never reached.
+   */
+  protected static readonly START_MAX_ATTEMPTS = 3;
+  protected static readonly START_RETRY_DELAY_MS = 2_000;
+
+  /**
+   * The run of `tag` on this copy created at or after `since`, when one is
+   * there: what a start whose answer was lost left behind.
+   *
+   * ⚠️ `since` is this machine's clock and `createdAt` Lore's. A CI runner and
+   * Lore are both NTP-synced, so the gap is far below the time a deploy takes;
+   * an idempotency key honoured by Lore would be exact even when two runs of
+   * one tag race, but changes the API, and was not worth it for this failure.
+   *
+   * A failed lookup is answered as "none": the attempt that follows is the
+   * next chance, and its own reset is counted.
+   */
+  protected async startedSince(
+    projectId: number,
+    instanceId: string,
+    tag: string,
+    since: number,
+  ): Promise<{ id: string; status: string } | undefined> {
+    let items: Array<{
+      id?: string;
+      tag?: string;
+      status?: string;
+      createdAt?: string;
+    }>;
+    try {
+      const listed = await this.deploys.listDeployments({
+        params: { projectId, instanceId },
+      });
+      items = (listed?.items ?? []) as typeof items;
+    } catch {
+      return undefined;
+    }
+    const found = items.find((it) => {
+      const createdAt = Date.parse(it.createdAt ?? "");
+      return it.tag === tag && Number.isFinite(createdAt) && createdAt >= since;
+    });
+    return found
+      ? { id: found.id ?? "", status: found.status ?? "" }
+      : undefined;
   }
 
   /**
