@@ -7,6 +7,9 @@ import { DocsCommand } from "./scripts/gen-docs.ts";
 import { LlmsCommand } from "./scripts/gen-llms.ts";
 import { TreeCommand } from "./scripts/gen-tree.ts";
 import { PinContentCommand } from "./scripts/pin-content.ts";
+import { DocsRoots } from "./scripts/roots.ts";
+
+const releaseTag = DocsRoots.releaseTag();
 
 export default defineConfig({
   // Dev ports live in the 33xx band, which `playwright.port.ts` keeps strictly
@@ -14,6 +17,10 @@ export default defineConfig({
   // and a running `yarn dev` was then adopted by the e2e suite. Every app
   // without a `dev.port` binds 5173.
   dev: { port: 3302 },
+  // A deploy pinned at the release tag (`DOCS_RELEASE_ROOT`) reports that tag,
+  // which the header's version chip shows. Unpinned (dev, latest.alepha.dev),
+  // the build's own git describe stands.
+  ...(releaseTag ? { meta: { version: releaseTag } } : {}),
   env: {
     // Here rather than in `.env.production` because the canonical URL is baked
     // into every page at prerender time, so it has to be set for a plain

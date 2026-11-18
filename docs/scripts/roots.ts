@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -65,6 +66,29 @@ export class DocsRoots {
    */
   public static pinned(): boolean {
     return DocsRoots.release() !== undefined;
+  }
+
+  /**
+   * The release tag the pinned checkout sits on, or nothing for an unpinned
+   * build. The site builds in the `main` checkout, so `alepha.meta.version`
+   * (git describe there) would read `0.38.0-108-g...` on alepha.dev too: the
+   * version chip names the release the pages describe instead.
+   */
+  public static releaseTag(): string | undefined {
+    const release = DocsRoots.release();
+    if (!release) {
+      return undefined;
+    }
+    try {
+      const out = execFileSync(
+        "git",
+        ["-C", release, "describe", "--tags", "--exact-match"],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      ).trim();
+      return out.replace(/^v(?=\d)/, "") || undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   /**
