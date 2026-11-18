@@ -4593,7 +4593,6 @@ export default {
   "automation.editor.reload": "Discard draft and reload",
   "automation.test.saveToTest": "Save to test",
   "automation.canvas.editor": "Automation editor",
-  "automation.canvas.editPhone": "Editing an automation needs a wider screen.",
   "automation.canvas.add": "Add a node",
   "automation.canvas.addAfter": "Add a step after $1",
   "automation.canvas.addAfterPort": "Add a step after $1, $2",
@@ -4654,8 +4653,6 @@ export default {
   "automation.canvas.group.presets": "From a preset",
   "automation.canvas.mergeDescription":
     "Its source and steps join this automation, under their own names. Nothing is saved until you save.",
-  "automation.canvas.newDescription":
-    "Draw what starts it and what it does. It is created disabled when you save, then tested and enabled on its page.",
   "automation.subscription.open": "Open in Automations",
   "automation.canvas.empty":
     "Start with a source: what starts the automation. Add a node to choose one.",
@@ -4685,6 +4682,61 @@ export default {
   "automation.outline.more": "+$1 more",
   "automation.outline.noAction": "No action yet",
   "automation.outline.nothingSet": "Nothing to set",
+  "automation.outline.editor": "Automation editor",
+  "automation.outline.undo": "Undo",
+  "automation.outline.redo": "Redo",
+  "automation.outline.test": "Test",
+  "automation.outline.leave.title": "Leave without saving?",
+  "automation.outline.leave.description":
+    "Your changes to this automation are not saved.",
+  "automation.outline.leave.confirm": "Leave",
+  "automation.outline.choose": "Choose what starts it",
+  "automation.outline.chooseHint":
+    "An event in this project, or a schedule. You can add more events later.",
+  "automation.outline.chooseEvent": "Choose an event",
+  "automation.outline.quickStart": "Or start from",
+  "automation.outline.addBlock": "Add another event with its own actions",
+  "automation.outline.addEvent": "Add an event",
+  "automation.outline.addCondition": "Add a condition",
+  "automation.outline.addAction": "Add an action",
+  "automation.outline.addStep": "Add a step after this one",
+  "automation.outline.removeEvent": "Remove this event",
+  "automation.outline.removeBlock": "Remove this event and its actions",
+  "automation.outline.removeCondition": "Remove the condition",
+  "automation.outline.removeCondition.title": "Remove the condition?",
+  "automation.outline.removeCondition.description":
+    "The actions under Otherwise are removed with it. The actions under Then stay and run every time.",
+  "automation.outline.fold": "Fold back to one line",
+  "automation.outline.scheduleAlone":
+    "A schedule runs alone: it takes no other event and no other block.",
+  "automation.outline.eventFirst":
+    "Add an action first; then more events can share it.",
+  "automation.outline.schedule": "On a schedule (UTC)",
+  "automation.outline.cron": "Schedule (five-field cron, UTC)",
+  "automation.outline.reads": "What it reads",
+  "automation.outline.placeholders": "Insert into the last field",
+  "automation.outline.from.event": "from the event",
+  "automation.outline.from.step": 'from "$1" above',
+  "automation.outline.unavailable": "Not available in this project",
+  "automation.outline.unavailable.sources":
+    "An automation holds at most $1 events",
+  "automation.outline.unavailable.actions": "A block holds at most $1 actions",
+  "automation.outline.unavailable.nodes":
+    "An automation holds at most $1 steps",
+  "automation.outline.unavailable.schedule":
+    "A schedule runs alone: it cannot share an automation with events",
+  "automation.outline.mergeDescription":
+    "Fill in the preset: it arrives as one more block of this draft, saved with it.",
+  "automation.outline.group.feedback": "Feedback",
+  "automation.outline.group.quests": "Quests",
+  "automation.outline.group.epics": "Epics",
+  "automation.outline.group.releases": "Releases",
+  "automation.outline.group.deploys": "Deploys",
+  "automation.outline.group.monitors": "Monitors",
+  "automation.outline.group.hosts": "Hosts",
+  "automation.outline.group.presets": "From a preset",
+  "automation.outline.newDescription":
+    "Choose what starts it and what it does. It is created disabled when you save, then tested and enabled on its page.",
   "automation.outline.notOutline.title": "Built with the previous editor",
   "automation.outline.notOutline.description":
     "This automation has a shape the outline cannot show, so it stopped at its next run. Rebuild it as a new automation, then delete this one.",

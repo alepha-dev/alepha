@@ -1,5 +1,6 @@
 import { AlephaError } from "alepha";
 
+import type { AutomationCatalogNodeType } from "./automationCatalogNodeTypeSchema.ts";
 import {
   AutomationGraph,
   type AutomationGraphIssue,
@@ -35,6 +36,15 @@ export class AutomationOutline {
       "skipped",
       "not_reached",
     ];
+
+  /**
+   * A new automation's empty draft.
+   */
+  public static readonly EMPTY: AutomationGraphValue = {
+    version: 2,
+    nodes: [],
+    edges: [],
+  };
 
   protected readonly graphs = new AutomationGraph();
 
@@ -355,6 +365,55 @@ export class AutomationOutline {
   }
 
   /**
+   * Another type for a node, its configuration reset to the new type's: an
+   * action changed in its form, the read a schedule selects.
+   */
+  public setType(
+    graph: AutomationGraphValue,
+    id: string,
+    nodeType: AutomationCatalogNodeType,
+  ): AutomationGraphValue {
+    return this.update(graph, id, (node) => ({
+      ...node,
+      type: nodeType.type,
+      config: this.config(nodeType),
+    }));
+  }
+
+  /**
+   * A new node's configuration (#Q3848): what its type needs filled, empty
+   * or at its default, so the checks name what is left to do.
+   */
+  public config(nodeType: AutomationCatalogNodeType): Record<string, unknown> {
+    if (nodeType.kind === "source")
+      return nodeType.type === AutomationVocabulary.SCHEDULE
+        ? { cron: "0 9 * * *" }
+        : {};
+    if (nodeType.kind === "read") return { filters: {} };
+    if (nodeType.kind === "condition")
+      return { field: "", operator: "eq", value: "" };
+    const config: Record<string, unknown> = {};
+    for (const [name, slot] of Object.entries(nodeType.slots)) {
+      if (!slot.required && slot.default === undefined) continue;
+      config[name] =
+        slot.default ??
+        (name === "category"
+          ? "automations"
+          : slot.kind === "number" || slot.kind === "release"
+            ? 0
+            : slot.kind === "boolean"
+              ? false
+              : "");
+    }
+    if (nodeType.type === "notify") {
+      delete config.channel;
+      config.recipient = "";
+      config.channels = ["inbox"];
+    }
+    return config;
+  }
+
+  /**
    * An event's own switch (#Q3806), saved with the draft.
    */
   public setEnabled(
@@ -385,6 +444,19 @@ export class AutomationOutline {
       nodes: [...graph.nodes, ...addition.nodes],
       edges: [...graph.edges, ...addition.edges],
     };
+  }
+
+  /**
+   * The prefix a preset's nodes take when added to a graph (#Q3812): its
+   * key, or `<key>-2`, `<key>-3` once a copy is there.
+   */
+  public prefix(graph: AutomationGraphValue, key: string): string {
+    const taken = (prefix: string) =>
+      graph.nodes.some((node) => node.id.startsWith(`${prefix}.`));
+    let candidate = key;
+    for (let index = 2; taken(candidate); index++)
+      candidate = `${key}-${index}`;
+    return candidate;
   }
 
   /**

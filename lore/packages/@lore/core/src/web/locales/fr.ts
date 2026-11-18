@@ -4614,8 +4614,6 @@ export default {
   "automation.editor.reload": "Abandonner le brouillon et recharger",
   "automation.test.saveToTest": "Enregistrer pour tester",
   "automation.canvas.editor": "Éditeur d'automatisation",
-  "automation.canvas.editPhone":
-    "Modifier une automatisation demande un écran plus large.",
   "automation.canvas.add": "Ajouter un nœud",
   "automation.canvas.addAfter": "Ajouter une étape après $1",
   "automation.canvas.addAfterPort": "Ajouter une étape après $1, $2",
@@ -4677,8 +4675,6 @@ export default {
   "automation.canvas.group.presets": "Depuis un modèle",
   "automation.canvas.mergeDescription":
     "Sa source et ses étapes rejoignent cette automatisation, sous leurs propres noms. Rien n'est enregistré avant que vous n'enregistriez.",
-  "automation.canvas.newDescription":
-    "Dessinez ce qui la déclenche et ce qu'elle fait. Elle est créée désactivée à l'enregistrement, puis testée et activée sur sa page.",
   "automation.subscription.open": "Ouvrir dans les automatisations",
   "automation.canvas.empty":
     "Commencez par une source : ce qui déclenche l'automatisation. Ajoutez un nœud pour la choisir.",
@@ -4708,6 +4704,62 @@ export default {
   "automation.outline.more": "+$1 de plus",
   "automation.outline.noAction": "Aucune action pour l'instant",
   "automation.outline.nothingSet": "Rien à régler",
+  "automation.outline.editor": "Éditeur d'automatisation",
+  "automation.outline.undo": "Annuler",
+  "automation.outline.redo": "Rétablir",
+  "automation.outline.test": "Tester",
+  "automation.outline.leave.title": "Quitter sans enregistrer ?",
+  "automation.outline.leave.description":
+    "Vos modifications de cette automatisation ne sont pas enregistrées.",
+  "automation.outline.leave.confirm": "Quitter",
+  "automation.outline.choose": "Choisissez ce qui la déclenche",
+  "automation.outline.chooseHint":
+    "Un événement de ce projet, ou une planification. Vous pourrez ajouter d'autres événements ensuite.",
+  "automation.outline.chooseEvent": "Choisir un événement",
+  "automation.outline.quickStart": "Ou partir de",
+  "automation.outline.addBlock":
+    "Ajouter un autre événement avec ses propres actions",
+  "automation.outline.addEvent": "Ajouter un événement",
+  "automation.outline.addCondition": "Ajouter une condition",
+  "automation.outline.addAction": "Ajouter une action",
+  "automation.outline.addStep": "Ajouter une étape après celle-ci",
+  "automation.outline.removeEvent": "Retirer cet événement",
+  "automation.outline.removeBlock": "Retirer cet événement et ses actions",
+  "automation.outline.removeCondition": "Retirer la condition",
+  "automation.outline.removeCondition.title": "Retirer la condition ?",
+  "automation.outline.removeCondition.description":
+    "Les actions de Sinon sont retirées avec elle. Les actions de Alors restent et s'exécutent à chaque fois.",
+  "automation.outline.fold": "Replier sur une ligne",
+  "automation.outline.scheduleAlone":
+    "Une planification fonctionne seule : elle ne prend aucun autre événement ni aucun autre bloc.",
+  "automation.outline.eventFirst":
+    "Ajoutez d'abord une action ; d'autres événements pourront ensuite la partager.",
+  "automation.outline.schedule": "Selon une planification (UTC)",
+  "automation.outline.cron": "Planification (cron à cinq champs, UTC)",
+  "automation.outline.reads": "Ce qu'elle lit",
+  "automation.outline.placeholders": "Insérer dans le dernier champ",
+  "automation.outline.from.event": "de l'événement",
+  "automation.outline.from.step": "de « $1 » plus haut",
+  "automation.outline.unavailable": "Non disponible dans ce projet",
+  "automation.outline.unavailable.sources":
+    "Une automatisation compte au plus $1 événements",
+  "automation.outline.unavailable.actions": "Un bloc compte au plus $1 actions",
+  "automation.outline.unavailable.nodes":
+    "Une automatisation compte au plus $1 étapes",
+  "automation.outline.unavailable.schedule":
+    "Une planification fonctionne seule : elle ne partage pas une automatisation avec des événements",
+  "automation.outline.mergeDescription":
+    "Remplissez le modèle : il arrive comme un bloc de plus dans ce brouillon, enregistré avec lui.",
+  "automation.outline.group.feedback": "Retours",
+  "automation.outline.group.quests": "Quêtes",
+  "automation.outline.group.epics": "Épopées",
+  "automation.outline.group.releases": "Versions",
+  "automation.outline.group.deploys": "Déploiements",
+  "automation.outline.group.monitors": "Moniteurs",
+  "automation.outline.group.hosts": "Hôtes",
+  "automation.outline.group.presets": "Depuis un modèle",
+  "automation.outline.newDescription":
+    "Choisissez ce qui la déclenche et ce qu'elle fait. Elle est créée désactivée à l'enregistrement, puis testée et activée sur sa page.",
   "automation.outline.notOutline.title": "Créée avec l'ancien éditeur",
   "automation.outline.notOutline.description":
     "Cette automatisation a une forme que le plan ne sait pas montrer : elle s'est arrêtée à son exécution suivante. Recréez-la comme une nouvelle automatisation, puis supprimez celle-ci.",
