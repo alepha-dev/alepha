@@ -1074,6 +1074,8 @@ export default {
   "attachments.previewTooLarge":
     "Trop volumineux pour un aperçu. Ouvrez le fichier.",
   "attachments.zoom": "Ouvrir $1 en taille réelle",
+  "attachments.maximize": "Agrandir",
+  "attachments.restore": "Taille d'origine",
   "attachments.tab.preview": "Aperçu",
   "attachments.tab.code": "Code",
 

@@ -9,7 +9,13 @@ import {
 } from "@alepha/ui";
 import { MarkdownView } from "@alepha/ui/markdown";
 import { useI18n } from "alepha/react/i18n";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { I18n } from "../../services/I18n.ts";
@@ -73,6 +79,14 @@ export interface AttachmentLightboxProps {
  * highlighted `<code>` inside it, which `MarkdownView` makes its own
  * horizontal scroller, is widened to its content here: one scroller, the
  * `<pre>`, on both axes.
+ *
+ * The reader can maximize the dialog to the viewport (#Q3887): a screenshot
+ * or an HTML page at half the screen is unreadable on a large monitor. The
+ * choice is the viewer's own state, so it holds while paging through the
+ * carousel and is forgotten when the viewer closes. Maximized, the dialog is
+ * a fixed-height column whose content takes what the header, tabs and nav
+ * leave (`flex-1 min-h-0`), and the image, the frame and the code view fill
+ * it instead of the 70vh they are capped at otherwise.
  */
 const AttachmentLightbox = (props: AttachmentLightboxProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -82,6 +96,9 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
   // Which face of an HTML file is up. Preview first: it is what the file
   // was attached to show.
   const [tab, setTab] = useState<"preview" | "code">("preview");
+  // Maximized to the viewport (#Q3887). Not reset per file: it is how the
+  // reader wants to look at the whole set.
+  const [maximized, setMaximized] = useState(false);
 
   // Re-seed from the tile that was clicked. Keyed on `openId` rather than on
   // `open` so re-opening a different item moves the carousel instead of
@@ -95,6 +112,7 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
   // upload finished or metadata arrived while paging.
   if (seed.openId !== props.openId) {
     setSeed({ openId: props.openId, items: props.items });
+    if (!props.openId) setMaximized(false);
     if (props.openId) {
       const at = props.items.findIndex((it) => it.fileId === props.openId);
       setIndex(at >= 0 ? at : 0);
@@ -178,7 +196,15 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
 
   return (
     <Dialog open={!!props.openId} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-w-[92vw] grid-cols-[minmax(0,1fr)] sm:max-w-3xl">
+      <DialogContent
+        data-maximized={maximized ? "" : undefined}
+        className={cn(
+          "grid-cols-[minmax(0,1fr)]",
+          maximized
+            ? "flex h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] flex-col sm:max-w-[calc(100vw-2rem)]"
+            : "max-w-[92vw] sm:max-w-3xl",
+        )}
+      >
         <div className="flex items-center gap-2 pr-8">
           <DialogTitle className="min-w-0 flex-1 truncate text-sm">
             {current.name}
@@ -197,6 +223,27 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
             <Download className="size-3.5" />
             {tr("common.download")}
           </a>
+          <Button
+            type="button"
+            variant="minimal"
+            intent="none"
+            size="icon-sm"
+            data-testid="attachment-maximize"
+            aria-pressed={maximized}
+            aria-label={tr(
+              maximized ? "attachments.restore" : "attachments.maximize",
+            )}
+            title={tr(
+              maximized ? "attachments.restore" : "attachments.maximize",
+            )}
+            onClick={() => setMaximized((value) => !value)}
+          >
+            {maximized ? (
+              <Minimize2 className="size-3.5" />
+            ) : (
+              <Maximize2 className="size-3.5" />
+            )}
+          </Button>
         </div>
 
         {isHtml && (
@@ -212,23 +259,41 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
           />
         )}
 
-        <div className="flex min-w-0 items-center justify-center">
+        <div
+          className={cn(
+            "flex min-w-0 items-center justify-center",
+            maximized && "min-h-0 flex-1",
+          )}
+        >
           {preview.kind === "image" && (
             <img
               src={current.src ?? `/api/files/${current.fileId}`}
               alt=""
-              className="max-h-[70vh] w-auto max-w-full rounded-md object-contain"
+              className={cn(
+                "w-auto max-w-full rounded-md object-contain",
+                maximized ? "h-full max-h-full" : "max-h-[70vh]",
+              )}
             />
           )}
 
           {isTextual && (
             <div
               data-testid="attachment-text-preview"
-              className={
+              className={cn(
                 preview.kind === "markdown"
-                  ? "max-h-[70vh] w-full min-w-0 overflow-auto rounded-md"
-                  : "w-full min-w-0 [&_code]:w-max [&_code]:min-w-full [&_code]:overflow-x-visible [&_pre]:my-0 [&_pre]:max-h-[70vh]"
-              }
+                  ? "w-full min-w-0 overflow-auto rounded-md"
+                  : "w-full min-w-0 [&_code]:w-max [&_code]:min-w-full [&_code]:overflow-x-visible [&_pre]:my-0",
+                // Maximized, a code file's `<pre>` fills the dialog (through
+                // `MarkdownView`'s root), keeping its own scrollbars in view;
+                // a markdown file scrolls as one page.
+                preview.kind === "markdown"
+                  ? maximized
+                    ? "h-full"
+                    : "max-h-[70vh]"
+                  : maximized
+                    ? "h-full [&_pre]:h-full [&_pre]:max-h-full [&>div]:h-full"
+                    : "[&_pre]:max-h-[70vh]",
+              )}
             >
               {tooLarge ? (
                 <p className="text-muted-foreground p-4 text-sm italic">
@@ -239,7 +304,11 @@ const AttachmentLightbox = (props: AttachmentLightboxProps) => {
                   {tr("loading")}
                 </p>
               ) : isHtml && tab === "preview" ? (
-                <AttachmentHtmlPreview html={text} title={current.name} />
+                <AttachmentHtmlPreview
+                  html={text}
+                  title={current.name}
+                  fill={maximized}
+                />
               ) : (
                 <MarkdownView
                   content={

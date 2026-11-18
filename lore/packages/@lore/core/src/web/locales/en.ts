@@ -1083,6 +1083,8 @@ export default {
   "attachments.position": "$1 of $2",
   "attachments.previewTooLarge": "Too large to preview. Open the file instead.",
   "attachments.zoom": "Open $1 full size",
+  "attachments.maximize": "Maximize",
+  "attachments.restore": "Restore size",
   "attachments.tab.preview": "Preview",
   "attachments.tab.code": "Code",
 
