@@ -6,7 +6,7 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { monitorIncidents } from "../entities/monitorIncidents.ts";
 import { monitors } from "../entities/monitors.ts";
-import { UptimeAutomationFields } from "./UptimeAutomationFields.ts";
+import { UptimeEventFields } from "./UptimeEventFields.ts";
 
 /**
  * The subject a `monitor.*` rule is previewed against (#Q3610): a monitor,
@@ -17,7 +17,7 @@ export class UptimeAutomationEventSubjects {
   protected readonly projects = $repository(projects);
   protected readonly monitors = $repository(monitors);
   protected readonly incidents = $repository(monitorIncidents);
-  protected readonly fields = $inject(UptimeAutomationFields);
+  protected readonly fields = $inject(UptimeEventFields);
   constructor() {
     for (const kind of ["down", "up"] as const)
       this.registry.register(`monitor.${kind}`, (projectId, id) =>
@@ -47,6 +47,25 @@ export class UptimeAutomationEventSubjects {
           : "This monitor has no incident yet",
       );
     const project = await this.projects.getById(projectId);
-    return this.fields.build(project, monitor, incident, kind);
+    return UptimeAutomationEventSubjects.automation(
+      this.fields.build(project, monitor, incident, kind),
+    );
+  }
+
+  /**
+   * The automation engine's fields for a monitor event: the data, with the
+   * sentence its templates read as `title`. The project event stores the
+   * monitor's name instead (#Q3889).
+   */
+  public static automation(
+    fields: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return {
+      ...fields,
+      title:
+        fields.state === "down"
+          ? `${String(fields.monitor)} is down`
+          : `${String(fields.monitor)} recovered`,
+    };
   }
 }

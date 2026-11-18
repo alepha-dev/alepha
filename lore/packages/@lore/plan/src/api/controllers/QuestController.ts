@@ -78,6 +78,7 @@ import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { PlanLiveQuests } from "../services/PlanLiveQuests.ts";
 import { QuestDeletionService } from "../services/QuestDeletionService.ts";
 import { QuestEditAccess } from "../services/QuestEditAccess.ts";
+import { QuestEventSources } from "../services/QuestEventSources.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
 import { QuestShelvingService } from "../services/QuestShelvingService.ts";
@@ -229,6 +230,7 @@ export class QuestController {
    * assign, complete and shelve handlers trigger after their own write.
    */
   epicWorkflow = $inject(EpicWorkflowService);
+  protected readonly questEvents = $inject(QuestEventSources);
   openQuests = $inject(OpenQuestScope);
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
@@ -2303,7 +2305,7 @@ export class QuestController {
         action: "held",
       });
 
-      await this.quests.save(quest);
+      await this.questEvents.held(quest, project, user.id);
 
       // No `source`: that column's semantic is "a machine wrote this", and
       // whoever clicked Hold did not. Over MCP the same is true — the
@@ -2474,7 +2476,7 @@ export class QuestController {
         action: "assigned",
       });
 
-      await this.quests.save(quest);
+      await this.questEvents.assigned(quest, project, user.id);
       // The audit and the epic's start together (#Q2637): neither reads the
       // other. The audit is best effort; the start is one guarded statement,
       // healed by `EpicWorkflowService.sweep` if it fails, and a failure
@@ -2608,7 +2610,7 @@ export class QuestController {
         targetUserId: body.userId,
       });
 
-      await this.quests.save(quest);
+      await this.questEvents.assigned(quest, project, user.id);
       await this.logQuest("assign", quest, user, { assigneeId: body.userId });
       const cascade = await this.epicWorkflow.startIfReady(quest, user);
       return this.mapQuestToResource(await this.afterCascade(quest, cascade));

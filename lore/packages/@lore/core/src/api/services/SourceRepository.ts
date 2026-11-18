@@ -8,13 +8,16 @@ import { AutomationOrigin } from "./AutomationOrigin.ts";
 import { BatchRepository } from "./BatchRepository.ts";
 import { GuardedBatch } from "./GuardedBatch.ts";
 import { LoreDatabase } from "./LoreDatabase.ts";
+import { ProjectEvents } from "./ProjectEvents.ts";
 
 /**
  * How a source writes a change that must be recorded as a fact: the change and
  * its event, in one guarded batch, or neither (#Q3899).
  *
  * Reuses the repository codec, predicates, version bump, cache and lifecycle
- * hooks while committing its one prepared statement with the durable event.
+ * hooks while committing its one prepared statement with the durable event:
+ * the project event of #Q3889, and the automation event while the automation
+ * engine still reads one.
  */
 export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
   protected static readonly sources = new WeakMap<
@@ -25,6 +28,7 @@ export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
   protected readonly atomic = $inject(GuardedBatch);
   protected readonly database = $inject(LoreDatabase);
   protected readonly origin = $inject(AutomationOrigin);
+  protected readonly projectEvents = $inject(ProjectEvents);
 
   public static override of<S extends ZObject>(
     entity: EntityPrimitive<S>,
@@ -136,15 +140,25 @@ export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
     mutation: SQLLike,
     numbers?: Record<string, SQLLike>,
   ): Promise<Record<string, unknown>[] | undefined> {
-    if (this.origin.current)
-      return (await this.atomic.guarded(condition, [mutation]))[1];
+    const computed = { ...event.numbers, ...numbers };
+    const recorded = this.projectEvents.emit({
+      projectId: event.projectId,
+      name: event.name,
+      subjectId: event.subjectId,
+      fields: { ...event.fields, ...event.projectFields },
+      numbers: computed,
+    });
+    if (this.origin.current || !this.events.handles(event.name))
+      return (await this.atomic.guarded(condition, [mutation, ...recorded]))[1];
     return (
       await this.events.transition({
         ...event,
+        name: event.name as AutomationEvent["name"],
         condition,
         mutation,
         changedTables: [this.tableName],
-        numbers: { ...event.numbers, ...numbers },
+        numbers: computed,
+        statements: recorded,
       })
     ).rows;
   }
@@ -157,8 +171,21 @@ export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
 export interface SourceEvent {
   projectId: number;
   identity: string;
-  name: AutomationEvent["name"];
+  /**
+   * The project event's name (`ProjectEventCatalog`). The automation event of
+   * the same name is recorded too while the engine handles that name.
+   */
+  name: string;
+  /**
+   * The event's subject id (`ProjectEventInput.subjectId`).
+   */
+  subjectId?: string | number;
   fields: Record<string, unknown>;
+  /**
+   * Fields the project event stores instead of the automation event's, where
+   * the two differ (a host's name, not a sentence about it).
+   */
+  projectFields?: Record<string, unknown>;
   resourceId?: string | number;
   generatedIdField?: string;
   numbers?: Record<string, SQLLike>;

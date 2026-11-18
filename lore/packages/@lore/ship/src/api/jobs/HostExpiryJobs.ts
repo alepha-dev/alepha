@@ -8,7 +8,9 @@ import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import { hosts } from "../entities/hosts.ts";
-import { HostAutomationFields } from "../services/HostAutomationFields.ts";
+import { HostAutomationEventSubjects } from "../services/HostAutomationEventSubjects.ts";
+import { HostEventFields } from "../services/HostEventFields.ts";
+import { ShipProjectEvents } from "../services/ShipProjectEvents.ts";
 
 /**
  * Raises `host.expired`, once, when a throwaway host is past the TTL it was
@@ -20,12 +22,17 @@ import { HostAutomationFields } from "../services/HostAutomationFields.ts";
  * re-arms it.
  */
 export class HostExpiryJobs {
+  /**
+   * Injected so the events this class records are in the catalog
+   * whatever booted it (#Q3889).
+   */
+  protected readonly eventDefinitions = $inject(ShipProjectEvents);
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly hosts = $repository(hosts);
   protected readonly projects = $repository(projects);
   protected readonly sources = $inject(SourceRepository.of(hosts));
-  protected readonly fields = $inject(HostAutomationFields);
+  protected readonly fields = $inject(HostEventFields);
 
   public readonly notifyOverdue = $job({
     name: "hosts.notify-overdue",
@@ -64,11 +71,14 @@ export class HostExpiryJobs {
             identity: `host:${host.id}:expired:${since}`,
             resourceId: host.id,
             name: "host.expired",
-            fields: this.fields.build(
-              await this.projects.getById(host.projectId),
-              host,
+            ...HostAutomationEventSubjects.source(
+              this.fields.build(
+                await this.projects.getById(host.projectId),
+                host,
+                "expired",
+                since,
+              ),
               "expired",
-              since,
             ),
           },
         );

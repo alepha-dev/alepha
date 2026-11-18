@@ -52,6 +52,7 @@ import { ProjectTeamReportService } from "./services/ProjectTeamReportService.ts
 import { QuestBreakdownMetric } from "./services/QuestBreakdownMetric.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestEditAccess } from "./services/QuestEditAccess.ts";
+import { QuestEventSources } from "./services/QuestEventSources.ts";
 import { QuestFlowHistory } from "./services/QuestFlowHistory.ts";
 import { QuestFlowService } from "./services/QuestFlowService.ts";
 import { QuestHoldTime } from "./services/QuestHoldTime.ts";
@@ -86,6 +87,7 @@ import { WorkFileAccess } from "./services/WorkFileAccess.ts";
 import { WorkFlowDashboardMetrics } from "./services/WorkFlowDashboardMetrics.ts";
 import { WorkPlanDashboardMetrics } from "./services/WorkPlanDashboardMetrics.ts";
 import { WorkProjectCounts } from "./services/WorkProjectCounts.ts";
+import { WorkProjectEvents } from "./services/WorkProjectEvents.ts";
 import { WorkProjectMerge } from "./services/WorkProjectMerge.ts";
 import { WorkReportsSummary } from "./services/WorkReportsSummary.ts";
 import { WorkYourDashboardMetrics } from "./services/WorkYourDashboardMetrics.ts";
@@ -109,6 +111,9 @@ export const LorePlanApi = $module({
     // Every bucket of the package, at boot: an upload looks its bucket up
     // by name, and the controllers that use one stay pure (#Q3404).
     WorkBuckets,
+    // Plan's project events, in the core catalog (#Q3889); listed because
+    // nothing injects them.
+    WorkProjectEvents,
     WorkAutomationPresets,
     WorkAutomationEventSubjects,
     WorkAutomationActions,
@@ -167,6 +172,7 @@ export const LorePlanApi = $module({
     FeedbackRateLimiter,
     QuestCsvFormatter,
     QuestService,
+    QuestEventSources,
     AreaService,
     // What "open quests" means, shared by the sidebar badge, the dashboard
     // rail and the Active Quests tile — all three are visible together.

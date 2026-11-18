@@ -7,7 +7,9 @@ import { ConflictError } from "alepha/server";
 
 import { type Host, hosts } from "../entities/hosts.ts";
 import { CloudflareProbeService } from "./CloudflareProbeService.ts";
-import { HostAutomationFields } from "./HostAutomationFields.ts";
+import { HostAutomationEventSubjects } from "./HostAutomationEventSubjects.ts";
+import { HostEventFields } from "./HostEventFields.ts";
+import { ShipProjectEvents } from "./ShipProjectEvents.ts";
 
 /**
  * Which field on the create form a failure belongs beside.
@@ -91,6 +93,11 @@ export interface CloudflarePermissionProbe {
  * the one.
  */
 export class HostCloudflareService {
+  /**
+   * Injected so the events this class records are in the catalog
+   * whatever booted it (#Q3889).
+   */
+  protected readonly eventDefinitions = $inject(ShipProjectEvents);
   /**
    * How much of a pasted token {@link mask} keeps.
    *
@@ -204,7 +211,7 @@ export class HostCloudflareService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly sources = $inject(SourceRepository.of(hosts));
   protected readonly projects = $repository(projects);
-  protected readonly fields = $inject(HostAutomationFields);
+  protected readonly fields = $inject(HostEventFields);
 
   /**
    * The first characters of a token, enough for a person to tell two apart
@@ -328,11 +335,14 @@ export class HostCloudflareService {
             identity: `host:${host.id}:credential_invalid:${checkedAt}`,
             resourceId: host.id,
             name: "host.credential_invalid",
-            fields: this.fields.build(
-              await this.projects.getById(host.projectId),
-              host,
+            ...HostAutomationEventSubjects.source(
+              this.fields.build(
+                await this.projects.getById(host.projectId),
+                host,
+                "credential_invalid",
+                checkedAt,
+              ),
               "credential_invalid",
-              checkedAt,
             ),
           },
         );

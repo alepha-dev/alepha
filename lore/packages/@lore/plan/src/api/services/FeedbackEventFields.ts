@@ -6,7 +6,7 @@ import { formatReference } from "@lore/core/web";
  * reference (`#P94`), the description cut for a notification, and the report
  * itself rather than the inbox (`?feedback=` opens it).
  */
-export class FeedbackAutomationFields {
+export class FeedbackEventFields {
   /**
    * The description keeps its line breaks, since a report is often a list of
    * steps, and stops at 1,000 characters.

@@ -5,12 +5,18 @@ import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { deployments, type Deployment } from "../entities/deployments.ts";
+import { ShipProjectEvents } from "./ShipProjectEvents.ts";
 
 /**
  * Terminal event data contains only a fixed safe projection. Arbitrary adapter
  * errors stay on the deployment record because they can include credentials.
  */
 export class DeployAutomationSources {
+  /**
+   * Injected so the events this class records are in the catalog
+   * whatever booted it (#Q3889).
+   */
+  protected readonly eventDefinitions = $inject(ShipProjectEvents);
   protected readonly rows = $inject(SourceRepository.of(deployments));
   protected readonly instances = $repository(appInstances);
   protected readonly projects = $repository(projects);
@@ -32,6 +38,16 @@ export class DeployAutomationSources {
             ? "Deployment stopped reporting and was abandoned."
             : "Deployment failed. Inspect its deployment record for details."
         : undefined;
+    // The project event stores data, not sentences (#Q3889): the reason as
+    // a code, the title as the app.
+    const cause =
+      status === "failed"
+        ? values.error?.startsWith("This deploy never started:")
+          ? "timeout"
+          : values.error?.startsWith("This deploy stopped reporting after")
+            ? "abandoned"
+            : "failed"
+        : undefined;
     await this.rows.sourceUpdate(
       { id, status: { inArray: ["queued", "running"] } },
       values,
@@ -40,6 +56,8 @@ export class DeployAutomationSources {
         identity: `deployment:${id}:terminal`,
         resourceId: id,
         name: `deploy.${status}`,
+        subjectId: id,
+        projectFields: { title: row.app, reason: cause ?? null },
         fields: {
           project: project.title,
           title: `${row.app}: deployment ${status}`,

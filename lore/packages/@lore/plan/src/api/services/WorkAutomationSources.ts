@@ -8,15 +8,21 @@ import { epics, type Epic } from "../entities/epics.ts";
 import { feedback, type FeedbackInsert } from "../entities/feedback.ts";
 import { quests, type Quest } from "../entities/quests.ts";
 import { releases, type Release } from "../entities/releases.ts";
-import { FeedbackAutomationFields } from "./FeedbackAutomationFields.ts";
+import { FeedbackEventFields } from "./FeedbackEventFields.ts";
+import { WorkProjectEvents } from "./WorkProjectEvents.ts";
 
 /**
  * Event projections belong to Work. Controllers retain their ordinary audits,
  * mention handling and workflow tail after this atomic domain write.
  */
 export class WorkAutomationSources {
+  /**
+   * Injected so the events this class records are in the catalog
+   * whatever booted it (#Q3889).
+   */
+  protected readonly eventDefinitions = $inject(WorkProjectEvents);
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly feedbackFields = $inject(FeedbackAutomationFields);
+  protected readonly feedbackFields = $inject(FeedbackEventFields);
   protected readonly projects = $repository(projects);
   protected readonly feedback = $inject(SourceRepository.of(feedback));
   protected readonly releases = $inject(SourceRepository.of(releases));
@@ -31,6 +37,7 @@ export class WorkAutomationSources {
       {
         projectId: data.projectId,
         name: "feedback.created",
+        subjectId: data.shortId,
         identity: `feedback:${data.projectId}:${data.shortId}`,
         generatedIdField: "feedback_id",
         fields: {
@@ -65,6 +72,7 @@ export class WorkAutomationSources {
       {
         projectId: release.projectId,
         name: "release.published",
+        subjectId: release.number,
         identity: `release:${release.id}:${this.crypto.randomUUID()}`,
         resourceId: release.id,
         fields: {
@@ -91,12 +99,14 @@ export class WorkAutomationSources {
     await this.quests.sourceSave(quest, {
       projectId: quest.projectId,
       name: "quest.completed",
+      subjectId: quest.shortId,
       identity: `quest:${quest.id}:completed`,
       fields: {
         project: project.title,
         title: quest.title,
         quest_id: quest.id,
         shortId: quest.shortId,
+        area: quest.area,
         url: `/${project.slug || `project-${project.id}`}/quests/${quest.shortId}`,
       },
     });
@@ -116,6 +126,7 @@ export class WorkAutomationSources {
       {
         projectId: epic.projectId,
         name: "epic.completed",
+        subjectId: epic.number,
         numbers: {
           quest_count: this.quests.subquery({ epicId: id }, undefined, {
             count: true,
