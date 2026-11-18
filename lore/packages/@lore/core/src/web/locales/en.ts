@@ -3811,6 +3811,7 @@ export default {
   "epic.list.column.progress": "Progress",
   "epic.create": "New Epic",
   "epic.edit": "Edit",
+  "epic.more": "More actions",
   "epic.create.title.helper": "A short name for the initiative.",
   "epic.create.description.helper":
     "What it covers, and why. Markdown is supported.",

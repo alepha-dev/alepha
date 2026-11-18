@@ -1190,17 +1190,21 @@ test.describe("Epics — shelving a plan", () => {
 
     await test.step("Unshelve on the epic page brings them back and resumes the epic", async () => {
       await page.goto(`/${slug}/epics/${epic.number}`);
-      await page.getByRole("button", { name: "Unshelve" }).click();
+      // In the page's three-dots menu since #Q3908.
+      await page.getByTestId("epic-more").click();
+      await page.getByRole("menuitem", { name: "Unshelve" }).click();
       const confirm = page.getByRole("alertdialog");
       await expect(confirm).toContainText("brings back the 2 quests");
       await confirm.getByRole("button", { name: "Unshelve" }).click();
-      // ⚠️ `exact`: a role name is a case-insensitive substring match, so a
-      // bare "Shelve" is satisfied by the dialog's own Unshelve button, and
-      // the goto below would then abort the unshelve still in flight.
-      await expect(
-        page.getByRole("button", { name: "Shelve", exact: true }),
-      ).toBeVisible({ timeout: 15_000 });
       await expect(confirm).toHaveCount(0);
+      // ⚠️ `exact`: a role name is a case-insensitive substring match, so a
+      // bare "Shelve" would be satisfied by an Unshelve entry, and the goto
+      // below would then abort the unshelve still in flight.
+      await page.getByTestId("epic-more").click();
+      await expect(
+        page.getByRole("menuitem", { name: "Shelve", exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+      await page.keyboard.press("Escape");
 
       await page.goto(`/${slug}/epics`);
       await expect(row).toContainText("In progress", { timeout: 15_000 });

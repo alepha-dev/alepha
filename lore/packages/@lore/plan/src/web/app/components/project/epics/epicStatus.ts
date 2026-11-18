@@ -117,3 +117,11 @@ export const epicBlockedBy = (
  */
 export const openQuestsOf = (epic: Pick<EpicResource, "progress">): number =>
   epic.progress.total - epic.progress.completed - epic.progress.shelved;
+
+/**
+ * Whether the server will delete this epic: only while its plan is open,
+ * `draft` or `ready` (`EpicWorkflowService.assertEpicDeletable`, #Q2666).
+ * Shared by the list's row and bulk menus and the epic page's menu.
+ */
+export const isDeletable = (epic: Pick<EpicResource, "status">): boolean =>
+  epic.status === "draft" || epic.status === "ready";
