@@ -1,5 +1,6 @@
 import { Alepha, type Service } from "alepha";
 import { AlephaCommand, CliProvider } from "alepha/command";
+import { httpClientOptions } from "alepha/server";
 import { LinkProvider } from "alepha/server/links";
 import {
   FileSystemProvider,
@@ -77,6 +78,23 @@ describe("the Lore deploy module", () => {
 
     expect(alepha.inject(CliProvider).commands).toEqual([]);
   });
+
+  it.each([
+    ["the infra adapter", LoreAdapter],
+    ["the deployer", LoreDeployer],
+  ] as Array<[string, Service]>)(
+    "sends a read again after a connection reset, reached through %s",
+    (_name, service) => {
+      const alepha = bare();
+      expect(alepha.store.get(httpClientOptions)?.networkRetries ?? 0).toBe(0);
+
+      alepha.inject(service);
+
+      expect(alepha.store.get(httpClientOptions)?.networkRetries).toBe(3);
+      // The rest of the options is kept.
+      expect(alepha.store.get(httpClientOptions)?.timeout).toBe(30_000);
+    },
+  );
 
   it("is still what the `lore` binary deploys with, through its import", () => {
     const alepha = bare().with(AlephaLoreCli);

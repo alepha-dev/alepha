@@ -39,9 +39,16 @@ export const httpClientOptions = $atom({
         "Milliseconds a server-side `fetch` may take, headers and body, before it rejects with a TimeoutError. `false` or 0 disables it. A call's own `timeout` wins. Never applies to `fetchAction` nor in the browser.",
       )
       .optional(),
+    networkRetries: z
+      .integer()
+      .describe(
+        "How many times a GET or HEAD is sent again when no HTTP answer came back (a connection reset, a DNS failure). Never a write, an aborted or timed out call, nor an HTTP error, which is an answer. 0 by default.",
+      )
+      .optional(),
   }),
   default: {
     timeout: 30_000,
+    networkRetries: 0,
   },
 });
 
@@ -486,7 +493,7 @@ export class HttpClient {
     options: ResolvedFetchOptions,
     cacheKey: string,
   ): Promise<FetchResponse> {
-    return this.transport(url, request)
+    return this.reach(url, request)
       .then(async (response) => {
         this.log.debug("Response", {
           url,
@@ -538,6 +545,56 @@ export class HttpClient {
         }
         throw error;
       });
+  }
+
+  /**
+   * {@link transport}, sent again when it rejects and the
+   * `networkRetries` option allows it.
+   *
+   * A rejection is the absence of an HTTP answer: the connection was reset,
+   * or never opened. That says nothing about the server, and a read costs
+   * nothing to repeat. A write is never sent again, since the server may have
+   * received it and only the answer was lost; neither is a call whose signal
+   * aborted, a timeout included.
+   */
+  protected async reach(url: string, request: RequestInit): Promise<Response> {
+    const method = (request.method ?? "GET").toUpperCase();
+    const retries =
+      method === "GET" || method === "HEAD"
+        ? (this.settings.networkRetries ?? 0)
+        : 0;
+
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await this.transport(url, request);
+      } catch (error) {
+        const signal = request.signal ?? undefined;
+        if (
+          attempt > retries ||
+          signal?.aborted ||
+          this.alepha.context.isAbortError(error, signal)
+        ) {
+          throw error;
+        }
+        const cause = (error as { cause?: unknown })?.cause;
+        this.log.warn(
+          `No answer from ${this.hostOf(url)}, sending the ${method} again (${attempt}/${retries})`,
+          {
+            error: error instanceof Error ? error.message : String(error),
+            cause: cause instanceof Error ? cause.message : undefined,
+          },
+        );
+        await this.dateTime.wait(this.retryDelay(attempt), { signal });
+      }
+    }
+  }
+
+  /**
+   * Milliseconds before the retry that follows failed attempt `attempt`
+   * (1-based): 500, 1000, 2000, capped at 5000.
+   */
+  protected retryDelay(attempt: number): number {
+    return Math.min(500 * 2 ** (attempt - 1), 5_000);
   }
 
   /**
