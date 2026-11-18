@@ -7,6 +7,7 @@ import { Ban } from "lucide-react";
 import { useState } from "react";
 
 import ProjectErrorRulesDialog from "../errors/ProjectErrorRulesDialog.tsx";
+import ProjectSettingsThreshold from "./ProjectSettingsThreshold.tsx";
 
 /**
  * Plan > Errors (#Q3703): the error Ignore rules, where the Errors inbox's
@@ -38,6 +39,7 @@ const ProjectSettingsErrorsPage = () => {
           </Button>
         </SettingsRow>
       </SettingsSection>
+      <ProjectSettingsThreshold kind="errors" />
 
       <ProjectErrorRulesDialog
         open={rulesOpen}

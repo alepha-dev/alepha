@@ -6,6 +6,7 @@ import type { QualityRun } from "../entities/qualityRuns.ts";
 import { qualityOverviewSchema } from "../schemas/qualityOverviewSchema.ts";
 import { qualityRunPushSchema } from "../schemas/qualityRunPushSchema.ts";
 import { qualityRunSchema } from "../schemas/qualityRunSchema.ts";
+import { ProjectThresholds } from "../services/ProjectThresholds.ts";
 import { QualityService } from "../services/QualityService.ts";
 
 /**
@@ -29,6 +30,7 @@ import { QualityService } from "../services/QualityService.ts";
  */
 export class QualityController {
   protected readonly quality = $inject(QualityService);
+  protected readonly thresholds = $inject(ProjectThresholds);
 
   /**
    * Declared above the actions on purpose: a `use: [...]` entry reading
@@ -74,6 +76,12 @@ export class QualityController {
       response: qualityRunSchema,
     },
     handler: async ({ params, body }) => {
+      // The coverage threshold (#Q3894) compares against what `main` had.
+      const previous =
+        body.branch === ProjectThresholds.BRANCH
+          ? (await this.quality.findLatest(params.projectId, body.branch))
+              ?.coverageLines
+          : undefined;
       const run = await this.quality.record({
         projectId: params.projectId,
         commitSha: body.commitSha,
@@ -82,6 +90,15 @@ export class QualityController {
         tests: body.tests,
         durationMs: body.durationMs,
       });
+      await this.thresholds.onCoverage(
+        params.projectId,
+        {
+          branch: body.branch,
+          commitSha: body.commitSha,
+          lines: body.coverage.lines,
+        },
+        previous,
+      );
 
       return this.resource(run);
     },

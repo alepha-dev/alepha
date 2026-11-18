@@ -2,6 +2,7 @@ import { currentProjectAtom, hasCapability } from "@lore/core/web";
 import { useStore } from "alepha/react";
 
 import ProjectSettingsCoverageTarget from "./ProjectSettingsCoverageTarget.tsx";
+import ProjectSettingsThreshold from "./ProjectSettingsThreshold.tsx";
 
 /**
  * Ship > Features: the coverage target. The capability switches are in
@@ -53,6 +54,9 @@ const ProjectSettingsAppsPage = () => {
           rows a second time. What is left is Ship's one setting that is not
           a switch, the coverage target, and the tab stays for it. */}
       {enabled && <ProjectSettingsCoverageTarget />}
+      {/* Quality's alert (#Q3894): there is no Quality settings page, and
+          the coverage target beside it reads the same number. */}
+      {enabled && <ProjectSettingsThreshold kind="coverage" />}
     </div>
   );
 };

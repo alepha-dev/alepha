@@ -1,0 +1,219 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "9d23c238-9ab9-44d2-b5e7-169ed20bb392",
+  "prevIds": ["08ecdc94-1c6f-42c5-929d-6d7b8696ea82"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "project_thresholds"],
+      "writes": [
+        "s|tbl|public.project_thresholds",
+        "n|tbl|public.project_thresholds",
+        "e|tbl|public.project_thresholds",
+        "n|rel|public.project_thresholds",
+        "n|type|public.project_thresholds",
+        "n|rel|public.project_thresholds_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "project_thresholds",
+        "project_thresholds_project_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.project_thresholds_project_id_idx",
+        "n|idx|public.project_thresholds_project_id_idx",
+        "e|idx|public.project_thresholds_project_id_idx",
+        "n|rel|public.project_thresholds_project_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.project_thresholds",
+        "n|sch|public",
+        "n|col|public.project_thresholds.project_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "project_thresholds"],
+      "writes": [
+        "s|fk|public.project_thresholds.project_thresholds_project_id_projects_id_fkey",
+        "n|fk|public.project_thresholds.project_thresholds_project_id_projects_id_fkey",
+        "e|fk|public.project_thresholds.project_thresholds_project_id_projects_id_fkey",
+        "n|con|public.project_thresholds.project_thresholds_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.project_thresholds",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.project_thresholds.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "project_thresholds",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "coverage_min",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "coverage_armed",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "open_errors_max",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "errors_armed",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "project_thresholds_project_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "project_thresholds_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_thresholds",
+        "name": "project_thresholds_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}
