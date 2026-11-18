@@ -1,6 +1,6 @@
 import { DiscordTransport, MemoryDiscordTransport } from "@alepha/discord";
 import {
-  AutomationChannelService,
+  ProjectChannelService,
   AutomationClaims,
   AutomationController,
   AutomationEvaluator,
@@ -230,7 +230,7 @@ describe("Quest reminders through an automation (#Q3626)", () => {
     expect,
   }) => {
     const channel = await alepha
-      .inject(AutomationChannelService)
+      .inject(ProjectChannelService)
       .add(project.id, user, {
         name: "reminders",
         url: "https://discord.com/api/webhooks/1234567890/reminders-token",

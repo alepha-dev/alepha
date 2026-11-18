@@ -19,7 +19,6 @@ import { DatabaseProvider, DatabaseUrlParser } from "alepha/orm";
 import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
-import { AutomationChannelController } from "./controllers/AutomationChannelController.ts";
 import { AutomationController } from "./controllers/AutomationController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
@@ -27,6 +26,7 @@ import { InvitationController } from "./controllers/InvitationController.ts";
 import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
 import { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
 import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
+import { ProjectChannelController } from "./controllers/ProjectChannelController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
 import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
@@ -72,7 +72,6 @@ import { AutomationAudience } from "./services/AutomationAudience.ts";
 import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
 import { AutomationChannelRemoval } from "./services/AutomationChannelRemoval.ts";
-import { AutomationChannelService } from "./services/AutomationChannelService.ts";
 import { AutomationClaims } from "./services/AutomationClaims.ts";
 import { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
 import { AutomationDependencies } from "./services/AutomationDependencies.ts";
@@ -118,6 +117,7 @@ import { MomentumMetric } from "./services/MomentumMetric.ts";
 import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
 import { NoteMetric } from "./services/NoteMetric.ts";
 import { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
+import { ProjectChannelService } from "./services/ProjectChannelService.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectDashboardPresets } from "./services/ProjectDashboardPresets.ts";
 import { ProjectDashboardService } from "./services/ProjectDashboardService.ts";
@@ -243,7 +243,7 @@ export const LoreCoreApi = $module({
     AutomationOAuthAuthority,
     AutomationService,
     AutomationController,
-    AutomationChannelController,
+    ProjectChannelController,
     AutomationVariableService,
     AutomationMutationAudit,
     AutomationApprovalFence,
@@ -251,7 +251,7 @@ export const LoreCoreApi = $module({
     AutomationChannelRemoval,
     // Registers the configured channels as automation channel instances
     // (#Q3614); nothing else may inject it before a rule is evaluated.
-    AutomationChannelService,
+    ProjectChannelService,
     // The `discord` notification channel: listed, not merely injected,
     // since the notification registry finds only instantiated channels.
     LoreDiscordNotificationChannel,
@@ -637,9 +637,9 @@ export {
   type AutomationChannelInstanceSource,
 } from "./services/AutomationChannels.ts";
 export { AutomationChannelRemoval } from "./services/AutomationChannelRemoval.ts";
-export { AutomationChannelService } from "./services/AutomationChannelService.ts";
+export { ProjectChannelService } from "./services/ProjectChannelService.ts";
 export { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
-export { AutomationChannelController } from "./controllers/AutomationChannelController.ts";
+export { ProjectChannelController } from "./controllers/ProjectChannelController.ts";
 export { CredentialSealService } from "./services/CredentialSealService.ts";
 
 export {

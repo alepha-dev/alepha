@@ -158,7 +158,7 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
       {
         // The channels a rule may notify (#Q3614).
         route: "projectAutomationChannels",
-        labelKey: "project.settings.tab.automationChannels",
+        labelKey: "project.settings.tab.notificationChannels",
         requires: "automation:read",
       },
     ],

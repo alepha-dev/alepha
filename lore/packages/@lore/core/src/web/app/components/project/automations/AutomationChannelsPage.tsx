@@ -6,9 +6,9 @@ import { useI18n } from "alepha/react/i18n";
 import { Hash, Plus } from "lucide-react";
 import { useState } from "react";
 
-import type { AutomationChannelController } from "../../../../../api/controllers/AutomationChannelController.ts";
-import { automationChannelFormSchema } from "../../../../../api/schemas/automationChannelFormSchema.ts";
-import type { AutomationChannelResource } from "../../../../../api/schemas/automationChannelResourceSchema.ts";
+import type { ProjectChannelController } from "../../../../../api/controllers/ProjectChannelController.ts";
+import { projectChannelFormSchema } from "../../../../../api/schemas/projectChannelFormSchema.ts";
+import type { ProjectChannelResource } from "../../../../../api/schemas/projectChannelResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
@@ -26,13 +26,13 @@ import AutomationPage from "./AutomationPage.tsx";
  */
 const AutomationChannelsPage = () => {
   const { tr } = useI18n<I18n, "en">();
-  const api = useClient<AutomationChannelController>();
+  const api = useClient<ProjectChannelController>();
   const dialog = useDialog();
   const [project] = useStore(currentProjectAtom);
   usePageCrumb("projectAutomationChannels", tr("automation.channels.title"));
   // `undefined` closed, `null` adding, a channel when editing it.
   const [editing, setEditing] = useState<
-    AutomationChannelResource | null | undefined
+    ProjectChannelResource | null | undefined
   >(undefined);
   const projectId = project?.id ?? 0;
   const key = ["automation-channels", projectId];
@@ -41,7 +41,7 @@ const AutomationChannelsPage = () => {
       key,
       enabled: !!project,
       handler: ({ signal }) =>
-        api.listAutomationChannels(
+        api.listProjectChannels(
           { params: { projectId } },
           { request: { signal } },
         ),
@@ -53,12 +53,12 @@ const AutomationChannelsPage = () => {
       handler: async (_ctx, values) => {
         const url = values.url?.trim() || undefined;
         if (editing)
-          await api.updateAutomationChannel({
+          await api.updateProjectChannel({
             params: { projectId, id: editing.id },
             body: { name: values.name, ...(url ? { url } : {}) },
           });
         else
-          await api.createAutomationChannel({
+          await api.createProjectChannel({
             params: { projectId },
             body: { name: values.name, url: url ?? "" },
           });
@@ -68,7 +68,7 @@ const AutomationChannelsPage = () => {
     },
     [api, projectId, editing],
   );
-  const remove = useAction<[channel: AutomationChannelResource], void>(
+  const remove = useAction<[channel: ProjectChannelResource], void>(
     {
       handler: async (_ctx, channel) => {
         if (
@@ -82,7 +82,7 @@ const AutomationChannelsPage = () => {
           }))
         )
           return;
-        await api.deleteAutomationChannel({
+        await api.deleteProjectChannel({
           params: { projectId, id: channel.id },
         });
       },
@@ -92,7 +92,7 @@ const AutomationChannelsPage = () => {
   );
   const form = useForm(
     {
-      schema: automationChannelFormSchema,
+      schema: projectChannelFormSchema,
       initialValues: { name: editing?.name ?? "", url: "" },
       handler: async (values) => {
         await save.run(values);

@@ -128,9 +128,19 @@ export class ProjectEventDelivery {
     if (!project) return 0;
     let sent = 0;
     for (const row of rows) {
-      // A channel target is delivered by its own path (#Q3891).
-      if (!row.memberId) continue;
       if (!this.matches(row.filter, definition.filter?.field, event)) continue;
+      // A channel: posted as the project, with no member to check (#Q3891).
+      if (row.channelId) {
+        const channelId = row.channelId;
+        if (
+          await step(`deliver.${row.id}.channel`, () =>
+            this.post(channelId, project, event),
+          )
+        )
+          sent++;
+        continue;
+      }
+      if (!row.memberId) continue;
       const refusal = await this.recipients.refusal(
         event.projectId,
         row.memberId,
@@ -180,16 +190,29 @@ export class ProjectEventDelivery {
     return this.catalog.get(event.name).message(event.fields, lang);
   }
 
-  protected async send(
-    channel: SubscriptionChannel,
-    contact: string,
+  /**
+   * Posts the event to a project's notification channel, through the
+   * template of its kind.
+   */
+  protected async post(
+    channelId: string,
     project: { id: number; title: string },
     event: ProjectEvent,
   ): Promise<boolean> {
-    const lang = this.notifications.lang;
-    const message = this.render(event, lang);
+    await this.notifications.discord.push({
+      lang: this.notifications.lang,
+      variables: { ...this.variables(project, event), channelId },
+    });
+    return true;
+  }
+
+  protected variables(
+    project: { id: number; title: string },
+    event: ProjectEvent,
+  ) {
+    const message = this.render(event, this.notifications.lang);
     const href = typeof event.fields.url === "string" ? event.fields.url : "";
-    const variables = {
+    return {
       projectTitle: project.title,
       title: message.title,
       text: message.text,
@@ -197,6 +220,16 @@ export class ProjectEventDelivery {
       url: `${String(this.alepha.env.PUBLIC_URL ?? "")}${href}`,
       scope: `project:${project.id}`,
     };
+  }
+
+  protected async send(
+    channel: SubscriptionChannel,
+    contact: string,
+    project: { id: number; title: string },
+    event: ProjectEvent,
+  ): Promise<boolean> {
+    const lang = this.notifications.lang;
+    const variables = this.variables(project, event);
     const template =
       channel === "email" ? this.notifications.email : this.notifications.inbox;
     await template.push({ contact, lang, variables });

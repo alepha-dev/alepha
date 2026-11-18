@@ -185,7 +185,7 @@ export default {
   "automation.preset.host-online.title": "Hôte de retour en ligne",
   "automation.preset.host-online.description":
     "Avertit un membre quand un hôte Bay signalé hors ligne se reconnecte.",
-  "project.settings.tab.automationChannels": "Canaux",
+  "project.settings.tab.notificationChannels": "Canaux",
   "automation.channels.title": "Canaux",
   "automation.channels.description":
     "Où les automatisations publient : In-app et E-mail, intégrés, et les canaux Discord que vous ajoutez. Une règle en nomme un ou plusieurs.",

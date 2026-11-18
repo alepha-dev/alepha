@@ -11,6 +11,10 @@ export const projectEventNotificationSchema = z.object({
   href: z.string(),
   url: z.string(),
   scope: z.string(),
+  /**
+   * The notification channel posted to (#Q3891), for the Discord template.
+   */
+  channelId: z.string().max(64).optional(),
 });
 
 export type ProjectEventNotification = Infer<

@@ -2,64 +2,49 @@ import { DiscordNotificationChannel, DiscordTransport } from "@alepha/discord";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $logger } from "alepha/logger";
+import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from "alepha/server";
 
-import type { AutomationChannel } from "../entities/automationChannels.ts";
-import type { AutomationChannelResource } from "../schemas/automationChannelResourceSchema.ts";
-import { AutomationAccess } from "./AutomationAccess.ts";
+import { eventSubscriptions } from "../entities/eventSubscriptions.ts";
+import {
+  notificationChannels,
+  type ProjectChannel,
+} from "../entities/notificationChannels.ts";
+import type { ProjectChannelResource } from "../schemas/projectChannelResourceSchema.ts";
 import { AutomationChannelRemoval } from "./AutomationChannelRemoval.ts";
-import { AutomationChannels } from "./AutomationChannels.ts";
-import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
+import { ProjectRecipients } from "./ProjectRecipients.ts";
 
 /**
- * A project's configured channels (#Q3614): Settings > Automations >
- * Channels. Discord channels for now, as many as a project wants, each a
- * name and a sealed webhook URL.
+ * A project's notification channels (#Q3614, #Q3891): where a subscription
+ * posts instead of a member. Discord channels for now, as many as a project
+ * wants, each a name and a sealed webhook URL.
  *
  * The URL is the whole credential. It is validated against the framework's
  * pattern, proven by a test post before it is saved, sealed under its own
  * purpose, and never read back: no response, log line, outbox row, run
  * snapshot or receipt carries it.
  *
- * Each channel is an instance of `AutomationChannels` (id, kind, name), so a
- * rule names it by id; deleting one removes it from every rule that named
- * it, which keeps its other channels and is not paused (#Q3613).
+ * Reads need `subscription:read`, writes `subscription:manage` (#Q3891);
+ * `automation:read` and `automation:manage` keep working until #Q3896
+ * removes them. Deleting a channel deletes its subscriptions, and still
+ * strips it from the automation engine's rules.
  */
-export class AutomationChannelService {
+export class ProjectChannelService {
   protected readonly log = $logger();
-  protected readonly access = $inject(AutomationAccess);
-  protected readonly persistence = $inject(AutomationPersistence);
+  protected readonly recipients = $inject(ProjectRecipients);
+  protected readonly rows = $repository(notificationChannels);
+  protected readonly subscriptions = $repository(eventSubscriptions);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly transport = $inject(DiscordTransport);
   protected readonly removal = $inject(AutomationChannelRemoval);
-  protected readonly channels = $inject(AutomationChannels);
-
-  constructor() {
-    // Delivery to a project's Discord channels (#Q3615): a room, rendered
-    // for Discord, through `LoreDiscordNotificationChannel`.
-    this.channels.register("discord", {
-      addressable: false,
-      target: "discord",
-      configured: async () => true,
-      templates: {
-        automations: "lore:automation:discord",
-        releases: "lore:automation:release-discord",
-        reminders: "lore:automation:reminder-discord",
-      },
-    });
-    this.channels.registerInstances(async (projectId) =>
-      (
-        await this.persistence.channels.findMany({
-          where: { projectId },
-          orderBy: [{ column: "name", direction: "asc" }],
-          limit: 100,
-        })
-      ).map((row) => ({ id: row.id, kind: row.kind, name: row.name })),
-    );
-  }
 
   /**
    * Inbox and Email, then every configured channel: never a URL.
@@ -67,9 +52,9 @@ export class AutomationChannelService {
   public async list(
     projectId: number,
     user: UserAccountToken,
-  ): Promise<AutomationChannelResource[]> {
-    await this.access.assert(projectId, user, "automation:read");
-    const rows = await this.persistence.channels.findMany({
+  ): Promise<ProjectChannelResource[]> {
+    await this.assert(projectId, user, "read");
+    const rows = await this.rows.findMany({
       where: { projectId },
       orderBy: [{ column: "name", direction: "asc" }],
       limit: 100,
@@ -85,12 +70,12 @@ export class AutomationChannelService {
     projectId: number,
     user: UserAccountToken,
     input: { name: string; url: string },
-  ): Promise<AutomationChannelResource> {
-    await this.access.assert(projectId, user, "automation:manage");
+  ): Promise<ProjectChannelResource> {
+    await this.assert(projectId, user, "manage");
     const name = this.name(input.name);
     await this.unique(projectId, name);
     const url = await this.prove(input.url, name);
-    const row = await this.persistence.channels.create({
+    const row = await this.rows.create({
       id: `discord-${this.crypto.randomUUID()}`,
       projectId,
       kind: "discord",
@@ -106,8 +91,8 @@ export class AutomationChannelService {
     user: UserAccountToken,
     id: string,
     input: { name?: string; url?: string },
-  ): Promise<AutomationChannelResource> {
-    await this.access.assert(projectId, user, "automation:manage");
+  ): Promise<ProjectChannelResource> {
+    await this.assert(projectId, user, "manage");
     const row = await this.row(projectId, id);
     const name = input.name !== undefined ? this.name(input.name) : row.name;
     if (name !== row.name) await this.unique(projectId, name);
@@ -118,7 +103,7 @@ export class AutomationChannelService {
             CredentialSealService.DISCORD_PURPOSE,
           )
         : row.url;
-    const updated = await this.persistence.channels.updateById(row.id, {
+    const updated = await this.rows.updateById(row.id, {
       name,
       url,
     });
@@ -134,10 +119,31 @@ export class AutomationChannelService {
     user: UserAccountToken,
     id: string,
   ): Promise<void> {
-    await this.access.assert(projectId, user, "automation:manage");
+    await this.assert(projectId, user, "manage");
     const row = await this.row(projectId, id);
-    await this.persistence.channels.deleteById(row.id);
+    await this.subscriptions.deleteMany({
+      projectId: { eq: projectId },
+      channelId: { eq: row.id },
+    });
+    await this.rows.deleteById(row.id);
     await this.removal.remove(projectId, row.id);
+  }
+
+  /**
+   * `subscription:<level>`, or until #Q3896 the `automation:` permission of
+   * the same level.
+   */
+  protected async assert(
+    projectId: number,
+    user: UserAccountToken,
+    level: "read" | "manage",
+  ): Promise<void> {
+    const held = await this.recipients.of(projectId, user);
+    if (
+      !held.includes(`subscription:${level}`) &&
+      !held.includes(`automation:${level}`)
+    )
+      throw new ForbiddenError(`Missing subscription:${level}`);
   }
 
   /**
@@ -149,12 +155,12 @@ export class AutomationChannelService {
     return this.seal.open(row.url, CredentialSealService.DISCORD_PURPOSE);
   }
 
-  protected resource(row: AutomationChannel): AutomationChannelResource {
+  protected resource(row: ProjectChannel): ProjectChannelResource {
     return { id: row.id, kind: row.kind, name: row.name, builtIn: false };
   }
 
   protected async row(projectId: number, id: string) {
-    const row = await this.persistence.channels.findOne({
+    const row = await this.rows.findOne({
       where: { projectId, id },
     });
     if (!row) throw new NotFoundError("No such channel in this project");
@@ -169,7 +175,7 @@ export class AutomationChannelService {
   }
 
   protected async unique(projectId: number, name: string) {
-    if (await this.persistence.channels.findOne({ where: { projectId, name } }))
+    if (await this.rows.findOne({ where: { projectId, name } }))
       throw new ConflictError(`A channel named "${name}" already exists`);
   }
 
@@ -185,7 +191,7 @@ export class AutomationChannelService {
       );
     try {
       await this.transport.post(url, {
-        content: `Lore will post automation messages to this channel (${name}).`,
+        content: `Lore will post notifications to this channel (${name}).`,
         allowed_mentions: { parse: [] },
       } as never);
     } catch {

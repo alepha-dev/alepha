@@ -1,0 +1,129 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "5f9d957e-a240-4714-85e2-52a3f7877c30",
+  "prevIds": ["f1217ea7-ca9a-4a01-88d6-0d03549db55e"],
+  "footprints": [
+    {
+      "statementType": "rename_table",
+      "statementTarget": ["table", "public", "automation_channels"],
+      "writes": [
+        "s|tbl|public.automation_channels",
+        "n|tbl|public.automation_channels",
+        "n|rel|public.automation_channels",
+        "n|type|public.automation_channels",
+        "s|tbl|public.notification_channels",
+        "n|tbl|public.notification_channels",
+        "n|rel|public.notification_channels",
+        "n|type|public.notification_channels"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "rename_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "notification_channels",
+        "automation_channels_project_id_name_idx"
+      ],
+      "writes": [
+        "s|idx|public.automation_channels_project_id_name_idx",
+        "n|idx|public.automation_channels_project_id_name_idx",
+        "n|rel|public.automation_channels_project_id_name_idx",
+        "s|idx|public.notification_channels_project_id_name_idx",
+        "n|idx|public.notification_channels_project_id_name_idx",
+        "n|rel|public.notification_channels_project_id_name_idx"
+      ],
+      "reads": [
+        "e|tbl|public.notification_channels",
+        "n|sch|public",
+        "e|col|public.notification_channels.project_id",
+        "e|col|public.notification_channels.name"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "event_subscriptions",
+        "channel_id"
+      ],
+      "writes": [
+        "s|col|public.event_subscriptions.channel_id",
+        "n|col|public.event_subscriptions.channel_id",
+        "e|col|public.event_subscriptions.channel_id"
+      ],
+      "reads": ["n|tbl|public.event_subscriptions", "n|sch|public"]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "event_subscriptions"],
+      "writes": [
+        "s|fk|public.event_subscriptions.event_subscriptions_channel_id_notification_channels_id_fkey",
+        "n|fk|public.event_subscriptions.event_subscriptions_channel_id_notification_channels_id_fkey",
+        "e|fk|public.event_subscriptions.event_subscriptions_channel_id_notification_channels_id_fkey",
+        "n|con|public.event_subscriptions.event_subscriptions_channel_id_notification_channels_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.event_subscriptions",
+        "n|sch|public",
+        "n|tbl|public.notification_channels",
+        "n|sch|public",
+        "n|col|public.event_subscriptions.channel_id",
+        "n|col|public.notification_channels.id",
+        "e|uniqueness|public.notification_channels.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "rename",
+      "key": "tables\u0000[\"public\",\"automation_channels\"]",
+      "set": {
+        "name": "notification_channels"
+      }
+    },
+    {
+      "op": "rename",
+      "key": "indexes\u0000[\"public\",\"automation_channels_project_id_name_idx\"]",
+      "set": {
+        "name": "notification_channels_project_id_name_idx"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "channel_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "event_subscriptions_channel_id_notification_channels_id_fkey",
+        "nameExplicit": false,
+        "columns": ["channel_id"],
+        "schemaTo": "public",
+        "tableTo": "notification_channels",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    }
+  ]
+}

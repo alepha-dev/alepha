@@ -4,7 +4,6 @@ import { currentUserAtom } from "alepha/security";
 import { BadRequestError, UnauthorizedError, okSchema } from "alepha/server";
 
 import { automationCatalogSchema } from "../../api/schemas/automationCatalogSchema.ts";
-import { automationChannelResourceSchema } from "../../api/schemas/automationChannelResourceSchema.ts";
 import { automationDependentPageSchema } from "../../api/schemas/automationDependentPageSchema.ts";
 import { automationEvaluationReportSchema } from "../../api/schemas/automationEvaluationReportSchema.ts";
 import { automationPageSchema } from "../../api/schemas/automationPageSchema.ts";
@@ -12,9 +11,10 @@ import { automationResourceSchema } from "../../api/schemas/automationResourceSc
 import { automationRunPageSchema } from "../../api/schemas/automationRunPageSchema.ts";
 import { automationVariablePageSchema } from "../../api/schemas/automationVariablePageSchema.ts";
 import { automationVariableSetResponseSchema } from "../../api/schemas/automationVariableSetResponseSchema.ts";
-import { AutomationChannelService } from "../../api/services/AutomationChannelService.ts";
+import { projectChannelResourceSchema } from "../../api/schemas/projectChannelResourceSchema.ts";
 import { AutomationService } from "../../api/services/AutomationService.ts";
 import { AutomationVariableService } from "../../api/services/AutomationVariableService.ts";
+import { ProjectChannelService } from "../../api/services/ProjectChannelService.ts";
 import { automationCreateParamsSchema } from "../schemas/automationCreateParamsSchema.ts";
 import { automationDeleteParamsSchema } from "../schemas/automationDeleteParamsSchema.ts";
 import { automationGetParamsSchema } from "../schemas/automationGetParamsSchema.ts";
@@ -40,7 +40,7 @@ export class AutomationTools {
   protected readonly projects = $inject(ProjectTools);
   protected readonly service = $inject(AutomationService);
   protected readonly variables = $inject(AutomationVariableService);
-  protected readonly channelService = $inject(AutomationChannelService);
+  protected readonly channelService = $inject(ProjectChannelService);
 
   protected user() {
     const user = this.alepha.store.get(currentUserAtom);
@@ -187,7 +187,7 @@ export class AutomationTools {
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: projectParamsSchema,
-      result: z.object({ items: z.array(automationChannelResourceSchema) }),
+      result: z.object({ items: z.array(projectChannelResourceSchema) }),
     },
     handler: async ({ params }) => ({
       items: await this.channelService.list(

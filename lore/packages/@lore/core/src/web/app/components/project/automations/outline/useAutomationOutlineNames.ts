@@ -1,6 +1,6 @@
 import { useClient, useQuery, useStore } from "alepha/react";
 
-import type { AutomationChannelController } from "../../../../../../api/controllers/AutomationChannelController.ts";
+import type { ProjectChannelController } from "../../../../../../api/controllers/ProjectChannelController.ts";
 import type { AutomationGraphValue } from "../../../../../../api/schemas/automationGraphSchema.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import { useAutomationOptionLabels } from "../useAutomationOptions.ts";
@@ -24,7 +24,7 @@ export const useAutomationOutlineNames = (
   graph: AutomationGraphValue | undefined,
 ): AutomationOutlineNames => {
   const [project] = useStore(currentProjectAtom);
-  const api = useClient<AutomationChannelController>();
+  const api = useClient<ProjectChannelController>();
   const ids = (key: string, type: string) =>
     (graph?.nodes ?? [])
       .filter((node) => node.kind === "action" && node.type === type)
@@ -43,7 +43,7 @@ export const useAutomationOutlineNames = (
       key: ["automation-channels", project?.id ?? 0],
       enabled: !!project,
       handler: ({ signal }) =>
-        api.listAutomationChannels(
+        api.listProjectChannels(
           { params: { projectId: project!.id } },
           { request: { signal } },
         ),

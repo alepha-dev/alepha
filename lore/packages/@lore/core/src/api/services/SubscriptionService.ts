@@ -8,6 +8,7 @@ import {
   type EventSubscription,
   eventSubscriptions,
 } from "../entities/eventSubscriptions.ts";
+import { notificationChannels } from "../entities/notificationChannels.ts";
 import type { SubscriptionPage } from "../schemas/subscriptionPageSchema.ts";
 import type { SubscriptionResource } from "../schemas/subscriptionResourceSchema.ts";
 import type { SubscriptionSetBody } from "../schemas/subscriptionSetBodySchema.ts";
@@ -28,6 +29,7 @@ import { ProjectRecipients } from "./ProjectRecipients.ts";
  */
 export class SubscriptionService {
   protected readonly rows = $repository(eventSubscriptions);
+  protected readonly projectChannels = $repository(notificationChannels);
   protected readonly catalog = $inject(ProjectEventCatalog);
   protected readonly recipients = $inject(ProjectRecipients);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -68,13 +70,26 @@ export class SubscriptionService {
     if (!definition) throw new BadRequestError(`Unknown event '${body.event}'`);
     if (body.filter && !definition.filter)
       throw new BadRequestError(`'${body.event}' takes no filter`);
-    const memberId = body.memberId ?? user.id;
+    if (body.memberId && body.channelId)
+      throw new BadRequestError("Name a member or a channel, not both");
     const held = await this.recipients.of(projectId, user);
-    if (memberId !== user.id && !held.includes("subscription:manage"))
-      throw new ForbiddenError(
-        "Subscribing another member needs subscription:manage",
-      );
-    if (memberId !== user.id) {
+    if (body.channelId) {
+      if (!held.includes("subscription:manage"))
+        throw new ForbiddenError(
+          "Subscribing a channel needs subscription:manage",
+        );
+      const channel = await this.projectChannels.findOne({
+        where: { projectId, id: body.channelId },
+      });
+      if (!channel)
+        throw new BadRequestError("No such channel in this project");
+    }
+    const memberId = body.channelId ? undefined : (body.memberId ?? user.id);
+    if (memberId && memberId !== user.id) {
+      if (!held.includes("subscription:manage"))
+        throw new ForbiddenError(
+          "Subscribing another member needs subscription:manage",
+        );
       const refusal = await this.recipients.refusal(
         projectId,
         memberId,
@@ -83,8 +98,14 @@ export class SubscriptionService {
       if (refusal)
         throw new BadRequestError(`That member cannot be notified: ${refusal}`);
     }
-    const channels = [...new Set(body.channels)];
-    const key = this.key(body.event, body.filter, `member:${memberId}`);
+    const channels = memberId ? [...new Set(body.channels ?? [])] : [];
+    if (memberId && !channels.length)
+      throw new BadRequestError("channels: in-app, email, or both");
+    const key = this.key(
+      body.event,
+      body.filter,
+      memberId ? `member:${memberId}` : `channel:${body.channelId}`,
+    );
     const existing = await this.rows.findOne({ where: { projectId, key } });
     if (existing)
       return this.resource(
@@ -101,6 +122,7 @@ export class SubscriptionService {
           event: body.event,
           filter: body.filter,
           memberId,
+          channelId: body.channelId,
           channels,
           createdBy: user.id,
         }),
@@ -124,7 +146,7 @@ export class SubscriptionService {
     muted: boolean,
   ): Promise<SubscriptionResource> {
     const row = await this.get(projectId, id);
-    if (row.memberId !== user.id)
+    if (!row.memberId || row.memberId !== user.id)
       throw new ForbiddenError("Only the member it notifies mutes it");
     return this.resource(
       await this.rows.updateById(row.id, {
@@ -161,7 +183,8 @@ export class SubscriptionService {
       projectId: row.projectId,
       event: row.event,
       ...(row.filter ? { filter: row.filter } : {}),
-      memberId: row.memberId!,
+      ...(row.memberId ? { memberId: row.memberId } : {}),
+      ...(row.channelId ? { channelId: row.channelId } : {}),
       channels: row.channels,
       ...(row.createdBy ? { createdBy: row.createdBy } : {}),
       ...(row.mutedAt ? { mutedAt: row.mutedAt } : {}),
