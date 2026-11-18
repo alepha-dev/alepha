@@ -6,6 +6,18 @@ import { $inject } from "alepha";
  * narrows each to one app, monitor or host.
  */
 export class ShipProjectEvents {
+  protected static readonly HOST_TITLES: Record<string, string> = {
+    "host.credential_invalid": "has a Cloudflare token that stopped working",
+    "host.expired": "is past its time to live",
+    "host.offline": "is offline",
+    "host.online": "is back online",
+  };
+  protected static readonly HOST_TEXTS: Record<string, string> = {
+    "host.credential_invalid": "Replace the token in the host's settings.",
+    "host.expired": "Its time to live ran out.",
+    "host.offline": "It stopped reporting past its grace period.",
+    "host.online": "It is reporting again.",
+  };
   protected readonly catalog = $inject(ProjectEventCatalog);
 
   constructor() {
@@ -29,6 +41,21 @@ export class ShipProjectEvents {
         needs: { capability: "ship", option: "deploy" },
         permission: "app:read",
         filter: { field: "app", resource: "app" },
+        message: (it) =>
+          name === "deploy.failed"
+            ? {
+                title: `${this.text(it.app)} failed to deploy to ${this.text(it.env)}`,
+                text:
+                  it.reason === "timeout"
+                    ? "The deploy never started before its timeout."
+                    : it.reason === "abandoned"
+                      ? "The deploy stopped reporting and was abandoned."
+                      : "The deployment record says what went wrong.",
+              }
+            : {
+                title: `${this.text(it.app)} deployed to ${this.text(it.env)}`,
+                text: `Tag ${this.text(it.tag) || "latest"} is live.`,
+              },
       });
     for (const [name, label] of [
       ["monitor.down", "Monitor down"],
@@ -54,6 +81,16 @@ export class ShipProjectEvents {
         needs: { capability: "ship", option: "uptime" },
         permission: "app:read",
         filter: { field: "monitor_id", resource: "monitor" },
+        message: (it) =>
+          name === "monitor.down"
+            ? {
+                title: `${this.text(it.monitor)} is down`,
+                text: `${this.text(it.target)}: ${this.text(it.error) || this.text(it.cause)}.`,
+              }
+            : {
+                title: `${this.text(it.monitor)} recovered`,
+                text: `It was down for ${this.duration(it.duration_secs)}.`,
+              },
       });
     for (const [name, label] of [
       ["host.credential_invalid", "Host token stopped working"],
@@ -76,6 +113,21 @@ export class ShipProjectEvents {
         needs: { capability: "ship" },
         permission: "host:read",
         filter: { field: "host_id", resource: "host" },
+        message: (it) => ({
+          title: `${this.text(it.host)} ${ShipProjectEvents.HOST_TITLES[name]}`,
+          text: ShipProjectEvents.HOST_TEXTS[name],
+        }),
       });
+  }
+
+  protected text(value: string | number | boolean | null | undefined): string {
+    return value === null || value === undefined ? "" : String(value);
+  }
+
+  protected duration(value: unknown): string {
+    const secs = typeof value === "number" ? value : 0;
+    if (secs < 60) return `${secs} s`;
+    if (secs < 3600) return `${Math.round(secs / 60)} min`;
+    return `${Math.round(secs / 360) / 10} h`;
   }
 }

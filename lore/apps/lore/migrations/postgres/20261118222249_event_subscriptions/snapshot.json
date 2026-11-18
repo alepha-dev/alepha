@@ -1,0 +1,473 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f1217ea7-ca9a-4a01-88d6-0d03549db55e",
+  "prevIds": ["eed0e97e-23be-4b14-ae3f-d4e77400fd61"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "event_subscriptions"],
+      "writes": [
+        "s|tbl|public.event_subscriptions",
+        "n|tbl|public.event_subscriptions",
+        "e|tbl|public.event_subscriptions",
+        "n|rel|public.event_subscriptions",
+        "n|type|public.event_subscriptions",
+        "n|rel|public.event_subscriptions_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "event_subscriptions",
+        "event_subscriptions_project_id_key_idx"
+      ],
+      "writes": [
+        "s|idx|public.event_subscriptions_project_id_key_idx",
+        "n|idx|public.event_subscriptions_project_id_key_idx",
+        "e|idx|public.event_subscriptions_project_id_key_idx",
+        "n|rel|public.event_subscriptions_project_id_key_idx"
+      ],
+      "reads": [
+        "n|tbl|public.event_subscriptions",
+        "n|sch|public",
+        "n|col|public.event_subscriptions.project_id",
+        "n|col|public.event_subscriptions.key"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "event_subscriptions",
+        "event_subscriptions_project_id_event_idx"
+      ],
+      "writes": [
+        "s|idx|public.event_subscriptions_project_id_event_idx",
+        "n|idx|public.event_subscriptions_project_id_event_idx",
+        "e|idx|public.event_subscriptions_project_id_event_idx",
+        "n|rel|public.event_subscriptions_project_id_event_idx"
+      ],
+      "reads": [
+        "n|tbl|public.event_subscriptions",
+        "n|sch|public",
+        "n|col|public.event_subscriptions.project_id",
+        "n|col|public.event_subscriptions.event"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "event_subscriptions",
+        "event_subscriptions_member_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.event_subscriptions_member_id_idx",
+        "n|idx|public.event_subscriptions_member_id_idx",
+        "e|idx|public.event_subscriptions_member_id_idx",
+        "n|rel|public.event_subscriptions_member_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.event_subscriptions",
+        "n|sch|public",
+        "n|col|public.event_subscriptions.member_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "event_subscriptions"],
+      "writes": [
+        "s|fk|public.event_subscriptions.event_subscriptions_project_id_projects_id_fkey",
+        "n|fk|public.event_subscriptions.event_subscriptions_project_id_projects_id_fkey",
+        "e|fk|public.event_subscriptions.event_subscriptions_project_id_projects_id_fkey",
+        "n|con|public.event_subscriptions.event_subscriptions_project_id_projects_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.event_subscriptions",
+        "n|sch|public",
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.event_subscriptions.project_id",
+        "n|col|public.projects.id",
+        "e|uniqueness|public.projects.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "event_subscriptions"],
+      "writes": [
+        "s|fk|public.event_subscriptions.event_subscriptions_member_id_users_id_fkey",
+        "n|fk|public.event_subscriptions.event_subscriptions_member_id_users_id_fkey",
+        "e|fk|public.event_subscriptions.event_subscriptions_member_id_users_id_fkey",
+        "n|con|public.event_subscriptions.event_subscriptions_member_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.event_subscriptions",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.event_subscriptions.member_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "event_subscriptions"],
+      "writes": [
+        "s|fk|public.event_subscriptions.event_subscriptions_created_by_users_id_fkey",
+        "n|fk|public.event_subscriptions.event_subscriptions_created_by_users_id_fkey",
+        "e|fk|public.event_subscriptions.event_subscriptions_created_by_users_id_fkey",
+        "n|con|public.event_subscriptions.event_subscriptions_created_by_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.event_subscriptions",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.event_subscriptions.created_by",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "event_subscriptions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "project_id",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "event",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "filter",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "member_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "channels",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "created_by",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "muted_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "event_subscriptions_project_id_key_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "key",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "event_subscriptions_project_id_event_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "event",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "event_subscriptions_member_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "member_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "event_subscriptions_project_id_projects_id_fkey",
+        "nameExplicit": false,
+        "columns": ["project_id"],
+        "schemaTo": "public",
+        "tableTo": "projects",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "event_subscriptions_member_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": ["member_id"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "event_subscriptions_created_by_users_id_fkey",
+        "nameExplicit": false,
+        "columns": ["created_by"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "event_subscriptions",
+        "name": "event_subscriptions_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

@@ -57,6 +57,7 @@ export class LoreOAuthScopes {
     // One group per capability surface.
     "quest",
     "automation",
+    "subscription",
     "epic",
     "release",
     "area",

@@ -168,6 +168,7 @@ describe("Lore's rank resource", () => {
       "stats:read",
       "folio:read",
       "automation:read",
+      "subscription:read",
     ]);
 
     // Core survives every capability being off, which is a legal state.
@@ -479,6 +480,7 @@ describe("Lore's rank resource", () => {
       "stats:read",
       "folio:read",
       "automation:read",
+      "subscription:read",
     ]);
     // The floor survives every narrowing.
     expect(admin.permissions).toContain("project:read");

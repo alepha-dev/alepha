@@ -141,26 +141,35 @@ export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
     numbers?: Record<string, SQLLike>,
   ): Promise<Record<string, unknown>[] | undefined> {
     const computed = { ...event.numbers, ...numbers };
-    const recorded = this.projectEvents.emit({
+    const recorded = await this.projectEvents.emit({
       projectId: event.projectId,
       name: event.name,
       subjectId: event.subjectId,
       fields: { ...event.fields, ...event.projectFields },
       numbers: computed,
     });
+    let rows: Record<string, unknown>[] | undefined;
+    let committed = true;
     if (this.origin.current || !this.events.handles(event.name))
-      return (await this.atomic.guarded(condition, [mutation, ...recorded]))[1];
-    return (
-      await this.events.transition({
+      rows = (
+        await this.atomic.guarded(condition, [mutation, ...recorded.statements])
+      )[1];
+    else {
+      const result = await this.events.transition({
         ...event,
         name: event.name as AutomationEvent["name"],
         condition,
         mutation,
         changedTables: [this.tableName],
         numbers: computed,
-        statements: recorded,
-      })
-    ).rows;
+        statements: recorded.statements,
+      });
+      rows = result.rows;
+      // A transition already recorded commits nothing, its job row included.
+      committed = result.committed;
+    }
+    if (committed) await recorded.committed();
+    return rows;
   }
   protected result(rows: Record<string, unknown>[] | undefined): Infer<T> {
     if (!rows?.[0])

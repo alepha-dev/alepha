@@ -147,6 +147,10 @@ export class LorePermissions {
     "automation:read",
     "automation:write",
     "automation:manage",
+    // Notifications (#Q3890): who is told of what. A member subscribes and
+    // mutes themselves with neither.
+    "subscription:read",
+    "subscription:manage",
     // Validating a use case (#E153): the owner's and the Admin's, grantable.
     "usecase:validate",
   ];
@@ -169,6 +173,19 @@ export class LorePermissions {
    * The floor. Every rank holds it, and the editor renders it all-on and
    * non-editable.
    */
+  subscriptionRead = $permission({
+    group: "subscription",
+    name: "read",
+    label: "permission.subscription.read",
+    groupLabel: "permission.group.subscription",
+    groupOrder: 19,
+  });
+  subscriptionManage = $permission({
+    group: "subscription",
+    name: "manage",
+    label: "permission.subscription.manage",
+  });
+
   automationRead = $permission({
     group: "automation",
     name: "read",

@@ -11,6 +11,7 @@ import { automationReceipts } from "../entities/automationReceipts.ts";
 import { automationRuns } from "../entities/automationRuns.ts";
 import { automations } from "../entities/automations.ts";
 import { automationVariables } from "../entities/automationVariables.ts";
+import { eventSubscriptions } from "../entities/eventSubscriptions.ts";
 import { projectCapabilities } from "../entities/projectCapabilities.ts";
 import { projectEvents } from "../entities/projectEvents.ts";
 import { projectPrompts } from "../entities/projectPrompts.ts";
@@ -67,8 +68,15 @@ export class CoreProjectMerge {
       keys: ["kind"],
       onCollision: "keepTarget",
     },
-    // A merged project keeps the source's recent events (#Q3889).
+    // A merged project keeps the source's recent events (#Q3889) and who
+    // is told of them (#Q3890): a duplicate subscription joins the target's.
     { kind: "project event", entity: projectEvents },
+    {
+      kind: "subscription",
+      entity: eventSubscriptions,
+      keys: ["key"],
+      onCollision: "keepTarget",
+    },
     { kind: "automation", entity: automations },
     {
       kind: "automation variable",

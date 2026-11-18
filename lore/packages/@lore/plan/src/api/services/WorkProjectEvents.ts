@@ -22,6 +22,10 @@ export class WorkProjectEvents {
       },
       needs: { capability: "plan", option: "feedback" },
       permission: "feedback:read",
+      message: (it) => ({
+        title: `New feedback ${this.text(it.reference)}: ${this.text(it.title)}`,
+        text: this.text(it.description) || "The report has no description.",
+      }),
     });
     this.catalog.register({
       name: "release.published",
@@ -37,6 +41,10 @@ export class WorkProjectEvents {
       },
       needs: { capability: "plan", option: "releases" },
       permission: "release:read",
+      message: (it) => ({
+        title: `Release ${this.text(it.release_tag) || this.text(it.title)} published`,
+        text: `${this.count(it.quest_count, "quest")} shipped in this release.`,
+      }),
     });
     this.catalog.register({
       name: "epic.completed",
@@ -46,6 +54,10 @@ export class WorkProjectEvents {
       fields: { epic_id: "number", shortId: "number", quest_count: "number" },
       needs: { capability: "plan", option: "epics" },
       permission: "epic:read",
+      message: (it) => ({
+        title: `Epic #E${this.text(it.shortId)} completed: ${this.text(it.title)}`,
+        text: `All ${this.count(it.quest_count, "quest")} of the epic are done or set aside.`,
+      }),
     });
     const quest = {
       quest_id: "number",
@@ -61,6 +73,12 @@ export class WorkProjectEvents {
       fields: { ...quest },
       needs: { capability: "plan" },
       permission: "quest:read",
+      message: (it) => ({
+        title: `New quest #Q${this.text(it.shortId)}: ${this.text(it.title)}`,
+        text: it.area
+          ? `Filed in ${this.text(it.area)}.`
+          : "Filed with no area.",
+      }),
     });
     this.catalog.register({
       name: "quest.assigned",
@@ -70,6 +88,10 @@ export class WorkProjectEvents {
       fields: { ...quest, assignee_id: "member" },
       needs: { capability: "plan" },
       permission: "quest:read",
+      message: (it) => ({
+        title: `Quest #Q${this.text(it.shortId)} is in progress: ${this.text(it.title)}`,
+        text: "Someone accepted it or was assigned to it.",
+      }),
     });
     this.catalog.register({
       name: "quest.held",
@@ -79,6 +101,10 @@ export class WorkProjectEvents {
       fields: { ...quest },
       needs: { capability: "plan" },
       permission: "quest:read",
+      message: (it) => ({
+        title: `Quest #Q${this.text(it.shortId)} is on hold: ${this.text(it.title)}`,
+        text: "It waits on something; its discussion says what.",
+      }),
     });
     this.catalog.register({
       name: "quest.completed",
@@ -88,6 +114,19 @@ export class WorkProjectEvents {
       fields: { ...quest },
       needs: { capability: "plan" },
       permission: "quest:read",
+      message: (it) => ({
+        title: `Quest #Q${this.text(it.shortId)} completed: ${this.text(it.title)}`,
+        text: "It is done.",
+      }),
     });
+  }
+
+  protected text(value: string | number | boolean | null | undefined): string {
+    return value === null || value === undefined ? "" : String(value);
+  }
+
+  protected count(value: unknown, noun: string): string {
+    const n = typeof value === "number" ? value : 0;
+    return `${n} ${noun}${n === 1 ? "" : "s"}`;
   }
 }

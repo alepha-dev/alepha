@@ -33,6 +33,8 @@ const ALWAYS_SHOWN = [
   "invitation",
   "stats",
   "automation",
+  // Notifications are Core, like automations (#Q3890).
+  "subscription",
 ];
 
 interface Ctx {

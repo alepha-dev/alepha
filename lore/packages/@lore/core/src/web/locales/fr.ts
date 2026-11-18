@@ -213,6 +213,10 @@ export default {
   "automation.previous": "Précédent",
   "automation.next": "Suivant",
 
+  "permission.group.subscription": "Notifications",
+  "permission.subscription.read": "Voir qui est notifié de quoi",
+  "permission.subscription.manage":
+    "Notifier d'autres membres et gérer les canaux du projet",
   "permission.group.automation": "Automatisations",
   "permission.automation.read": "Consulter les automatisations",
   "permission.automation.write":

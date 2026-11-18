@@ -66,7 +66,7 @@ export class ProjectPermissions {
      *
      * ⚠️ Automations are the exception (#Q3022): the API refuses the bypass
      * for them, on purpose, so `automation:*` is what the caller holds as a
-     * member. `AutomationAccess` recomputes the same way, and outside the
+     * member. Notifications follow the same rule (`subscription:*`, #Q3890). `AutomationAccess` recomputes the same way, and outside the
      * project there is nothing to recompute, so this stays free.
      */
     if (user.ownership === false) {
@@ -80,7 +80,9 @@ export class ProjectPermissions {
         : [];
       return {
         permissions: permissions.filter(
-          (it) => !it.startsWith("automation:") || asMember.includes(it),
+          (it) =>
+            !(it.startsWith("automation:") || it.startsWith("subscription:")) ||
+            asMember.includes(it),
         ),
       };
     }
