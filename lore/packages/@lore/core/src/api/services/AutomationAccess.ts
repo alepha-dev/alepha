@@ -12,9 +12,9 @@ import { ForbiddenError } from "alepha/server";
 import type { Automation } from "../entities/automations.ts";
 import { users } from "../entities/users.ts";
 import { AutomationProjectPermissions } from "../security/AutomationProjectPermissions.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationOAuthAuthority } from "./AutomationOAuthAuthority.ts";
 import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Shared normal-authoring gate. Execution additionally reconstructs the live
@@ -24,7 +24,7 @@ export class AutomationAccess {
   protected readonly effective = $inject(EffectivePermissionsProvider);
   protected readonly applicationSecurity = $inject(SecurityProvider);
   protected readonly oauth = $inject(AutomationOAuthAuthority);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly security = $inject(AutomationProjectSecurity);
   protected readonly permissions = $inject(AutomationProjectPermissions);
 

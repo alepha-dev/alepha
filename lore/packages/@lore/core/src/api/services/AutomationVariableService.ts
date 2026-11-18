@@ -17,13 +17,13 @@ import {
 } from "../schemas/automationVariableSetBodySchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 export class AutomationVariableService {
   protected readonly access = $inject(AutomationAccess);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly variables = $inject(AutomationVariables);

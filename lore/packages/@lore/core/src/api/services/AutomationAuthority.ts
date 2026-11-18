@@ -11,7 +11,6 @@ import type { AutomationAction } from "../schemas/automationActionSchema.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
   AutomationDependencies,
   AutomationDependencyError,
@@ -19,6 +18,7 @@ import {
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * A worker supplies only rule identity and the revision/variable versions it
@@ -26,7 +26,7 @@ import { AutomationVariables } from "./AutomationVariables.ts";
  */
 export class AutomationAuthority {
   protected readonly dependencies = $inject(AutomationDependencies);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly access = $inject(AutomationAccess);

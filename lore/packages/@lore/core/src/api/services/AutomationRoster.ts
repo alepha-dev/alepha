@@ -6,14 +6,14 @@ import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
-import { AutomationAtomic } from "./AutomationAtomic.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationIdentity } from "./AutomationIdentity.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
+import { GuardedBatch } from "./GuardedBatch.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Freeze the full current membership roster in one atomic INSERT SELECT.
@@ -25,8 +25,8 @@ export class AutomationRoster {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly claims = $inject(AutomationClaims);
   protected readonly persistence = $inject(AutomationPersistence);
-  protected readonly database = $inject(AutomationDatabase);
-  protected readonly atomic = $inject(AutomationAtomic);
+  protected readonly database = $inject(LoreDatabase);
+  protected readonly atomic = $inject(GuardedBatch);
   protected readonly identity = $inject(AutomationIdentity);
   protected readonly channels = $inject(AutomationChannels);
   protected readonly security = $inject(AutomationProjectSecurity);
@@ -91,7 +91,6 @@ export class AutomationRoster {
       const now = this.dateTime.nowISOString();
       try {
         await this.atomic.guarded(
-          occurrence.projectId,
           sql`${this.claims.live(occurrence, token)} AND NOT EXISTS ${this.persistence.receipts.subquery({ id: rosterId })}`,
           [
             this.persistence.receipts.insertStatement({
@@ -204,35 +203,31 @@ export class AutomationRoster {
           }));
         const now = this.dateTime.nowISOString();
         const runId = this.crypto.randomUUID();
-        await this.atomic.guarded(
-          occurrence.projectId,
-          this.claims.live(occurrence, token),
-          [
-            this.persistence.receipts.insertStatement(
-              {
-                id,
-                projectId: occurrence.projectId,
-                automationId: occurrence.automationId,
-                identity: id,
-                kind: "chunk",
-                status: "claimed",
-                occurrenceId: occurrence.occurrenceId,
-                ruleRevision: occurrence.ruleRevision,
-                occurredAt: occurrence.occurredAt,
-                replayUntil: occurrence.replayUntil,
-                parentId: rosterId,
-                runId,
-                snapshot,
-                position: page.roster.cursor,
-                cursor: 0,
-                rosterComplete: false,
-                createdAt: now,
-                updatedAt: now,
-              },
-              { onConflictDoNothing: true },
-            ),
-          ],
-        );
+        await this.atomic.guarded(this.claims.live(occurrence, token), [
+          this.persistence.receipts.insertStatement(
+            {
+              id,
+              projectId: occurrence.projectId,
+              automationId: occurrence.automationId,
+              identity: id,
+              kind: "chunk",
+              status: "claimed",
+              occurrenceId: occurrence.occurrenceId,
+              ruleRevision: occurrence.ruleRevision,
+              occurredAt: occurrence.occurredAt,
+              replayUntil: occurrence.replayUntil,
+              parentId: rosterId,
+              runId,
+              snapshot,
+              position: page.roster.cursor,
+              cursor: 0,
+              rosterComplete: false,
+              createdAt: now,
+              updatedAt: now,
+            },
+            { onConflictDoNothing: true },
+          ),
+        ]);
         receipt = await this.persistence.receipts.getById(id);
       }
       if (occurrence.runId && occurrence.runId !== receipt.runId)
@@ -278,7 +273,6 @@ export class AutomationRoster {
         })}`
       : sql`TRUE`;
     await this.atomic.guarded(
-      page.occurrence.projectId,
       sql`${this.claims.live(page.occurrence, token)} AND ${condition}`,
       [
         this.persistence.receipts.updateStatement(
@@ -308,7 +302,6 @@ export class AutomationRoster {
     ]);
     const now = this.dateTime.nowISOString();
     await this.atomic.guarded(
-      page.occurrence.projectId,
       sql`${this.claims.live(page.occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery(
         {
           id: chunkId,

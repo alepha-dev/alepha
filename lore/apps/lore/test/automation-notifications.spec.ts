@@ -53,7 +53,7 @@ class PrimaryInboxRecipientProvider extends LoreInboxRecipientProvider {
   public primaryReads: boolean[] = [];
   public override async resolve(contact: string) {
     this.primaryReads.push(
-      this.alepha.context.get("lore.automations.primary") === true,
+      this.alepha.context.get("lore.database.primary") === true,
     );
     return super.resolve(contact);
   }
@@ -589,7 +589,7 @@ describe("Automation configured notifications and durable outbox", () => {
           changedTables: [],
         },
       }),
-    ).rejects.toThrow("Atomic automation batch failed");
+    ).rejects.toThrow("Atomic batch failed");
     expect(await rows.jobs.count()).toBe(0);
     expect(await persistence.receipts.count({ kind: "job_origin" })).toBe(0);
     const result = await enqueue(opened);

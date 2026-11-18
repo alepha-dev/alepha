@@ -1,5 +1,5 @@
 import {
-  AutomationDatabase,
+  LoreDatabase,
   AutomationTemplateRenderer,
   AutomationAccess,
   ProjectLimits,
@@ -45,11 +45,9 @@ class AdjustableQuestLimits extends ProjectLimits {
     return this.cap ?? super.maxQuestsPerProject();
   }
 }
-class DomainRaceDatabase extends AutomationDatabase {
+class DomainRaceDatabase extends LoreDatabase {
   public before?: () => Promise<void>;
-  public override async batch(
-    ...args: Parameters<AutomationDatabase["batch"]>
-  ) {
+  public override async batch(...args: Parameters<LoreDatabase["batch"]>) {
     if (this.before) {
       const task = this.before;
       this.before = undefined;
@@ -194,7 +192,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
       env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "silent" },
     });
     alepha.with({ provide: CronProvider, use: ManualCronProvider });
-    alepha.with({ provide: AutomationDatabase, use: DomainRaceDatabase });
+    alepha.with({ provide: LoreDatabase, use: DomainRaceDatabase });
     alepha.with({ provide: ProjectLimits, use: AdjustableQuestLimits });
     bootLore(alepha);
     entities = alepha.inject(TestEntityRepositories);
@@ -330,9 +328,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
     const opened = await open([
       { kind: "appendFolio", folio: folio.id, text: "Automation" },
     ]);
-    await expect(execute(opened)).rejects.toThrow(
-      "Atomic automation batch failed",
-    );
+    await expect(execute(opened)).rejects.toThrow("Atomic batch failed");
     expect((await entities.folios.getById(folio.id)).content).toBe(
       "Human edit",
     );
@@ -361,9 +357,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
     const opened = await open([
       { kind: "appendFolio", folio: folio.id, text: "Appended" },
     ]);
-    await expect(execute(opened)).rejects.toThrow(
-      "Atomic automation batch failed",
-    );
+    await expect(execute(opened)).rejects.toThrow("Atomic batch failed");
     expect((await entities.folios.getById(folio.id)).content).toBe("Original");
     expect(await rows.revisions.count({ folioId: folio.id })).toBe(1);
     await execute(opened);
@@ -394,9 +388,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
           );
         }),
     };
-    await expect(execute(opened)).rejects.toThrow(
-      "Atomic automation batch failed",
-    );
+    await expect(execute(opened)).rejects.toThrow("Atomic batch failed");
     expect((await entities.quests.getById(quest.id)).tags).toEqual([
       "initial",
       "human",
@@ -473,9 +465,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
           });
       },
     };
-    await expect(execute(opened)).rejects.toThrow(
-      "Atomic automation batch failed",
-    );
+    await expect(execute(opened)).rejects.toThrow("Atomic batch failed");
     expect((await entities.quests.getById(quest.id)).releaseId).toBeUndefined();
     expect(await nativeAudits(opened.rule.id)).toHaveLength(0);
   });
@@ -570,9 +560,7 @@ describe("Idempotent automation domain actions through normal controllers", () =
       await database.execute(
         "CREATE TRIGGER automation_test_audit_refusal BEFORE INSERT ON audits WHEN json_extract(NEW.metadata, '$.automationId') IS NOT NULL BEGIN SELECT RAISE(ABORT, 'test audit refusal'); END",
       );
-      await expect(execute(opened)).rejects.toThrow(
-        "Atomic automation batch failed",
-      );
+      await expect(execute(opened)).rejects.toThrow("Atomic batch failed");
       expect((await entities.folios.getById(folio.id)).content).toBe(
         "Original",
       );

@@ -1,7 +1,7 @@
 import {
-  AutomationAtomic,
+  GuardedBatch,
   AutomationClaims,
-  AutomationDatabase,
+  LoreDatabase,
   AutomationDispatchRegistry,
   AutomationEvents,
   AutomationEventDispatch,
@@ -165,7 +165,7 @@ describe("Durable automation dispatch", () => {
     await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] };
     await alepha
-      .inject(AutomationDatabase)
+      .inject(LoreDatabase)
       .batch([
         "CREATE TABLE automation_test_source (id TEXT PRIMARY KEY NOT NULL, value INTEGER NOT NULL)",
         "CREATE TABLE automation_test_effects (id TEXT PRIMARY KEY NOT NULL, hits INTEGER NOT NULL)",
@@ -200,18 +200,18 @@ describe("Durable automation dispatch", () => {
   it("rolls back source writes when an intent fails and when a guard predicate is false", async ({
     expect,
   }) => {
-    const atomic = alepha.inject(AutomationAtomic);
+    const atomic = alepha.inject(GuardedBatch);
     await expect(
-      atomic.guarded(project.id, sql`FALSE`, [
+      atomic.guarded(sql`FALSE`, [
         sql`INSERT INTO automation_test_source VALUES ('lost-claim', 1)`,
       ]),
-    ).rejects.toThrow("Atomic automation batch failed");
+    ).rejects.toThrow("Atomic batch failed");
     await expect(
-      atomic.guarded(project.id, sql`TRUE`, [
+      atomic.guarded(sql`TRUE`, [
         sql`INSERT INTO automation_test_source VALUES ('source', 1)`,
         sql`INSERT INTO automation_events (id, project_id) VALUES (${crypto.randomUUID()}, -1)`,
       ]),
-    ).rejects.toThrow("Atomic automation batch failed");
+    ).rejects.toThrow("Atomic batch failed");
     expect(
       await provider.execute(
         "SELECT CAST(COUNT(*) AS INTEGER) AS n FROM automation_test_source",
@@ -344,7 +344,7 @@ describe("Durable automation dispatch", () => {
       .now()
       .add(5, "minutes")
       .toISOString();
-    const encoded = alepha.inject(AutomationDatabase).timestamp(next);
+    const encoded = alepha.inject(LoreDatabase).timestamp(next);
     const request = {
       automationId: rule.id,
       revision: 0,
@@ -467,7 +467,7 @@ describe("Durable automation dispatch", () => {
           sql`INSERT INTO automation_test_effects VALUES ('one', 99)`,
         ],
       }),
-    ).rejects.toThrow("Atomic automation batch failed");
+    ).rejects.toThrow("Atomic batch failed");
     expect(
       await provider.execute(
         "SELECT CAST(COUNT(*) AS INTEGER) AS n FROM automation_test_effects",

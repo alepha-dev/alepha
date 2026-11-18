@@ -1,9 +1,9 @@
 import { $inject } from "alepha";
 
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationHealth } from "./AutomationHealth.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Removing a configured channel is not a failure (#Q3613, owner answer 13):
@@ -15,7 +15,7 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
  * it may do only shrank.
  */
 export class AutomationChannelRemoval {
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly health = $inject(AutomationHealth);
   protected readonly graphs = $inject(AutomationGraph);

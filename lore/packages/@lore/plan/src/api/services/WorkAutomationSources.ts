@@ -1,4 +1,4 @@
-import { AutomationSourceRepository } from "@lore/core/api";
+import { SourceRepository } from "@lore/core/api";
 import { projects, type Project } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -18,14 +18,10 @@ export class WorkAutomationSources {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly feedbackFields = $inject(FeedbackAutomationFields);
   protected readonly projects = $repository(projects);
-  protected readonly feedback = $inject(
-    AutomationSourceRepository.of(feedback),
-  );
-  protected readonly releases = $inject(
-    AutomationSourceRepository.of(releases),
-  );
-  protected readonly quests = $inject(AutomationSourceRepository.of(quests));
-  protected readonly epics = $inject(AutomationSourceRepository.of(epics));
+  protected readonly feedback = $inject(SourceRepository.of(feedback));
+  protected readonly releases = $inject(SourceRepository.of(releases));
+  protected readonly quests = $inject(SourceRepository.of(quests));
+  protected readonly epics = $inject(SourceRepository.of(epics));
 
   public async submit(data: FeedbackInsert) {
     const project = await this.projects.getById(data.projectId);

@@ -3,48 +3,49 @@ import { type EntityPrimitive, Repository, type SQLLike } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import type { AutomationEvent } from "../entities/automationEvents.ts";
-import { AutomationAtomic } from "./AutomationAtomic.ts";
-import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationEvents } from "./AutomationEvents.ts";
 import { AutomationOrigin } from "./AutomationOrigin.ts";
+import { BatchRepository } from "./BatchRepository.ts";
+import { GuardedBatch } from "./GuardedBatch.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
+ * How a source writes a change that must be recorded as a fact: the change and
+ * its event, in one guarded batch, or neither (#Q3899).
+ *
  * Reuses the repository codec, predicates, version bump, cache and lifecycle
  * hooks while committing its one prepared statement with the durable event.
  */
-export class AutomationSourceRepository<
-  T extends ZObject,
-> extends AutomationBatchRepository<T> {
+export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
   protected static readonly sources = new WeakMap<
     EntityPrimitive<any>,
     unknown
   >();
   protected readonly events = $inject(AutomationEvents);
-  protected readonly atomic = $inject(AutomationAtomic);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly atomic = $inject(GuardedBatch);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly origin = $inject(AutomationOrigin);
 
   public static override of<S extends ZObject>(
     entity: EntityPrimitive<S>,
-  ): new () => AutomationSourceRepository<S> {
+  ): new () => SourceRepository<S> {
     const cached = this.sources.get(entity) as
-      | (new () => AutomationSourceRepository<S>)
+      | (new () => SourceRepository<S>)
       | undefined;
     if (cached) return cached;
-    class SourceRepository extends AutomationSourceRepository<S> {
+    class EntitySourceRepository extends SourceRepository<S> {
       constructor() {
         super(entity);
       }
     }
-    this.sources.set(entity, SourceRepository);
-    return SourceRepository;
+    this.sources.set(entity, EntitySourceRepository);
+    return EntitySourceRepository;
   }
 
   public async sourceCreate(
     data: Parameters<Repository<T>["create"]>[0],
     where: Parameters<Repository<T>["updateOne"]>[0],
-    event: AutomationSourceEvent,
+    event: SourceEvent,
   ): Promise<Infer<T>> {
     return this.database.primary(async () => {
       await this.alepha.events.emit("repository:create:before", {
@@ -77,7 +78,7 @@ export class AutomationSourceRepository<
   public async sourceUpdate(
     where: Parameters<Repository<T>["updateOne"]>[0],
     data: Parameters<Repository<T>["updateOne"]>[1],
-    event: AutomationSourceEvent,
+    event: SourceEvent,
   ): Promise<Infer<T>> {
     return this.database.primary(async () => {
       await this.alepha.events.emit("repository:update:before", {
@@ -112,10 +113,7 @@ export class AutomationSourceRepository<
       return entity;
     });
   }
-  public async sourceSave(
-    entity: Infer<T>,
-    event: AutomationSourceEvent,
-  ): Promise<void> {
+  public async sourceSave(entity: Infer<T>, event: SourceEvent): Promise<void> {
     const row = { ...(entity as Record<string, unknown>) };
     for (const key of Object.keys(z.schema.shape(this.entity.schema)))
       if (row[key] === undefined) row[key] = null;
@@ -133,15 +131,13 @@ export class AutomationSourceRepository<
     Object.assign(entity, updated);
   }
   protected async commit(
-    event: AutomationSourceEvent,
+    event: SourceEvent,
     condition: SQLLike,
     mutation: SQLLike,
     numbers?: Record<string, SQLLike>,
   ): Promise<Record<string, unknown>[] | undefined> {
     if (this.origin.current)
-      return (
-        await this.atomic.guarded(event.projectId, condition, [mutation])
-      )[1];
+      return (await this.atomic.guarded(condition, [mutation]))[1];
     return (
       await this.events.transition({
         ...event,
@@ -158,7 +154,7 @@ export class AutomationSourceRepository<
     return this.decodeRow(rows[0]);
   }
 }
-export interface AutomationSourceEvent {
+export interface SourceEvent {
   projectId: number;
   identity: string;
   name: AutomationEvent["name"];

@@ -4,8 +4,8 @@ import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import { automationSetupQuerySchema } from "../schemas/automationSetupQuerySchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationReferences } from "./AutomationReferences.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Feature-owned, bounded project pickers use the caller's current key ceiling.
@@ -13,7 +13,7 @@ import { AutomationReferences } from "./AutomationReferences.ts";
  */
 export class AutomationSetupOptions {
   protected readonly access = $inject(AutomationAccess);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly references = $inject(AutomationReferences);
   public async list(
     projectId: number,

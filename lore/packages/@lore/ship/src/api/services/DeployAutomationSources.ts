@@ -1,4 +1,4 @@
-import { AutomationSourceRepository } from "@lore/core/api";
+import { SourceRepository } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
@@ -11,7 +11,7 @@ import { deployments, type Deployment } from "../entities/deployments.ts";
  * errors stay on the deployment record because they can include credentials.
  */
 export class DeployAutomationSources {
-  protected readonly rows = $inject(AutomationSourceRepository.of(deployments));
+  protected readonly rows = $inject(SourceRepository.of(deployments));
   protected readonly instances = $repository(appInstances);
   protected readonly projects = $repository(projects);
   public async terminal(

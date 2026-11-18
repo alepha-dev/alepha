@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  AutomationAtomic,
+  GuardedBatch,
   AutomationService,
   AutomationVariableService,
   AutomationDomainActions,
@@ -15,7 +15,7 @@ import {
   LoreInboxRecipientProvider,
   AutomationSchedules,
   AutomationClaims,
-  AutomationD1Provider,
+  LorePrimaryD1Provider,
   AutomationEvents,
   AutomationPersistence,
   AutomationRoster,
@@ -45,7 +45,7 @@ import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
  */
 const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
 
-class FixtureD1Provider extends AutomationD1Provider {
+class FixtureD1Provider extends LorePrimaryD1Provider {
   public schemaStatements: string[] = [];
   public override async migrate(): Promise<void> {
     for (let index = 0; index < this.schemaStatements.length; index += 50)
@@ -148,7 +148,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
       const events = alepha.inject(AutomationEvents);
       const claims = alepha.inject(AutomationClaims);
       const evidence = alepha.inject(AutomationRunEvidence);
-      const atomic = alepha.inject(AutomationAtomic);
+      const atomic = alepha.inject(GuardedBatch);
       const rosterService = alepha.inject(AutomationRoster);
       const notifications = alepha.inject(AutomationNotifications);
       const contexts = alepha.inject(AutomationContextBuilder);
@@ -207,10 +207,10 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
         enabled: true,
       });
       await expect(
-        atomic.guarded(project.id, sql`FALSE`, [
+        atomic.guarded(sql`FALSE`, [
           sql`INSERT INTO automation_d1_effects VALUES ('lost-claim', 1)`,
         ]),
-      ).rejects.toThrow("Atomic automation batch failed");
+      ).rejects.toThrow("Atomic batch failed");
       const source = await events.transition({
         projectId: project.id,
         identity: "d1-source",
@@ -294,7 +294,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
             sql`INSERT INTO automation_d1_effects VALUES ('source', 99)`,
           ],
         }),
-      ).rejects.toThrow("Atomic automation batch failed");
+      ).rejects.toThrow("Atomic batch failed");
       expect(
         await provider.execute(
           "SELECT COUNT(*) AS n FROM automation_d1_effects WHERE id = 'effect'",
@@ -432,7 +432,7 @@ describe.skipIf(onPostgres)("Durable automation primitives on local D1", () => {
             changedTables: [],
           },
         }),
-      ).rejects.toThrow("Atomic automation batch failed");
+      ).rejects.toThrow("Atomic batch failed");
       expect(
         await persistence.receipts.count({
           automationId: notificationRule.id,

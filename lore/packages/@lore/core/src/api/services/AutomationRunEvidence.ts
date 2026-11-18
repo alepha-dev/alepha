@@ -27,8 +27,8 @@ import {
   type AutomationCatalogContext,
 } from "./AutomationCatalog.ts";
 import { AutomationConfigurationWrites } from "./AutomationConfigurationWrites.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Evidence is committed before any effect. A receipt/outbox ID records enqueue
@@ -37,7 +37,7 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
  */
 export class AutomationRunEvidence {
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly writes = $inject(AutomationConfigurationWrites);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly ruleRows = $inject(

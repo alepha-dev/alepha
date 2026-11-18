@@ -5,10 +5,10 @@ import { BadRequestError, ConflictError } from "alepha/server";
 
 import { AutomationCron } from "../schemas/AutomationCron.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationDispatchRegistry } from "./AutomationDispatchRegistry.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Claims administrative ready frames only. Selection and effects run in a
@@ -16,7 +16,7 @@ import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
  */
 export class AutomationSchedules {
   protected readonly persistence = $inject(AutomationPersistence);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly claims = $inject(AutomationClaims);
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly cron = $inject(AutomationCron);

@@ -1,7 +1,4 @@
-import {
-  AutomationSourceRepository,
-  CredentialSealService,
-} from "@lore/core/api";
+import { SourceRepository, CredentialSealService } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -205,7 +202,7 @@ export class HostCloudflareService {
   protected readonly probes = $inject(CloudflareProbeService);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly sources = $inject(AutomationSourceRepository.of(hosts));
+  protected readonly sources = $inject(SourceRepository.of(hosts));
   protected readonly projects = $repository(projects);
   protected readonly fields = $inject(HostAutomationFields);
 

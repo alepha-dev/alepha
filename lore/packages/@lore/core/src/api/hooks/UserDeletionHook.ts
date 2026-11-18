@@ -6,7 +6,7 @@ import { ConflictError } from "alepha/server";
 import { automationReceipts } from "../entities/automationReceipts.ts";
 import { automationRuns } from "../entities/automationRuns.ts";
 import { automations } from "../entities/automations.ts";
-import { AutomationDatabase } from "../services/AutomationDatabase.ts";
+import { LoreDatabase } from "../services/LoreDatabase.ts";
 
 /**
  * Refuses to delete an account that still owns projects.
@@ -53,7 +53,7 @@ export class UserDeletionHook {
   protected readonly automations = $repository(automations);
   protected readonly receipts = $repository(automationReceipts);
   protected readonly runs = $repository(automationRuns);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly inbox = $inject(NotificationInboxService);
 

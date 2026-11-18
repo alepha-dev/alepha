@@ -1,5 +1,5 @@
 import {
-  AutomationDatabase,
+  LoreDatabase,
   AutomationSelections,
   type AutomationSelectionHandler,
 } from "@lore/core/api";
@@ -25,7 +25,7 @@ export class WorkAutomationSelections {
   protected readonly quests = $repository(quests);
   protected readonly epics = $repository(epics);
   protected readonly open = $inject(OpenQuestScope);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly sqlx = $inject(SqlExpressionProvider);
   constructor() {
     this.selections.register("quests.open", {

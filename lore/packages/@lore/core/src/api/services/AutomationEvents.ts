@@ -12,11 +12,11 @@ import {
   automationEventPayloadSchema,
   type AutomationEventPayload,
 } from "../schemas/automationEventPayloadSchema.ts";
-import { AutomationAtomic } from "./AutomationAtomic.ts";
 import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { GuardedBatch } from "./GuardedBatch.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Source producers prepare one validated domain transition and its event in
@@ -27,8 +27,8 @@ export class AutomationEvents {
   protected readonly eventRows = $inject(
     AutomationBatchRepository.of(automationEvents),
   );
-  protected readonly atomic = $inject(AutomationAtomic);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly atomic = $inject(GuardedBatch);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly cache = $inject(DbCacheProvider);
@@ -101,16 +101,12 @@ export class AutomationEvents {
       let rows: Record<string, unknown>[] | undefined;
       let event: AutomationEvent | undefined;
       try {
-        const batch = await this.atomic.guarded(
-          input.projectId,
-          input.condition,
-          [
-            input.mutation,
-            sql`INSERT INTO automation_events (id, version, project_id, identity, name, occurred_at, replay_until, payload, created_at, updated_at)
+        const batch = await this.atomic.guarded(input.condition, [
+          input.mutation,
+          sql`INSERT INTO automation_events (id, version, project_id, identity, name, occurred_at, replay_until, payload, created_at, updated_at)
               SELECT ${id}, 0, ${input.projectId}, ${input.identity}, ${input.name}, ${this.database.timestamp(now)}, ${this.database.timestamp(replayUntil)}, ${encoded}, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}
               RETURNING *`,
-          ],
-        );
+        ]);
         rows = batch[1];
         event = batch[2][0] ? this.eventRows.decodeRow(batch[2][0]) : undefined;
       } catch {

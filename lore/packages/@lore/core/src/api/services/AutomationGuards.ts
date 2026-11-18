@@ -11,12 +11,12 @@ import type { AutomationGuard } from "../schemas/automationGuardSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
 import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
-import { AutomationAtomic } from "./AutomationAtomic.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationIdentity } from "./AutomationIdentity.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { GuardedBatch } from "./GuardedBatch.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Pure comparisons plus an explicitly separate durable observation. Dry runs
@@ -29,8 +29,8 @@ export class AutomationGuards {
   protected readonly identity = $inject(AutomationIdentity);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly claims = $inject(AutomationClaims);
-  protected readonly database = $inject(AutomationDatabase);
-  protected readonly atomic = $inject(AutomationAtomic);
+  protected readonly database = $inject(LoreDatabase);
+  protected readonly atomic = $inject(GuardedBatch);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly time = $inject(DateTimeProvider);
   protected readonly graphs = $inject(AutomationGraph);
@@ -216,7 +216,6 @@ export class AutomationGuards {
             observedAt: now,
           };
       await this.atomic.guarded(
-        rule.projectId,
         sql`EXISTS ${this.persistence.rules.subquery({
           id: rule.id,
           version: rule.version,

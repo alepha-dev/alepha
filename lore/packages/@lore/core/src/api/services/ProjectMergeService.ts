@@ -7,7 +7,7 @@ import {
 } from "alepha/orm";
 
 import { projects } from "../entities/projects.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 import {
   ProjectMergeReferences,
   type ProjectMergeRewriter,
@@ -40,7 +40,7 @@ export class ProjectMergeService {
   protected readonly database = $inject(DatabaseProvider);
   protected readonly projects = $repository(projects);
   protected readonly sequences = $inject(SequenceProvider);
-  protected readonly automationDatabase = $inject(AutomationDatabase);
+  protected readonly loreDatabase = $inject(LoreDatabase);
   protected readonly references = $inject(ProjectMergeReferences);
   protected readonly steps: ProjectMergeStep[] = [];
 
@@ -68,7 +68,7 @@ export class ProjectMergeService {
     }
     // Plan and write on the primary: a read replica that has not seen the
     // last rows would plan a merge that leaves them behind.
-    return this.automationDatabase.primary(async () => {
+    return this.loreDatabase.primary(async () => {
       await this.assertProject(sourceProjectId);
       await this.assertProject(targetProjectId);
       const context: ProjectMergeContext = { sourceProjectId, targetProjectId };

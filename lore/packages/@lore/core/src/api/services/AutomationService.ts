@@ -45,7 +45,6 @@ import {
   type AutomationCatalogContext,
 } from "./AutomationCatalog.ts";
 import { AutomationConfigurationWrites } from "./AutomationConfigurationWrites.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationEvaluator } from "./AutomationEvaluator.ts";
 import { AutomationGuards } from "./AutomationGuards.ts";
 import { AutomationHealth } from "./AutomationHealth.ts";
@@ -55,6 +54,7 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
 import { BoundParameters } from "./BoundParameters.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * The single application boundary for HTTP, MCP and trusted preset creation.
@@ -63,7 +63,7 @@ import { BoundParameters } from "./BoundParameters.ts";
 export class AutomationService {
   protected readonly graphs = $inject(AutomationGraph);
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly outbox = $inject(AutomationNotificationOutbox);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly access = $inject(AutomationAccess);
