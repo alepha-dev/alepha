@@ -8,7 +8,7 @@ import {
 } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 
 import type { RequirementController } from "../../../../api/controllers/RequirementController.ts";
 import type { RequirementResource } from "../../../../api/schemas/requirementResourceSchema.ts";
@@ -26,6 +26,10 @@ export interface RequirementDetailProps {
   onChange: (requirement: RequirementResource) => void;
   onEdit: () => void;
   onDeleted: () => void;
+  /**
+   * Closes the pane, giving the list the whole width back.
+   */
+  onClose?: () => void;
 }
 
 /**
@@ -85,6 +89,18 @@ const RequirementDetail = (props: RequirementDetailProps) => {
           <span className="text-muted-foreground">§{it.paragraph}</span>
         ) : null}
         <RequirementStatusChips requirement={it} />
+        {props.onClose ? (
+          <Button
+            variant="minimal"
+            size="icon-sm"
+            className="ms-auto"
+            aria-label={tr("common.close")}
+            title={tr("common.close")}
+            onClick={props.onClose}
+          >
+            <X className="size-4" />
+          </Button>
+        ) : null}
       </div>
       <h2 className="text-lg font-semibold">{it.statement}</h2>
       {it.description ? (
@@ -289,6 +305,7 @@ const RequirementDetail = (props: RequirementDetailProps) => {
           <Button
             size="sm"
             variant="outlined"
+            intent="danger"
             disabled={busy}
             onClick={() => void remove.run()}
           >

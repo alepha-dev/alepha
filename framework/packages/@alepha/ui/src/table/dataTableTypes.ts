@@ -866,6 +866,45 @@ export interface DataTableStatCard {
    * figure goes without.
    */
   tone?: BadgeTone;
+  /**
+   * Filter values this tile stands for, which makes it a button: a click
+   * sets them on the table's filters and shows them on the bar, and a click
+   * while they all hold clears them. The tile is drawn pressed while they
+   * hold, so a row of counters reads as the quick filters they are.
+   *
+   * Keys are the table's filter field names; `{ state: ["failed"] }` on a
+   * "Failed" tile.
+   */
+  filter?: Record<string, unknown>;
+}
+
+/**
+ * Rows drawn in groups, each under a header row that folds it: the group's
+ * label, its row count and a chevron.
+ *
+ * Groups follow the rows' order: a group starts where its first row is,
+ * so a table sorted by the grouped field reads in that order, unless
+ * `order` says otherwise. Grouping applies to the rows on screen, so a
+ * table grouping its whole set shows it on one page (`pagination={false}`
+ * with static `data`).
+ */
+export interface DataTableGroupBy<T> {
+  /**
+   * The group a row belongs to. Rows answering the same key share a group.
+   */
+  key: (item: T) => string;
+  /**
+   * The group's header. Defaults to the key itself.
+   */
+  label?: (key: string, items: T[]) => ReactNode;
+  /**
+   * Orders the groups, by key. Absent, a group comes where its first row is.
+   */
+  order?: (a: string, b: string) => number;
+  /**
+   * Every group starts folded. The reader's folding is not stored.
+   */
+  defaultCollapsed?: boolean;
 }
 
 /**

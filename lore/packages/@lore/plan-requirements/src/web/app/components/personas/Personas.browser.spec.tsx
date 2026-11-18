@@ -144,10 +144,15 @@ class StubPages {
     path: "/:projectSlug/requirements/personas",
     component: () => null,
   });
+  projectUseCase = $page({
+    name: "projectUseCase",
+    path: "/:projectSlug/requirements/use-cases/:useCaseNumber",
+    component: () => null,
+  });
 }
 
 /**
- * The Personas tab and a persona's page (#E153, #Q3765): cards with the
+ * The Personas page and a persona's page (#E153, #Q3765): cards with the
  * kind filter, the identity card and the Overview, and no write control for
  * a reader without `persona:write`.
  */
@@ -280,13 +285,23 @@ describe("Personas screens", () => {
       </AlephaContext.Provider>,
     );
 
+    // Folded: the counts.
     const banner = await screen.findByTestId("to-cover-banner");
     expect(banner.textContent).toBe(
-      "To cover" +
-        "#A1 Léa has no passing use case" +
-        "#A2 Indexer has no passing use case" +
-        "1 use case never run",
+      "To cover2 personas with no passing use case · 1 use case never run",
     );
+    expect(screen.queryByTestId("to-cover-list")).toBeNull();
+
+    // Opened: every item, each a link to its page.
+    fireEvent.click(screen.getByTestId("to-cover-toggle"));
+    const items = [
+      ...screen.getByTestId("to-cover-list").querySelectorAll("li"),
+    ].map((it) => it.textContent);
+    expect(items).toEqual([
+      "#A1 Léa has no passing use case",
+      "#A2 Indexer has no passing use case",
+      "#U7 Check out has never run",
+    ]);
   });
 
   it("flags a scope change, lists it, opens the app copy and shows the showcase (#Q3772)", async ({

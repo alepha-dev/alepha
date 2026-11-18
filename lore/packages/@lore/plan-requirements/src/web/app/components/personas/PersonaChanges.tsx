@@ -27,52 +27,61 @@ export interface PersonaChangesProps {
 const PersonaChanges = (props: PersonaChangesProps) => {
   const { tr } = useI18n<I18n, "en">();
   const { changes } = props;
+  // No run yet to count from, or nothing completed since the last one.
+  const compact = changes.releases.length > 0;
+  const empty = (
+    <Empty
+      className={compact ? "p-4" : undefined}
+      data-testid="persona-changes-empty"
+    >
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          {changes.lastRunAt ? <GitCommitHorizontal /> : <CirclePlay />}
+        </EmptyMedia>
+        <EmptyTitle>
+          {tr(
+            changes.lastRunAt
+              ? "requirements.persona.changes.none.title"
+              : "requirements.persona.changes.neverRun.title",
+          )}
+        </EmptyTitle>
+        <EmptyDescription>
+          {tr(
+            changes.lastRunAt
+              ? "requirements.persona.changes.none.description"
+              : "requirements.persona.changes.neverRun.description",
+          )}
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-4" data-testid="persona-changes">
-      {changes.changes.length === 0 ? (
-        // Nothing to list: no run yet to count from, or nothing completed
-        // since the last one.
-        <Empty
-          // Centred in the tab's height, unless the releases card follows:
-          // then it keeps its own height and the card sits right under it.
-          className={changes.releases.length ? "flex-none py-16" : undefined}
-          data-testid="persona-changes-empty"
-        >
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              {changes.lastRunAt ? <GitCommitHorizontal /> : <CirclePlay />}
-            </EmptyMedia>
-            <EmptyTitle>
-              {tr(
-                changes.lastRunAt
-                  ? "requirements.persona.changes.none.title"
-                  : "requirements.persona.changes.neverRun.title",
-              )}
-            </EmptyTitle>
-            <EmptyDescription>
-              {tr(
-                changes.lastRunAt
-                  ? "requirements.persona.changes.none.description"
-                  : "requirements.persona.changes.neverRun.description",
-              )}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+      {changes.changes.length === 0 && !changes.releases.length ? (
+        // Nothing at all to show: the empty state fills the tab.
+        empty
       ) : (
         <Card>
           <CardContent className="flex flex-col gap-2 text-sm">
             <h2 className="font-semibold">
               {tr("requirements.persona.changes.title")}
             </h2>
-            <ul className="flex flex-col gap-1">
-              {changes.changes.map((it) => (
-                <PersonaChangeRow
-                  key={it.questNumber}
-                  change={it}
-                  persona={props.number}
-                />
-              ))}
-            </ul>
+            {changes.changes.length === 0 ? (
+              // The "What's new" card follows: the empty state stays inside
+              // this card, compact, rather than pushing that list down.
+              empty
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {changes.changes.map((it) => (
+                  <PersonaChangeRow
+                    key={it.questNumber}
+                    change={it}
+                    persona={props.number}
+                  />
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       )}

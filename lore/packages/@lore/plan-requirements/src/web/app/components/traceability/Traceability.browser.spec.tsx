@@ -177,14 +177,14 @@ describe("Traceability", () => {
     fireEvent.click(rows[0]);
     expect(selected).toEqual([5]);
 
-    fireEvent.click(screen.getByRole("radio", { name: "Requirement × Epic" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Req × Epic" }));
     await waitFor(() =>
       expect(cells(screen.getAllByTestId("matrix-row")[0])).toEqual([
         "failing",
       ]),
     );
 
-    fireEvent.click(screen.getByRole("radio", { name: "Persona × Use case" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Persona × UC" }));
     await waitFor(() =>
       expect(cells(screen.getAllByTestId("matrix-row")[1])).toEqual([
         "none",

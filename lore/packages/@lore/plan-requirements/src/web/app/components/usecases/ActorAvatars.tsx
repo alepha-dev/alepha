@@ -1,4 +1,4 @@
-import { AvatarGroup } from "@alepha/ui";
+import { AvatarGroup, cn } from "@alepha/ui";
 
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import PersonaAvatar from "../personas/PersonaAvatar.tsx";
@@ -13,7 +13,9 @@ export interface ActorAvatarsProps {
  * its tooltip.
  */
 const ActorAvatars = (props: ActorAvatarsProps) => (
-  <AvatarGroup className={props.className}>
+  // `-space-x-1`, not the group's `-space-x-2`: a persona's avatar is small
+  // (24px) and carries two initials, which half a tile of overlap cut to one.
+  <AvatarGroup className={cn("-space-x-1", props.className)}>
     {props.actors.map((actor) => (
       <PersonaAvatar key={actor.number} name={actor.name} />
     ))}

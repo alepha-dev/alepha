@@ -245,7 +245,8 @@ test.describe("Requirements", () => {
       await expect(page.getByTestId("requirements-table")).toBeVisible();
       await shoot(page, "requirements-list");
 
-      await page.getByRole("radio", { name: "Matrix" }).click();
+      // List and Matrix are the plate's tabs.
+      await page.getByRole("tab", { name: "Matrix" }).click();
       await expect(page.getByTestId("traceability-matrix")).toBeVisible();
       await expect(page.locator('[data-cell="failing"]').first()).toBeVisible();
       await expect(page.getByTestId("impact-chain")).toBeVisible();

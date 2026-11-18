@@ -35,6 +35,7 @@ export type {
   DataTablePreset,
   DataTablePresets,
   DataTableSource,
+  DataTableGroupBy,
   DataTableStatCard,
   DataTableSummary,
   DataTableSummaryContext,

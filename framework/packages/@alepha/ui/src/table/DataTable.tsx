@@ -37,6 +37,7 @@ import type {
   DataTableFilterFields,
   DataTableNoFilterFields,
   DataTableSource,
+  DataTableStatCard,
   BulkActionContext,
   ColumnDef,
   RowActionContext,
@@ -137,12 +138,20 @@ export const DataTable = <
   // resubscribes nor fires.
   const onFiltersChange = useRef(untyped.filters?.onChange);
   onFiltersChange.current = untyped.filters?.onChange;
+  // The current filter values as state too, so a summary tile standing for
+  // some of them (`DataTableStatCard.filter`) redraws pressed or not.
+  const [filterValues, setFilterValues] = useState<Record<string, unknown>>(
+    () => ({ ...form?.currentValues }),
+  );
   useEffect(() => {
     if (!form) return;
     onFiltersChange.current?.({ ...form.currentValues });
+    // No `setFilterValues` here: the state starts from the form's values,
+    // and every change after that comes through the event below.
     return alepha.events.on("form:changed", (event) => {
       if (event.id !== form.id) return;
       onFiltersChange.current?.({ ...form.currentValues });
+      setFilterValues({ ...form.currentValues });
     });
   }, [alepha, form]);
 
@@ -624,6 +633,31 @@ export const DataTable = <
       />
     ) : undefined;
 
+  // A summary tile standing for filter values (`DataTableStatCard.filter`):
+  // a click sets them and shows them on the bar, or clears them when they
+  // all hold already.
+  const selectCard = (card: DataTableStatCard) => {
+    if (!form || !filterDefinition || !card.filter) return;
+    const inputs = form.input as unknown as Record<
+      string,
+      { set?: (value: unknown) => void } | undefined
+    >;
+    const keys = Object.keys(card.filter).filter((key) =>
+      filterDefinition.keys.includes(key),
+    );
+    if (isCardActive(card, filterValues)) {
+      for (const key of keys) inputs[key]?.set?.(undefined);
+      return;
+    }
+    for (const key of keys) inputs[key]?.set?.(card.filter[key]);
+    filterVisibility.setShown(
+      [...new Set([...filterVisibility.shown, ...keys])].filter(
+        (key) => filterDefinition.modes[key] !== "locked",
+      ),
+      true,
+    );
+  };
+
   const table = (
     <div
       className={cn(
@@ -657,6 +691,8 @@ export const DataTable = <
           open={summary.open}
           onOpenChange={summary.setOpen}
           cards={summary.cards}
+          isActive={(card) => isCardActive(card, filterValues)}
+          onSelect={form && filterDefinition ? selectCard : undefined}
           loading={summary.loading}
           content={hasSummaryContent ? summaryContent : undefined}
           className={cn(squareRight?.top, flatTop, props.chromeClassName)}
@@ -827,11 +863,13 @@ export const DataTable = <
             rowActionsDisplay={props.rowActionsDisplay}
             striped={props.striped}
             onRowClick={props.onRowClick}
+            isRowActive={props.isRowActive}
             onRowHover={props.onRowHover}
             empty={props.empty}
             emptyMessage={props.emptyMessage}
             emptyState={props.emptyState}
             noMatchState={props.noMatchState}
+            groupBy={props.groupBy}
           />
         </Table>
       </div>
@@ -869,5 +907,23 @@ export const DataTable = <
         table
       )}
     </ClientOnly>
+  );
+};
+
+/**
+ * Whether every filter value a summary tile stands for holds now. Compared
+ * as JSON, so an array value matches the same members in the same order.
+ */
+const isCardActive = (
+  card: DataTableStatCard,
+  values: Record<string, unknown>,
+): boolean => {
+  if (!card.filter) return false;
+  const entries = Object.entries(card.filter);
+  return (
+    entries.length > 0 &&
+    entries.every(
+      ([key, value]) => JSON.stringify(values[key]) === JSON.stringify(value),
+    )
   );
 };

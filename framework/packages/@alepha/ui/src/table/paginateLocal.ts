@@ -38,7 +38,9 @@ export interface PaginateLocalOptions<T> {
  * Sugar for the common case, not a query language. Strings match as a
  * case-insensitive substring (what a text box means), arrays match on
  * membership (what a tag picker means), everything else compares strictly.
- * Anything more expressive is the caller's `filter`.
+ * An array VALUE, a multi-select, matches a row whose field equals any of
+ * its members (any of them, for an array field). Anything more expressive
+ * is the caller's `filter`.
  */
 const matchesField = (item: unknown, key: string, value: unknown): boolean => {
   // A filter field the rows do not carry belongs to a caller-owned
@@ -48,6 +50,20 @@ const matchesField = (item: unknown, key: string, value: unknown): boolean => {
     return true;
   }
   const cell = (item as Record<string, unknown>)[key];
+  // A multi-select's values: equality with any member, never a substring
+  // ("pass" picked must not match "passed"). An empty one is no filter and
+  // never reaches here.
+  if (Array.isArray(value)) {
+    const same = (entry: unknown, member: unknown) =>
+      typeof entry === "string" && typeof member === "string"
+        ? entry.toLowerCase() === member.toLowerCase()
+        : entry === member;
+    return value.some((member) =>
+      Array.isArray(cell)
+        ? cell.some((entry) => same(entry, member))
+        : same(cell, member),
+    );
+  }
   if (Array.isArray(cell)) {
     return cell.some((entry) =>
       typeof entry === "string" && typeof value === "string"

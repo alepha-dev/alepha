@@ -1,5 +1,11 @@
-import { Button, Segmented } from "@alepha/ui";
+import { Button } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import { PlateLayout, type PlateTab } from "@alepha/ui/shell";
+import {
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableStatCard,
+} from "@alepha/ui/table";
 import {
   canInProject,
   capabilityOption,
@@ -14,10 +20,15 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import {
   BookOpen,
+  ChevronsUp,
+  CircleDot,
   ClipboardCheck,
   Download,
   FileInput,
   Flag,
+  Grid3x3,
+  Layers,
+  List,
   Plus,
   Shapes,
 } from "lucide-react";
@@ -37,6 +48,7 @@ import type { RequirementResource } from "../../../../api/schemas/requirementRes
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
 import RequirementDetail from "../requirements/RequirementDetail.tsx";
 import {
+  REQUIREMENT_PRIORITY_LABEL_KEYS,
   REQUIREMENT_STATUS_LABEL_KEYS,
   REQUIREMENT_TYPE_LABEL_KEYS,
 } from "../requirements/requirementLabels.ts";
@@ -51,27 +63,21 @@ import ImpactChain from "../traceability/ImpactChain.tsx";
 import ReadinessBanner from "../traceability/ReadinessBanner.tsx";
 import TraceabilityMatrix from "../traceability/TraceabilityMatrix.tsx";
 import VerifyDialog from "../verify/VerifyDialog.tsx";
-
-const TYPES = ["functional", "non_functional", "constraint"] as const;
-const STATUSES = [
-  "verified",
-  "failing",
-  "in_development",
-  "covered",
-  "not_covered",
-  "no_data",
-] as const;
-
 import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
 
 /**
- * The Requirements page (#E153): counters, type,
- * verified-by and release filters, the list grouped by chapter, the detail
- * pane of the selected requirement (`?requirement=15`), a banner naming the
- * requirements whose source changed, the List / Matrix switch, a release's
- * readiness, and the exports (CSV, the test book). In the Matrix view the
- * pane holds the selected requirement's impact chain and the coverage
- * gaps (#Q3774).
+ * The Requirements page (#E153). The List view is a table of every
+ * requirement on one page (the whole list is loaded anyway, for the counts
+ * and the matrix), with status counters that filter, search, status, type,
+ * priority, verification and release filters, and groups that fold: by
+ * chapter (the default), priority, status or type. A row opens the detail
+ * pane (`?requirement=15`).
+ *
+ * Above it, a banner naming the requirements whose source changed, and a
+ * release's readiness while a release is filtered. The Matrix view draws
+ * the traceability matrix of the rows the table's filters keep, with the
+ * selected requirement's impact chain and the coverage gaps in the pane
+ * (#Q3774).
  */
 const RequirementsPage = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -85,6 +91,10 @@ const RequirementsPage = () => {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [view, setView] = useState<"list" | "matrix">("list");
+  // The table's filter values, which the matrix and the readiness banner
+  // read too (`filters.onChange`).
+  const [values, setValues] = useState<RequirementFilterValues>({});
   const selected = Number(
     (routerState.query as Record<string, string> | undefined)?.requirement ?? 0,
   );
@@ -110,25 +120,18 @@ const RequirementsPage = () => {
     [api, projectId],
   );
 
-  const [status, setStatus] = useState("all");
-  const [view, setView] = useState<"list" | "matrix">("list");
-  const filters = useForm({
-    id: "requirement-filters",
+  const grouping = useForm({
+    id: "requirement-grouping",
     schema: z.object({
-      type: z.text().optional(),
-      verifiedBy: z.text().optional(),
-      release: z.text().optional(),
+      group: z.enum(["chapter", "priority", "status", "type", "none"]),
     }),
-    // No initial value: an empty filter shows everything, and its
-    // placeholder says so. No "All ..." row stands in for a value.
+    initialValues: { group: "chapter" as const },
     handler: async () => {},
   });
-  const values = useFormValues(filters);
-  const type = values.type ?? "";
-  const verifiedBy = values.verifiedBy ?? "";
-  const release = values.release ?? "";
+  const group = useFormValues(grouping).group ?? "chapter";
+
   const matrix = view === "matrix";
-  const releaseId = release ? Number(release) : undefined;
+  const releaseId = values.release ? Number(values.release) : undefined;
   const useCaseApi = useClient<UseCaseController>();
   const personaApi = useClient<PersonaController>();
   const coverageApi = useClient<RequirementCoverageController>();
@@ -168,23 +171,6 @@ const RequirementsPage = () => {
   useSyncRequirementsCount("personas", personas.data);
   if (!project) return null;
   const all = list.data ?? [];
-  const rows = all.filter(
-    (it) =>
-      (status === "all" || it.status === status) &&
-      (!type || it.type === type) &&
-      (!verifiedBy ||
-        (verifiedBy === "usecases"
-          ? it.criteria.length > 0
-          : verifiedBy === "metric"
-            ? !!it.metric
-            : it.criteria.length === 0 && !it.metric)) &&
-      (!releaseId || it.targetRelease?.id === releaseId),
-  );
-  const chapters = new Map<string, RequirementResource[]>();
-  for (const row of rows) {
-    const key = row.chapter ?? "";
-    chapters.set(key, [...(chapters.get(key) ?? []), row]);
-  }
   const changed = all.filter((it) => it.sourceChanged);
   const current = all.find((it) => it.number === selected);
   const canWrite = canInProject(project, "requirement:write");
@@ -198,121 +184,216 @@ const RequirementsPage = () => {
     queries.invalidate(["requirements", projectId]);
   };
 
+  const fields = {
+    search: { preset: "search" },
+    status: {
+      schema: z.array(z.string()),
+      label: tr("requirements.requirement.col.status"),
+      icon: CircleDot,
+      items: STATUSES.map((value) => ({
+        value,
+        label: tr(REQUIREMENT_STATUS_LABEL_KEYS[value]),
+      })),
+    },
+    type: {
+      schema: z.array(z.string()),
+      label: tr("requirements.requirement.field.type"),
+      icon: Shapes,
+      mode: "default",
+      items: TYPES.map((value) => ({
+        value,
+        label: tr(REQUIREMENT_TYPE_LABEL_KEYS[value]),
+      })),
+      control: { clearLabel: tr("requirements.requirement.filter.anyType") },
+    },
+    priority: {
+      schema: z.array(z.string()),
+      label: tr("requirements.requirement.field.priority"),
+      icon: ChevronsUp,
+      mode: "default",
+      items: PRIORITIES.map((value) => ({
+        value,
+        label: tr(REQUIREMENT_PRIORITY_LABEL_KEYS[value]),
+      })),
+      control: {
+        clearLabel: tr("requirements.requirement.filter.anyPriority"),
+      },
+    },
+    verifiedBy: {
+      schema: z.enum(["usecases", "metric", "none"]),
+      label: tr("requirements.requirement.verifiedByFilter"),
+      icon: ClipboardCheck,
+      items: [
+        {
+          value: "usecases",
+          label: tr("requirements.requirement.filter.useCases"),
+        },
+        {
+          value: "metric",
+          label: tr("requirements.requirement.filter.metric"),
+        },
+        { value: "none", label: tr("requirements.requirement.filter.nothing") },
+      ],
+      control: {
+        clearLabel: tr("requirements.requirement.filter.anyVerification"),
+      },
+    },
+    release: {
+      schema: z.string(),
+      label: tr("requirements.requirement.release"),
+      icon: Flag,
+      mode: "default",
+      items: (releases.data ?? []).map((r) => ({
+        value: String(r.id),
+        label: r.tag ?? r.title ?? "",
+      })),
+      control: {
+        clearLabel: tr("requirements.requirement.filter.allReleases"),
+      },
+    },
+  } satisfies DataTableFilterFields;
+
+  // Counters that are also quick filters, one per status.
+  const cards: DataTableStatCard[] = [
+    {
+      label: tr(
+        all.length === 1
+          ? "requirements.requirement.counter.all.one"
+          : "requirements.requirement.counter.all",
+      ),
+      value: String(all.length),
+    },
+    ...STATUSES.map((status) => {
+      const count = all.filter((row) => row.status === status).length;
+      return {
+        label: tr(REQUIREMENT_STATUS_LABEL_KEYS[status]),
+        value: String(count),
+        tone:
+          status === "verified"
+            ? ("success" as const)
+            : status === "failing" && count > 0
+              ? ("danger" as const)
+              : status === "not_covered" && count > 0
+                ? ("warning" as const)
+                : undefined,
+        filter: { status: [status] },
+      };
+    }),
+  ];
+
+  const groupKey = (row: RequirementResource): string =>
+    group === "chapter"
+      ? (row.chapter ?? "")
+      : group === "priority"
+        ? row.priority
+        : group === "status"
+          ? row.status
+          : row.type;
+  const groupLabel = (key: string): string =>
+    group === "chapter"
+      ? key || tr("requirements.requirement.noChapter")
+      : group === "priority"
+        ? tr(REQUIREMENT_PRIORITY_LABEL_KEYS[key as Priority])
+        : group === "status"
+          ? tr(REQUIREMENT_STATUS_LABEL_KEYS[key as Status])
+          : tr(REQUIREMENT_TYPE_LABEL_KEYS[key as Type]);
+  const groupOrder = (a: string, b: string): number => {
+    if (group === "chapter") {
+      // Chapters as written ("2. Field", "10. Integrations"), numbers
+      // compared as numbers, and no chapter last.
+      if (!a || !b) return a ? -1 : b ? 1 : 0;
+      return a.localeCompare(b, undefined, { numeric: true });
+    }
+    const order: readonly string[] =
+      group === "priority" ? PRIORITIES : group === "status" ? STATUSES : TYPES;
+    return order.indexOf(a) - order.indexOf(b);
+  };
+
+  // Whichever tab is open: exports and the import, small, at the end of
+  // the plate's tab band.
+  const pageActions = [
+    {
+      icon: BookOpen,
+      label: tr("requirements.trace.export.testBook"),
+      onClick: () =>
+        void router.push("projectRequirementsTestBook", {
+          params: { projectSlug: project.slug },
+        }),
+    },
+    {
+      icon: Download,
+      label: tr("requirements.trace.export.csv"),
+      onClick: () => {
+        window.location.assign(
+          `/api/projects/${projectId}/requirements/export${releaseId ? `?releaseId=${releaseId}` : ""}`,
+        );
+      },
+    },
+    ...(canWrite
+      ? [
+          {
+            icon: FileInput,
+            label: tr("requirements.requirement.import"),
+            onClick: () => setImporting(true),
+          },
+        ]
+      : []),
+  ];
+  // The page's main action, in the List's toolbar; the Matrix has none.
+  const create = canWrite
+    ? [
+        {
+          icon: Plus,
+          label: tr("project.menu.create-requirement"),
+          primary: true,
+          onClick: () => setCreating(true),
+        },
+      ]
+    : [];
+
+  // List and Matrix are the plate's two tabs, with no plate above them:
+  // the breadcrumb names the page.
+  const tabs: PlateTab[] = [
+    {
+      key: "list",
+      label: tr("requirements.requirement.view.list"),
+      icon: List,
+    },
+    {
+      key: "matrix",
+      label: tr("requirements.requirement.view.matrix"),
+      icon: Grid3x3,
+    },
+  ];
+
   return (
     <RequirementsHover className="flex min-h-0 min-w-0 flex-1">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <form
-          {...filters.props}
-          className="[&_:is(input,[role=combobox])]:bg-background chrome flex flex-col gap-3 border-b p-3"
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            <Segmented
-              size="sm"
-              className="max-w-full overflow-x-auto"
-              value={status}
-              onChange={setStatus}
-              options={[
-                {
-                  value: "all",
-                  label: `${all.length} ${tr(all.length === 1 ? "requirements.requirement.counter.all.one" : "requirements.requirement.counter.all")}`,
-                },
-                ...STATUSES.map((it) => ({
-                  value: it,
-                  label: `${all.filter((row) => row.status === it).length} ${tr(REQUIREMENT_STATUS_LABEL_KEYS[it])}`,
-                })),
-              ]}
-            />
-            <div className="flex-1" />
-            <Segmented
-              size="sm"
-              value={view}
-              onChange={(value) => setView(value as "list" | "matrix")}
-              options={[
-                {
-                  value: "list",
-                  label: tr("requirements.requirement.view.list"),
-                },
-                {
-                  value: "matrix",
-                  label: tr("requirements.requirement.view.matrix"),
-                },
-              ]}
-            />
-            {canWrite ? (
+      <PlateLayout
+        tabs={tabs}
+        active={view}
+        onSelect={(key) => setView(key as "list" | "matrix")}
+        tabsTestId="requirements-views"
+        tabsActions={
+          <>
+            {pageActions.map((it) => (
               <Button
-                type="button"
-                variant="outlined"
-                onClick={() => setImporting(true)}
+                key={it.label}
+                variant="minimal"
+                size="sm"
+                onClick={it.onClick}
               >
-                <FileInput className="size-4" />
-                {tr("requirements.requirement.import")}
+                <it.icon className="size-3.5" />
+                {it.label}
               </Button>
-            ) : null}
-            {canWrite ? (
-              <Button type="button" onClick={() => setCreating(true)}>
-                <Plus className="size-4" />
-                {tr("project.menu.create-requirement")}
-              </Button>
-            ) : null}
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Control
-              label={tr("requirements.requirement.field.type")}
-              input={filters.input.type}
-              select
-              clearable
-              icon={Shapes}
-              placeholder={tr("requirements.requirement.filter.anyType")}
-              clearLabel={tr("requirements.requirement.filter.anyType")}
-              items={TYPES.map((it) => ({
-                value: it,
-                label: tr(REQUIREMENT_TYPE_LABEL_KEYS[it]),
-              }))}
-            />
-            <Control
-              label={tr("requirements.requirement.verifiedByFilter")}
-              input={filters.input.verifiedBy}
-              select
-              clearable
-              icon={ClipboardCheck}
-              placeholder={tr(
-                "requirements.requirement.filter.anyVerification",
-              )}
-              clearLabel={tr("requirements.requirement.filter.anyVerification")}
-              items={[
-                {
-                  value: "usecases",
-                  label: tr("requirements.requirement.filter.useCases"),
-                },
-                {
-                  value: "metric",
-                  label: tr("requirements.requirement.filter.metric"),
-                },
-                {
-                  value: "none",
-                  label: tr("requirements.requirement.filter.nothing"),
-                },
-              ]}
-            />
-            <Control
-              label={tr("requirements.requirement.release")}
-              input={filters.input.release}
-              select
-              clearable
-              icon={Flag}
-              placeholder={tr("requirements.requirement.filter.allReleases")}
-              clearLabel={tr("requirements.requirement.filter.allReleases")}
-              items={(releases.data ?? []).map((r) => ({
-                value: String(r.id),
-                label: r.tag ?? r.title ?? "",
-              }))}
-            />
-          </div>
-        </form>
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            ))}
+          </>
+        }
+        scroll={false}
+        className="min-w-0 flex-1"
+      >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-2">
           {changed.length ? (
-            <WarningNotice className="mb-4" data-testid="source-changed-banner">
+            <WarningNotice data-testid="source-changed-banner">
               {tr("requirements.requirement.banner", {
                 args: [
                   changed
@@ -323,74 +404,88 @@ const RequirementsPage = () => {
             </WarningNotice>
           ) : null}
           {releaseId ? (
-            <div className="mb-4">
-              <ReadinessBanner
-                release={
-                  releases.data?.find((it) => it.id === releaseId)?.tag ??
-                  release
-                }
-                readiness={readinessOf(requirementsOfRelease(all, releaseId))}
-                blocks={
-                  capabilityOption(project, "plan", "blockFailingMust") === true
-                }
-              />
-            </div>
+            <ReadinessBanner
+              release={
+                releases.data?.find((it) => it.id === releaseId)?.tag ??
+                values.release ??
+                ""
+              }
+              readiness={readinessOf(requirementsOfRelease(all, releaseId))}
+              blocks={
+                capabilityOption(project, "plan", "blockFailingMust") === true
+              }
+            />
           ) : null}
           {matrix ? (
-            <TraceabilityMatrix
-              requirements={rows}
-              useCases={useCases.data ?? []}
-              personas={personas.data ?? []}
-              selected={selected || undefined}
-              onSelect={(number) => select(number)}
-            />
-          ) : list.data && rows.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              {tr(
-                all.length === 0
-                  ? "requirements.requirement.empty"
-                  : "requirements.requirement.emptyFilter",
-              )}
-            </p>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="bg-background flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border p-4">
+                <TraceabilityMatrix
+                  requirements={all.filter((row) => matches(row, values))}
+                  useCases={useCases.data ?? []}
+                  personas={personas.data ?? []}
+                  selected={selected || undefined}
+                  onSelect={(number) => select(number)}
+                />
+              </div>
+            </div>
           ) : (
-            <table className="w-full text-sm" data-testid="requirements-table">
-              <thead className="text-muted-foreground text-left text-xs">
-                <tr className="border-b">
-                  <th className="py-2 pr-3 font-medium">
-                    {tr("requirements.requirement.col.requirement")}
-                  </th>
-                  <th className="py-2 pr-3 font-medium">
-                    {tr("requirements.requirement.field.type")}
-                  </th>
-                  <th className="py-2 pr-3 font-medium">
-                    {tr("requirements.requirement.field.priority")}
-                  </th>
-                  <th className="py-2 pr-3 font-medium">
-                    {tr("requirements.requirement.release")}
-                  </th>
-                  <th className="py-2 pr-3 font-medium">
-                    {tr("requirements.requirement.col.verifiedBy")}
-                  </th>
-                  <th className="py-2 pr-3 font-medium">
-                    {tr("requirements.requirement.col.status")}
-                  </th>
-                </tr>
-              </thead>
-              {[...chapters].map(([chapter, group]) => (
-                <tbody key={chapter || "none"}>
-                  <tr className="bg-muted/40 border-b">
-                    <td colSpan={6} className="py-1.5 text-xs font-semibold">
-                      {chapter || tr("requirements.requirement.noChapter")}
-                    </td>
-                  </tr>
-                  {group.map((row) => (
-                    <tr
-                      key={row.id}
-                      data-testid="requirement-row"
-                      className={`hover:bg-muted/30 cursor-pointer border-b ${row.number === selected ? "bg-muted/50" : ""}`}
-                      onClick={() => select(row.number)}
-                    >
-                      <td className="py-2 pr-3">
+            <div
+              className="flex min-h-0 flex-1 flex-col"
+              data-testid="requirements-table"
+            >
+              <DataTable<RequirementResource, typeof fields>
+                key={project.id}
+                className="min-h-0 flex-1"
+                persistenceKey={`lore.requirements.${project.id}`}
+                data={all}
+                pagination={false}
+                rowKey={(row) => String(row.id)}
+                filters={{
+                  fields,
+                  onChange: (next) =>
+                    setValues(next as RequirementFilterValues),
+                }}
+                filter={(row, next) => matches(row, next)}
+                summary={{ cards }}
+                groupBy={
+                  group === "none"
+                    ? undefined
+                    : { key: groupKey, label: groupLabel, order: groupOrder }
+                }
+                defaultSort={{ field: "requirement", direction: "asc" }}
+                onRowClick={(row) => select(row.number)}
+                actions={create}
+                // The requirement the detail pane shows.
+                isRowActive={(row) => row.number === selected}
+                emptyState={{ title: tr("requirements.requirement.empty") }}
+                noMatchState={{
+                  title: tr("requirements.requirement.emptyFilter"),
+                }}
+                toolbar={
+                  <div className="flex items-center gap-2">
+                    <div className="w-40">
+                      <Control
+                        input={grouping.input.group}
+                        label=""
+                        select
+                        icon={Layers}
+                        aria-label={tr("requirements.usecase.groupBy")}
+                        items={GROUPINGS.map((it) => ({
+                          value: it,
+                          label: tr(GROUPING_LABEL_KEYS[it]),
+                        }))}
+                      />
+                    </div>
+                  </div>
+                }
+                columns={{
+                  requirement: {
+                    label: tr("requirements.requirement.col.requirement"),
+                    sortable: true,
+                    sortValue: (row) => row.number,
+                    className: "whitespace-normal",
+                    cell: (row) => (
+                      <span data-testid="requirement-row">
                         <span className="font-semibold">
                           {formatReference("requirement", row.number)}
                         </span>{" "}
@@ -401,82 +496,84 @@ const RequirementsPage = () => {
                             §{row.paragraph}
                           </span>
                         ) : null}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {tr(REQUIREMENT_TYPE_LABEL_KEYS[row.type])}
-                      </td>
-                      <td className="py-2 pr-3">
-                        <RequirementPriorityBadge priority={row.priority} />
-                      </td>
-                      <td className="py-2 pr-3">
-                        {row.targetRelease ? (
-                          <span>
-                            {row.targetRelease.tag ?? row.targetRelease.title}{" "}
-                            <span className="text-muted-foreground text-xs">
-                              {tr(
-                                row.targetRelease.mode === "auto"
-                                  ? "requirements.requirement.release.autoShort"
-                                  : "requirements.requirement.release.byHandShort",
-                              )}
-                            </span>
+                      </span>
+                    ),
+                  },
+                  type: {
+                    label: tr("requirements.requirement.field.type"),
+                    sortable: true,
+                    sortValue: (row) => TYPES.indexOf(row.type),
+                    cell: (row) => tr(REQUIREMENT_TYPE_LABEL_KEYS[row.type]),
+                  },
+                  priority: {
+                    label: tr("requirements.requirement.field.priority"),
+                    sortable: true,
+                    // Must first, Won't last: by rank, not alphabetically.
+                    sortValue: (row) => PRIORITIES.indexOf(row.priority),
+                    cell: (row) => (
+                      <RequirementPriorityBadge priority={row.priority} />
+                    ),
+                  },
+                  release: {
+                    label: tr("requirements.requirement.release"),
+                    sortable: true,
+                    sortValue: (row) =>
+                      row.targetRelease?.tag ?? row.targetRelease?.title,
+                    cell: (row) =>
+                      row.targetRelease ? (
+                        <span>
+                          {row.targetRelease.tag ?? row.targetRelease.title}{" "}
+                          <span className="text-muted-foreground text-xs">
+                            {tr(
+                              row.targetRelease.mode === "auto"
+                                ? "requirements.requirement.release.autoShort"
+                                : "requirements.requirement.release.byHandShort",
+                            )}
                           </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="py-2 pr-3 text-xs">
-                        {row.metric ? (
-                          tr("requirements.requirement.metric")
-                        ) : row.criteria.length ? (
-                          <span className="flex flex-wrap gap-x-2">
-                            {row.criteria.map((c) => (
-                              <ReferenceLink
-                                key={`${c.useCaseNumber}:${c.key}`}
-                                kind="usecase"
-                                number={c.useCaseNumber}
-                              >
-                                {c.key}
-                              </ReferenceLink>
-                            ))}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="py-2">
-                        <RequirementStatusChips requirement={row} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              ))}
-            </table>
+                        </span>
+                      ) : (
+                        "-"
+                      ),
+                  },
+                  verifiedBy: {
+                    label: tr("requirements.requirement.col.verifiedBy"),
+                    cell: (row) =>
+                      row.metric ? (
+                        tr("requirements.requirement.metric")
+                      ) : row.criteria.length ? (
+                        // `ReferenceLink` stops its click, so it opens the use
+                        // case and not the row's detail pane.
+                        <span className="flex flex-wrap gap-x-2 text-xs">
+                          {row.criteria.map((c) => (
+                            <ReferenceLink
+                              key={`${c.useCaseNumber}:${c.key}`}
+                              kind="usecase"
+                              number={c.useCaseNumber}
+                            >
+                              {c.key}
+                            </ReferenceLink>
+                          ))}
+                        </span>
+                      ) : (
+                        "-"
+                      ),
+                  },
+                  status: {
+                    label: tr("requirements.requirement.col.status"),
+                    sortable: true,
+                    // Verified first, no data last.
+                    sortValue: (row) => STATUSES.indexOf(row.status),
+                    cell: (row) => <RequirementStatusChips requirement={row} />,
+                  },
+                }}
+              />
+            </div>
           )}
-          <div className="mt-4 flex flex-wrap justify-end gap-2">
-            <Button
-              variant="outlined"
-              size="sm"
-              href={router.path("projectRequirementsTestBook", {
-                params: { projectSlug: project.slug },
-              })}
-            >
-              <BookOpen className="size-4" />
-              {tr("requirements.trace.export.testBook")}
-            </Button>
-            <Button
-              variant="outlined"
-              size="sm"
-              href={`/api/projects/${projectId}/requirements/export${releaseId ? `?releaseId=${releaseId}` : ""}`}
-            >
-              <Download className="size-4" />
-              {tr("requirements.trace.export.csv")}
-            </Button>
-          </div>
         </div>
-      </div>
+      </PlateLayout>
       {matrix ? (
         <aside
-          className="flex w-96 shrink-0 flex-col gap-3 overflow-y-auto border-l p-3"
+          className="chrome flex w-96 shrink-0 flex-col gap-3 overflow-y-auto border-l p-3"
           data-testid="traceability-pane"
         >
           {current ? (
@@ -491,13 +588,16 @@ const RequirementsPage = () => {
           ) : null}
         </aside>
       ) : current ? (
-        <aside className="w-96 shrink-0 overflow-y-auto border-l">
+        // Slides in from the end as it opens; switching to another
+        // requirement keeps the pane mounted, so it does not replay.
+        <aside className="animate-in fade-in-0 slide-in-from-end-8 w-96 shrink-0 overflow-y-auto border-l duration-200 motion-reduce:animate-none">
           <RequirementDetail
             key={current.id}
             requirement={current}
             releases={releases.data ?? []}
             onChange={(next) => refresh(next)}
             onEdit={() => setEditing(true)}
+            onClose={() => select(undefined)}
             onDeleted={() => {
               select(undefined);
               refresh();
@@ -538,3 +638,79 @@ const RequirementsPage = () => {
 };
 
 export default RequirementsPage;
+
+const TYPES = ["functional", "non_functional", "constraint"] as const;
+const PRIORITIES = ["must", "should", "could", "wont"] as const;
+const STATUSES = [
+  "verified",
+  "failing",
+  "in_development",
+  "covered",
+  "not_covered",
+  "no_data",
+] as const;
+type Type = (typeof TYPES)[number];
+type Priority = (typeof PRIORITIES)[number];
+type Status = (typeof STATUSES)[number];
+
+const GROUPINGS = ["chapter", "priority", "status", "type", "none"] as const;
+
+const GROUPING_LABEL_KEYS = {
+  chapter: "requirements.requirement.groupBy.chapter",
+  priority: "requirements.requirement.field.priority",
+  status: "requirements.requirement.col.status",
+  type: "requirements.requirement.field.type",
+  none: "requirements.usecase.groupBy.none",
+} as const;
+
+interface RequirementFilterValues {
+  search?: string;
+  status?: string[];
+  type?: string[];
+  priority?: string[];
+  verifiedBy?: "usecases" | "metric" | "none";
+  release?: string;
+}
+
+/**
+ * The table's filter, which replaces the static mode's field matching:
+ * the search spans the reference, the statement and the chapter, and the
+ * verification and the release are read from the row's nested fields.
+ */
+const matches = (
+  row: RequirementResource,
+  values: RequirementFilterValues,
+): boolean => {
+  const search = values.search?.trim().toLowerCase();
+  if (
+    search &&
+    !`${formatReference("requirement", row.number)} ${row.statement} ${row.chapter ?? ""}`
+      .toLowerCase()
+      .includes(search)
+  ) {
+    return false;
+  }
+  if (values.status?.length && !values.status.includes(row.status)) {
+    return false;
+  }
+  if (values.type?.length && !values.type.includes(row.type)) return false;
+  if (values.priority?.length && !values.priority.includes(row.priority)) {
+    return false;
+  }
+  if (values.verifiedBy) {
+    const verified =
+      values.verifiedBy === "usecases"
+        ? row.criteria.length > 0
+        : values.verifiedBy === "metric"
+          ? !!row.metric
+          : row.criteria.length === 0 && !row.metric;
+    if (!verified) return false;
+  }
+  if (
+    values.release &&
+    String(row.targetRelease?.id ?? "") !== values.release
+  ) {
+    return false;
+  }
+  return true;
+};
