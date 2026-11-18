@@ -11,9 +11,36 @@ export interface DisplayNameUser {
 
 // alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
 /**
+ * A first or last name in capitalized form: the first letter of each word
+ * upper case, the rest lower case. A word starts the name or follows a
+ * space, a hyphen or an apostrophe, so "LEFEVRE" is "Lefevre", "jean-pierre"
+ * is "Jean-Pierre" and "o'brien" is "O'Brien". Accents follow the case
+ * ("ÉLODIE" is "Élodie").
+ *
+ * ⚠️ **Forced on purpose, and revertable** (#Q3886). Names were shown as
+ * typed, so one person read "Thibaut LEFEVRE" beside "Nicolas Foures". The
+ * owner chose to make every name look alike at display time; the stored
+ * value never changes. It is wrong for some names: a particle the person
+ * writes lower case ("de", "van"), an inner capital ("McDonald",
+ * "DiCaprio"). If those come to matter, delete this function's call in
+ * {@link displayName} and names are shown as typed again.
+ */
+export const capitalizeName = (name: string): string =>
+  name
+    .toLocaleLowerCase()
+    .replace(
+      /(^|[\s'\u2019-])(\p{L})/gu,
+      (_, before: string, letter: string) =>
+        `${before}${letter.toLocaleUpperCase()}`,
+    );
+
+// alepha-allow no-module-code: a plain helper module the web imports directly, not a DI service: no container builds it, so there is nothing to substitute
+/**
  * How a person is named on screen, across the app and its api labels.
  *
- * Priority: first and last name → `username` → email → fallback.
+ * Priority: first and last name → `username` → email → fallback. The first
+ * and last name are capitalized ({@link capitalizeName}); a username and an
+ * email are handles, shown as they are.
  *
  * A person with a name is shown by that name alone, never with their
  * username beside it: the username is a login handle, not how a person
@@ -27,7 +54,10 @@ export const displayName = (
   user: DisplayNameUser | null | undefined,
   fallback = "Anonymous",
 ): string =>
-  [user?.firstName?.trim(), user?.lastName?.trim()].filter(Boolean).join(" ") ||
+  [user?.firstName?.trim(), user?.lastName?.trim()]
+    .filter((part): part is string => !!part)
+    .map(capitalizeName)
+    .join(" ") ||
   user?.username?.trim() ||
   user?.email?.trim() ||
   fallback;

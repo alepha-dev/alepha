@@ -6,6 +6,7 @@ import {
   ProjectSecurityService,
 } from "@lore/core/api";
 import { type Project, projects, type User } from "@lore/core/schemas";
+import { displayName } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { FileService, files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
@@ -1117,11 +1118,16 @@ export class FeedbackController {
           ? {
               id: reporter.id,
               username: reporter.username ?? undefined,
+              // Through `displayName` (#Q3886), with no fallback: a reporter
+              // without a name is shown by the caller's own fallback.
               name:
-                [reporter.firstName, reporter.lastName]
-                  .filter((s): s is string => !!s?.trim())
-                  .join(" ")
-                  .trim() || undefined,
+                displayName(
+                  {
+                    firstName: reporter.firstName,
+                    lastName: reporter.lastName,
+                  },
+                  "",
+                ) || undefined,
               picture: reporter.picture ?? undefined,
             }
           : undefined,

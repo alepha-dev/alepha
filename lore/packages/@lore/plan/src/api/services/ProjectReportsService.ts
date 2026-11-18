@@ -5,6 +5,7 @@ import {
   reportsPeriodFiguresSchema,
   reportsQuestsSchema,
 } from "@lore/core/schemas";
+import { displayName } from "@lore/core/web";
 import { $inject, type Infer } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
@@ -956,10 +957,18 @@ export class ProjectReportsService {
     });
     return rows.map((row) => {
       const user = row.user;
-      const full = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
       return {
         userId: row.userId,
-        name: full || user?.username || row.userId.slice(0, 8),
+        // Through `displayName` (#Q3886): a capitalized name, else the
+        // username, else the id's head.
+        name: displayName(
+          {
+            firstName: user?.firstName,
+            lastName: user?.lastName,
+            username: user?.username,
+          },
+          row.userId.slice(0, 8),
+        ),
         picture: user?.picture ?? undefined,
       };
     });
