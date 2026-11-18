@@ -156,6 +156,11 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+        # The one job of Verify that saves the node_modules cache, and one of
+        # the three that check the lockfile (see the setup action).
+        with:
+          save-cache: "true"
+          check-lockfile: "true"
 
       - name: Clean
         run: yarn clean
@@ -478,6 +483,8 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+        with:
+          check-lockfile: "true"
 
       - name: Lint Project
         run: yarn lint
@@ -808,6 +815,8 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+        with:
+          check-lockfile: "true"
 
       # `gen:docs` then `gen:tree`: the framework's generated reference and
       # the tree of all three products. `gen:tree` reads the changelog from

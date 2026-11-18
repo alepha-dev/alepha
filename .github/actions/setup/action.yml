@@ -1,6 +1,26 @@
 name: Setup
 description: Setup Node.js with Yarn
 
+# What an install produces is cached, not what it downloads (#Q3883): every
+# `node_modules` folder and Yarn's install state, keyed on the lockfile. A hit
+# skips both the 1.15 GB Yarn download cache and the install, which together
+# were 54 s of every job. A miss is the old path, unchanged.
+inputs:
+  save-cache:
+    description: >-
+      Save the node_modules cache when this job had to install. One job per
+      workflow sets it: a new lockfile is a miss in every job at once, and
+      each would otherwise tar 1.4 GB to learn another job already had.
+    required: false
+    default: "false"
+  check-lockfile:
+    description: >-
+      Fail when yarn.lock is out of step with a package.json. An install does
+      this by itself, and a cache hit skips the install: a checks job asks
+      for it, so a stale lockfile stays red.
+    required: false
+    default: "false"
+
 runs:
   using: composite
   steps:
@@ -40,14 +60,86 @@ runs:
       with:
         bun-version: "1.3.14"
 
+    # A lockfile-only install, then a diff: `--immutable` refuses to combine
+    # with `--mode=update-lockfile`, and CI turns immutable on by itself, hence
+    # the variable. It links nothing and downloads nothing a complete lockfile
+    # already names.
+    #
+    # ⚠️ Before the cache restore, on purpose: this run writes
+    # `.yarn/install-state.gz` with no link data in it, and the restore (or
+    # the install, on a miss) has to be what leaves that file behind.
+    #
+    # When it runs, this is the first `yarn` invocation, so it is where
+    # corepack downloads the version `packageManager` names.
+    - name: Lockfile is up to date
+      if: inputs.check-lockfile == 'true'
+      env:
+        YARN_ENABLE_IMMUTABLE_INSTALLS: "false"
+      run: |
+        fresh() {
+          if ! git diff --exit-code -- yarn.lock; then
+            echo "::error title=Stale yarn.lock::yarn.lock is out of step with a package.json. Run yarn install and commit the lockfile."
+            exit 1
+          fi
+          exit 0
+        }
+        log="$RUNNER_TEMP/yarn-install.log"
+        for attempt in 1 2 3; do
+          if yarn install --mode=update-lockfile 2>&1 | tee "$log"; then
+            fresh
+          fi
+          if ! grep -qF 'handler was attached after the promise settled' "$log"; then
+            exit 1
+          fi
+          echo "::warning title=Yarn onCancel crash::yarn crashed in its HTTP retry path (attempt $attempt of 3)"
+          if [ "$attempt" -lt 3 ]; then
+            delay=$((5 * attempt * attempt))
+            echo "waiting ${delay}s before retrying"
+            sleep "$delay"
+          fi
+        done
+        exit 1
+      shell: bash
+
+    # ⚠️ The paths are spelled per product folder, never `**/node_modules`:
+    # that glob also matches every nested folder INSIDE a node_modules, which
+    # the archive would then hold twice. A workspace sits one or two levels
+    # under `apps/` or `packages/`; the step after the install fails the job
+    # that saves if a `node_modules` ever appears anywhere else, because a
+    # folder missing from a restore is a wrong version resolved in silence.
+    #
+    # No `restore-keys`: a near miss would restore an old tree, then need the
+    # download cache and an install on top, which is slower than a miss.
+    #
+    # Restore only. Every cache written from a pull request is private to it,
+    # so what a new pull request finds is what a job on `main` saved.
+    - name: Restore node_modules
+      id: modules
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          node_modules
+          docs/node_modules
+          framework/node_modules
+          framework/apps/*/node_modules
+          framework/apps/*/*/node_modules
+          framework/packages/*/node_modules
+          framework/packages/*/*/node_modules
+          lore/node_modules
+          lore/apps/*/node_modules
+          lore/apps/*/*/node_modules
+          lore/packages/*/node_modules
+          lore/packages/*/*/node_modules
+          .yarn/install-state.gz
+        key: ${{ runner.os }}-${{ runner.arch }}-node26-modules-v1-${{ hashFiles('yarn.lock', '.yarnrc.yml') }}
+
+    # Everything below runs on a miss only.
+
     # Asked of yarn rather than hardcoded to `~/.yarn/berry/cache`: the folder
     # is a yarn setting, and a path that silently stops matching turns into a
     # cache that never hits — slower every run, and green, so nobody looks.
-    #
-    # This is also the first `yarn` invocation, so it is where corepack
-    # downloads the version `packageManager` names. A failure here is a loud
-    # one, which is the point.
     - name: Resolve the Yarn cache folder
+      if: steps.modules.outputs.cache-hit != 'true'
       id: yarn-cache
       run: |
         folder="$(yarn config get cacheFolder)"
@@ -58,6 +150,7 @@ runs:
     # Keyed on the lockfile, with a prefix fallback so a dependency bump warms
     # from the previous install rather than downloading the whole tree again.
     - name: Cache Yarn downloads
+      if: steps.modules.outputs.cache-hit != 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.yarn-cache.outputs.folder }}
@@ -85,11 +178,14 @@ runs:
     #
     # Any other failure still fails on the first attempt. A blanket retry would
     # turn a real resolution error into three slow identical ones.
+    #
+    # ⚠️ The lockfile check above carries the same loop: change both.
     - name: Install Dependencies
+      if: steps.modules.outputs.cache-hit != 'true'
       run: |
         log="$RUNNER_TEMP/yarn-install.log"
         for attempt in 1 2 3; do
-          if yarn 2>&1 | tee "$log"; then
+          if yarn install 2>&1 | tee "$log"; then
             exit 0
           fi
           if ! grep -qF 'handler was attached after the promise settled' "$log"; then
@@ -104,3 +200,36 @@ runs:
         done
         exit 1
       shell: bash
+
+    - name: Every node_modules folder is one the cache covers
+      if: steps.modules.outputs.cache-hit != 'true' && inputs.save-cache == 'true'
+      run: |
+        covered='^(node_modules|(docs|framework|lore)/node_modules|(framework|lore)/(apps|packages)/[^/]+(/[^/]+)?/node_modules)$'
+        missed=$(find . -name node_modules -type d -prune | sed 's#^\./##' | grep -vE "$covered" || true)
+        if [ -n "$missed" ]; then
+          echo "::error title=node_modules outside the cache::Add these to the paths of both cache steps in .github/actions/setup/action.yml: $(echo $missed)"
+          exit 1
+        fi
+      shell: bash
+
+    # ⚠️ The same paths and key as the restore above, to the letter: the two
+    # are one cache only while they match.
+    - name: Save node_modules
+      if: steps.modules.outputs.cache-hit != 'true' && inputs.save-cache == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          node_modules
+          docs/node_modules
+          framework/node_modules
+          framework/apps/*/node_modules
+          framework/apps/*/*/node_modules
+          framework/packages/*/node_modules
+          framework/packages/*/*/node_modules
+          lore/node_modules
+          lore/apps/*/node_modules
+          lore/apps/*/*/node_modules
+          lore/packages/*/node_modules
+          lore/packages/*/*/node_modules
+          .yarn/install-state.gz
+        key: ${{ steps.modules.outputs.cache-primary-key }}
