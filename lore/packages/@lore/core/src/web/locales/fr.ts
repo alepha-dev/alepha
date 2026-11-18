@@ -3696,7 +3696,7 @@ export default {
   "epic.presets.done.hint": "Terminées",
   "epic.presets.shelved": "Mises de côté",
   "epic.presets.shelved.hint": "Mises de côté",
-  "epic.presets.reviews": "Revues ouvertes",
+  "epic.presets.reviews": "Demandes",
   "epic.presets.reviews.hint": "Une question de revue encore sans réponse",
   "epic.presets.all": "Toutes",
   "epic.presets.all.hint": "Toutes les épopées, sans filtre",

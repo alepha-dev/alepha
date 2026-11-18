@@ -3678,7 +3678,7 @@ export default {
   "epic.presets.done.hint": "Completed",
   "epic.presets.shelved": "Shelved",
   "epic.presets.shelved.hint": "Set aside",
-  "epic.presets.reviews": "Open reviews",
+  "epic.presets.reviews": "Asks",
   "epic.presets.reviews.hint": "A review question nobody answered yet",
   "epic.presets.all": "All",
   "epic.presets.all.hint": "Every epic, no filter",
