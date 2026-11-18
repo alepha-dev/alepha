@@ -13,8 +13,13 @@ const Avatar = (props: AvatarProps) => {
     <AvatarPrimitive.Root
       data-slot="avatar"
       data-size={size}
+      // The outline is the foreground at 10%, never a `mix-blend-mode`: a
+      // blended outline darkened in light and lightened in dark just the
+      // same, but a table of avatars (one per row, in a scrolling body under
+      // a sticky header) broke Chrome's painting, the page going blank
+      // around the avatars on hover.
       className={cn(
-        "group/avatar after:border-border relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten",
+        "group/avatar after:border-foreground/10 relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border data-[size=lg]:size-10 data-[size=sm]:size-6",
         className,
       )}
       {...rest}
