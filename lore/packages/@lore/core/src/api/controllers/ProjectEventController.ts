@@ -3,9 +3,12 @@ import { $action } from "alepha/server";
 
 import { projectEventCatalogPageSchema } from "../schemas/projectEventCatalogPageSchema.ts";
 import { projectEventFilterOptionsSchema } from "../schemas/projectEventFilterOptionsSchema.ts";
+import { projectEventListQuerySchema } from "../schemas/projectEventListQuerySchema.ts";
+import { projectEventPageSchema } from "../schemas/projectEventPageSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectEventCatalogService } from "../services/ProjectEventCatalogService.ts";
 import { ProjectEventFilters } from "../services/ProjectEventFilters.ts";
+import { ProjectEventReader } from "../services/ProjectEventReader.ts";
 
 /**
  * The events a project can emit, and what a subscription's filter may name
@@ -14,6 +17,7 @@ import { ProjectEventFilters } from "../services/ProjectEventFilters.ts";
 export class ProjectEventController {
   protected readonly catalog = $inject(ProjectEventCatalogService);
   protected readonly filters = $inject(ProjectEventFilters);
+  protected readonly reader = $inject(ProjectEventReader);
   protected readonly gate = $ownsProject({ param: "projectId" });
 
   getProjectEventCatalog = $action({
@@ -43,5 +47,18 @@ export class ProjectEventController {
     handler: async ({ params }) => ({
       items: await this.filters.options(params.projectId, params.resource),
     }),
+  });
+
+  listProjectEvents = $action({
+    use: [this.gate],
+    method: "GET",
+    path: "/projects/:projectId/events",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: projectEventListQuerySchema,
+      response: projectEventPageSchema,
+    },
+    handler: ({ params, query, user }) =>
+      this.reader.list(params.projectId, user, query),
   });
 }

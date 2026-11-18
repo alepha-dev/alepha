@@ -129,6 +129,7 @@ import { ProjectEventCatalog } from "./services/ProjectEventCatalog.ts";
 import { ProjectEventCatalogService } from "./services/ProjectEventCatalogService.ts";
 import { ProjectEventDelivery } from "./services/ProjectEventDelivery.ts";
 import { ProjectEventFilters } from "./services/ProjectEventFilters.ts";
+import { ProjectEventReader } from "./services/ProjectEventReader.ts";
 import { ProjectEvents } from "./services/ProjectEvents.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
@@ -293,6 +294,7 @@ export const LoreCoreApi = $module({
     ProjectEventCatalogService,
     ProjectEventFilters,
     ProjectEventController,
+    ProjectEventReader,
     // The nightly backfill of the Admin and Viewer ranks; nothing injects it.
     DefaultRankJobs,
     AutomationDispatchJobs,
@@ -692,6 +694,7 @@ export { ProjectRecipients } from "./services/ProjectRecipients.ts";
 export { SubscriptionService } from "./services/SubscriptionService.ts";
 export { SubscriptionController } from "./controllers/SubscriptionController.ts";
 export { ProjectEventController } from "./controllers/ProjectEventController.ts";
+export { ProjectEventReader } from "./services/ProjectEventReader.ts";
 export { ProjectEventCatalogService } from "./services/ProjectEventCatalogService.ts";
 export {
   ProjectEventFilters,

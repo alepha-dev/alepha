@@ -13,6 +13,7 @@ import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
 import { EpicCommand } from "./commands/EpicCommand.ts";
 import { ErrorCommand } from "./commands/ErrorCommand.ts";
+import { EventCommand } from "./commands/EventCommand.ts";
 import { FeedbackCommand } from "./commands/FeedbackCommand.ts";
 import { FolioCommand } from "./commands/FolioCommand.ts";
 import { HostCommand } from "./commands/HostCommand.ts";
@@ -29,6 +30,7 @@ import { RootCommand } from "./commands/RootCommand.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
 import { SigilCommand } from "./commands/SigilCommand.ts";
 import { StackCommand } from "./commands/StackCommand.ts";
+import { SubscriptionCommand } from "./commands/SubscriptionCommand.ts";
 import { UseCaseCommand } from "./commands/UseCaseCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
@@ -123,6 +125,8 @@ export const AlephaLoreCli = $module({
     DirectoryCommand,
     FeedbackCommand,
     ErrorCommand,
+    EventCommand,
+    SubscriptionCommand,
     AutomationCommand,
     QualityCommand,
     AppInstanceCommand,

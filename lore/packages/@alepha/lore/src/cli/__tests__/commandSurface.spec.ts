@@ -71,6 +71,7 @@ describe("the Lore CLI command surface", () => {
       "directory",
       "epic",
       "error",
+      "event",
       "feedback",
       "folio",
       "host",
@@ -88,6 +89,7 @@ describe("the Lore CLI command surface", () => {
       "secrets",
       "sigil",
       "stack",
+      "subscription",
       "usecase",
     ]);
   });
@@ -147,6 +149,8 @@ describe("the Lore CLI command surface", () => {
         "channel",
       ],
       error: ["list", "resolve", "forward"],
+      event: ["catalog", "list"],
+      subscription: ["list", "set"],
       deploy: ["status", "rollback"],
       directory: ["list", "create", "rename", "move", "delete"],
       epic: [
