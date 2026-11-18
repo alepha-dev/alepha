@@ -8,12 +8,7 @@ import {
   EmptyTitle,
   Segmented,
 } from "@alepha/ui";
-import {
-  canInProject,
-  currentProjectAtom,
-  formatReference,
-  type I18n,
-} from "@lore/core/web";
+import { canInProject, currentProjectAtom, type I18n } from "@lore/core/web";
 import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -31,7 +26,7 @@ import {
   PERSONA_KIND_LABEL_KEYS,
 } from "../personas/personaKindLabels.ts";
 import PersonaSheet from "../personas/PersonaSheet.tsx";
-import WarningNotice from "../shared/WarningNotice.tsx";
+import PersonasToCover from "../personas/PersonasToCover.tsx";
 import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
 
 /**
@@ -90,7 +85,7 @@ const PersonasPage = () => {
       .flatMap((it) => it.actors.map((a) => a.personaId)),
   );
   const uncovered = (personas.data ?? []).filter((it) => !passing.has(it.id));
-  const neverRun = cases.filter((it) => it.state === "never_run").length;
+  const neverRun = cases.filter((it) => it.state === "never_run");
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -135,45 +130,14 @@ const PersonasPage = () => {
         {useCases.data &&
         personas.data &&
         !coverHidden &&
-        (uncovered.length > 0 || neverRun > 0) ? (
-          <WarningNotice
-            className="mb-4"
-            data-testid="to-cover-banner"
+        (uncovered.length > 0 || neverRun.length > 0) ? (
+          <PersonasToCover
+            projectSlug={project.slug}
+            personas={uncovered}
+            useCases={neverRun}
             // Hidden until the page is opened again: nothing is stored.
             onDismiss={() => setCoverHidden(true)}
-          >
-            {/* Each item a phrase of its own: the personas by name, three at
-                most, then the use cases no one has run. */}
-            <span className="flex flex-wrap gap-x-4 gap-y-1">
-              <span className="font-semibold">
-                {tr("requirements.persona.toCover.title")}
-              </span>
-              {uncovered.slice(0, 3).map((it) => (
-                <span key={it.id}>
-                  {tr("requirements.persona.toCover.persona", {
-                    args: [formatReference("persona", it.number), it.name],
-                  })}
-                </span>
-              ))}
-              {uncovered.length > 3 ? (
-                <span>
-                  {tr("requirements.persona.toCover.more", {
-                    args: [String(uncovered.length - 3)],
-                  })}
-                </span>
-              ) : null}
-              {neverRun > 0 ? (
-                <span>
-                  {tr(
-                    neverRun === 1
-                      ? "requirements.persona.toCover.useCases.one"
-                      : "requirements.persona.toCover.useCases",
-                    { args: [String(neverRun)] },
-                  )}
-                </span>
-              ) : null}
-            </span>
-          </WarningNotice>
+          />
         ) : null}
         {personas.data && rows.length === 0 ? (
           // Centred in the content below the banner: no persona at all, or

@@ -1,5 +1,10 @@
-import { Button, Progress, Segmented } from "@alepha/ui";
+import { Progress } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import {
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableStatCard,
+} from "@alepha/ui/table";
 import {
   canInProject,
   currentProjectAtom,
@@ -12,14 +17,14 @@ import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
-  ChevronDown,
-  ChevronRight,
   CircleDot,
   ClipboardCheck,
+  Layers,
+  ListChecks,
   Plus,
   UsersRound,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
@@ -28,6 +33,7 @@ import { developmentKey } from "../usecases/developmentKey.ts";
 import {
   developmentOf,
   groupUseCases,
+  type UseCaseGroup,
   type UseCaseGrouping,
 } from "../usecases/groupUseCases.ts";
 import RunStateBadge from "../usecases/RunStateBadge.tsx";
@@ -35,31 +41,18 @@ import { USE_CASE_STATUS_LABEL_KEYS } from "../usecases/useCaseLabels.ts";
 import UseCaseSheet from "../usecases/UseCaseSheet.tsx";
 import UseCaseStatusBadge from "../usecases/UseCaseStatusBadge.tsx";
 import VerifyDialog from "../verify/VerifyDialog.tsx";
-
-const STATUSES = ["draft", "ready", "validated", "deprecated"] as const;
-
-const RUN_COUNTER_KEYS = {
-  passed: "requirements.run.state.passed",
-  failed: "requirements.run.state.failed",
-  in_development: "requirements.run.state.in_development",
-  never_run: "requirements.run.state.never_run",
-} as const;
-
-const GROUP_LABEL_KEYS = {
-  epic: "requirements.usecase.groupBy.epic",
-  persona: "requirements.usecase.groupBy.persona",
-  status: "requirements.usecase.groupBy.status",
-  none: "requirements.usecase.groupBy.none",
-} as const;
-
 import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
 
 /**
- * The Use cases page (#E153): counters that filter,
- * persona and status filters, group by epic (the default), persona, status
- * or none, collapsible groups, and one row per use case. The run columns
- * (last result, environments, Verify) arrive with the quests that bring
- * runs.
+ * The Use cases page (#E153): every use case of the project in one table,
+ * on one page (the whole list is already loaded for the counts the sidebar
+ * and the persona cards read), with counters that filter, search, persona,
+ * status and run filters, and groups that fold: by covering epic (the
+ * default), persona, status, or none.
+ *
+ * A use case covered by two epics, or played by two personas, shows in each
+ * of their groups: the table is handed one row per group and use case, and
+ * the counters count use cases, once each.
  */
 const UseCasesPage = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -71,7 +64,6 @@ const UseCasesPage = () => {
   const projectId = project?.id ?? 0;
   const [creating, setCreating] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const useCases = useQuery<UseCaseResource[]>(
     {
@@ -83,298 +75,274 @@ const UseCasesPage = () => {
     [useCaseApi, projectId],
   );
 
-  const [counter, setCounter] = useState("all");
-  const filters = useForm({
-    id: "use-case-filters",
+  // The grouping, outside the table's filters: it arranges the rows and
+  // narrows none of them.
+  const grouping = useForm({
+    id: "use-case-grouping",
     schema: z.object({
-      persona: z.text().optional(),
-      status: z.text().optional(),
       group: z.enum(["epic", "persona", "status", "none"]).optional(),
     }),
-    // Persona and status start empty: their placeholder says "all", and no
-    // "All ..." row stands in for a value.
     initialValues: { group: "epic" as const },
     handler: async () => {},
   });
-  const values = useFormValues(filters);
-  const persona = values.persona ?? "";
-  const status = values.status ?? "";
+  const group = (useFormValues(grouping).group ?? "epic") as UseCaseGrouping;
+
+  const all = useMemo(() => useCases.data ?? [], [useCases.data]);
+  const groups = useMemo(() => groupUseCases(all, group), [all, group]);
+  const rows = useMemo<UseCaseRow[]>(
+    () =>
+      groups.flatMap((it) => it.rows.map((row) => ({ ...row, group: it.key }))),
+    [groups],
+  );
 
   useSyncRequirementsCount("useCases", useCases.data);
   if (!project) return null;
-  const all = useCases.data ?? [];
+
+  const byKey = new Map(groups.map((it, index) => [it.key, { it, index }]));
   const personas = [
     ...new Map(
       all.flatMap((it) => it.actors).map((a) => [a.number, a]),
     ).values(),
   ].sort((a, b) => a.number - b.number);
-  const rows = all.filter(
-    (it) =>
-      (counter === "all" ||
-        (counter === "stale" ? it.stale : it.state === counter)) &&
-      (!status || it.status === status) &&
-      (!persona || it.actors.some((a) => String(a.number) === persona)),
-  );
-  const groups = groupUseCases(
-    rows,
-    (values.group ?? "epic") as UseCaseGrouping,
-  );
-  const counters = [
+  const canWrite = canInProject(project, "usecase:write");
+  const staleCount = all.filter((row) => row.stale).length;
+
+  const fields = {
+    search: { preset: "search" },
+    state: {
+      schema: z.array(z.string()),
+      label: tr("requirements.run.lastResult"),
+      icon: ListChecks,
+      mode: "default",
+      items: RUN_STATES.map((value) => ({
+        value,
+        label: tr(RUN_STATE_LABEL_KEYS[value]),
+      })),
+      control: { clearLabel: tr("requirements.usecase.filter.anyResult") },
+    },
+    status: {
+      schema: z.array(z.string()),
+      label: tr("requirements.usecase.filter.status"),
+      icon: CircleDot,
+      mode: "default",
+      items: STATUSES.map((value) => ({
+        value,
+        label: tr(USE_CASE_STATUS_LABEL_KEYS[value]),
+      })),
+      control: { clearLabel: tr("requirements.usecase.filter.anyStatus") },
+    },
+    persona: {
+      schema: z.string(),
+      label: tr("requirements.usecase.filter.persona"),
+      icon: UsersRound,
+      mode: "default",
+      items: personas.map((p) => ({
+        value: String(p.number),
+        label: `${formatReference("persona", p.number)} ${p.name}`,
+      })),
+      control: { clearLabel: tr("requirements.usecase.filter.anyPersona") },
+    },
+    stale: {
+      schema: z.boolean(),
+      label: tr("requirements.run.stale"),
+      icon: ClipboardCheck,
+    },
+  } satisfies DataTableFilterFields;
+
+  // Counters that are also quick filters: a click narrows the table to
+  // them, a second click clears it.
+  const cards: DataTableStatCard[] = [
     {
-      key: "all",
       label: tr(
-        (useCases.data ?? []).length === 1
+        all.length === 1
           ? "requirements.usecase.counter.all.one"
           : "requirements.usecase.counter.all",
       ),
-      count: all.length,
+      value: String(all.length),
     },
-    ...(["passed", "failed", "in_development", "never_run"] as const).map(
-      (it) => ({
-        key: it,
-        label: tr(RUN_COUNTER_KEYS[it]),
-        count: all.filter((row) => row.state === it).length,
-      }),
-    ),
+    ...RUN_STATES.map((state) => {
+      const count = all.filter((row) => row.state === state).length;
+      return {
+        label: tr(RUN_STATE_LABEL_KEYS[state]),
+        value: String(count),
+        tone:
+          state === "failed" && count > 0
+            ? ("danger" as const)
+            : state === "passed"
+              ? ("success" as const)
+              : undefined,
+        filter: { state: [state] },
+      };
+    }),
     {
-      key: "stale",
       label: tr("requirements.run.stale"),
-      count: all.filter((row) => row.stale).length,
+      value: String(staleCount),
+      tone: staleCount > 0 ? ("warning" as const) : undefined,
+      filter: { stale: true },
     },
   ];
-  const canWrite = canInProject(project, "usecase:write");
+
+  const groupLabel = (key: string) => {
+    const entry = byKey.get(key)?.it;
+    if (!entry) return key;
+    const count = tr(
+      entry.rows.length === 1
+        ? "requirements.usecase.group.count.one"
+        : "requirements.usecase.group.count",
+      { args: [String(entry.rows.length)] },
+    );
+    return (
+      <span className="flex items-center gap-2">
+        <span>{groupTitle(entry, tr)}</span>
+        {entry.progress ? (
+          <span className="text-muted-foreground text-xs font-normal">
+            {tr(developmentKey(entry.progress.total), {
+              args: [
+                String(entry.progress.completed),
+                String(entry.progress.total),
+              ],
+            })}
+          </span>
+        ) : null}
+        <span className="sr-only">{count}</span>
+      </span>
+    );
+  };
+
   const hrefOf = (row: UseCaseResource) =>
     router.path("projectUseCase", {
       params: { projectSlug: project.slug, useCaseNumber: String(row.number) },
     });
-  const toggle = (key: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <form
-        {...filters.props}
-        className="[&_:is(input,[role=combobox])]:bg-background chrome flex flex-col gap-3 border-b p-3"
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          <Segmented
-            size="sm"
-            value={counter}
-            onChange={setCounter}
-            options={counters.map((it) => ({
-              value: it.key,
-              label: `${it.count} ${it.label}`,
-            }))}
-          />
-          <div className="flex-1" />
-          <Button
-            type="button"
-            variant="outlined"
-            onClick={() => setVerifying(true)}
-          >
-            <ClipboardCheck className="size-4" />
-            {tr("requirements.verify.allStale", {
-              args: [String(all.filter((row) => row.stale).length)],
-            })}
-          </Button>
-          {canWrite ? (
-            <Button type="button" onClick={() => setCreating(true)}>
-              <Plus className="size-4" />
-              {tr("project.menu.create-usecase")}
-            </Button>
-          ) : null}
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Control
-            label={tr("requirements.usecase.filter.persona")}
-            input={filters.input.persona}
-            select
-            clearable
-            icon={UsersRound}
-            placeholder={tr("requirements.usecase.filter.anyPersona")}
-            clearLabel={tr("requirements.usecase.filter.anyPersona")}
-            items={personas.map((p) => ({
-              value: String(p.number),
-              label: `${formatReference("persona", p.number)} ${p.name}`,
-            }))}
-          />
-          <Control
-            label={tr("requirements.usecase.filter.status")}
-            input={filters.input.status}
-            select
-            clearable
-            icon={CircleDot}
-            placeholder={tr("requirements.usecase.filter.anyStatus")}
-            clearLabel={tr("requirements.usecase.filter.anyStatus")}
-            items={STATUSES.map((it) => ({
-              value: it,
-              label: tr(USE_CASE_STATUS_LABEL_KEYS[it]),
-            }))}
-          />
-          <Control
-            label={tr("requirements.usecase.groupBy")}
-            input={filters.input.group}
-            select
-            items={(["epic", "persona", "status", "none"] as const).map(
-              (it) => ({
-                value: it,
-                label: tr(GROUP_LABEL_KEYS[it]),
-              }),
-            )}
-          />
-        </div>
-      </form>
-
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {useCases.data && rows.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            {tr(
-              all.length === 0
-                ? "requirements.usecase.empty"
-                : "requirements.usecase.emptyFilter",
-            )}
-          </p>
-        ) : (
-          <table className="w-full text-sm" data-testid="use-cases-table">
-            <thead className="text-muted-foreground text-left text-xs">
-              <tr className="border-b">
-                <th className="py-2 pr-3 font-medium">
-                  {tr("requirements.usecase.col.useCase")}
-                </th>
-                <th className="py-2 pr-3 font-medium">
-                  {tr("requirements.usecase.col.actors")}
-                </th>
-                <th className="py-2 pr-3 font-medium">
-                  {tr("requirements.usecase.col.status")}
-                </th>
-                <th className="py-2 pr-3 font-medium">
-                  {tr("requirements.usecase.col.development")}
-                </th>
-                <th className="py-2 pr-3 font-medium">
-                  {tr("requirements.run.lastResult")}
-                </th>
-              </tr>
-            </thead>
-            {groups.map((group) => {
-              const open = !collapsed.has(group.key);
-              return (
-                <tbody key={group.key} data-testid="use-case-group">
-                  {group.kind !== "none" ? (
-                    <tr className="bg-muted/40 border-b">
-                      <td colSpan={5} className="py-1.5">
-                        <button
-                          type="button"
-                          className="flex items-center gap-1.5 text-xs font-semibold"
-                          aria-expanded={open}
-                          onClick={() => toggle(group.key)}
-                        >
-                          {open ? (
-                            <ChevronDown className="size-3.5" />
-                          ) : (
-                            <ChevronRight className="size-3.5" />
-                          )}
-                          {group.kind === "epic"
-                            ? `${formatReference("epic", group.number ?? 0)} ${group.label}`
-                            : group.kind === "persona"
-                              ? `${formatReference("persona", group.number ?? 0)} ${group.label}`
-                              : group.kind === "status"
-                                ? tr(
-                                    USE_CASE_STATUS_LABEL_KEYS[
-                                      group.label as (typeof STATUSES)[number]
-                                    ],
-                                  )
-                                : tr("requirements.usecase.group.unplanned")}
-                          <span className="text-muted-foreground font-normal">
-                            ·{" "}
-                            {tr(
-                              group.rows.length === 1
-                                ? "requirements.usecase.group.count.one"
-                                : "requirements.usecase.group.count",
-                              { args: [String(group.rows.length)] },
-                            )}
-                            {group.progress
-                              ? ` · ${tr(developmentKey(group.progress.total), { args: [String(group.progress.completed), String(group.progress.total)] })}`
-                              : ""}
-                          </span>
-                        </button>
-                      </td>
-                    </tr>
-                  ) : null}
-                  {open
-                    ? group.rows.map((row) => {
-                        const dev = developmentOf(row);
-                        return (
-                          <tr
-                            key={`${group.key}:${row.id}`}
-                            className="border-b"
-                            data-testid="use-case-row"
-                          >
-                            <td className="py-2 pr-3">
-                              <Link
-                                href={hrefOf(row)}
-                                className="hover:underline"
-                              >
-                                <span className="font-semibold">
-                                  {formatReference("usecase", row.number)}
-                                </span>{" "}
-                                {row.title}
-                              </Link>
-                            </td>
-                            <td className="py-2 pr-3">
-                              <ActorAvatars actors={row.actors} />
-                            </td>
-                            <td className="py-2 pr-3">
-                              <UseCaseStatusBadge status={row.status} />
-                            </td>
-                            <td className="py-2">
-                              {dev ? (
-                                <div className="flex items-center gap-2">
-                                  <Progress
-                                    className="w-20"
-                                    value={
-                                      dev.total
-                                        ? Math.round(
-                                            (dev.completed / dev.total) * 100,
-                                          )
-                                        : 0
-                                    }
-                                  />
-                                  <span className="text-muted-foreground text-xs">
-                                    {tr(developmentKey(dev.total), {
-                                      args: [
-                                        String(dev.completed),
-                                        String(dev.total),
-                                      ],
-                                    })}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">
-                                  {tr("requirements.usecase.noEpic")}
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2">
-                              <RunStateBadge
-                                state={row.state}
-                                stale={row.stale}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })
-                    : null}
-                </tbody>
+    <div
+      className="flex min-h-0 flex-1 flex-col p-2"
+      data-testid="use-cases-table"
+    >
+      <DataTable<UseCaseRow, typeof fields>
+        key={project.id}
+        className="min-h-0 flex-1"
+        persistenceKey={`lore.use-cases.${project.id}`}
+        data={rows}
+        pagination={false}
+        rowKey={(row) => `${row.group}:${row.id}`}
+        filters={{ fields }}
+        filter={(row, values) => matches(row, values)}
+        summary={{ cards }}
+        groupBy={
+          group === "none"
+            ? undefined
+            : {
+                key: (row) => row.group,
+                label: (key) => groupLabel(key),
+                order: (a, b) =>
+                  (byKey.get(a)?.index ?? 0) - (byKey.get(b)?.index ?? 0),
+              }
+        }
+        defaultSort={{ field: "useCase", direction: "asc" }}
+        onRowClick={(row) => void router.push(hrefOf(row))}
+        emptyState={{ title: tr("requirements.usecase.empty") }}
+        noMatchState={{ title: tr("requirements.usecase.emptyFilter") }}
+        toolbar={
+          <div className="w-44">
+            <Control
+              input={grouping.input.group}
+              label=""
+              select
+              icon={Layers}
+              aria-label={tr("requirements.usecase.groupBy")}
+              items={(["epic", "persona", "status", "none"] as const).map(
+                (it) => ({ value: it, label: tr(GROUP_LABEL_KEYS[it]) }),
+              )}
+            />
+          </div>
+        }
+        actions={[
+          {
+            icon: ClipboardCheck,
+            label: tr("requirements.verify.allStale", {
+              args: [String(staleCount)],
+            }),
+            onClick: () => setVerifying(true),
+          },
+          ...(canWrite
+            ? [
+                {
+                  icon: Plus,
+                  label: tr("project.menu.create-usecase"),
+                  primary: true,
+                  onClick: () => setCreating(true),
+                },
+              ]
+            : []),
+        ]}
+        columns={{
+          useCase: {
+            label: tr("requirements.usecase.col.useCase"),
+            sortable: true,
+            sortValue: (row) => row.number,
+            cell: (row) => (
+              <Link
+                href={hrefOf(row)}
+                className="hover:underline"
+                data-testid="use-case-row"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <span className="font-semibold">
+                  {formatReference("usecase", row.number)}
+                </span>{" "}
+                {row.title}
+              </Link>
+            ),
+          },
+          actors: {
+            label: tr("requirements.usecase.col.actors"),
+            cell: (row) => <ActorAvatars actors={row.actors} />,
+          },
+          status: {
+            label: tr("requirements.usecase.col.status"),
+            sortable: true,
+            // Draft to deprecated, the order a use case moves through.
+            sortValue: (row) => STATUSES.indexOf(row.status),
+            cell: (row) => <UseCaseStatusBadge status={row.status} />,
+          },
+          development: {
+            label: tr("requirements.usecase.col.development"),
+            cell: (row) => {
+              const dev = developmentOf(row);
+              return dev ? (
+                <div className="flex items-center gap-2">
+                  <Progress
+                    className="w-20"
+                    value={
+                      dev.total
+                        ? Math.round((dev.completed / dev.total) * 100)
+                        : 0
+                    }
+                  />
+                  <span className="text-muted-foreground text-xs">
+                    {tr(developmentKey(dev.total), {
+                      args: [String(dev.completed), String(dev.total)],
+                    })}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("requirements.usecase.noEpic")}
+                </span>
               );
-            })}
-          </table>
-        )}
-      </div>
+            },
+          },
+          lastResult: {
+            label: tr("requirements.run.lastResult"),
+            sortable: true,
+            sortValue: (row) => RUN_STATES.indexOf(row.state),
+            cell: (row) => (
+              <RunStateBadge state={row.state} stale={row.stale} />
+            ),
+          },
+        }}
+      />
       <VerifyDialog
         subject={{ kind: "allStale" }}
         open={verifying}
@@ -394,3 +362,84 @@ const UseCasesPage = () => {
 };
 
 export default UseCasesPage;
+
+/**
+ * One row of the table: a use case in one of its groups.
+ */
+type UseCaseRow = UseCaseResource & { group: string };
+
+const STATUSES = ["draft", "ready", "validated", "deprecated"] as const;
+
+const RUN_STATES = ["passed", "failed", "in_development", "never_run"] as const;
+
+const RUN_STATE_LABEL_KEYS = {
+  passed: "requirements.run.state.passed",
+  failed: "requirements.run.state.failed",
+  in_development: "requirements.run.state.in_development",
+  never_run: "requirements.run.state.never_run",
+} as const;
+
+const GROUP_LABEL_KEYS = {
+  epic: "requirements.usecase.groupBy.epic",
+  persona: "requirements.usecase.groupBy.persona",
+  status: "requirements.usecase.groupBy.status",
+  none: "requirements.usecase.groupBy.none",
+} as const;
+
+/**
+ * A group's title: the epic or persona by reference and name, the status by
+ * its label, or "No epic yet".
+ */
+const groupTitle = (
+  group: UseCaseGroup,
+  tr: (key: any, options?: any) => string,
+): string =>
+  group.kind === "epic"
+    ? `${formatReference("epic", group.number ?? 0)} ${group.label}`
+    : group.kind === "persona"
+      ? `${formatReference("persona", group.number ?? 0)} ${group.label}`
+      : group.kind === "status"
+        ? tr(
+            USE_CASE_STATUS_LABEL_KEYS[
+              group.label as (typeof STATUSES)[number]
+            ],
+          )
+        : tr("requirements.usecase.group.unplanned");
+
+/**
+ * The table's filter, which replaces the static mode's field matching: the
+ * persona is matched among a row's actors and the search spans the
+ * reference and the title.
+ */
+const matches = (
+  row: UseCaseRow,
+  values: {
+    search?: string;
+    state?: string[];
+    status?: string[];
+    persona?: string;
+    stale?: boolean;
+  },
+): boolean => {
+  const search = values.search?.trim().toLowerCase();
+  if (
+    search &&
+    !`${formatReference("usecase", row.number)} ${row.title}`
+      .toLowerCase()
+      .includes(search)
+  ) {
+    return false;
+  }
+  if (values.state?.length && !values.state.includes(row.state)) return false;
+  if (values.status?.length && !values.status.includes(row.status)) {
+    return false;
+  }
+  if (
+    values.persona &&
+    !row.actors.some((actor) => String(actor.number) === values.persona)
+  ) {
+    return false;
+  }
+  if (values.stale && !row.stale) return false;
+  return true;
+};

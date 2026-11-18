@@ -102,7 +102,10 @@ describe("PlateLayout", () => {
   it("draws a rule under folder tabs only with tabsBorder", async () => {
     // Whole class tokens: `border-border` contains `border-b` as text.
     const band = (view: Awaited<ReturnType<typeof mount>>) =>
-      view.getByTestId("probe-tabs").parentElement!.className.split(/\s+/);
+      view
+        .getByTestId("probe-tabs")
+        .closest('[data-slot="plate-band"]')!
+        .className.split(/\s+/);
 
     const plain = await mount(
       <PlateLayout tabs={stateTabs} active="overview" tabsTestId="probe-tabs">

@@ -971,7 +971,7 @@ export const docsCorpus: DocsSection[] = [
     section: "The matrix",
     url: "https://alepha.dev/lore/docs/plan-traceability#the-matrix",
     capability: "plan",
-    text: "**Matrix** at the top of the Requirements tab replaces the list with a\nmatrix, three ways: **Requirement × Use case** (the default),\n**Requirement × Epic** and **Persona × Use case**. Each cell is **verified**,\n**failing**, **in development**, **stale**, **never run**, or empty when\nnothing links the two. A **Metric** column shows the value of the\nrequirements a measure verifies.\n\nAn empty row is a requirement nothing verifies. Clicking a row opens its\n**Impact chain**: the requirement, its criteria per use case, the epics\ncovering them, their quests and commits, the errors its criteria opened, and\nits release.",
+    text: "The **Matrix** tab of the Requirements page shows a matrix instead of the\nlist, three ways: **Req × UC**, requirements against use cases (the\ndefault), **Req × Epic** and **Persona × UC**. Each cell is **verified**,\n**failing**, **in development**, **stale**, **never run**, or empty when\nnothing links the two. A **Metric** column shows the value of the\nrequirements a measure verifies.\n\nAn empty row is a requirement nothing verifies. Clicking a row opens its\n**Impact chain**: the requirement, its criteria per use case, the epics\ncovering them, their quests and commits, the errors its criteria opened, and\nits release.",
   },
   {
     guide: "Traceability",

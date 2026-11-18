@@ -60,7 +60,12 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
         }));
 
   return (
-    <div className="flex flex-col gap-3" data-testid="traceability-matrix">
+    // The matrix fills its box and its table is the one scroll area, both
+    // ways, with the header row and the first column pinned.
+    <div
+      className="flex min-h-0 flex-1 flex-col gap-3"
+      data-testid="traceability-matrix"
+    >
       <div className="flex flex-wrap items-center gap-3">
         <Segmented
           size="sm"
@@ -89,11 +94,11 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
           ))}
         </span>
       </div>
-      <div className="overflow-x-auto rounded-md border">
+      <div className="min-h-0 flex-1 overflow-auto rounded-md border">
         <table className="w-full text-sm">
-          <thead className="text-muted-foreground text-xs">
+          <thead className="text-muted-foreground bg-background sticky top-0 z-20 text-xs">
             <tr className="border-b">
-              <th className="p-2 text-left font-medium">
+              <th className="bg-background sticky left-0 z-10 p-2 text-left font-medium">
                 {tr(
                   view === "persona"
                     ? "requirements.trace.col.persona"
@@ -121,7 +126,7 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
                     className="border-b"
                     data-testid="matrix-row"
                   >
-                    <td className="p-2">
+                    <td className="bg-background sticky left-0 z-10 p-2">
                       <ReferenceLink kind="persona" number={persona.number}>
                         {persona.name}
                       </ReferenceLink>
@@ -144,7 +149,7 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
                     data-testid="matrix-row"
                     onClick={() => props.onSelect(req.number)}
                   >
-                    <td className="p-2">
+                    <td className="bg-background sticky left-0 z-10 p-2">
                       <ReferenceLink kind="requirement" number={req.number}>
                         {req.statement}
                       </ReferenceLink>
@@ -189,9 +194,6 @@ const TraceabilityMatrix = (props: TraceabilityMatrixProps) => {
           </tbody>
         </table>
       </div>
-      <p className="text-muted-foreground text-xs">
-        {tr("requirements.trace.hint")}
-      </p>
     </div>
   );
 };

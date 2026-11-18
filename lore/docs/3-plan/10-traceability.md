@@ -6,9 +6,9 @@ of the **Requirements** option of the **Plan** capability.
 
 ## The matrix
 
-**Matrix** at the top of the Requirements tab replaces the list with a
-matrix, three ways: **Requirement × Use case** (the default),
-**Requirement × Epic** and **Persona × Use case**. Each cell is **verified**,
+The **Matrix** tab of the Requirements page shows a matrix instead of the
+list, three ways: **Req × UC**, requirements against use cases (the
+default), **Req × Epic** and **Persona × UC**. Each cell is **verified**,
 **failing**, **in development**, **stale**, **never run**, or empty when
 nothing links the two. A **Metric** column shows the value of the
 requirements a measure verifies.

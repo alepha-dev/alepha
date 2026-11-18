@@ -23,6 +23,14 @@ export interface DataTableSummaryPanelProps {
    */
   loading: boolean;
   /**
+   * Whether a tile's `filter` holds now, which draws it pressed.
+   */
+  isActive?: (card: DataTableStatCard) => boolean;
+  /**
+   * Called with a tile that has a `filter`, when it is clicked.
+   */
+  onSelect?: (card: DataTableStatCard) => void;
+  /**
    * The caller's node, under the cards. The table passes `undefined` for a
    * node that draws nothing.
    */
@@ -58,7 +66,9 @@ export const DataTableSummaryPanel = (props: DataTableSummaryPanelProps) => {
         aria-expanded={props.open}
         aria-controls={props.open ? bodyId : undefined}
         onClick={() => props.onOpenChange(!props.open)}
-        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex h-8 w-full items-center gap-1.5 rounded-t-md px-3 text-start text-xs font-medium outline-none focus-visible:ring-[3px]"
+        // The table row's hover fill (`hover:bg-hover-weak`), so the toggle
+        // reads as part of the same table.
+        className="text-muted-foreground hover:text-foreground hover:bg-hover-weak focus-visible:ring-ring/50 flex h-8 w-full items-center gap-1.5 rounded-t-md px-3 text-start text-xs font-medium transition-colors outline-none focus-visible:ring-[3px]"
       >
         <ChevronRight
           aria-hidden
@@ -92,7 +102,16 @@ export const DataTableSummaryPanel = (props: DataTableSummaryPanelProps) => {
               // abreast on a phone.
               <dl className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2">
                 {props.cards.map((card) => (
-                  <DataTableSummaryCard key={card.label} card={card} />
+                  <DataTableSummaryCard
+                    key={card.label}
+                    card={card}
+                    active={props.isActive?.(card)}
+                    onSelect={
+                      card.filter && props.onSelect
+                        ? () => props.onSelect?.(card)
+                        : undefined
+                    }
+                  />
                 ))}
               </dl>
             )

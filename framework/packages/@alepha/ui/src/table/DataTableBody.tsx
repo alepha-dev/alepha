@@ -1,16 +1,18 @@
 import { useI18n } from "alepha/react/i18n";
 import { Inbox, SearchX } from "lucide-react";
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
 import { Checkbox } from "../core/Checkbox.tsx";
 import { TableBody, TableCell, TableRow } from "../core/Table.tsx";
 import { cn } from "../core/utils.ts";
+import { DataTableGroupRow } from "./DataTableGroupRow.tsx";
 import { DataTableRowActionsInline } from "./DataTableRowActionsInline.tsx";
 import { DataTableRowActionsMenu } from "./DataTableRowActionsMenu.tsx";
 import { DataTableSkeletonRows } from "./DataTableSkeletonRows.tsx";
 import type {
   DataTableCellContext,
   DataTableEmptyState,
+  DataTableGroupBy,
   ColumnDef,
   RowActionContext,
   RowActionEntry,
@@ -71,11 +73,19 @@ export interface DataTableBodyProps<T> {
    */
   striped?: boolean;
   onRowClick?: (item: T) => void;
+  /**
+   * The table's `isRowActive`.
+   */
+  isRowActive?: (item: T) => boolean;
   onRowHover?: (item: T | undefined) => void;
   empty?: ReactNode;
   emptyMessage?: string;
   emptyState?: DataTableEmptyState;
   noMatchState?: DataTableEmptyState;
+  /**
+   * The table's `groupBy`: rows drawn under folding group headers.
+   */
+  groupBy?: DataTableGroupBy<T>;
 }
 
 /**
@@ -98,6 +108,11 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
   const { tr } = useI18n();
   const bodyRef = useRef<HTMLTableSectionElement>(null);
   const leaving = props.leaving ?? NO_KEYS;
+  // The groups the reader flipped from the default (open, or folded under
+  // `defaultCollapsed`). Not stored: a reload shows the default again.
+  const [flipped, setFlipped] = useState<ReadonlySet<string>>(NO_KEYS);
+  const colSpan =
+    visibleCols.length + (hasCheckbox ? 1 : 0) + (hasRowActions ? 1 : 0);
   useRowMotion({
     body: bodyRef,
     rowKeys,
@@ -147,6 +162,92 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
                 default: "Nothing here yet.",
               }),
         ));
+
+  const renderRow = (item: T, rowIndex: number) => {
+    const key = rowKeys[rowIndex];
+    const isSelected = selection.has(key);
+    const isLeaving = leaving.has(key);
+    const isActive = props.isRowActive?.(item) ?? false;
+    return (
+      <TableRow
+        key={key}
+        data-row-key={key}
+        data-leaving={isLeaving || undefined}
+        aria-hidden={isLeaving || undefined}
+        aria-current={isActive || undefined}
+        data-active={isActive || undefined}
+        inert={isLeaving || undefined}
+        onClick={() => props.onRowClick?.(item)}
+        // Per row, both halves. Moving from one row to the next fires
+        // the old row's `mouseleave` BEFORE the new row's `mouseenter`,
+        // so the clear can never wipe the value the enter just set.
+        onMouseEnter={() => props.onRowHover?.(item)}
+        onMouseLeave={() => props.onRowHover?.(undefined)}
+        className={cn(
+          // Stays: the global cursor rule in `styles.css` covers
+          // controls and menu items, and a `<tr>` is neither. It
+          // is also conditional, which no blanket rule could be -
+          // a row is only clickable when a handler was given.
+          props.onRowClick && "cursor-pointer",
+          props.striped && "even:bg-muted/40",
+          isSelected && "bg-muted/30",
+          isActive && "bg-muted/60 hover:bg-muted/60",
+        )}
+      >
+        {hasCheckbox && (
+          <TableCell
+            className={props.cellClassName}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => toggleRow(item)}
+              aria-label={tr("dataTable.selectRow", {
+                default: "Select row",
+              })}
+            />
+          </TableCell>
+        )}
+        {visibleCols.map(([key, def]) => (
+          <TableCell
+            key={key}
+            className={cn(
+              props.cellClassName,
+              def.className,
+              def.align === "right" && "text-end",
+              def.align === "center" && "text-center",
+            )}
+          >
+            {def.cell(item, props.cellContext)}
+          </TableCell>
+        ))}
+        {hasRowActions && (
+          <TableCell
+            className={cn(props.cellClassName, "text-end")}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {props.rowActionsDisplay === "inline" ? (
+              <DataTableRowActionsInline
+                actions={props.rowActions!(item)}
+                item={item}
+                ctx={rowCtx}
+              />
+            ) : (
+              <DataTableRowActionsMenu
+                actions={props.rowActions!(item)}
+                item={item}
+                ctx={rowCtx}
+              />
+            )}
+          </TableCell>
+        )}
+      </TableRow>
+    );
+  };
+
+  // Groups in row order (or `groupBy.order`), each with its rows' indexes
+  // into `data`, so a row keeps its key, selection and motion.
+  const groups = props.groupBy ? groupRows(data, props.groupBy) : undefined;
 
   return (
     <TableBody ref={bodyRef}>
@@ -199,84 +300,43 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
             )}
           </TableCell>
         </TableRow>
-      ) : (
-        data.map((item, rowIndex) => {
-          const key = rowKeys[rowIndex];
-          const isSelected = selection.has(key);
-          const isLeaving = leaving.has(key);
-          return (
-            <TableRow
-              key={key}
-              data-row-key={key}
-              data-leaving={isLeaving || undefined}
-              aria-hidden={isLeaving || undefined}
-              inert={isLeaving || undefined}
-              onClick={() => props.onRowClick?.(item)}
-              // Per row, both halves. Moving from one row to the next fires
-              // the old row's `mouseleave` BEFORE the new row's `mouseenter`,
-              // so the clear can never wipe the value the enter just set.
-              onMouseEnter={() => props.onRowHover?.(item)}
-              onMouseLeave={() => props.onRowHover?.(undefined)}
-              className={cn(
-                // Stays: the global cursor rule in `styles.css` covers
-                // controls and menu items, and a `<tr>` is neither. It
-                // is also conditional, which no blanket rule could be -
-                // a row is only clickable when a handler was given.
-                props.onRowClick && "cursor-pointer",
-                props.striped && "even:bg-muted/40",
-                isSelected && "bg-muted/30",
-              )}
-            >
-              {hasCheckbox && (
-                <TableCell
-                  className={props.cellClassName}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => toggleRow(item)}
-                    aria-label={tr("dataTable.selectRow", {
-                      default: "Select row",
-                    })}
-                  />
-                </TableCell>
-              )}
-              {visibleCols.map(([key, def]) => (
-                <TableCell
-                  key={key}
-                  className={cn(
-                    props.cellClassName,
-                    def.className,
-                    def.align === "right" && "text-end",
-                    def.align === "center" && "text-center",
-                  )}
-                >
-                  {def.cell(item, props.cellContext)}
-                </TableCell>
-              ))}
-              {hasRowActions && (
-                <TableCell
-                  className={cn(props.cellClassName, "text-end")}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {props.rowActionsDisplay === "inline" ? (
-                    <DataTableRowActionsInline
-                      actions={props.rowActions!(item)}
-                      item={item}
-                      ctx={rowCtx}
-                    />
-                  ) : (
-                    <DataTableRowActionsMenu
-                      actions={props.rowActions!(item)}
-                      item={item}
-                      ctx={rowCtx}
-                    />
-                  )}
-                </TableCell>
-              )}
-            </TableRow>
-          );
+      ) : groups ? (
+        groups.map((group) => {
+          const collapsed =
+            (props.groupBy?.defaultCollapsed ?? false) !==
+            flipped.has(group.key);
+          return [
+            <DataTableGroupRow
+              key={`group:${group.key}`}
+              groupKey={group.key}
+              label={
+                props.groupBy?.label
+                  ? props.groupBy.label(
+                      group.key,
+                      group.indexes.map((index) => data[index]),
+                    )
+                  : group.key
+              }
+              count={group.indexes.length}
+              collapsed={collapsed}
+              colSpan={colSpan}
+              cellClassName={props.cellClassName}
+              onToggle={() =>
+                setFlipped((previous) => {
+                  const next = new Set(previous);
+                  if (next.has(group.key)) next.delete(group.key);
+                  else next.add(group.key);
+                  return next;
+                })
+              }
+            />,
+            ...(collapsed
+              ? []
+              : group.indexes.map((index) => renderRow(data[index], index))),
+          ];
         })
+      ) : (
+        data.map((item, rowIndex) => renderRow(item, rowIndex))
       )}
     </TableBody>
   );
@@ -284,3 +344,23 @@ export const DataTableBody = <T,>(props: DataTableBodyProps<T>) => {
 
 const NO_KEYS: ReadonlySet<string> = new Set();
 const NO_FLASH = new Set<string>();
+
+/**
+ * Splits the rows into the groups of a `groupBy`: in row order unless
+ * `order` sorts the keys, each group holding its rows' indexes.
+ */
+const groupRows = <T,>(
+  data: T[],
+  groupBy: DataTableGroupBy<T>,
+): Array<{ key: string; indexes: number[] }> => {
+  const groups = new Map<string, number[]>();
+  data.forEach((item, index) => {
+    const key = groupBy.key(item);
+    const indexes = groups.get(key);
+    if (indexes) indexes.push(index);
+    else groups.set(key, [index]);
+  });
+  const keys = [...groups.keys()];
+  if (groupBy.order) keys.sort(groupBy.order);
+  return keys.map((key) => ({ key, indexes: groups.get(key)! }));
+};

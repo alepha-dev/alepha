@@ -148,7 +148,10 @@ describe("Use cases screens", () => {
     mount(await boot(["usecase:read", "usecase:write"]), <UseCasesPage />);
 
     await screen.findByText("Order as a guest");
-    const groups = screen.getAllByTestId("use-case-group");
+    // DataTable's group rows (`groupBy`), each folding its use cases.
+    const groups = [
+      ...document.querySelectorAll('[data-slot="data-table-group"]'),
+    ];
     expect(groups).toHaveLength(2);
     expect(groups[0].textContent).toContain("#E2 Checkout");
     expect(groups[0].textContent).toContain("1 / 3 quests");

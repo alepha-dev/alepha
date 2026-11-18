@@ -8,6 +8,7 @@ import type {
   DataTableFilters,
   DataTableNoFilterFields,
   DataTablePersistedFacets,
+  DataTableGroupBy,
   DataTableSummary,
   BulkAction,
   BulkMenuAction,
@@ -182,6 +183,12 @@ export interface DataTableBaseProps<
    */
   onRowClick?: (item: T) => void;
   /**
+   * The row the page has open somewhere else, a detail pane most often:
+   * drawn highlighted and marked `aria-current`, so the reader sees which
+   * row the pane shows. Read every render.
+   */
+  isRowActive?: (item: T) => boolean;
+  /**
    * Pointer handler invoked with the row under the pointer, and with
    * `undefined` when the pointer leaves the body.
    *
@@ -311,6 +318,11 @@ export interface DataTableBaseProps<
    * drawn at all.
    */
   summary?: DataTableSummary<F>;
+  /**
+   * Draws the rows in groups that fold, each under a header with its label
+   * and count. See {@link DataTableGroupBy}.
+   */
+  groupBy?: DataTableGroupBy<T>;
   /**
    * The page's explanation, behind a `?` icon at the end of the toolbar's icon
    * group, after refresh. It opens a hover card on hover, on keyboard focus

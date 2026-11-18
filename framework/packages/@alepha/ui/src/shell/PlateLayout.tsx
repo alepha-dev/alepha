@@ -30,6 +30,13 @@ export interface PlateLayoutProps {
    */
   tabsTestId?: string;
   /**
+   * Small actions at the end of the tab band, on the tabs' line: what
+   * applies to the page whichever tab is open, such as an export or an
+   * import: small minimal buttons (`size="sm"`), and the page's main
+   * action last, as a small primary button.
+   */
+  tabsActions?: ReactNode;
+  /**
    * How the tabs are drawn. `folder`, the default, is a band of tiles, the
    * active one opening into the body below it, like a browser's tabs;
    * `underline` is a plain bottom row with an underline under the active
@@ -84,6 +91,7 @@ export const PlateLayout = (props: PlateLayoutProps) => (
     )}
   >
     <div
+      data-slot="plate-band"
       className={cn(
         "bg-card/30 border-border shrink-0",
         // The folder band draws its own bottom line, which the active tile
@@ -94,40 +102,75 @@ export const PlateLayout = (props: PlateLayoutProps) => (
     >
       {props.plate}
       {props.tabsVariant !== "underline" ? (
-        <PlateFolderTabs
-          testId={props.tabsTestId}
-          className="rounded-none border-x-0 border-t-0 bg-transparent px-4"
-          tabs={props.tabs.map((tab) => ({
-            key: tab.key,
-            label: tab.label,
-            icon: tab.icon,
-            count: tab.count,
-            href: tab.href,
-            prefetch: tab.prefetch,
-            active: tab.key === props.active,
-            onSelect:
-              tab.href === undefined
-                ? () => props.onSelect?.(tab.key)
-                : undefined,
-          }))}
-        />
+        // The actions sit beside the strip, never in it: the strip is a
+        // `tablist`, which holds tabs only. They carry the band's bottom
+        // line on, so the band reads as one.
+        <div className="flex items-stretch">
+          <PlateFolderTabs
+            testId={props.tabsTestId}
+            className="min-w-0 flex-1 rounded-none border-x-0 border-t-0 bg-transparent px-4"
+            tabs={props.tabs.map((tab) => ({
+              key: tab.key,
+              label: tab.label,
+              icon: tab.icon,
+              count: tab.count,
+              href: tab.href,
+              prefetch: tab.prefetch,
+              active: tab.key === props.active,
+              onSelect:
+                tab.href === undefined
+                  ? () => props.onSelect?.(tab.key)
+                  : undefined,
+            }))}
+          />
+          {props.tabsActions ? (
+            <div
+              data-slot="plate-tabs-actions"
+              className="flex shrink-0 items-center gap-1.5 px-3 pt-1.5 shadow-[inset_0_-1px_0_0_var(--border)]"
+            >
+              {props.tabsActions}
+            </div>
+          ) : null}
+        </div>
       ) : (
-        <PlateTabBar
-          tabs={props.tabs}
-          active={props.active}
-          onSelect={props.onSelect}
-          testId={props.tabsTestId}
-          divided={props.plate !== undefined}
-        />
+        <div className="flex items-center">
+          <div className="min-w-0 flex-1">
+            <PlateTabBar
+              tabs={props.tabs}
+              active={props.active}
+              onSelect={props.onSelect}
+              testId={props.tabsTestId}
+              divided={props.plate !== undefined}
+            />
+          </div>
+          {props.tabsActions ? (
+            <div
+              data-slot="plate-tabs-actions"
+              className="flex shrink-0 items-center gap-1.5 px-3"
+            >
+              {props.tabsActions}
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
 
     {props.scroll === false ? (
       // A body that owns its scroll is a page of content under a toolbar of
-      // its own: the toolbar takes `chrome` (the folder tile's fill, so the
-      // active tile opens into it) and the content sits on the page's
-      // background. Without a fill here the shell behind it shows through.
-      <div className="bg-background flex min-h-0 flex-1 flex-col">
+      // its own. Under folder tabs it fades from `--muted`, the active
+      // tile's fill, down to the page's background, as the scrolling body
+      // does: the tile opens into the content with no seam, even when the
+      // content starts with a margin. It ends opaque, never transparent:
+      // without a fill the shell behind it shows through. Underline tabs
+      // have no tile to join and keep the page's background.
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          props.tabsVariant === "underline"
+            ? "bg-background"
+            : "from-muted to-background bg-linear-to-b",
+        )}
+      >
         {props.children}
       </div>
     ) : (
