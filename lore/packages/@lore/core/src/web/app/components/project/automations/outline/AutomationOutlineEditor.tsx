@@ -17,7 +17,7 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { isHttpError } from "alepha/server";
 import { Play, Redo2, Undo2 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { AutomationController } from "../../../../../../api/controllers/AutomationController.ts";
 import type { AutomationCatalogNodeType } from "../../../../../../api/schemas/automationCatalogNodeTypeSchema.ts";
@@ -35,10 +35,15 @@ import type { I18n } from "../../../../services/I18n.ts";
 import AutomationPresetSetup from "../AutomationPresetSetup.tsx";
 import { useAutomationDraft } from "../canvas/useAutomationDraft.ts";
 import { useAutomationLeaveGuard } from "../canvas/useAutomationLeaveGuard.ts";
+import { useAutomationLabels } from "../useAutomationLabels.ts";
+import AutomationOutlineAside, {
+  type AutomationOutlineCheck,
+} from "./AutomationOutlineAside.tsx";
 import AutomationOutlineBlockEditor from "./AutomationOutlineBlockEditor.tsx";
 import AutomationOutlineEventMenu from "./AutomationOutlineEventMenu.tsx";
 import { AutomationOutlineTones } from "./AutomationOutlineTones.ts";
 import { useAutomationOutlineNames } from "./useAutomationOutlineNames.ts";
+import { useAutomationOutlineWords } from "./useAutomationOutlineWords.ts";
 
 type AutomationCatalogPreset = ReturnType<
   typeof automationCatalogPresetSchema.parse
@@ -99,8 +104,10 @@ const AutomationOutlineEditor = (props: AutomationOutlineEditorProps) => {
   const [open, setOpen] = useState<string>();
   const [folded, setFolded] = useState<Record<string, boolean>>({});
   const [merging, setMerging] = useState<AutomationCatalogPreset>();
-  const [server, setServer] = useState<{ node?: string; message: string }>();
+  const [server, setServer] = useState<{ message: string }>();
   const [conflict, setConflict] = useState(false);
+  const labels = useAutomationLabels();
+  const sentences = useAutomationOutlineWords();
   const outline = new AutomationOutline();
   const graphs = new AutomationGraph();
   const graph = draft.graph;
@@ -121,17 +128,118 @@ const AutomationOutlineEditor = (props: AutomationOutlineEditorProps) => {
   const reading = outline.read(graph);
   const blocks = reading.outline ? reading.blocks : [];
   // An empty draft is a start, not an error: nothing is checked until the
-  // first choice.
+  // first choice (#Q3849). "Before you save" reads two sources, both in the
+  // browser: the graph's own check, and each node's required fields left
+  // empty. What only the server knows comes back at Save.
   const empty = graph.nodes.length === 0;
+  const unfilled = empty
+    ? []
+    : outline.unfilled(
+        graph,
+        catalog.nodeTypes,
+        catalog.channels
+          .filter((item) => !item.addressable)
+          .map((item) => item.key),
+      );
+  const filling = new Set(unfilled.map((item) => item.node));
+  const label = (id: string) => {
+    const node = graphs.node(graph, id);
+    if (!node) return id;
+    if (node.kind === "source") return labels.source(node);
+    if (node.kind === "condition") return tr("automation.outline.onlyIf");
+    if (node.kind === "read")
+      return tr(`automation.source.${node.type}`, { default: node.type });
+    return tr(`automation.action.${node.type}`, { default: node.type });
+  };
+  const field = (slot: string) =>
+    slot === "field"
+      ? tr("automation.outline.check.field")
+      : slot === "value"
+        ? tr("automation.outline.check.value")
+        : tr(`automation.setup.${slot}`, { default: slot });
+  // A message as a person reads it: no node id in front of it.
+  const bare = (message: string, node?: string) => {
+    let text = message
+      .replace(/^nodes\.\d+: /, "")
+      .replace(/^(?:node|source) '[^']+': /, "");
+    if (node && (text.startsWith(`${node}.`) || text.startsWith(`${node}[`)))
+      text = text
+        .slice(node.length)
+        .replace(/^\[[^\]]*\]/, "")
+        .replace(
+          /^\.([A-Za-z]+): /,
+          (_match, slot: string) => `${field(slot)}: `,
+        );
+    return text;
+  };
+  const line = (
+    node: string | undefined,
+    text: string,
+    tone: AutomationOutlineCheck["tone"],
+  ): AutomationOutlineCheck => ({
+    node,
+    text: node ? `${label(node)}: ${text}` : text,
+    short: text,
+    tone,
+  });
+  const position = new Map(
+    blocks
+      .flatMap((block) => outline.members(block))
+      .map((node, index) => [node.id, index] as const),
+  );
+  const checks: AutomationOutlineCheck[] = [];
   const found = empty ? [] : graphs.check(graph, catalog.entries);
-  const issues: Record<string, ReactNode[]> = {};
-  const general: string[] = [];
-  for (const issue of found)
-    if (issue.node) (issues[issue.node] ??= []).push(issue.message);
-    else general.push(issue.message);
-  if (server?.node && graph.nodes.some((item) => item.id === server.node))
-    (issues[server.node] ??= []).push(server.message);
-  else if (server) general.push(server.message);
+  for (const issue of found) {
+    const node = outline.nodeOf(graph, issue);
+    // A field left empty is said once, as To fill.
+    if (node && filling.has(node)) continue;
+    checks.push(line(node, bare(issue.message, node), "warning"));
+  }
+  for (const node of filling)
+    checks.push(
+      line(
+        node,
+        tr("automation.outline.check.toFill", {
+          args: [
+            unfilled
+              .filter((item) => item.node === node)
+              .map((item) => field(item.slot))
+              .join(", "),
+          ],
+        }),
+        "warning",
+      ),
+    );
+  if (!empty && !title.trim())
+    checks.push(
+      line(undefined, tr("automation.outline.check.name"), "warning"),
+    );
+  if (server) {
+    const node = outline.nodeOf(graph, server);
+    checks.push(line(node, bare(server.message, node), "danger"));
+  }
+  // An issue naming no node first, then each row in the outline's order.
+  checks.sort(
+    (left, right) =>
+      (left.node ? (position.get(left.node) ?? 0) + 1 : 0) -
+      (right.node ? (position.get(right.node) ?? 0) + 1 : 0),
+  );
+  const issues: Record<string, AutomationOutlineCheck[]> = {};
+  for (const check of checks)
+    if (check.node) (issues[check.node] ??= []).push(check);
+  const words = sentences(blocks);
+  // A line opens its row and scrolls to it, once it is drawn; a read's line
+  // opens its schedule's row.
+  const reveal = (node: string) => {
+    const block = blocks.find((item) => item.read?.id === node);
+    const target = block ? block.events[0].id : node;
+    setOpen(target);
+    requestAnimationFrame(() =>
+      document
+        .querySelector(`[data-testid="automation-outline-row-${target}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    );
+  };
 
   const changed = () => setServer(undefined);
   const change = (
@@ -261,15 +369,9 @@ const AutomationOutlineEditor = (props: AutomationOutlineEditorProps) => {
           // lands on the row it names, the draft kept as it is.
           if (isHttpError(error, 409)) setConflict(true);
           else if (error instanceof Error) {
-            const named = /^(?:node|source) '([^']+)': ([\s\S]*)$/.exec(
-              error.message,
-            );
-            setServer(
-              named
-                ? { node: named[1], message: named[2] }
-                : { message: error.message },
-            );
-            if (named) setOpen(named[1]);
+            setServer({ message: error.message });
+            const node = outline.nodeOf(graph, { message: error.message });
+            if (node) reveal(node);
           }
           throw error;
         }
@@ -316,7 +418,7 @@ const AutomationOutlineEditor = (props: AutomationOutlineEditorProps) => {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [history.undo, history.redo]);
-  const blocked = empty || found.length > 0 || !title.trim();
+  const blocked = empty || checks.length > 0;
   const several = blocks.length > 1;
   // The block holding the open row unfolds, so a refusal is seen.
   const holding = open
@@ -406,115 +508,113 @@ const AutomationOutlineEditor = (props: AutomationOutlineEditorProps) => {
           </AlertDescription>
         </Alert>
       )}
-      {general.length > 0 && (
-        <ul
-          role="alert"
-          className="text-warning-text flex flex-col gap-1 text-sm"
-          data-testid="automation-outline-general"
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div
+          className={cn(
+            "flex flex-col gap-4 rounded-xl p-3 sm:p-4",
+            AutomationOutlineTones.CANVAS,
+          )}
+          data-testid="automation-outline"
         >
-          {general.map((issue) => (
-            <li key={issue}>{issue}</li>
-          ))}
-        </ul>
-      )}
-      <div
-        className={cn(
-          "flex flex-col gap-4 rounded-xl p-3 sm:p-4",
-          AutomationOutlineTones.CANVAS,
-        )}
-        data-testid="automation-outline"
-      >
-        {!reading.outline && !empty && (
-          <p role="alert" className="text-warning-text text-sm">
-            {reading.message}
-          </p>
-        )}
-        {empty ? (
-          <div
-            className="bg-card ring-foreground/15 flex flex-col items-start gap-3 rounded-xl px-4 py-5 shadow-sm ring-1"
-            data-testid="automation-outline-empty"
-          >
-            <div>
-              <p className="font-medium">{tr("automation.outline.choose")}</p>
-              <p className="text-muted-foreground text-sm">
-                {tr("automation.outline.chooseHint")}
-              </p>
-            </div>
-            <AutomationOutlineEventMenu
-              prominent
-              label={tr("automation.outline.chooseEvent")}
-              events={starts}
-              disabled={save.loading}
-              onPick={addBlock}
-              testId="automation-outline-choose"
-            />
-            {presets.some((item) => !item.reason) && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-muted-foreground text-xs">
-                  {tr("automation.outline.quickStart")}
-                </span>
-                {presets
-                  .filter((item) => !item.reason)
-                  .map((item) => (
-                    <Button
-                      key={item.preset.key}
-                      variant="outlined"
-                      size="xs"
-                      data-testid={`automation-outline-quick-${item.preset.key}`}
-                      onClick={() => setMerging(item.preset)}
-                    >
-                      {tr(`automation.preset.${item.preset.key}.title`, {
-                        default: item.preset.title,
-                      })}
-                    </Button>
-                  ))}
+          {!reading.outline && !empty && (
+            <p role="alert" className="text-warning-text text-sm">
+              {reading.message}
+            </p>
+          )}
+          {empty ? (
+            <div
+              className="bg-card ring-foreground/15 flex flex-col items-start gap-3 rounded-xl px-4 py-5 shadow-sm ring-1"
+              data-testid="automation-outline-empty"
+            >
+              <div>
+                <p className="font-medium">{tr("automation.outline.choose")}</p>
+                <p className="text-muted-foreground text-sm">
+                  {tr("automation.outline.chooseHint")}
+                </p>
               </div>
-            )}
-          </div>
-        ) : (
-          blocks.map((block) => (
-            <AutomationOutlineBlockEditor
-              key={block.key}
-              graph={graph}
-              block={block}
-              catalog={catalog}
-              names={names}
-              issues={issues}
-              open={open}
-              onOpen={setOpen}
-              folded={
-                several && holding !== block.key && (folded[block.key] ?? true)
-              }
-              onFold={(value) => {
-                setFolded((current) => ({ ...current, [block.key]: value }));
-                if (value && holding === block.key) setOpen(undefined);
-              }}
-              removable={several}
-              disabled={save.loading}
-              onChange={change}
-              onAdd={add}
-            />
-          ))
-        )}
-        {!empty &&
-          reading.outline &&
-          (schedule ? null : (
-            <div className="flex flex-wrap items-center gap-2">
               <AutomationOutlineEventMenu
-                label={tr("automation.outline.addBlock")}
-                events={starts.filter(
-                  (item) => item.nodeType.type !== "schedule",
-                )}
-                presets={presets}
+                prominent
+                label={tr("automation.outline.chooseEvent")}
+                events={starts}
                 disabled={save.loading}
-                testId="automation-outline-add-block"
-                onPick={(nodeType) => {
-                  addBlock(nodeType);
-                }}
-                onPickPreset={setMerging}
+                onPick={addBlock}
+                testId="automation-outline-choose"
               />
+              {presets.some((item) => !item.reason) && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-muted-foreground text-xs">
+                    {tr("automation.outline.quickStart")}
+                  </span>
+                  {presets
+                    .filter((item) => !item.reason)
+                    .map((item) => (
+                      <Button
+                        key={item.preset.key}
+                        variant="outlined"
+                        size="xs"
+                        data-testid={`automation-outline-quick-${item.preset.key}`}
+                        onClick={() => setMerging(item.preset)}
+                      >
+                        {tr(`automation.preset.${item.preset.key}.title`, {
+                          default: item.preset.title,
+                        })}
+                      </Button>
+                    ))}
+                </div>
+              )}
             </div>
-          ))}
+          ) : (
+            blocks.map((block) => (
+              <AutomationOutlineBlockEditor
+                key={block.key}
+                graph={graph}
+                block={block}
+                catalog={catalog}
+                names={names}
+                issues={issues}
+                open={open}
+                onOpen={setOpen}
+                folded={
+                  several &&
+                  holding !== block.key &&
+                  (folded[block.key] ?? true)
+                }
+                onFold={(value) => {
+                  setFolded((current) => ({ ...current, [block.key]: value }));
+                  if (value && holding === block.key) setOpen(undefined);
+                }}
+                removable={several}
+                disabled={save.loading}
+                onChange={change}
+                onAdd={add}
+              />
+            ))
+          )}
+          {!empty &&
+            reading.outline &&
+            (schedule ? null : (
+              <div className="flex flex-wrap items-center gap-2">
+                <AutomationOutlineEventMenu
+                  label={tr("automation.outline.addBlock")}
+                  events={starts.filter(
+                    (item) => item.nodeType.type !== "schedule",
+                  )}
+                  presets={presets}
+                  disabled={save.loading}
+                  testId="automation-outline-add-block"
+                  onPick={(nodeType) => {
+                    addBlock(nodeType);
+                  }}
+                  onPickPreset={setMerging}
+                />
+              </div>
+            ))}
+        </div>
+        <AutomationOutlineAside
+          words={words}
+          checks={checks}
+          onReveal={reveal}
+        />
       </div>
       <Dialog
         open={!!merging}

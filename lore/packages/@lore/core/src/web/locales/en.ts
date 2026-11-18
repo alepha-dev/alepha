@@ -4737,6 +4737,27 @@ export default {
   "automation.outline.group.presets": "From a preset",
   "automation.outline.newDescription":
     "Choose what starts it and what it does. It is created disabled when you save, then tested and enabled on its page.",
+  "automation.outline.words.title": "In plain words",
+  "automation.outline.words.empty": "Nothing yet. It fills in as you build.",
+  "automation.outline.words.block": "When $1$2: $3.",
+  "automation.outline.words.onlyIf": ", only if $1 $2 $3",
+  "automation.outline.words.otherwise": "Otherwise: $1.",
+  "automation.outline.words.then": ", then ",
+  "automation.outline.words.and": "; and ",
+  "automation.outline.words.nothing": "nothing yet",
+  "automation.outline.check.title": "Before you save",
+  "automation.outline.check.none": "Nothing left to fill",
+  "automation.outline.check.toFill": "To fill: $1",
+  "automation.outline.check.name": "Give the automation a name",
+  "automation.outline.check.field": "Field",
+  "automation.outline.check.value": "Value",
+  "automation.outline.how.title": "How it runs",
+  "automation.outline.how.independent":
+    "Numbered actions are independent: one failing does not stop the others.",
+  "automation.outline.how.stops":
+    "A step after another runs only if that one succeeded, and may use what it produced; a failed step stops only what follows it.",
+  "automation.outline.how.decided":
+    "The condition is decided before anything happens.",
   "automation.outline.notOutline.title": "Built with the previous editor",
   "automation.outline.notOutline.description":
     "This automation has a shape the outline cannot show, so it stopped at its next run. Rebuild it as a new automation, then delete this one.",

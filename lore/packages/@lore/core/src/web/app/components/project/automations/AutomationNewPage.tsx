@@ -62,6 +62,7 @@ const AutomationNewPage = (props: AutomationNewPageProps) => {
   if (!project) return null;
   return (
     <AutomationPage
+      wide
       title={tr("automation.new")}
       description={tr("automation.outline.newDescription")}
     >

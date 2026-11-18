@@ -4760,6 +4760,28 @@ export default {
   "automation.outline.group.presets": "Depuis un modèle",
   "automation.outline.newDescription":
     "Choisissez ce qui la déclenche et ce qu'elle fait. Elle est créée désactivée à l'enregistrement, puis testée et activée sur sa page.",
+  "automation.outline.words.title": "En clair",
+  "automation.outline.words.empty":
+    "Rien pour l'instant. Cela se remplit au fil de la construction.",
+  "automation.outline.words.block": "Quand $1$2 : $3.",
+  "automation.outline.words.onlyIf": ", seulement si $1 $2 $3",
+  "automation.outline.words.otherwise": "Sinon : $1.",
+  "automation.outline.words.then": ", puis ",
+  "automation.outline.words.and": " ; et ",
+  "automation.outline.words.nothing": "rien pour l'instant",
+  "automation.outline.check.title": "Avant d'enregistrer",
+  "automation.outline.check.none": "Plus rien à remplir",
+  "automation.outline.check.toFill": "À remplir : $1",
+  "automation.outline.check.name": "Donnez un nom à l'automatisation",
+  "automation.outline.check.field": "Champ",
+  "automation.outline.check.value": "Valeur",
+  "automation.outline.how.title": "Comment elle s'exécute",
+  "automation.outline.how.independent":
+    "Les actions numérotées sont indépendantes : l'échec de l'une n'arrête pas les autres.",
+  "automation.outline.how.stops":
+    "Une étape qui en suit une autre ne s'exécute que si celle-ci a réussi, et peut utiliser ce qu'elle a produit ; une étape en échec n'arrête que ce qui la suit.",
+  "automation.outline.how.decided":
+    "La condition est décidée avant que quoi que ce soit ne se produise.",
   "automation.outline.notOutline.title": "Créée avec l'ancien éditeur",
   "automation.outline.notOutline.description":
     "Cette automatisation a une forme que le plan ne sait pas montrer : elle s'est arrêtée à son exécution suivante. Recréez-la comme une nouvelle automatisation, puis supprimez celle-ci.",

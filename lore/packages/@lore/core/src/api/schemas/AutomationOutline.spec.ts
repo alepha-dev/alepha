@@ -431,6 +431,100 @@ describe("AutomationOutline", () => {
     });
   });
 
+  describe("what is missing", () => {
+    const nodeTypes = entries.map((entry) => ({
+      type: entry.key,
+      kind: (entry.type === "event"
+        ? "source"
+        : entry.type === "action"
+          ? "action"
+          : "read") as "source" | "action" | "read",
+      ports: ["out" as const],
+      fields: entry.fields,
+      slots: entry.slots,
+      outputs: entry.outputs,
+      available: true,
+    }));
+
+    it("lists the required fields each node leaves empty, and no more", ({
+      expect,
+    }) => {
+      const block = outline.addBlock(AutomationOutline.EMPTY, {
+        type: "epic.completed",
+        config: {},
+      });
+      const quest = nodeTypes.find((item) => item.type === "createQuest")!;
+      const tag = nodeTypes.find((item) => item.type === "addTag")!;
+      const notifyType = nodeTypes.find((item) => item.type === "notify")!;
+      const first = outline.addAction(block.graph, block.id, "then", {
+        type: quest.type,
+        config: outline.config(quest),
+      });
+      const second = outline.addStep(first.graph, first.id, {
+        type: tag.type,
+        config: { ...outline.config(tag), tag: "retro" },
+      });
+      const guarded = outline.addCondition(second.graph, block.id, {
+        type: "compare",
+        config: { field: "quest_count", operator: "gt", value: "" },
+      });
+      const room = outline.addAction(guarded.graph, block.id, "otherwise", {
+        type: "notify",
+        config: { ...outline.config(notifyType), channels: ["room-1"] },
+      });
+      expect(outline.unfilled(room.graph, nodeTypes, ["room-1"])).toEqual([
+        { node: first.id, slot: "title" },
+        { node: first.id, slot: "description" },
+        { node: first.id, slot: "area" },
+        { node: second.id, slot: "quest" },
+        { node: guarded.id, slot: "value" },
+        { node: room.id, slot: "title" },
+        { node: room.id, slot: "text" },
+      ]);
+      expect(
+        outline
+          .unfilled(room.graph, nodeTypes)
+          .filter((item) => item.node === room.id)
+          .map((item) => item.slot),
+      ).toEqual(["title", "text", "recipient"]);
+    });
+
+    it("finds the node a refusal names, in the three forms it arrives in", ({
+      expect,
+    }) => {
+      const graph = builder.line({
+        source: "epic.completed",
+        actions: [notify()],
+      });
+      const bell: AutomationGraphValue = {
+        ...graph,
+        nodes: graph.nodes.map((node) => ({
+          ...node,
+          id: `feedback-created.${node.id}`,
+        })),
+      };
+      expect(outline.nodeOf(graph, { node: "action-1", message: "x" })).toBe(
+        "action-1",
+      );
+      expect(
+        outline.nodeOf(graph, {
+          message: "nodes.1: node 'action-1': title: Too small",
+        }),
+      ).toBe("action-1");
+      expect(
+        outline.nodeOf(bell, {
+          message: "feedback-created.action-1[inbox].recipient: not a member",
+        }),
+      ).toBe("feedback-created.action-1");
+      expect(
+        outline.nodeOf(graph, { message: "action-1.title: required" }),
+      ).toBe("action-1");
+      expect(
+        outline.nodeOf(graph, { message: "A graph needs a source" }),
+      ).toBeUndefined();
+    });
+  });
+
   describe("outcomes", () => {
     it("folds a node's rows to the worst outcome and every port taken", ({
       expect,
