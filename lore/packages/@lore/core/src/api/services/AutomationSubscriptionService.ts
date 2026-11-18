@@ -9,11 +9,11 @@ import type { AutomationSubscription } from "../schemas/automationSubscriptionSc
 import { AutomationSubscriptionScope } from "../schemas/AutomationSubscriptionScope.ts";
 import type { AutomationSubscriptionSetBody } from "../schemas/automationSubscriptionSetBodySchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationPresetRegistry } from "./AutomationPresetRegistry.ts";
 import { AutomationPresetService } from "./AutomationPresetService.ts";
 import { AutomationService } from "./AutomationService.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * "My subscription", in one project: a toggle (a bell) that turns one or
@@ -39,7 +39,7 @@ import { AutomationService } from "./AutomationService.ts";
 export class AutomationSubscriptionService {
   protected readonly graphs = $inject(AutomationGraph);
   protected readonly access = $inject(AutomationAccess);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly presets = $inject(AutomationPresetService);
   protected readonly service = $inject(AutomationService);

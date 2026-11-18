@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { AutomationD1Provider, AutomationDatabase } from "@lore/core/api";
+import { LorePrimaryD1Provider, LoreDatabase } from "@lore/core/api";
 import { Alepha } from "alepha";
 import {
   AlephaOrm,
@@ -14,7 +14,7 @@ import {
 import { afterAll, afterEach, beforeAll, describe, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 
-class TestAutomationD1Provider extends AutomationD1Provider {
+class TestLorePrimaryD1Provider extends LorePrimaryD1Provider {
   public override async migrate(): Promise<void> {}
 }
 
@@ -107,12 +107,12 @@ describe("Automation database boundaries", () => {
       if (driver === "d1") {
         alepha.with({
           provide: DatabaseProvider,
-          use: TestAutomationD1Provider,
+          use: TestLorePrimaryD1Provider,
         });
         alepha.set("cloudflare.env", { DB: proxy.env.DB });
       }
       alepha.with(AlephaOrm);
-      const database = alepha.inject(AutomationDatabase);
+      const database = alepha.inject(LoreDatabase);
       const provider = alepha.inject(DatabaseProvider);
       await alepha.start();
       await database.batch([
@@ -128,7 +128,7 @@ describe("Automation database boundaries", () => {
           sql`UPDATE source_rows SET value = 2 WHERE id = 1 RETURNING id`,
           sql`INSERT INTO event_intents VALUES ('first', 2) RETURNING id`,
         ]),
-      ).rejects.toThrow("Atomic automation batch failed");
+      ).rejects.toThrow("Atomic batch failed");
       expect(
         await provider.execute("SELECT value FROM source_rows WHERE id = 1"),
       ).toEqual([{ value: 1 }]);
@@ -157,10 +157,10 @@ describe("Automation database boundaries", () => {
         LOG_LEVEL: "error",
       },
     })
-      .with({ provide: DatabaseProvider, use: TestAutomationD1Provider })
+      .with({ provide: DatabaseProvider, use: TestLorePrimaryD1Provider })
       .with(AlephaOrm);
     alepha.set("cloudflare.env", { DB: binding });
-    const database = alepha.inject(AutomationDatabase);
+    const database = alepha.inject(LoreDatabase);
     const provider = alepha.inject(DatabaseProvider);
     await alepha.start();
     await provider.execute("SELECT 1 AS value");

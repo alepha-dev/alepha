@@ -1,8 +1,8 @@
 import { $inject } from "alepha";
 import { DbCacheProvider } from "alepha/orm";
 
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 import { ProjectDeletionService } from "./ProjectDeletionService.ts";
 
 /**
@@ -16,7 +16,7 @@ import { ProjectDeletionService } from "./ProjectDeletionService.ts";
  */
 export class AutomationProjectDeletion {
   protected readonly deletion = $inject(ProjectDeletionService);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly cache = $inject(DbCacheProvider);
 

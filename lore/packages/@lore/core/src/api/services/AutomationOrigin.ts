@@ -4,8 +4,8 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * A server-only context marker. Job provenance is stored separately from the
@@ -15,7 +15,7 @@ export class AutomationOrigin {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly persistence = $inject(AutomationPersistence);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly jobs = $repository(jobExecutionEntity);
   protected readonly time = $inject(DateTimeProvider);
 

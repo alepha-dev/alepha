@@ -447,7 +447,7 @@ describe("Deployment and release publication presets", () => {
         node: "action-1",
         context: opened.context,
       });
-    await expect(execute()).rejects.toThrow("Atomic automation batch failed");
+    await expect(execute()).rejects.toThrow("Atomic batch failed");
     expect((await entities.folios.getById(target.id)).content).toBe(
       "Concurrent human content",
     );

@@ -12,7 +12,6 @@ import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
 import type { AutomationRenderContext } from "./AutomationContextBuilder.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationDomainActions } from "./AutomationDomainActions.ts";
 import { AutomationEvaluator } from "./AutomationEvaluator.ts";
 import { AutomationGuards } from "./AutomationGuards.ts";
@@ -22,6 +21,7 @@ import { AutomationRosterWorker } from "./AutomationRosterWorker.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationSelections } from "./AutomationSelections.ts";
 import { AutomationTemplateRenderer } from "./AutomationTemplateRenderer.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * One job performs at most five ordered steps. The lease, original contexts,
@@ -29,7 +29,7 @@ import { AutomationTemplateRenderer } from "./AutomationTemplateRenderer.ts";
  */
 export class AutomationWorker {
   protected readonly rosterWorker = $inject(AutomationRosterWorker);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly evaluator = $inject(AutomationEvaluator);
   protected readonly claims = $inject(AutomationClaims);

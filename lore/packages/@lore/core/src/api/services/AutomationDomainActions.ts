@@ -8,13 +8,13 @@ import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
 import type { AutomationRenderContext } from "./AutomationContextBuilder.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
   AutomationMutationContext,
   type AutomationMutationState,
 } from "./AutomationMutationContext.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationTemplateRenderer } from "./AutomationTemplateRenderer.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Four feature-owned handlers, executing normal server actions as the current
@@ -32,7 +32,7 @@ export class AutomationDomainActions {
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly renderer = $inject(AutomationTemplateRenderer);
   protected readonly mutations = $inject(AutomationMutationContext);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
 
   public register(
     kind: AutomationDomainAction["kind"],

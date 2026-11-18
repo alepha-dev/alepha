@@ -1,0 +1,101 @@
+import { GuardedBatch, LoreDatabase } from "@lore/core/api";
+import { Alepha } from "alepha";
+import { DatabaseProvider, sql } from "alepha/orm";
+import { afterEach, beforeEach, describe, it } from "vitest";
+
+import { bootLore } from "./fixtures/bootLore.ts";
+
+/**
+ * The neutral guarded batch (#Q3899): a change and what must be written with
+ * it, together or not at all, with a guard that needs no feature's table.
+ * `alepha test --dialect postgres` runs it on Postgres; the D1 suite
+ * (`automation-durable-d1.spec.ts`) runs the same refusal on a local D1.
+ */
+describe("GuardedBatch", () => {
+  let alepha: Alepha;
+  let batch: GuardedBatch;
+  let provider: DatabaseProvider;
+  const count = async (table = "guarded_batch_test") =>
+    (
+      await provider.execute(
+        `SELECT CAST(COUNT(*) AS INTEGER) AS n FROM ${table}`,
+      )
+    )[0];
+
+  beforeEach(async () => {
+    alepha = Alepha.create({
+      env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "error" },
+    });
+    bootLore(alepha, ["api"]);
+    batch = alepha.inject(GuardedBatch);
+    provider = alepha.inject(DatabaseProvider);
+    await alepha.start();
+    await alepha
+      .inject(LoreDatabase)
+      .batch([
+        "CREATE TABLE guarded_batch_test (id TEXT PRIMARY KEY NOT NULL, value INTEGER NOT NULL)",
+      ]);
+  });
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  it("commits every statement when the guard holds, and leaves no guard row", async ({
+    expect,
+  }) => {
+    await batch.guarded(sql`TRUE`, [
+      sql`INSERT INTO guarded_batch_test (id, value) VALUES ('a', 1)`,
+      sql`INSERT INTO guarded_batch_test (id, value) VALUES ('b', 2)`,
+    ]);
+    expect(await count()).toEqual({ n: 2 });
+    expect(await count("batch_guards")).toEqual({ n: 0 });
+  });
+
+  it("aborts the whole batch when the guard is false", async ({ expect }) => {
+    await expect(
+      batch.guarded(sql`FALSE`, [
+        sql`INSERT INTO guarded_batch_test (id, value) VALUES ('a', 1)`,
+      ]),
+    ).rejects.toThrow("Atomic batch failed");
+    expect(await count()).toEqual({ n: 0 });
+    expect(await count("batch_guards")).toEqual({ n: 0 });
+  });
+
+  it("aborts the whole batch when a later statement fails", async ({
+    expect,
+  }) => {
+    await expect(
+      batch.guarded(sql`TRUE`, [
+        sql`INSERT INTO guarded_batch_test (id, value) VALUES ('a', 1)`,
+        sql`INSERT INTO guarded_batch_test (id, value) VALUES ('a', 2)`,
+      ]),
+    ).rejects.toThrow("Atomic batch failed");
+    expect(await count()).toEqual({ n: 0 });
+  });
+
+  it("tells a false guard from a failed driver", async ({ expect }) => {
+    // Both make `guarded` reject; only the first is a refusal a caller may
+    // skip, and `holds` asks the database which one it was.
+    const guard = sql`NOT EXISTS (SELECT 1 FROM guarded_batch_test WHERE id = 'a')`;
+    expect(await batch.holds(guard)).toBe(true);
+    await expect(
+      batch.guarded(guard, [
+        sql`INSERT INTO guarded_batch_test (id, value) VALUES ('a', 1)`,
+        sql`INSERT INTO guarded_batch_test (missing, value) VALUES ('b', 1)`,
+      ]),
+    ).rejects.toThrow("Atomic batch failed");
+    expect(await batch.holds(guard)).toBe(true);
+    await batch.guarded(guard, [
+      sql`INSERT INTO guarded_batch_test (id, value) VALUES ('a', 1)`,
+    ]);
+    expect(await batch.holds(guard)).toBe(false);
+  });
+
+  it("writes through no automation table", async ({ expect }) => {
+    await provider.execute("DELETE FROM automation_receipts");
+    await batch.guarded(sql`TRUE`, [
+      sql`INSERT INTO guarded_batch_test (id, value) VALUES ('a', 1)`,
+    ]);
+    expect(await count("automation_receipts")).toEqual({ n: 0 });
+  });
+});

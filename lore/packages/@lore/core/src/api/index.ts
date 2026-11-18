@@ -50,11 +50,11 @@ import { InvitationNotifications } from "./notifications/InvitationNotifications
 import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
-import { AutomationD1Provider } from "./providers/AutomationD1Provider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
 import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
 import { LoreOrganizationPolicyProvider } from "./providers/LoreOrganizationPolicyProvider.ts";
+import { LorePrimaryD1Provider } from "./providers/LorePrimaryD1Provider.ts";
 import { CapabilityRegistry } from "./schemas/CapabilityRegistry.ts";
 import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
@@ -377,7 +377,7 @@ export const LoreCoreApi = $module({
       alepha.with({
         optional: true,
         provide: DatabaseProvider,
-        use: AutomationD1Provider,
+        use: LorePrimaryD1Provider,
       });
     // Registered before any module, so these substitutions land before the
     // first `$audit` user or organization policy reader is constructed.
@@ -566,13 +566,13 @@ export { AutomationAccess } from "./services/AutomationAccess.ts";
 
 export { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
 
-export { AutomationDatabase } from "./services/AutomationDatabase.ts";
-export { AutomationD1Provider } from "./providers/AutomationD1Provider.ts";
+export { LoreDatabase } from "./services/LoreDatabase.ts";
+export { LorePrimaryD1Provider } from "./providers/LorePrimaryD1Provider.ts";
 
 export { AutomationClaims } from "./services/AutomationClaims.ts";
 export { AutomationEvents } from "./services/AutomationEvents.ts";
 export { AutomationRoster } from "./services/AutomationRoster.ts";
-export { AutomationAtomic } from "./services/AutomationAtomic.ts";
+export { GuardedBatch } from "./services/GuardedBatch.ts";
 export { AutomationDispatchRegistry } from "./services/AutomationDispatchRegistry.ts";
 
 export { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
@@ -585,7 +585,7 @@ export type {
 export { AutomationCollections } from "./services/AutomationCollections.ts";
 export type { AutomationCollectionFormatInput } from "./services/AutomationCollections.ts";
 
-export { AutomationSourceRepository } from "./services/AutomationSourceRepository.ts";
+export { SourceRepository } from "./services/SourceRepository.ts";
 export { AutomationOrigin } from "./services/AutomationOrigin.ts";
 
 export { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
@@ -632,6 +632,8 @@ export {
   type AutomationDomainHandler,
 } from "./services/AutomationDomainActions.ts";
 export { AutomationBatchRepository } from "./services/AutomationBatchRepository.ts";
+export { BatchRepository } from "./services/BatchRepository.ts";
+export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 
 export {
   AutomationHealth,

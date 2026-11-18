@@ -22,7 +22,6 @@ import { AutomationApprovalFence } from "./AutomationApprovalFence.ts";
 import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationConfigurationWrites } from "./AutomationConfigurationWrites.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
   AutomationDependencies,
   type AutomationDependencyCheck,
@@ -31,6 +30,7 @@ import {
 import { AutomationMutationAudit } from "./AutomationMutationAudit.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Shared values are executable configuration. Consumers owned by another member
@@ -38,7 +38,7 @@ import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
  */
 export class AutomationVariables {
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly writes = $inject(AutomationConfigurationWrites);
   protected readonly approvals = $inject(AutomationApprovalFence);
   protected readonly ruleRows = $inject(

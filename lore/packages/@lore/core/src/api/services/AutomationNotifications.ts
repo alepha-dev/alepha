@@ -17,12 +17,12 @@ import {
 } from "./AutomationChannels.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
 import type { AutomationRenderContext } from "./AutomationContextBuilder.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationNotificationOutbox } from "./AutomationNotificationOutbox.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
 import { AutomationTemplateRenderer } from "./AutomationTemplateRenderer.ts";
 import { CoreAutomationReferences } from "./CoreAutomationReferences.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * One enqueue is one durable recipient-channel effect. Delivery is reported
@@ -42,7 +42,7 @@ export class AutomationNotifications {
   protected readonly authority = $inject(AutomationAuthority);
   protected readonly claims = $inject(AutomationClaims);
   protected readonly outbox = $inject(AutomationNotificationOutbox);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly htmlPrefix = '<div style="white-space: pre-wrap">';
   protected readonly htmlSuffix = "</div>";
 

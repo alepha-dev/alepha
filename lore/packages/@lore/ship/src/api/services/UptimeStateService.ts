@@ -1,4 +1,4 @@
-import { AutomationSourceRepository } from "@lore/core/api";
+import { SourceRepository } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -35,9 +35,7 @@ export interface UptimeTransition {
 export class UptimeStateService {
   protected readonly monitors = $repository(monitors);
   protected readonly incidents = $repository(monitorIncidents);
-  protected readonly sources = $inject(
-    AutomationSourceRepository.of(monitorIncidents),
-  );
+  protected readonly sources = $inject(SourceRepository.of(monitorIncidents));
   protected readonly projects = $repository(projects);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly fields = $inject(UptimeAutomationFields);

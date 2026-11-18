@@ -1,0 +1,86 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "5b541120-9dbd-410f-bffe-91385c473e17",
+  "prevIds": ["cee83c8a-ffe0-4523-a3ec-807611233d1e"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "batch_guards"],
+      "writes": [
+        "s|tbl|public.batch_guards",
+        "n|tbl|public.batch_guards",
+        "e|tbl|public.batch_guards",
+        "n|rel|public.batch_guards",
+        "n|type|public.batch_guards",
+        "n|rel|public.batch_guards_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "batch_guards",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "batch_guards",
+        "name": "id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "batch_guards",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "batch_guards",
+        "name": "batch_guards_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "batch_guards",
+        "name": "batch_guards_valid_id",
+        "value": "id IS NOT NULL",
+        "entityType": "checks"
+      }
+    }
+  ]
+}

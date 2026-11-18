@@ -1,4 +1,4 @@
-import { AutomationSourceRepository } from "@lore/core/api";
+import { SourceRepository } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
@@ -24,7 +24,7 @@ export class HostExpiryJobs {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly hosts = $repository(hosts);
   protected readonly projects = $repository(projects);
-  protected readonly sources = $inject(AutomationSourceRepository.of(hosts));
+  protected readonly sources = $inject(SourceRepository.of(hosts));
   protected readonly fields = $inject(HostAutomationFields);
 
   public readonly notifyOverdue = $job({

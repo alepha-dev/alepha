@@ -4,6 +4,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import {
   DbCacheProvider,
   DbEntityNotFoundError,
+  SqlExpressionProvider,
   sql,
   type SQL,
   type SQLLike,
@@ -16,15 +17,15 @@ import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import type { AutomationGraphValue } from "../schemas/automationGraphSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationApprovalFence } from "./AutomationApprovalFence.ts";
-import { AutomationAtomic } from "./AutomationAtomic.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationIdentity } from "./AutomationIdentity.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import {
   AutomationRunEvidence,
   type AutomationPreparedEvidence,
 } from "./AutomationRunEvidence.ts";
+import { GuardedBatch } from "./GuardedBatch.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Occurrence identity survives rule edits and detail pruning. The partial
@@ -32,11 +33,12 @@ import {
  */
 export class AutomationClaims {
   protected readonly crypto = $inject(CryptoProvider);
+  protected readonly sqlx = $inject(SqlExpressionProvider);
   protected readonly approvals = $inject(AutomationApprovalFence);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly persistence = $inject(AutomationPersistence);
-  protected readonly database = $inject(AutomationDatabase);
-  protected readonly atomic = $inject(AutomationAtomic);
+  protected readonly database = $inject(LoreDatabase);
+  protected readonly atomic = $inject(GuardedBatch);
   protected readonly authority = $inject(AutomationAuthority);
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly identity = $inject(AutomationIdentity);
@@ -171,7 +173,7 @@ export class AutomationClaims {
       const runId = this.crypto.randomUUID();
       const guard = sql`NOT EXISTS ${this.persistence.receipts.subquery({ id })} AND ${this.activeRule(rule.id, input.revision, occurredAt)} ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`;
       try {
-        await this.atomic.guarded(rule.projectId, guard, [
+        await this.atomic.guarded(guard, [
           ...(input.mutation ? [input.mutation] : []),
           this.persistence.receipts.insertStatement({
             id,
@@ -672,7 +674,6 @@ export class AutomationClaims {
   ): Promise<void> {
     const occurrence = await this.lease(id, token);
     await this.atomic.guarded(
-      occurrence.projectId,
       sql`${this.live(occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery(
         {
           id,
@@ -715,7 +716,6 @@ export class AutomationClaims {
       throw new ConflictError("Program cursor changed");
     const next = occurrence.cursor + 1;
     await this.atomic.guarded(
-      occurrence.projectId,
       sql`${this.live(occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery(
         {
           id: input.receiptId,
@@ -754,7 +754,6 @@ export class AutomationClaims {
       throw new ConflictError("Program cursor changed");
     const next = occurrence.cursor + 1;
     await this.atomic.guarded(
-      occurrence.projectId,
       sql`${this.live(occurrence, token)} AND ${this.atCursor(id, occurrence.cursor)}`,
       [
         this.persistence.receipts.updateStatement(
@@ -933,7 +932,6 @@ export class AutomationClaims {
         throw new ConflictError("Effect is not the next planned program step");
       const now = this.dateTime.nowISOString();
       await this.atomic.guarded(
-        occurrence.projectId,
         sql`${this.live(occurrence, token)} ${
           // At most 100 deliveries per run. An occurrence with no run yet
           // has none, as the raw `run_id = NULL` counted.
@@ -1039,7 +1037,6 @@ export class AutomationClaims {
       let rows: Record<string, unknown>[][];
       try {
         rows = await this.atomic.guarded(
-          occurrence.projectId,
           sql`${this.live(occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery({ id: receipt.id, status: "claimed", leaseToken: token })} ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`,
           [
             ...input.statements,
@@ -1047,7 +1044,7 @@ export class AutomationClaims {
               { id: receipt.id },
               {
                 status: "committed",
-                result: this.database.resultFields(
+                result: this.resultFields(
                   this.safeResult(input.result),
                   input.resultExpressions ?? {},
                 ) as never,
@@ -1100,7 +1097,6 @@ export class AutomationClaims {
         },
       });
       await this.atomic.guarded(
-        occurrence.projectId,
         sql`${this.live(occurrence, token)} AND EXISTS ${this.persistence.receipts.subquery(
           {
             id: receipt.id,
@@ -1214,7 +1210,6 @@ export class AutomationClaims {
     const now = this.dateTime.nowISOString();
     try {
       await this.atomic.guarded(
-        occurrence.projectId,
         sql`${this.live(occurrence, token)} AND ${this.atCursor(id, occurrence.cursor)}`,
         [
           this.chunkStatement(occurrence, {
@@ -1278,7 +1273,6 @@ export class AutomationClaims {
         const now = this.dateTime.nowISOString();
         const runId = this.crypto.randomUUID();
         await this.atomic.guarded(
-          occurrence.projectId,
           sql`${this.live(occurrence, token)} AND ${this.atCursor(id, occurrence.cursor)}`,
           [
             this.chunkStatement(occurrence, {
@@ -1702,6 +1696,32 @@ export class AutomationClaims {
       if (rows.length < 50) break;
     }
     return pruned;
+  }
+  /**
+   * Internal domain IDs are read in the same batch as their generated row.
+   * Only scalar receipt result slots can be filled, never arbitrary JSON.
+   */
+  protected resultFields(
+    result: object,
+    fields: Record<string, SQLLike>,
+  ): SQLLike {
+    if (Object.keys(fields).length > 8)
+      throw new AlephaError("Too many derived effect results");
+    let value = sql`${JSON.stringify(result)}`;
+    for (const [name, expression] of Object.entries(fields)) {
+      if (
+        !["quest_id", "shortId", "folio_id", "revision", "release_id"].includes(
+          name,
+        )
+      )
+        throw new AlephaError("Invalid derived effect result");
+      const query =
+        typeof expression === "string"
+          ? sql.raw(expression)
+          : expression.getSQL();
+      value = this.sqlx.jsonSet(value, [name], query);
+    }
+    return value;
   }
 }
 

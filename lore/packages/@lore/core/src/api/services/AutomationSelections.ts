@@ -18,7 +18,7 @@ import {
   AutomationContextBuilder,
   type AutomationRenderContext,
 } from "./AutomationContextBuilder.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Named server adapters only. Every database filter is resolved and validated
@@ -30,7 +30,7 @@ export class AutomationSelections {
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly builder = $inject(AutomationContextBuilder);
   protected readonly bindings = $inject(AutomationTemplateBindings);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly time = $inject(DateTimeProvider);
   public register(key: string, handler: AutomationSelectionHandler): void {
     if (this.handlers.has(key))

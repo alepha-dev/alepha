@@ -2,7 +2,7 @@ import {
   AutomationAccess,
   AutomationAuthority,
   AutomationCatalog,
-  AutomationDatabase,
+  LoreDatabase,
   AutomationHealth,
   AutomationService,
   AutomationPersistence,
@@ -536,7 +536,7 @@ describe("Automation enable intent and health", () => {
     "binds health and its transition evidence atomically and ignores stale validation",
     async ({ expect }) => {
       const rule = await create();
-      const database = alepha.inject(AutomationDatabase);
+      const database = alepha.inject(LoreDatabase);
       await database.batch([
         sql`CREATE TRIGGER refuse_health BEFORE INSERT ON automation_runs BEGIN SELECT RAISE(ABORT, 'refuse health'); END`,
       ]);
@@ -544,7 +544,7 @@ describe("Automation enable intent and health", () => {
         alepha
           .inject(AutomationRunEvidence)
           .transition(rule.id, "broken", "Dependency unavailable", false),
-      ).rejects.toThrow("Atomic automation batch failed");
+      ).rejects.toThrow("Atomic batch failed");
       expect(await persistence.rules.getById(rule.id)).toEqual(rule);
       await database.batch([sql`DROP TRIGGER refuse_health`]);
       await enable(rule.id, false);

@@ -1,6 +1,6 @@
 import {
   AutomationClaims,
-  AutomationDatabase,
+  LoreDatabase,
   AutomationEvents,
   AutomationOrigin,
   AutomationPersistence,
@@ -60,7 +60,7 @@ class RecordingDispatcher extends JobQueueProvider {
     this.delivered.push(id);
   }
 }
-class SourceDatabase extends AutomationDatabase {
+class SourceDatabase extends LoreDatabase {
   public failEvents = false;
   public override batch(statements: SQLLike[]) {
     if (!this.failEvents) return super.batch(statements);
@@ -154,7 +154,7 @@ describe.skipIf(onPostgres)("Automation domain source integration", () => {
       },
     });
     alepha.with({ provide: DatabaseProvider, use: NodeSqliteProvider });
-    alepha.with({ provide: AutomationDatabase, use: SourceDatabase });
+    alepha.with({ provide: LoreDatabase, use: SourceDatabase });
     alepha.with({ provide: JobQueueProvider, use: RecordingDispatcher });
     alepha.with({ provide: CronProvider, use: ManualCronProvider });
     bootLore(alepha);

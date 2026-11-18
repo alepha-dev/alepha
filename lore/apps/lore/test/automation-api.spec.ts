@@ -10,7 +10,7 @@ import {
   AutomationService,
   AutomationVariableService,
   AutomationClaims,
-  AutomationDatabase,
+  LoreDatabase,
   AutomationEvents,
   AutomationWorker,
 } from "@lore/core/api";
@@ -980,7 +980,7 @@ describe("Shared automation application service and HTTP actions", () => {
   it.skipIf(onPostgres)(
     "rolls configuration and transition evidence back when their audit cannot be recorded",
     async ({ expect }) => {
-      const database = alepha.inject(AutomationDatabase);
+      const database = alepha.inject(LoreDatabase);
       const rule = await create();
       const before = await persistence.rules.getById(rule.id);
       const runs = await persistence.runs.count();
@@ -992,11 +992,11 @@ describe("Shared automation application service and HTTP actions", () => {
           title: "Must roll back",
           rule: automationLine(ast()),
         }),
-      ).rejects.toThrow("Atomic automation batch failed");
+      ).rejects.toThrow("Atomic batch failed");
       expect(await persistence.rules.count()).toBe(1);
       await expect(
         service.setEnabled(project.id, rule.id, user, true, 0),
-      ).rejects.toThrow("Atomic automation batch failed");
+      ).rejects.toThrow("Atomic batch failed");
       expect(await persistence.rules.getById(rule.id)).toEqual(before);
       expect(await persistence.runs.count()).toBe(runs);
       await database.batch([sql`DROP TRIGGER reject_configuration_audit`]);

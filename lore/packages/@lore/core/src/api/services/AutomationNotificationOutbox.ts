@@ -13,8 +13,8 @@ import { $repository } from "alepha/orm";
 
 import { automationReceipts } from "../entities/automationReceipts.ts";
 import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationNotificationSender } from "./AutomationNotificationSender.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Narrow enqueue seam for the existing notification job. Its registration
@@ -26,7 +26,7 @@ export class AutomationNotificationOutbox {
   protected readonly alepha = $inject(Alepha);
   protected readonly jobs = $inject(JobProvider);
   protected readonly notificationJobs = $inject(NotificationJobs);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly time = $inject(DateTimeProvider);
   protected readonly deliveries = $repository(notificationDeliveryEntity);
   protected readonly receipts = $repository(automationReceipts);

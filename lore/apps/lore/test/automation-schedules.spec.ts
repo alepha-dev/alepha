@@ -548,7 +548,7 @@ describe("Automation schedules and named selections", () => {
           ],
           result: { queued: true },
         }),
-    ).rejects.toThrow("Atomic automation batch failed");
+    ).rejects.toThrow("Atomic batch failed");
     expect((await entities.quests.getById(before.id)).reminderNextAt).toBe(
       before.reminderNextAt,
     );

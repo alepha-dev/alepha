@@ -976,7 +976,7 @@ records expose labels and IDs, never document bodies or raw deployment logs.
 - **Only a refusal pauses a rule.** `AutomationAuthority.checkPrimary` pauses on
   `AutomationDependencyError`, a missing row or a non-database 4xx; a transient
   driver fault is rethrown with no health transition.
-- **A failed reserve skips one rule.** `AutomationAtomic.holds` re-asks the
+- **A failed reserve skips one rule.** `GuardedBatch.holds` re-asks the
   guard after a failed batch: a guard that no longer holds is a
   `ConflictError`, which the schedule sweep and event dispatch skip per rule.
 - **A busy rule reschedules.** When another occurrence of the same rule is

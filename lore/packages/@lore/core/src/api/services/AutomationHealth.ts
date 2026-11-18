@@ -5,7 +5,6 @@ import { HttpError } from "alepha/server";
 import type { Automation } from "../entities/automations.ts";
 import { AutomationGraph } from "../schemas/AutomationGraph.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
   AutomationDependencies,
   type AutomationDependencyCheck,
@@ -16,6 +15,7 @@ import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
 import { BestEffort } from "./BestEffort.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Enable intent is explicit. Dependency recovery may restore health, while a
@@ -29,7 +29,7 @@ import { BestEffort } from "./BestEffort.ts";
  * rethrown, the rule stays as it was, and the next sweep asks again.
  */
 export class AutomationHealth {
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly dependencies = $inject(AutomationDependencies);
   protected readonly access = $inject(AutomationAccess);

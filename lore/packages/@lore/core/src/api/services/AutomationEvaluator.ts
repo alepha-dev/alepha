@@ -26,7 +26,6 @@ import {
   AutomationContextBuilder,
   type AutomationRenderContext,
 } from "./AutomationContextBuilder.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationDependencies } from "./AutomationDependencies.ts";
 import { AutomationDomainActions } from "./AutomationDomainActions.ts";
 import { AutomationEventSubjects } from "./AutomationEventSubjects.ts";
@@ -46,6 +45,7 @@ import {
 } from "./AutomationSelections.ts";
 import { AutomationTemplateRenderer } from "./AutomationTemplateRenderer.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Pure planning: all calls below read or render. Persistence and adapters that
@@ -53,7 +53,7 @@ import { AutomationVariables } from "./AutomationVariables.ts";
  */
 export class AutomationEvaluator {
   protected readonly audience = $inject(AutomationAudience);
-  protected readonly database = $inject(AutomationDatabase);
+  protected readonly database = $inject(LoreDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly access = $inject(AutomationAccess);
   protected readonly dependencies = $inject(AutomationDependencies);

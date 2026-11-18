@@ -17,9 +17,9 @@ import { automationNotificationVariablesSchema } from "../schemas/automationNoti
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
-import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { CoreAutomationReferences } from "./CoreAutomationReferences.ts";
+import { LoreDatabase } from "./LoreDatabase.ts";
 
 /**
  * Deferred outbox work rechecks the author and the actual recipient before
@@ -36,7 +36,7 @@ export class AutomationNotificationSender extends NotificationSenderService {
     if (payload.variables?.automationId === undefined)
       return super.send(payload, context);
     return this.alepha
-      .inject(AutomationDatabase)
+      .inject(LoreDatabase)
       .primary(() => this.sendAutomation(payload, context));
   }
   protected async sendAutomation(

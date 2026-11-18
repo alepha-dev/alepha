@@ -1,59 +1,36 @@
 import { AlephaError, type Infer, type ZObject, z } from "alepha";
-import {
-  type EntityPrimitive,
-  Repository,
-  sql,
-  type SQLLike,
-  type UpdateStatementOptions,
-} from "alepha/orm";
+import { type EntityPrimitive, Repository } from "alepha/orm";
+
+import { BatchRepository } from "./BatchRepository.ts";
 
 /**
- * A repository for writes that sit in an automation's guarded batch: the
- * framework's statement builders, with `touch: false` as the UPDATE default,
- * plus the effect preparation the automation engine shares across entities.
+ * The guarded batch's repository, plus the effect preparation the automation
+ * engine shares across entities.
  */
 export class AutomationBatchRepository<
   T extends ZObject,
-> extends Repository<T> {
-  protected static readonly batchRepositories = new WeakMap<
+> extends BatchRepository<T> {
+  protected static readonly automationBatchRepositories = new WeakMap<
     EntityPrimitive<any>,
     unknown
   >();
   public static override of<S extends ZObject>(
     entity: EntityPrimitive<S>,
   ): new () => AutomationBatchRepository<S> {
-    const cached = this.batchRepositories.get(entity) as
+    const cached = this.automationBatchRepositories.get(entity) as
       | (new () => AutomationBatchRepository<S>)
       | undefined;
     if (cached) return cached;
-    class BatchRepository extends AutomationBatchRepository<S> {
+    class AutomationEntityBatchRepository extends AutomationBatchRepository<S> {
       constructor() {
         super(entity);
       }
     }
-    this.batchRepositories.set(entity, BatchRepository);
-    return BatchRepository;
-  }
-  /**
-   * The framework's statement builder, with the automation engine's default:
-   * an UPDATE in a guarded batch never stamps `updatedAt` unless the patch
-   * carries it, as the raw statements it replaced did not.
-   */
-  public override updateStatement(
-    where: Parameters<Repository<T>["updateStatement"]>[0],
-    data: Parameters<Repository<T>["updateStatement"]>[1],
-    opts: UpdateStatementOptions = {},
-  ) {
-    return super.updateStatement(where, data, { touch: false, ...opts });
-  }
-  public andConditions(conditions: SQLLike[]): SQLLike {
-    return sql.join(
-      conditions.map(
-        (condition) =>
-          sql`(${typeof condition === "string" ? sql.raw(condition) : condition.getSQL()})`,
-      ),
-      sql` AND `,
+    this.automationBatchRepositories.set(
+      entity,
+      AutomationEntityBatchRepository,
     );
+    return AutomationEntityBatchRepository;
   }
   public async prepareEffectCreate(
     data: Parameters<Repository<T>["create"]>[0],
