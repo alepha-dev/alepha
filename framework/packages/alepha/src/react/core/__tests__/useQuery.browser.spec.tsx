@@ -936,3 +936,116 @@ describe("useQuery retry", () => {
     expect(result.current.error?.message).toBe("down");
   });
 });
+
+/**
+ * Staleness alone never opens the gate (#Q3898). `runOnInit` used to read the
+ * clock on every render, so the first re-render after `staleTime` flipped it
+ * true and sent a read nobody asked for. A stale entry is revalidated on
+ * mount, key or deps change, invalidation, `enabled` turning true, a tab
+ * return, a reconnect or `runEvery`, never by a re-render.
+ */
+describe("useQuery staleness", () => {
+  const setup = async () => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+    const dateTime = alepha.inject(DateTimeProvider);
+    dateTime.pause();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+    return { alepha, dateTime, wrapper };
+  };
+
+  test("a re-render past staleTime sends no request", async ({ expect }) => {
+    const { dateTime, wrapper } = await setup();
+    const handler = vi.fn(async () => handler.mock.calls.length);
+
+    const { result, rerender } = renderHook(
+      (_: { tick: number }) =>
+        useQuery({ key: ["lapse"], handler, staleTime: [10, "seconds"] }, []),
+      { wrapper, initialProps: { tick: 0 } },
+    );
+    await waitFor(() => expect(result.current.data).toBe(1));
+
+    await act(() => dateTime.travel([11, "seconds"]));
+    rerender({ tick: 1 });
+    rerender({ tick: 2 });
+    await act(async () => {});
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    // Still reported stale: the clock is read, it just does not fetch.
+    expect(result.current.isStale).toBe(true);
+  });
+
+  test("a write to another key does not revalidate a stale entry", async ({
+    expect,
+  }) => {
+    const { alepha, dateTime, wrapper } = await setup();
+    const handler = vi.fn(async () => handler.mock.calls.length);
+
+    const { result } = renderHook(
+      () =>
+        useQuery({ key: ["mine"], handler, staleTime: [10, "seconds"] }, []),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.data).toBe(1));
+
+    await act(() => dateTime.travel([11, "seconds"]));
+    // Every write hands each entry of the cache a new object.
+    act(() => alepha.inject(QueryCache).set(["other"], "x"));
+    await act(async () => {});
+
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  test("a deps change under the same key revalidates a stale entry", async ({
+    expect,
+  }) => {
+    const { dateTime, wrapper } = await setup();
+    const handler = vi.fn(async () => handler.mock.calls.length);
+
+    const { result, rerender } = renderHook(
+      (props: { filter: string }) =>
+        useQuery({ key: ["same-key"], handler, staleTime: [10, "seconds"] }, [
+          props.filter,
+        ]),
+      { wrapper, initialProps: { filter: "a" } },
+    );
+    await waitFor(() => expect(result.current.data).toBe(1));
+
+    await act(() => dateTime.travel([11, "seconds"]));
+    rerender({ filter: "b" });
+
+    await waitFor(() => expect(result.current.data).toBe(2));
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  test("enabled turning true over a stale entry fetches", async ({
+    expect,
+  }) => {
+    const { dateTime, wrapper } = await setup();
+    const handler = vi.fn(async () => handler.mock.calls.length);
+
+    const { result, rerender } = renderHook(
+      (props: { enabled: boolean }) =>
+        useQuery(
+          {
+            key: ["gated"],
+            handler,
+            staleTime: [10, "seconds"],
+            enabled: props.enabled,
+          },
+          [],
+        ),
+      { wrapper, initialProps: { enabled: true } },
+    );
+    await waitFor(() => expect(result.current.data).toBe(1));
+
+    rerender({ enabled: false });
+    await act(() => dateTime.travel([11, "seconds"]));
+    rerender({ enabled: true });
+
+    await waitFor(() => expect(result.current.data).toBe(2));
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+});
