@@ -17,8 +17,8 @@ the Alepha project), and its history came with it.
   a Linux container (`compose.yml`, `Dockerfile`, `ci.sh`). Docker must be
   running.
 - CI (**Verify**, `.github/workflows/verify.yml` at the repository root, job
-  `bay-check`, closed by `gate (bay)`) runs the same on every pull request
-  touching `bay/`. It is the gate.
+  `bay-check`, closed by `gate (bay)`) runs the same on every pull request.
+  It is the gate.
 - Two tests skip unless a tool is on PATH, and a skip prints `ok`: the ACME
   issuance test in `internal/tlsconf` needs `pebble` and `pebble-challtestsrv`
   (installed by CI and the container, same version in both), and the backup

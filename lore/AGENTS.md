@@ -45,11 +45,11 @@ core, plan, remember, ship <- plan-requirements
 
 The repository's workflow is "The workflow" in `../framework/AGENTS.md` (#Q3706): one pull request for an epic, one for a run of loose quests, one per quest otherwise; one commit per quest, naming its `#Q<n>`; `gh pr merge --auto --rebase` through the merge queue, so `main` receives every quest's commit; the commit `main` received recorded with `quest_commit_add` after the merge. A worktree goes under `.claude/worktrees/` at the repository root, never in a sibling folder such as `../alepha-<name>`. A small edit (a few lines, no decision anyone would look for later) needs no quest, but still lands through a pull request.
 
-A pull request touching `lore/`, `framework/` or `bay/` runs Lore's jobs of **Verify** (`.github/workflows/verify.yml` at the root: `lore-checks`, `lore-test` x2, `lore-test-postgres`, `lore-e2e` x6, `lore-e2e-cli`, `lore-docker`, closed by `gate (lore)`).
+Every pull request runs Lore's jobs of **Verify** (`.github/workflows/verify.yml` at the root: `lore-checks`, `lore-test` x2, `lore-test-postgres`, `lore-e2e` x6, `lore-e2e-cli`, `lore-docker`, closed by `gate (lore)`).
 
-⚠️ **`main` deploys to production with no human gate.** Once `gate (lore)` is green on a push to `main` (a merged pull request), Verify calls **Deploy** (`deploy.yml`, job `lore`), which runs `alepha deploy` on `lore-production`, unless the repository variable `LORE_DEPLOY`, the kill switch, is set to anything but `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/AGENTS.md` before pushing one.
+⚠️ **`main` deploys to production with no human gate.** Every push to `main` (a merged pull request, which the merge queue's Verify covered) starts **Deploy** (`deploy.yml`), whose job `lore` runs `alepha deploy` on `lore-production`, unless the repository variable `LORE_DEPLOY`, the kill switch, is set to anything but `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/AGENTS.md` before pushing one.
 
-**A hotfix can skip the wait** (#Q2707): `gh workflow run deploy.yml --ref main -f target=lore` (or `-f target=all`, which also ships the framework apps and the docs) deploys main as it stands, without waiting for Verify on main. Use it only when every commit main holds beyond the last deploy was green on its own branch, and never when one of them carries a migration. A dispatch from any other ref is skipped.
+**A hotfix can skip the wait** (#Q2707): `gh workflow run deploy.yml --ref main -f target=lore` (or `-f target=all`, which also ships the framework apps and the docs) deploys main as it stands, without looking for a Verify. Use it only when every commit main holds beyond the last deploy was green on its own branch, and never when one of them carries a migration. A dispatch from any other ref is skipped.
 
 ### Verifying
 

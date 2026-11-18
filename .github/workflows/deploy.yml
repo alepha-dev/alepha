@@ -1,11 +1,11 @@
 name: Deploy
-run-name: Deploy ${{ inputs.target }}
+run-name: Deploy ${{ inputs.target || 'all' }}
 
 permissions:
   contents: read
 
 # ────────────────────────────────────────────────────────────────────────
-# Every production deploy but Release's (#Q3832):
+# Every production deploy but Release's:
 #
 # - `lore`: lore.alepha.app (`lore-production`).
 # - `framework`: the showcase at ui.alepha.dev and the shop demo at
@@ -13,25 +13,40 @@ permissions:
 # - `docs`: alepha.dev, each section pinned to how its product ships, and
 #   latest.alepha.dev, every section from `main`.
 #
-# Called by Verify on a push to `main`, once per product whose gate is green.
-# By hand it ships `main` as it stands, WITHOUT waiting for Verify:
+# Deploy only deploys (#Q3869). A push to `main` deploys EVERYTHING, whatever
+# the commit touched: no detection, so no app is ever left behind by a filter
+# that guessed wrong. It verifies nothing itself: the merge queue's Verify ran
+# on this very commit before `main` moved to it, and the `verified` job below
+# refuses a push no queue run covers.
+#
+# By hand it ships `main` as it stands, WITHOUT looking for a Verify:
 #
 #   gh workflow run deploy.yml --ref main -f target=all
 #
 # for a redeploy, or a hotfix whose branch was already green (#Q2707). Never
 # over a Lore migration Verify has not run on `main`: read "Migration safety
-# on D1" in lore/apps/lore/AGENTS.md. A dispatch from any other ref deploys
-# nothing.
+# on D1" in lore/apps/lore/AGENTS.md. To verify first and deploy only if green,
+# dispatch Verify with `-f deploy=<target>`, which calls this workflow. A
+# dispatch from any other ref deploys nothing.
 #
-# Until #Q3832 this was Deploy Framework, Deploy Lore, Deploy All and the
-# deploy half of Docs, and the first two followed a Verify BY NAME through
-# `workflow_run`: renaming one stopped every deploy silently, and Deploy
-# Framework, whose Verify always finished first, raced Deploy Lore.
+# The order, and why (#Q3869):
 #
-# ⚠️ **Every job checks the event and the ref itself.** A pull request or a
-# merge queue run reaches a reusable workflow only if a caller is edited to
-# call it; the conditions below refuse anything but a push or a dispatch on
-# `main` all the same. A fork's pull request carries no secret either.
+#   lore  ->  docs, ui, shop (together)  ->  docs-latest
+#
+# - `lore` first: the others deploy THROUGH Lore with this commit's `lore`
+#   CLI, which may read an API this commit changes.
+# - `docs`, `ui` and `shop` at the same time, ON PURPOSE. It is dogfooding:
+#   three deploys reaching Lore in the same second is what Lore is for. They
+#   ran in a chain from #Q3843, after dying on `ECONNRESET`, `fetch failed`
+#   and `Authentication required` when started together, a fault nobody ever
+#   diagnosed. A deploy that fails that way is a Lore bug: fix it in Lore, do
+#   not put the chain back.
+# - `docs-latest` after `docs`: they are two copies of one Lore app, which
+#   keeps one `latest` tag per app.
+#
+# ⚠️ **Every job checks the event and the ref itself**, whatever its caller
+# did: nothing but a push or a dispatch on `main` deploys. A fork's pull
+# request carries no secret either.
 #
 # ⚠️ **No job is ever cancelled.** A deploy halfway through has already run
 # its migrations; cancelling it leaves the database ahead of the Worker. Each
@@ -40,6 +55,11 @@ permissions:
 # the waiting one, which leaves `main` deployed by the newest.
 # ────────────────────────────────────────────────────────────────────────
 on:
+  # Every merge: the merge queue moves `main` to the commit its Verify tested.
+  push:
+    branches:
+      - main
+  # From Verify, dispatched by hand with `-f deploy=<target>`.
   workflow_call:
     inputs:
       target:
@@ -66,6 +86,53 @@ env:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────
+  # A push to `main` deploys only a commit the merge queue verified. The
+  # queue merges by rebase and moves `main` to the very commit its Verify
+  # tested (#Q3834), so that run is found by this commit's sha.
+  #
+  # A push nobody verified (an admin push past the ruleset, a queue run that
+  # was cancelled) deploys NOTHING: this job fails, and every job below needs
+  # it. Deploy cannot run Verify itself, since Verify calls Deploy and a
+  # workflow may not call its caller. Verify and deploy by hand instead:
+  #
+  #   gh workflow run verify.yml --ref main -f deploy=all
+  #
+  # By hand or called, there is nothing to look up: a dispatch is a person's
+  # decision, and Verify's call comes after its own green gates.
+  #
+  # ⚠️ The lookup retries for a minute. The queue merges when the gates
+  # report, a moment before GitHub marks the whole run `success`, and a
+  # lookup in that gap would refuse a commit that was verified.
+  # ──────────────────────────────────────────────────────────────────────
+  verified:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    steps:
+      - name: The merge queue verified this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != push ]; then
+            echo "Not a push ($GITHUB_EVENT_NAME): nothing to look up."
+            exit 0
+          fi
+          for attempt in 1 2 3 4 5 6; do
+            green=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&event=merge_group&status=success" \
+              --jq '[.workflow_runs[] | select(.path == ".github/workflows/verify.yml")] | length')
+            if [ "${green:-0}" -gt 0 ]; then
+              echo "The merge queue verified $GITHUB_SHA."
+              exit 0
+            fi
+            echo "No green merge queue Verify for $GITHUB_SHA yet (attempt $attempt of 6)."
+            sleep 10
+          done
+          echo "::error title=Not verified::No merge queue Verify covers $GITHUB_SHA, so nothing deploys. Run: gh workflow run verify.yml --ref main -f deploy=all"
+          exit 1
+
+  # ──────────────────────────────────────────────────────────────────────
   # lore.alepha.app. There is no human gate: read "Migration safety on D1" in
   # lore/apps/lore/AGENTS.md before pushing a migration.
   #
@@ -73,10 +140,11 @@ jobs:
   # `true` stops every Lore deploy.
   # ──────────────────────────────────────────────────────────────────────
   lore:
+    needs: verified
     if: >-
       github.ref == 'refs/heads/main'
       && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
-      && contains(fromJSON('["all", "lore"]'), inputs.target)
+      && contains(fromJSON('["all", "lore"]'), inputs.target || 'all')
       && vars.LORE_DEPLOY == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -163,17 +231,17 @@ jobs:
   # which may read an API this commit changes. A skipped `lore` does not
   # hold them; a failed one does.
   #
-  # ⚠️ One at a time (#Q3843): lore, ui, shop, docs, docs-latest, each after
-  # the one before whatever its result. Started in the same second, the
-  # deploys through Lore failed on resets talking to it.
+  # ⚠️ `ui`, `shop` and `docs` start together once `lore` is done, on purpose
+  # (#Q3869): read the order at the top of this file before chaining them.
   # ──────────────────────────────────────────────────────────────────────
   ui:
-    needs: lore
+    needs: [verified, lore]
     if: >-
       always()
       && github.ref == 'refs/heads/main'
       && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
-      && contains(fromJSON('["all", "framework"]'), inputs.target)
+      && contains(fromJSON('["all", "framework"]'), inputs.target || 'all')
+      && needs.verified.result == 'success'
       && (needs.lore.result == 'success' || needs.lore.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -207,12 +275,13 @@ jobs:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
   shop:
-    needs: [lore, ui]
+    needs: [verified, lore]
     if: >-
       always()
       && github.ref == 'refs/heads/main'
       && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
-      && contains(fromJSON('["all", "framework"]'), inputs.target)
+      && contains(fromJSON('["all", "framework"]'), inputs.target || 'all')
+      && needs.verified.result == 'success'
       && (needs.lore.result == 'success' || needs.lore.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -258,15 +327,18 @@ jobs:
   #
   # ⚠️ It shares `deploy-docs` with `docs-latest` below because Lore keeps one
   # `latest` tag per app: two deploys at once could ship one build to the
-  # other's copy. After `lore` when both run, for the framework apps' reason.
+  # other's copy. So `docs-latest` needs `docs`, whatever its result, and the
+  # shared group keeps two runs' docs deploys apart. After `lore` when both
+  # run, for the framework apps' reason.
   # ──────────────────────────────────────────────────────────────────────
   docs:
-    needs: [lore, shop]
+    needs: [verified, lore]
     if: >-
       always()
       && github.ref == 'refs/heads/main'
       && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
-      && contains(fromJSON('["all", "docs"]'), inputs.target)
+      && contains(fromJSON('["all", "docs"]'), inputs.target || 'all')
+      && needs.verified.result == 'success'
       && (needs.lore.result == 'success' || needs.lore.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -311,12 +383,13 @@ jobs:
   # tree, for projects that vendor Alepha rather than install a release
   # (#Q3028).
   docs-latest:
-    needs: [lore, docs]
+    needs: [verified, lore, docs]
     if: >-
       always()
       && github.ref == 'refs/heads/main'
       && contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name)
-      && contains(fromJSON('["all", "docs"]'), inputs.target)
+      && contains(fromJSON('["all", "docs"]'), inputs.target || 'all')
+      && needs.verified.result == 'success'
       && (needs.lore.result == 'success' || needs.lore.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
