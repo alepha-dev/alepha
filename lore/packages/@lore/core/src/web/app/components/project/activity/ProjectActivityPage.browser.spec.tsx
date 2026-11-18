@@ -1,10 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { cleanup, render, waitFor, within } from "@testing-library/react";
 import { type Page, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -53,7 +47,15 @@ class FakeLinkProvider extends LinkProvider {
             return this.people;
           }
           if (prop === "getProjectActivityFilters") {
-            return { types: ["quest", "folio"], actions: ["create", "update"] };
+            return {
+              types: ["quest", "folio"],
+              actions: ["create", "update"],
+              pairs: [
+                { type: "quest", action: "create" },
+                { type: "quest", action: "update" },
+                { type: "folio", action: "update" },
+              ],
+            };
           }
           return {};
         },
@@ -326,17 +328,15 @@ describe("ProjectActivityPage", () => {
      * optional, so none is on the bar until it is added (#E58), and the menu
      * is where "offered" is decided.
      */
-    const offered = async (
-      screen: Awaited<ReturnType<typeof show>>,
-    ): Promise<string[]> => {
-      fireEvent.keyDown(screen.getByRole("button", { name: "Add filters" }), {
-        key: "ArrowDown",
-      });
-      const menu = await screen.findByRole("menu");
-      return within(menu)
-        .getAllByRole("menuitem")
-        .map((item) => item.textContent ?? "");
-    };
+    /**
+     * The filters drawn on the bar. Who, What, When and Resource are all
+     * `default` filters, on the bar from the start, so nothing is left in
+     * the "+" menu to read.
+     */
+    const onBar = (screen: Awaited<ReturnType<typeof show>>): string[] =>
+      [...screen.container.querySelectorAll("[data-filter]")].map(
+        (it) => it.getAttribute("data-filter") ?? "",
+      );
 
     it("is not offered on a one-member project", async ({ expect }) => {
       const screen = await show([row({})]);
@@ -345,19 +345,19 @@ describe("ProjectActivityPage", () => {
         expect(screen.getByText("Wire it")).toBeTruthy();
         expect(alepha!.inject(FakeLinkProvider).usersCalls).toBe(1);
       });
-      // Resource is on the bar from the start (a `default` filter), so the
-      // menu offers the rest: What, When, and Who only from two members up.
-      const items = await offered(screen);
-      expect(items.some((item) => item.startsWith("What"))).toBe(true);
-      expect(items.some((item) => item.startsWith("Who"))).toBe(false);
+      // What and When are on the bar from the start; Who only from two
+      // members up.
+      expect(onBar(screen)).toEqual(
+        expect.arrayContaining(["type", "action", "createdAt"]),
+      );
+      expect(onBar(screen)).not.toContain("userId");
     });
 
     it("is offered from two members up", async ({ expect }) => {
       const screen = await show([row({})], TWO);
 
-      await waitFor(async () => {
-        const items = await offered(screen);
-        expect(items.some((item) => item.startsWith("Who"))).toBe(true);
+      await waitFor(() => {
+        expect(onBar(screen)).toContain("userId");
       });
     });
 
@@ -410,9 +410,8 @@ describe("ProjectActivityPage", () => {
     }) => {
       const screen = await show([row({})], TWO);
 
-      await waitFor(async () => {
-        const items = await offered(screen);
-        expect(items.some((item) => item.startsWith("Who"))).toBe(true);
+      await waitFor(() => {
+        expect(onBar(screen)).toContain("userId");
       });
       expect(alepha!.inject(FakeLinkProvider).usersCalls).toBe(1);
     });

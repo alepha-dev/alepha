@@ -19,6 +19,12 @@ import VerifyDialog, {
 
 export interface VerifyMenuProps {
   subject: Extract<VerifySubject, { kind: "usecase" | "persona" }>;
+  /**
+   * `icon` (the default) is the robot glyph of a detail page's actions;
+   * `button` an outlined button reading "Verify", for a card's footer.
+   */
+  variant?: "icon" | "button";
+  className?: string;
 }
 
 /**
@@ -41,16 +47,26 @@ const VerifyMenu = (props: VerifyMenuProps) => {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button
-              variant="minimal"
-              size="icon-lg"
-              aria-label={tr("requirements.verify")}
-              title={tr("requirements.verify")}
-              data-testid="verify-menu"
-            />
+            props.variant === "button" ? (
+              <Button
+                variant="outlined"
+                className={props.className}
+                data-testid="verify-menu"
+              />
+            ) : (
+              <Button
+                variant="minimal"
+                size="icon-lg"
+                aria-label={tr("requirements.verify")}
+                title={tr("requirements.verify")}
+                data-testid="verify-menu"
+                className={props.className}
+              />
+            )
           }
         >
           <Bot className="size-4" />
+          {props.variant === "button" ? tr("requirements.verify") : null}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {missions.map((it) => (

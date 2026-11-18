@@ -4,6 +4,8 @@ import { $module } from "alepha";
 import { RequirementsDashboardMetrics } from "../api/services/RequirementsDashboardMetrics.ts";
 import { currentPersonaAtom } from "./app/atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "./app/atoms/currentUseCaseAtom.ts";
+import { requirementsCountsAtom } from "./app/atoms/requirementsCountsAtom.ts";
+import { RequirementsProjectLoader } from "./app/loaders/RequirementsProjectLoader.ts";
 import { RequirementsRouter } from "./app/RequirementsRouter.ts";
 import { RequirementsShell } from "./app/shell/RequirementsShell.ts";
 
@@ -24,13 +26,15 @@ export const LorePlanRequirementsWeb = $module({
   // Plan first: Requirements extends Plan's sidebar, so booting this module
   // alone boots the shell it extends.
   imports: [LorePlanWeb],
-  atoms: [currentPersonaAtom, currentUseCaseAtom],
+  atoms: [currentPersonaAtom, currentUseCaseAtom, requirementsCountsAtom],
   register(alepha) {
     // Injected rather than listed in `services`, as `LorePlanWeb` does: a
     // listed service is tagged with this module, and injecting it anywhere
     // would register the whole module.
     alepha.with(RequirementsRouter);
     alepha.inject(RequirementsShell);
+    // The sidebar counts, read when a project opens.
+    alepha.inject(RequirementsProjectLoader);
     // The dashboard cards' declarative half, which the browser needs to
     // draw the tiles (#Q3775).
     alepha.inject(RequirementsDashboardMetrics);
@@ -43,10 +47,7 @@ export { RequirementsRouter } from "./app/RequirementsRouter.ts";
 export { currentPersonaAtom } from "./app/atoms/currentPersonaAtom.ts";
 export { currentUseCaseAtom } from "./app/atoms/currentUseCaseAtom.ts";
 export { RequirementsShell } from "./app/shell/RequirementsShell.ts";
-export {
-  REQUIREMENTS_ROUTES,
-  REQUIREMENTS_TABS,
-} from "./app/components/layout/requirementsTabs.ts";
+export { REQUIREMENTS_NAV_ROUTES } from "./app/components/pages/requirementsNavRoutes.ts";
 
 /**
  * Requirements' router in the app's router registry (#Q3187).

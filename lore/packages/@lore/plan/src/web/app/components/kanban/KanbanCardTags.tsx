@@ -1,7 +1,7 @@
 import { Badge } from "@alepha/ui";
 import type { PaletteColor } from "@lore/core/schemas";
 
-import { TAG_CHIP_CLASS, TAG_CHIP_FALLBACK } from "../shared/areaColor.ts";
+import { tagTone } from "../shared/areaColor.ts";
 
 export interface KanbanCardTagsProps {
   tags: string[];
@@ -35,12 +35,8 @@ const KanbanCardTags = (props: KanbanCardTagsProps) => {
           key={tag}
           variant="tint"
           data-testid="kanban-card-tag"
-          // `border-transparent` last, so it overrides the palette's border
-          // when the badge merges its classes.
-          className={`h-[18px] max-w-full truncate rounded-full px-2 text-[11px] leading-none ${
-            TAG_CHIP_CLASS[props.tagColors?.[tag] as PaletteColor] ??
-            TAG_CHIP_FALLBACK
-          } border-transparent`}
+          tone={tagTone(props.tagColors?.[tag])}
+          className="max-w-full truncate"
         >
           {tag}
         </Badge>

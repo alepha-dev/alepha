@@ -50,6 +50,13 @@ export interface SegmentedProps extends Omit<
    */
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   /**
+   * The box behind the segments. `subtle` (the default) is a translucent
+   * muted wash that lets the surface show through; `solid` is the page's
+   * own background, the fill of an input or an outlined button, for a
+   * control sitting in a toolbar beside them.
+   */
+  variant?: "subtle" | "solid";
+  /**
    * Stretch segments to fill the available width.
    */
   fullWidth?: boolean;
@@ -114,6 +121,7 @@ export const Segmented = (props: SegmentedProps) => {
     defaultValue,
     onChange,
     size = "md",
+    variant = "subtle",
     fullWidth,
     disabled,
     dividers = true,
@@ -263,7 +271,13 @@ export const Segmented = (props: SegmentedProps) => {
       aria-disabled={disabled || undefined}
       data-slot="segmented"
       className={cn(
-        "border-border bg-muted/40 relative box-border inline-flex items-stretch rounded-md border p-0.5",
+        // `overflow-hidden`: the thumb is placed from measured, fractional
+        // rects, and a sub-pixel of it past the box made a scroll container
+        // around the control (a detail page's tab strip) show a scrollbar
+        // for some selections only. Clipped here, nothing of it reaches the
+        // ancestor, so the segments' focus ring is drawn inset below.
+        "border-border relative box-border inline-flex items-stretch overflow-hidden rounded-md border p-0.5",
+        variant === "solid" ? "bg-background" : "bg-muted/40",
         sizeClass[size],
         fullWidth && "flex w-full",
         disabled && "opacity-50",
@@ -328,7 +342,7 @@ export const Segmented = (props: SegmentedProps) => {
             className={cn(
               "relative z-10 inline-flex min-w-0 items-center justify-center rounded-[calc(var(--radius)-2px)] font-medium whitespace-nowrap",
               "transition-colors duration-150 ease-in-out",
-              "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
+              "focus-visible:ring-ring/50 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
               itemPadClass[size],
               active
                 ? "text-primary-foreground"

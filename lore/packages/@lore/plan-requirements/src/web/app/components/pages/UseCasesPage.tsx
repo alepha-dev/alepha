@@ -52,14 +52,16 @@ const GROUP_LABEL_KEYS = {
   none: "requirements.usecase.groupBy.none",
 } as const;
 
+import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
+
 /**
- * The Use cases tab of the Requirements page (#E153): counters that filter,
+ * The Use cases page (#E153): counters that filter,
  * persona and status filters, group by epic (the default), persona, status
  * or none, collapsible groups, and one row per use case. The run columns
  * (last result, environments, Verify) arrive with the quests that bring
  * runs.
  */
-const UseCasesTab = () => {
+const UseCasesPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
   const useCaseApi = useClient<UseCaseController>();
@@ -98,6 +100,7 @@ const UseCasesTab = () => {
   const persona = values.persona ?? "";
   const status = values.status ?? "";
 
+  useSyncRequirementsCount("useCases", useCases.data);
   if (!project) return null;
   const all = useCases.data ?? [];
   const personas = [
@@ -390,4 +393,4 @@ const UseCasesTab = () => {
   );
 };
 
-export default UseCasesTab;
+export default UseCasesPage;

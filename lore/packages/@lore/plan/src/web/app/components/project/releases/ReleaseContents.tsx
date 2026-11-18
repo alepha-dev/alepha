@@ -265,7 +265,7 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
           <div className="mb-1.5 flex items-center gap-2.5">
             {/* The area's own colour as a dot, the way every other Lore
                 surface renders one. Deliberately not a filled chip: the
-                chip palette (`TAG_CHIP_CLASS`) belongs to project TAGS, and
+                chip tones (`tagTone`) belong to project TAGS, and
                 a second one for areas is exactly the invented palette
                 `areaColor.ts` exists to prevent. */}
             <span

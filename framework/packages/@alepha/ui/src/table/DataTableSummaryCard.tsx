@@ -54,4 +54,14 @@ const DATA_TABLE_STAT_TONE: Record<BadgeTone, string> = {
   warning:
     "border-amber-500/40 bg-linear-to-b from-amber-500/10 to-amber-500/10",
   danger: "border-red-500/40 bg-linear-to-b from-red-500/10 to-red-500/10",
+  slate: "border-slate-500/40 bg-linear-to-b from-slate-500/10 to-slate-500/10",
+  blue: "border-blue-500/40 bg-linear-to-b from-blue-500/10 to-blue-500/10",
+  green:
+    "border-emerald-500/40 bg-linear-to-b from-emerald-500/10 to-emerald-500/10",
+  amber: "border-amber-500/40 bg-linear-to-b from-amber-500/10 to-amber-500/10",
+  red: "border-red-500/40 bg-linear-to-b from-red-500/10 to-red-500/10",
+  violet:
+    "border-violet-500/40 bg-linear-to-b from-violet-500/10 to-violet-500/10",
+  cyan: "border-cyan-500/40 bg-linear-to-b from-cyan-500/10 to-cyan-500/10",
+  pink: "border-pink-500/40 bg-linear-to-b from-pink-500/10 to-pink-500/10",
 };

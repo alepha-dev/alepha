@@ -17,7 +17,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
-import UseCasesTab from "../layout/UseCasesTab.tsx";
+import UseCasesPage from "../pages/UseCasesPage.tsx";
 import UseCasePage from "./UseCasePage.tsx";
 
 const aUseCase = (over: Partial<UseCaseResource>): UseCaseResource =>
@@ -145,7 +145,7 @@ describe("Use cases screens", () => {
   it("groups the use cases by epic, the uncovered ones last, and collapses a group", async ({
     expect,
   }) => {
-    mount(await boot(["usecase:read", "usecase:write"]), <UseCasesTab />);
+    mount(await boot(["usecase:read", "usecase:write"]), <UseCasesPage />);
 
     await screen.findByText("Order as a guest");
     const groups = screen.getAllByTestId("use-case-group");
@@ -163,7 +163,7 @@ describe("Use cases screens", () => {
   });
 
   it("offers a viewer no create control", async ({ expect }) => {
-    mount(await boot(["usecase:read"]), <UseCasesTab />);
+    mount(await boot(["usecase:read"]), <UseCasesPage />);
     await screen.findByText("Order as a guest");
     expect(screen.queryByRole("button", { name: /New use case/ })).toBeNull();
   });

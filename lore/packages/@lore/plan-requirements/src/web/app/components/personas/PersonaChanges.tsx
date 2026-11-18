@@ -1,6 +1,15 @@
-import { Card, CardContent } from "@alepha/ui";
+import {
+  Card,
+  CardContent,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
+import { CirclePlay, GitCommitHorizontal } from "lucide-react";
 
 import type { PersonaChanges as Changes } from "../../../../api/schemas/personaInsightSchemas.ts";
 import PersonaChangeRow from "./PersonaChangeRow.tsx";
@@ -19,21 +28,42 @@ const PersonaChanges = (props: PersonaChangesProps) => {
   const { tr } = useI18n<I18n, "en">();
   const { changes } = props;
   return (
-    <div className="flex flex-col gap-4" data-testid="persona-changes">
-      <Card>
-        <CardContent className="flex flex-col gap-2 text-sm">
-          <h2 className="font-semibold">
-            {tr("requirements.persona.changes.title")}
-          </h2>
-          {!changes.lastRunAt ? (
-            <p className="text-muted-foreground text-sm italic">
-              {tr("requirements.persona.changes.neverRun")}
-            </p>
-          ) : changes.changes.length === 0 ? (
-            <p className="text-muted-foreground text-sm italic">
-              {tr("requirements.persona.changes.none")}
-            </p>
-          ) : (
+    <div className="flex flex-1 flex-col gap-4" data-testid="persona-changes">
+      {changes.changes.length === 0 ? (
+        // Nothing to list: no run yet to count from, or nothing completed
+        // since the last one.
+        <Empty
+          // Centred in the tab's height, unless the releases card follows:
+          // then it keeps its own height and the card sits right under it.
+          className={changes.releases.length ? "flex-none py-16" : undefined}
+          data-testid="persona-changes-empty"
+        >
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              {changes.lastRunAt ? <GitCommitHorizontal /> : <CirclePlay />}
+            </EmptyMedia>
+            <EmptyTitle>
+              {tr(
+                changes.lastRunAt
+                  ? "requirements.persona.changes.none.title"
+                  : "requirements.persona.changes.neverRun.title",
+              )}
+            </EmptyTitle>
+            <EmptyDescription>
+              {tr(
+                changes.lastRunAt
+                  ? "requirements.persona.changes.none.description"
+                  : "requirements.persona.changes.neverRun.description",
+              )}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <Card>
+          <CardContent className="flex flex-col gap-2 text-sm">
+            <h2 className="font-semibold">
+              {tr("requirements.persona.changes.title")}
+            </h2>
             <ul className="flex flex-col gap-1">
               {changes.changes.map((it) => (
                 <PersonaChangeRow
@@ -43,9 +73,9 @@ const PersonaChanges = (props: PersonaChangesProps) => {
                 />
               ))}
             </ul>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
       {changes.releases.length ? (
         <Card>
           <CardContent className="flex flex-col gap-3 text-sm">

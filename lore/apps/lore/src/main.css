@@ -770,14 +770,11 @@ body::before {
 /*
  * The page's dot grid. The two modes carry different alphas on purpose:
  * 5% white on near-black is a clear lightness step, while 4% black on
- * near-white was below what the eye reads as a pattern, so the light mode
- * needs nearly three times the alpha (11%) to look the same.
+ * near-white was below what the eye reads as a pattern. 11% read as too
+ * loud, so light mode sits at 7%: a texture, not a grid.
  */
 .lore-page-dots {
-  background-image: radial-gradient(
-    oklch(0.145 0 0 / 11%) 1px,
-    transparent 1px
-  );
+  background-image: radial-gradient(oklch(0.145 0 0 / 7%) 1px, transparent 1px);
   background-size: 16px 16px;
   background-attachment: local;
 }

@@ -3248,9 +3248,8 @@ export default {
   // Epics
   "project.menu.epics": "Épopées",
   "project.menu.requirements": "Exigences",
-  "requirements.tab.requirements": "Exigences",
-  "requirements.tab.useCases": "Cas d’usage",
-  "requirements.tab.personas": "Personas",
+  "project.menu.useCases": "Cas d’usage",
+  "project.menu.personas": "Personas",
   "requirements.prompt.personaExplore": "Explorer en persona",
   "requirements.prompt.requirementImport": "Importer une spécification",
   "requirements.prompt.useCaseDraft": "Rédiger des cas d’usage",
@@ -3533,6 +3532,12 @@ export default {
   "requirements.usecase.method.manual": "Manuel",
   "project.menu.create-persona": "Nouveau persona",
   "requirements.persona.aside.areas": "Domaines",
+  "requirements.persona.aside.coverage": "Couverture",
+  "requirements.persona.aside.passed": "$1 / $2 cas d’usage réussis",
+  "requirements.persona.aside.stale":
+    "$1 à rejouer depuis les derniers changements",
+  "requirements.persona.aside.stale.one":
+    "$1 à rejouer depuis le dernier changement",
   "requirements.persona.aside.created": "Créé",
   "requirements.persona.aside.environment": "Environnement",
   "requirements.persona.aside.id": "ID",
@@ -3542,9 +3547,12 @@ export default {
     "$1 sera supprimé. Son numéro n’est jamais réutilisé : une référence vers lui apparaîtra cassée.",
   "requirements.persona.delete.title": "Supprimer ce persona ?",
   "requirements.persona.edit": "Modifier le persona",
-  "requirements.persona.empty":
-    "Aucun persona pour l’instant. Un persona est quelqu’un, ou quelque chose, pour qui le système est construit.",
-  "requirements.persona.emptyFilter": "Aucun persona de ce type.",
+  "requirements.persona.empty.title": "Aucun persona pour l’instant",
+  "requirements.persona.empty.description":
+    "Un persona est quelqu’un, ou quelque chose, pour qui votre app est construite : un client, un utilisateur du back-office, un système partenaire, un agent IA. Ses cas d’usage disent ce qu’il fait dans l’app, et leurs passages vérifient que ça marche toujours.",
+  "requirements.persona.emptyFilter.title": "Aucun persona de ce type",
+  "requirements.persona.emptyFilter.description":
+    "Choisissez un autre type, ou affichez-les tous.",
   "requirements.persona.field.alephaRole": "Rôle Alepha",
   "requirements.persona.field.alephaRole.helper":
     "Le $role ou le compte de service que ce persona joue dans l’application.",
@@ -3570,10 +3578,12 @@ export default {
   "requirements.persona.scopeChanged":
     "Le périmètre a changé depuis le dernier passage : $1 cas d’usage à revérifier.",
   "requirements.persona.changes.title": "Changements depuis le dernier passage",
-  "requirements.persona.changes.none":
+  "requirements.persona.changes.none.title": "Rien de nouveau",
+  "requirements.persona.changes.none.description":
     "Rien de terminé depuis le dernier passage ne touche ce persona.",
-  "requirements.persona.changes.neverRun":
-    "Aucun passage encore : les changements comptent à partir du premier.",
+  "requirements.persona.changes.neverRun.title": "Aucun passage encore",
+  "requirements.persona.changes.neverRun.description":
+    "Les changements comptent à partir du premier passage d’un de ses cas d’usage.",
   "requirements.persona.changes.viaEpic": "via l’épopée $1",
   "requirements.persona.changes.viaMention": "mentionne $1",
   "requirements.persona.changes.card":
@@ -3590,7 +3600,6 @@ export default {
   "requirements.persona.showcase.removed": "Enregistrement non conservé",
   "requirements.persona.showcase.current": "Version en cours",
   "requirements.persona.showcase.chapters": "Étapes",
-  "requirements.persona.toCover": "À couvrir : $1, $2.",
   "requirements.persona.tab.activity": "Activité",
   "requirements.persona.tab.overview": "Aperçu",
   "requirements.persona.toast.created": "Persona créé",
@@ -3611,10 +3620,18 @@ export default {
     "Ce qui doit être vrai avant la première étape.",
   "requirements.usecase.field.startingData.helper":
     "Le jeu de données dont part un passage.",
-  "requirements.persona.toCover.personas":
-    "$1 personas sans cas d’usage réussi",
-  "requirements.persona.toCover.personas.one":
-    "$1 persona sans cas d’usage réussi",
+  "requirements.persona.card.useCases": "Cas d’usage",
+  "requirements.persona.card.epics": "Épopées",
+  "requirements.persona.card.requirements": "Exigences",
+  "requirements.persona.card.lastRun": "Dernière exécution",
+  "requirements.persona.card.passed": "$1 / $2 réussis",
+  "requirements.persona.card.failed": "$1 en échec",
+  "requirements.persona.card.neverRun": "jamais joué",
+  "requirements.persona.card.role": "rôle : $1",
+  "requirements.persona.card.openAs": "Ouvrir en tant que",
+  "requirements.persona.toCover.title": "À couvrir",
+  "requirements.persona.toCover.persona": "$1 $2 n’a aucun cas d’usage réussi",
+  "requirements.persona.toCover.more": "et $1 de plus",
   "requirements.persona.toCover.useCases": "$1 cas d’usage jamais joués",
   "requirements.persona.toCover.useCases.one": "$1 cas d’usage jamais joué",
   "requirements.persona.scopeChanged.one":

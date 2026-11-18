@@ -62,8 +62,10 @@ const STATUSES = [
   "no_data",
 ] as const;
 
+import { useSyncRequirementsCount } from "./useSyncRequirementsCount.ts";
+
 /**
- * The Requirements tab of the Requirements page (#E153): counters, type,
+ * The Requirements page (#E153): counters, type,
  * verified-by and release filters, the list grouped by chapter, the detail
  * pane of the selected requirement (`?requirement=15`), a banner naming the
  * requirements whose source changed, the List / Matrix switch, a release's
@@ -71,7 +73,7 @@ const STATUSES = [
  * pane holds the selected requirement's impact chain and the coverage
  * gaps (#Q3774).
  */
-const RequirementsTab = () => {
+const RequirementsPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
   const api = useClient<RequirementController>();
@@ -161,6 +163,9 @@ const RequirementsTab = () => {
     [coverageApi, projectId, matrix, releaseId],
   );
 
+  useSyncRequirementsCount("requirements", list.data);
+  useSyncRequirementsCount("useCases", useCases.data);
+  useSyncRequirementsCount("personas", personas.data);
   if (!project) return null;
   const all = list.data ?? [];
   const rows = all.filter(
@@ -532,4 +537,4 @@ const RequirementsTab = () => {
   );
 };
 
-export default RequirementsTab;
+export default RequirementsPage;
