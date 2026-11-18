@@ -25,6 +25,7 @@ import { AutomationConfigurationWrites } from "./AutomationConfigurationWrites.t
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
   AutomationDependencies,
+  type AutomationDependencyCheck,
   AutomationDependencyError,
 } from "./AutomationDependencies.ts";
 import { AutomationMutationAudit } from "./AutomationMutationAudit.ts";
@@ -317,12 +318,20 @@ export class AutomationVariables {
   public async snapshot(
     rule: Automation,
     user: UserAccountToken,
-    options: { transition?: boolean } = {},
+    options: {
+      transition?: boolean;
+      /**
+       * A health check's own verdicts pass (#Q3827), so this one reads no
+       * capability, channel or variable a second time. A run never passes
+       * it: its inputs are read live.
+       */
+      checked?: AutomationDependencyCheck;
+    } = {},
   ) {
     if (user.id !== rule.authorUserId)
       throw new ForbiddenError("Validate a run as its immutable author");
     try {
-      await this.dependencies.assert(rule);
+      await this.dependencies.assert(rule, options.checked?.sources);
       const keys = [...this.references(rule.rule)];
       const rows = keys.length
         ? await this.persistence.variables.findMany({
@@ -338,7 +347,11 @@ export class AutomationVariables {
         rule.rule,
         new Map(rows.map((row) => [row.key, row])),
         rule,
-        { targets: false, skip: await this.dependencies.broken(rule) },
+        {
+          targets: false,
+          skip:
+            options.checked?.broken ?? (await this.dependencies.broken(rule)),
+        },
       );
       return rows.map(({ id, key, version, value }) => ({
         id,

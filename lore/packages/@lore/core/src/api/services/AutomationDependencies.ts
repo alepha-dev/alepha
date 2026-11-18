@@ -26,7 +26,10 @@ export class AutomationDependencies {
    * (#Q3806). A source losing what it needs breaks that source, and the
    * others keep running.
    */
-  public async assert(rule: Automation): Promise<void> {
+  public async assert(
+    rule: Automation,
+    computed?: AutomationSourceHealth,
+  ): Promise<void> {
     // A graph the outline rules refuse (#Q3845) was drawn before them: it is
     // not converted, it reads broken until it is rebuilt or deleted.
     const [shape] = this.graphs.shape(rule.rule);
@@ -37,7 +40,9 @@ export class AutomationDependencies {
           1024,
         ),
       );
-    const sources = await this.sources(rule);
+    // `computed`: the caller's own `sources(rule)`, so a reconcile reads the
+    // capabilities, channels and variables once (#Q3827).
+    const sources = computed ?? (await this.sources(rule));
     const enabled = this.graphs
       .sources(rule.rule)
       .filter((node) => node.enabled !== false);
@@ -57,7 +62,27 @@ export class AutomationDependencies {
    * action, holds a node whose dependency is gone.
    */
   public async sources(rule: Automation): Promise<AutomationSourceHealth> {
+    return this.sourcesFrom(rule, await this.verdicts(rule));
+  }
+
+  /**
+   * The sources' health and the broken nodes from ONE verdicts pass: what a
+   * health check hands to `assert` and to `AutomationVariables.snapshot`,
+   * which would each read the same capabilities, channels and variables
+   * again (#Q3827). A run and an effect never take it: they read their own.
+   */
+  public async check(rule: Automation): Promise<AutomationDependencyCheck> {
     const verdicts = await this.verdicts(rule);
+    return {
+      sources: this.sourcesFrom(rule, verdicts),
+      broken: new Set(verdicts.keys()),
+    };
+  }
+
+  protected sourcesFrom(
+    rule: Automation,
+    verdicts: Map<string, string>,
+  ): AutomationSourceHealth {
     const graph = rule.rule;
     const health: AutomationSourceHealth = {};
     for (const source of this.graphs.sources(graph)) {
@@ -205,3 +230,11 @@ export class AutomationDependencies {
 }
 
 export { AutomationDependencyError } from "../errors/AutomationDependencyError.ts";
+
+/**
+ * One verdicts pass, read two ways. See `AutomationDependencies.check`.
+ */
+export interface AutomationDependencyCheck {
+  sources: AutomationSourceHealth;
+  broken: Set<string>;
+}
