@@ -1,8 +1,12 @@
 /**
  * Asserts the Lore image a registry holds carries its evidence (#Q3363): an
- * image index with a linux/amd64 image, an SBOM attestation (SPDX) and a
- * provenance attestation (SLSA), as `alepha image --sbom --provenance --push`
- * attaches them.
+ * image index with a linux/amd64 and a linux/arm64 image (#Q3858), and for
+ * EACH of them an SBOM attestation (SPDX) and a provenance attestation
+ * (SLSA), as `alepha image --sbom --provenance --push` attaches them. An
+ * attestation manifest names the image it is about in its
+ * `vnd.docker.reference.digest` annotation, so an index whose arm64 image
+ * shipped bare would still carry amd64's predicates: they are counted per
+ * image, never pooled.
  *
  * Run by Verify's `lore-docker` job and by Release, both against the registry
  * container on the runner that `yarn w lore image:release` pushed to. Neither
@@ -91,40 +95,51 @@ const images = manifests.filter(
 const platforms = images.map(
   (it) => `${it.platform?.os}/${it.platform?.architecture}`,
 );
-if (!platforms.includes("linux/amd64")) {
-  fail(`${image} has no linux/amd64 image (found ${platforms.join(", ")})`);
+for (const required of ["linux/amd64", "linux/arm64"]) {
+  if (!platforms.includes(required)) {
+    fail(`${image} has no ${required} image (found ${platforms.join(", ")})`);
+  }
 }
 console.log(`✓ ${image} → ${index.digest}, platforms ${platforms.join(", ")}`);
 
-const predicates: string[] = [];
+const predicatesByImage = new Map<string, string[]>();
 for (const attestation of manifests.filter(
   (it) =>
     it.annotations?.["vnd.docker.reference.type"] === "attestation-manifest",
 )) {
+  const subject = attestation.annotations?.["vnd.docker.reference.digest"];
+  if (!subject) continue;
   const body = JSON.parse((await manifest(attestation.digest)).body) as {
     layers?: Array<{ annotations?: Record<string, string> }>;
   };
+  const predicates = predicatesByImage.get(subject) ?? [];
   for (const layer of body.layers ?? []) {
     const type = layer.annotations?.["in-toto.io/predicate-type"];
     if (type) predicates.push(type);
   }
+  predicatesByImage.set(subject, predicates);
 }
 
-if (!predicates.includes("https://spdx.dev/Document")) {
-  fail(
-    `${image} carries no SBOM attestation (predicates: ${predicates.join(", ") || "none"})`,
+for (const it of images) {
+  const platform = `${it.platform?.os}/${it.platform?.architecture}`;
+  const predicates = predicatesByImage.get(it.digest) ?? [];
+  if (!predicates.includes("https://spdx.dev/Document")) {
+    fail(
+      `${image} ${platform} carries no SBOM attestation (predicates: ${predicates.join(", ") || "none"})`,
+    );
+  }
+  const provenance = predicates.find((p) =>
+    p.startsWith("https://slsa.dev/provenance/"),
+  );
+  if (!provenance) {
+    fail(
+      `${image} ${platform} carries no provenance attestation (predicates: ${predicates.join(", ") || "none"})`,
+    );
+  }
+  console.log(
+    `✓ ${platform}: SBOM attestation (https://spdx.dev/Document), provenance attestation (${provenance})`,
   );
 }
-console.log("✓ SBOM attestation (https://spdx.dev/Document)");
-const provenance = predicates.find((it) =>
-  it.startsWith("https://slsa.dev/provenance/"),
-);
-if (!provenance) {
-  fail(
-    `${image} carries no provenance attestation (predicates: ${predicates.join(", ")})`,
-  );
-}
-console.log(`✓ provenance attestation (${provenance})`);
 
 if (save) {
   writeFileSync(save, `${index.body}\n`);

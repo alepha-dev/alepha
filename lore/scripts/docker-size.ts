@@ -27,8 +27,10 @@
  * The image is the one `alepha image` built (`yarn w lore build:docker`), the
  * same command Release runs. This script used to run a `buildx` build of its
  * own for amd64 and arm64, and that second build path is how a moved
- * Dockerfile reached release day unnoticed (#Q2492). The image is amd64 only
- * since #Q2493, so there is nothing left for a build here to add.
+ * Dockerfile reached release day unnoticed (#Q2492). arm64 is back since
+ * #Q3858 through `alepha image`'s own `platforms`, so there is still nothing
+ * for a build here to add. It measures the variant the runner pulled, which
+ * is amd64; the arm64 one carries the same `dist/` on its own base layers.
  *
  * `docker save` hands the layers over as the store keeps them: uncompressed
  * tars under the classic store, possibly gzip under containerd. A layer that

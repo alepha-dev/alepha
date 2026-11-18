@@ -809,6 +809,14 @@ jobs:
       - name: Start a registry on the runner
         run: docker run -d --name registry -p 127.0.0.1:5000:5000 registry:2
 
+      # The image is amd64 and arm64 (`image.platforms`, #Q3858): the
+      # Dockerfile's `RUN` line runs under emulation for arm64. Runner setup,
+      # not a build: the build stays `alepha image` (folio #F1338).
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+
       - name: Build the image
         run: yarn w lore build
 
@@ -826,6 +834,17 @@ jobs:
 
       - name: Check the image size budget
         run: node scripts/docker-size.ts --image 127.0.0.1:5000/alepha-dev/lore:ci
+
+      # The same smoke on the arm64 variant, under QEMU: an index that lists
+      # arm64 is no proof that the arm64 image boots. Last, because the pull
+      # moves the local tag to the arm64 image the size check must not read.
+      - name: Pull the arm64 image back
+        run: docker pull --platform linux/arm64 127.0.0.1:5000/alepha-dev/lore:ci
+
+      - name: Smoke test the arm64 image
+        env:
+          DOCKER_DEFAULT_PLATFORM: linux/arm64
+        run: bash scripts/docker-smoke.sh 127.0.0.1:5000/alepha-dev/lore:ci
 
   # ══════════════════════════════════════════════════════════════════════
   # Bay, the Go module in `bay/`.

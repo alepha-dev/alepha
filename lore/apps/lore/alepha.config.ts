@@ -29,8 +29,16 @@ export default defineConfig({
     //
     // ⚠️ `mode=max` records build arguments: nothing secret goes in `args`.
     //
-    // linux/amd64 only, set by the runner rather than `platforms` (folio
-    // #F1338): no arm64 image.
+    // Both architectures, one index (#Q3858). arm64 was dropped in folio
+    // #F1338 because a hand-written buildx step in `release.yml` was the only
+    // multi-arch build; it came back as this option, the build `alepha image`
+    // runs everywhere. The cheapest VPS plans are ARM, and so is a Mac.
+    //
+    // ⚠️ The Dockerfile's `RUN` line runs under emulation for the platform
+    // that is not the runner's: the workflows install the QEMU binfmt
+    // handlers before `image:release`, and a local multi-arch build needs
+    // them too (Docker Desktop has them).
+    platforms: ["linux/amd64", "linux/arm64"],
     sbom: true,
     provenance: true,
     // All four are config because none can be derived: `package.json` is
