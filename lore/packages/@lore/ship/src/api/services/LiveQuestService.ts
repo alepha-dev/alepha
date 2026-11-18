@@ -19,6 +19,16 @@ import { DeployedBuildService } from "./DeployedBuildService.ts";
  * deployment ran, read the way `DeployedBuildService.latest` reads it. A
  * rollback by either path is therefore right with nothing recomputed.
  *
+ * ## An app that declares its paths (#Q3868)
+ *
+ * In a repository holding several apps, ancestry alone puts every quest on
+ * every copy. When the deployed commit has a set kept for the copy's app
+ * (the quests of the commits that touched the paths it declares), that set
+ * is the live one. The whole-history set stays what "behind" is read
+ * against: a done quest merged since the copy's last deploy counts whatever
+ * it touched, because which paths a commit touches is only known once a
+ * build of it is pushed.
+ *
  * ⚠️ **Unknown is never empty.** A copy with no deployment, a deployment with
  * no `commitSha` (from before this epic, or bytes pushed with no commit), or a
  * commit with no set has an unknown set; "behind" and "not live" are never
@@ -71,6 +81,13 @@ export class LiveQuestService {
         ),
       ),
     ]);
+    const appSets = await this.sets.appSetsOf(
+      projectId,
+      copies.flatMap((copy) => {
+        const sha = builds.get(copy.id)?.commitSha;
+        return sha ? [{ app: copy.app, sha }] : [];
+      }),
+    );
 
     return copies.map((copy): InstanceLiveState => {
       const base = { instanceId: copy.id, app: copy.app, env: copy.env };
@@ -87,7 +104,11 @@ export class LiveQuestService {
       if (!build.commitSha) {
         return { ...run, state: "unknown", reason: "no-commit" };
       }
-      const set = sets.get(build.commitSha.toLowerCase());
+      const whole = sets.get(build.commitSha.toLowerCase());
+      const scoped = appSets.get(
+        CommitQuestSetService.appKey(copy.app, build.commitSha),
+      );
+      const set = scoped ?? whole;
       if (!set) {
         return {
           ...run,
@@ -100,6 +121,8 @@ export class LiveQuestService {
         ...run,
         commitSha: build.commitSha,
         numbers: set.numbers,
+        ...(scoped ? { scoped: true } : {}),
+        ...(whole?.complete ? { merged: whole.numbers } : {}),
         state: set.complete ? "known" : "partial",
         ...(set.complete ? {} : { reason: "partial" as const }),
       };
@@ -128,7 +151,7 @@ export class LiveQuestService {
     const carrying = states.filter((state) => state.numbers?.has(number));
     const live: LiveQuestInstance[] = [];
     for (const state of carrying) {
-      const since = await this.since(projectId, state.instanceId, number);
+      const since = await this.since(projectId, state, number);
       live.push({
         instanceId: state.instanceId,
         app: state.app,
@@ -189,7 +212,7 @@ export class LiveQuestService {
     if (!state) {
       return undefined;
     }
-    const history = await this.history(projectId, instanceId);
+    const history = await this.history(projectId, state);
     const runs = history.runs.map((run, i): InstanceRunDiff => {
       const previous = history.runs[i + 1];
       const set = run.numbers;
@@ -198,7 +221,10 @@ export class LiveQuestService {
         // The oldest run read: nothing to compare with.
         return { deploymentId: run.id, known: false };
       }
-      if (!set || !before) {
+      if (!set || !before || run.paths !== previous.paths) {
+        // No set, or two sets that answer different questions: one walked
+        // with the app's paths and one over the whole history, or with
+        // other paths. Their difference is not what the run changed.
         return { deploymentId: run.id, known: false };
       }
       return {
@@ -210,10 +236,10 @@ export class LiveQuestService {
     });
 
     let behind: number[] | undefined;
-    if (state.state === "known" && state.numbers) {
-      const numbers = state.numbers;
+    if (state.merged) {
+      const merged = state.merged;
       behind = (await this.registry.recordedCommits(projectId))
-        .filter((quest) => quest.completed && !numbers.has(quest.number))
+        .filter((quest) => quest.completed && !merged.has(quest.number))
         .map((quest) => quest.number)
         .sort((a, b) => a - b);
     }
@@ -232,15 +258,15 @@ export class LiveQuestService {
    * How many done quests each copy does not run yet, for the Apps list: one
    * read of the copies' newest runs, one of their sets and one of the
    * recorded commits, whatever the number of rows (#Q2682 timed out doing
-   * otherwise). Only copies with a known, complete set are in the map: an
-   * unknown or partial set has no count, never zero.
+   * otherwise). Only copies whose commit has a complete whole-history set
+   * are in the map: an unknown or partial one has no count, never zero.
    */
   public async behindCounts(
     projectId: number,
     instanceIds: string[],
   ): Promise<Map<string, number>> {
     const known = (await this.states(projectId, instanceIds)).filter(
-      (state) => state.state === "known" && state.numbers,
+      (state) => state.merged,
     );
     if (known.length === 0) {
       return new Map();
@@ -251,7 +277,7 @@ export class LiveQuestService {
     return new Map(
       known.map((state) => [
         state.instanceId,
-        done.filter((n) => !state.numbers?.has(n)).length,
+        done.filter((n) => !state.merged?.has(n)).length,
       ]),
     );
   }
@@ -262,10 +288,10 @@ export class LiveQuestService {
    */
   protected async since(
     projectId: number,
-    instanceId: string,
+    copy: { instanceId: string; app: string },
     number: number,
   ): Promise<string | undefined> {
-    const { runs } = await this.history(projectId, instanceId);
+    const { runs } = await this.history(projectId, copy);
     let since: string | undefined;
     for (const run of runs) {
       if (!run.numbers?.has(number)) {
@@ -277,36 +303,47 @@ export class LiveQuestService {
   }
 
   /**
-   * A copy's newest succeeded runs, newest first, each with its commit's set.
+   * A copy's newest succeeded runs, newest first, each with its commit's
+   * set: the one kept for the copy's app when there is one, the
+   * whole-history one otherwise, as {@link states} reads the live set.
    */
   protected async history(
     projectId: number,
-    instanceId: string,
+    copy: { instanceId: string; app: string },
   ): Promise<{ runs: HistoryRun[] }> {
     const rows = await this.runs.findMany({
       where: {
         projectId: { eq: projectId },
-        instanceId: { eq: instanceId },
+        instanceId: { eq: copy.instanceId },
         status: { eq: "succeeded" },
       },
       columns: ["id", "commitSha", "finishedAt", "createdAt"],
       orderBy: [{ column: "createdAt", direction: "desc" }],
       limit: LiveQuestService.HISTORY,
     });
-    const sets = await this.sets.setsOf(projectId, [
+    const shas = [
       ...new Set(rows.flatMap((row) => (row.commitSha ? [row.commitSha] : []))),
-    ]);
+    ];
+    const sets = await this.sets.setsOf(projectId, shas);
+    const appSets = await this.sets.appSetsOf(
+      projectId,
+      shas.map((sha) => ({ app: copy.app, sha })),
+    );
     return {
       runs: rows.map((row) => {
-        const set = row.commitSha
-          ? sets.get(row.commitSha.toLowerCase())
+        const scoped = row.commitSha
+          ? appSets.get(CommitQuestSetService.appKey(copy.app, row.commitSha))
           : undefined;
+        const set =
+          scoped ??
+          (row.commitSha ? sets.get(row.commitSha.toLowerCase()) : undefined);
         return {
           id: row.id,
           createdAt: row.createdAt,
           ...(row.finishedAt ? { finishedAt: row.finishedAt } : {}),
           ...(set ? { numbers: set.numbers } : {}),
           complete: set?.complete === true,
+          paths: scoped?.paths ?? "",
         };
       }),
     };
@@ -319,6 +356,10 @@ interface HistoryRun {
   finishedAt?: string;
   numbers?: Set<number>;
   complete: boolean;
+  /**
+   * The paths the set was walked with, or `""` for the whole history.
+   */
+  paths: string;
 }
 
 /**
@@ -348,7 +389,20 @@ export interface InstanceLiveState {
    * When the current deployment finished.
    */
   at?: string;
+  /**
+   * The live set: the quests of the commits that touched the app's paths
+   * when {@link scoped}, every quest in the commit's history otherwise.
+   */
   numbers?: Set<number>;
+  /**
+   * The live set was walked with the paths the app declares (#Q3868).
+   */
+  scoped?: boolean;
+  /**
+   * Every quest in the deployed commit's history, whatever it touched, and
+   * only when that set is complete: what "behind" is read against.
+   */
+  merged?: Set<number>;
 }
 
 export interface InstanceRunDiff {

@@ -1,0 +1,6 @@
+{
+  "project": "alepha",
+  "apps": {
+    "ui": ["framework/packages", "framework/apps/ui", "yarn.lock"]
+  }
+}

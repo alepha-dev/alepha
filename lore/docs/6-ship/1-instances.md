@@ -101,9 +101,12 @@ when that build was pushed
 - **Unknown**, never a count, when Lore cannot say: the build was pushed before
   Lore recorded commits, from a shallow clone, or with no commit at all. The
   card says which, and the Apps list shows no badge.
-- In a repository holding several apps, a copy is also "behind" on done quests
-  for the other apps merged since its last deploy: the count follows commits,
-  not which app a quest was for.
+- In a repository holding several apps, say which paths each app is built
+  from and a copy runs only the quests whose commits changed them
+  ([A repository holding several apps](/lore/docs/ship-artifacts#a-repository-holding-several-apps)).
+  A copy is still "behind" on done quests for the other apps merged since its
+  last deploy: that count follows commits, and which paths a commit changed is
+  only known once a build of it is pushed.
 
 ## From the command line
 

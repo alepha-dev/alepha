@@ -44,6 +44,8 @@ class Sink {
     schema?: string;
     quests?: unknown;
     commits?: string;
+    appQuests?: unknown;
+    appCommits?: string;
     dirty?: boolean;
   };
 
@@ -63,6 +65,8 @@ class Sink {
         schema: z.file().optional(),
         quests: z.record(z.text(), z.any()).optional(),
         commits: z.file().optional(),
+        appQuests: z.record(z.text(), z.any()).optional(),
+        appCommits: z.file().optional(),
         dirty: z.boolean().optional(),
       }),
       response: z.object({
@@ -95,6 +99,8 @@ class Sink {
         schema: body.schema ? await body.schema.text() : undefined,
         quests: body.quests,
         commits: body.commits ? await body.commits.text() : undefined,
+        appQuests: body.appQuests,
+        appCommits: body.appCommits ? await body.appCommits.text() : undefined,
         dirty: body.dirty,
       };
 
@@ -250,6 +256,24 @@ describe("ArtifactUploader", () => {
     expect(ctx.sink.received?.quests).toEqual(JSON.parse(quests));
     expect(ctx.sink.received?.commits).toBe(commits);
     expect(ctx.sink.received?.dirty).toBe(false);
+    expect(ctx.sink.received?.bytes).toBe("a packed artifact");
+  });
+
+  it("delivers the app's own quest set and walked shas beside the whole history's (#Q3868)", async () => {
+    const quests = JSON.stringify({ version: 1, numbers: [3], complete: true });
+    const commits = JSON.stringify(["c".repeat(40)]);
+    const appQuests = JSON.stringify({
+      version: 1,
+      paths: "docs\npackages/docs",
+      numbers: [3],
+      complete: true,
+    });
+    const appCommits = JSON.stringify(["d".repeat(40)]);
+    const ctx = await upload({ quests, commits, appQuests, appCommits });
+
+    expect(ctx.sink.received?.appQuests).toEqual(JSON.parse(appQuests));
+    expect(ctx.sink.received?.appCommits).toBe(appCommits);
+    expect(ctx.sink.received?.commits).toBe(commits);
     expect(ctx.sink.received?.bytes).toBe("a packed artifact");
   });
 

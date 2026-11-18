@@ -1,4 +1,5 @@
 import { $ownsProject } from "@lore/core/api";
+import { appNameSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action, NotFoundError } from "alepha/server";
 
@@ -34,12 +35,27 @@ export class LiveQuestController {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
         shas: z.array(z.string().regex(/^[0-9a-fA-F]{7,40}$/)).max(200),
+        /**
+         * Ask for one app's sets, walked with these paths (#Q3868): both or
+         * neither. A set walked with other paths is not known.
+         */
+        app: appNameSchema.optional(),
+        paths: z.string().min(1).max(2000).optional(),
       }),
       response: knownCommitsResultSchema,
     },
-    handler: async ({ params, body }) => ({
-      known: await this.sets.known(params.projectId, body.shas),
-    }),
+    handler: async ({ params, body }) => {
+      if (body.app && body.paths) {
+        return {
+          known: await this.sets.known(params.projectId, body.shas, {
+            app: body.app,
+            paths: body.paths,
+          }),
+          app: body.app,
+        };
+      }
+      return { known: await this.sets.known(params.projectId, body.shas) };
+    },
   });
 
   /**

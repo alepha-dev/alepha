@@ -12,6 +12,12 @@ export const knownCommitsResultSchema = z.object({
       complete: z.boolean(),
     }),
   ),
+  /**
+   * The app the answer is for, echoed when one was asked (#Q3868). A pusher
+   * that asked for an app and reads none back is talking to a Lore that
+   * answered the whole-history sets, and takes no base from them.
+   */
+  app: z.string().optional(),
 });
 
 export type KnownCommitsResult = Infer<typeof knownCommitsResultSchema>;

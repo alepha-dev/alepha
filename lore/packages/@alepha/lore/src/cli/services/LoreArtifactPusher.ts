@@ -210,10 +210,12 @@ export class LoreArtifactPusher {
     // The quests this commit's history references, and whether the tree
     // the build came from had tracked changes (#E154). Never a refusal: a
     // push that cannot read git sends a partial set and says so.
-    const [walk, tree] = await Promise.all([
-      git.commitSha ? this.walk(root, projectId) : undefined,
+    const [walks, tree] = await Promise.all([
+      git.commitSha ? this.walk(root, projectId, app) : undefined,
       this.git.dirty(root),
     ]);
+    const walk = walks?.whole;
+    const scoped = walks?.scoped;
 
     const workDir = this.fs.join(root, LoreArtifactPusher.WORK_DIR);
     await this.fs.mkdir(workDir, { recursive: true });
@@ -255,6 +257,18 @@ export class LoreArtifactPusher {
               commits: JSON.stringify(walk.walked),
             }
           : {}),
+        ...(scoped
+          ? {
+              appQuests: JSON.stringify({
+                version: 1,
+                paths: scoped.paths,
+                ...(scoped.walk.base ? { base: scoped.walk.base } : {}),
+                numbers: scoped.walk.numbers,
+                complete: scoped.walk.complete,
+              }),
+              appCommits: JSON.stringify(scoped.walk.walked),
+            }
+          : {}),
         ...(tree ? { dirty: tree.dirty } : {}),
       });
 
@@ -269,6 +283,11 @@ export class LoreArtifactPusher {
       // when it has no `$GITHUB_OUTPUT` to read instead.
       this.log.info(`sha256: ${artifact.sha256}`);
       this.log.info(this.questLine(walk, tree, result.quests?.count));
+      if (scoped) {
+        this.log.info(
+          this.appQuestLine(app, scoped.walk, result.appQuests?.count),
+        );
+      }
       if (tree?.dirty) {
         for (const path of tree.paths.slice(0, 5)) {
           this.log.info(`  modified: ${path}`);
@@ -276,6 +295,9 @@ export class LoreArtifactPusher {
       }
       if (walk?.reason) {
         this.log.warn(this.partialReason(walk.reason));
+      }
+      if (walks?.skipped) {
+        this.log.warn(walks.skipped);
       }
 
       await this.publishOutput(artifact.sha256);
@@ -287,15 +309,37 @@ export class LoreArtifactPusher {
   }
 
   /**
+   * The longest list of paths Lore keeps beside a set, joined by line
+   * breaks. Tied to `commit_quest_sets.paths`.
+   */
+  public static readonly MAX_PATHS_LENGTH = 2000;
+
+  /**
    * Walk the commit's history for quest references, from the newest
    * ancestor Lore already has a complete set for (#E154). A bare `#<n>`
    * counts when the nearest `.alepha/lore.json` says `bareQuestRefs`.
+   *
+   * When that file declares the app's paths (#Q3868), walk a second time
+   * over the commits that touched them only. The whole-history walk is
+   * always sent too: "behind" is read against it.
    */
-  protected async walk(root: string, projectId: number): Promise<QuestWalk> {
+  protected async walk(
+    root: string,
+    projectId: number,
+    app: string,
+  ): Promise<{
+    whole: QuestWalk;
+    scoped?: { paths: string; walk: QuestWalk };
+    /**
+     * Why the app's paths were declared and not walked.
+     */
+    skipped?: string;
+  }> {
     const link = await this.link.find(root).catch(() => undefined);
-    return await this.history.walk({
+    const bare = link?.bareQuestRefs === true;
+    const whole = await this.history.walk({
       root,
-      bare: link?.bareQuestRefs === true,
+      bare,
       known: async (shas) => {
         try {
           return (
@@ -310,6 +354,44 @@ export class LoreArtifactPusher {
         }
       },
     });
+
+    const declared = link?.apps[app.trim().toLowerCase()];
+    if (!declared) {
+      return { whole };
+    }
+    const paths = declared.join("\n");
+    if (paths.length > LoreArtifactPusher.MAX_PATHS_LENGTH) {
+      return {
+        whole,
+        skipped: `The paths of ${app} in ${link.path} are longer than the ${LoreArtifactPusher.MAX_PATHS_LENGTH} characters Lore keeps: its quests follow the whole history.`,
+      };
+    }
+    const walk = await this.history.walk({
+      root,
+      bare,
+      paths: declared,
+      known: async (shas) => {
+        try {
+          const answer = await this.liveQuests.findKnownCommits({
+            params: { projectId },
+            body: { shas, app, paths },
+          });
+          // ⚠️ A Lore from before #Q3868 ignores `app` and answers the
+          // whole-history sets, which are no base for this walk. It echoes
+          // no `app` either, and that is how it is told apart.
+          return answer.app === undefined ? undefined : answer.known;
+        } catch {
+          return undefined;
+        }
+      },
+    });
+    if (walk.reason === "no-repository" || walk.reason === "git-failed") {
+      return {
+        whole,
+        skipped: `The paths of ${app} could not be read from git: its quests follow the whole history.`,
+      };
+    }
+    return { whole, scoped: { paths, walk } };
   }
 
   /**
@@ -328,6 +410,20 @@ export class LoreArtifactPusher {
     const n = count ?? walk.numbers.length;
     const from = walk.base ? `since ${walk.base.slice(0, 12)}` : "full history";
     return `${n} quest${n === 1 ? "" : "s"} referenced (${walk.complete ? "complete" : "partial"}, ${from}), ${state}`;
+  }
+
+  /**
+   * One line for the app's own set: "N of them touch <app>'s paths
+   * (complete|partial, since <base> or full history)".
+   */
+  public appQuestLine(
+    app: string,
+    walk: QuestWalk,
+    count: number | undefined,
+  ): string {
+    const n = count ?? walk.numbers.length;
+    const from = walk.base ? `since ${walk.base.slice(0, 12)}` : "full history";
+    return `${n} of them touch${n === 1 ? "es" : ""} the paths of ${app} (${walk.complete ? "complete" : "partial"}, ${from})`;
   }
 
   /**

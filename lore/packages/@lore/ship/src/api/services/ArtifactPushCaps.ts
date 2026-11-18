@@ -22,7 +22,7 @@ export class ArtifactPushCaps {
   protected readonly caps = $inject(MultipartCapProvider);
 
   /**
-   * Every part `ArtifactController.pushArtifact` declares (13 today) with
+   * Every part `ArtifactController.pushArtifact` declares (15 today) with
    * room for a few more: a part the route does not declare is walked past.
    */
   public static readonly MAX_PARTS = 20;

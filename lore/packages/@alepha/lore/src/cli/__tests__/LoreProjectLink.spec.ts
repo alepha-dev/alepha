@@ -48,6 +48,7 @@ describe(".alepha/lore.json", () => {
       project: "hello",
       path: "/repo/.alepha/lore.json",
       bareQuestRefs: false,
+      apps: {},
     });
     await fs.writeJsonFile("/repo/infra/.alepha/lore.json", {
       project: "inner",
@@ -77,6 +78,34 @@ describe(".alepha/lore.json", () => {
       bareQuestRefs: true,
     });
     expect((await link.find("/repo"))?.bareQuestRefs).toBe(true);
+  });
+
+  it("reads each app's paths, cleaned and sorted, and a relink keeps them (#Q3868)", async ({
+    expect,
+  }) => {
+    const { fs, link } = await create();
+    const apps = {
+      Docs: ["packages/docs", " docs ", "docs", "", 7],
+      web: "apps/web",
+      api: [],
+      shop: ["apps/shop\nrm"],
+    };
+    await fs.writeJsonFile("/repo/.alepha/lore.json", {
+      project: "hello",
+      apps,
+    });
+
+    // One spelling per list, an app name as Lore keeps it, and nothing for
+    // an entry that names no usable path.
+    expect((await link.find("/repo"))?.apps).toEqual({
+      docs: ["docs", "packages/docs"],
+    });
+
+    await link.write("/repo", "hello");
+    expect(await fs.readJsonFile("/repo/.alepha/lore.json")).toEqual({
+      project: "hello",
+      apps,
+    });
   });
 
   it("comes after --project and LORE_PROJECT", async ({ expect }) => {

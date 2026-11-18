@@ -174,6 +174,13 @@ describe("live quests", () => {
       dirty?: boolean;
       quests?: { base?: string; numbers: number[]; complete: boolean };
       walked?: string[];
+      appQuests?: {
+        paths: string;
+        base?: string;
+        numbers: number[];
+        complete: boolean;
+      };
+      appWalked?: string[];
       filler?: string;
     },
   ) =>
@@ -202,6 +209,18 @@ describe("live quests", () => {
                   commits: new File(
                     [JSON.stringify(body.walked)],
                     "commits.json",
+                    { type: "application/json" },
+                  ),
+                }
+              : {}),
+            ...(body.appQuests
+              ? { appQuests: { version: 1 as const, ...body.appQuests } }
+              : {}),
+            ...(body.appWalked
+              ? {
+                  appCommits: new File(
+                    [JSON.stringify(body.appWalked)],
+                    "app-commits.json",
                     { type: "application/json" },
                   ),
                 }
@@ -401,9 +420,9 @@ describe("live quests", () => {
     it("takes a push carrying every part at once, past the framework's 10-part default", async ({
       expect,
     }) => {
-      // app, tag, commitSha, force, manifest, quests, dirty, file, maps,
-      // schema, commits: eleven parts, which the default refused with a 413
-      // before the gate ran.
+      // app, tag, commitSha, force, manifest, quests, appQuests, dirty,
+      // file, maps, schema, commits, appCommits: thirteen parts, where the
+      // default refused eleven with a 413 before the gate ran.
       const w = await world();
       const json = (name: string, value: unknown) =>
         new File([JSON.stringify(value)], name, { type: "application/json" });
@@ -422,17 +441,25 @@ describe("live quests", () => {
               runtimes: [{ runtime: "node", entry: "index.node.js" }],
             } as never,
             quests: { version: 1, numbers: [3], complete: true },
+            appQuests: {
+              version: 1,
+              paths: "docs",
+              numbers: [3],
+              complete: true,
+            },
             dirty: false,
             file: await packedArtifact(),
             maps: new File(["maps"], "maps.tar.zst"),
             schema: json("schema.json", { version: 1, dialects: {} }),
             commits: json("commits.json", [sha("a")]),
+            appCommits: json("app-commits.json", [sha("a")]),
           },
         },
         { user: w.user },
       );
 
       expect(pushed.data.quests).toEqual({ count: 1, complete: true });
+      expect(pushed.data.appQuests).toEqual({ count: 1, complete: true });
     });
 
     it("refuses a commit list that is not one", async ({ expect }) => {
@@ -515,6 +542,263 @@ describe("live quests", () => {
           .inject(CommitQuestSetService)
           .known(second.project.id, [sha("a")]),
       ).toEqual([]);
+    });
+  });
+
+  describe("an app that declares its paths (#Q3868)", () => {
+    const docs = { app: "my-app", paths: "docs" };
+
+    const appSetOf = async (projectId: number, commit: string) =>
+      (
+        await alepha
+          .inject(CommitQuestSetService)
+          .appSetsOf(projectId, [{ app: "my-app", sha: commit }])
+      ).get(CommitQuestSetService.appKey("my-app", commit));
+
+    const sorted = (numbers: Set<number> | undefined) =>
+      [...(numbers ?? [])].sort((a, b) => a - b);
+
+    it("keeps the app's set beside the whole history, and reads it as what is live", async ({
+      expect,
+    }) => {
+      const w = await world();
+      alepha.inject(TestRecordedCommits).recorded = [
+        // Recorded on a commit that touched the paths, and on one that did
+        // not (the pushed commit itself): only the first is the app's.
+        { number: 50, shas: [sha("b")], completed: true },
+        { number: 51, shas: [sha("a")], completed: true },
+        // Done, and merged after this build.
+        { number: 60, shas: [sha("9")], completed: true },
+      ];
+
+      const result = await push(w, {
+        commitSha: sha("a"),
+        quests: { numbers: [1, 2, 3], complete: true },
+        walked: [sha("a"), sha("b")],
+        appQuests: { paths: "docs", numbers: [2], complete: true },
+        appWalked: [sha("b")],
+      });
+      await ran(w, { commitSha: sha("a"), at: "2026-11-01T00:00:00.000Z" });
+
+      expect(result.quests).toEqual({ count: 5, complete: true });
+      expect(result.appQuests).toEqual({ count: 2, complete: true });
+      expect(sorted((await setOf(w.project.id, sha("a")))?.numbers)).toEqual([
+        1, 2, 3, 50, 51,
+      ]);
+      expect(sorted((await appSetOf(w.project.id, sha("a")))?.numbers)).toEqual(
+        [2, 50],
+      );
+
+      const live = alepha.inject(LiveQuestService);
+      const detail = await live.instance(w.project.id, w.instance.id);
+      expect(detail?.state).toBe("known");
+      expect(detail?.scoped).toBe(true);
+      expect(detail?.live).toEqual([2, 50]);
+      // A quest of another app in the same history is live nowhere here.
+      expect(await live.whereLive(w.project.id, 1)).toEqual([]);
+      expect(await live.whereLive(w.project.id, 2)).toMatchObject([
+        { instanceId: w.instance.id, app: "my-app" },
+      ]);
+      // Behind stays on the whole history: 51 is merged in this build, so
+      // it is not behind although the app's paths never saw it.
+      expect(detail?.behind).toEqual([60]);
+      expect(
+        (await live.behindCounts(w.project.id, [w.instance.id])).get(
+          w.instance.id,
+        ),
+      ).toBe(1);
+    });
+
+    it("builds on the app's own base, walked with the same paths", async ({
+      expect,
+    }) => {
+      const w = await world();
+      await push(w, {
+        commitSha: sha("a"),
+        quests: { numbers: [1, 2], complete: true },
+        walked: [sha("a")],
+        appQuests: { paths: "docs", numbers: [2], complete: true },
+        appWalked: [sha("a")],
+      });
+      await push(w, {
+        commitSha: sha("c"),
+        quests: { base: sha("a"), numbers: [3], complete: true },
+        walked: [sha("c")],
+        appQuests: {
+          paths: "docs",
+          base: sha("a"),
+          numbers: [],
+          complete: true,
+        },
+        appWalked: [],
+      });
+
+      // The whole history's base is never the app's: 1 stays out.
+      const set = await appSetOf(w.project.id, sha("c"));
+      expect(sorted(set?.numbers)).toEqual([2]);
+      expect(set?.complete).toBe(true);
+      expect(sorted((await setOf(w.project.id, sha("c")))?.numbers)).toEqual([
+        1, 2, 3,
+      ]);
+    });
+
+    it("knows a commit for an app only with the paths its set was walked with", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const service = alepha.inject(CommitQuestSetService);
+      await service.record({
+        projectId: w.project.id,
+        commitSha: sha("a"),
+        scope: docs,
+        numbers: [2],
+        walked: [],
+        complete: true,
+      });
+      const ask = async (body: { app?: string; paths?: string }) =>
+        (
+          await alepha.inject(LiveQuestController).findKnownCommits.fetch(
+            {
+              params: { projectId: w.project.id },
+              body: { shas: [sha("a")], ...body },
+            },
+            { user: w.user },
+          )
+        ).data;
+
+      // The app is echoed, so a pusher can tell this Lore from one that
+      // ignores the question and answers the whole-history sets.
+      expect(await ask(docs)).toEqual({
+        known: [{ sha: sha("a"), complete: true }],
+        app: "my-app",
+      });
+      expect(await ask({ app: "my-app", paths: "docs\nlib" })).toEqual({
+        known: [],
+        app: "my-app",
+      });
+      expect(await ask({ app: "other", paths: "docs" })).toEqual({
+        known: [],
+        app: "other",
+      });
+      // The app's set is not a whole-history one.
+      expect(await ask({})).toEqual({ known: [] });
+    });
+
+    it("starts over when the paths change: a base walked with others is none, and the row is replaced", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const service = alepha.inject(CommitQuestSetService);
+      await service.record({
+        projectId: w.project.id,
+        commitSha: sha("a"),
+        scope: docs,
+        numbers: [2],
+        walked: [],
+        complete: true,
+      });
+
+      // A pusher that still names the old base: partial, and nothing of
+      // the old set is carried over.
+      const stale = await service.record({
+        projectId: w.project.id,
+        commitSha: sha("c"),
+        scope: { app: "my-app", paths: "lib" },
+        base: sha("a"),
+        numbers: [7],
+        walked: [],
+        complete: true,
+      });
+      expect(sorted(stale.numbers)).toEqual([7]);
+      expect(stale.complete).toBe(false);
+
+      // The same commit pushed again with new paths: the complete set the
+      // old paths found is replaced, not kept.
+      await service.record({
+        projectId: w.project.id,
+        commitSha: sha("a"),
+        scope: { app: "my-app", paths: "lib" },
+        numbers: [9],
+        walked: [],
+        complete: true,
+      });
+      const set = await appSetOf(w.project.id, sha("a"));
+      expect(sorted(set?.numbers)).toEqual([9]);
+      expect(set?.paths).toBe("lib");
+    });
+
+    it("claims no diff between a run walked with the app's paths and one that was not", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const service = alepha.inject(CommitQuestSetService);
+      const whole = { walked: [], complete: true };
+      await service.record({
+        ...whole,
+        projectId: w.project.id,
+        commitSha: sha("a"),
+        numbers: [1, 2],
+      });
+      await service.record({
+        ...whole,
+        projectId: w.project.id,
+        commitSha: sha("b"),
+        numbers: [1, 2, 3],
+      });
+      await service.record({
+        ...whole,
+        projectId: w.project.id,
+        commitSha: sha("b"),
+        scope: docs,
+        numbers: [2, 3],
+      });
+      // Deployed before the app declared its paths, then after.
+      await ran(w, { commitSha: sha("a"), at: "2026-11-01T00:00:00.000Z" });
+      await ran(w, { commitSha: sha("b"), at: "2026-11-02T00:00:00.000Z" });
+
+      const live = alepha.inject(LiveQuestService);
+      const detail = await live.instance(w.project.id, w.instance.id);
+
+      expect(detail?.live).toEqual([2, 3]);
+      expect(detail?.runs[0]).toEqual({
+        deploymentId: detail?.runs[0]?.deploymentId,
+        known: false,
+      });
+      // "Since" still reaches back through the older run: 2 was live then
+      // too.
+      expect((await live.whereLive(w.project.id, 2))[0]?.since).toBe(
+        "2026-11-01T00:00:00.000Z",
+      );
+    });
+
+    it("leaves a copy of another app in the project on the whole history", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const service = alepha.inject(CommitQuestSetService);
+      await service.record({
+        projectId: w.project.id,
+        commitSha: sha("a"),
+        numbers: [1, 2],
+        walked: [],
+        complete: true,
+      });
+      await service.record({
+        projectId: w.project.id,
+        commitSha: sha("a"),
+        scope: { app: "other-app", paths: "docs" },
+        numbers: [2],
+        walked: [],
+        complete: true,
+      });
+      await ran(w, { commitSha: sha("a"), at: "2026-11-01T00:00:00.000Z" });
+
+      const detail = await alepha
+        .inject(LiveQuestService)
+        .instance(w.project.id, w.instance.id);
+
+      expect(detail?.scoped).toBeUndefined();
+      expect(detail?.live).toEqual([1, 2]);
     });
   });
 
