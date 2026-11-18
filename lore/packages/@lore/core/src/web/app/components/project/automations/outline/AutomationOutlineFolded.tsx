@@ -31,6 +31,11 @@ export interface AutomationOutlineFoldedProps {
    */
   trailing?: ReactNode;
   /**
+   * In a narrow place (a gallery card): the event and the action share the
+   * line instead of the event taking a fixed column.
+   */
+  compact?: boolean;
+  /**
    * Unfolds the block; absent, the line is only shown (a gallery card).
    */
   onUnfold?: () => void;
@@ -55,7 +60,12 @@ const AutomationOutlineFolded = (props: AutomationOutlineFoldedProps) => {
       >
         <EventIcon className="size-4" />
       </span>
-      <span className="flex min-w-0 shrink flex-col sm:w-44 sm:shrink-0">
+      <span
+        className={cn(
+          "flex min-w-0 flex-col",
+          props.compact ? "flex-1" : "shrink sm:w-44 sm:shrink-0",
+        )}
+      >
         <span className="truncate font-medium">{props.event}</span>
         {props.detail && (
           <span className="text-muted-foreground truncate text-sm">

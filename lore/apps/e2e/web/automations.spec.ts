@@ -1464,10 +1464,12 @@ test.describe("Automations", () => {
       await (await page.request.get(`${optionsPath}?kind=member`)).json()
     ).items.find((item: { value: string }) => item.value === me.id);
 
-    // Each card draws its preset's graph.
+    // Each card reads as its block folded into one line (#Q3851).
     await page.goto(`/${project.slug}/automations/presets`);
     const card = page.getByTestId("automation-preset-feedback-created");
-    await expect(card.getByTestId("automation-preset-sketch")).toBeVisible();
+    await expect(card.getByTestId("automation-preset-line")).toContainText(
+      "Send a notification",
+    );
 
     // Open in the editor: the preset's graph, unsaved, as an outline.
     await card.click();

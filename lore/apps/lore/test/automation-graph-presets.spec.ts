@@ -109,19 +109,40 @@ describe("Stock presets as graphs", () => {
     ).toEqual([]);
   });
 
-  it("sketches every stock preset for its card: kinds, places and wires, no configuration", ({
+  it("sketches every stock preset as its card's one line: types, no configuration", ({
     expect,
   }) => {
     const registry = alepha.inject(AutomationPresetRegistry);
+    const types = new Set(
+      alepha
+        .inject(AutomationCatalog)
+        .nodeTypes()
+        .map((item) => item.type),
+    );
     for (const preset of registry.all()) {
       const sketch = registry.sketch(preset.key);
       expect(sketch, preset.key).toBeDefined();
-      expect(sketch!.nodes.length).toBeGreaterThan(1);
-      expect(sketch!.edges.length).toBeGreaterThan(0);
+      expect(Object.keys(sketch!).sort(), preset.key).toEqual(
+        [
+          "action",
+          "condition",
+          "more",
+          "source",
+          ...(sketch!.read ? ["read"] : []),
+        ].sort(),
+      );
+      expect(types.has(sketch!.source), preset.key).toBe(true);
+      expect(types.has(sketch!.action!), preset.key).toBe(true);
+      expect(sketch!.read === undefined, preset.key).toBe(
+        sketch!.source !== "schedule",
+      );
       expect(JSON.stringify(sketch)).not.toContain("config");
-      expect(
-        sketch!.nodes.filter((node) => node.kind === "source"),
-      ).toHaveLength(1);
     }
+    expect(registry.sketch("feedback-created")).toEqual({
+      source: "feedback.created",
+      condition: false,
+      action: "notify",
+      more: 0,
+    });
   });
 });

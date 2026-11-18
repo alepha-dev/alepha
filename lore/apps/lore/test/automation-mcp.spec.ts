@@ -980,6 +980,18 @@ describe("Automation MCP transport uses shared application policy", () => {
         expect.objectContaining({ key: "email", available: true }),
       ]),
     );
+    // A preset's sketch is its card's one line (#Q3851): types, no
+    // configuration, no coordinates.
+    expect(
+      catalogue.presets.find(
+        (preset: { key: string }) => preset.key === "feedback-created",
+      )?.sketch,
+    ).toEqual({
+      source: "feedback.created",
+      condition: false,
+      action: "notify",
+      more: 0,
+    });
     expect(catalogue.limits).toMatchObject({
       selectedRows: 50,
       deliveries: 100,

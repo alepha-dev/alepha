@@ -4593,7 +4593,6 @@ export default {
   "automation.preset.openInEditor": "Open in editor",
   "automation.preset.addToDraft": "Add to the automation",
   "automation.gallery.scratch": "Start from scratch",
-  "automation.gallery.sketch": "The graph of $1",
   "automation.subscription.open": "Open in Automations",
   "automation.outline.when": "When",
   "automation.outline.onlyIf": "Only if",
@@ -4690,6 +4689,7 @@ export default {
     "A step after another runs only if that one succeeded, and may use what it produced; a failed step stops only what follows it.",
   "automation.outline.how.decided":
     "The condition is decided before anything happens.",
+  "automation.outline.withCondition": "with a condition",
   "automation.outline.notOutline.title": "Built with the previous editor",
   "automation.outline.notOutline.description":
     "This automation has a shape the outline cannot show, so it stopped at its next run. Rebuild it as a new automation, then delete this one.",
