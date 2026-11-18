@@ -18,12 +18,10 @@ const badgeVariants = cva(
         outline:
           "border-border text-foreground [a]:hover:bg-hover [a]:hover:text-muted-foreground",
         /**
-         * Status chip: the label and the icon stay body text, and the only
-         * coloured parts are a near-transparent fill and its border.
-         *
-         * The caller supplies the hue, because a status palette belongs to
-         * the app rather than to the design system:
-         * `<Badge variant="tint" className="border-blue-500/40 bg-blue-500/15">`.
+         * Status or category chip: the label and the icon stay body text, and
+         * the only coloured parts are a near-transparent fill and its border.
+         * The hue is always a `tone`, never classes passed by the caller, so
+         * every tinted chip in an app is the same chip.
          *
          * Distinct from `destructive`, which tints the TEXT as well. That
          * reads as an alarm, which is right for an error and wrong for a
@@ -52,6 +50,12 @@ const badgeVariants = cva(
        * success, warning and danger paint from the signal tokens, not fixed
        * Tailwind hues, so colour-blind mode (`:root.cvd`) repaints them.
        * info stays blue: blue is already safe under every common deficiency.
+       *
+       * The hue tones after them (slate to pink) name a colour, not a
+       * meaning: for categories a user or an app tells apart by colour, such
+       * as tags or kinds, where a semantic tone would claim a success or a
+       * danger that is not there. Same fill and border strengths as the
+       * semantic ones.
        */
       tone: {
         neutral: "",
@@ -59,6 +63,14 @@ const badgeVariants = cva(
         success: "",
         warning: "",
         danger: "",
+        slate: "",
+        blue: "",
+        green: "",
+        amber: "",
+        red: "",
+        violet: "",
+        cyan: "",
+        pink: "",
       },
     },
     compoundVariants: [
@@ -86,6 +98,46 @@ const badgeVariants = cva(
         variant: "tint",
         tone: "danger",
         class: "border-danger/40 bg-danger/15",
+      },
+      {
+        variant: "tint",
+        tone: "slate",
+        class: "border-slate-500/40 bg-slate-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "blue",
+        class: "border-blue-500/40 bg-blue-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "green",
+        class: "border-emerald-500/40 bg-emerald-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "amber",
+        class: "border-amber-500/40 bg-amber-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "red",
+        class: "border-red-500/40 bg-red-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "violet",
+        class: "border-violet-500/40 bg-violet-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "cyan",
+        class: "border-cyan-500/40 bg-cyan-500/15",
+      },
+      {
+        variant: "tint",
+        tone: "pink",
+        class: "border-pink-500/40 bg-pink-500/15",
       },
     ],
     defaultVariants: {
@@ -117,7 +169,8 @@ const Badge = (props: BadgeProps) => {
 };
 
 /**
- * The semantic hues a `tint` badge can wear.
+ * The hues a `tint` badge can wear: semantic ones (neutral to danger), then
+ * plain colours for categories (slate to pink).
  *
  * Exported because consumers map their own vocabulary onto it (Lore points
  * quest priorities, quest statuses and epic statuses at these names) and

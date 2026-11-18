@@ -6,7 +6,7 @@ import {
   ProjectPageSkeleton,
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
-import { $page, NotFound } from "alepha/react/router";
+import { NotFound } from "alepha/react/router";
 import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
@@ -17,13 +17,11 @@ import { currentPersonaAtom } from "./atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "./atoms/currentUseCaseAtom.ts";
 
 /**
- * Plan's Requirements pages (#E153): one sidebar entry opening a page of
- * three tabs, each a route, in the owner's order (answer 70): Requirements
- * (`/requirements`, where the entry opens), Use cases
- * (`/requirements/use-cases`) and Personas (`/requirements/personas`).
- *
- * The persona and use case pages are full pages OUTSIDE the tabbed layout,
- * without its tab bar (decision 77), mounted as siblings of it.
+ * Plan's Requirements pages (#E153): three list pages, each with its own
+ * sidebar entry, listed there Personas (`/requirements/personas`), Use
+ * cases (`/requirements/use-cases`), then Requirements (`/requirements`):
+ * who, what they do, what it must satisfy. Then a persona's and a use
+ * case's page.
  *
  * No route sets a `head`: the document title is the breadcrumb's own trail
  * (`ProjectTrail`), so the two cannot drift.
@@ -34,50 +32,38 @@ export class RequirementsRouter {
   useCaseApi = $client<UseCaseController>();
 
   /**
-   * The tabbed layout: folder tabs and no plate (answer 73), each tab owning
-   * its search, filters and buttons. It gates all three tabs at once on
-   * Plan's `requirements` option: a whole surface, so its route 404s without
-   * it, as Feedback's does.
+   * The requirements list, where the sidebar's first entry opens. It gates
+   * on Plan's `requirements` option: a whole surface, so its route 404s
+   * without it, as Feedback's does.
    */
-  projectRequirementsLayout = $pageProject({
-    name: "projectRequirementsLayout",
-    path: "/requirements",
-    children: () => [
-      this.projectRequirements,
-      this.projectUseCases,
-      this.projectPersonas,
-    ],
-    loader: async () => this.gate(),
-    lazy: () => import("./components/layout/RequirementsLayout.tsx"),
-  });
-
-  projectRequirements = $page({
+  projectRequirements = $pageProject({
+    loading: ProjectPageSkeleton,
     name: "projectRequirements",
-    // Empty, not "/": the layout's own `/requirements` is this tab's URL.
-    path: "",
+    path: "/requirements",
     // The requirement whose detail pane is open: what `[[#S15]]` links to.
     schema: { query: z.object({ requirement: z.text().optional() }) },
-    loader: async () => this.gateTab("requirement:read"),
-    lazy: () => import("./components/layout/RequirementsTab.tsx"),
+    loader: async () => this.gatePage("requirement:read"),
+    lazy: () => import("./components/pages/RequirementsPage.tsx"),
   });
 
-  projectUseCases = $page({
+  projectUseCases = $pageProject({
+    loading: ProjectPageSkeleton,
     name: "projectUseCases",
-    path: "/use-cases",
-    loader: async () => this.gateTab("usecase:read"),
-    lazy: () => import("./components/layout/UseCasesTab.tsx"),
+    path: "/requirements/use-cases",
+    loader: async () => this.gatePage("usecase:read"),
+    lazy: () => import("./components/pages/UseCasesPage.tsx"),
   });
 
-  projectPersonas = $page({
+  projectPersonas = $pageProject({
+    loading: ProjectPageSkeleton,
     name: "projectPersonas",
-    path: "/personas",
-    loader: async () => this.gateTab("persona:read"),
-    lazy: () => import("./components/layout/PersonasTab.tsx"),
+    path: "/requirements/personas",
+    loader: async () => this.gatePage("persona:read"),
+    lazy: () => import("./components/pages/PersonasPage.tsx"),
   });
 
   /**
-   * A persona's page: a full page OUTSIDE the tabbed layout, without its tab
-   * bar (decision 77), under its tab's URL. `personaNumber`, never `number`:
+   * A persona's page: a full page under its list's URL. `personaNumber`, never `number`:
    * route params are unique across the whole route table.
    */
   /**
@@ -91,7 +77,7 @@ export class RequirementsRouter {
     lazy: () => import("./components/traceability/TestBookPage.tsx"),
     loader: async () => {
       this.gate();
-      this.gateTab("requirement:read");
+      this.gateRank("requirement:read");
       return {};
     },
   });
@@ -104,7 +90,7 @@ export class RequirementsRouter {
     lazy: () => import("./components/personas/PersonaPage.tsx"),
     loader: async ({ params }) => {
       this.gate();
-      this.gateTab("persona:read");
+      this.gateRank("persona:read");
       const project = this.alepha.store.get(currentProjectAtom)!;
       const persona = await this.personaApi.getPersonaByNumber({
         params: { projectId: project.id, number: params.personaNumber },
@@ -124,8 +110,7 @@ export class RequirementsRouter {
   });
 
   /**
-   * A use case's page, like a persona's: a full page outside the tabbed
-   * layout. `useCaseNumber`, unique across the route table.
+   * A use case's page, like a persona's: a full page under its list's URL. `useCaseNumber`, unique across the route table.
    */
   projectUseCase = $pageProject({
     loading: ProjectPageSkeleton,
@@ -135,7 +120,7 @@ export class RequirementsRouter {
     lazy: () => import("./components/usecases/UseCasePage.tsx"),
     loader: async ({ params }) => {
       this.gate();
-      this.gateTab("usecase:read");
+      this.gateRank("usecase:read");
       const project = this.alepha.store.get(currentProjectAtom)!;
       const useCase = await this.useCaseApi.getUseCaseByNumber({
         params: { projectId: project.id, number: params.useCaseNumber },
@@ -154,7 +139,15 @@ export class RequirementsRouter {
   });
 
   /**
-   * The option gate the three tabs share. 404 rather than 403, as every
+   * A list page's gates: the option, then the reader's rank.
+   */
+  protected gatePage(permission: string): Record<string, never> {
+    this.gate();
+    return this.gateRank(permission);
+  }
+
+  /**
+   * The option gate every Requirements page shares. 404 rather than 403, as every
    * capability guard: a page the project does not have does not exist.
    */
   protected gate(): Record<string, never> {
@@ -169,11 +162,11 @@ export class RequirementsRouter {
   }
 
   /**
-   * One tab's rank gate: a tab whose permission the reader lacks is neither
-   * drawn nor opened. A permission NAME read outside React, because a
+   * One page's rank gate: a page whose permission the reader lacks is neither
+   * listed in the sidebar nor opened. A permission NAME read outside React, because a
    * `$page` loader cannot call a hook.
    */
-  protected gateTab(permission: string): Record<string, never> {
+  protected gateRank(permission: string): Record<string, never> {
     const project = this.alepha.store.get(currentProjectAtom);
     if (!project || !canInProject(project, permission)) {
       throw new NotFoundError("Your rank does not open this page here");

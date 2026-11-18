@@ -11,7 +11,6 @@ import { $inject } from "alepha";
 import {
   BookText,
   ClipboardCheck,
-  ClipboardList,
   Compass,
   FileCode,
   FileInput,
@@ -24,7 +23,8 @@ import {
 import { RequirementsPromptDefaults } from "../../../api/schemas/RequirementsPromptDefaults.ts";
 import { currentPersonaAtom } from "../atoms/currentPersonaAtom.ts";
 import { currentUseCaseAtom } from "../atoms/currentUseCaseAtom.ts";
-import { REQUIREMENTS_ROUTES } from "../components/layout/requirementsTabs.ts";
+import { requirementsCountsAtom } from "../atoms/requirementsCountsAtom.ts";
+import { REQUIREMENTS_NAV_ROUTES } from "../components/pages/requirementsNavRoutes.ts";
 import { usePersonaReferences } from "../components/personas/usePersonaReferences.ts";
 import { useRequirementReferences } from "../components/requirements/useRequirementReferences.ts";
 import { useUseCaseReferences } from "../components/usecases/useUseCaseReferences.ts";
@@ -34,8 +34,8 @@ import { useUseCaseReferences } from "../components/usecases/useUseCaseReference
  * `ProjectShellRegistry` under PLAN, whose entries `WorkShell` owns: hence
  * `extendNav` (decision 66), never `registerNav`.
  *
- * ⚠️ One entry and nothing else in the sidebar (owner, answers 53 and 64):
- * no band is added, titled or reordered, and no existing entry moves.
+ * Three entries in their own band, one per list page; no existing entry
+ * moves.
  */
 export class RequirementsShell {
   protected readonly shell = $inject(ProjectShellRegistry);
@@ -55,26 +55,57 @@ export class RequirementsShell {
   }
 
   constructor() {
+    // A band of its own, between Errors and Folios (#Q3830), holding one
+    // entry per list page: Personas, Use cases, then Requirements. Each is lit on its list and on the pages a row
+    // of it opens. Each counts its list; hovered, the count gives way to a
+    // "+" that opens the same sheet as the header's create menu.
+    const isOn =
+      (routes: readonly string[]) =>
+      (name: string): boolean =>
+        routes.includes(name);
     this.shell.extendNav("plan", [
       {
-        // A band of its own, between Errors and Folios (#Q3830, revising
-        // F1515's "the sidebar is not reworked" for this entry only).
         route: "projectRequirements",
         permission: "requirement:read",
         labelKey: "project.menu.requirements",
-        icon: ClipboardList,
+        icon: ListChecks,
+        group: "requirements",
+        order: 30,
+        option: "requirements",
+        activeOn: isOn(REQUIREMENTS_NAV_ROUTES.requirements),
+        reads: [requirementsCountsAtom],
+        badge: (ctx) => ctx.get(requirementsCountsAtom)?.requirements,
+      },
+      {
+        route: "projectUseCases",
+        permission: "usecase:read",
+        labelKey: "project.menu.useCases",
+        icon: BookText,
+        group: "requirements",
+        order: 20,
+        option: "requirements",
+        activeOn: isOn(REQUIREMENTS_NAV_ROUTES.useCases),
+        reads: [requirementsCountsAtom],
+        badge: (ctx) => ctx.get(requirementsCountsAtom)?.useCases,
+      },
+      {
+        route: "projectPersonas",
+        permission: "persona:read",
+        labelKey: "project.menu.personas",
+        icon: UsersRound,
         group: "requirements",
         order: 10,
         option: "requirements",
-        // Lit on every tab and on every persona, use case and requirement
-        // page. No badge.
-        activeOn: (name) => REQUIREMENTS_ROUTES.includes(name),
+        activeOn: isOn(REQUIREMENTS_NAV_ROUTES.personas),
+        reads: [requirementsCountsAtom],
+        badge: (ctx) => ctx.get(requirementsCountsAtom)?.personas,
       },
     ]);
 
     // New persona, from the header's "+" menu, after Feedback.
     this.shell.registerCreate({
       key: "persona",
+      navRoute: "projectPersonas",
       order: 70,
       labelKey: "project.menu.create-persona",
       icon: UsersRound,
@@ -108,6 +139,7 @@ export class RequirementsShell {
     // New requirement, then New use case and New persona.
     this.shell.registerCreate({
       key: "requirement",
+      navRoute: "projectRequirements",
       order: 69,
       labelKey: "project.menu.create-requirement",
       icon: ListChecks,
@@ -122,6 +154,7 @@ export class RequirementsShell {
     // New use case, beside New persona.
     this.shell.registerCreate({
       key: "usecase",
+      navRoute: "projectUseCases",
       order: 71,
       labelKey: "project.menu.create-usecase",
       icon: BookText,
@@ -132,11 +165,10 @@ export class RequirementsShell {
         () => import("../components/usecases/UseCaseCreateMenuSheet.tsx"),
       ),
     });
-    // A use case's page reads "Acme > Requirements > #U7": the reference as
+    // A use case's page reads "Acme > Use cases > #U7": the reference as
     // an inert leaf, as an epic's reads "Acme > Epics > #E2". The number, not
-    // the title, which heads the page's own aside; and no crumb for the tab,
-    // which no other section has: "Requirements" climbs back to the tab that
-    // lists the page (`SECTION_HREF_ROUTES`).
+    // the title, which heads the page's own aside; and the section crumb
+    // climbs back to the list (`SECTION_HREF_ROUTES`).
     this.shell.registerCrumb({
       order: 53,
       reads: [currentUseCaseAtom],
@@ -148,7 +180,7 @@ export class RequirementsShell {
       },
     });
 
-    // A persona's page reads "Acme > Requirements > #A2".
+    // A persona's page reads "Acme > Personas > #A2".
     this.shell.registerCrumb({
       order: 51,
       reads: [currentPersonaAtom],
@@ -204,7 +236,7 @@ export class RequirementsShell {
       ),
       useReferences: useUseCaseReferences,
     });
-    // `[[#S15]]`: a requirement, which opens the Requirements tab on it.
+    // `[[#S15]]`: a requirement, which opens the Requirements page on it.
     this.references.register({
       kind: "requirement",
       order: 62,

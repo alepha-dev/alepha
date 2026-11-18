@@ -88,7 +88,11 @@ class FakeLinkProvider extends LinkProvider {
         };
       },
       getProjectUsers: async () => [],
-      getProjectActivityFilters: async () => ({ types: [], actions: [] }),
+      getProjectActivityFilters: async () => ({
+        types: [],
+        actions: [],
+        pairs: [],
+      }),
     });
   }
 }

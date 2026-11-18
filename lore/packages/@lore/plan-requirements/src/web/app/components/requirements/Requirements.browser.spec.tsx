@@ -17,7 +17,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { RequirementResource } from "../../../../api/schemas/requirementResourceSchema.ts";
-import RequirementsTab from "../layout/RequirementsTab.tsx";
+import RequirementsPage from "../pages/RequirementsPage.tsx";
 import RequirementDetail from "./RequirementDetail.tsx";
 
 const aRequirement = (
@@ -139,7 +139,7 @@ describe("Requirements screens", () => {
     render(
       <AlephaContext.Provider value={app}>
         <DialogProvider>
-          <RequirementsTab />
+          <RequirementsPage />
         </DialogProvider>
       </AlephaContext.Provider>,
     );

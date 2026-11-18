@@ -4,16 +4,40 @@ import { cn } from "./utils.ts";
 
 export type CardProps = React.ComponentProps<"div"> & {
   size?: "default" | "sm";
+  /**
+   * `flat` (the default) is the 1px ring alone. `raised` adds a soft shadow
+   * under it, so the card's edge has depth rather than reading as a line
+   * drawn on the page.
+   */
+  variant?: "flat" | "raised";
+  /**
+   * For a card that is a link or a button as a whole: hovering it deepens
+   * the shadow and the ring and shows the pointer, so the card announces
+   * that it opens something. The click itself stays the caller's (a link
+   * stretched over the card, or an `onClick`).
+   */
+  interactive?: boolean;
 };
 
 const Card = (props: CardProps) => {
-  const { className, size = "default", ...rest } = props;
+  const {
+    className,
+    size = "default",
+    variant = "flat",
+    interactive,
+    ...rest
+  } = props;
   return (
     <div
       data-slot="card"
       data-size={size}
+      data-variant={variant}
+      data-interactive={interactive || undefined}
       className={cn(
         "group/card bg-card text-card-foreground ring-foreground/10 flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl py-(--card-spacing) text-sm ring-1 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        variant === "raised" && "shadow-sm",
+        interactive &&
+          "hover:ring-foreground/20 cursor-pointer transition-[box-shadow] hover:shadow-md",
         className,
       )}
       {...rest}

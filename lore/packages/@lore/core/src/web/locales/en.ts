@@ -3240,9 +3240,8 @@ export default {
   // Epics
   "project.menu.epics": "Epics",
   "project.menu.requirements": "Requirements",
-  "requirements.tab.requirements": "Requirements",
-  "requirements.tab.useCases": "Use cases",
-  "requirements.tab.personas": "Personas",
+  "project.menu.useCases": "Use cases",
+  "project.menu.personas": "Personas",
   "requirements.prompt.personaExplore": "Explore as a persona",
   "requirements.prompt.requirementImport": "Import a specification",
   "requirements.prompt.useCaseDraft": "Draft use cases",
@@ -3520,6 +3519,10 @@ export default {
   "requirements.usecase.method.manual": "Manual",
   "project.menu.create-persona": "New persona",
   "requirements.persona.aside.areas": "Areas",
+  "requirements.persona.aside.coverage": "Coverage",
+  "requirements.persona.aside.passed": "$1 / $2 use cases passed",
+  "requirements.persona.aside.stale": "$1 stale since the last changes",
+  "requirements.persona.aside.stale.one": "$1 stale since the last change",
   "requirements.persona.aside.created": "Created",
   "requirements.persona.aside.environment": "Environment",
   "requirements.persona.aside.id": "ID",
@@ -3529,9 +3532,12 @@ export default {
     "$1 will be deleted. Its number is never reused, so a reference to it reads as broken.",
   "requirements.persona.delete.title": "Delete this persona?",
   "requirements.persona.edit": "Edit persona",
-  "requirements.persona.empty":
-    "No persona yet. A persona is someone, or something, the system is built for.",
-  "requirements.persona.emptyFilter": "No persona of this kind.",
+  "requirements.persona.empty.title": "No persona yet",
+  "requirements.persona.empty.description":
+    "A persona is someone, or something, your app is built for: a customer, a back-office user, a partner system, an AI agent. Its use cases say what it does in the app, and their runs check it still works.",
+  "requirements.persona.emptyFilter.title": "No persona of this kind",
+  "requirements.persona.emptyFilter.description":
+    "Pick another kind, or show them all.",
   "requirements.persona.field.alephaRole": "Alepha role",
   "requirements.persona.field.alephaRole.helper":
     "The $role or service account this persona plays in the app.",
@@ -3557,10 +3563,12 @@ export default {
   "requirements.persona.scopeChanged":
     "Scope changed since the last run: $1 use cases to re-verify.",
   "requirements.persona.changes.title": "Changes since the last run",
-  "requirements.persona.changes.none":
+  "requirements.persona.changes.none.title": "Nothing new",
+  "requirements.persona.changes.none.description":
     "Nothing completed since the last run touches this persona.",
-  "requirements.persona.changes.neverRun":
-    "No run yet: changes count from the first run.",
+  "requirements.persona.changes.neverRun.title": "No run yet",
+  "requirements.persona.changes.neverRun.description":
+    "Changes are counted from the first run of one of its use cases.",
   "requirements.persona.changes.viaEpic": "via epic $1",
   "requirements.persona.changes.viaMention": "mentions $1",
   "requirements.persona.changes.card": "$1 changes since the last run",
@@ -3576,7 +3584,6 @@ export default {
   "requirements.persona.showcase.removed": "Recording no longer kept",
   "requirements.persona.showcase.current": "Current release",
   "requirements.persona.showcase.chapters": "Steps",
-  "requirements.persona.toCover": "To cover: $1, $2.",
   "requirements.persona.tab.activity": "Activity",
   "requirements.persona.tab.overview": "Overview",
   "requirements.persona.toast.created": "Persona created",
@@ -3596,10 +3603,18 @@ export default {
     "What must be true before the first step.",
   "requirements.usecase.field.startingData.helper":
     "The seed or fixture a run starts from.",
-  "requirements.persona.toCover.personas":
-    "$1 personas with no passing use case",
-  "requirements.persona.toCover.personas.one":
-    "$1 persona with no passing use case",
+  "requirements.persona.card.useCases": "Use cases",
+  "requirements.persona.card.epics": "Epics",
+  "requirements.persona.card.requirements": "Requirements",
+  "requirements.persona.card.lastRun": "Last run",
+  "requirements.persona.card.passed": "$1 / $2 passed",
+  "requirements.persona.card.failed": "$1 failed",
+  "requirements.persona.card.neverRun": "never run",
+  "requirements.persona.card.role": "role: $1",
+  "requirements.persona.card.openAs": "Open as",
+  "requirements.persona.toCover.title": "To cover",
+  "requirements.persona.toCover.persona": "$1 $2 has no passing use case",
+  "requirements.persona.toCover.more": "and $1 more",
   "requirements.persona.toCover.useCases": "$1 use cases never run",
   "requirements.persona.toCover.useCases.one": "$1 use case never run",
   "requirements.persona.scopeChanged.one":

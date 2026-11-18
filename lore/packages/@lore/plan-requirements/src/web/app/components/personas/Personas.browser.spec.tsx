@@ -17,7 +17,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
-import PersonasTab from "../layout/PersonasTab.tsx";
+import PersonasPage from "../pages/PersonasPage.tsx";
 import PersonaPage from "./PersonaPage.tsx";
 
 const aPersona = (over: Partial<PersonaResource>): PersonaResource =>
@@ -114,6 +114,8 @@ class FakeLinkProvider extends LinkProvider {
           state: "never_run",
           stale: false,
           actors: [{ personaId: 1, role: "primary", number: 1, name: "Léa" }],
+          coveredBy: [],
+          criteria: [],
         },
       ],
       getPersonaChanges: async () => CHANGES,
@@ -190,7 +192,7 @@ describe("Personas screens", () => {
     render(
       <AlephaContext.Provider value={app}>
         <DialogProvider>
-          <PersonasTab />
+          <PersonasPage />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
@@ -200,8 +202,9 @@ describe("Personas screens", () => {
     expect(screen.getByText("#A1")).toBeTruthy();
     // The first line of the goals, as the card's quote.
     expect(screen.getByText("Ship orders the same day")).toBeTruthy();
-    expect(screen.getByText("shop-manager")).toBeTruthy();
-    expect(screen.getAllByTestId("persona-card")[0].getAttribute("href")).toBe(
+    expect(screen.getByText("role: shop-manager")).toBeTruthy();
+    // The name is the card's link, stretched over it.
+    expect(screen.getByRole("link", { name: "Léa" }).getAttribute("href")).toBe(
       "/acme/requirements/personas/1",
     );
     expect(screen.getByRole("button", { name: /New persona/ })).toBeTruthy();
@@ -218,7 +221,7 @@ describe("Personas screens", () => {
     render(
       <AlephaContext.Provider value={app}>
         <DialogProvider>
-          <PersonasTab />
+          <PersonasPage />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
@@ -265,21 +268,24 @@ describe("Personas screens", () => {
     expect(screen.queryByRole("button", { name: /Delete/ })).toBeNull();
   });
 
-  it("says what is left to cover: personas with no passing use case, use cases never run (#Q3772)", async ({
+  it("says what is left to cover: each persona with no passing use case, then the use cases never run (#Q3772)", async ({
     expect,
   }) => {
     const app = await boot(["persona:read"]);
     render(
       <AlephaContext.Provider value={app}>
         <DialogProvider>
-          <PersonasTab />
+          <PersonasPage />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
 
     const banner = await screen.findByTestId("to-cover-banner");
     expect(banner.textContent).toBe(
-      "To cover: 2 personas with no passing use case, 1 use case never run.",
+      "To cover" +
+        "#A1 Léa has no passing use case" +
+        "#A2 Indexer has no passing use case" +
+        "1 use case never run",
     );
   });
 

@@ -12,10 +12,11 @@ import { describe, it } from "vitest";
 import { RequirementsShell } from "../src/web/app/shell/RequirementsShell.ts";
 
 /**
- * Requirements' one sidebar entry (#E153, #Q3763): under Plan, right after
- * Epics, hanging off Plan's `requirements` option, and nothing else in the
- * sidebar moved (owner, answers 53 and 64).
+ * Requirements' sidebar entries (#E153, #Q3763, #Q3871): Personas, Use
+ * cases and Requirements, one per list page, in a band of their own hanging
+ * off Plan's `requirements` option, and nothing else in the sidebar moved.
  */
+const ROUTES = ["projectPersonas", "projectUseCases", "projectRequirements"];
 const boot = () => {
   const alepha = Alepha.create();
   alepha.inject(WorkShell);
@@ -50,58 +51,64 @@ const offered = (
     .map((entry) => entry.route);
 };
 
-describe("the Requirements sidebar entry", () => {
+describe("the Requirements sidebar entries", () => {
   it("is offered with Plan's requirements option on, and only then", ({
     expect,
   }) => {
     const shell = boot();
 
-    expect(offered(shell, { requirements: true })).toContain(
-      "projectRequirements",
+    expect(offered(shell, { requirements: true })).toEqual(
+      expect.arrayContaining(ROUTES),
     );
-    expect(offered(shell, { requirements: false })).not.toContain(
-      "projectRequirements",
-    );
+    for (const route of ROUTES) {
+      expect(offered(shell, { requirements: false })).not.toContain(route);
+    }
   });
 
-  it("sits alone in its own band, between Work (Errors) and Record (Folios)", ({
+  it("fill their own band, between Work (Errors) and Record (Folios), Personas first", ({
     expect,
   }) => {
     const plan = boot().navOf("plan");
-    const entry = plan.find((it) => it.route === "projectRequirements");
+    const band = plan
+      .filter((it) => it.group === "requirements")
+      .sort((a, b) => a.order - b.order);
 
-    expect(entry?.group).toBe("requirements");
-    expect(
-      plan.filter((it) => it.group === "requirements").map((it) => it.route),
-    ).toEqual(["projectRequirements"]);
+    expect(band.map((it) => it.route)).toEqual(ROUTES);
     expect(NAV_BANDS.indexOf("requirements")).toBe(
       NAV_BANDS.indexOf("work") + 1,
     );
     expect(NAV_BANDS.indexOf("record")).toBe(
       NAV_BANDS.indexOf("requirements") + 1,
     );
-    expect(entry?.option).toBe("requirements");
-    expect(entry?.permission).toBe("requirement:read");
-    expect(entry?.badge).toBeUndefined();
+    expect(band.map((it) => it.permission)).toEqual([
+      "persona:read",
+      "usecase:read",
+      "requirement:read",
+    ]);
+    for (const entry of band) {
+      expect(entry.option).toBe("requirements");
+      // A count, from the project's requirements counts.
+      expect(entry.badge).toBeTypeOf("function");
+    }
   });
 
-  it("stays lit on every tab and on a persona or use case page", ({
+  it("light each on its list and on the pages a row of it opens", ({
     expect,
   }) => {
-    const entry = boot()
-      .navOf("plan")
-      .find((it) => it.route === "projectRequirements");
+    const plan = boot().navOf("plan");
+    const lit = (route: string) =>
+      plan
+        .filter((it) => ROUTES.includes(it.route))
+        .filter((it) => it.activeOn?.(route))
+        .map((it) => it.route);
 
-    for (const route of [
-      "projectRequirements",
-      "projectUseCases",
-      "projectPersonas",
-      "projectPersona",
-      "projectUseCase",
-    ]) {
-      expect(entry?.activeOn?.(route)).toBe(true);
-    }
-    expect(entry?.activeOn?.("projectEpics")).toBe(false);
+    expect(lit("projectPersonas")).toEqual(["projectPersonas"]);
+    expect(lit("projectPersona")).toEqual(["projectPersonas"]);
+    expect(lit("projectUseCases")).toEqual(["projectUseCases"]);
+    expect(lit("projectUseCase")).toEqual(["projectUseCases"]);
+    expect(lit("projectRequirements")).toEqual(["projectRequirements"]);
+    expect(lit("projectRequirementsTestBook")).toEqual(["projectRequirements"]);
+    expect(lit("projectEpics")).toEqual([]);
   });
 
   it("moves nothing else: the bands and Plan's own entries are untouched", ({
@@ -115,7 +122,7 @@ describe("the Requirements sidebar entry", () => {
       .map((it) => [it.route, it.group, it.order]);
     const after = boot()
       .navOf("plan")
-      .filter((it) => it.route !== "projectRequirements")
+      .filter((it) => !ROUTES.includes(it.route))
       .map((it) => [it.route, it.group, it.order]);
 
     expect(after).toEqual(before);

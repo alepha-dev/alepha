@@ -154,10 +154,8 @@ export const ROUTES_FULL_WIDTH = new Set([
   // it. Nothing in `ProjectInbox` constrained the width - this set is where
   // that decision lives.
   "projectQuestGraph",
-  // Plan's Requirements (#E153): three tabs on a plate-less `PlateLayout`
-  // that owns its scroll, as Reports does, and the persona and use case
-  // pages, full pages outside it.
-  "projectRequirementsLayout",
+  // Plan's Requirements (#E153): three list pages that own their scroll,
+  // and the persona and use case pages.
   "projectRequirements",
   "projectUseCases",
   "projectPersonas",
@@ -210,10 +208,9 @@ export const SECTION_HREF_ROUTES: Record<
   projectQuest: "projectQuests",
   projectQuestGraph: "projectQuests",
   projectRelease: "projectReleases",
-  // A persona or a use case climbs back to the tab that lists it (#E153): the trail reads "Acme > Requirements > #U7", as an
-  // epic's reads "Acme > Epics > #E2", and the tabs are never a crumb. On
-  // the page itself, whichever tab is open, the crumb stays inert as
-  // Reports' does.
+  // A persona or a use case climbs back to the list page that holds it
+  // (#E153): the trail reads "Acme > Use cases > #U7", as an epic's reads
+  // "Acme > Epics > #E2".
   projectPersona: "projectPersonas",
   projectUseCase: "projectUseCases",
   projectRequirementsTestBook: "projectRequirements",
@@ -288,12 +285,11 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectEpic: "project.menu.epics",
   projectReleases: "project.menu.releases",
   projectRelease: "project.menu.releases",
-  projectRequirementsLayout: "project.menu.requirements",
   projectRequirements: "project.menu.requirements",
-  projectUseCases: "project.menu.requirements",
-  projectPersonas: "project.menu.requirements",
-  projectPersona: "project.menu.requirements",
-  projectUseCase: "project.menu.requirements",
+  projectUseCases: "project.menu.useCases",
+  projectPersonas: "project.menu.personas",
+  projectPersona: "project.menu.personas",
+  projectUseCase: "project.menu.useCases",
   projectRequirementsTestBook: "project.menu.requirements",
   projectReports: "project.menu.reports",
   reportsSummary: "project.menu.reports",

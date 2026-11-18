@@ -1,3 +1,4 @@
+import type { BadgeTone } from "@alepha/ui";
 import type { PaletteColor } from "@lore/core/schemas";
 
 import type { AreaResource } from "../../../../api/schemas/areaResourceSchema.ts";
@@ -28,35 +29,15 @@ export const AREA_DOT_CLASS: Record<PaletteColor, string> = {
 const AREA_DOT_FALLBACK = "bg-muted-foreground/50";
 
 /**
- * The same palette as the hue half of a `Badge variant="tint"`, for tag
- * chips. Pass it as that badge's `className`, never on a bare span.
- *
- * A separate table rather than a suffix on `AREA_DOT_CLASS`, for the same
- * Tailwind reason: these are the literal strings the scanner has to find.
- *
- * ⚠️ Fill and border only. The label stays body text, which is the rule
- * `tint` states and gives a reason for: at chip size, coloured text on a
- * coloured ground is the pairing that fails contrast first. These used to
- * tint the text instead of the border, on a bare span, which is what made
- * the board's tags a third format of their own (quest #1638).
+ * A tag's chip tone: the colour the project picked for it, which names one
+ * of `Badge`'s hue tones one for one, or `neutral` for a tag with none (the
+ * label still carries the word, it just claims no colour the owner has not
+ * assigned). Every tag chip is `<Badge variant="tint" tone={tagTone(...)}>`,
+ * the one tinted chip of Alepha UI, never a palette of classes of its own
+ * (quest #1638 was the third format that drifted).
  */
-export const TAG_CHIP_CLASS: Record<PaletteColor, string> = {
-  slate: "border-slate-500/40 bg-slate-500/15",
-  blue: "border-blue-500/40 bg-blue-500/15",
-  green: "border-emerald-500/40 bg-emerald-500/15",
-  amber: "border-amber-500/40 bg-amber-500/15",
-  red: "border-red-500/40 bg-red-500/15",
-  violet: "border-violet-500/40 bg-violet-500/15",
-  cyan: "border-cyan-500/40 bg-cyan-500/15",
-  pink: "border-pink-500/40 bg-pink-500/15",
-};
-
-/**
- * A tag the project has picked no colour for. Neutral rather than hidden:
- * the label still carries the word, it just does not claim a meaning the
- * owner has not assigned. Identical to the badge's own `neutral` tone.
- */
-export const TAG_CHIP_FALLBACK = "border-border bg-muted text-muted-foreground";
+export const tagTone = (color: string | undefined): BadgeTone =>
+  color && color in AREA_DOT_CLASS ? (color as PaletteColor) : "neutral";
 
 export class AreaDotColor {
   protected readonly byName: Map<string, string>;

@@ -145,6 +145,9 @@ const ProjectActivityPage = ({
         value: person.id,
       })),
       hidden: !showPeople,
+      // Who, what and when are on the bar from the start: the three
+      // questions this page answers, never behind the "+".
+      mode: "default",
       control: { clearLabel: tr("activity.filter.allPeople") },
     },
     /**
@@ -168,11 +171,14 @@ const ProjectActivityPage = ({
       control: {
         clearLabel: tr("activity.filter.allResources"),
       },
+      // Nothing to pick on a page scoped to one resource.
+      hidden: !!resource,
     },
     action: {
       schema: z.array(z.string()),
       label: tr("activity.col.what"),
       icon: Zap,
+      mode: "default",
       // The label is capitalized, the value is not: this filter sits beside
       // the resource one, whose entries are all labels, and `create` between
       // `Epic` and `Quest` reads as a leaked column value. `value` stays the
@@ -182,7 +188,10 @@ const ProjectActivityPage = ({
       // An action already picked stays listed even when the types move away
       // from it, so the control can still show and clear it.
       items: (values) => {
-        const types = (values.type as string[] | undefined) ?? [];
+        // Scoped to one resource, its type is the one the actions narrow to.
+        const types = resource
+          ? [resource.type]
+          : ((values.type as string[] | undefined) ?? []);
         const picked = (values.action as string[] | undefined) ?? [];
         const possible =
           types.length === 0
@@ -216,6 +225,7 @@ const ProjectActivityPage = ({
       schema: z.dateRange(),
       label: tr("activity.col.when"),
       placeholder: tr("activity.filter.anyDate"),
+      mode: "default",
     },
   } satisfies DataTableFilterFields;
 
@@ -353,44 +363,55 @@ const ProjectActivityPage = ({
               </Badge>
             ),
           },
-          resource: {
-            label: tr("activity.col.resource"),
-            cell: (row) => {
-              const href = activityResourceHref(project.slug, row);
-              const label =
-                `${activityResourceLabel(tr, row.type)} ${row.resourceId ?? ""}`.trim();
-              const title = row.description;
-              if (!href) {
-                return (
-                  <span className="text-sm">
-                    {label}
-                    {title ? (
-                      <span className="text-muted-foreground"> {title}</span>
-                    ) : null}
-                  </span>
-                );
-              }
-              return (
-                <button
-                  type="button"
-                  // The row's own snapshot of the title, never a live lookup:
-                  // a quest renamed after the fact must not rewrite what the
-                  // feed says happened.
-                  title={title}
-                  onClick={() => router.push(href)}
-                  className={cn(
-                    textLinkUnderlineClassName,
-                    "hover:text-foreground inline-flex max-w-[420px] items-center gap-1.5 truncate text-left text-sm",
-                  )}
-                >
-                  <span className="text-muted-foreground shrink-0 text-xs">
-                    {label}
-                  </span>
-                  {title ? <span className="truncate">{title}</span> : null}
-                </button>
-              );
-            },
-          },
+          // Scoped to one resource (a persona's or a quest's own Activity
+          // tab), every row names the same thing: the column would repeat it.
+          ...(resource
+            ? {}
+            : {
+                resource: {
+                  label: tr("activity.col.resource"),
+                  cell: (row) => {
+                    const href = activityResourceHref(project.slug, row);
+                    const label =
+                      `${activityResourceLabel(tr, row.type)} ${row.resourceId ?? ""}`.trim();
+                    const title = row.description;
+                    if (!href) {
+                      return (
+                        <span className="text-sm">
+                          {label}
+                          {title ? (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              {title}
+                            </span>
+                          ) : null}
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        type="button"
+                        // The row's own snapshot of the title, never a live lookup:
+                        // a quest renamed after the fact must not rewrite what the
+                        // feed says happened.
+                        title={title}
+                        onClick={() => router.push(href)}
+                        className={cn(
+                          textLinkUnderlineClassName,
+                          "hover:text-foreground inline-flex max-w-[420px] items-center gap-1.5 truncate text-left text-sm",
+                        )}
+                      >
+                        <span className="text-muted-foreground shrink-0 text-xs">
+                          {label}
+                        </span>
+                        {title ? (
+                          <span className="truncate">{title}</span>
+                        ) : null}
+                      </button>
+                    );
+                  },
+                },
+              }),
           details: {
             label: tr("activity.col.details"),
             cell: (row) => <ActivityDetails metadata={row.metadata} />,

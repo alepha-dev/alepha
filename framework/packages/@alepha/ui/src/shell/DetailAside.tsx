@@ -67,6 +67,12 @@ export interface DetailAsideProps {
    * avatar.
    */
   renderAvatar?: (avatar: React.ReactNode) => React.ReactNode;
+  /**
+   * An identity laid out by the page, above the card in place of the
+   * `title` and square `avatar` (a round avatar, a name, a subtitle).
+   * Usually paired with `avatar={false}` and no `title`.
+   */
+  header?: React.ReactNode;
   rows: DetailAsideRow[];
 }
 
@@ -137,6 +143,9 @@ export const DetailAside = (props: DetailAsideProps) => {
 
   return (
     <div className="flex flex-col gap-4">
+      {props.header ? (
+        <div data-slot="detail-aside-header">{props.header}</div>
+      ) : null}
       {header ? (
         <div className="flex items-center gap-3">
           {showAvatar ? (props.renderAvatar ?? ((it) => it))(avatar) : null}
@@ -180,12 +189,22 @@ export const DetailAside = (props: DetailAsideProps) => {
           redirect in `styles.css` (only its `hover:` form is). */}
       <dl className="bg-muted/40 flex flex-col divide-y overflow-hidden rounded-lg border text-sm">
         {props.rows.map((row) => (
-          <div key={row.label} className="flex flex-col gap-0.5 px-3 py-2.5">
+          <div
+            key={row.label}
+            className={`flex flex-col gap-0.5 px-3 py-2.5 ${row.copy ? "relative pe-10" : ""}`}
+          >
             <dt className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
               {row.label}
             </dt>
             <dd className="min-w-0">
               {row.copy ? (
+                // The copy button is centred on the whole row, label and value
+                // together, not on the value's line: positioned against the
+                // row rather than sitting beside the value, so the markup
+                // stays a `dt` and a `dd` the `dl` allows. Centred by
+                // `inset-y-0 my-auto`, never a translate: a Button's press
+                // nudge sets the translate, and replacing a -50% one made the
+                // button drop half its height on every click.
                 <div className="flex items-center gap-1">
                   {row.value ?? (
                     <code
@@ -212,7 +231,7 @@ export const DetailAside = (props: DetailAsideProps) => {
                     // reads over whatever surface it lands on. A literal
                     // `hover:bg-background` here looked correct in dark and
                     // went white-on-grey in light.
-                    className="text-muted-foreground hover:text-foreground shrink-0"
+                    className="text-muted-foreground hover:text-foreground absolute inset-y-0 end-2 my-auto shrink-0"
                   >
                     {copiedLabel === row.label ? (
                       <Check className="size-3.5" />

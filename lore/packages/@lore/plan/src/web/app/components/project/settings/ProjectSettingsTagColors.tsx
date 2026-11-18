@@ -1,3 +1,4 @@
+import { Badge } from "@alepha/ui";
 import type { ProjectController } from "@lore/core/api";
 import type { PaletteColor } from "@lore/core/schemas";
 import {
@@ -15,7 +16,7 @@ import {
 import { useI18n } from "alepha/react/i18n";
 
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
-import { TAG_CHIP_CLASS, TAG_CHIP_FALLBACK } from "../../shared/areaColor.ts";
+import { tagTone } from "../../shared/areaColor.ts";
 
 /**
  * The palette, in the order the swatch row offers it. `undefined` is the
@@ -119,13 +120,14 @@ const ProjectSettingsTagColors = () => {
               data-tag={tag}
               className="flex flex-wrap items-center gap-2"
             >
-              <span
-                className={`w-28 shrink-0 truncate rounded px-1.5 py-0.5 text-xs font-medium ${
-                  TAG_CHIP_CLASS[colors[tag] as PaletteColor] ??
-                  TAG_CHIP_FALLBACK
-                }`}
-              >
-                {tag}
+              <span className="w-28 shrink-0">
+                <Badge
+                  variant="tint"
+                  tone={tagTone(colors[tag])}
+                  className="max-w-full truncate"
+                >
+                  {tag}
+                </Badge>
               </span>
               <div className="flex flex-wrap items-center gap-1">
                 {CHOICES.map((choice) => (
