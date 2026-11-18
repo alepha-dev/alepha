@@ -49,13 +49,18 @@ export const AdminProjects = () => {
     // The dashboard's Projects tile links here with `?archived=exclude`.
     // Clearing means every project, archived included, as the page always
     // listed them.
+    //
+    // Yes and No (#Q3888), as on My projects: the filter's label already
+    // says what it asks, so the chip reads "Archived: No" rather than
+    // "Archived: Not archived". The values stay `only` / `exclude`, which
+    // the tile's link and a saved filter already hold.
     archived: {
       schema: z.string(),
       label: "Archived",
       icon: Archive,
       items: [
-        { value: "exclude", label: "Not archived" },
-        { value: "only", label: "Archived only" },
+        { value: "only", label: "Yes" },
+        { value: "exclude", label: "No" },
       ],
       control: { clearLabel: "Archived or not" },
     },

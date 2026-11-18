@@ -39,6 +39,10 @@ test.describe("admin dashboard", () => {
 
     await tile.click();
     await expect(page).toHaveURL(/\/admin\/projects\?archived=exclude$/);
+    // The boolean filter reads Yes / No (#Q3888): "Archived: No".
+    await expect(page.getByRole("combobox", { name: "Archived" })).toHaveText(
+      "Archived: No",
+    );
     await expect(
       page.getByText(new RegExp(`·\\s*\\d+ of ${total}$`)),
     ).toBeVisible();
