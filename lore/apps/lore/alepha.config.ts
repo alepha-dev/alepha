@@ -260,7 +260,7 @@ export default defineConfig({
         "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [
-        "automation.channels.kind.",
+        "notifications.channels.kind.",
         // A table folio's column types (#E144), named after the type.
         "folios.table.type.",
         // The quest preset bar: each button's label and hint, by preset key.

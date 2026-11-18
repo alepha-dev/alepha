@@ -1,17 +1,20 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 import { JobProvider, jobExecutionEntity } from "alepha/api/jobs";
 import { users } from "alepha/api/users";
+import { WebhookEndpointService, WebhookOutbox } from "alepha/api/webhooks";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, type SQLLike } from "alepha/orm";
 
 import { eventSubscriptions } from "../entities/eventSubscriptions.ts";
+import { notificationChannels } from "../entities/notificationChannels.ts";
 import type { ProjectEvent } from "../entities/projectEvents.ts";
 import { projects } from "../entities/projects.ts";
 import { ProjectEventNotifications } from "../notifications/ProjectEventNotifications.ts";
 import type { SubscriptionChannel } from "../schemas/subscriptionChannelSchema.ts";
 import { BatchRepository } from "./BatchRepository.ts";
+import { ProjectChannelService } from "./ProjectChannelService.ts";
 import { ProjectEventCatalog } from "./ProjectEventCatalog.ts";
 import { ProjectRecipients } from "./ProjectRecipients.ts";
 
@@ -45,6 +48,9 @@ export class ProjectEventDelivery {
   protected readonly recipients = $inject(ProjectRecipients);
   protected readonly notifications = $inject(ProjectEventNotifications);
   protected readonly subscriptions = $repository(eventSubscriptions);
+  protected readonly channels = $repository(notificationChannels);
+  protected readonly endpoints = $inject(WebhookEndpointService);
+  protected readonly outbox = $inject(WebhookOutbox);
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
   protected readonly executions = $inject(
@@ -191,18 +197,67 @@ export class ProjectEventDelivery {
   }
 
   /**
-   * Posts the event to a project's notification channel, through the
-   * template of its kind.
+   * Posts the event to a project's notification channel: a Discord channel
+   * through its template, a webhook through the framework's outbox.
    */
   protected async post(
     channelId: string,
     project: { id: number; title: string },
     event: ProjectEvent,
   ): Promise<boolean> {
+    const channel = await this.channels.findOne({
+      where: { projectId: project.id, id: channelId },
+    });
+    if (!channel) return false;
+    if (channel.kind === "webhook")
+      return this.call(channel.endpointId, project, event);
     await this.notifications.discord.push({
       lang: this.notifications.lang,
       variables: { ...this.variables(project, event), channelId },
     });
+    return true;
+  }
+
+  /**
+   * Hands the event to a webhook endpoint (#Q3900). Lore picks the receiver
+   * from its own subscription, so the framework's fan-out is not used: one
+   * delivery to this endpoint, whose envelope id is the event's, so a
+   * receiver dedupes a retry of this job. The URL is checked again here: a
+   * literal private address set behind Lore's back is refused at the call.
+   */
+  protected async call(
+    endpointId: string | undefined,
+    project: { id: number; title: string },
+    event: ProjectEvent,
+  ): Promise<boolean> {
+    if (!endpointId) return false;
+    const endpoint = await this.endpoints
+      .get(endpointId, { scope: ProjectChannelService.scope(project.id) })
+      .catch(() => undefined);
+    if (!endpoint || endpoint.status === "disabled") return false;
+    try {
+      this.alepha.inject(ProjectChannelService).webhookUrl(endpoint.url);
+    } catch {
+      this.log.warn("Webhook channel refused: a private address", {
+        endpointId,
+      });
+      return false;
+    }
+    const href = typeof event.fields.url === "string" ? event.fields.url : "";
+    await this.outbox.enqueueIds(
+      {
+        id: event.id,
+        type: event.name,
+        timestamp: new Date(event.occurredAt).toISOString(),
+        data: {
+          project: { id: project.id, title: project.title },
+          subject: { kind: event.subjectKind, id: event.subjectId ?? null },
+          fields: event.fields,
+          url: `${String(this.alepha.env.PUBLIC_URL ?? "")}${href}`,
+        },
+      },
+      [endpointId],
+    );
     return true;
   }
 

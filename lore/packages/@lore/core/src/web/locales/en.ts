@@ -180,30 +180,43 @@ export default {
   "automation.channels.title": "Channels",
   "automation.channels.description":
     "Where automations deliver: In-app and Email, built in, and the Discord channels you add. A rule names one or more of them.",
-  "automation.channels.add": "Add a Discord channel",
-  "automation.channels.name": "Name",
-  "automation.channels.url": "Discord webhook URL",
-  "automation.channels.replaceUrl":
-    "New webhook URL (leave empty to keep the current one)",
-  "automation.channels.urlHelp":
-    "Saving posts a test message to the channel. The URL is never shown again.",
-  "automation.channels.save": "Save",
-  "automation.channels.cancel": "Cancel",
-  "automation.channels.edit": "Rename or replace URL",
-  "automation.channels.delete": "Delete",
-  "automation.channels.deleteTitle": "Delete the channel $1?",
-  "automation.channels.deleteDescription":
-    "Rules that notify it stop posting there and keep their other channels.",
-  "automation.channels.builtIn": "Built in",
-  "automation.channels.kind.inbox": "In-app",
-  "automation.channels.kind.email": "Email",
-  "automation.channels.kind.discord": "Discord",
   "automation.preset.deploy-failed.title": "Deployment failed",
   "automation.preset.deploy-failed.description":
     "Notify one member when a deployment of the chosen app records a failure, in any environment. Raw logs are excluded.",
   "automation.previous": "Previous",
   "automation.next": "Next",
 
+  "notifications.channels.add": "Add a channel",
+  "notifications.channels.kind": "Kind",
+  "notifications.channels.kind.inbox": "In-app",
+  "notifications.channels.kind.email": "Email",
+  "notifications.channels.kind.discord": "Discord",
+  "notifications.channels.kind.webhook": "Webhook",
+  "notifications.channels.name": "Name",
+  "notifications.channels.discordUrl": "Discord webhook URL",
+  "notifications.channels.webhookUrl": "URL Lore calls",
+  "notifications.channels.replaceUrl":
+    "New URL (leave empty to keep the current one)",
+  "notifications.channels.discordHelp":
+    "Lore posts a test message to check it, then never shows the URL again.",
+  "notifications.channels.webhookHelp":
+    "Lore signs each call (Standard Webhooks) and retries it on failure. Private and loopback addresses are refused. A host name that resolves to a private address is not caught on Cloudflare Workers.",
+  "notifications.channels.save": "Save",
+  "notifications.channels.cancel": "Cancel",
+  "notifications.channels.edit": "Rename or replace URL",
+  "notifications.channels.delete": "Delete",
+  "notifications.channels.deleteTitle": "Delete the channel $1?",
+  "notifications.channels.deleteDescription":
+    "Nobody is notified on it any more: its notifications are deleted with it.",
+  "notifications.channels.builtIn": "Built in",
+  "notifications.channels.switchedOff": "Switched off",
+  "notifications.channels.rotate": "New secret",
+  "notifications.channels.rotateTitle": "Give $1 a new signing secret?",
+  "notifications.channels.rotateDescription":
+    "The current secret keeps signing for 24 hours, so the receiver can switch without missing a call.",
+  "notifications.channels.secretTitle": "Signing secret",
+  "notifications.channels.secretHelp":
+    "Copy it now: it is not shown again. The receiver checks each call's signature with it.",
   "permission.group.subscription": "Notifications",
   "permission.subscription.read": "See who is notified of what",
   "permission.subscription.manage":
