@@ -1451,6 +1451,7 @@ const isShelvable = (epic: Pick<EpicResource, "status">): boolean =>
   epic.status !== "completed" && epic.status !== "shelved";
 
 type EpicPresetKey =
+  | "open"
   | "active"
   | "ready"
   | "drafts"
@@ -1461,8 +1462,8 @@ type EpicPresetKey =
 type EpicPresetCounts = Record<EpicPresetKey, number>;
 
 /**
- * The presets the epics rail offers, in its order (#Q3780): the epic
- * lifecycle first, then what asks the owner something, divided by a rule.
+ * The presets the epics rail offers, in its order (#Q3780): every open epic,
+ * then the epic lifecycle, then what asks the owner something, divided by a rule.
  */
 const EPIC_PRESETS: Array<{
   key: EpicPresetKey;
@@ -1479,6 +1480,14 @@ const EPIC_PRESETS: Array<{
     reviews?: "open";
   };
 }> = [
+  // Every epic not yet finished (#Q3885): what was built by hand by ticking
+  // Draft, Ready and In progress in the Status filter.
+  {
+    key: "open",
+    icon: CircleDot,
+    group: "primary",
+    values: { status: ["draft", "ready", "in_progress"] },
+  },
   {
     key: "active",
     icon: Play,
@@ -1525,6 +1534,11 @@ const EPIC_PRESETS: Array<{
  * leave, the list a preset click would narrow.
  */
 const epicPresetCounts = (epics: EpicResource[]): EpicPresetCounts => ({
+  open: epics.filter((epic) =>
+    (["draft", "ready", "in_progress"] as const).some(
+      (status) => status === epic.status,
+    ),
+  ).length,
   active: epics.filter((epic) => epic.status === "in_progress").length,
   ready: epics.filter((epic) => epic.status === "ready").length,
   drafts: epics.filter((epic) => epic.status === "draft").length,

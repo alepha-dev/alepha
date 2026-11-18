@@ -3677,6 +3677,8 @@ export default {
   "epic.filter.allStatuses": "Tous les statuts",
   "epic.filter.reviews": "Revues",
   "epic.filter.reviews.open": "Questions ouvertes",
+  "epic.presets.open": "Ouvertes",
+  "epic.presets.open.hint": "Brouillon, prête ou en cours",
   "epic.presets.active": "Actives",
   "epic.presets.active.hint": "En cours",
   "epic.presets.ready": "Prêtes",
