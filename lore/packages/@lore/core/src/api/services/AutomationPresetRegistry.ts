@@ -6,6 +6,7 @@ import {
   automationGraphSchema,
   type AutomationGraphValue,
 } from "../schemas/automationGraphSchema.ts";
+import { AutomationOutline } from "../schemas/AutomationOutline.ts";
 import {
   automationPresetDescriptorSchema,
   type AutomationPresetDescriptor,
@@ -93,10 +94,11 @@ export class AutomationPresetRegistry {
   }
 
   /**
-   * A preset's graph as its card draws it (#Q3812): built from stand-in
-   * values (the slot's default, else an empty value of its kind), laid out,
-   * and stripped to kinds, places and wires. A preset whose builder refuses
-   * the stand-ins has no sketch.
+   * A preset as its card shows it (#Q3812, #Q3851): built from stand-in
+   * values (the slot's default, else an empty value of its kind), read as
+   * an outline, and kept to its first block's one line: what starts it,
+   * whether it checks a condition, its first action and how many follow.
+   * A preset whose builder refuses the stand-ins has no sketch.
    */
   public sketch(key: string): AutomationPresetSketch | undefined {
     const entry = this.entries.get(key);
@@ -116,17 +118,17 @@ export class AutomationPresetRegistry {
                 ? "inbox"
                 : "");
     try {
-      const graph = AutomationGraph.layout(
-        automationGraphSchema.parse(entry.build(values, {})),
-      );
+      const reading = new AutomationOutline().read(entry.build(values, {}));
+      if (!reading.outline || !reading.blocks.length) return undefined;
+      const [block] = reading.blocks;
+      const actions = [...block.sequences, ...block.otherwise].flat();
+      const first = block.sequences[0]?.[0] ?? block.otherwise[0]?.[0];
       return {
-        nodes: graph.nodes.map((node) => ({
-          id: node.id,
-          kind: node.kind,
-          x: node.position?.x ?? 0,
-          y: node.position?.y ?? 0,
-        })),
-        edges: graph.edges.map((edge) => ({ from: edge.from, to: edge.to })),
+        source: block.events[0].type,
+        ...(block.read ? { read: block.read.type } : {}),
+        condition: !!block.condition,
+        ...(first ? { action: first.type } : {}),
+        more: Math.max(0, actions.length - 1),
       };
     } catch {
       return undefined;

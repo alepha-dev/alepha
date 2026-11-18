@@ -4614,7 +4614,6 @@ export default {
   "automation.preset.openInEditor": "Ouvrir dans l'éditeur",
   "automation.preset.addToDraft": "Ajouter à l'automatisation",
   "automation.gallery.scratch": "Partir de zéro",
-  "automation.gallery.sketch": "Le graphe de $1",
   "automation.subscription.open": "Ouvrir dans les automatisations",
   "automation.outline.when": "Quand",
   "automation.outline.onlyIf": "Seulement si",
@@ -4713,6 +4712,7 @@ export default {
     "Une étape qui en suit une autre ne s'exécute que si celle-ci a réussi, et peut utiliser ce qu'elle a produit ; une étape en échec n'arrête que ce qui la suit.",
   "automation.outline.how.decided":
     "La condition est décidée avant que quoi que ce soit ne se produise.",
+  "automation.outline.withCondition": "avec une condition",
   "automation.outline.notOutline.title": "Créée avec l'ancien éditeur",
   "automation.outline.notOutline.description":
     "Cette automatisation a une forme que le plan ne sait pas montrer : elle s'est arrêtée à son exécution suivante. Recréez-la comme une nouvelle automatisation, puis supprimez celle-ci.",

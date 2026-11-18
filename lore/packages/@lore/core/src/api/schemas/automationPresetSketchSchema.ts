@@ -1,31 +1,19 @@
 import { type Infer, z } from "alepha";
 
-import { AutomationVocabulary } from "./AutomationVocabulary.ts";
-
 /**
- * A preset's graph as its card draws it (#Q3812): each node's kind and
- * place from `AutomationGraph.layout`, and the wires between them. Shape
- * only: no node's configuration leaves the server this way.
+ * A preset as its card shows it (#Q3812, reshaped by #Q3851): the one line
+ * of a folded block. What starts it (an event's type, or `schedule` and
+ * what it reads), whether it checks a condition, its first action's type
+ * and how many actions follow. Types only: no recipient, filter value or
+ * text leaves the server this way.
  */
 export const automationPresetSketchSchema = z
   .object({
-    nodes: z
-      .array(
-        z
-          .object({
-            id: z.string().max(64),
-            kind: z.enum(AutomationVocabulary.KINDS),
-            x: z.number(),
-            y: z.number(),
-          })
-          .strict(),
-      )
-      .max(40),
-    edges: z
-      .array(
-        z.object({ from: z.string().max(64), to: z.string().max(64) }).strict(),
-      )
-      .max(80),
+    source: z.string().max(128),
+    read: z.string().max(128).optional(),
+    condition: z.boolean(),
+    action: z.string().max(128).optional(),
+    more: z.integer().min(0).max(40),
   })
   .strict();
 export type AutomationPresetSketch = Infer<typeof automationPresetSketchSchema>;

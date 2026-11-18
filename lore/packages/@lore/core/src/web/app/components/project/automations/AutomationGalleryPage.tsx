@@ -5,7 +5,6 @@ import { useRouter } from "alepha/react/router";
 import {
   ArrowLeft,
   Bug,
-  Clock,
   Flag,
   Gauge,
   Inbox,
@@ -24,7 +23,8 @@ import type { I18n } from "../../../services/I18n.ts";
 import { usePageCrumb } from "../../shared/usePageCrumb.ts";
 import AutomationPage from "./AutomationPage.tsx";
 import AutomationPresetSetup from "./AutomationPresetSetup.tsx";
-import AutomationPresetSketch from "./AutomationPresetSketch.tsx";
+import AutomationOutlineFolded from "./outline/AutomationOutlineFolded.tsx";
+import { AutomationOutlineIcons } from "./outline/AutomationOutlineIcons.ts";
 import { useAutomationLabels } from "./useAutomationLabels.ts";
 
 /**
@@ -151,23 +151,52 @@ const AutomationGalleryPage = () => {
                 {description(preset)}
               </span>
               {preset.sketch && (
-                <AutomationPresetSketch
-                  sketch={preset.sketch}
-                  label={tr("automation.gallery.sketch", {
-                    args: [title(preset)],
-                  })}
-                />
+                // The one line a folded block reads as (#Q3851).
+                <div className="-mx-1 overflow-hidden rounded-md border">
+                  <AutomationOutlineFolded
+                    event={
+                      preset.schedule
+                        ? labels.schedule(preset.schedule)
+                        : (labels.events[preset.sketch.source] ??
+                          preset.sketch.source)
+                    }
+                    eventIcon={AutomationOutlineIcons.of({
+                      kind: "source",
+                      type: preset.sketch.source,
+                    })}
+                    detail={[
+                      ...(preset.sketch.read
+                        ? [
+                            tr(`automation.source.${preset.sketch.read}`, {
+                              default: preset.sketch.read,
+                            }),
+                          ]
+                        : []),
+                      ...(preset.sketch.condition
+                        ? [tr("automation.outline.withCondition")]
+                        : []),
+                    ].join(", ")}
+                    action={
+                      preset.sketch.action
+                        ? tr(`automation.action.${preset.sketch.action}`, {
+                            default: preset.sketch.action,
+                          })
+                        : undefined
+                    }
+                    actionIcon={
+                      preset.sketch.action
+                        ? AutomationOutlineIcons.of({
+                            kind: "action",
+                            type: preset.sketch.action,
+                          })
+                        : undefined
+                    }
+                    more={preset.sketch.more}
+                    compact
+                    testId="automation-preset-line"
+                  />
+                </div>
               )}
-              <span className="text-muted-foreground mt-auto flex items-center gap-1.5 pt-1 text-xs">
-                {preset.schedule ? (
-                  <Clock className="size-3" />
-                ) : (
-                  <Zap className="size-3" />
-                )}
-                {preset.schedule
-                  ? labels.schedule(preset.schedule)
-                  : (labels.events[preset.source] ?? preset.source)}
-              </span>
             </button>
           );
         })}
