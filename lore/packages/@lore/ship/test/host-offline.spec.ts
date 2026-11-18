@@ -1,4 +1,4 @@
-import { AutomationPersistence } from "@lore/core/api";
+import { AutomationPersistence, projectEvents } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -16,6 +16,7 @@ import { DeployTestEntities } from "../src/testing/index.ts";
 
 class HostRepositories {
   hosts = $repository(hosts);
+  projectEvents = $repository(projectEvents);
 }
 
 /**
@@ -113,6 +114,31 @@ describe("host offline", () => {
       title: "ci-box is back online",
     });
     expect((await repos.hosts.findById(host.id))?.offlineSince).toBeUndefined();
+
+    // The project events of #Q3889: the same two facts, as data. The title
+    // is the host's slug, never a sentence.
+    // The clock is paused, so both share one instant: order by name.
+    const recorded = (
+      await repos.projectEvents.findMany({
+        where: { projectId: host.projectId },
+      })
+    ).sort((a, b) => a.name.localeCompare(b.name));
+    expect(recorded.map((event) => event.name)).toEqual([
+      "host.offline",
+      "host.online",
+    ]);
+    expect(recorded[0]).toMatchObject({
+      subjectKind: "host",
+      subjectId: host.id,
+      fields: {
+        host_id: host.id,
+        host: "ci-box",
+        kind: "bay",
+        state: "offline",
+        title: "ci-box",
+        since: ago(6),
+      },
+    });
   });
 
   it("raises nothing for a restart that reconnects within the grace period", async ({

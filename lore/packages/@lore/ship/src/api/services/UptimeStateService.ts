@@ -16,7 +16,9 @@ import {
 } from "../entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
 import type { ProbeResult } from "../schemas/probeResultSchema.ts";
-import { UptimeAutomationFields } from "./UptimeAutomationFields.ts";
+import { ShipProjectEvents } from "./ShipProjectEvents.ts";
+import { UptimeAutomationEventSubjects } from "./UptimeAutomationEventSubjects.ts";
+import { UptimeEventFields } from "./UptimeEventFields.ts";
 
 export interface UptimeTransition {
   kind: "opened" | "closed";
@@ -33,12 +35,17 @@ export interface UptimeTransition {
  * `deploy.*`: a single failed probe opens nothing, so it records nothing.
  */
 export class UptimeStateService {
+  /**
+   * Injected so the events this class records are in the catalog
+   * whatever booted it (#Q3889).
+   */
+  protected readonly eventDefinitions = $inject(ShipProjectEvents);
   protected readonly monitors = $repository(monitors);
   protected readonly incidents = $repository(monitorIncidents);
   protected readonly sources = $inject(SourceRepository.of(monitorIncidents));
   protected readonly projects = $repository(projects);
   protected readonly crypto = $inject(CryptoProvider);
-  protected readonly fields = $inject(UptimeAutomationFields);
+  protected readonly fields = $inject(UptimeEventFields);
 
   /**
    * Saves one probe's result and opens or closes the monitor's incident.
@@ -129,11 +136,14 @@ export class UptimeStateService {
         identity: `monitor:${incident.id}:down`,
         resourceId: incident.id,
         name: "monitor.down",
-        fields: this.fields.build(
-          await this.projects.getById(monitor.projectId),
-          monitor,
-          incident,
-          "down",
+        subjectId: monitor.id,
+        ...this.eventFields(
+          this.fields.build(
+            await this.projects.getById(monitor.projectId),
+            monitor,
+            incident,
+            "down",
+          ),
         ),
       },
     );
@@ -164,14 +174,28 @@ export class UptimeStateService {
         identity: `monitor:${open.id}:up`,
         resourceId: open.id,
         name: "monitor.up",
-        fields: this.fields.build(
-          await this.projects.getById(monitor.projectId),
-          monitor,
-          closed,
-          "up",
+        subjectId: monitor.id,
+        ...this.eventFields(
+          this.fields.build(
+            await this.projects.getById(monitor.projectId),
+            monitor,
+            closed,
+            "up",
+          ),
         ),
       },
     );
+  }
+
+  /**
+   * The automation engine's fields and the project event's (#Q3889): the
+   * same data, with the engine's sentence as its title.
+   */
+  protected eventFields(data: Record<string, unknown>) {
+    return {
+      fields: UptimeAutomationEventSubjects.automation(data),
+      projectFields: data,
+    };
   }
 
   protected async reconcile(

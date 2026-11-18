@@ -2,14 +2,14 @@ import type { MonitorIncident } from "../entities/monitorIncidents.ts";
 import type { Monitor } from "../entities/monitors.ts";
 
 /**
- * The fields `monitor.down` and `monitor.up` carry (#Q3610), shared by the
- * recorded event and its subject preview.
+ * The fields `monitor.down` and `monitor.up` carry (#Q3610, #Q3889), as
+ * data: the sentence a member reads is the message's job.
  *
  * They reach rooms such as Discord, so they are a safe projection: the
  * target loses its query string, fragment and userinfo (a query may carry a
  * token), and the probe error is cut to one short line.
  */
-export class UptimeAutomationFields {
+export class UptimeEventFields {
   public static readonly ERROR_MAX = 200;
 
   public build(
@@ -21,10 +21,8 @@ export class UptimeAutomationFields {
     const endedAt = kind === "up" ? incident.endedAt : undefined;
     return {
       project: project.title,
-      title:
-        kind === "down"
-          ? `${monitor.name} is down`
-          : `${monitor.name} recovered`,
+      title: monitor.name,
+      state: kind,
       monitor_id: monitor.id,
       monitor: monitor.name,
       kind: monitor.kind,
@@ -73,8 +71,8 @@ export class UptimeAutomationFields {
    */
   public error(error: string | undefined): string {
     const line = (error ?? "").split(/\r?\n/)[0].trim();
-    return line.length > UptimeAutomationFields.ERROR_MAX
-      ? `${line.slice(0, UptimeAutomationFields.ERROR_MAX - 1)}…`
+    return line.length > UptimeEventFields.ERROR_MAX
+      ? `${line.slice(0, UptimeEventFields.ERROR_MAX - 1)}…`
       : line;
   }
 }

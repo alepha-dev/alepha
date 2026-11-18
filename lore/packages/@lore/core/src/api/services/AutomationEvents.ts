@@ -55,6 +55,11 @@ export class AutomationEvents {
     mutation: SQLLike;
     changedTables: string[];
     numbers?: Record<string, SQLLike>;
+    /**
+     * Written in the same batch after the event: the project event of the
+     * same change (#Q3889).
+     */
+    statements?: SQLLike[];
   }): Promise<{
     /**
      * Absent when the project has Work off: the domain write commits alone
@@ -106,6 +111,7 @@ export class AutomationEvents {
           sql`INSERT INTO automation_events (id, version, project_id, identity, name, occurred_at, replay_until, payload, created_at, updated_at)
               SELECT ${id}, 0, ${input.projectId}, ${input.identity}, ${input.name}, ${this.database.timestamp(now)}, ${this.database.timestamp(replayUntil)}, ${encoded}, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}
               RETURNING *`,
+          ...(input.statements ?? []),
         ]);
         rows = batch[1];
         event = batch[2][0] ? this.eventRows.decodeRow(batch[2][0]) : undefined;
@@ -130,6 +136,15 @@ export class AutomationEvents {
         rows,
       };
     });
+  }
+
+  /**
+   * Whether the automation engine records an event of this name.
+   */
+  public handles(name: string): boolean {
+    return this.catalog
+      .entries()
+      .some((entry) => entry.type === "event" && entry.key === name);
   }
 
   public payload(

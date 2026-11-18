@@ -44,6 +44,7 @@ import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
 import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
+import { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
 import { AutomationAttentionNotifications } from "./notifications/AutomationAttentionNotifications.ts";
 import { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
@@ -117,6 +118,8 @@ import { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectDashboardPresets } from "./services/ProjectDashboardPresets.ts";
 import { ProjectDashboardService } from "./services/ProjectDashboardService.ts";
+import { ProjectEventCatalog } from "./services/ProjectEventCatalog.ts";
+import { ProjectEvents } from "./services/ProjectEvents.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
@@ -255,6 +258,9 @@ export const LoreCoreApi = $module({
     AutomationDomainActions,
     AutomationRunEvidence,
     AutomationEvidenceJobs,
+    ProjectEventJobs,
+    ProjectEventCatalog,
+    ProjectEvents,
     // The nightly backfill of the Admin and Viewer ranks; nothing injects it.
     DefaultRankJobs,
     AutomationDispatchJobs,
@@ -633,6 +639,18 @@ export {
 } from "./services/AutomationDomainActions.ts";
 export { AutomationBatchRepository } from "./services/AutomationBatchRepository.ts";
 export { BatchRepository } from "./services/BatchRepository.ts";
+export {
+  ProjectEventCatalog,
+  type ProjectEventDefinition,
+  type ProjectEventFieldKind,
+  type ProjectEventResource,
+} from "./services/ProjectEventCatalog.ts";
+export {
+  ProjectEvents,
+  type ProjectEventInput,
+} from "./services/ProjectEvents.ts";
+export { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
+export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
 
 export {

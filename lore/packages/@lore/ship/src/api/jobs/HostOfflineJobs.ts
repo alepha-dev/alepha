@@ -8,8 +8,10 @@ import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import { type Host, hosts } from "../entities/hosts.ts";
-import { HostAutomationFields } from "../services/HostAutomationFields.ts";
+import { HostAutomationEventSubjects } from "../services/HostAutomationEventSubjects.ts";
+import { HostEventFields } from "../services/HostEventFields.ts";
 import { HostService } from "../services/HostService.ts";
+import { ShipProjectEvents } from "../services/ShipProjectEvents.ts";
 
 /**
  * Raises `host.offline` once per outage, when a Bay host has been gone for
@@ -38,6 +40,11 @@ import { HostService } from "../services/HostService.ts";
  */
 export class HostOfflineJobs {
   /**
+   * Injected so the events this class records are in the catalog
+   * whatever booted it (#Q3889).
+   */
+  protected readonly eventDefinitions = $inject(ShipProjectEvents);
+  /**
    * How long a host must stay gone before anyone is told. A Bay restart or
    * upgrade reconnects in seconds; five minutes is far past that and still
    * short against a night.
@@ -49,7 +56,7 @@ export class HostOfflineJobs {
   protected readonly hosts = $repository(hosts);
   protected readonly projects = $repository(projects);
   protected readonly sources = $inject(SourceRepository.of(hosts));
-  protected readonly fields = $inject(HostAutomationFields);
+  protected readonly fields = $inject(HostEventFields);
   protected readonly service = $inject(HostService);
 
   public readonly notifyOffline = $job({
@@ -147,11 +154,14 @@ export class HostOfflineJobs {
           identity: `host:${host.id}:${kind}:${since}`,
           resourceId: host.id,
           name: `host.${kind}`,
-          fields: this.fields.build(
-            await this.projects.getById(host.projectId),
-            host,
+          ...HostAutomationEventSubjects.source(
+            this.fields.build(
+              await this.projects.getById(host.projectId),
+              host,
+              kind,
+              since,
+            ),
             kind,
-            since,
           ),
         },
       );

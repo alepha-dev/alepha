@@ -8,7 +8,7 @@ import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
-import { FeedbackAutomationFields } from "./FeedbackAutomationFields.ts";
+import { FeedbackEventFields } from "./FeedbackEventFields.ts";
 
 /**
  * Prospective means a simulation of the declared transition on today's row.
@@ -16,7 +16,7 @@ import { FeedbackAutomationFields } from "./FeedbackAutomationFields.ts";
  */
 export class WorkAutomationEventSubjects {
   protected readonly registry = $inject(AutomationEventSubjects);
-  protected readonly feedbackFields = $inject(FeedbackAutomationFields);
+  protected readonly feedbackFields = $inject(FeedbackEventFields);
   protected readonly projects = $repository(projects);
   protected readonly feedback = $repository(feedback);
   protected readonly quests = $repository(quests);

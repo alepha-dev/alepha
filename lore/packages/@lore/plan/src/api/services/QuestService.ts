@@ -11,6 +11,7 @@ import { ForbiddenError } from "alepha/server";
 
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 import { AreaService } from "./AreaService.ts";
+import { QuestEventSources } from "./QuestEventSources.ts";
 
 /**
  * Quest rich-text fields (`description`, `completionMessage`) are
@@ -109,6 +110,7 @@ export class QuestService {
     AutomationBatchRepository.of(quests),
   );
   protected readonly audits = $inject(LoreAudits);
+  protected readonly questEvents = $inject(QuestEventSources);
 
   protected readonly quests = $repository(quests);
   protected readonly projects = $repository(projects);
@@ -269,7 +271,7 @@ export class QuestService {
           ),
         },
       },
-      () => this.quests.create(data),
+      () => this.questEvents.create(data, input.createdBy),
     );
   }
 }

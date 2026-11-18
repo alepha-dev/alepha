@@ -101,6 +101,7 @@ import { QualityTrendMetric } from "./services/QualityTrendMetric.ts";
 import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { RunErrorService } from "./services/RunErrorService.ts";
+import { ShipProjectEvents } from "./services/ShipProjectEvents.ts";
 import { SigilIngestRefusals } from "./services/SigilIngestRefusals.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
@@ -146,6 +147,9 @@ export const LoreShipApi = $module({
     AlephaRateLimit,
   ],
   services: [
+    // Ship's project events, in the core catalog (#Q3889); listed because
+    // nothing injects them.
+    ShipProjectEvents,
     // The errors a use case run opens and resolves (#E153), written by
     // Plan's Requirements.
     RunErrorService,

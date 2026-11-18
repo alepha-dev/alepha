@@ -12,6 +12,7 @@ import { automationRuns } from "../entities/automationRuns.ts";
 import { automations } from "../entities/automations.ts";
 import { automationVariables } from "../entities/automationVariables.ts";
 import { projectCapabilities } from "../entities/projectCapabilities.ts";
+import { projectEvents } from "../entities/projectEvents.ts";
 import { projectPrompts } from "../entities/projectPrompts.ts";
 import { projects } from "../entities/projects.ts";
 import {
@@ -66,6 +67,8 @@ export class CoreProjectMerge {
       keys: ["kind"],
       onCollision: "keepTarget",
     },
+    // A merged project keeps the source's recent events (#Q3889).
+    { kind: "project event", entity: projectEvents },
     { kind: "automation", entity: automations },
     {
       kind: "automation variable",
