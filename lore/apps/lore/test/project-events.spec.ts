@@ -132,6 +132,7 @@ describe.skipIf(onPostgres)("Project events", () => {
       "quest.completed",
       "quest.created",
       "quest.held",
+      "quest.reminder_due",
       "release.published",
     ]);
     for (const event of catalog) {

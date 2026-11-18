@@ -32,28 +32,20 @@ class Links extends LinkProvider {
    * not a permission.
    */
   /**
-   * The project's reminder automation as `getQuestReminderRule` answers it,
-   * and every preset `createAutomationFromPreset` was asked for.
+   * Every action the panel called, by name.
    */
-  rule = { exists: false, enabled: false };
-  created: string[] = [];
+  calls: string[] = [];
 
   override client(): any {
-    const action = (fn: (...args: any[]) => Promise<unknown>) =>
-      Object.assign(fn, { can: () => true });
-    const actions: Record<string, unknown> = {
-      getQuestReminderRule: action(async () => this.rule),
-      createAutomationFromPreset: action(
-        async (config: { body: { key: string } }) => {
-          this.created.push(config.body.key);
-          this.rule = { exists: true, enabled: true };
+    const action = (name: string) =>
+      Object.assign(
+        async () => {
+          this.calls.push(name);
           return {};
         },
-      ),
-    };
-    return new Proxy(actions, {
-      get: (target, prop: string) => target[prop] ?? action(async () => ({})),
-    });
+        { can: () => true },
+      );
+    return new Proxy({}, { get: (_target, prop: string) => action(prop) });
   }
 
   public quest(over: Partial<QuestResource>): QuestResource {
@@ -135,30 +127,18 @@ describe("QuestViewSettings", () => {
     expect(view.getByText("Weekly")).toBeTruthy();
   });
 
-  it("turns on the project's reminder automation from the quest when none exists (#Q3705)", async ({
+  it("sets a reminder without creating an automation (#Q3893)", async ({
     expect,
   }) => {
     const view = await mount({ acceptedAt: "2026-09-01T00:00:00.000Z" });
 
-    fireEvent.click(await view.findByTestId("quest-reminder-create-rule"));
+    fireEvent.click(view.getByText("Weekly"));
 
-    await waitFor(() =>
-      expect(view.links.created).toEqual(["quest-reminders"]),
-    );
-    await waitFor(() =>
-      expect(view.queryByTestId("quest-reminder-create-rule")).toBeNull(),
-    );
-    expect(view.queryByTestId("quest-reminder-no-rule")).toBeNull();
-  });
-
-  it("only says reminders are off to a member who may not write automations", async ({
-    expect,
-  }) => {
-    const view = await mount({ acceptedAt: "2026-09-01T00:00:00.000Z" }, [
-      "quest:update",
-    ]);
-
-    expect(await view.findByTestId("quest-reminder-no-rule")).toBeTruthy();
+    await waitFor(() => expect(view.links.calls).toContain("setQuestReminder"));
+    expect(
+      view.links.calls.filter((it) => it.toLowerCase().includes("automation")),
+    ).toEqual([]);
     expect(view.queryByTestId("quest-reminder-create-rule")).toBeNull();
+    expect(view.queryByTestId("quest-reminder-no-rule")).toBeNull();
   });
 });

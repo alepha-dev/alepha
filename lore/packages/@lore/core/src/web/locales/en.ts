@@ -2145,11 +2145,6 @@ export default {
   "quest.view.reminder.daily": "Daily",
   "quest.view.reminder.weekly": "Weekly",
   "quest.view.reminder.monthly": "Monthly",
-  "quest.view.reminder.noRule":
-    "No reminder automation runs in this project, so reminders are not sent. Someone who may manage automations can turn it on here.",
-  "quest.view.reminder.ruleDisabled":
-    "The project's reminder automation is turned off, so reminders are not sent. Turn it on again from Automations.",
-  "quest.view.reminder.createRule": "Turn on reminders",
   "quest.view.reminder.none":
     "No reminder configured. You won't receive email nudges.",
   "quest.view.reminder.next": "Next email $1.",
