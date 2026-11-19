@@ -1,13 +1,19 @@
 import { LoreCoreApi } from "@lore/core/api";
 import { $module } from "alepha";
 
+import { ArtifactsGitBackend } from "./backends/ArtifactsGitBackend.ts";
+import { GitBackend } from "./backends/GitBackend.ts";
+import { LocalGitBackend } from "./backends/LocalGitBackend.ts";
+import { CodeRepositoryController } from "./controllers/CodeRepositoryController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { BuildDashboardMetrics } from "./services/BuildDashboardMetrics.ts";
+import { BuildProjectDeletion } from "./services/BuildProjectDeletion.ts";
 import { BuildProjectEvents } from "./services/BuildProjectEvents.ts";
 import { BuildProjectMerge } from "./services/BuildProjectMerge.ts";
 import { BuildReportsSummary } from "./services/BuildReportsSummary.ts";
+import { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
 import { CoverageThreshold } from "./services/CoverageThreshold.ts";
 import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
 import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
@@ -41,6 +47,7 @@ export const LoreBuildApi = $module({
     // nothing injects them.
     BuildReportsSummary,
     BuildProjectMerge,
+    BuildProjectDeletion,
     // The tiles: the trend and the numbers, and their resolvers.
     BuildDashboardMetrics,
     QualityTrendMetric,
@@ -52,11 +59,39 @@ export const LoreBuildApi = $module({
     ProjectQualityReportService,
     QualityController,
     QualityReportsController,
+    // Git repositories (#E162): the rows and their API. The backend is
+    // chosen per runtime in `register`.
+    CodeRepositoryService,
+    CodeRepositoryController,
   ],
+  register: (alepha) => {
+    // Artifacts on the Worker, bare repositories on disk everywhere else
+    // (Docker, `alepha dev`, the specs). Optional, so a spec substitutes
+    // its own first.
+    alepha.with({
+      optional: true,
+      provide: GitBackend,
+      use: alepha.isServerless() ? ArtifactsGitBackend : LocalGitBackend,
+    });
+  },
 });
 
+export { ArtifactsGitBackend } from "./backends/ArtifactsGitBackend.ts";
+export type {
+  ArtifactsBinding,
+  ArtifactsRepoHandle,
+} from "./backends/ArtifactsGitBackend.ts";
+export { GitBackend } from "./backends/GitBackend.ts";
+export type {
+  GitBackendToken,
+  GitRepositoryInfo,
+  GitTokenScope,
+} from "./backends/GitBackend.ts";
+export { LocalGitBackend } from "./backends/LocalGitBackend.ts";
+export { CodeRepositoryController } from "./controllers/CodeRepositoryController.ts";
 export { QualityController } from "./controllers/QualityController.ts";
 export { QualityReportsController } from "./controllers/QualityReportsController.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
+export { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
 export { CoverageThreshold } from "./services/CoverageThreshold.ts";
 export { QualityService } from "./services/QualityService.ts";

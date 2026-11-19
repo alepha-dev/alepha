@@ -49,6 +49,17 @@ export class ProjectLimits {
        * an override saved before this key existed comes back without it.
        */
       maxCommandsPerHost: z.integer().min(1).max(100_000).optional(),
+      /**
+       * Git repositories per project (#E162). Optional for the same reason
+       * as the keys above.
+       */
+      maxRepositoriesPerProject: z.integer().min(1).max(10_000).optional(),
+      /**
+       * A repository's size cap, in MiB, checked before a push is accepted
+       * where the backend can measure it (bare repositories on disk).
+       * Artifacts holds its own cap of 1 GB per repository.
+       */
+      maxRepositorySizeMb: z.integer().min(1).max(1_000_000).optional(),
     }),
     default: {
       // Raised from 10 on 2026-09-07 (feedback #P2133). The schema has
@@ -63,6 +74,8 @@ export class ProjectLimits {
       maxReleasesPerProject: 200,
       maxQualityRunsPerProject: 500,
       maxCommandsPerHost: 200,
+      maxRepositoriesPerProject: 20,
+      maxRepositorySizeMb: 1024,
     },
   });
 
@@ -72,6 +85,19 @@ export class ProjectLimits {
    * deploys on a busy one, which is as far back as anyone reads a queue.
    */
   public static readonly DEFAULT_MAX_COMMANDS_PER_HOST = 200;
+
+  /**
+   * Repositories per project when nothing says otherwise. The owner works
+   * with one per project; twenty leaves room for a docs or an infra
+   * repository without inviting a monorepo split into a hundred.
+   */
+  public static readonly DEFAULT_MAX_REPOSITORIES = 20;
+
+  /**
+   * A repository's size cap when nothing says otherwise: Artifacts' own 1 GB,
+   * so a Docker Lore refuses what Cloudflare would.
+   */
+  public static readonly DEFAULT_MAX_REPOSITORY_SIZE_MB = 1024;
 
   /**
    * Runs kept per project when nothing says otherwise.
@@ -134,5 +160,26 @@ export class ProjectLimits {
       (await this.limits.get()).maxCommandsPerHost ??
       ProjectLimits.DEFAULT_MAX_COMMANDS_PER_HOST
     );
+  }
+
+  /**
+   * Git repositories per project. Read by `CodeRepositoryService.create`.
+   */
+  public async maxRepositoriesPerProject(): Promise<number> {
+    return (
+      (await this.limits.get()).maxRepositoriesPerProject ??
+      ProjectLimits.DEFAULT_MAX_REPOSITORIES
+    );
+  }
+
+  /**
+   * A repository's size cap, in bytes. Read before a push on a backend that
+   * can measure it.
+   */
+  public async maxRepositorySizeBytes(): Promise<number> {
+    const mb =
+      (await this.limits.get()).maxRepositorySizeMb ??
+      ProjectLimits.DEFAULT_MAX_REPOSITORY_SIZE_MB;
+    return mb * 1024 * 1024;
   }
 }

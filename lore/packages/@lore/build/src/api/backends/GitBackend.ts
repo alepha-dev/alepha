@@ -1,0 +1,87 @@
+/**
+ * Where a project's git repositories live (#E162, folio #F1500, "One
+ * interface, two backends"), substituted per runtime by `LoreBuildApi`:
+ *
+ * - {@link ArtifactsGitBackend} on the Worker: Cloudflare Artifacts, through
+ *   the `ARTIFACTS` binding.
+ * - {@link LocalGitBackend} on Node (the Docker image, `alepha dev`, every
+ *   spec): bare repositories on disk, driven by the `git` binary.
+ *
+ * A repository is addressed by its `ref`, the name {@link GitBackend.refFor}
+ * derives from the ids and the row stores as `backendRef`. Nothing here knows
+ * a slug.
+ */
+export abstract class GitBackend {
+  /**
+   * Which backend this is, for logs and for the git route's choice between
+   * proxying and spawning.
+   */
+  public abstract readonly kind: "artifacts" | "local";
+
+  /**
+   * The name a new repository takes in this backend, from ids only.
+   */
+  public abstract refFor(ids: { projectId: number; repoId: string }): string;
+
+  /**
+   * Create an empty repository whose HEAD names `defaultBranch`.
+   */
+  public abstract create(
+    ref: string,
+    options: { defaultBranch: string },
+  ): Promise<void>;
+
+  /**
+   * Delete a repository. Deleting one that is already gone is not an error.
+   */
+  public abstract delete(ref: string): Promise<void>;
+
+  /**
+   * Every repository ref the backend holds, for a reconciliation or a check.
+   */
+  public abstract list(): Promise<string[]>;
+
+  /**
+   * What the backend knows about one repository, or undefined when it holds
+   * none by that ref.
+   */
+  public abstract info(ref: string): Promise<GitRepositoryInfo | undefined>;
+
+  /**
+   * A credential for the backend's own git endpoint, for a proxy that talks
+   * to it over HTTP. Undefined on a backend Lore serves in process.
+   */
+  public abstract token(
+    ref: string,
+    scope: GitTokenScope,
+  ): Promise<GitBackendToken | undefined>;
+}
+
+/**
+ * `read` for upload-pack (clone, fetch), `write` for receive-pack (push).
+ */
+export type GitTokenScope = "read" | "write";
+
+export interface GitRepositoryInfo {
+  ref: string;
+  defaultBranch: string;
+  /**
+   * Bytes on disk, when the backend can tell. Artifacts does not say.
+   */
+  sizeBytes?: number;
+}
+
+export interface GitBackendToken {
+  /**
+   * The backend's smart HTTP base URL for this repository, `.../<name>.git`.
+   */
+  remote: string;
+  /**
+   * The repo-scoped token, sent as the Basic password.
+   */
+  token: string;
+  /**
+   * Epoch milliseconds.
+   */
+  expiresAt: number;
+}

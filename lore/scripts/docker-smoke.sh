@@ -20,7 +20,7 @@
 #      healthy right up until the operator restarted it.
 #   4. A fresh volume produces a DIFFERENT secret, so the key is per-install
 #      rather than baked into a public image.
-#   5. The process is not root.
+#   5. The process is not root, and `git` runs as its user.
 #   6. Docker reports the container `healthy`, from the image's own
 #      HEALTHCHECK, on the first boot and after the restart (#Q3363): compose
 #      and Bay read that status as readiness.
@@ -180,6 +180,14 @@ UID_IN_CONTAINER="$(docker exec "$FIRST" id -u | tr -d '\r')"
 [ "$UID_IN_CONTAINER" = "1000" ] ||
   fail "container runs as uid ${UID_IN_CONTAINER}, expected 1000"
 ok "runs as uid 1000"
+
+# ── 2b. git, for Build's repositories ───────────────────────────────────────
+# LocalGitBackend spawns `git` for every repository and every clone or push
+# (#E162). Run as the image's user, on whichever platform this smoke runs on,
+# so the arm64 pass checks the arm64 binary.
+docker exec "$FIRST" git init --bare --quiet /tmp/smoke.git ||
+  fail "git is missing from the image, or cannot init a bare repository as uid 1000"
+ok "git runs: $(docker exec "$FIRST" git --version | tr -d '\r')"
 
 # ── 3. The boot warning ─────────────────────────────────────────────────────
 # Asserted on directly, unlike everything else here, because being seen is the

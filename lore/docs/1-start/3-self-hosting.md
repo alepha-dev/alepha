@@ -49,6 +49,9 @@ None of this is a malfunction:
   administrator.** Everyone who registers afterwards is an ordinary member.
 - **Files, emails and analytics all live under `/data`**, because nothing
   external is configured yet.
+- **Git repositories live under `/data/git`**, one bare repository each, once
+  a project turns Build on and creates one. They share the volume with the
+  database: a full disk stops both, so size the volume for the code as well.
 
 The container says so in its own log while no account exists:
 
@@ -199,8 +202,8 @@ location / {
 
 ## Backup
 
-`/data` is the entire state: the database, the signing secret, uploaded files
-and any mail on disk. Backing up means copying the volume.
+`/data` is the entire state: the database, the signing secret, uploaded files,
+git repositories and any mail on disk. Backing up means copying the volume.
 
 ```bash
 docker run --rm -v lore:/data -v "$PWD:/backup" alpine \
