@@ -1,18 +1,25 @@
-import { $ownsProject, LoreAudits } from "@lore/core/api";
+import { $ownsProject, BoundParameters, LoreAudits } from "@lore/core/api";
 import { type Project } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, z } from "alepha";
+import { files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
-import { $action, ForbiddenError, okSchema } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  okSchema,
+} from "alepha/server";
 
 import { type QuestComment, questComments } from "../entities/questComments.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { questCommentResourceSchema } from "../schemas/questCommentResourceSchema.ts";
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
+import { WorkFileAccess } from "../services/WorkFileAccess.ts";
 
 /**
  * The Discussion half of a quest: human comments, which the quest page
@@ -42,6 +49,13 @@ export class QuestCommentController {
   owned = $inject(OwnedResourceProvider);
   ranks = $inject(RankService);
   mentions = $inject(MentionNotifier);
+  fileRepo = $repository(files);
+  bound = $inject(BoundParameters);
+
+  /**
+   * How many files one comment may carry: the feedback comment's cap.
+   */
+  static readonly MAX_ATTACHMENTS = 10;
 
   /**
    * Member gate on the project the quest named by `params.id` belongs to.
@@ -153,8 +167,63 @@ export class QuestCommentController {
       response: z.array(questCommentResourceSchema),
     },
     handler: async ({ params, query }) =>
-      this.latestCommentsOf(params.id, query?.limit ?? 200),
+      this.withAttachments(
+        await this.latestCommentsOf(params.id, query?.limit ?? 200),
+      ),
   });
+
+  /**
+   * Resolves each comment's `attachments` ids to what the thread draws, in
+   * one read for the whole page. A file gone from storage is left out.
+   */
+  async withAttachments<T extends { attachments?: string[] }>(rows: T[]) {
+    const fileIds = [...new Set(rows.flatMap((row) => row.attachments ?? []))];
+    const fileRows = fileIds.length
+      ? await this.bound.collect(fileIds, (batch) =>
+          this.fileRepo.findMany({ where: { id: { inArray: batch } } }),
+        )
+      : [];
+    const fileById = new Map(fileRows.map((f) => [f.id, f]));
+    return rows.map((row) => ({
+      ...row,
+      attachmentUrls: (row.attachments ?? []).flatMap((id) => {
+        const f = fileById.get(id);
+        return f
+          ? [
+              {
+                id: f.id,
+                name: f.name,
+                url: `/api/files/${f.id}`,
+                mimeType: f.mimeType,
+                size: f.size,
+              },
+            ]
+          : [];
+      }),
+    }));
+  }
+
+  /**
+   * Every id names a file the caller uploaded into the quest attachments
+   * bucket: nobody attaches someone else's file by guessing its id.
+   */
+  protected async assertAttachmentsBelongToUser(
+    ids: string[],
+    userId: string,
+  ): Promise<void> {
+    const found = await this.bound.collect(ids, (batch) =>
+      this.fileRepo.findMany({
+        where: {
+          id: { inArray: batch },
+          creator: { eq: userId },
+          bucket: { eq: WorkFileAccess.QUEST_ATTACHMENT_BUCKET },
+        },
+      }),
+    );
+    if (found.length !== ids.length) {
+      throw new BadRequestError("One or more attachments are invalid");
+    }
+  }
 
   /**
    * The most recent `limit` comments of a quest, oldest first: the body of
@@ -188,7 +257,16 @@ export class QuestCommentController {
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
-        body: z.string().min(1).meta({ size: "rich" }),
+        /**
+         * May be empty when the comment carries attachments: a screenshot is
+         * an answer on its own.
+         */
+        body: z.string().meta({ size: "rich" }),
+        /**
+         * File ids from `POST /quests/attachments`, uploaded by the same
+         * caller. They belong to the comment, not to the quest.
+         */
+        attachments: z.array(z.uuid()).optional(),
         /**
          * Set by `QuestTools.quest_comment_add` and by nothing else. The web
          * client never sends it, so a comment with no `source` is one a
@@ -202,11 +280,25 @@ export class QuestCommentController {
     handler: async ({ body, user }) => {
       const quest = this.owned.get<Quest>();
 
+      const attachments = [...new Set(body.attachments ?? [])];
+      if (!body.body.trim() && attachments.length === 0) {
+        throw new BadRequestError("A comment needs a body or an attachment");
+      }
+      if (attachments.length > QuestCommentController.MAX_ATTACHMENTS) {
+        throw new BadRequestError(
+          `Too many attachments (max ${QuestCommentController.MAX_ATTACHMENTS})`,
+        );
+      }
+      if (attachments.length > 0) {
+        await this.assertAttachmentsBelongToUser(attachments, user.id);
+      }
+
       const comment = await this.comments.create({
         questId: quest.id,
         authorId: user.id,
         body: body.body,
         source: body.source,
+        ...(attachments.length > 0 ? { attachments } : {}),
       });
 
       // Filed under `quest`, not a `comment` type of its own: a reader
@@ -243,7 +335,8 @@ export class QuestCommentController {
             : undefined,
       });
 
-      return comment;
+      const [resolved] = await this.withAttachments([comment]);
+      return resolved;
     },
   });
 
@@ -317,7 +410,8 @@ export class QuestCommentController {
         }
       }
 
-      return updated;
+      const [resolved] = await this.withAttachments([updated]);
+      return resolved;
     },
   });
 

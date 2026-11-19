@@ -108,7 +108,7 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
       <div
         role="tablist"
         aria-label={tr("folios.editor.action.toggle-inspector")}
-        className="border-border flex h-10 flex-none items-center gap-0.5 border-b px-1"
+        className="border-border flex h-11 flex-none items-center gap-0.5 border-b px-1"
       >
         {tabs.map((t) => (
           <button

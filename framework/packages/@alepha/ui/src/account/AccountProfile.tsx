@@ -26,7 +26,7 @@ export interface AccountProfileProps {
  * which is why it mounts only when the profile is there.
  *
  * `realmConfig` rides along because the page has one realm-dependent field:
- * a realm with `username: "none"` or `"email"` has no handle to edit. Both
+ * a realm with `username: "none"` has no handle to edit. Both
  * are fetched at once rather than in sequence: they do not depend on each
  * other.
  */

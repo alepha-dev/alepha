@@ -19,12 +19,23 @@ import {
   formatReference,
   useRank,
   AgentPromptsMenu,
+  CollapsibleBlock,
 } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { currentUserAtom } from "alepha/security";
-import { Paperclip, Plus } from "lucide-react";
+import {
+  Circle,
+  CircleCheck,
+  CircleX,
+  FileText,
+  Info,
+  Link2,
+  MessageSquare,
+  Paperclip,
+  Plus,
+} from "lucide-react";
 import { Fragment, useState } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
@@ -39,6 +50,25 @@ export interface ProjectFeedbackDetailProps {
   onChanged: () => void;
   onBack?: () => void;
 }
+
+/**
+ * The status chip's tone: waiting, taken, turned down.
+ */
+const STATUS_TONE = {
+  pending: "warning",
+  accepted: "success",
+  rejected: "danger",
+} as const;
+
+/**
+ * The status chip's glyph: the same three the list's Segmented filter and
+ * its rows carry.
+ */
+const STATUS_ICON = {
+  pending: Circle,
+  accepted: CircleCheck,
+  rejected: CircleX,
+} as const;
 
 const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const { feedback } = props;
@@ -191,7 +221,10 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   };
 
   const linkedQuests = feedback.linkedQuests ?? [];
-  const tags = feedback.tags ?? [];
+  // `feedback` is the tag the request form used to add to every untagged
+  // item. It said nothing, the form no longer adds it, and the items saved
+  // before still carry it: left out here rather than rewritten in the rows.
+  const tags = (feedback.tags ?? []).filter((tag) => tag !== "feedback");
 
   const questStatusColor: Record<string, string> = {
     todo: "bg-slate-500/20 text-slate-300",
@@ -202,7 +235,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="border-border flex items-start gap-3 border-b p-4">
+      <div className="border-border chrome flex h-14 shrink-0 items-center gap-3 border-b px-4">
         {props.onBack && (
           <Button
             variant="minimal"
@@ -224,7 +257,16 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           {formatReference("feedback", feedback.shortId)}{" "}
           <span className="text-muted-foreground">-</span> {feedback.title}
         </h2>
-        <Badge variant="secondary" className="uppercase">
+        {/* A tint chip, so it reads as a tag on the chrome band. */}
+        <Badge
+          variant="tint"
+          tone={STATUS_TONE[feedback.status]}
+          className="shrink-0 gap-1 uppercase"
+        >
+          {(() => {
+            const Icon = STATUS_ICON[feedback.status];
+            return <Icon className="size-3 shrink-0" aria-hidden="true" />;
+          })()}
           {tr(`feedback.filter.${feedback.status}`)}
         </Badge>
       </div>
@@ -244,18 +286,26 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           </div>
         )}
 
-        <section>
-          <h3 className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
-            {tr("feedback.description")}
-          </h3>
+        {/* Collapsible blocks, as on the quest page. */}
+        <CollapsibleBlock
+          icon={<FileText className="size-5" />}
+          label={tr("feedback.description")}
+          defaultOpen
+        >
           <p className="text-sm whitespace-pre-wrap">{feedback.description}</p>
-        </section>
+        </CollapsibleBlock>
 
         {feedback.attachmentUrls && feedback.attachmentUrls.length > 0 && (
-          <section>
-            <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
-              {tr("feedback.attachments")}
-            </h3>
+          <CollapsibleBlock
+            icon={<Paperclip className="size-5" />}
+            label={tr("feedback.attachments")}
+            defaultOpen
+            aside={
+              <span className="text-muted-foreground shrink-0 text-xs">
+                {feedback.attachmentUrls.length}
+              </span>
+            }
+          >
             <ul className="flex flex-col gap-1">
               {feedback.attachmentUrls.map((a) => {
                 // The shared classifier, not an inline mime test: it answers
@@ -308,63 +358,74 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                 );
               })}
             </ul>
-          </section>
+          </CollapsibleBlock>
         )}
 
         {feedback.status === "accepted" && (
-          <section data-testid="feedback-linked-quests">
-            <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
-              {tr("feedback.linkedQuests")}
-            </h3>
-            {linkedQuests.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                {tr("feedback.noLinkedQuests")}
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-1">
-                {linkedQuests.map((q) => (
-                  <li key={q.id}>
-                    <a
-                      href={router.path("projectQuest", {
-                        params: {
-                          projectSlug: project.slug,
-                          shortId: String(q.shortId),
-                        },
-                      })}
-                      className="bg-muted/30 hover:bg-hover border-border flex items-center gap-2 rounded border px-3 py-2 text-sm"
-                      data-testid={`linked-quest-${q.id}`}
-                    >
-                      {/* The quest's typed reference, not the
+          <CollapsibleBlock
+            icon={<Link2 className="size-5" />}
+            label={tr("feedback.linkedQuests")}
+            defaultOpen
+            aside={
+              linkedQuests.length > 0 ? (
+                <span className="text-muted-foreground shrink-0 text-xs">
+                  {linkedQuests.length}
+                </span>
+              ) : undefined
+            }
+          >
+            <div data-testid="feedback-linked-quests">
+              {linkedQuests.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  {tr("feedback.noLinkedQuests")}
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {linkedQuests.map((q) => (
+                    <li key={q.id}>
+                      <a
+                        href={router.path("projectQuest", {
+                          params: {
+                            projectSlug: project.slug,
+                            shortId: String(q.shortId),
+                          },
+                        })}
+                        className="bg-muted/30 hover:bg-hover border-border flex items-center gap-2 rounded border px-3 py-2 text-sm"
+                        data-testid={`linked-quest-${q.id}`}
+                      >
+                        {/* The quest's typed reference, not the
                           `ExternalLink` icon it used to carry: that icon
                           means "this leaves Lore" everywhere else
                           (#Q2222), and a quest is an in-app route. */}
-                      <span className="text-muted-foreground font-mono text-xs">
-                        {formatReference("quest", q.shortId)}
-                      </span>
-                      <span className="flex-1 truncate">{q.title}</span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase ${
-                          questStatusColor[q.status] ?? ""
-                        }`}
-                      >
-                        {tr(QUEST_STATUS_LABEL_KEYS[q.status])}
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+                        <span className="text-muted-foreground font-mono text-xs">
+                          {formatReference("quest", q.shortId)}
+                        </span>
+                        <span className="flex-1 truncate">{q.title}</span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase ${
+                            questStatusColor[q.status] ?? ""
+                          }`}
+                        >
+                          {tr(QUEST_STATUS_LABEL_KEYS[q.status])}
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </CollapsibleBlock>
         )}
 
         {(feedback.reporter || feedback.source) && (
-          <section className="bg-muted/30 border-border rounded border p-3 text-xs">
-            <h3 className="text-muted-foreground mb-2 font-medium tracking-wide uppercase">
-              {tr("feedback.context.title")}
-            </h3>
+          <CollapsibleBlock
+            icon={<Info className="size-5" />}
+            label={tr("feedback.context.title")}
+            defaultOpen
+          >
             {/* Provenance fields are attacker-controlled — rendered as escaped
                 plain text only (never as links/markdown). See folio #12. */}
-            <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
+            <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
               {feedback.reporter && (
                 <>
                   <dt className="text-muted-foreground">
@@ -398,25 +459,30 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                     </Fragment>
                   ))}
             </dl>
-          </section>
+          </CollapsibleBlock>
         )}
 
         {/* The thread, under the item's own content: triage findings and
             questions to the reporter used to have nowhere to live but a
             quest that might never be created. */}
-        <section className="border-border border-t p-3">
+        <CollapsibleBlock
+          icon={<MessageSquare className="size-5" />}
+          label={tr("feedback.thread.title")}
+          defaultOpen
+        >
           <FeedbackThread
             feedbackId={feedback.id}
             projectId={feedback.projectId}
             reporterUserId={feedback.reporterUserId}
             currentUserId={currentUser?.id}
             isOwner={can("feedback:triage")}
+            editor
           />
-        </section>
+        </CollapsibleBlock>
       </div>
 
       {feedback.status === "pending" && (
-        <div className="border-border flex flex-wrap justify-start gap-2 border-t p-3">
+        <div className="border-border chrome flex flex-wrap justify-start gap-2 border-t p-3">
           {/* ⚠️ Anchored LEFT, and ordered by importance from there, with
               the weight falling off as it goes: filled, outlined, bare,
               icon. Both halves exist for the same reason and neither is
@@ -463,7 +529,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
       )}
 
       {feedback.status === "accepted" && (
-        <div className="border-border flex flex-wrap justify-start gap-2 border-t p-3">
+        <div className="border-border chrome flex flex-wrap justify-start gap-2 border-t p-3">
           {/* Same order as the pending footer above, minus Reject: an
               accepted item has nothing to reject. */}
           <Button onClick={handlePromote} disabled={busy}>
@@ -478,7 +544,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
       )}
 
       {feedback.status === "rejected" && (
-        <div className="border-border flex justify-start gap-2 border-t p-3">
+        <div className="border-border chrome flex justify-start gap-2 border-t p-3">
           <Button variant="minimal" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>

@@ -1,0 +1,1 @@
+ALTER TABLE `quest_comments` ADD `attachments` text;

@@ -1,4 +1,4 @@
-import { FileImage, TimeAgo, Button, Textarea, useDialog } from "@alepha/ui";
+import { Button, useDialog } from "@alepha/ui";
 import {
   type I18n,
   currentProjectAtom,
@@ -15,19 +15,15 @@ import {
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import {
-  Bot,
-  Loader2,
-  MessageSquare,
-  Paperclip,
-  Trash2,
-  X,
-} from "lucide-react";
-import { type ClipboardEvent, useRef, useState } from "react";
+import { Loader2, Paperclip, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
 
 import type { FeedbackCommentController } from "../../../../../api/controllers/FeedbackCommentController.ts";
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackCommentResource } from "../../../../../api/schemas/feedbackCommentResourceSchema.ts";
+import DiscussionAttachments from "../discussion/DiscussionAttachments.tsx";
+import DiscussionComment from "../discussion/DiscussionComment.tsx";
+import DiscussionComposer from "../discussion/DiscussionComposer.tsx";
 import FeedbackThreadBody from "./FeedbackThreadBody.tsx";
 
 export interface FeedbackThreadProps {
@@ -53,6 +49,13 @@ export interface FeedbackThreadProps {
    * render as Markdown (#Q3451, see `FeedbackThreadBody`).
    */
   reporterUserId?: string;
+  /**
+   * Write in the rich `LoreEditor`, as on a quest. Set by the project's own
+   * inbox; the reporter's sheet leaves it off and keeps a plain box, since
+   * their words render as plain text and a toolbar would hand them syntax
+   * they then see literally.
+   */
+  editor?: boolean;
 }
 
 /**
@@ -92,6 +95,8 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
   const [pending, setPending] = useState<
     Array<{ id: string; name: string; size: number; mimeType: string }>
   >([]);
+  // Uploads still in flight, drawn as placeholder tiles.
+  const [uploading, setUploading] = useState(0);
   const queries = useQueryClient();
   const commentsKey = ["feedback-comments", props.feedbackId];
 
@@ -143,12 +148,23 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
     {
       handler: async (_ctx, files) => {
         if (!props.projectId) return;
-        for (const file of files) {
-          const uploaded = await feedbackApi.uploadFeedbackAttachment({
-            params: { projectId: props.projectId },
-            body: { file },
-          });
-          setPending((prev) => [...prev, uploaded]);
+        setUploading((n) => n + files.length);
+        try {
+          for (const file of files) {
+            try {
+              const uploaded = await feedbackApi.uploadFeedbackAttachment({
+                params: { projectId: props.projectId },
+                body: { file },
+              });
+              setPending((prev) => [...prev, uploaded]);
+            } finally {
+              setUploading((n) => n - 1);
+            }
+          }
+        } catch (error) {
+          // The files after a refused one never started: drop their tiles.
+          setUploading(0);
+          throw error;
         }
       },
     },
@@ -180,86 +196,60 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
   // A pasted screenshot, the commonest attachment there is, uploads without
   // a trip through the file picker. Named by hand: a pasted image arrives
   // as "image.png" every time.
-  const onPaste = (event: ClipboardEvent) => {
+  const onPasteFiles = (files: File[]) => {
     if (!props.projectId) return;
-    const pasted = Array.from(event.clipboardData.items)
-      .filter((item) => item.kind === "file")
-      .map((item) => item.getAsFile())
-      .filter((file): file is File => !!file)
-      .map((file, index) => {
-        const ext = file.name.includes(".")
-          ? file.name.slice(file.name.lastIndexOf("."))
-          : ".png";
-        return new File(
-          [file],
-          `pasted-${dateTime.nowMillis()}-${index}${ext}`,
-          {
-            type: file.type,
-          },
-        );
+    const named = files.map((file, index) => {
+      const ext = file.name.includes(".")
+        ? file.name.slice(file.name.lastIndexOf("."))
+        : ".png";
+      return new File([file], `pasted-${dateTime.nowMillis()}-${index}${ext}`, {
+        type: file.type,
       });
-    if (pasted.length === 0) return;
-    event.preventDefault();
-    void uploadAction.run(pasted);
+    });
+    void uploadAction.run(named);
   };
 
   return (
-    <section className="flex flex-col gap-3">
-      <h3 className="text-muted-foreground flex items-center gap-2 text-xs font-medium uppercase">
-        <MessageSquare className="size-3.5" />
-        {tr("feedback.thread.title")}
-      </h3>
-
+    // No heading of its own: the detail's `CollapsibleBlock` carries it. The
+    // rows, the composer and the file tiles are the quest Discussion's own.
+    <section className="flex flex-col">
       {comments.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-muted-foreground px-1 text-sm italic">
           {tr("feedback.thread.empty")}
         </p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ol className="divide-border/40 flex flex-col divide-y px-1">
           {comments.map((comment) => (
-            <li
+            <DiscussionComment
               key={comment.id}
-              className="border-border bg-muted/40 flex flex-col gap-1 rounded-md border px-3 py-2"
-            >
-              <div className="flex items-center gap-2 text-xs">
-                <span className="font-medium">
-                  {comment.authorName ?? tr("feedback.thread.unknownAuthor")}
-                </span>
-                {/* Written by a machine over MCP. Over MCP the account is
-                    the owner's, so without this the reporter reads an
-                    agent's triage note as the owner's own words. */}
-                {comment.source && (
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <Bot className="size-3" />
-                    {tr("feedback.thread.agent")}
-                  </span>
-                )}
-                <span className="text-muted-foreground ml-auto">
-                  {comment.editedAt && (
-                    <span className="mr-1 italic">
-                      {tr("feedback.thread.edited")}
-                    </span>
-                  )}
-                  <TimeAgo value={comment.createdAt} />
-                </span>
-                {(props.isOwner ||
-                  comment.authorId === props.currentUserId) && (
+              author={comment.authorName ?? tr("feedback.thread.unknownAuthor")}
+              // Written by a machine over MCP. Over MCP the account is the
+              // owner's, so without this the reporter reads an agent's
+              // triage note as the owner's own words.
+              agent={comment.source ? {} : undefined}
+              at={comment.createdAt}
+              edited={!!comment.editedAt}
+              actions={
+                (props.isOwner || comment.authorId === props.currentUserId) && (
                   <button
                     type="button"
-                    className="text-muted-foreground hover:text-danger-text"
+                    className="text-muted-foreground hover:text-danger-text shrink-0"
                     aria-label={tr("feedback.thread.delete")}
                     disabled={busy}
                     onClick={() => void removeAction.run(comment)}
                   >
                     <Trash2 className="size-3.5" />
                   </button>
-                )}
-              </div>
+                )
+              }
+              footer={
+                <DiscussionAttachments items={comment.attachmentUrls ?? []} />
+              }
+            >
               {/* The reporter's words stay plain text, deliberately: a
                   reporter is an outsider and this body is shown to the
-                  project owner, the same reason an error's fields are never
-                  rendered as markdown. A reply from the team or an agent
-                  renders as Markdown (#Q3451). */}
+                  project owner. A reply from the team or an agent renders
+                  as Markdown (#Q3451). */}
               {comment.body && (
                 <FeedbackThreadBody
                   body={comment.body}
@@ -277,103 +267,49 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                   }
                 />
               )}
-              {comment.attachmentUrls && comment.attachmentUrls.length > 0 && (
-                <ul className="flex flex-wrap gap-2 pt-1">
-                  {comment.attachmentUrls.map((file) => (
-                    <li key={file.id}>
-                      {/* A real anchor: the browser opens the file in a tab,
-                          for an image and for anything else. */}
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="border-border bg-background hover:bg-muted flex items-center gap-2 rounded border px-2 py-1 text-xs"
-                      >
-                        {file.mimeType.startsWith("image/") ? (
-                          <FileImage
-                            id={file.id}
-                            alt={file.name}
-                            className="size-16 rounded object-cover"
-                          />
-                        ) : (
-                          <>
-                            <Paperclip className="size-3.5 shrink-0" />
-                            <span className="max-w-48 truncate">
-                              {file.name}
-                            </span>
-                          </>
-                        )}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
+            </DiscussionComment>
           ))}
-        </ul>
+        </ol>
       )}
 
-      <div className="flex flex-col gap-2">
-        {/* ⚠️ A `Textarea`, and it stays one (#Q2069, owner's ruling
-            2026-09-07). Every other markdown surface in Lore is a
-            `LoreEditor`, so this reads like an oversight and has been swept
-            for once already.
-
-            It is not. `FeedbackThreadBody` renders the REPORTER's words as
-            PLAIN TEXT on purpose - a reporter is an outsider and the body is
-            shown to the project owner - so a format toolbar here would hand
-            the reporter syntax they then see literally. The team's and an
-            agent's replies do render as Markdown (#Q3451), so this box
-            accepts it as typed text; a toolbar is still the wrong half
-            to change while the reporter's half stays plain. */}
-        <Textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onPaste={onPaste}
-          placeholder={tr("feedback.thread.placeholder")}
-          rows={3}
-          disabled={busy}
-        />
-        {pending.length > 0 && (
-          <ul className="flex flex-col gap-1">
-            {pending.map((file) => (
-              <li
-                key={file.id}
-                className="border-border bg-muted/20 flex items-center gap-2 rounded border px-2 py-1 text-sm"
-              >
-                {file.mimeType.startsWith("image/") ? (
-                  <FileImage
-                    id={file.id}
-                    alt=""
-                    className="size-8 shrink-0 rounded object-cover"
-                  />
-                ) : (
-                  <Paperclip className="size-3.5 shrink-0" />
-                )}
-                <span className="flex-1 truncate">{file.name}</span>
-                <span className="text-muted-foreground text-xs">
-                  {Math.round(file.size / 1024)} KB
-                </span>
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground"
-                  aria-label={tr("feedback.thread.removeAttachment")}
-                  disabled={busy}
-                  onClick={() =>
-                    setPending((prev) => prev.filter((it) => it.id !== file.id))
-                  }
-                >
-                  <X className="size-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground text-xs">
-            {tr("feedback.thread.noNotification")}
-          </span>
-          {props.projectId && (
+      <DiscussionComposer
+        // The rich editor in the project's inbox only (#Q2069 overturned
+        // there, 2026-11-19): the reporter's sheet keeps the plain box.
+        element={
+          props.editor && props.projectId !== undefined && project
+            ? {
+                kind: "feedback",
+                projectId: props.projectId,
+                projectSlug: project.slug,
+                id: props.feedbackId,
+              }
+            : undefined
+        }
+        members={members.map((member) => member.name)}
+        // Pasted images become the comment's own attachments, not part of
+        // the body: the editor has no feedback upload arm.
+        imageUpload={false}
+        onPasteFiles={props.projectId ? onPasteFiles : undefined}
+        value={draft}
+        onChange={setDraft}
+        onSubmit={() => void submitAction.run()}
+        busy={busy}
+        canSubmit={draft.trim().length > 0 || pending.length > 0}
+        placeholder={tr("feedback.thread.placeholder")}
+        submitLabel={tr("feedback.thread.submit")}
+        hint={tr("feedback.thread.noNotification")}
+        attachments={
+          <DiscussionAttachments
+            items={pending}
+            uploading={uploading}
+            disabled={busy}
+            onRemove={(id) =>
+              setPending((prev) => prev.filter((it) => it.id !== id))
+            }
+          />
+        }
+        actions={
+          props.projectId && (
             <>
               <input
                 ref={fileInputRef}
@@ -392,7 +328,6 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                 type="button"
                 size="sm"
                 variant="outlined"
-                className="ml-auto"
                 disabled={busy}
                 onClick={() => fileInputRef.current?.click()}
               >
@@ -401,22 +336,12 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                 ) : (
                   <Paperclip className="size-4" />
                 )}
-                {tr("feedback.thread.attach")}
+                {tr("discussion.attach")}
               </Button>
             </>
-          )}
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => void submitAction.run()}
-            disabled={
-              busy || (draft.trim().length === 0 && pending.length === 0)
-            }
-          >
-            {tr("feedback.thread.submit")}
-          </Button>
-        </div>
-      </div>
+          )
+        }
+      />
     </section>
   );
 };

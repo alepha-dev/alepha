@@ -13,8 +13,8 @@ A controlled tree.
 `treeModel`'s functions are the pure half: build, flatten, cycle-safe parents
 and drop resolution. `TreeView` draws the rows with their indent guides and
 ARIA tree roles; drag and drop, inline rename and a context-menu slot are
-opt-ins. `useTreeState` holds the gesture state and `TreeViewResizer` is the
-pane handle.
+opt-ins. `useTreeState` holds the gesture state; the pane handle is
+`PaneResizer`, in the core entry.
 
 ## API Reference
 

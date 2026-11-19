@@ -78,6 +78,15 @@ export const questComments = $entity({
      * is what keeps the next one from being the expensive one.
      */
     source: questCommentSourceSchema.optional(),
+    /**
+     * File ids, uploaded through `POST /quests/attachments` by the author.
+     * The COMMENT's files, not the quest's: a screenshot posted in the
+     * thread stays with the message it answers, as on a feedback comment.
+     *
+     * ⚠️ Optional with no `db.default(...)`, for the reason `source` has
+     * none: a column DEFAULT is a table rebuild on D1.
+     */
+    attachments: z.array(z.uuid()).optional(),
   }),
   indexes: [
     /**

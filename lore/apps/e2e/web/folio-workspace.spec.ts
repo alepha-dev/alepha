@@ -1328,7 +1328,8 @@ test.describe("Folio workspace", () => {
 
     // The inspector's fourth tab owns attachments now.
     await page.getByRole("tab", { name: /^files$/i }).click();
-    await expect(page.getByText(/no files attached yet/i)).toBeVisible();
+    // Empty, the tab is one drop zone that is also the picker.
+    await expect(page.getByText(/drop files here/i)).toBeVisible();
 
     const fileName = `attached-${stamp}.txt`;
     const registered = page.waitForResponse(

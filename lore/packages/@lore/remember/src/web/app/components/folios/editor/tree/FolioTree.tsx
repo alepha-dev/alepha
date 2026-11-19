@@ -89,8 +89,8 @@ export interface FolioTreeActions {
 /**
  * The folio tree pane: directories + folios, native HTML5 drag & drop, a
  * right-click menu (`FolioTreeContextMenu`) and inline rename. Resizable
- * width (see `width`), a 40px header row (title + New folio / New
- * directory), scrolling body.
+ * width (see `width`), a 44px header row (`h-11`, the height of the document
+ * and inspector bars beside it) holding the pane's actions, scrolling body.
  *
  * The rows, the indent geometry, the drag zones, the rename input and the
  * memo all live in `@alepha/ui`'s `TreeView` now. What is Lore's is
@@ -158,7 +158,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
     <div
       data-slot="folio-tree"
       style={{ width: props.width }}
-      className="border-border flex h-full min-h-0 flex-none flex-col overflow-hidden border-r"
+      className="flex h-full min-h-0 flex-none flex-col overflow-hidden"
       onDragOver={(event) => {
         if (canWrite && [...event.dataTransfer.types].includes("Files")) {
           event.preventDefault();
@@ -175,7 +175,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           opens, so the strip holds only its actions: collapse at the left,
           the rest at the right (#Q3693). The tree
           keeps its accessible name, `TreeView`'s `label` below. */}
-      <div className="border-border flex h-10 flex-none items-center gap-1 border-b px-2">
+      <div className="border-border flex h-11 flex-none items-center gap-1 border-b px-2">
         {/* First in the row (#Q3693), the pane control at the pane's outer
             edge, the inspector's mirror; the tree's actions sit at the
             other end. Outside `canWrite`: a Viewer reads the tree and is

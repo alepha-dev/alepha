@@ -1430,8 +1430,8 @@ test.describe("Quest", () => {
     await expect(preset("urgent")).toHaveAttribute("aria-pressed", "true");
     expect(new URL(page.url()).search).toBe("");
 
-    // Backlog replaces Urgent's priority filter rather than adding to it.
-    await preset("backlog").click();
+    // Open replaces Urgent's priority filter rather than adding to it.
+    await preset("open").click();
     await expect(page.getByText(`Calm${t}`)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(`Hot${t}`)).toBeVisible();
     await expect(preset("urgent")).toHaveAttribute("aria-pressed", "false");

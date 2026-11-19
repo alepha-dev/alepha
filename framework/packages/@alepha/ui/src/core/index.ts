@@ -410,6 +410,13 @@ export {
   stepperStepState,
 } from "./Stepper.tsx";
 export {
+  PANE_DEFAULT_WIDTH,
+  PANE_MAX_WIDTH,
+  PANE_MIN_WIDTH,
+  PaneResizer,
+  type PaneResizerProps,
+} from "./PaneResizer.tsx";
+export {
   Segmented,
   type SegmentedOption,
   type SegmentedProps,

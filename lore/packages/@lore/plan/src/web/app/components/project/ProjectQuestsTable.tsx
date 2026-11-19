@@ -1551,7 +1551,7 @@ const PRESETS: Array<{
 }> = [
   { key: "mine", icon: UserRound, group: "primary" },
   { key: "urgent", icon: Flame, group: "primary", tone: "danger" },
-  { key: "backlog", icon: Inbox, group: "primary" },
+  { key: "open", icon: Inbox, group: "primary" },
   { key: "done", icon: CircleCheck, group: "primary", quiet: true },
   {
     key: "asks",

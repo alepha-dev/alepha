@@ -81,26 +81,23 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
    * `updateMyProfile` is the same call that saves first and last name, so it
    * exists in every realm and its presence says nothing about usernames.
    *
-   * The realm's own `settings.username` is the switch, and the row is hidden
-   * in the two modes where a person does not choose a username, the same rule
-   * `AuthRegister.tsx` applies:
+   * The realm's own `settings.username` is the switch, and `"none"` is the
+   * only value that hides the row: the realm has no such thing as a
+   * username, so there is nothing to show and nothing the user could set.
+   * Without this, `?? ""` seeded an empty string into a column that is
+   * `.optional()` but `minLength: 3`, `FormModel` decodes its initial values
+   * on construction, and the whole page died at `useForm` with "Too small:
+   * expected string to have >=3 characters at /username" before anything
+   * rendered. `apps/examples/shop` is such a realm, and `"none"` is also the
+   * framework default.
    *
-   * - `"none"`: the realm has no such thing as a username, so there is nothing
-   *   to show and nothing the user could set. Without this, `?? ""` seeded an
-   *   empty string into a column that is `.optional()` but `minLength: 3`,
-   *   `FormModel` decodes its initial values on construction, and the whole
-   *   page died at `useForm` with "Too small: expected string to have >=3
-   *   characters at /username" before anything rendered. `apps/examples/shop`
-   *   is such a realm, and `"none"` is also the framework default.
-   * - `"email"`: `RegistrationService` derives the handle from the address and
-   *   the person never chose it. Showing it as an editable row (it once did,
-   *   for Lore's sake) offered a rename that desyncs it from the email that
-   *   produced it, since `updateMyProfile` does not re-run the slugger, and
-   *   apps in that mode read the row as a stray field. Hidden, it is
-   *   also left out of the request, so the derived handle stays as it is.
+   * ⚠️ `"email"` shows the row, unlike `AuthRegister.tsx`. There the handle is
+   * derived from the address, so the registration form rightly asks for
+   * none; here it is only the DEFAULT, and the person may rename it. It was
+   * hidden once (#Q3295) and that left no way to change it at all.
    */
   const usernameMode = props.realmConfig?.settings?.username;
-  const hasUsername = usernameMode !== "none" && usernameMode !== "email";
+  const hasUsername = usernameMode !== "none";
 
   /**
    * Validated against the server's own body schema, so "3 to 30 characters"

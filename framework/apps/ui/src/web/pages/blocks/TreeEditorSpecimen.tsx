@@ -3,6 +3,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  PaneResizer,
 } from "@alepha/ui";
 import {
   buildTree,
@@ -10,7 +11,6 @@ import {
   flattenTree,
   resolveDrop,
   TreeView,
-  TreeViewResizer,
   useTreeState,
 } from "@alepha/ui/tree";
 import { FileText, Folder, FolderOpen, Pencil, Trash2 } from "lucide-react";
@@ -85,7 +85,7 @@ export const TreeEditorSpecimen = (
 
   return (
     <div className="flex flex-1">
-      <div style={{ width }} className="border-border flex-none border-r">
+      <div style={{ width }} className="relative flex-none">
         <TreeView<TreeSpecimenData>
           label="Files"
           rows={flattenTree(nodes, state.collapsed)}
@@ -142,8 +142,8 @@ export const TreeEditorSpecimen = (
           onCommitRename={state.commands.commitRename}
           onCancelRename={state.commands.cancelRename}
         />
+        <PaneResizer width={width} onResize={setWidth} onWidth={setWidth} />
       </div>
-      <TreeViewResizer width={width} onWidth={setWidth} />
       <div className="text-muted-foreground min-w-0 flex-1 px-4 text-sm">
         <p>
           Right-click a row for the menu. The verbs are this page's, not the
@@ -151,9 +151,9 @@ export const TreeEditorSpecimen = (
           one is given.
         </p>
         <p className="mt-2 text-xs">
-          Drag the edge to resize, double-click it to reset. The handle reports
-          the width and never clamps it, so bounds stay where the pane's owner
-          put them.
+          Drag the edge to resize, use the arrow keys on it, or double-click it
+          to reset. The width is clamped to the handle's bounds and kept once,
+          when the drag ends.
         </p>
       </div>
     </div>
