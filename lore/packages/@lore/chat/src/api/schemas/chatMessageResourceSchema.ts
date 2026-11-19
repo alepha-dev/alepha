@@ -21,6 +21,23 @@ export const chatMessageResourceSchema = z.object({
    * The resources it names, `Q12`, `E3`, `F7`.
    */
   references: z.array(z.text()),
+  /**
+   * Each emoji under the message, with who reacted, oldest first (#Q3939).
+   */
+  reactions: z.array(z.object({ emoji: z.text(), userIds: z.array(z.uuid()) })),
+  /**
+   * The files it carries (#Q3939), served by `/api/files/:id` to whoever
+   * may read the room.
+   */
+  attachments: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.text(),
+      mimeType: z.text(),
+      size: z.number(),
+      url: z.text(),
+    }),
+  ),
 });
 
 export type ChatMessageResource = Infer<typeof chatMessageResourceSchema>;

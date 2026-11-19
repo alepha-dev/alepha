@@ -28,8 +28,22 @@ export class FileAccessRegistry {
 
 /**
  * The project a file belongs to and the permission that reads it there, or
- * `undefined` for a file no row of the module references.
+ * `undefined` for a file no row of the module references, or that this
+ * reader may not see whatever their rank.
+ *
+ * `reader` is who asks (#Q3939): a rank says what a member may read in a
+ * project, not which private chat room they are in, so a rule that guards
+ * something narrower than a project checks the reader itself. Rules that
+ * need no more than the project ignore it.
  */
 export type FileAccessRule = (
   fileId: string,
+  reader: FileAccessReader,
 ) => Promise<{ projectId: number; permission: string } | undefined>;
+
+/**
+ * Who reads a file, as a {@link FileAccessRule} sees them.
+ */
+export interface FileAccessReader {
+  id: string;
+}

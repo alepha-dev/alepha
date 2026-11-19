@@ -5,6 +5,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Textarea,
   TimeAgo,
   useDialog,
@@ -12,10 +15,13 @@ import {
 } from "@alepha/ui";
 import { type I18n, LoreViewer, type ProjectUser } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { Ellipsis, Pencil, Trash2 } from "lucide-react";
+import { Ellipsis, FileText, Pencil, SmilePlus, Trash2 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
-import type { ChatMessageResource } from "../../../schemas/index.ts";
+import type {
+  ChatMessageResource,
+  ChatReactionEmoji,
+} from "../../../schemas/index.ts";
 import { chatMarkdown } from "../services/chatMarkdown.ts";
 
 export interface ChatMessageRowProps {
@@ -40,7 +46,24 @@ export interface ChatMessageRowProps {
    */
   onEdit: (body: string) => Promise<boolean>;
   onDelete: () => Promise<void>;
+  /**
+   * The reader, whose own reactions are pressed.
+   */
+  me?: string;
+  /**
+   * The name of a member who reacted, for the reaction's tooltip.
+   */
+  nameOf: (userId: string) => string;
+  /**
+   * Toggles the reader's emoji, absent when they may not react.
+   */
+  onReact?: (emoji: ChatReactionEmoji) => void;
 }
+
+/**
+ * The fixed set a member reacts with: no custom emoji.
+ */
+const EMOJI: ChatReactionEmoji[] = ["👍", "❤️", "😄", "🎉", "👀", "🙏"];
 
 /**
  * One message of the conversation (#E161, #Q3929, #Q3937): its author and
@@ -100,7 +123,7 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
   const actions =
     !message.deletedAt &&
     draft === undefined &&
-    (props.canEdit || props.canDelete);
+    (props.canEdit || props.canDelete || !!props.onReact);
 
   return (
     <li
@@ -173,38 +196,124 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
                 {tr("chat.message.edited")}
               </span>
             )}
+            {message.attachments.length > 0 && (
+              <ul
+                className="mt-1 flex flex-wrap gap-2"
+                aria-label={tr("chat.message.files")}
+              >
+                {message.attachments.map((file) => (
+                  <li key={file.id}>
+                    {file.mimeType.startsWith("image/") ? (
+                      <a href={file.url} target="_blank" rel="noreferrer">
+                        <img
+                          src={file.url}
+                          alt={file.name}
+                          className="max-h-64 max-w-xs rounded-md border object-contain"
+                        />
+                      </a>
+                    ) : (
+                      <a
+                        href={file.url}
+                        className="hover:bg-accent flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+                      >
+                        <FileText className="size-3.5" />
+                        {file.name}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {!message.deletedAt && message.reactions.length > 0 && (
+          <div
+            className="mt-1 flex flex-wrap gap-1"
+            data-testid="chat-reactions"
+          >
+            {message.reactions.map((reaction) => {
+              const mine = !!props.me && reaction.userIds.includes(props.me);
+              return (
+                <button
+                  key={reaction.emoji}
+                  type="button"
+                  aria-pressed={mine}
+                  disabled={!props.onReact}
+                  title={reaction.userIds.map(props.nameOf).join(", ")}
+                  onClick={() =>
+                    props.onReact?.(reaction.emoji as ChatReactionEmoji)
+                  }
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-xs",
+                    mine ? "border-primary bg-primary/10" : "hover:bg-accent",
+                  )}
+                >
+                  {reaction.emoji} {reaction.userIds.length}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
       {actions && (
-        <div className="absolute top-1 right-3 opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-popup-open]]:opacity-100">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outlined"
-                  size="icon-xs"
-                  aria-label={tr("chat.message.actions")}
-                />
-              }
-            >
-              <Ellipsis className="size-3.5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {props.canEdit && (
-                <DropdownMenuItem onClick={() => setDraft(message.body)}>
-                  <Pencil className="size-4" />
-                  {tr("chat.message.edit")}
-                </DropdownMenuItem>
-              )}
-              {props.canDelete && (
-                <DropdownMenuItem onClick={() => void remove()}>
-                  <Trash2 className="size-4" />
-                  {tr("chat.message.delete")}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="absolute top-1 right-3 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-popup-open]]:opacity-100">
+          {props.onReact && (
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <Button
+                    variant="outlined"
+                    size="icon-xs"
+                    aria-label={tr("chat.message.react")}
+                  />
+                }
+              >
+                <SmilePlus className="size-3.5" />
+              </PopoverTrigger>
+              <PopoverContent align="end" className="flex w-auto gap-1 p-1">
+                {EMOJI.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    aria-label={emoji}
+                    className="hover:bg-accent rounded-md px-1.5 py-1 text-base"
+                    onClick={() => props.onReact?.(emoji)}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          )}
+          {(props.canEdit || props.canDelete) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="outlined"
+                    size="icon-xs"
+                    aria-label={tr("chat.message.actions")}
+                  />
+                }
+              >
+                <Ellipsis className="size-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {props.canEdit && (
+                  <DropdownMenuItem onClick={() => setDraft(message.body)}>
+                    <Pencil className="size-4" />
+                    {tr("chat.message.edit")}
+                  </DropdownMenuItem>
+                )}
+                {props.canDelete && (
+                  <DropdownMenuItem onClick={() => void remove()}>
+                    <Trash2 className="size-4" />
+                    {tr("chat.message.delete")}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       )}
     </li>

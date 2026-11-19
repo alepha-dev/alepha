@@ -209,7 +209,9 @@ describe("QuestCommentController", () => {
       // The quest does not list the file, the comment does: the read rule
       // must still find the project behind it, or only the uploader sees it.
       const rule = ctx.alepha.inject(FileAccessRegistry).rule("attachments");
-      expect(await rule?.(uploaded.data.fileId)).toEqual({
+      expect(
+        await rule?.(uploaded.data.fileId, { id: crypto.randomUUID() }),
+      ).toEqual({
         projectId,
         permission: "quest:read",
       });

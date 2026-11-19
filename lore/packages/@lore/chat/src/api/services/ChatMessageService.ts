@@ -1,9 +1,11 @@
 import { ProjectRoster, ProjectSecurityService } from "@lore/core/api";
 import { $inject, z } from "alepha";
+import { FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $rateLimit } from "alepha/rate-limit";
 import {
+  BadRequestError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
@@ -12,10 +14,12 @@ import {
 
 import { chatMentions } from "../entities/chatMentions.ts";
 import { type ChatMessage, chatMessages } from "../entities/chatMessages.ts";
+import { chatReactions } from "../entities/chatReactions.ts";
 import { chatRoomMembers } from "../entities/chatRoomMembers.ts";
 import { type ChatRoom, chatRooms } from "../entities/chatRooms.ts";
 import type { ChatMessageResource } from "../schemas/chatMessageResourceSchema.ts";
 import { ChatAudience } from "./ChatAudience.ts";
+import { ChatBuckets } from "./ChatBuckets.ts";
 import { ChatLive } from "./ChatLive.ts";
 import { ChatMentionParser } from "./ChatMentionParser.ts";
 import { ChatRoomService } from "./ChatRoomService.ts";
@@ -41,6 +45,8 @@ export class ChatMessageService {
 
   protected readonly messages = $repository(chatMessages);
   protected readonly mentions = $repository(chatMentions);
+  protected readonly reactions = $repository(chatReactions);
+  protected readonly files = $inject(FileService);
   protected readonly roomMembers = $repository(chatRoomMembers);
   protected readonly roomRows = $repository(chatRooms);
   protected readonly rooms = $inject(ChatRoomService);
@@ -69,9 +75,14 @@ export class ChatMessageService {
     roomId: string,
     userId: string,
     body: string,
+    attachments: string[] = [],
   ): Promise<{ message: ChatMessageResource; mentioned: string[] }> {
     const room = await this.rooms.visibleRoom(projectId, roomId, userId);
     this.assertOpenForWrites(room);
+    if (!body.trim() && attachments.length === 0) {
+      throw new BadRequestError("A message needs words or a file");
+    }
+    await this.assertOwnUploads(attachments, userId);
 
     const limited = await this.sendLimit.consume(userId);
     if (!limited.allowed) {
@@ -90,19 +101,20 @@ export class ChatMessageService {
       authorId: userId,
       body,
       references: parsed.references,
+      ...(attachments.length ? { attachments } : {}),
     });
     await this.writeMentions(message, parsed.userIds);
     // The author has read what they wrote.
     await this.markRead(projectId, roomId, userId, message.id);
 
-    const resource = this.toResource(message, parsed.userIds);
+    const [resource] = await this.decorate([message]);
     await this.live.send(await this.audience.of(room), {
       type: "message.created",
       projectId,
       roomId: room.id,
-      message: resource,
+      message: resource!,
     });
-    return { message: resource, mentioned: parsed.userIds };
+    return { message: resource!, mentioned: parsed.userIds };
   }
 
   /**
@@ -126,20 +138,8 @@ export class ChatMessageService {
       limit: limit + 1,
     });
     const page = rows.slice(0, limit);
-    const mentions = page.length
-      ? await this.mentions.findMany({
-          where: { messageId: { inArray: page.map((it) => it.id) } },
-        })
-      : [];
     return {
-      items: page.map((message) =>
-        this.toResource(
-          message,
-          mentions
-            .filter((it) => it.messageId === message.id && it.userId)
-            .map((it) => it.userId!),
-        ),
-      ),
+      items: await this.decorate(page),
       hasMore: rows.length > limit,
     };
   }
@@ -181,15 +181,15 @@ export class ChatMessageService {
     await this.mentions.deleteMany({ messageId: { eq: message.id } });
     await this.writeMentions(updated, parsed.userIds);
 
-    const resource = this.toResource(updated, parsed.userIds);
+    const [resource] = await this.decorate([updated]);
     await this.live.send(await this.audience.of(room), {
       type: "message.updated",
       projectId,
       roomId: room.id,
-      message: resource,
+      message: resource!,
     });
     return {
-      message: resource,
+      message: resource!,
       mentioned: parsed.userIds.filter((id) => !before.has(id)),
     };
   }
@@ -220,9 +220,17 @@ export class ChatMessageService {
     await this.messages.updateById(message.id, {
       body: "",
       references: [],
+      attachments: [],
       deletedAt: this.dateTime.nowISOString(),
     });
     await this.mentions.deleteMany({ messageId: { eq: message.id } });
+    await this.reactions.deleteMany({ messageId: { eq: message.id } });
+    // Its files go with its words: nobody can open them any more.
+    if (message.attachments?.length) {
+      await this.files.deleteFiles(message.attachments, {
+        bucket: ChatBuckets.ATTACHMENT_BUCKET,
+      });
+    }
     await this.live.send(await this.audience.of(room), {
       type: "message.deleted",
       projectId,
@@ -323,9 +331,111 @@ export class ChatMessageService {
     }));
   }
 
+  /**
+   * Add or take back one emoji of the member under a message (#Q3939),
+   * and send the message as it now reads to everyone in the room.
+   */
+  public async toggleReaction(
+    projectId: number,
+    roomId: string,
+    messageId: string,
+    userId: string,
+    emoji: string,
+  ): Promise<ChatMessageResource> {
+    const room = await this.rooms.visibleRoom(projectId, roomId, userId);
+    this.assertOpenForWrites(room);
+    const message = await this.messageIn(room, messageId);
+    if (message.deletedAt) {
+      throw new ConflictError("A deleted message takes no reaction");
+    }
+    const mine = await this.reactions.findOne({
+      where: {
+        messageId: { eq: message.id },
+        userId: { eq: userId },
+        emoji: { eq: emoji },
+      },
+    });
+    if (mine) {
+      await this.reactions.deleteById(mine.id);
+    } else {
+      await this.reactions.create({
+        messageId: message.id,
+        roomId: room.id,
+        userId,
+        emoji,
+      });
+    }
+    const [resource] = await this.decorate([message]);
+    await this.live.send(await this.audience.of(room), {
+      type: "message.updated",
+      projectId,
+      roomId: room.id,
+      message: resource!,
+    });
+    return resource!;
+  }
+
+  /**
+   * Messages as the API answers them: their mentions, files and reactions
+   * read in one query each for the whole page, never one per message.
+   */
+  public async decorate(page: ChatMessage[]): Promise<ChatMessageResource[]> {
+    if (page.length === 0) {
+      return [];
+    }
+    const ids = page.map((it) => it.id);
+    const fileIds = page.flatMap((it) => it.attachments ?? []);
+    const [mentions, reactions, files] = await Promise.all([
+      this.mentions.findMany({ where: { messageId: { inArray: ids } } }),
+      this.reactions.findMany({
+        where: { messageId: { inArray: ids } },
+        orderBy: [{ column: "createdAt", direction: "asc" }],
+      }),
+      fileIds.length
+        ? this.files.fileRepository.findMany({
+            where: { id: { inArray: fileIds } },
+          })
+        : Promise.resolve([]),
+    ]);
+    const fileById = new Map(files.map((file) => [file.id, file]));
+    return page.map((message) => {
+      const emoji = new Map<string, string[]>();
+      for (const reaction of reactions) {
+        if (reaction.messageId !== message.id) continue;
+        emoji.set(reaction.emoji, [
+          ...(emoji.get(reaction.emoji) ?? []),
+          reaction.userId,
+        ]);
+      }
+      return this.toResource(message, {
+        mentions: mentions
+          .filter((it) => it.messageId === message.id && it.userId)
+          .map((it) => it.userId!),
+        reactions: [...emoji].map(([key, userIds]) => ({
+          emoji: key,
+          userIds,
+        })),
+        attachments: (message.attachments ?? []).flatMap((id) => {
+          const file = fileById.get(id);
+          return file
+            ? [
+                {
+                  id,
+                  name: file.name,
+                  mimeType: file.mimeType,
+                  size: file.size,
+                  url: `/api/files/${id}`,
+                },
+              ]
+            : [];
+        }),
+      });
+    });
+  }
+
   public toResource(
     message: ChatMessage,
-    mentioned: string[],
+    extras: Pick<ChatMessageResource, "mentions" | "reactions" | "attachments">,
   ): ChatMessageResource {
     return {
       id: message.id,
@@ -337,7 +447,9 @@ export class ChatMessageService {
       references: message.references ?? [],
       ...(message.editedAt ? { editedAt: message.editedAt } : {}),
       ...(message.deletedAt ? { deletedAt: message.deletedAt } : {}),
-      mentions: message.deletedAt ? [] : mentioned,
+      mentions: message.deletedAt ? [] : extras.mentions,
+      reactions: message.deletedAt ? [] : extras.reactions,
+      attachments: message.deletedAt ? [] : extras.attachments,
     };
   }
 
@@ -373,6 +485,30 @@ export class ChatMessageService {
       throw new NotFoundError("Message not found");
     }
     return message;
+  }
+
+  /**
+   * A message carries only files its author uploaded to chat: never somebody
+   * else's, nor one from another bucket, whose reader rule would differ.
+   */
+  protected async assertOwnUploads(
+    fileIds: string[],
+    userId: string,
+  ): Promise<void> {
+    if (fileIds.length === 0) return;
+    const owned = await this.files.fileRepository.findMany({
+      where: {
+        id: { inArray: fileIds },
+        creator: { eq: userId },
+        bucket: { eq: ChatBuckets.ATTACHMENT_BUCKET },
+      },
+      columns: ["id"],
+    });
+    if (owned.length !== new Set(fileIds).size) {
+      throw new BadRequestError(
+        "A message can only carry files you uploaded to chat",
+      );
+    }
   }
 
   protected assertOpenForWrites(room: ChatRoom): void {

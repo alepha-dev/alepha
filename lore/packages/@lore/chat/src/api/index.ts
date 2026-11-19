@@ -7,6 +7,8 @@ import { ChatRoomController } from "./controllers/ChatRoomController.ts";
 import { ChatSocketController } from "./controllers/ChatSocketController.ts";
 import { ChatRoomHooks } from "./hooks/ChatRoomHooks.ts";
 import { ChatAudience } from "./services/ChatAudience.ts";
+import { ChatBuckets } from "./services/ChatBuckets.ts";
+import { ChatFileAccess } from "./services/ChatFileAccess.ts";
 import { ChatLifecycle } from "./services/ChatLifecycle.ts";
 import { ChatLive } from "./services/ChatLive.ts";
 import { ChatMentionParser } from "./services/ChatMentionParser.ts";
@@ -36,6 +38,8 @@ export const LoreChatApi = $module({
     ChatRoomHooks,
     ChatRoomMerge,
     ChatLifecycle,
+    ChatBuckets,
+    ChatFileAccess,
     ChatRoomController,
     ChatSocketController,
     ChatAudience,
@@ -51,6 +55,8 @@ export { ChatRoomController } from "./controllers/ChatRoomController.ts";
 export { ChatSocketController } from "./controllers/ChatSocketController.ts";
 export { type ChatMention, chatMentions } from "./entities/chatMentions.ts";
 export { type ChatMessage, chatMessages } from "./entities/chatMessages.ts";
+export { type ChatReaction, chatReactions } from "./entities/chatReactions.ts";
+export { ChatBuckets } from "./services/ChatBuckets.ts";
 export { chatRoomMembers } from "./entities/chatRoomMembers.ts";
 export { type ChatRoom, chatRooms } from "./entities/chatRooms.ts";
 export { ChatAudience } from "./services/ChatAudience.ts";

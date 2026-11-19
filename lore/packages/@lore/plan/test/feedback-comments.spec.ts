@@ -274,7 +274,12 @@ describe("Lore feedback comment attachments", () => {
       // The item does not list a comment's file: the read rule must find
       // the project through the comment, or only the uploader sees it.
       expect(
-        await fileAccess.rule("petition-attachments")?.(comment.attachments[0]),
+        await fileAccess.rule("petition-attachments")?.(
+          comment.attachments[0],
+          {
+            id: crypto.randomUUID(),
+          },
+        ),
       ).toEqual({ projectId: project.id, permission: "feedback:triage" });
     }
   });
