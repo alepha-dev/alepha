@@ -279,6 +279,89 @@ describe("shelveEpic and unshelveEpic", () => {
     expect((await ctx.repos.epics.getById(epic.id)).status).toBe("completed");
   });
 
+  it("keeps a shelved epic's release, and sets one on a shelved epic (#Q3950)", async ({
+    expect,
+  }) => {
+    const { project, user, epic, open } = await seed("ready");
+    const release = await ctx.repos.releases.create({
+      projectId: project.id,
+      number: 1,
+      tag: "1.0.0",
+      title: "1.0.0",
+      description: "",
+    });
+    const next = await ctx.repos.releases.create({
+      projectId: project.id,
+      number: 2,
+      tag: "1.1.0",
+      title: "1.1.0",
+      description: "",
+    });
+    await ctx.controller.updateEpic(
+      { params: { id: epic.id }, body: { releaseId: release.id } },
+      { user },
+    );
+    await ctx.controller.shelveEpic({ params: { id: epic.id } }, { user });
+
+    const shelved = await ctx.controller.getEpicByNumber(
+      { params: { projectId: project.id, number: epic.number } },
+      { user },
+    );
+    expect(shelved.releaseId).toBe(release.id);
+
+    const moved = await ctx.controller.updateEpic(
+      { params: { id: epic.id }, body: { releaseId: next.id } },
+      { user },
+    );
+    expect(moved.releaseId).toBe(next.id);
+    expect(moved.releaseCascade?.refused).toEqual([]);
+    for (const quest of open) {
+      const row = await ctx.repos.quests.findById(quest.id);
+      expect(row?.releaseId).toBe(next.id);
+    }
+  });
+
+  it("deletes a shelved epic that never started, with its quests (#Q3950)", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const epic = await createTestEpic(ctx.alepha, project, { status: "ready" });
+    const quests = [
+      await createTestQuest(ctx.alepha, project, { epicId: epic.id }),
+      await createTestQuest(ctx.alepha, project, { epicId: epic.id }),
+    ];
+    await ctx.controller.shelveEpic({ params: { id: epic.id } }, { user });
+
+    const result = await ctx.controller.deleteEpic(
+      { params: { id: epic.id } },
+      { user },
+    );
+
+    expect(result).toEqual({ ok: true, count: 2 });
+    expect(await ctx.repos.epics.findById(epic.id)).toBeUndefined();
+    for (const quest of quests) {
+      expect(await ctx.repos.quests.findById(quest.id)).toBeUndefined();
+    }
+  });
+
+  it("refuses to delete a shelved epic holding a completed quest, and deletes nothing (#Q3950)", async ({
+    expect,
+  }) => {
+    const { user, epic, open, completed } = await seed("in_progress");
+    await ctx.controller.shelveEpic({ params: { id: epic.id } }, { user });
+
+    await expect(
+      ctx.controller.deleteEpic({ params: { id: epic.id } }, { user }),
+    ).rejects.toThrow(
+      `Cannot delete Epic #E${epic.number}: it is shelved but holds 1 completed quest, the record of shipped work. Keep it shelved.`,
+    );
+    expect(await ctx.repos.epics.findById(epic.id)).toBeDefined();
+    for (const quest of [...open, completed]) {
+      expect(await ctx.repos.quests.findById(quest.id)).toBeDefined();
+    }
+  });
+
   it("refuses to unshelve an epic that is not shelved, naming it", async ({
     expect,
   }) => {

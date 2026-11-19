@@ -655,7 +655,7 @@ describe("EpicWorkflowService on a shelved epic (#E78)", () => {
     );
   });
 
-  it("refuses the manual edges and the epic delete, pointing at unshelve", async ({
+  it("refuses the manual edges, pointing at unshelve, and deletes unless a quest is completed (#Q3950)", async ({
     expect,
   }) => {
     const { alepha, app, project } = await setup();
@@ -666,8 +666,9 @@ describe("EpicWorkflowService on a shelved epic (#E78)", () => {
         `Cannot move Epic #E${epic.number} from shelved to ${to}. It is shelved. Unshelve it first.`,
       );
     }
-    expect(() => app.workflow.assertEpicDeletable(epic)).toThrow(
-      `Cannot delete Epic #E${epic.number}: it is shelved. Unshelve it first; only a draft or ready epic can be deleted.`,
+    expect(() => app.workflow.assertEpicDeletable(epic)).not.toThrow();
+    expect(() => app.workflow.assertEpicDeletable(epic, 2)).toThrow(
+      `Cannot delete Epic #E${epic.number}: it is shelved but holds 2 completed quests, the record of shipped work. Keep it shelved.`,
     );
   });
 

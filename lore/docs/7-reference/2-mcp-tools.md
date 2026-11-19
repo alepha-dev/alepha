@@ -112,7 +112,7 @@ See [Epics](/lore/docs/plan-epics).
 | `epic_set_status`       | Move an epic between `draft` and `ready`.                                       |
 | `epic_shelve`           | Set a whole plan aside, with its open quests.                                   |
 | `epic_unshelve`         | Bring it back, with only the quests it set aside.                               |
-| `epic_delete`           | Delete an epic and its quests, while it is `draft` or `ready`. Its folios stay. |
+| `epic_delete`           | Delete it and its quests: draft, ready, or shelved with none done. Folios stay. |
 | `epic_review_create`    | File a review: its blockers, questions, decisions and changes.                  |
 | `epic_review_answer`    | Answer, waive or overturn a review item, by its number.                         |
 | `epic_pull_request_add` | Record the epic's pull request, in any status. Its quests with none show it.    |

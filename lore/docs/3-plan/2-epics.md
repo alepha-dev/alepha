@@ -146,11 +146,13 @@ was done. Shelving the epic says it was set aside.
 ⚠️ **Deleting an epic deletes its quests with it.** You can undo it for a few
 seconds, then it is permanent. The confirmation names how many quests go.
 
-Delete is for a plan created by mistake or abandoned before anyone started it,
-so it is offered only while the epic is a draft or ready, from its row's menu
-on the **Epics** page. An epic that has started or completed holds work, and is
-shelved instead. A shelved epic has to be unshelved before it can be deleted.
-Deleting several epics at once leaves out, and names, any that has started.
+Delete is for a plan created by mistake, abandoned before anyone started it, or
+set aside for good. It is offered while the epic is a draft, ready or shelved,
+from its row's menu on the **Epics** page and from the epic's own menu. An
+epic in progress or completed holds work, and is shelved instead. A shelved
+epic that holds a completed quest is not deleted either: that quest is the
+record of shipped work, so the epic stays shelved. Deleting several epics at
+once leaves out, and names, any it cannot delete.
 
 The epic's folios are kept: they are unfiled from it, never deleted.
 

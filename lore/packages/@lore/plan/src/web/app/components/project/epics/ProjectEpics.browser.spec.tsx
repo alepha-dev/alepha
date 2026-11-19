@@ -92,6 +92,7 @@ class FakeLinkProvider extends LinkProvider {
    */
   shelveCalls: number[] = [];
   unshelveCalls: number[] = [];
+  releaseCalls: Array<{ id: number; releaseId: number | null }> = [];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -115,6 +116,26 @@ class FakeLinkProvider extends LinkProvider {
           this.unshelveCalls.push(request.params.id);
           return {};
         }),
+        updateEpic: action(
+          async (request: {
+            params: { id: number };
+            body: { releaseId: number | null };
+          }) => {
+            this.releaseCalls.push({
+              id: request.params.id,
+              releaseId: request.body.releaseId,
+            });
+            this.epics = this.epics.map((epic) =>
+              epic.id === request.params.id
+                ? ({
+                    ...epic,
+                    releaseId: request.body.releaseId,
+                  } as EpicResource)
+                : epic,
+            );
+            return {};
+          },
+        ),
         setEpicStatus: action(
           async (request: {
             params: { id: number };
@@ -1228,6 +1249,24 @@ describe("ProjectEpics - the status filter", () => {
       expect(labels.join(" ")).not.toContain("0.28.0");
     });
 
+    it("sets a release on a shelved epic, and shows the one it keeps (#Q3950)", async () => {
+      await mount(RELEASES, [epicOf(5, "Shelved epic", "shelved", 9)]);
+      const fake = alepha!.inject(LinkProvider) as FakeLinkProvider;
+
+      const row = screen.getByRole("link", { name: "#E5 - Shelved epic" });
+      expect(row.closest("tr")?.textContent).toContain("0.30.0");
+
+      const entries = await openReleases(
+        await openRowMenu("#E5 - Shelved epic"),
+      );
+      const target = entries.find((it) => it.textContent?.includes("0.29.0"));
+      expect(target).toBeDefined();
+      fireEvent.click(target!);
+      await waitFor(() =>
+        expect(fake.releaseCalls).toEqual([{ id: 5, releaseId: 8 }]),
+      );
+    });
+
     it("marks the release the epic is already in", async () => {
       await mount(RELEASES, [epicOf(1, "Draft epic", "draft", 9)]);
 
@@ -1416,6 +1455,16 @@ describe("ProjectEpics - the status filter", () => {
       expect(
         within(completed!).queryByRole("button", { name: "Open row actions" }),
       ).toBeNull();
+    });
+
+    it("offers Delete beside Unshelve on a shelved epic with nothing completed (#Q3950)", async () => {
+      await mount([], [epicOf(5, "Shelved epic", "shelved")]);
+
+      const items = (await menuOf("#E5 - Shelved epic")).map(
+        (item) => item.textContent,
+      );
+      expect(items).toContain("Unshelve");
+      expect(items).toContain("Delete");
     });
 
     it("sums the quests of the epics it can delete, and names the ones it leaves out", async () => {

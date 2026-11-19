@@ -353,7 +353,8 @@ const ProjectEpics = () => {
     selected: EpicResource[],
     ctx: BulkActionContext<EpicResource>,
   ) => {
-    // Only a draft or ready epic is deleted (#Q2666): the rest are left
+    // Only a draft, ready or shelved epic with nothing completed is deleted
+    // (#Q2666, #Q3950): the rest are left
     // out of the count and named, rather than sent to be refused one by
     // one. The plural of the row menu's own warning, and it says the
     // same true thing: the quests go with the epics, the folios stay.
