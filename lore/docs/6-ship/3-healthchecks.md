@@ -113,8 +113,8 @@ When an outage opens:
   the next outage opens it again. The inbox stays reachable while it is open,
   even with no sigil in the project. It follows the retention of any open error,
   so an outage that outlasts that window loses it.
-- **An automation event** is recorded, **Monitor down**, and **Monitor
-  recovered** on recovery: an automation turns it into a message.
+- **A project event** is recorded, **Monitor down**, and **Monitor
+  recovered** on recovery: whoever is subscribed to it is told.
 - **The project's Activity page** records it: **Down** with the failure, then
   **Up** with how long the outage lasted. Pick **Monitor** in its resource
   filter to see only these.
@@ -124,12 +124,12 @@ reminder while a monitor stays down.
 
 ### Who is alerted
 
-Nobody, until someone asks. The bell on a monitor's page turns on, for you, one
-automation with two events, its outages and its recoveries, in-app or by
-email; the bell's dialog can switch either one off. The bell on **Apps** does
-the same for every monitor of the project. Each is an ordinary
-[automation](/lore/docs/plan-automations): you can edit, pause or delete it on
-the Automations page, and point it at a Discord channel in its editor.
+Nobody, until someone asks. One click on the bell on a monitor's page
+subscribes you, in the app, to its outages and its recoveries; clicked again,
+its dialog adds email, leaves either one out, or stops it. The bell on **Apps** does the same for every monitor of
+the project. **Settings ▸ Notifications** lists these subscriptions, and is
+where a manager notifies someone else or a Discord or webhook channel: see
+[Notifications](/lore/docs/project-notifications).
 
 ## Reading a monitor
 

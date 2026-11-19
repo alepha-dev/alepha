@@ -131,9 +131,9 @@ rewrite what `0.28.0` shipped.
 taken out of one.
 
 Publishing announces the release only to those who asked: the bell on the
-**Releases** page subscribes you, and the **Release published** preset can
-notify anyone or post to a Discord channel (see
-[Automations](/lore/docs/plan-automations)).
+**Releases** page subscribes you, and **Settings ▸ Notifications** can
+notify anyone of **Release published**, or post it to a Discord or webhook
+channel (see [Notifications](/lore/docs/project-notifications)).
 
 Publishing is final: there is no way back. To ship a fix after publishing,
 create the next release and publish that.
@@ -244,6 +244,6 @@ The full list is in [MCP tools](/lore/docs/reference-mcp-tools).
 - [Epics](/lore/docs/plan-epics): the plans a release ships.
 - [Artifacts](/lore/docs/ship-artifacts): the builds pushed under a release's
   tag.
-- [Automations](/lore/docs/plan-automations): append each published changelog
-  to a folio.
+- [Notifications](/lore/docs/project-notifications): who is told when a
+  release is published.
 - [Reports](/lore/docs/project-reports): how a release is progressing.

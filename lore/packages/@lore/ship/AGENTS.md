@@ -247,34 +247,19 @@ A **stack** is a group of apps and services from one `compose.yml`, the Bay conc
 - **MCP.** `StackTools`: `stack_list`, `stack_get`, `stack_deploy` (a revision, or one app service), `stack_rollback`, `stack_logs`, all through the HTTP actions, never a value.
 - **Specs.** `stacks`, `stack-model`, `stack-variables`, `registry-credentials`, `stack-deploy`, `stack-member-deploy`, `stack-console`, `stack-tools`; `apps/e2e/web/stacks.spec.ts`; `apps/e2e/cli/bay.e2e.spec.ts` deploys a stack to a real Bay.
 
-## Numeric automation presets (#E43, #Q2042)
+## Ship's events and thresholds (#E159)
 
-`DeployAutomationNumericPresets` derives source fields, permissions and capability
-needs from the registered metric catalogue. Coverage regression uses line coverage
-at 00:10 UTC, an explicit nonnegative percentage-point threshold and a branch
-(default `main`). Its `delta` guard consumes exact D-1/D-2 samples from the shared
-quality resolver. Missing either day is `no_data`; equality never alerts.
+Ship's project events are declared in `ShipProjectEvents` (deploys, monitors,
+hosts, coverage, open errors) and emitted beside their write
+(`DeployEventSources`, the uptime incident write, the host checks). The
+monitor, host and Apps bells subscribe their viewer.
 
-The error preset samples aggregate open errors every five minutes through
-`OpenErrorsMetric`, with the ordinary tracking and source-read gates. Its first
-sample only persists a baseline; a count at or below the threshold rearms it.
-Native guard evidence survives restarts and retries. Predicate edits reset the
-baseline through the shared authoring service. Neither preset adds an ingest
-hook or a query language, and their messages retain the observed scalar values.
-
-`DeployAutomationPresets` adds the recorded `deploy.failed` program (#Q2043).
-Its required app choice is validated in the project and spans every environment.
-Only failed terminal events trigger it, including the ordinary timeout path;
-cancellation and repeated terminal writes do not. The message uses the frozen
-app/environment/tag/digest/deployment link and a fixed sanitized failure reason.
-Artifact replacement or deletion does not rewrite that retained event payload.
-
-Preset setup binds threshold, branch, app, recipient and channel only when the
-caller explicitly selects a shared variable. Numeric threshold text and guards
-retain the same token, so a later approved value cannot leave stale wording.
-Deploy registers bounded picker pages for distinct app names across environments
-and deployment snapshot labels, both under current `app:read`. No raw logs or
-cross-project instance data enter these options.
+The two thresholds (`ProjectThresholds`, table `project_thresholds`, #Q3894)
+are set on Settings ▸ Apps (coverage) and Settings ▸ Errors (open errors).
+Coverage is checked when a push on `main` arrives (`QualityController`), open
+errors by core's hourly job. Both are edge-triggered: an armed flag fires
+`coverage.dropped` or `errors.threshold_crossed` once, and rearms when the value
+comes back or the threshold changes.
 
 ## Uptime healthchecks (#E25)
 

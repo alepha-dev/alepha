@@ -215,26 +215,6 @@ calls. See [Notifications](/lore/docs/project-notifications).
 | `subscription_list` | Who is notified of what, on which channel, and the project's channels by id, kind and name.                     |
 | `subscription_set`  | Notify a member (you by default) or a channel of an event; `verb` `mute`, `unmute` or `remove` acts on one row. |
 
-## Automations
-
-See [Automations](/lore/docs/plan-automations).
-
-| Tool                             | What it does                                                                                                   |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `automation_catalog`             | What an automation may hold here: node types with their ports and outputs, channels, variables and the limits. |
-| `automation_list`                | The automations you may read, paged, each source with a one-line summary.                                      |
-| `automation_get`                 | One automation: its graph, each source's switch and health, its author and revision.                           |
-| `automation_create`              | Create one from `nodes` and `edges`, or from `sources` and `actions`, as a draft or enabled in one write.      |
-| `automation_update`              | Change one or enable it, against `expectedRevision`.                                                           |
-| `automation_source_set`          | Switch one source off or on, against `expectedRevision`.                                                       |
-| `automation_delete`              | Delete one. To keep it, disable it instead.                                                                    |
-| `automation_test`                | Preview a saved automation from one source, with no writes and no delivery.                                    |
-| `automation_runs`                | Its retained runs, optionally one source's, with the path each walked.                                         |
-| `automation_variable_list`       | The project's shared variables.                                                                                |
-| `automation_variable_set`        | Create or change one.                                                                                          |
-| `automation_variable_dependents` | The automations using one.                                                                                     |
-| `automation_variable_delete`     | Delete an unused one.                                                                                          |
-
 ## Apps and telemetry
 
 See [Apps and instances](/lore/docs/ship-instances) and

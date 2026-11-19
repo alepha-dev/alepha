@@ -26,7 +26,7 @@ off still has Summary and Team. See
 | **Knowledge** | Knowledge | Folio activity, stale pages, orphans, the link graph                        |
 | **Delivery**  | Apps      | The four DORA keys and reliability: errors, errors, uptime                  |
 | **Quality**   | Apps      | Coverage and tests CI pushed, by branch, against a target, per release tag  |
-| **Team**      | -         | Load and contribution per member, how work arrives, agents, automations     |
+| **Team**      | -         | Load and contribution per member, how work arrives, agents                  |
 
 Start with **Summary**. Each of its lines links to the tab that explains it,
 and **Copy as status update** copies the whole summary as Markdown, ready to
@@ -117,7 +117,7 @@ with every write:
 | **MCP (agents)** | An agent over MCP                                             |
 | **CLI**          | The `lore` CLI, recognised by its user agent, so a best guess |
 | **API**          | Anything else with a token                                    |
-| **Automations**  | An automation rule                                            |
+| **Automations**  | An automation rule, which Lore no longer has                  |
 | **System**       | Lore itself                                                   |
 | **Not recorded** | Written before channels were recorded                         |
 
@@ -128,26 +128,18 @@ the member table is the share of that member's writes that came over MCP.
 
 - **When work happens**: writes per weekday and hour in UTC, over the last 30
   days of the period at most, because older activity is kept per day.
-- **Automations**: runs by outcome, success rate, duration, and broken rules.
-  Run detail is kept 30 days.
 - **MCP tools**: calls per tool that reached this project. A call refused
   before a permission check names no project, so a stranger's probing shows
   nowhere.
 - **Explore**: a query builder over the project's activity and MCP calls, for
   the questions nobody anticipated.
 
-## A weekly report in your inbox
+## A weekly report
 
-The **Weekly report** preset in [Automations](/lore/docs/plan-automations)
-sends Summary's last seven days against the seven before, every Monday at
-08:00 UTC, to the member you pick, as an inbox notification or an email.
-
-- **Create and enable** turns it on at once, like every preset; **Save as
-  draft** keeps it off until you enable it.
-- A preset has one recipient, so reaching several members takes one rule each.
-- A recipient opts out by turning off **Automations** in their notification
-  settings: see
-  [Turning messages off](/lore/docs/project-notifications#turning-messages-off).
+Lore sends no report on a schedule. For one every Monday, schedule an agent
+session that runs the **Write the weekly status** prompt below and posts the
+result where your team reads it: see
+[What Lore does not do](/lore/docs/project-notifications#what-lore-does-not-do).
 
 ## From the command line
 
@@ -174,7 +166,6 @@ status** prompt on the Summary tab builds on it: see
 
 - [Dashboard](/lore/docs/project-dashboard): pin the figures you check every
   day.
-- [Automations](/lore/docs/plan-automations): set up the weekly report.
 - [Quests](/lore/docs/plan-quests): the work every figure counts.
 - [Telemetry](/lore/docs/ship-telemetry): the errors and errors the Delivery
   tab counts.
