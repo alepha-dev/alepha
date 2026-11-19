@@ -1,8 +1,15 @@
 import { LoreCoreApi } from "@lore/core/api";
 import { $module } from "alepha";
+import { AlephaWebSocket } from "alepha/websocket";
 
+import { ChatMessageController } from "./controllers/ChatMessageController.ts";
 import { ChatRoomController } from "./controllers/ChatRoomController.ts";
+import { ChatSocketController } from "./controllers/ChatSocketController.ts";
 import { ChatRoomHooks } from "./hooks/ChatRoomHooks.ts";
+import { ChatAudience } from "./services/ChatAudience.ts";
+import { ChatLive } from "./services/ChatLive.ts";
+import { ChatMentionParser } from "./services/ChatMentionParser.ts";
+import { ChatMessageService } from "./services/ChatMessageService.ts";
 import { ChatRoomMerge } from "./services/ChatRoomMerge.ts";
 import { ChatRoomService } from "./services/ChatRoomService.ts";
 
@@ -22,11 +29,29 @@ import { ChatRoomService } from "./services/ChatRoomService.ts";
  */
 export const LoreChatApi = $module({
   name: "lore.chat.api",
-  imports: [LoreCoreApi],
-  services: [ChatRoomService, ChatRoomHooks, ChatRoomMerge, ChatRoomController],
+  imports: [LoreCoreApi, AlephaWebSocket],
+  services: [
+    ChatRoomService,
+    ChatRoomHooks,
+    ChatRoomMerge,
+    ChatRoomController,
+    ChatSocketController,
+    ChatAudience,
+    ChatLive,
+    ChatMentionParser,
+    ChatMessageService,
+    ChatMessageController,
+  ],
 });
 
+export { ChatMessageController } from "./controllers/ChatMessageController.ts";
 export { ChatRoomController } from "./controllers/ChatRoomController.ts";
+export { ChatSocketController } from "./controllers/ChatSocketController.ts";
+export { type ChatMention, chatMentions } from "./entities/chatMentions.ts";
+export { type ChatMessage, chatMessages } from "./entities/chatMessages.ts";
 export { chatRoomMembers } from "./entities/chatRoomMembers.ts";
 export { type ChatRoom, chatRooms } from "./entities/chatRooms.ts";
+export { ChatAudience } from "./services/ChatAudience.ts";
+export { ChatLive } from "./services/ChatLive.ts";
+export { ChatMessageService } from "./services/ChatMessageService.ts";
 export { ChatRoomService } from "./services/ChatRoomService.ts";
