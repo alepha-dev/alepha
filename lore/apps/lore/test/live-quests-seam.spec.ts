@@ -115,7 +115,12 @@ describe("live quests across Plan and Ship", () => {
     expect(
       await alepha.inject(LiveQuestRegistry).recordedCommits(project.id),
     ).toEqual([
-      { number: quest.shortId, shas: [walked.slice(0, 10)], completed: true },
+      {
+        number: quest.shortId,
+        shas: [walked.slice(0, 10)],
+        completed: true,
+        completedAt: "2026-11-01T00:00:00.000Z",
+      },
     ]);
 
     const head = "f".repeat(40);

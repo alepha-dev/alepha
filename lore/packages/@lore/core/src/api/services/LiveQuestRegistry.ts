@@ -80,6 +80,12 @@ export interface RecordedQuestCommits {
    */
   shas: string[];
   completed: boolean;
+  /**
+   * When it was completed. A copy is only behind on a quest completed after
+   * its own first deployment of a commit: without the time, the quest counts
+   * against every copy.
+   */
+  completedAt?: string;
 }
 
 export interface LiveQuestReader {

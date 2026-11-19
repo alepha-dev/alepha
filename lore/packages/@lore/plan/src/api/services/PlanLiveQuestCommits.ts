@@ -41,6 +41,7 @@ export class PlanLiveQuestCommits {
               number: row.shortId,
               shas,
               completed: row.completedAt != null,
+              ...(row.completedAt ? { completedAt: row.completedAt } : {}),
             },
           ];
     });

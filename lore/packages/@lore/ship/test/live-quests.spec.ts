@@ -1032,6 +1032,43 @@ describe("live quests", () => {
       expect(detail?.behind).toEqual([2]);
     });
 
+    it("is not behind on a quest completed before the copy first deployed a commit", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const live = alepha.inject(LiveQuestService);
+      alepha.inject(TestRecordedCommits).recorded = [
+        // Its sha is in no history: done before the copy existed, it is
+        // nothing the copy was ever waiting for.
+        {
+          number: 1,
+          shas: [sha("1")],
+          completed: true,
+          completedAt: "2026-10-01T00:00:00.000Z",
+        },
+        // Done after the first deployment, and not in the newest one.
+        {
+          number: 2,
+          shas: [sha("2")],
+          completed: true,
+          completedAt: "2026-11-02T00:00:00.000Z",
+        },
+      ];
+      await record(w.project.id, sha("a"), [4]);
+      await record(w.project.id, sha("b"), [4, 5]);
+      await ran(w, { commitSha: sha("a"), at: "2026-11-01T00:00:00.000Z" });
+      await ran(w, { commitSha: sha("b"), at: "2026-11-03T00:00:00.000Z" });
+
+      expect(
+        (await live.instance(w.project.id, w.instance.id))?.behind,
+      ).toEqual([2]);
+      expect(
+        (await live.behindCounts(w.project.id, [w.instance.id])).get(
+          w.instance.id,
+        ),
+      ).toBe(1);
+    });
+
     it("is unknown, never empty, for a copy that never deployed, a run from before the commit, or a commit with no set", async ({
       expect,
     }) => {
