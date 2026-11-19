@@ -1583,6 +1583,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "organizations.ranks.differ": "1 permission diffère de celles par défaut",
   "organizations.ranks.differs":
     "$1 permissions diffèrent de celles par défaut",
+  "organizations.ranks.holder": "1 membre",
   "organizations.ranks.holders": "$1 membres",
   "organizations.ranks.permission": "Permission",
   "organizations.ranks.rename": "Renommer",

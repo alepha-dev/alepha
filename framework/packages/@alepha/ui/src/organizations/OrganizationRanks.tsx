@@ -344,10 +344,13 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
     closed: props.closedPermission
       ? (permission: string) => props.closedPermission!(rank, permission)
       : undefined,
-    description: tr("organizations.ranks.holders", {
-      default: "$1 members",
-      args: [String(holdersOf(rank.key))],
-    }),
+    description:
+      holdersOf(rank.key) === 1
+        ? tr("organizations.ranks.holder", { default: "1 member" })
+        : tr("organizations.ranks.holders", {
+            default: "$1 members",
+            args: [String(holdersOf(rank.key))],
+          }),
     label: (
       <OrganizationRankColumnHeader
         name={rank.name}
