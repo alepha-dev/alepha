@@ -46,6 +46,7 @@ const PEOPLE = [
     kind: "system",
     role: "Search",
     goals: "Index nightly",
+    alephaRole: "viewer on the hub; operator on the station edge",
   }),
 ];
 
@@ -207,7 +208,15 @@ describe("Personas screens", () => {
     expect(screen.getByText("#A1")).toBeTruthy();
     // The first line of the goals, as the card's quote.
     expect(screen.getByText("Ship orders the same day")).toBeTruthy();
-    expect(screen.getByText("role: shop-manager")).toBeTruthy();
+    // An identifier role is a humanized badge, not a code chip (#Q3960).
+    // A sentence stays readable text, out of the header.
+    expect(
+      screen.getAllByTestId("persona-alepha-role").map((it) => it.textContent),
+    ).toEqual([
+      "Shop manager",
+      "role: viewer on the hub; operator on the station edge",
+    ]);
+    expect(screen.queryByText("role: shop-manager")).toBeNull();
     // The name is the card's link, stretched over it.
     expect(screen.getByRole("link", { name: "Léa" }).getAttribute("href")).toBe(
       "/acme/requirements/personas/1",
@@ -251,6 +260,10 @@ describe("Personas screens", () => {
     expect(screen.getAllByText("#A1").length).toBeGreaterThan(0);
     expect(screen.getByText("Who they are")).toBeTruthy();
     expect(screen.getByText("Runs the Lyon shop.")).toBeTruthy();
+    // The Alepha role reads as on the card: a badge, not code (#Q3960).
+    expect(screen.getByTestId("persona-alepha-role").textContent).toBe(
+      "Shop manager",
+    );
     // An empty section is omitted, not drawn blank.
     expect(screen.queryByText("Frustrations")).toBeNull();
     expect(screen.getByRole("button", { name: /Edit persona/ })).toBeTruthy();
