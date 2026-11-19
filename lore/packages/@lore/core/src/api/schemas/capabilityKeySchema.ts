@@ -16,7 +16,7 @@ import { type Infer, z } from "alepha";
  *
  * Feedback (the public request form, the triage inbox, feedback comments) was
  * a fourth capability, `support`, until #E143 folded it into Plan as the
- * option `plan.feedback`: three pillars, three capabilities.
+ * option `plan.feedback`: one capability per pillar, four since Build (#E162).
  *
  * Everything else is Core and always on: identity, members, settings, and the
  * three surfaces that compose capabilities (dashboard, activity, palette).

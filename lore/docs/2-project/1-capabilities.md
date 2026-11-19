@@ -1,17 +1,18 @@
 # Capabilities
 
 A project is a container: a name, an address, its members, and the parts of
-Lore it uses. Those parts are its **capabilities**, and there are three, one
-for each thing Lore does: **Plan**, **Remember** and **Ship**. A team that only
-wants a wiki turns on Remember alone; a team that plans, documents and
-operates a product turns on all three.
+Lore it uses. Those parts are its **capabilities**, and there are four, one
+for each thing Lore does: **Plan**, **Remember**, **Build** and **Ship**. A
+team that only wants a wiki turns on Remember alone; a team that plans,
+documents, codes and operates a product turns on all four.
 
-## The three capabilities
+## The four capabilities
 
 | Capability   | Sidebar entries                   | What it is for                                                 |
 | ------------ | --------------------------------- | -------------------------------------------------------------- |
 | **Plan**     | Quests, Epics, Releases, Feedback | The work: what is planned, in progress, shipped and asked for. |
 | **Remember** | Folios                            | The memory: linked notes, files and their history.             |
+| **Build**    | Reports ▸ Quality                 | The code: git repositories, and what the tests report.         |
 | **Ship**     | Apps, Errors, Stacks, Artifacts   | What you run: deploys, analytics, errors and checks.           |
 
 A capability is the pillar; the things inside it keep their own names. A quest
@@ -45,6 +46,9 @@ A list of quests and a board are always there when Plan is on. See
 | **Feedback**      | A request form for your users and an inbox to triage what they send. See [Feedback](/lore/docs/plan-feedback). |
 
 **Remember** has no option: everything it adds comes with the capability.
+
+**Build** has no option either: it adds [repositories](/lore/docs/build-repositories)
+and the [Quality](/lore/docs/build-quality) report.
 
 **Ship**
 

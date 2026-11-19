@@ -214,13 +214,16 @@ export default {
   "home.title": "Bienvenue dans l’aventure Lore",
   "home.welcome.title": "Il est temps de créer de grandes choses",
   "home.welcome.subtitle":
-    "Planifiez le travail, gardez les décisions, livrez les applications. Un seul endroit pour celles et ceux qui le construisent.",
+    "Planifiez le travail, gardez les décisions, construisez le code, livrez les applications. Un seul endroit pour celles et ceux qui le font.",
   "home.pillar.plan.title": "Planifier",
   "home.pillar.plan.description":
     "Le travail à venir, réparti en épopées et en versions, sur un tableau et une feuille de route.",
   "home.pillar.remember.title": "Se souvenir",
   "home.pillar.remember.description":
     "Un wiki de notes reliées, qui garde les décisions et leurs raisons.",
+  "home.pillar.build.title": "Construire",
+  "home.pillar.build.description":
+    "Hébergez vos dépôts git, et suivez ce que vos tests disent du code.",
   "home.pillar.ship.title": "Livrer",
   "home.pillar.ship.description":
     "Déployez vos applications, puis suivez leurs erreurs, leurs performances et leur disponibilité.",

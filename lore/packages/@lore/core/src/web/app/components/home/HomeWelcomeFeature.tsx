@@ -11,7 +11,7 @@ export interface HomeWelcomeFeatureProps {
 }
 
 /**
- * A small cell under the three pillars: something worth knowing that is not
+ * A small cell under the four pillars: something worth knowing that is not
  * a module of its own (agents over MCP, notifications, self-hosting). One line
  * and a link to its guide, so it stays a footnote to the pillars rather than
  * a fourth one.

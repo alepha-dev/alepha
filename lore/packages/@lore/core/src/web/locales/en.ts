@@ -206,13 +206,16 @@ export default {
   "home.title": "Welcome",
   "home.welcome.title": "Time to make great things",
   "home.welcome.subtitle":
-    "Plan the work, remember the decisions, ship the apps. One place for the people who build it.",
+    "Plan the work, remember the decisions, build the code, ship the apps. One place for the people who make it.",
   "home.pillar.plan.title": "Plan",
   "home.pillar.plan.description":
     "The work ahead, grouped into epics and releases, on a board and a roadmap.",
   "home.pillar.remember.title": "Remember",
   "home.pillar.remember.description":
     "A wiki of linked notes that keeps the decisions and the reasons behind them.",
+  "home.pillar.build.title": "Build",
+  "home.pillar.build.description":
+    "Host your git repositories, and follow what your tests report on the code.",
   "home.pillar.ship.title": "Ship",
   "home.pillar.ship.description":
     "Deploy your apps, then follow their errors, vitals and uptime.",
@@ -1105,7 +1108,7 @@ export default {
     "Download all quests in this project as a CSV file.",
   "project.settings.data.export.button": "Export Quests",
   // ── Capabilities ────────────────────────────────────────────────────────
-  // Lore's three pillars, the capabilities a project composes, and the
+  // Lore's four pillars, the capabilities a project composes, and the
   // switches inside each. `.label` is the pillar's word, the same string as
   // `home.pillar.*.title` (#E143); `.description` lists what the pillar
   // holds, so a reader who does not know the word still finds quests. The
