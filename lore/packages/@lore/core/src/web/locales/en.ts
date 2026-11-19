@@ -1145,6 +1145,9 @@ export default {
   "project.capability.remember.label": "Remember",
   "project.capability.remember.description":
     "Wiki linked folios, files, revisions.",
+  "project.capability.build.label": "Build",
+  "project.capability.build.description":
+    "Git repositories, and the quality of their code.",
   "project.capability.ship.label": "Ship",
   "project.capability.ship.description":
     "Apps and their deploys, analytics, errors, vitals.",
@@ -4421,6 +4424,10 @@ export default {
   "permission.group.area": "Areas",
   "permission.area.read": "Read areas",
   "permission.area.manage": "Rename, merge and delete areas",
+  "permission.group.code": "Code",
+  "permission.code.read": "Clone and fetch repositories",
+  "permission.code.write": "Push to repositories",
+  "permission.code.admin": "Create and delete repositories",
   "permission.group.folio": "Folios",
   "permission.folio.read": "Read folios",
   "permission.folio.write": "Write folios, directories and attachments",

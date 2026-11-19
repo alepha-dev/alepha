@@ -1,3 +1,5 @@
+import { LoreBuildApi } from "@lore/build/api";
+import { LoreBuildMcp } from "@lore/build/mcp";
 import { LoreCoreApi } from "@lore/core/api";
 import { LoreCoreMcp } from "@lore/core/mcp";
 import { CoreRouter, LoreAccountSections, LoreCoreWeb } from "@lore/core/web";
@@ -21,7 +23,7 @@ import type { Alepha } from "alepha";
 /**
  * Which half of Lore a scenario boots:
  *
- * - `api`: the four packages' server modules, as `main.server.ts` registers them;
+ * - `api`: the packages' server modules, as `main.server.ts` registers them;
  * - `mcp`: their MCP tools;
  * - `web`: their web modules, which also inject every router;
  * - `routes`: the routers alone (every module's pages and account pages),
@@ -43,7 +45,7 @@ export type LoreRouter = CoreRouter &
  * Boots Lore the way its entries do, for a scenario spec: one that spans
  * several packages, which is why it lives in `apps/lore/test` rather than in
  * a package's own `test/` (#E75, #Q2616). Each layer registers core first,
- * then Work, Knowledge and Deploy, the entries' order.
+ * then Plan, Remember, Build and Ship, the entries' order.
  *
  * Call it after the spec's own substitutions: a substitution recorded after a
  * module resolved what it replaces is a `TooLateSubstitutionError`.
@@ -57,6 +59,7 @@ export const bootLore = (
       .with(LoreCoreApi)
       .with(LorePlanApi)
       .with(LoreRememberApi)
+      .with(LoreBuildApi)
       .with(LoreShipApi)
       .with(LorePlanRequirementsApi);
   }
@@ -65,6 +68,7 @@ export const bootLore = (
       .with(LoreCoreMcp)
       .with(LorePlanMcp)
       .with(LoreRememberMcp)
+      .with(LoreBuildMcp)
       .with(LoreShipMcp)
       .with(LorePlanRequirementsMcp);
   }

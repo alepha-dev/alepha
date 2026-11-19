@@ -150,7 +150,7 @@ export interface CapabilityDescriptor {
 }
 
 /**
- * The three capabilities a project composes, Lore's pillars, declared once.
+ * The four capabilities a project composes, Lore's pillars, declared once.
  *
  * A **capability** is a product surface a project turns on: it owns nav
  * entries, routes, entities, MCP tools, a settings page, dashboard cards,
@@ -502,6 +502,22 @@ export class CapabilityRegistry {
         "foliosByDirectory",
       ],
       permissionGroups: ["folio"],
+    },
+    {
+      // Build, the fourth pillar (#E162): the code a project holds, its git
+      // repositories, between planning and shipping. Off by default, and off
+      // hides and never deletes. What it holds keeps the name `code`.
+      key: "build",
+      name: "Build",
+      labelKey: "project.capability.build.label",
+      descriptionKey: "project.capability.build.description",
+      preselectedCapability: false,
+      options: [],
+      mcpTools: [],
+      searchKinds: [],
+      activityKinds: [],
+      dashboardCards: [],
+      permissionGroups: ["code"],
     },
     {
       key: "ship",

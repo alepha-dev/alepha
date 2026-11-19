@@ -2138,6 +2138,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@lore/build@workspace:*, @lore/build@workspace:lore/packages/@lore/build":
+  version: 0.0.0-use.local
+  resolution: "@lore/build@workspace:lore/packages/@lore/build"
+  dependencies:
+    "@lore/core": "workspace:*"
+    "@types/bun": "npm:^1.4.4"
+    alepha: "workspace:*"
+    vitest: "npm:^5.1.0"
+  languageName: unknown
+  linkType: soft
+
 "@lore/core@workspace:*, @lore/core@workspace:lore/packages/@lore/core":
   version: 0.0.0-use.local
   resolution: "@lore/core@workspace:lore/packages/@lore/core"
@@ -7063,6 +7074,7 @@ __metadata:
     "@alepha/discord": "workspace:*"
     "@alepha/lore": "workspace:*"
     "@alepha/ui": "workspace:*"
+    "@lore/build": "workspace:*"
     "@lore/core": "workspace:*"
     "@lore/plan": "workspace:*"
     "@lore/plan-requirements": "workspace:*"

@@ -1,28 +1,30 @@
 # AGENTS.md
 
-**Alepha Lore**: the planning memory, telemetry sink and deploy chain for Alepha applications, at `lore.alepha.app`. This repository holds the app (`apps/lore`, read `apps/lore/AGENTS.md` before working on it), its four private modules (`packages/@lore/*`, see the layout below), its CLI and client (`packages/@alepha/lore`, published to npm), and the end-to-end suites that drive built artefacts (`apps/e2e`).
+**Alepha Lore**: the planning memory, telemetry sink and deploy chain for Alepha applications, at `lore.alepha.app`. This repository holds the app (`apps/lore`, read `apps/lore/AGENTS.md` before working on it), its private modules (`packages/@lore/*`, see the layout below), its CLI and client (`packages/@alepha/lore`, published to npm), and the end-to-end suites that drive built artefacts (`apps/e2e`).
 
 It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and came back on 2026-10-25 (#Q2765 there), as `lore/` beside `framework/` and `bay/`. Read the root `AGENTS.md` first. Every path in this file is relative to `lore/`.
 
 ## Layout: packages are modules, apps are executables
 
-`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in five private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/plan`](packages/@lore/plan/AGENTS.md), [`@lore/remember`](packages/@lore/remember/AGENTS.md), [`@lore/ship`](packages/@lore/ship/AGENTS.md), [`@lore/plan-requirements`](packages/@lore/plan-requirements/AGENTS.md).
+`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in six private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `AGENTS.md`, read before working on it: [`@lore/core`](packages/@lore/core/AGENTS.md), [`@lore/plan`](packages/@lore/plan/AGENTS.md), [`@lore/remember`](packages/@lore/remember/AGENTS.md), [`@lore/build`](packages/@lore/build/AGENTS.md), [`@lore/ship`](packages/@lore/ship/AGENTS.md), [`@lore/plan-requirements`](packages/@lore/plan-requirements/AGENTS.md).
 
 | package                   | is                  | owns                                                                                                                                                                                     |
 | ------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@lore/core`              | the glue            | projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, dashboard, reports, agent prompts, the web shell, every registry |
 | `@lore/plan`              | Lore as Jira        | quests, epics, releases, areas, kanban, roadmap, feedback                                                                                                                                |
 | `@lore/remember`          | Lore as Obsidian    | folios, directories, attachments, revisions, names                                                                                                                                       |
+| `@lore/build`             | Lore as GitHub      | git repositories, Quality (#E162)                                                                                                                                                        |
 | `@lore/ship`              | Lore as Vercel      | apps, telemetry, deployments, hosts                                                                                                                                                      |
 | `@lore/plan-requirements` | Plan's Requirements | personas, use cases, requirements and their runs (#E153): an option of Plan, in a package of its own because it reaches Ship and Remember                                                |
 
-Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first; the entries are the only place they meet. Scenario specs boot them the same way, through `bootLore()` in `apps/lore/test/fixtures/bootLore.ts`. `./web` is registered by BOTH entries.
+Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first (`@lore/build` has no `./web` and no `LoreBuildWeb` yet: it draws no page, #E162); the entries are the only place they meet. Scenario specs boot them the same way, through `bootLore()` in `apps/lore/test/fixtures/bootLore.ts`. `./web` is registered by BOTH entries.
 
 ⚠️ **The rule** (`check:conventions`, graph table in `scripts/lore-package-graph.ts`):
 
 ```
 core <- plan
 core <- remember
+core <- build
 core <- ship
 core, plan, remember, ship <- plan-requirements
 ```

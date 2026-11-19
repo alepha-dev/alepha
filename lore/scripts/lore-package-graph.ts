@@ -3,13 +3,15 @@ import { dirname, join, normalize } from "node:path";
 /**
  * Which `@lore` package may import which, and how.
  *
- * `apps/lore` is being split into four Alepha modules (#E75, folio #F1356):
+ * `apps/lore` was split into Alepha modules (#E75, folio #F1356), one per
+ * pillar since #E143 and #E162:
  *
  * | package     | is               | may import  |
  * |-------------|------------------|-------------|
  * | `core`      | the glue         | nothing     |
  * | `plan`      | Lore as Jira     | `core`      |
  * | `remember`  | Lore as Obsidian | `core`      |
+ * | `build`     | Lore as GitHub   | `core`      |
  * | `ship`      | Lore as Vercel   | `core`      |
  * | `plan-requirements` | Plan's Requirements | `core`, `plan`, `remember`, `ship` |
  *
@@ -42,6 +44,8 @@ export class LorePackageGraph {
     core: [],
     plan: ["core"],
     remember: ["core"],
+    // Build, the fourth pillar (#E162): git repositories and Quality.
+    build: ["core"],
     ship: ["core"],
     // Plan's Requirements (#E153): the first package with sibling edges,
     // because it writes Ship's errors, reads Ship's telemetry and Remember's

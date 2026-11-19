@@ -19,6 +19,7 @@ import {
   ArrowRight,
   BookOpen,
   Check,
+  GitBranch,
   Hammer,
   LoaderCircle,
   SquareCheckBig,
@@ -56,6 +57,7 @@ const CAPABILITY_ICONS: Record<
 > = {
   plan: SquareCheckBig,
   remember: BookOpen,
+  build: GitBranch,
   ship: AppWindow,
 };
 

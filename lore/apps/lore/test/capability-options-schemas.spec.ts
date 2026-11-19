@@ -1,3 +1,4 @@
+import { buildCapabilityOptionsSchema } from "@lore/build/schemas";
 import { CapabilityRegistry } from "@lore/core/schemas";
 import { planCapabilityOptionsSchema } from "@lore/plan/schemas";
 import { rememberCapabilityOptionsSchema } from "@lore/remember/schemas";
@@ -16,8 +17,13 @@ describe("capability options schemas", () => {
   const owned = {
     plan: planCapabilityOptionsSchema,
     remember: rememberCapabilityOptionsSchema,
+    build: buildCapabilityOptionsSchema,
     ship: shipCapabilityOptionsSchema,
   };
+
+  it("has a module schema for every capability", ({ expect }) => {
+    expect(Object.keys(owned).sort()).toEqual([...registry.keys()].sort());
+  });
 
   it("reads the same keys, all false when absent, as each module's schema", ({
     expect,

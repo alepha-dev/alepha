@@ -98,6 +98,9 @@ export class LorePermissions {
     "area:read",
     "folio:read",
     "folio:write",
+    // A member may push (#E162 decision 8).
+    "code:read",
+    "code:write",
     "app:read",
     "artifact:read",
     "artifact:push",
@@ -132,6 +135,8 @@ export class LorePermissions {
     "invitation:create",
     "release:manage",
     "area:manage",
+    // Creating and deleting a repository (#E162).
+    "code:admin",
     "app:manage",
     "deploy:manage",
     "artifact:delete",
@@ -359,6 +364,42 @@ export class LorePermissions {
     group: "folio",
     name: "write",
     label: "permission.folio.write",
+  });
+
+  // ---------------------------------------------------------------------------
+  // Build (#E162): the project's git repositories, named `code`.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Cloning and fetching a repository, and listing them.
+   */
+  codeRead = $permission({
+    group: "code",
+    name: "read",
+    label: "permission.code.read",
+    groupLabel: "permission.group.code",
+    groupOrder: 25,
+  });
+
+  /**
+   * Pushing to a repository. A Member's by default: a member may push
+   * (#E162 decision 8).
+   */
+  codeWrite = $permission({
+    group: "code",
+    name: "write",
+    label: "permission.code.write",
+  });
+
+  /**
+   * Creating and deleting a repository. An Admin's, and never a token's: an
+   * OAuth token is refused it (`LoreOAuthScopes`, #E162 decision 7), so a
+   * repository is deleted with a signed-in session or an API key.
+   */
+  codeAdmin = $permission({
+    group: "code",
+    name: "admin",
+    label: "permission.code.admin",
   });
 
   // ---------------------------------------------------------------------------

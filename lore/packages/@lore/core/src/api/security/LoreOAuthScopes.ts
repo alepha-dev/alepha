@@ -25,6 +25,10 @@ import type { OAuthScope } from "alepha/api/oauth";
  *   They stay two entries because the device approval page must name the
  *   terminal rather than Claude.
  * - **`openid` reaches nothing.** It says who you are.
+ * - **`code` is reached in part** (#E162 decision 7): a token may clone and
+ *   push (`code:read`, `code:write`), never create or delete a repository
+ *   (`code:admin`). That is done in the API with a signed-in session or an
+ *   API key.
  *
  * ## Left out on purpose
  *
@@ -79,6 +83,16 @@ export class LoreOAuthScopes {
   ];
 
   /**
+   * Groups a connected app reaches only in part: each group, and the
+   * permissions of it a token may hold. Every other permission of the group
+   * is refused to a token.
+   */
+  public static readonly PARTIAL_GROUPS: Record<string, string[]> = {
+    // Clone and push, never create or delete a repository (#E162).
+    code: ["code:read", "code:write"],
+  };
+
+  /**
    * Groups a connected app never reaches although they are not `admin:`.
    * Each has its reason in the class JSDoc.
    */
@@ -93,8 +107,10 @@ export class LoreOAuthScopes {
   /**
    * The member groups as the patterns a scope declaration takes.
    */
-  public static readonly MEMBER_PERMISSIONS: string[] =
-    LoreOAuthScopes.MEMBER_GROUPS.map((group) => `${group}:*`);
+  public static readonly MEMBER_PERMISSIONS: string[] = [
+    ...LoreOAuthScopes.MEMBER_GROUPS.map((group) => `${group}:*`),
+    ...Object.values(LoreOAuthScopes.PARTIAL_GROUPS).flat(),
+  ];
 
   /**
    * What `oauthOptions.scopes` is set to in `main.server.ts`.

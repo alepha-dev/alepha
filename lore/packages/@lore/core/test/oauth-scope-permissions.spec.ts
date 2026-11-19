@@ -75,6 +75,7 @@ describe("Lore's OAuth scopes", () => {
             (group) =>
               group !== "admin" &&
               !LoreOAuthScopes.MEMBER_GROUPS.includes(group) &&
+              !(group in LoreOAuthScopes.PARTIAL_GROUPS) &&
               !LoreOAuthScopes.EXCLUDED_GROUPS.includes(group),
           ),
       ),
@@ -90,8 +91,26 @@ describe("Lore's OAuth scopes", () => {
     const registered = new Set(permissions.map(groupOf));
 
     expect(
-      LoreOAuthScopes.MEMBER_GROUPS.filter((group) => !registered.has(group)),
+      [
+        ...LoreOAuthScopes.MEMBER_GROUPS,
+        ...Object.keys(LoreOAuthScopes.PARTIAL_GROUPS),
+      ].filter((group) => !registered.has(group)),
     ).toEqual([]);
+    expect(
+      Object.values(LoreOAuthScopes.PARTIAL_GROUPS)
+        .flat()
+        .filter((permission) => !permissions.includes(permission)),
+    ).toEqual([]);
+  });
+
+  it("lets a token clone and push, never create or delete a repository (#E162)", ({
+    expect,
+  }) => {
+    for (const scope of ["mcp", "cli"]) {
+      expect(reaches(scope, "code:read"), scope).toBe(true);
+      expect(reaches(scope, "code:write"), scope).toBe(true);
+      expect(reaches(scope, "code:admin"), scope).toBe(false);
+    }
   });
 
   it("lets mcp and cli reach every member permission", ({ expect }) => {

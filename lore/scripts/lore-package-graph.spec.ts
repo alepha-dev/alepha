@@ -59,7 +59,7 @@ describe("LorePackageGraph", () => {
   it("refuses plan, remember and ship importing plan-requirements: the edge goes one way", ({
     expect,
   }) => {
-    for (const from of ["plan", "remember", "ship", "core"]) {
+    for (const from of ["plan", "remember", "build", "ship", "core"]) {
       const violations = graph.check(
         `packages/@lore/${from}/src/api/index.ts`,
         'import { LorePlanRequirementsApi } from "@lore/plan-requirements/api";',
@@ -68,6 +68,23 @@ describe("LorePackageGraph", () => {
       expect(violations[0]).toContain(
         `@lore/${from} -> @lore/plan-requirements`,
       );
+    }
+  });
+
+  it("lets build import core and nothing else (#E162)", ({ expect }) => {
+    expect(
+      graph.check(
+        "packages/@lore/build/src/api/index.ts",
+        'import { LoreCoreApi } from "@lore/core/api";',
+      ),
+    ).toEqual([]);
+    for (const to of ["plan", "remember", "ship"]) {
+      const violations = graph.check(
+        "packages/@lore/build/src/api/index.ts",
+        `import { Thing } from "@lore/${to}/api";`,
+      );
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain(`@lore/build -> @lore/${to}`);
     }
   });
 
