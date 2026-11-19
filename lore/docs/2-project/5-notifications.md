@@ -100,15 +100,24 @@ lists: what you set with one shows on the other.
 
 ## Settings ▸ Notifications
 
-The page lists who is notified of what in the project, one row per event and
-recipient, with how. **Notify someone** opens the form:
+The **Notifications** tab is a table of who is notified of what in the
+project: one row per subscription, with **When** (the event), **Who**,
+**Only for** (its filter), **How** and its **Status**. The rows are grouped
+by resource; the picker beside the search groups them by recipient instead,
+or not at all. The counters above the table (**Mine**, **Paused**) are quick
+filters, and the filter bar narrows the list by resource, recipient, way and
+status.
 
-- **When**: the event, and its filter where it has one.
+**Notify someone** opens a dialog:
+
+- **When**: the event, and its filter where it has one. An event the project
+  cannot emit is listed as **Unavailable**, with the switch that turns it on.
 - **Notify**: **Me**, another member, or one of the project's channels.
 - For a member, **In the app** and **By email**, one or both.
 
-Each row has **Pause** (then **Resume**) and **Stop**. A paused subscription
-keeps its place and sends nothing until it is resumed.
+Each row's menu has **Pause** (then **Resume**) and **Stop**, and both act on
+a selection of rows too. A paused subscription keeps its place and sends
+nothing until it is resumed.
 
 ![Settings > Notifications, listing who is notified of what](/screenshots/lore/notifications-light.png)
 
@@ -130,7 +139,7 @@ simply not sent.
 
 ## Channels
 
-The **Channels** tab, next to **Who is notified**, lists where messages can go.
+The **Channels** tab, next to **Notifications**, lists where messages can go.
 
 | Kind    | Where it goes                                     |
 | ------- | ------------------------------------------------- |
@@ -141,10 +150,11 @@ The **Channels** tab, next to **Who is notified**, lists where messages can go.
 
 In-app and email belong to each member and need no setup. Discord and webhook
 channels belong to the project: whoever may manage the project's channels adds
-them with **Add a channel**, and subscribing one sends every matching event
-there, whoever reads it. Lore checks a Discord URL with a test message, then
-never shows it again; **Rename or replace URL** changes it. Deleting a channel
-deletes the subscriptions that use it.
+them with **Add a channel**, which opens a dialog, and subscribing one sends
+every matching event there, whoever reads it. Lore checks a Discord URL with a
+test message, then never shows it again; **Rename or replace URL**, in the
+row's menu, changes it. Deleting a channel deletes the subscriptions that use
+it.
 
 ![The Channels tab, with a webhook channel](/screenshots/lore/notifications-channels-light.png)
 

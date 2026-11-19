@@ -14,7 +14,7 @@ import {
  * Notifications, end to end (#Q3892): a manager notifies another member of
  * a monitor going down from Settings > Notifications, the monitor goes
  * down, and the member's inbox shows it while the manager's does not; the
- * page lists the row under Monitors and holds at phone width.
+ * table lists the row under Monitors and holds at phone width.
  *
  * An HTTP monitor stands in for a host: a host goes offline only after five
  * minutes of grace, an HTTP monitor on its first failed check.
@@ -81,9 +81,7 @@ test.describe("Notifications", () => {
       expect(set.ok(), await set.text()).toBe(true);
       await page.reload();
       await expect(
-        page
-          .getByTestId("notification-event-monitor.down")
-          .getByTestId(/^notification-row-/),
+        page.getByTestId("notification-event-monitor.down"),
       ).toHaveCount(1);
 
       // At phone width the page fits.

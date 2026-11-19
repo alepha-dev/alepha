@@ -143,11 +143,13 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
       {
         route: "projectSettingsNotifications",
         labelKey: "project.settings.tab.notifications",
+        fullWidth: true,
       },
       {
         route: "projectSettingsNotificationChannels",
         labelKey: "project.settings.tab.notificationChannels",
         requires: "subscription:read",
+        fullWidth: true,
       },
     ],
   },
