@@ -205,6 +205,13 @@ describe("Personas screens", () => {
 
     await screen.findByText("Léa");
     expect(screen.getAllByTestId("persona-card")).toHaveLength(2);
+    // Each kind tab counts its personas, from the one list (#Q3961).
+    expect(
+      ["all", "human", "system", "agent"].map(
+        (kind) =>
+          screen.getByTestId(`persona-filter-count-${kind}`).textContent,
+      ),
+    ).toEqual(["2", "1", "1", "0"]);
     expect(screen.getByText("#A1")).toBeTruthy();
     // The first line of the goals, as the card's quote.
     expect(screen.getByText("Ship orders the same day")).toBeTruthy();
@@ -223,7 +230,7 @@ describe("Personas screens", () => {
     );
     expect(screen.getByRole("button", { name: /New persona/ })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("radio", { name: "System" }));
+    fireEvent.click(screen.getByRole("radio", { name: "System 1" }));
     await waitFor(() =>
       expect(screen.getAllByTestId("persona-card")).toHaveLength(1),
     );
