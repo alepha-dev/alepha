@@ -23,6 +23,7 @@ import { ChatAgentRunner } from "./ChatAgentRunner.ts";
 import { ChatAudience } from "./ChatAudience.ts";
 import { ChatBuckets } from "./ChatBuckets.ts";
 import { ChatLive } from "./ChatLive.ts";
+import { ChatMentionNotifier } from "./ChatMentionNotifier.ts";
 import { ChatMentionParser } from "./ChatMentionParser.ts";
 import { ChatResponderRegistry } from "./ChatResponderRegistry.ts";
 import { ChatRoomService } from "./ChatRoomService.ts";
@@ -126,6 +127,10 @@ export class ChatMessageService {
       roomId: room.id,
       message: resource!,
     });
+    // Who was named and is away hears of it (#Q3931).
+    this.alepha
+      .inject(ChatMentionNotifier)
+      .notify(room, message, userId, parsed.userIds);
     // `@lore` asks the agent, as the member who wrote it (#Q3930). Only a
     // member's message starts a run: an agent's never reaches `send`.
     if (user && parsed.agents.length > 0) {
@@ -207,10 +212,12 @@ export class ChatMessageService {
       roomId: room.id,
       message: resource!,
     });
-    return {
-      message: resource!,
-      mentioned: parsed.userIds.filter((id) => !before.has(id)),
-    };
+    const added = parsed.userIds.filter((id) => !before.has(id));
+    // An edit tells only the members it names for the first time.
+    this.alepha
+      .inject(ChatMentionNotifier)
+      .notify(room, updated, userId, added);
+    return { message: resource!, mentioned: added };
   }
 
   /**
