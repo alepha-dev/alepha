@@ -1,35 +1,54 @@
-import { Badge, Button, useDialog } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
+import { Badge, useDialog } from "@alepha/ui";
+import { Control, type SelectOption } from "@alepha/ui/form";
+import {
+  DataTable,
+  type BulkAction,
+  type DataTableFilterFields,
+  type DataTableStatCard,
+  type RowActionEntry,
+} from "@alepha/ui/table";
+import { z } from "alepha";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { BellOff, BellRing, Plus } from "lucide-react";
-import { useState } from "react";
+import {
+  BellOff,
+  BellRing,
+  CircleDot,
+  Hash,
+  Layers,
+  Plus,
+  Send,
+  Shapes,
+  Trash2,
+  User,
+  UsersRound,
+  Webhook,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 
 import type { ProjectChannelController } from "../../../../../../api/controllers/ProjectChannelController.ts";
 import type { ProjectEventController } from "../../../../../../api/controllers/ProjectEventController.ts";
 import type { SubscriptionController } from "../../../../../../api/controllers/SubscriptionController.ts";
-import { notificationFormSchema } from "../../../../../../api/schemas/notificationFormSchema.ts";
-import type { ProjectEventCatalogEntry } from "../../../../../../api/schemas/projectEventCatalogEntrySchema.ts";
-import type { SubscriptionResource } from "../../../../../../api/schemas/subscriptionResourceSchema.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import { canInProject } from "../../../../services/projectRank.ts";
 import { useProjectUsers } from "../../../shared/useProjectUsers.ts";
+import NotificationAddDialog from "./NotificationAddDialog.tsx";
 import { NotificationLabels } from "./NotificationLabels.ts";
+import type { NotificationTableRow } from "./notificationTableRow.ts";
 
 /**
- * Settings > Notifications (#Q3892): every event the project can emit,
- * grouped by resource, with who is notified of it and on which channel.
+ * Settings > Notifications (#Q3892, a `DataTable` since #Q3912): who is
+ * notified of what in the project, one row per subscription, grouped by
+ * resource (or by recipient, or not at all).
  *
- * Adding one is three pickers and no text: the event, who is notified (a
- * member, or one of the project's channels) and, for an event that takes
- * one, a filter picked from the project's own hosts, apps or monitors.
  * Whoever holds `subscription:manage` notifies any member ("tell her, not
- * me, when the app is down"); anyone else sees and edits their own rows.
- * An event the project's capabilities do not give is listed, unavailable,
- * with the reason.
+ * me, when the app is down") or a channel; anyone else sees and changes
+ * their own rows. Notify someone opens a dialog listing every event, an
+ * unavailable one disabled with the switch that turns it on. Pause and
+ * Stop are row actions, and bulk actions over a selection.
  */
 const ProjectSettingsNotificationsPage = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -44,7 +63,7 @@ const ProjectSettingsNotificationsPage = () => {
   const projectId = project?.id ?? 0;
   const manage = !!project && canInProject(project, "subscription:manage");
   const key = ["subscriptions", projectId];
-  const labels = NotificationLabels;
+  const me = auth.user?.id;
 
   const catalog = useQuery(
     {
@@ -58,7 +77,7 @@ const ProjectSettingsNotificationsPage = () => {
     },
     [projectId],
   );
-  const rows = useQuery(
+  const list = useQuery(
     {
       key,
       enabled: !!project,
@@ -118,315 +137,525 @@ const ProjectSettingsNotificationsPage = () => {
     [projectId, filterResources.join(",")],
   );
 
-  const save = useAction<
-    [
-      values: {
-        event: string;
-        target?: string;
-        filter?: string;
-        inapp?: boolean;
-        email?: boolean;
-      },
-    ],
-    void
-  >(
+  // Pause or resume, one row or a selection: the reader's own rows only.
+  const mute = useAction<[rows: NotificationTableRow[], muted: boolean], void>(
     {
-      handler: async (_ctx, values) => {
-        const target = values.target ?? "";
-        const channelId = target.startsWith("channel:")
-          ? target.slice("channel:".length)
-          : undefined;
-        const memberId = target.startsWith("member:")
-          ? target.slice("member:".length)
-          : undefined;
-        await subscriptions.setSubscription({
-          params: { projectId },
-          body: {
-            event: values.event,
-            ...(values.filter ? { filter: values.filter } : {}),
-            ...(channelId ? { channelId } : {}),
-            ...(memberId ? { memberId } : {}),
-            ...(channelId
-              ? {}
-              : {
-                  channels: [
-                    ...(values.inapp !== false ? (["inapp"] as const) : []),
-                    ...(values.email ? (["email"] as const) : []),
-                  ],
-                }),
-          },
-        });
-        setAdding(false);
+      handler: async (_ctx, rows, muted) => {
+        for (const row of rows) {
+          await subscriptions.muteSubscription({
+            params: { projectId, id: row.id },
+            body: { muted },
+          });
+        }
       },
       invalidates: [key],
     },
     [subscriptions, projectId],
   );
-  const mute = useAction<[row: SubscriptionResource], void>(
+  const remove = useAction<[rows: NotificationTableRow[]], boolean>(
     {
-      handler: async (_ctx, row) => {
-        await subscriptions.muteSubscription({
-          params: { projectId, id: row.id },
-          body: { muted: !row.mutedAt },
-        });
-      },
-      invalidates: [key],
-    },
-    [subscriptions, projectId],
-  );
-  const remove = useAction<[row: SubscriptionResource], void>(
-    {
-      handler: async (_ctx, row) => {
+      handler: async (_ctx, rows) => {
         if (
           !(await dialog.confirm({
-            title: tr("notifications.remove.title"),
+            title:
+              rows.length === 1
+                ? tr("notifications.remove.title")
+                : tr("notifications.remove.titleMany", {
+                    args: [String(rows.length)],
+                  }),
             description: tr("notifications.remove.description"),
             confirmLabel: tr("notifications.remove.confirm"),
             destructive: true,
           }))
         )
-          return;
-        await subscriptions.deleteSubscription({
-          params: { projectId, id: row.id },
-        });
+          return false;
+        for (const row of rows) {
+          await subscriptions.deleteSubscription({
+            params: { projectId, id: row.id },
+          });
+        }
+        return true;
       },
       invalidates: [key],
     },
     [subscriptions, projectId],
   );
 
-  const available = (catalog.data?.items ?? []).filter((it) => it.available);
-  const form = useForm(
-    {
-      schema: notificationFormSchema,
-      initialValues: {
-        event: available[0]?.name ?? "",
-        target: `member:${auth.user?.id ?? ""}`,
-        inapp: true,
-        email: false,
-      },
-      handler: async (values) => {
-        await save.run(values);
-      },
-    },
-    [adding, available[0]?.name],
-  );
-  const values = useFormValues(form);
-  if (!project) return null;
+  // The grouping, outside the table's filters: it arranges the rows and
+  // narrows none of them.
+  const grouping = useForm({
+    id: "notifications-grouping",
+    schema: z.object({
+      group: z.enum(["resource", "recipient", "none"]).optional(),
+    }),
+    initialValues: { group: "resource" as const },
+    handler: async () => {},
+  });
+  const group = useFormValues(grouping).group ?? "resource";
 
-  const me = auth.user?.id;
-  const selected = available.find((it) => it.name === values.event);
-  const busy = save.loading || mute.loading || remove.loading;
   const nameOf = (id: string) => {
     const user = users.find((it) => it.id === id);
     if (!user) return tr("notifications.someone");
     const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
     return name || user.username || user.email || tr("notifications.someone");
   };
-  const channelName = (id: string) =>
-    channels.data?.items.find((it) => it.id === id)?.name ?? id;
-  const filterLabel = (event: ProjectEventCatalogEntry, value: string) =>
-    filters.data?.[event.filter?.resource ?? ""]?.find(
-      (it) => it.value === value,
-    )?.label ?? value;
-  const targets = [
+  const catalogItems = catalog.data?.items ?? [];
+  const channelItems = channels.data?.items ?? [];
+
+  const rows = useMemo<NotificationTableRow[] | undefined>(() => {
+    if (!list.data || !catalog.data) return undefined;
+    return list.data.items.map((sub) => {
+      const entry = catalogItems.find((it) => it.name === sub.event);
+      const channel = sub.channelId
+        ? channelItems.find((it) => it.id === sub.channelId)
+        : undefined;
+      const mine = !sub.channelId && sub.memberId === me;
+      return {
+        id: sub.id,
+        subscription: sub,
+        event: sub.event,
+        eventLabel: entry
+          ? NotificationLabels.event(tr, entry)
+          : tr(`notifications.event.${sub.event}`, { default: sub.event }),
+        resource: entry?.resource ?? "other",
+        available: entry?.available ?? false,
+        reason:
+          entry && !entry.available
+            ? NotificationLabels.reason(tr, entry)
+            : undefined,
+        recipient: sub.channelId
+          ? `channel:${sub.channelId}`
+          : `member:${sub.memberId ?? ""}`,
+        recipientLabel: sub.channelId
+          ? (channel?.name ?? sub.channelId)
+          : mine
+            ? tr("notifications.target.me")
+            : nameOf(sub.memberId ?? ""),
+        recipientKind: sub.channelId
+          ? channel?.kind === "discord" || channel?.kind === "webhook"
+            ? channel.kind
+            : "channel"
+          : "member",
+        mine,
+        filterLabel: sub.filter
+          ? (filters.data?.[entry?.filter?.resource ?? ""]?.find(
+              (it) => it.value === sub.filter,
+            )?.label ?? sub.filter)
+          : undefined,
+        how: sub.channelId ? ["channel"] : sub.channels,
+        status: sub.mutedAt ? "paused" : "active",
+      };
+    });
+  }, [list.data, catalog.data, channels.data, filters.data, users, me, tr]);
+
+  if (!project) return null;
+
+  const all = rows ?? [];
+  const busy = mute.loading || remove.loading;
+  const available = catalogItems.filter((it) => it.available);
+  const canRemove = (row: NotificationTableRow) => manage || row.mine;
+
+  // Who may be notified: the reader alone, or, for a manager, every member
+  // and every project channel.
+  const targets: SelectOption[] = [
+    { value: `member:${me ?? ""}`, label: tr("notifications.target.me") },
     ...(manage
-      ? users.map((user) => ({
-          value: `member:${user.id}`,
-          label:
-            user.id === me ? tr("notifications.target.me") : nameOf(user.id),
-        }))
-      : [
-          { value: `member:${me ?? ""}`, label: tr("notifications.target.me") },
-        ]),
+      ? users
+          .filter((user) => user.id !== me)
+          .map((user) => ({
+            value: `member:${user.id}`,
+            label: nameOf(user.id),
+          }))
+      : []),
     ...(manage
-      ? (channels.data?.items ?? [])
+      ? channelItems
           .filter((it) => !it.builtIn)
           .map((it) => ({ value: `channel:${it.id}`, label: it.name }))
       : []),
   ];
-  const toChannel = String(values.target ?? "").startsWith("channel:");
+  // The Who filter offers whoever has a row, plus the reader.
+  const recipients = [
+    ...new Map(
+      all.map((row) => [row.recipient, row.recipientLabel] as const),
+    ).entries(),
+  ]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) =>
+      a.value === `member:${me}`
+        ? -1
+        : b.value === `member:${me}`
+          ? 1
+          : a.label.localeCompare(b.label),
+    );
+  const resources = NotificationLabels.groups(catalogItems).map(
+    ([resource]) => resource,
+  );
+  const resourceLabel = (resource: string) =>
+    tr(`notifications.resource.${resource}`, { default: resource });
+  const howLabel = (how: string) =>
+    how === "channel"
+      ? tr("notifications.how.channel")
+      : tr(`notifications.channel.${how}`, { default: how });
+
+  const fields = {
+    search: { preset: "search" },
+    resource: {
+      schema: z.array(z.string()),
+      label: tr("notifications.filter.resource"),
+      icon: Shapes,
+      mode: "default",
+      items: resources.map((value) => ({
+        value,
+        label: resourceLabel(value),
+      })),
+      control: { clearLabel: tr("notifications.filter.anyResource") },
+    },
+    recipient: {
+      schema: z.string(),
+      label: tr("notifications.filter.recipient"),
+      icon: UsersRound,
+      mode: "default",
+      column: "recipient",
+      items: recipients,
+      hidden: recipients.length < 2,
+      control: { clearLabel: tr("notifications.filter.anyRecipient") },
+    },
+    how: {
+      schema: z.array(z.string()),
+      label: tr("notifications.filter.how"),
+      icon: Send,
+      items: ["inapp", "email", "channel"].map((value) => ({
+        value,
+        label: howLabel(value),
+      })),
+      control: { clearLabel: tr("notifications.filter.anyHow") },
+    },
+    status: {
+      schema: z.array(z.enum(["active", "paused"])),
+      label: tr("notifications.filter.status"),
+      icon: CircleDot,
+      column: "status",
+      optionLabel: (value: "active" | "paused") =>
+        tr(`notifications.status.${value}`),
+      control: { clearLabel: tr("notifications.filter.anyStatus") },
+    },
+  } satisfies DataTableFilterFields;
+
+  const matches = (
+    row: NotificationTableRow,
+    values: {
+      search?: string;
+      resource?: string[];
+      recipient?: string;
+      how?: string[];
+      status?: Array<"active" | "paused">;
+    },
+  ) => {
+    const search = values.search?.trim().toLowerCase();
+    if (
+      search &&
+      ![row.eventLabel, row.recipientLabel, row.filterLabel ?? "", row.event]
+        .join(" ")
+        .toLowerCase()
+        .includes(search)
+    )
+      return false;
+    if (values.resource?.length && !values.resource.includes(row.resource))
+      return false;
+    if (values.recipient && row.recipient !== values.recipient) return false;
+    if (values.how?.length && !row.how.some((it) => values.how?.includes(it)))
+      return false;
+    if (values.status?.length && !values.status.includes(row.status))
+      return false;
+    return true;
+  };
+
+  const paused = all.filter((row) => row.status === "paused").length;
+  const cards: DataTableStatCard[] = [
+    {
+      label: tr("notifications.counter.all"),
+      value: String(all.length),
+      icon: BellRing,
+    },
+    {
+      label: tr("notifications.counter.mine"),
+      value: String(all.filter((row) => row.mine).length),
+      icon: User,
+      filter: { recipient: `member:${me ?? ""}` },
+    },
+    {
+      label: tr("notifications.counter.paused"),
+      value: String(paused),
+      icon: BellOff,
+      tone: paused > 0 ? "warning" : undefined,
+      filter: { status: ["paused"] },
+    },
+  ];
+
+  const rowActions = (
+    row: NotificationTableRow,
+  ): RowActionEntry<NotificationTableRow>[] => [
+    ...(row.mine
+      ? [
+          {
+            icon: row.status === "paused" ? BellRing : BellOff,
+            label:
+              row.status === "paused"
+                ? tr("notifications.unmute")
+                : tr("notifications.mute"),
+            disabled: () => busy,
+            onClick: () => void mute.run([row], row.status === "active"),
+          },
+        ]
+      : []),
+    ...(canRemove(row)
+      ? [
+          {
+            icon: Trash2,
+            label: tr("notifications.remove.confirm"),
+            destructive: true,
+            disabled: () => busy,
+            onClick: () => void remove.run([row]),
+          },
+        ]
+      : []),
+  ];
+
+  const bulkActions: BulkAction<NotificationTableRow>[] = [
+    {
+      icon: BellOff,
+      label: tr("notifications.mute"),
+      visible: (selected) =>
+        selected.some((row) => row.mine && row.status === "active"),
+      count: (selected) =>
+        selected.filter((row) => row.mine && row.status === "active").length,
+      onClick: async (selected, ctx) => {
+        const done = await mute.run(
+          selected.filter((row) => row.mine && row.status === "active"),
+          true,
+        );
+        if (done.ok) ctx.clearSelection();
+      },
+    },
+    {
+      icon: BellRing,
+      label: tr("notifications.unmute"),
+      visible: (selected) =>
+        selected.some((row) => row.mine && row.status === "paused"),
+      count: (selected) =>
+        selected.filter((row) => row.mine && row.status === "paused").length,
+      onClick: async (selected, ctx) => {
+        const done = await mute.run(
+          selected.filter((row) => row.mine && row.status === "paused"),
+          false,
+        );
+        if (done.ok) ctx.clearSelection();
+      },
+    },
+    {
+      icon: Trash2,
+      label: tr("notifications.remove.confirm"),
+      destructive: true,
+      visible: (selected) => selected.some(canRemove),
+      count: (selected) => selected.filter(canRemove).length,
+      onClick: async (selected, ctx) => {
+        const done = await remove.run(selected.filter(canRemove));
+        if (done.ok && done.value) ctx.clearSelection();
+      },
+    },
+  ];
+
+  const recipientIcon = (row: NotificationTableRow) =>
+    row.recipientKind === "webhook" ? (
+      <Webhook className="text-muted-foreground size-4 shrink-0" />
+    ) : row.recipientKind === "member" ? (
+      <User className="text-muted-foreground size-4 shrink-0" />
+    ) : (
+      <Hash className="text-muted-foreground size-4 shrink-0" />
+    );
 
   return (
-    <div className="flex flex-col gap-4" data-testid="notifications-settings">
-      <p className="text-muted-foreground text-sm">
-        {manage
-          ? tr("notifications.intro.manage")
-          : tr("notifications.intro.own")}
-      </p>
-      {!adding && (
-        <div>
-          <Button
-            onClick={() => setAdding(true)}
-            disabled={busy || available.length === 0}
-            data-testid="notification-add"
-          >
-            <Plus className="size-4" />
-            {tr("notifications.add")}
-          </Button>
-        </div>
-      )}
-      {adding && (
-        <form
-          {...form.props}
-          className="bg-card flex flex-col gap-3 rounded-lg border p-4"
-          data-testid="notification-form"
-        >
-          <Control
-            input={form.input.event}
-            label={tr("notifications.form.event")}
-            select
-            items={available.map((it) => ({
-              value: it.name,
-              label: labels.event(tr, it),
-            }))}
-            disabled={busy}
-          />
-          <Control
-            input={form.input.target}
-            label={tr("notifications.form.target")}
-            select
-            items={targets}
-            disabled={busy || !manage}
-          />
-          {selected?.filter && (
-            <Control
-              input={form.input.filter}
-              label={tr(
-                `notifications.form.filter.${selected.filter.resource}`,
-              )}
-              select
-              items={[
-                { value: "", label: tr("notifications.form.filter.any") },
-                ...(filters.data?.[selected.filter.resource] ?? []),
-              ]}
-              disabled={busy}
-            />
-          )}
-          {!toChannel && (
-            <div className="flex flex-wrap gap-4">
+    // Bleeds over the settings body's padding: a `flat` table runs edge to
+    // edge, as Hosts' does.
+    <div
+      className="-m-4 flex min-h-0 flex-1 flex-col md:-m-6"
+      data-testid="notifications-settings"
+    >
+      {rows !== undefined && (
+        <DataTable<NotificationTableRow, typeof fields>
+          key={project.id}
+          className="min-h-0 flex-1"
+          flat
+          persistenceKey={`lore.notifications.${project.id}`}
+          data={rows}
+          pagination={false}
+          rowKey={(row) => row.id}
+          filters={{ fields }}
+          filter={(row, values) => matches(row, values)}
+          summary={{ cards }}
+          groupBy={
+            group === "none"
+              ? undefined
+              : group === "resource"
+                ? {
+                    key: (row) => row.resource,
+                    label: (value) => resourceLabel(value),
+                    order: (a, b) =>
+                      (resources.indexOf(a) + 1 || resources.length + 1) -
+                      (resources.indexOf(b) + 1 || resources.length + 1),
+                  }
+                : {
+                    key: (row) => row.recipient,
+                    label: (_value, items) => (
+                      <span className="flex items-center gap-2">
+                        {items[0] && recipientIcon(items[0])}
+                        {items[0]?.recipientLabel}
+                      </span>
+                    ),
+                    order: (a, b) =>
+                      a === `member:${me}`
+                        ? -1
+                        : b === `member:${me}`
+                          ? 1
+                          : a.localeCompare(b),
+                  }
+          }
+          defaultSort={{ field: "event", direction: "asc" }}
+          help={
+            <p className="text-muted-foreground">
+              {manage
+                ? tr("notifications.intro.manage")
+                : tr("notifications.intro.own")}
+            </p>
+          }
+          toolbar={
+            <div className="w-44">
               <Control
-                input={form.input.inapp}
-                label={tr("notifications.channel.inapp")}
-                disabled={busy}
-              />
-              <Control
-                input={form.input.email}
-                label={tr("notifications.channel.email")}
-                disabled={busy}
+                input={grouping.input.group}
+                label=""
+                select
+                icon={Layers}
+                aria-label={tr("notifications.group.by")}
+                items={[
+                  {
+                    value: "resource",
+                    label: tr("notifications.group.resource"),
+                  },
+                  {
+                    value: "recipient",
+                    label: tr("notifications.group.recipient"),
+                  },
+                  { value: "none", label: tr("notifications.group.none") },
+                ]}
               />
             </div>
-          )}
-          <div className="flex gap-2">
-            <Button type="submit" disabled={busy}>
-              {tr("notifications.form.save")}
-            </Button>
-            <Button
-              type="button"
-              variant="outlined"
-              disabled={busy}
-              onClick={() => setAdding(false)}
-            >
-              {tr("notifications.form.cancel")}
-            </Button>
-          </div>
-        </form>
-      )}
-      {labels.groups(catalog.data?.items ?? []).map(([resource, items]) => (
-        <section
-          key={resource}
-          className="bg-card rounded-lg border"
-          data-testid={`notifications-${resource}`}
-        >
-          <h2 className="border-b px-4 py-2 font-medium">
-            {tr(`notifications.resource.${resource}`, { default: resource })}
-          </h2>
-          <ul className="divide-y">
-            {items.map((event) => {
-              const own = (rows.data?.items ?? []).filter(
-                (it) => it.event === event.name,
-              );
-              return (
-                <li
-                  key={event.name}
-                  className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start"
-                  data-testid={`notification-event-${event.name}`}
+          }
+          actions={[
+            {
+              icon: Plus,
+              label: tr("notifications.add"),
+              primary: true,
+              disabled: busy || available.length === 0,
+              onClick: () => setAdding(true),
+            },
+          ]}
+          bulkActions={bulkActions}
+          rowActions={rowActions}
+          emptyState={{
+            icon: BellRing,
+            title: tr("notifications.nobody"),
+            description: manage
+              ? tr("notifications.intro.manage")
+              : tr("notifications.intro.own"),
+          }}
+          noMatchState={{ title: tr("notifications.emptyFilter") }}
+          columns={{
+            event: {
+              label: tr("notifications.table.event"),
+              sortable: true,
+              sortValue: (row) => row.eventLabel,
+              cell: (row) => (
+                <span
+                  className="flex min-w-0 flex-wrap items-center gap-2"
+                  data-testid={`notification-event-${row.event}`}
                 >
-                  <div className="min-w-0 sm:w-1/3">
-                    <div className="font-medium">{labels.event(tr, event)}</div>
-                    {!event.available && (
-                      <div className="text-muted-foreground text-sm">
-                        <Badge variant="outline" className="me-2">
-                          {tr("notifications.unavailable")}
-                        </Badge>
-                        {labels.reason(tr, event)}
-                      </div>
-                    )}
-                  </div>
-                  <ul className="flex min-w-0 flex-1 flex-wrap gap-2">
-                    {own.length === 0 && (
-                      <li className="text-muted-foreground text-sm">
-                        {tr("notifications.nobody")}
-                      </li>
-                    )}
-                    {own.map((row) => (
-                      <li
-                        key={row.id}
-                        className="flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-sm"
-                        data-testid={`notification-row-${row.id}`}
-                      >
-                        {row.mutedAt ? (
-                          <BellOff className="text-muted-foreground size-3.5" />
-                        ) : (
-                          <BellRing className="size-3.5" />
-                        )}
-                        <span className="truncate">
-                          {row.channelId
-                            ? channelName(row.channelId)
-                            : row.memberId === me
-                              ? tr("notifications.target.me")
-                              : nameOf(row.memberId ?? "")}
-                          {row.filter
-                            ? ` · ${filterLabel(event, row.filter)}`
-                            : ""}
-                          {row.channels.length
-                            ? ` · ${row.channels
-                                .map((it) => tr(`notifications.channel.${it}`))
-                                .join(", ")}`
-                            : ""}
-                        </span>
-                        {row.memberId === me && (
-                          <Button
-                            size="sm"
-                            variant="minimal"
-                            disabled={busy}
-                            onClick={() => void mute.run(row)}
-                          >
-                            {row.mutedAt
-                              ? tr("notifications.unmute")
-                              : tr("notifications.mute")}
-                          </Button>
-                        )}
-                        {(manage || row.memberId === me) && (
-                          <Button
-                            size="sm"
-                            variant="minimal"
-                            intent="danger"
-                            disabled={busy}
-                            onClick={() => void remove.run(row)}
-                          >
-                            {tr("notifications.remove.confirm")}
-                          </Button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
+                  <span className="font-medium">{row.eventLabel}</span>
+                  {!row.available && (
+                    <Badge variant="outline" title={row.reason}>
+                      {tr("notifications.unavailable")}
+                    </Badge>
+                  )}
+                </span>
+              ),
+            },
+            recipient: {
+              label: tr("notifications.table.recipient"),
+              sortable: true,
+              sortValue: (row) => row.recipientLabel,
+              cell: (row) => (
+                <span
+                  className="flex min-w-0 items-center gap-2"
+                  data-testid={`notification-row-${row.id}`}
+                >
+                  {recipientIcon(row)}
+                  <span className="truncate">{row.recipientLabel}</span>
+                </span>
+              ),
+            },
+            filter: {
+              label: tr("notifications.table.filter"),
+              sortable: true,
+              sortValue: (row) => row.filterLabel ?? "",
+              cell: (row) =>
+                row.filterLabel ? (
+                  <span className="truncate">{row.filterLabel}</span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {tr("notifications.form.filter.any")}
+                  </span>
+                ),
+            },
+            how: {
+              label: tr("notifications.table.how"),
+              cell: (row) => (
+                <span className="flex flex-wrap gap-1">
+                  {row.how.map((it) => (
+                    <Badge key={it} variant="secondary">
+                      {howLabel(it)}
+                    </Badge>
+                  ))}
+                </span>
+              ),
+            },
+            status: {
+              label: tr("notifications.table.status"),
+              sortable: true,
+              cell: (row) =>
+                row.status === "paused" ? (
+                  <Badge variant="outline">
+                    <BellOff className="size-3" />
+                    {tr("notifications.status.paused")}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground text-sm">
+                    {tr("notifications.status.active")}
+                  </span>
+                ),
+            },
+          }}
+        />
+      )}
+      <NotificationAddDialog
+        open={adding}
+        onOpenChange={setAdding}
+        projectId={projectId}
+        catalog={catalogItems}
+        targets={targets}
+        me={`member:${me ?? ""}`}
+        manage={manage}
+        filters={filters.data ?? {}}
+        invalidates={key}
+      />
     </div>
   );
 };
