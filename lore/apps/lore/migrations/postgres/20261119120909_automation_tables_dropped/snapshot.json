@@ -1,0 +1,625 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "4651755b-e2c8-4617-a1d0-264ab14fdbda",
+  "prevIds": ["de6d3be1-5b02-4bb2-b587-bcebf6682a25"],
+  "footprints": [
+    {
+      "statementType": "drop_fk",
+      "statementTarget": ["table", "public", "automation_receipts"],
+      "writes": [
+        "s|fk|public.automation_receipts.automation_receipts_automation_id_automations_id_fkey",
+        "n|fk|public.automation_receipts.automation_receipts_automation_id_automations_id_fkey",
+        "e|fk|public.automation_receipts.automation_receipts_automation_id_automations_id_fkey",
+        "n|con|public.automation_receipts.automation_receipts_automation_id_automations_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.automation_receipts",
+        "n|sch|public",
+        "e|col|public.automation_receipts.automation_id"
+      ]
+    },
+    {
+      "statementType": "drop_fk",
+      "statementTarget": ["table", "public", "automation_runs"],
+      "writes": [
+        "s|fk|public.automation_runs.automation_runs_automation_id_automations_id_fkey",
+        "n|fk|public.automation_runs.automation_runs_automation_id_automations_id_fkey",
+        "e|fk|public.automation_runs.automation_runs_automation_id_automations_id_fkey",
+        "n|con|public.automation_runs.automation_runs_automation_id_automations_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.automation_runs",
+        "n|sch|public",
+        "e|col|public.automation_runs.automation_id"
+      ]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "automation_events"],
+      "writes": [
+        "s|tbl|public.automation_events",
+        "n|tbl|public.automation_events",
+        "e|tbl|public.automation_events",
+        "n|rel|public.automation_events",
+        "n|type|public.automation_events"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "automation_receipts"],
+      "writes": [
+        "s|tbl|public.automation_receipts",
+        "n|tbl|public.automation_receipts",
+        "e|tbl|public.automation_receipts",
+        "n|rel|public.automation_receipts",
+        "n|type|public.automation_receipts"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "automation_runs"],
+      "writes": [
+        "s|tbl|public.automation_runs",
+        "n|tbl|public.automation_runs",
+        "e|tbl|public.automation_runs",
+        "n|rel|public.automation_runs",
+        "n|type|public.automation_runs"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "automation_variables"],
+      "writes": [
+        "s|tbl|public.automation_variables",
+        "n|tbl|public.automation_variables",
+        "e|tbl|public.automation_variables",
+        "n|rel|public.automation_variables",
+        "n|type|public.automation_variables"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "automations"],
+      "writes": [
+        "s|tbl|public.automations",
+        "n|tbl|public.automations",
+        "e|tbl|public.automations",
+        "n|rel|public.automations",
+        "n|type|public.automations"
+      ],
+      "reads": ["n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"automation_events\"]"
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"automation_receipts\"]"
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"automation_runs\"]"
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"automation_variables\"]"
+    },
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"automations\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"version\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"identity\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"name\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"occurred_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"replay_until\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"payload\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"cursor\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"attempts\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"lease_token\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"lease_until\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"dispatched_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_events\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"version\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"automation_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"identity\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"kind\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"status\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"occurrence_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"rule_revision\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"occurred_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"replay_until\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"lease_token\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"lease_until\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"parent_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"run_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"input_hash\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"mode\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"snapshot\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"result\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"recipient_user_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"recipient_channel\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"position\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"row_index\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"delivery_key\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"cursor\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"queue_attempts\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"roster_complete\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"reason\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"version\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"automation_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"rule_revision\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"occurrence_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"triggered_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"status\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"reason\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"snapshot\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"finished_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_variables\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_variables\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_variables\",\"key\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_variables\",\"version\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_variables\",\"value\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_variables\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_variables\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"project_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"author_user_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"author_key_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"author_session_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"author_scope\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"approved_variables\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"activated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"title\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"enabled\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"health\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"reason\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"health_checked_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"requires_approval\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"rule\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"revision\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"version\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"preset_key\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"next_run_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"schedule_cron\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"baseline\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"deleted_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"subscription\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"subscription_scope\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_receipts\",\"node_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automations\",\"source_health\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"automation_runs\",\"source_node\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_events_project_id_identity_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_events_dispatched_at_attempts_created_at_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_events_replay_until_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_receipts_rule_state_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_receipts_project_id_identity_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_receipts_running_rule\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_receipts_kind_status_lease_until_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_receipts_parent_id_kind_position_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_receipts_kind_status_queue_attempts_created_at_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_receipts_project_id_kind_created_at_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_receipts_replay_until_status_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_runs_automation_id_created_at_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_runs_project_id_created_at_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_runs_finished_at_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automation_variables_project_id_key_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automations_enabled_health_next_run_at_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automations_project_id_author_user_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automations_health_checked_at_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"automations_author_user_id_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automation_events\",\"automation_events_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automation_receipts\",\"automation_receipts_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automation_receipts\",\"automation_receipts_automation_id_automations_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automation_runs\",\"automation_runs_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automation_runs\",\"automation_runs_automation_id_automations_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automation_variables\",\"automation_variables_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automations\",\"automations_project_id_projects_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"automations\",\"automations_author_user_id_users_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"automation_events\",\"automation_events_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"automation_receipts\",\"automation_receipts_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"automation_runs\",\"automation_runs_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"automation_variables\",\"automation_variables_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"automations\",\"automations_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "checks\u0000[\"public\",\"automation_receipts\",\"automation_receipts_valid_id\"]"
+    }
+  ]
+}
