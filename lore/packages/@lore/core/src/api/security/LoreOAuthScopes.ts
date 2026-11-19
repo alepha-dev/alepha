@@ -74,6 +74,8 @@ export class LoreOAuthScopes {
     "persona",
     "usecase",
     "requirement",
+    // Chat (#E161).
+    "chat",
     "error",
     "quality",
     "app",

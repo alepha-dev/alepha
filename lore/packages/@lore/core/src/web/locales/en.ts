@@ -702,6 +702,10 @@ export default {
   "project.menu.create": "Create",
   "project.menu.dashboard": "Dashboard",
   "project.menu.activity": "Activity",
+  "project.menu.chat": "Chat",
+  "chat.page.empty.title": "No rooms yet",
+  "chat.page.empty.description":
+    "Rooms for this project will appear here, starting with general.",
   "project.menu.quests": "Quests",
   "project.menu.reports": "Reports",
   "project.menu.artifacts": "Artifacts",
@@ -1154,6 +1158,9 @@ export default {
   "project.capability.ship.label": "Ship",
   "project.capability.ship.description":
     "Apps and their deploys, analytics, errors, vitals.",
+  "project.capability.chat.label": "Chat",
+  "project.capability.chat.description":
+    "Rooms where members talk to each other and ask the Lore agent.",
   "project.capability.ship.option.track.label": "Track apps",
   "project.capability.ship.option.track.description":
     "Analytics, vitals and errors. Each app gets a sigil.",
@@ -4481,6 +4488,10 @@ export default {
   "permission.requirement.read": "Read requirements",
   "permission.requirement.write":
     "Create, edit and delete requirements, and set their release",
+  "permission.group.chat": "Chat",
+  "permission.chat.read": "Read the open rooms and the rooms they are in",
+  "permission.chat.write": "Write in rooms, create rooms and join open ones",
+  "permission.chat.manage": "Rename and archive any room, delete any message",
   "folios.wikilink.broken.requirementNotFound":
     "No requirement matches this reference.",
   "project.settings.nav.ranks": "Ranks",

@@ -10,6 +10,7 @@ import { ProjectPermissions } from "../security/ProjectPermissions.ts";
 import { BestEffort } from "../services/BestEffort.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectCapabilityGuards } from "../services/ProjectCapabilityGuards.ts";
+import { ProjectCapabilityHooks } from "../services/ProjectCapabilityHooks.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
@@ -38,6 +39,7 @@ export class ProjectCapabilityController {
   protected readonly audits = $inject(LoreAudits);
   protected readonly projectPermissions = $inject(ProjectPermissions);
   protected readonly capabilityGuards = $inject(ProjectCapabilityGuards);
+  protected readonly capabilityHooks = $inject(ProjectCapabilityHooks);
 
   /**
    * Declared above the actions on purpose: a `use: [...]` entry reading
@@ -194,6 +196,12 @@ export class ProjectCapabilityController {
             key: params.key,
             options,
           });
+          // Off to on: what the module does then (#E161, Chat's `general`).
+          await this.capabilityHooks.enabled(
+            params.projectId,
+            params.key,
+            user.id,
+          );
         }
       }
 

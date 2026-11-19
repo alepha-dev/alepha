@@ -1,6 +1,7 @@
 import { AlephaSigil } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreBuildWeb } from "@lore/build/web";
+import { LoreChatWeb } from "@lore/chat/web";
 import { LoreCoreWeb } from "@lore/core/web";
 import { ProjectScopeGrants } from "@lore/core/web";
 import { LorePlanRequirementsWeb } from "@lore/plan-requirements/web";
@@ -38,6 +39,8 @@ alepha.with(LoreBuildWeb);
 alepha.with(LoreShipWeb);
 // Plan's Requirements (#E153), after Plan's web module it extends.
 alepha.with(LorePlanRequirementsWeb);
+// Chat (#E161).
+alepha.with(LoreChatWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.
 alepha.with(LoreAssistantWeb);
 alepha.with(AlephaSigil);

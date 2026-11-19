@@ -14,6 +14,7 @@ import { dirname, join, normalize } from "node:path";
  * | `build`     | Lore as GitHub   | `core`      |
  * | `ship`      | Lore as Vercel   | `core`      |
  * | `plan-requirements` | Plan's Requirements | `core`, `plan`, `remember`, `ship` |
+ * | `chat`      | Lore Chat        | `core`      |
  *
  * A feature module never imports another one. A feature that spans two of
  * them (an epic files folios, an error is forwarded to a quest, a release
@@ -52,6 +53,9 @@ export class LorePackageGraph {
     // folio revisions. One way only: none of the three imports it, and what
     // they ask of it goes through a registry or a hook it subscribes to.
     "plan-requirements": ["core", "plan", "remember", "ship"],
+    // Chat (#E161): core only. The agent that answers in a room is the
+    // app's, registered on chat's responder registry.
+    chat: ["core"],
   };
 
   /**

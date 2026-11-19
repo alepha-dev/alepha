@@ -25,6 +25,7 @@ import {
   SquareCheckBig,
   Tag,
   X,
+  MessagesSquare,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -59,6 +60,7 @@ const CAPABILITY_ICONS: Record<
   remember: BookOpen,
   build: GitBranch,
   ship: AppWindow,
+  chat: MessagesSquare,
 };
 
 /**

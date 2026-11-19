@@ -100,6 +100,9 @@ test.describe("Project wizard", () => {
     const apps = page.getByRole("button", { name: /^ship\b/i }).first();
     await expect(workRow).toHaveAttribute("aria-pressed", "true");
     await expect(apps).toHaveAttribute("aria-pressed", "false");
+    // Chat (#E161) is offered, and left for the creator to choose.
+    const chat = page.getByRole("button", { name: /^chat\b/i }).first();
+    await expect(chat).toHaveAttribute("aria-pressed", "false");
 
     await page.getByRole("button", { name: /^next$/i }).click();
 
