@@ -28,6 +28,8 @@ import {
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
+const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
+
 class QuietQueue extends JobQueueProvider {
   public override async dispatch() {}
 }
@@ -211,18 +213,20 @@ describe("Quest reminders", () => {
       expect(reads.count).toBe(1);
     });
 
-    it("finds due quests through the index led by reminderNextAt", async ({
-      expect,
-    }) => {
-      const plan = await alepha.inject(DatabaseProvider).execute(
-        `EXPLAIN QUERY PLAN SELECT id FROM quests
+    // SQLite only on purpose: it reads SQLite's EXPLAIN QUERY PLAN.
+    it.skipIf(onPostgres)(
+      "finds due quests through the index led by reminderNextAt",
+      async ({ expect }) => {
+        const plan = await alepha.inject(DatabaseProvider).execute(
+          `EXPLAIN QUERY PLAN SELECT id FROM quests
          WHERE reminder_next_at <= 1 AND reminder_interval IS NOT NULL
            AND accepted_at IS NOT NULL AND accepted_by IS NOT NULL
            AND completed_at IS NULL AND shelved_at IS NULL AND deleted_at IS NULL
          ORDER BY reminder_next_at LIMIT 100`,
-      );
-      expect(JSON.stringify(plan)).toContain("quests_reminders_due_idx");
-    });
+        );
+        expect(JSON.stringify(plan)).toContain("quests_reminders_due_idx");
+      },
+    );
   });
 
   it("sends nothing when Plan's reminder option is off", async ({ expect }) => {
