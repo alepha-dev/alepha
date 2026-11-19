@@ -56,6 +56,8 @@ import {
   questShelveResultSchema,
   questTagsParamsSchema,
   questTagsResultSchema,
+  questReminderSetParamsSchema,
+  questReminderSetResultSchema,
   questUnassignParamsSchema,
   questUnassignResultSchema,
   questHoldParamsSchema,
@@ -749,6 +751,40 @@ export class QuestTools {
         shortId: quest.shortId,
         title: quest.title,
         status: this.getQuestStatus(quest),
+      };
+    },
+  });
+
+  /**
+   * The reminder the quest's Reminder panel sets (#Q3914).
+   */
+  quest_reminder_set = $tool({
+    description:
+      "Set or clear the reminder on a quest you hold: `daily`, `weekly` or `monthly` reminds its assignee in the app and by email at the top of the hour it falls due, `off` clears it. Only the assignee may set one, on an accepted quest, in a project with Plan's Reminders option on; clearing is always allowed.",
+    title: "Set quest reminder",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questReminderSetParamsSchema,
+      result: questReminderSetResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const quest = (await this.questController.setQuestReminder({
+        params: { id },
+        body: { interval: params.interval === "off" ? null : params.interval },
+      })) as { id: number; shortId: number; title: string } & {
+        reminderNextAt?: string;
+      };
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        title: quest.title,
+        interval: params.interval,
+        ...(quest.reminderNextAt ? { nextAt: quest.reminderNextAt } : {}),
       };
     },
   });

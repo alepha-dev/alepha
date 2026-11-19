@@ -8,6 +8,7 @@ import { AppInstanceCommand } from "./commands/AppInstanceCommand.ts";
 import { AppsCommand } from "./commands/AppsCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
+import { ChannelCommand } from "./commands/ChannelCommand.ts";
 import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
 import { EpicCommand } from "./commands/EpicCommand.ts";
@@ -16,6 +17,7 @@ import { EventCommand } from "./commands/EventCommand.ts";
 import { FeedbackCommand } from "./commands/FeedbackCommand.ts";
 import { FolioCommand } from "./commands/FolioCommand.ts";
 import { HostCommand } from "./commands/HostCommand.ts";
+import { InboxCommand } from "./commands/InboxCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
 import { MonitorCommand } from "./commands/MonitorCommand.ts";
 import { PersonaCommand } from "./commands/PersonaCommand.ts";
@@ -30,6 +32,7 @@ import { SecretsCommand } from "./commands/SecretsCommand.ts";
 import { SigilCommand } from "./commands/SigilCommand.ts";
 import { StackCommand } from "./commands/StackCommand.ts";
 import { SubscriptionCommand } from "./commands/SubscriptionCommand.ts";
+import { ThresholdCommand } from "./commands/ThresholdCommand.ts";
 import { UseCaseCommand } from "./commands/UseCaseCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
@@ -126,6 +129,10 @@ export const AlephaLoreCli = $module({
     ErrorCommand,
     EventCommand,
     SubscriptionCommand,
+    // Channels, thresholds, the inbox and preferences (#Q3914).
+    ChannelCommand,
+    ThresholdCommand,
+    InboxCommand,
     QualityCommand,
     AppInstanceCommand,
     DeployCommand,
