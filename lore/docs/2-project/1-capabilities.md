@@ -1,12 +1,12 @@
 # Capabilities
 
 A project is a container: a name, an address, its members, and the parts of
-Lore it uses. Those parts are its **capabilities**, and there are four, one
-for each thing Lore does: **Plan**, **Remember**, **Build** and **Ship**. A
-team that only wants a wiki turns on Remember alone; a team that plans,
-documents, codes and operates a product turns on all four.
+Lore it uses. Those parts are its **capabilities**, and there are five, one
+for each thing Lore does: **Plan**, **Remember**, **Build**, **Ship** and
+**Chat**. A team that only wants a wiki turns on Remember alone; a team that
+plans, documents, codes, operates and talks about a product turns on all five.
 
-## The four capabilities
+## The five capabilities
 
 | Capability   | Sidebar entries                   | What it is for                                                 |
 | ------------ | --------------------------------- | -------------------------------------------------------------- |
@@ -14,6 +14,7 @@ documents, codes and operates a product turns on all four.
 | **Remember** | Folios                            | The memory: linked notes, files and their history.             |
 | **Build**    | Reports ▸ Quality                 | The code: git repositories, and what the tests report.         |
 | **Ship**     | Apps, Errors, Stacks, Artifacts   | What you run: deploys, analytics, errors and checks.           |
+| **Chat**     | Chat                              | The talk: project rooms, mentions, and Lore's assistant.       |
 
 A capability is the pillar; the things inside it keep their own names. A quest
 is still a quest and a deploy is still a deploy: Ship is where deploys live.

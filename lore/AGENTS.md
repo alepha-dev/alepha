@@ -35,6 +35,16 @@ core <- chat
 - `./web` imports another package's `./api` or `./mcp` as `import type` only; runtime values come from `./schemas` or `./web`.
 - No deep import past `exports`, no import of `apps/*` (nor of `lore`), no `@/` inside a package.
 
+## Chat: rules a change must keep
+
+`@lore/chat` (#E161, design folio #F1528) holds project rooms, their messages and the live socket. Three rules, each enforced in code, outlive any page:
+
+- **The database is the source of truth.** A socket frame is a hint: every frame is addressed by the server to the members allowed to see the room at that moment (`ChatAudience`, one socket per member), and a page refetches over HTTP on every reconnection.
+- **A private room does not exist for a non-member**: not in a list or the jump list, not by its URL (404), not in a file (`ChatFileAccess` answers 404), not in a notification (a mention resolves only against the room's audience), not over MCP or the CLI, not for the agent. No room is a spotlight source: search sources never learn who asks.
+- **The agent is pinned to the room's project in code.** A run (`ChatAgentRunner`) is inside `McpProjectScope.pinned`, so a tool resolving any other project throws; other members' messages reach the model as a quoted block, never as instructions; it runs as the member who mentioned it, who alone decides a paused write.
+
+The agent is not in the package: `ChatResponderRegistry` (server) and `ChatAgentUiRegistry` (web) are the seams, and the app's assistant (`apps/lore/src/assistant/LoreChatResponder.ts`, `src/web/assistant/LoreAssistantShell.ts`) registers `lore`, its tool labels and its write cards on them, only when `AI_ASSISTANT_ENABLED` is on.
+
 ## The framework is `../framework`
 
 `alepha` and `@alepha/ui` resolve to `../framework/packages/alepha` and `../framework/packages/@alepha/ui` by `workspace:*`, as source, through the one root install. There is no vendored copy and no sync.

@@ -13,8 +13,8 @@ work the same for a Rust service, a mobile app or a hardware product.
 
 ## What a project holds
 
-A project is made of four **capabilities**, one for each thing Lore does:
-**Plan**, **Remember**, **Build** and **Ship**. You pick them when you create the project
+A project is made of five **capabilities**, one for each thing Lore does:
+**Plan**, **Remember**, **Build**, **Ship** and **Chat**. You pick them when you create the project
 and you can switch any of them later, without losing anything.
 
 | Capability   | What you get                                                                                                                               | Start here                                      |
@@ -23,6 +23,7 @@ and you can switch any of them later, without losing anything.
 | **Remember** | **Folios**: linked notes in a tree, with files and history. The project's memory.                                                          | [Folios](/lore/docs/remember-folios)            |
 | **Build**    | Your code: git **repositories** you clone and push, and the **quality** your tests report.                                                 | [Repositories](/lore/docs/build-repositories)   |
 | **Ship**     | Your deployed apps: deploys, analytics, errors and healthchecks.                                                                           | [Apps and instances](/lore/docs/ship-instances) |
+| **Chat**     | Project rooms where members talk, mention each other and ask Lore's assistant.                                                             | [Chat](/lore/docs/project-chat)                 |
 
 Every project also has a [dashboard](/lore/docs/project-dashboard),
 [reports](/lore/docs/project-reports), members with

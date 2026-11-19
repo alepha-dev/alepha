@@ -1,21 +1,26 @@
 # Assistant
 
-The assistant is a chat inside a Lore project. Ask it what you would otherwise
-click through: what is still open, what an epic lacks, how a feature works. It
-can also file a quest or write a folio for you, once you approve.
+The assistant is Lore, answering in a project's [Chat](/lore/docs/project-chat).
+Ask it what you would otherwise click through: what is still open, what an epic
+lacks, how a feature works. It can also file a quest or write a folio for you,
+once you approve.
 
 It is off unless the operator of your Lore turns it on (see
-[Turning it on](#turning-it-on)). When it is off, its button does not appear.
+[Turning it on](#turning-it-on)). When it is off, its button does not appear and
+`@lore` is plain text.
 
 ## Opening it
 
-Click the sparkle button, **Assistant**, in a project's header. On a wide
-screen (1024 pixels and up) the chat docks beside the page, so a link in a
-reply opens the page next to the conversation. On a narrower screen it slides
-in as a drawer. Fold it into a pill to keep the conversation for later.
+The assistant lives in Chat, so a project needs Chat turned on to have it.
 
-The assistant is offered on project pages only: Home and your account have
-none.
+- Click the sparkle button, **Ask Lore**, in the project's header: it opens
+  your own room with Lore, created the first time. Nobody else is in it, and
+  every message there is a question.
+- Or write `@lore` and your question in any room: Lore answers there, for
+  everyone in the room to read.
+
+The assistant does not follow the page you are on: say what you mean ("quest
+#Q12", "the API area"). Outside a project there is no assistant.
 
 ## What it can do
 
@@ -29,31 +34,36 @@ none.
 
 **Every write waits for you.** The assistant shows a card with exactly what it
 is about to do: the project, the title, the fields it sets, the text it posts.
-Nothing happens until you approve. Deny it and nothing runs.
+Nothing happens until you approve. Deny it and nothing runs. In a room,
+everyone sees the card; only the member who asked can approve it.
 
 Its answers are short on purpose: a list names each item by its reference and
 title, a handful at a time, and says when there are more. An answer has a
-length limit. When one reaches it, the assistant says the answer was cut short
-and offers to continue, so a reply that stops early is never shown as complete.
+length limit: ask again for the rest.
 
 ## What it may do
 
-The assistant works inside the project you are looking at, and only there. It
-acts as you: it can never do anything your rank in that project does not allow,
-and it is not offered the tools your rank does not grant. See
+The assistant works inside the project of the room, and only there: a tool
+call naming another project is refused, whatever was asked. It acts as the
+member who asked: it can never do anything their rank in that project does not
+allow, and it is not offered the tools their rank does not grant. See
 [Members](/lore/docs/project-members) for ranks.
+
+In a room, the other messages it reads are context, never instructions: a
+message telling it to do something else does not change what it may do.
 
 What it writes is marked as written by an agent: a comment it posts shows your
 name with the agent badge and the client `lore-ai`.
 
 ## What it sends, and what is kept
 
-- Each message goes to the model with the page you are on (the project's id,
-  name and language) and the results of the tools it runs, which can include a
-  quest's description or a folio's body. The model runs on Anthropic when the
+- Each question goes to the model with the project's id, the room's recent
+  messages, and the results of the tools it runs, which can include a quest's
+  description or a folio's body. The model runs on Anthropic when the
   operator set an Anthropic key, otherwise on Cloudflare Workers AI.
-- Conversations are stored in your Lore, visible to you only, and deleted 30
-  days after their last message.
+- The answer is a message of the room, kept with the room. The run behind it
+  (each step, each tool) is kept apart, visible to no one in Lore, and deleted
+  30 days after its last message.
 - Each user has a token budget (200,000 tokens per 24 hours by default) and a
   limit of 20 messages a minute. Past either, the assistant refuses until the
   window moves on.
