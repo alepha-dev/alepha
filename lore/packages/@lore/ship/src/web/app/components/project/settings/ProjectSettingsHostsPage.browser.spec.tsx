@@ -50,6 +50,11 @@ const homed = (id: string, slug: string) => ({
 });
 
 class HostLinks extends LinkProvider {
+  /**
+   * More home hosts, after the two every test has.
+   */
+  extraHome: object[] = [];
+
   override client(): any {
     return new Proxy(
       {},
@@ -70,6 +75,7 @@ class HostLinks extends LinkProvider {
                   items: [
                     homed(HOME_ID, "ovh-home"),
                     homed(UNLENT_ID, "spare"),
+                    ...this.extraHome,
                   ],
                 };
               }
@@ -158,5 +164,50 @@ describe("ProjectSettingsHostsPage", () => {
     // Add a host is the table's toolbar action, and Origin a filter.
     expect(screen.getByRole("button", { name: "Add a host" })).toBeTruthy();
     expect(screen.getAllByText("Origin").length).toBeGreaterThan(0);
+  });
+
+  it("reads N/A for a cloudflare host's Last seen, never connected for a bay one (#Q3943)", async ({
+    expect,
+  }) => {
+    cleanup();
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: HostLinks })
+      .with(AlephaReact)
+      .with(AlephaReactI18n)
+      .with(AlephaReactRouter);
+    alepha.inject(Routes);
+    alepha.inject(I18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    (alepha.inject(LinkProvider) as HostLinks).extraHome = [
+      {
+        ...homed("00000000-0000-4000-8000-0000000000c9", "cf"),
+        type: "cloudflare",
+        credentialStatus: "valid",
+      },
+    ];
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ id: 7, title: "Acme", slug: "acme" }),
+    );
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectSettingsHostsPage />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId("home-host-row")).toHaveLength(3),
+    );
+    const lastSeen = (slug: string) =>
+      [...document.querySelectorAll("tbody tr")]
+        .find((row) => row.textContent?.includes(slug))
+        ?.querySelector('[data-testid="host-last-seen"]')?.textContent;
+    expect(lastSeen("cf")).toBe("N/A");
+    expect(lastSeen("spare")).toBe("never connected");
   });
 });

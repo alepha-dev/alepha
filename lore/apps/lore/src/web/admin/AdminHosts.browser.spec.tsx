@@ -136,6 +136,34 @@ describe("AdminHosts", () => {
     expect(screen.getByText("Shop, Blog")).toBeTruthy();
   });
 
+  it("reads N/A for a cloudflare host's Last seen, never for a bay one (#Q3943)", async ({
+    expect,
+  }) => {
+    const links = await boot();
+    links.rows = [
+      LOOSE,
+      {
+        ...LOOSE,
+        id: "00000000-0000-4000-8000-0000000000e2",
+        slug: "cf",
+        type: "cloudflare",
+        credentialStatus: "valid",
+      } as AdminHostResource,
+    ];
+    render(
+      <AlephaContext.Provider value={alepha!}>
+        <DialogProvider>
+          <AdminHosts />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("cf")).toBeTruthy());
+    expect(
+      screen.getAllByTestId("host-last-seen").map((it) => it.textContent),
+    ).toEqual(["never", "N/A"]);
+  });
+
   /**
    * The admin's rename, as moderation (#Q3664): the dialog opens on the
    * host's names, sends both, and keeps a refusal in place.

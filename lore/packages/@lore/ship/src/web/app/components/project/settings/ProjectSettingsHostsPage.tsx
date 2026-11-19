@@ -337,14 +337,29 @@ const ProjectSettingsHostsPage = () => {
               sortValue: (row) => (row.owned ?? row.loan)?.lastSeenAt ?? "",
               cell: (row) => {
                 const host = row.owned ?? row.loan;
-                if (host?.type === "cloudflare") return null;
+                // A Cloudflare account never connects: not applicable, not
+                // "never connected", which reads as a fault (#Q3943).
+                if (host?.type === "cloudflare") {
+                  return (
+                    <span
+                      className="text-muted-foreground text-xs"
+                      title={tr("hosts.lastSeen.notApplicableHint")}
+                      data-testid="host-last-seen"
+                    >
+                      {tr("hosts.lastSeen.notApplicable")}
+                    </span>
+                  );
+                }
                 return host?.lastSeenAt ? (
                   <TimeAgo
                     value={host.lastSeenAt}
                     className="text-muted-foreground text-xs"
                   />
                 ) : (
-                  <span className="text-muted-foreground text-xs">
+                  <span
+                    className="text-muted-foreground text-xs"
+                    data-testid="host-last-seen"
+                  >
                     {tr("hosts.neverSeen")}
                   </span>
                 );
