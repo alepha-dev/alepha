@@ -729,6 +729,15 @@ describe("CliProvider", () => {
       expect(result).toContain("[arg2");
     });
 
+    it("names each tuple item by its title when it has one", () => {
+      const cli = createTestCli();
+      const schema = z.tuple([
+        z.text({ title: "repository" }),
+        z.text({ title: "dir" }).optional(),
+      ]);
+      expect(cli.testGenerateArgsUsage(schema)).toBe(" <repository> [dir]");
+    });
+
     it("should include type for numbers", () => {
       const cli = createTestCli();
       const schema = z.number().meta({ title: "count" });

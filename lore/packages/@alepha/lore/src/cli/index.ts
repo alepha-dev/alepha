@@ -10,6 +10,7 @@ import { AreaCommand } from "./commands/AreaCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
 import { ChannelCommand } from "./commands/ChannelCommand.ts";
+import { CodeCommand } from "./commands/CodeCommand.ts";
 import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
 import { EpicCommand } from "./commands/EpicCommand.ts";
@@ -37,6 +38,7 @@ import { ThresholdCommand } from "./commands/ThresholdCommand.ts";
 import { UseCaseCommand } from "./commands/UseCaseCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
+import { LoreGitCredentials } from "./services/LoreGitCredentials.ts";
 import { LoreOutput } from "./services/LoreOutput.ts";
 import { LoreReferences } from "./services/LoreReferences.ts";
 import { LoreRefusals } from "./services/LoreRefusals.ts";
@@ -136,6 +138,9 @@ export const AlephaLoreCli = $module({
     ThresholdCommand,
     InboxCommand,
     QualityCommand,
+    // Git repositories, `lore clone` and the credential helper (#Q3934).
+    LoreGitCredentials,
+    CodeCommand,
     AppInstanceCommand,
     DeployCommand,
     AppsCommand,

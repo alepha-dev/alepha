@@ -1709,7 +1709,7 @@ export class CliProvider {
     if (z.schema.items(schema).length > 0) {
       const items = z.schema.items(schema);
       const args = items.map((item, index) => {
-        const argName = `arg${index + 1}`;
+        const argName = this.schemaMeta(item).title ?? `arg${index + 1}`;
         const typeName = this.getTypeName(item);
         if (z.schema.isOptional(item)) {
           return `[${argName}${typeName}]`;
@@ -1960,7 +1960,7 @@ export class CliProvider {
     if (z.schema.items(schema).length > 0) {
       const items = z.schema.items(schema);
       const args = items.map((item, index) => {
-        const argName = `arg${index + 1}`;
+        const argName = this.schemaMeta(item).title ?? `arg${index + 1}`;
         const typeName = this.getTypeName(item);
         if (z.schema.isOptional(item)) {
           return c.set("GREY_DARK", `[${argName}${typeName}]`);

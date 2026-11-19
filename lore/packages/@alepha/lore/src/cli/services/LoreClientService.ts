@@ -134,6 +134,14 @@ export class LoreClientService {
    * nowhere, with nothing saying why. Empty reads as "unset", which is how
    * {@link authorization} already reads an empty key.
    */
+  /**
+   * `LORE_URL`, or nothing: the one setting that wins over a host a caller
+   * names, as git's credential request names one.
+   */
+  public hostnameFromEnv(): string | undefined {
+    return String(this.env.LORE_URL || "") || undefined;
+  }
+
   public hostname(): string {
     return String(
       this.env.LORE_URL ||

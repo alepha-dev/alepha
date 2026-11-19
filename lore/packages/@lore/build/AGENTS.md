@@ -38,6 +38,11 @@ The pillar is **Build**: the package `@lore/build`, its modules `LoreBuildApi` a
 - **Receive-pack is read before the backend** (`GitReceivePack`): the ref commands, capabilities and push options ahead of the pack, buffered and replayed. Deleting the default branch, or pushing to a repository over `maxRepositorySizeMb` (disk only), is refused with a `report-status` git prints. Non-fast-forward refusal is #Q3953, not here.
 - **Backends serve** (`GitBackend.serve`): Artifacts proxies to `info.remote` with the cached repo token, streaming both bodies; Node spawns `git upload-pack|receive-pack --stateless-rpc`, writes the `# service=` line unless the client speaks v2, passes a validated `Git-Protocol` as `GIT_PROTOCOL`, and kills the child when the request aborts. A gzipped request body is inflated by the route first.
 
+## CLI and MCP (#Q3934)
+
+- `code_repo_list|create|delete` (`CodeTools`) are `lore code repo list|create|delete`, on the same actions; create and delete answer 403 to every token (no `code:admin`).
+- The CLI is git's credential helper (`LoreGitCredentials`, `lore git-credential`): `lore login`, `lore clone` and `lore code remote --add` install it per host behind an empty `helper =` entry, so a keychain helper never stores a short-lived token. `apps/e2e/cli/code.e2e.spec.ts` proves it from a clean HOME with a storing helper configured.
+
 ## Quality (moved from Ship, #E162)
 
 - **A push is never gated**: `QualityController.pushQualityRun` answers whatever the switches say (`capability-gate.spec.ts`). What `build` gates is the Reports tab (`BuildShell`), the tiles (`BuildDashboardMetrics`, `QualityNumericCatalog`), the event `coverage.dropped` (`BuildProjectEvents`) and the `quality` permission group.
