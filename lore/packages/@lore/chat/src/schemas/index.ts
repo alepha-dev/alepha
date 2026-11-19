@@ -8,7 +8,10 @@
  */
 export { ChatChannels } from "./ChatChannels.ts";
 export { chatCapabilityOptionsSchema } from "../api/schemas/chatCapabilityOptionsSchema.ts";
-export { chatClientFrameSchema } from "../api/schemas/chatClientFrameSchema.ts";
+export {
+  type ChatClientFrame,
+  chatClientFrameSchema,
+} from "../api/schemas/chatClientFrameSchema.ts";
 export { chatMessageBodySchema } from "../api/schemas/chatMessageBodySchema.ts";
 export {
   type ChatMessageResource,

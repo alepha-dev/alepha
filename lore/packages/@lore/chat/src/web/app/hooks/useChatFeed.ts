@@ -3,7 +3,11 @@ import { useAuth } from "alepha/react/auth";
 import { useRoom } from "alepha/react/websocket";
 import { useRef } from "react";
 
-import { ChatChannels, type ChatServerFrame } from "../../../schemas/index.ts";
+import {
+  ChatChannels,
+  type ChatClientFrame,
+  type ChatServerFrame,
+} from "../../../schemas/index.ts";
 
 /**
  * The member's live chat feed (#E161): one socket per signed-in tab, its
@@ -20,7 +24,7 @@ import { ChatChannels, type ChatServerFrame } from "../../../schemas/index.ts";
 export const useChatFeed = (options: {
   onFrame: (frame: ChatServerFrame) => void;
   onResync: () => void;
-}): { connected: boolean } => {
+}): { connected: boolean; send: (frame: ChatClientFrame) => Promise<void> } => {
   const auth = useAuth();
   const channel = useInject(ChatChannels).feed;
   const userId = auth.user?.id;
@@ -50,5 +54,5 @@ export const useChatFeed = (options: {
     [userId, channel],
   );
 
-  return { connected: room.isConnected };
+  return { connected: room.isConnected, send: room.send };
 };

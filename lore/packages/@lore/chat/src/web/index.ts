@@ -4,6 +4,9 @@ import { AlephaWebSocket } from "alepha/websocket";
 
 import { ChatChannels } from "../schemas/ChatChannels.ts";
 import { ChatRouter } from "./app/ChatRouter.ts";
+import { ChatProjectLoader } from "./app/loaders/ChatProjectLoader.ts";
+import { ChatFeedHub } from "./app/services/ChatFeedHub.ts";
+import { ChatUnread } from "./app/services/ChatUnread.ts";
 import { ChatShell } from "./app/shell/ChatShell.ts";
 
 /**
@@ -29,6 +32,9 @@ export const LoreChatWeb = $module({
     // At boot, as every service a page injects: the container is locked
     // once the app has started.
     alepha.with(ChatChannels);
+    alepha.with(ChatFeedHub);
+    alepha.with(ChatUnread);
+    alepha.inject(ChatProjectLoader);
     alepha.inject(ChatShell);
   },
 });

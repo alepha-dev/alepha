@@ -47,6 +47,11 @@ export interface ChatComposerProps {
    * toast says why).
    */
   onUpload: (file: File) => Promise<ChatPendingFile | undefined>;
+  /**
+   * Called on every keystroke that changes the text; the page decides how
+   * often to tell the room.
+   */
+  onTyping?: () => void;
 }
 
 /**
@@ -295,6 +300,7 @@ const ChatComposer = (props: ChatComposerProps) => {
         onChange={(event) => {
           setValue(event.target.value);
           track(event.target.value, event.target.selectionStart);
+          if (event.target.value.trim()) props.onTyping?.();
         }}
         onSelect={(event) =>
           track(event.currentTarget.value, event.currentTarget.selectionStart)

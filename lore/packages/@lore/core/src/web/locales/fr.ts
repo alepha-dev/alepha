@@ -639,6 +639,8 @@ export default {
   "chat.composer.label": "Message",
   "chat.composer.placeholder": "Message dans #$1",
   "chat.composer.send": "Envoyer",
+  "chat.room.typing.one": "$1 est en train d'écrire…",
+  "chat.room.typing.many": "$1 personnes sont en train d'écrire…",
   "chat.message.files": "Fichiers",
   "chat.message.react": "Ajouter une réaction",
   "chat.composer.files": "Fichiers à envoyer",

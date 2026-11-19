@@ -296,7 +296,14 @@ export class ChatMessageService {
   public async unreadCounts(
     projectId: number,
     userId: string,
-  ): Promise<Array<{ roomId: string; unread: number; mentions: number }>> {
+  ): Promise<
+    Array<{
+      roomId: string;
+      unread: number;
+      mentions: number;
+      notifyLevel: "mentions" | "muted";
+    }>
+  > {
     const member = this.roomMembers.table;
     const message = this.messages.table;
     const mention = this.mentions.table;
@@ -304,6 +311,7 @@ export class ChatMessageService {
     const rows = await this.database.run(
       sql`
         SELECT ${member.roomId} AS room_id,
+          ${member.notifyLevel} AS notify_level,
           COUNT(${message.id}) AS unread,
           COUNT(${mention.id}) AS mentions
         FROM ${member}
@@ -316,10 +324,11 @@ export class ChatMessageService {
           AND ${room.projectId} = ${projectId}
           AND ${message.deletedAt} IS NULL
           AND (${message.authorId} IS NULL OR ${message.authorId} <> ${member.userId})
-        GROUP BY ${member.roomId}
+        GROUP BY ${member.roomId}, ${member.notifyLevel}
       `,
       z.object({
         room_id: z.text(),
+        notify_level: z.text(),
         unread: z.any(),
         mentions: z.any(),
       }),
@@ -328,6 +337,7 @@ export class ChatMessageService {
       roomId: String(row.room_id),
       unread: Number(row.unread),
       mentions: Number(row.mentions),
+      notifyLevel: row.notify_level === "muted" ? "muted" : "mentions",
     }));
   }
 

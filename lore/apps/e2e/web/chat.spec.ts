@@ -166,6 +166,34 @@ test.describe("Chat", () => {
       const served = await member.page.request.get(href!);
       expect(served.status()).toBe(200);
 
+      // Away from Chat, the sidebar's Chat row counts what arrives, live.
+      await member.page.goto(`/${slug}`);
+      const chatRow = member.page.getByRole("link", {
+        name: /^Chat( @?\d+)?$/,
+      });
+      await expect(chatRow).toBeVisible();
+      await composer.fill("badge check");
+      await composer.press("Enter");
+      // The badge sits beside the link, in the same menu item.
+      await expect(member.page.locator("li", { has: chatRow })).toContainText(
+        "1",
+        { timeout: 15_000 },
+      );
+
+      // Back in the room, the owner typing shows under the conversation.
+      await member.page.goto(`/${slug}/chat/general`);
+      await expect(member.page.getByTestId("chat-conversation")).toBeVisible();
+      // Typed until it shows: the member's socket may still be connecting
+      // when the first key goes, and a page tells the room at most every
+      // 3 s, so one key alone can be missed.
+      await expect(async () => {
+        await composer.pressSequentially("t");
+        await expect(member.page.getByTestId("chat-typing")).toContainText(
+          "is typing",
+          { timeout: 1_500 },
+        );
+      }).toPass({ timeout: 30_000 });
+
       // A phone shows the list and the conversation as two screens.
       await member.page.setViewportSize({ width: 390, height: 800 });
       await member.page.goto(`/${slug}/chat`);
