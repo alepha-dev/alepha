@@ -1,6 +1,8 @@
 import { LoreCoreWeb } from "@lore/core/web";
 import { $module } from "alepha";
+import { AlephaWebSocket } from "alepha/websocket";
 
+import { ChatChannels } from "../schemas/ChatChannels.ts";
 import { ChatRouter } from "./app/ChatRouter.ts";
 import { ChatShell } from "./app/shell/ChatShell.ts";
 
@@ -18,11 +20,15 @@ import { ChatShell } from "./app/shell/ChatShell.ts";
 export const LoreChatWeb = $module({
   name: "lore.chat.web",
   // Core first: booting this module alone boots what it depends on.
-  imports: [LoreCoreWeb],
+  // The socket client too: the Chat page holds the member's live feed.
+  imports: [LoreCoreWeb, AlephaWebSocket],
   register(alepha) {
     // Injected rather than listed in `services`, as every package does: a
     // listed service is tagged with this module.
     alepha.with(ChatRouter);
+    // At boot, as every service a page injects: the container is locked
+    // once the app has started.
+    alepha.with(ChatChannels);
     alepha.inject(ChatShell);
   },
 });

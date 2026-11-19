@@ -13,9 +13,13 @@ import {
   NotFoundError,
 } from "alepha/server";
 
+import { type ChatMessage, chatMessages } from "../entities/chatMessages.ts";
 import { chatRoomMembers } from "../entities/chatRoomMembers.ts";
 import { type ChatRoom, chatRooms } from "../entities/chatRooms.ts";
-import type { ChatRoomResource } from "../schemas/chatRoomResourceSchema.ts";
+import {
+  CHAT_PREVIEW_LENGTH,
+  type ChatRoomResource,
+} from "../schemas/chatRoomResourceSchema.ts";
 
 /**
  * The room model of Chat (#E161, #Q3925), and its one privacy rule: a private
@@ -43,6 +47,7 @@ export class ChatRoomService {
 
   protected readonly rooms = $repository(chatRooms);
   protected readonly members = $repository(chatRoomMembers);
+  protected readonly messages = $repository(chatMessages);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly roster = $inject(ProjectRoster);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -98,7 +103,7 @@ export class ChatRoomService {
     const memberships = await this.members.findMany({
       where: { roomId: { inArray: rooms.map((room) => room.id) } },
     });
-    return rooms.flatMap((room) => {
+    const visible = rooms.flatMap((room) => {
       const roomMembers = memberships.filter((it) => it.roomId === room.id);
       const mine = roomMembers.find((it) => it.userId === userId);
       if (room.private && !mine) {
@@ -106,6 +111,35 @@ export class ChatRoomService {
       }
       return [this.toResource(room, roomMembers.length, mine)];
     });
+    // One indexed read per room, `(room_id, id)` backwards, at the same
+    // time: a project has tens of rooms, not thousands.
+    const latest = await Promise.all(
+      visible.map((room) =>
+        this.messages.findMany({
+          where: { roomId: { eq: room.id } },
+          orderBy: [{ column: "id", direction: "desc" }],
+          limit: 1,
+        }),
+      ),
+    );
+    return visible.map((room, index) => {
+      const message = latest[index]?.[0];
+      return message ? { ...room, lastMessage: this.previewOf(message) } : room;
+    });
+  }
+
+  protected previewOf(
+    message: ChatMessage,
+  ): NonNullable<ChatRoomResource["lastMessage"]> {
+    const line = message.body.split("\n").find((it) => it.trim()) ?? "";
+    return {
+      id: message.id,
+      createdAt: message.createdAt,
+      ...(message.authorId ? { authorId: message.authorId } : {}),
+      ...(message.agent ? { agent: message.agent } : {}),
+      preview: line.trim().slice(0, CHAT_PREVIEW_LENGTH),
+      ...(message.deletedAt ? { deleted: true } : {}),
+    };
   }
 
   /**

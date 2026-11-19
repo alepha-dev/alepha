@@ -144,7 +144,6 @@ export * from "./providers/ServerSurfaceProvider.ts";
 export * from "./helpers/staticPage.ts";
 export * from "./helpers/webRequest.ts";
 export * from "./providers/ServerTimingProvider.ts";
-export * from "./services/RequestOriginPolicy.ts";
 export * from "./services/UserAgentParser.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@ import {
   currentProjectAtom,
   hasCapability,
 } from "@lore/core/web";
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { NotFoundError } from "alepha/server";
 
 /**
@@ -21,20 +21,41 @@ export class ChatRouter {
       title: `${previous?.title ?? ""} › Chat`,
     }),
     lazy: () => import("./components/ChatPage.tsx"),
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      // 404, never 403: a page the reader may not open does not exist for
-      // them, the same rule the other modules' pages follow.
-      if (!hasCapability(project, "chat")) {
-        throw new NotFoundError("Chat is not enabled for this project");
-      }
-      if (!canInProject(project, "chat:read")) {
-        throw new NotFoundError("Your rank does not open chat here");
-      }
-      return {};
-    },
+    loader: async () => this.gate(),
   });
+
+  /**
+   * One room, by its name: `/<project>/chat/<room>`, so a room can be
+   * linked. The same page: it reads the name from the route.
+   */
+  projectChatRoom = $pageProject({
+    name: "projectChatRoom",
+    path: "/chat/:room",
+    schema: { params: z.object({ room: z.text() }) },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Chat`,
+    }),
+    lazy: () => import("./components/ChatPage.tsx"),
+    loader: async () => this.gate(),
+  });
+
+  /**
+   * What both pages require: the project, its chat capability, and a rank
+   * that reads chat.
+   */
+  protected gate() {
+    const project = this.alepha.store.get(currentProjectAtom);
+    if (!project) {
+      throw new NotFoundError("Project not found");
+    }
+    // 404, never 403: a page the reader may not open does not exist for
+    // them, the same rule the other modules' pages follow.
+    if (!hasCapability(project, "chat")) {
+      throw new NotFoundError("Chat is not enabled for this project");
+    }
+    if (!canInProject(project, "chat:read")) {
+      throw new NotFoundError("Your rank does not open chat here");
+    }
+    return {};
+  }
 }
