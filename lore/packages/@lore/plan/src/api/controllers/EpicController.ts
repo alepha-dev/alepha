@@ -762,7 +762,8 @@ export class EpicController {
   }
 
   /**
-   * Delete the epic AND its quests (#Q2666), while it is `draft` or `ready`.
+   * Delete the epic AND its quests (#Q2666), while it is `draft` or
+   * `ready`, or `shelved` with no completed quest (#Q3950).
    *
    * It used to delete the epic alone and let `quests.epicId`'s
    * `ON DELETE SET NULL` drop every quest into the backlog as an orphan, so
@@ -800,11 +801,13 @@ export class EpicController {
       const epic = this.owned.get<Epic>();
       const project = this.owned.authority<Project>();
 
-      this.workflow.assertEpicDeletable(epic);
-
       const doomed = await this.quests.findMany({
         where: { epicId: { eq: epic.id } },
       });
+      this.workflow.assertEpicDeletable(
+        epic,
+        doomed.filter((quest) => quest.completedAt).length,
+      );
       if (
         doomed.length > 0 &&
         !(await this.ranks.can(project.organizationId!, "quest:delete", user))

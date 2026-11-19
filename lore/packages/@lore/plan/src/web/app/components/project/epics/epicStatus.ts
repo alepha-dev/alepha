@@ -119,9 +119,14 @@ export const openQuestsOf = (epic: Pick<EpicResource, "progress">): number =>
   epic.progress.total - epic.progress.completed - epic.progress.shelved;
 
 /**
- * Whether the server will delete this epic: only while its plan is open,
- * `draft` or `ready` (`EpicWorkflowService.assertEpicDeletable`, #Q2666).
- * Shared by the list's row and bulk menus and the epic page's menu.
+ * Whether the server will delete this epic: while its plan is open, `draft`
+ * or `ready` (#Q2666), or `shelved` with no completed quest (#Q3950), as
+ * `EpicWorkflowService.assertEpicDeletable` rules. Shared by the list's row
+ * and bulk menus and the epic page's menu.
  */
-export const isDeletable = (epic: Pick<EpicResource, "status">): boolean =>
-  epic.status === "draft" || epic.status === "ready";
+export const isDeletable = (
+  epic: Pick<EpicResource, "status" | "progress">,
+): boolean =>
+  epic.status === "draft" ||
+  epic.status === "ready" ||
+  (epic.status === "shelved" && epic.progress.completed === 0);

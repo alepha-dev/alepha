@@ -495,7 +495,7 @@ export class EpicCommand {
   public readonly delete = $command({
     name: "delete",
     description:
-      "Delete a draft or ready epic AND every quest filed under it, for good",
+      "Delete a draft, ready or shelved epic AND every quest filed under it, for good",
     args: EpicCommand.REF_ARG,
     flags: z.object({
       ...EpicCommand.PROJECT_FLAG,

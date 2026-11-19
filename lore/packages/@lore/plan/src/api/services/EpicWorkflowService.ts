@@ -291,7 +291,8 @@ export class EpicWorkflowService {
   }
 
   /**
-   * An epic is deleted only while it is `draft` or `ready` (#Q2666).
+   * An epic is deleted while it is `draft` or `ready` (#Q2666), or
+   * `shelved` with no completed quest (#Q3950).
    *
    * Deleting an epic deletes its quests, and that is the rule
    * {@link assertPlanEditable} already applies to deleting one quest out of
@@ -299,14 +300,25 @@ export class EpicWorkflowService {
    * `completed` one is the record of shipped work (commits, changelog
    * entries): neither is a mis-created plan, so the refusal names shelving,
    * which keeps the record and takes the work out of the backlog.
+   *
+   * A `shelved` epic is a plan set aside, and deleting it is how one is
+   * abandoned for good: its open quests were reset to to do by the shelve,
+   * so they hold no work in progress. What it may still hold is a completed
+   * quest, if it had started, and that is the record of shipped work a
+   * completed epic is refused for: `completed` counts them, and one is
+   * enough to refuse, naming how many.
    */
-  assertEpicDeletable(epic: Pick<Epic, "number" | "status">): void {
+  assertEpicDeletable(
+    epic: Pick<Epic, "number" | "status">,
+    completed = 0,
+  ): void {
     if (epic.status === "draft" || epic.status === "ready") return;
 
     const reference = formatReference("epic", epic.number);
     if (epic.status === "shelved") {
+      if (completed === 0) return;
       throw new BadRequestError(
-        `Cannot delete Epic ${reference}: it is shelved. Unshelve it first; only a draft or ready epic can be deleted.`,
+        `Cannot delete Epic ${reference}: it is shelved but holds ${completed} completed ${completed === 1 ? "quest" : "quests"}, the record of shipped work. Keep it shelved.`,
       );
     }
     if (epic.status === "completed") {

@@ -62,6 +62,7 @@ describe("EpicMoreMenu", () => {
   const mount = async (
     status: EpicResource["status"],
     allowed: Partial<typeof perms> = {},
+    progress: EpicResource["progress"] = anEpic.progress,
   ) => {
     Object.assign(perms, { shelve: true, unshelve: true, delete: true });
     Object.assign(perms, allowed);
@@ -81,7 +82,7 @@ describe("EpicMoreMenu", () => {
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <EpicMoreMenu
-            epic={{ ...anEpic, status }}
+            epic={{ ...anEpic, status, progress }}
             onChange={() => {}}
             onDeleted={() => {
               left += 1;
@@ -110,8 +111,22 @@ describe("EpicMoreMenu", () => {
     expect(await entries()).toEqual(["Shelve"]);
   });
 
-  it("offers Unshelve on a shelved epic, and no Delete", async ({ expect }) => {
+  it("offers Unshelve and Delete on a shelved epic with nothing completed (#Q3950)", async ({
+    expect,
+  }) => {
     await mount("shelved");
+    expect(await entries()).toEqual(["Unshelve", "Delete"]);
+  });
+
+  it("offers no Delete on a shelved epic holding a completed quest", async ({
+    expect,
+  }) => {
+    await mount("shelved", {}, {
+      completed: 1,
+      inProgress: 0,
+      shelved: 2,
+      total: 3,
+    } as EpicResource["progress"]);
     expect(await entries()).toEqual(["Unshelve"]);
   });
 

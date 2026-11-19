@@ -540,7 +540,8 @@ export class EpicTools {
   });
 
   /**
-   * Delete an epic AND its quests, while it is `draft` or `ready` (#Q2666).
+   * Delete an epic AND its quests, while it is `draft` or `ready` (#Q2666),
+   * or `shelved` with no completed quest (#Q3950).
    *
    * The description carries the child semantics in its first sentence on
    * purpose, and it used to promise the opposite (quests DETACHED, never
@@ -551,7 +552,7 @@ export class EpicTools {
    */
   epic_delete = $tool({
     description:
-      "Permanently delete an epic AND every quest filed under it; irreversible. Allowed only while the epic is `draft` or `ready`: an `in_progress` or `completed` epic is refused, because it holds started or shipped work - use epic_shelve to set an in-progress plan aside instead. Its folios are unfiled and kept, never deleted. Use this to remove a mis-created or abandoned plan; to keep the quests, move them out first with quest_update `epic_number: 0`. Returns how many quests were deleted.",
+      "Permanently delete an epic AND every quest filed under it; irreversible. Allowed while the epic is `draft` or `ready`, or `shelved` with no completed quest (how a plan set aside is abandoned for good). An `in_progress` or `completed` epic is refused, and so is a shelved one holding a completed quest, because they hold started or shipped work - use epic_shelve to set an in-progress plan aside instead. Its folios are unfiled and kept, never deleted. Use this to remove a mis-created or abandoned plan; to keep the quests, move them out first with quest_update `epic_number: 0`. Returns how many quests were deleted.",
     title: "Delete epic",
     annotations: {
       destructiveHint: true,
