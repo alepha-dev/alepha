@@ -53,6 +53,7 @@ describe("ChatComposer", () => {
         <ChatComposer
           room={ROOM}
           candidates={CANDIDATES}
+          onUpload={async () => undefined}
           onSend={async (body) => {
             sent.push(body);
             return true;

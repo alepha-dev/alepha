@@ -1,0 +1,375 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "787769a5-731e-45ea-92c0-b4db8cc240a5",
+  "prevIds": ["4e60fe92-d29d-4d0f-9a0a-da2ab113e4d1"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "chat_reactions"],
+      "writes": [
+        "s|tbl|public.chat_reactions",
+        "n|tbl|public.chat_reactions",
+        "e|tbl|public.chat_reactions",
+        "n|rel|public.chat_reactions",
+        "n|type|public.chat_reactions",
+        "n|rel|public.chat_reactions_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "chat_messages", "attachments"],
+      "writes": [
+        "s|col|public.chat_messages.attachments",
+        "n|col|public.chat_messages.attachments",
+        "e|col|public.chat_messages.attachments"
+      ],
+      "reads": ["n|tbl|public.chat_messages", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_reactions",
+        "chat_reactions_message_id_user_id_emoji_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_reactions_message_id_user_id_emoji_idx",
+        "n|idx|public.chat_reactions_message_id_user_id_emoji_idx",
+        "e|idx|public.chat_reactions_message_id_user_id_emoji_idx",
+        "n|rel|public.chat_reactions_message_id_user_id_emoji_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_reactions",
+        "n|sch|public",
+        "n|col|public.chat_reactions.message_id",
+        "n|col|public.chat_reactions.user_id",
+        "n|col|public.chat_reactions.emoji"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_reactions",
+        "chat_reactions_user_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_reactions_user_id_idx",
+        "n|idx|public.chat_reactions_user_id_idx",
+        "e|idx|public.chat_reactions_user_id_idx",
+        "n|rel|public.chat_reactions_user_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_reactions",
+        "n|sch|public",
+        "n|col|public.chat_reactions.user_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_reactions"],
+      "writes": [
+        "s|fk|public.chat_reactions.chat_reactions_message_id_chat_messages_id_fkey",
+        "n|fk|public.chat_reactions.chat_reactions_message_id_chat_messages_id_fkey",
+        "e|fk|public.chat_reactions.chat_reactions_message_id_chat_messages_id_fkey",
+        "n|con|public.chat_reactions.chat_reactions_message_id_chat_messages_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_reactions",
+        "n|sch|public",
+        "n|tbl|public.chat_messages",
+        "n|sch|public",
+        "n|col|public.chat_reactions.message_id",
+        "n|col|public.chat_messages.id",
+        "e|uniqueness|public.chat_messages.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_reactions"],
+      "writes": [
+        "s|fk|public.chat_reactions.chat_reactions_room_id_chat_rooms_id_fkey",
+        "n|fk|public.chat_reactions.chat_reactions_room_id_chat_rooms_id_fkey",
+        "e|fk|public.chat_reactions.chat_reactions_room_id_chat_rooms_id_fkey",
+        "n|con|public.chat_reactions.chat_reactions_room_id_chat_rooms_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_reactions",
+        "n|sch|public",
+        "n|tbl|public.chat_rooms",
+        "n|sch|public",
+        "n|col|public.chat_reactions.room_id",
+        "n|col|public.chat_rooms.id",
+        "e|uniqueness|public.chat_rooms.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_reactions"],
+      "writes": [
+        "s|fk|public.chat_reactions.chat_reactions_user_id_users_id_fkey",
+        "n|fk|public.chat_reactions.chat_reactions_user_id_users_id_fkey",
+        "e|fk|public.chat_reactions.chat_reactions_user_id_users_id_fkey",
+        "n|con|public.chat_reactions.chat_reactions_user_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_reactions",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.chat_reactions.user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "chat_reactions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "attachments",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "message_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "room_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "emoji",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "chat_reactions_message_id_user_id_emoji_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "message_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "emoji",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "chat_reactions_user_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "chat_reactions_message_id_chat_messages_id_fkey",
+        "nameExplicit": false,
+        "columns": ["message_id"],
+        "schemaTo": "public",
+        "tableTo": "chat_messages",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "chat_reactions_room_id_chat_rooms_id_fkey",
+        "nameExplicit": false,
+        "columns": ["room_id"],
+        "schemaTo": "public",
+        "tableTo": "chat_rooms",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "chat_reactions_user_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": ["user_id"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_reactions",
+        "name": "chat_reactions_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

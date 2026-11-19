@@ -164,6 +164,16 @@ export class ChatRoomService {
     return room;
   }
 
+  /**
+   * A room by its id, whatever its privacy: for a caller that checks the
+   * reader itself, as the file access rule does.
+   */
+  public async roomById(roomId: string): Promise<ChatRoom | undefined> {
+    return (
+      (await this.rooms.findOne({ where: { id: { eq: roomId } } })) ?? undefined
+    );
+  }
+
   public async resource(
     room: ChatRoom,
     userId: string,

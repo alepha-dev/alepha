@@ -27,12 +27,13 @@ import type { ChatMessageController } from "../../../api/controllers/ChatMessage
 import type { ChatRoomController } from "../../../api/controllers/ChatRoomController.ts";
 import type {
   ChatMessageResource,
+  ChatReactionEmoji,
   ChatRoomResource,
   ChatServerFrame,
 } from "../../../schemas/index.ts";
 import { useChatFeed } from "../hooks/useChatFeed.ts";
 import { useRoomMessages } from "../hooks/useRoomMessages.ts";
-import type { ChatMentionCandidate } from "./ChatComposer.tsx";
+import type { ChatMentionCandidate, ChatPendingFile } from "./ChatComposer.tsx";
 import Conversation from "./Conversation.tsx";
 import NewRoomDialog from "./NewRoomDialog.tsx";
 import RoomList from "./RoomList.tsx";
@@ -181,12 +182,18 @@ const ChatPage = () => {
     });
   };
 
-  const sendMessage = useAction<[roomId: string, body: string], void>(
+  const sendMessage = useAction<
+    [roomId: string, body: string, attachments: string[]],
+    void
+  >(
     {
-      handler: async (_context, roomId, body) => {
+      handler: async (_context, roomId, body, attachments) => {
         const message = await messagesApi.sendChatMessage({
           params: { projectId, roomId },
-          body: { body },
+          body: {
+            ...(body ? { body } : {}),
+            ...(attachments.length ? { attachments } : {}),
+          },
         });
         conversation.add(message);
         refreshLists();
@@ -197,8 +204,37 @@ const ChatPage = () => {
 
   // The composer keeps its text when the send failed: the toast says why,
   // and the words are not lost.
-  const send = async (body: string): Promise<boolean> =>
-    room ? (await sendMessage.run(room.id, body)).ok : false;
+  const send = async (body: string, attachments: string[]): Promise<boolean> =>
+    room ? (await sendMessage.run(room.id, body, attachments)).ok : false;
+
+  const uploadFile = useAction<[file: File], ChatPendingFile>(
+    {
+      handler: async (_context, file) => {
+        const uploaded = await messagesApi.uploadChatAttachment({
+          params: { projectId },
+          body: { file },
+        });
+        return { id: uploaded.id, name: uploaded.name };
+      },
+    },
+    [messagesApi, projectId],
+  );
+
+  const react = useAction<
+    [message: ChatMessageResource, emoji: ChatReactionEmoji],
+    void
+  >(
+    {
+      handler: async (_context, message, emoji) => {
+        const updated = await messagesApi.toggleChatReaction({
+          params: { projectId, roomId: message.roomId, messageId: message.id },
+          body: { emoji },
+        });
+        conversation.add(updated);
+      },
+    },
+    [messagesApi, projectId, conversation.add],
+  );
 
   const editMessage = useAction<
     [message: ChatMessageResource, body: string],
@@ -296,6 +332,11 @@ const ChatPage = () => {
       }}
       onLoadOlder={conversation.loadOlder}
       onSend={send}
+      onUpload={async (file) => {
+        const result = await uploadFile.run(file);
+        return result.ok ? result.value : undefined;
+      }}
+      onReact={(message, emoji) => void react.run(message, emoji)}
       onBack={isMobile ? () => open() : undefined}
     />
   ) : (

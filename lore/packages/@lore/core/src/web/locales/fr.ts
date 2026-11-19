@@ -639,6 +639,12 @@ export default {
   "chat.composer.label": "Message",
   "chat.composer.placeholder": "Message dans #$1",
   "chat.composer.send": "Envoyer",
+  "chat.message.files": "Fichiers",
+  "chat.message.react": "Ajouter une réaction",
+  "chat.composer.files": "Fichiers à envoyer",
+  "chat.composer.removeFile": "Retirer $1",
+  "chat.composer.uploading": "Envoi en cours…",
+  "chat.composer.attach": "Joindre des fichiers",
   "chat.room.new.title": "Nouveau salon",
   "chat.room.new.description":
     "Un salon ouvert est pour tout le projet ; un salon privé, pour les personnes que vous invitez.",

@@ -11,9 +11,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 import type {
   ChatMessageResource,
+  ChatReactionEmoji,
   ChatRoomResource,
 } from "../../../schemas/index.ts";
-import ChatComposer, { type ChatMentionCandidate } from "./ChatComposer.tsx";
+import ChatComposer, {
+  type ChatMentionCandidate,
+  type ChatPendingFile,
+} from "./ChatComposer.tsx";
 import ChatMessageRow from "./ChatMessageRow.tsx";
 import RoomJumpList from "./RoomJumpList.tsx";
 
@@ -47,11 +51,13 @@ export interface ConversationProps {
    */
   onEdit: (message: ChatMessageResource, body: string) => Promise<boolean>;
   onDelete: (message: ChatMessageResource) => Promise<void>;
+  onReact: (message: ChatMessageResource, emoji: ChatReactionEmoji) => void;
+  onUpload: (file: File) => Promise<ChatPendingFile | undefined>;
   onLoadOlder: () => void;
   /**
    * Resolves `true` when the message was sent, and the composer empties.
    */
-  onSend: (body: string) => Promise<boolean>;
+  onSend: (body: string, attachments: string[]) => Promise<boolean>;
   /**
    * Every room the reader can see, for the jump list.
    */
@@ -158,6 +164,15 @@ const Conversation = (props: ConversationProps) => {
         canDelete={own || props.canManage}
         onEdit={(body) => props.onEdit(message, body)}
         onDelete={() => props.onDelete(message)}
+        me={props.me}
+        nameOf={(userId) =>
+          displayName(userById.get(userId), tr("chat.message.removedMember"))
+        }
+        onReact={
+          props.canWrite && !room.archivedAt
+            ? (emoji) => props.onReact(message, emoji)
+            : undefined
+        }
       />
     );
   });
@@ -243,6 +258,7 @@ const Conversation = (props: ConversationProps) => {
           room={room}
           candidates={props.candidates}
           onSend={props.onSend}
+          onUpload={props.onUpload}
         />
       ) : (
         <p className="text-muted-foreground border-t p-3 text-center text-sm">

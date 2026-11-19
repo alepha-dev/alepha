@@ -436,7 +436,11 @@ export {
   DashboardScopeService,
   type ResolvedDashboardScope,
 } from "./services/DashboardScopeService.ts";
-export { FileAccessRegistry } from "./services/FileAccessRegistry.ts";
+export {
+  type FileAccessReader,
+  FileAccessRegistry,
+  type FileAccessRule,
+} from "./services/FileAccessRegistry.ts";
 export { LoreAuditService } from "./services/LoreAuditService.ts";
 export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";

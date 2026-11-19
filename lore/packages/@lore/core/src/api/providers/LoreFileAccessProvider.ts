@@ -80,7 +80,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
     // (`FileAccessRegistry`, #E75 #Q2623); core asserts it.
     const rule = this.fileAccess.rule(file.bucket);
     if (rule) {
-      const owner = await rule(file.id);
+      const owner = await rule(file.id, { id: user.id });
       if (owner) {
         await this.ranks.assert(
           await this.projectSecurity.organizationIdOf(owner.projectId),

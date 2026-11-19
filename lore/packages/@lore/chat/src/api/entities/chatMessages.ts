@@ -49,6 +49,11 @@ export const chatMessages = $entity({
      * keeps its copy.
      */
     aiMessageId: z.uuid().optional(),
+    /**
+     * The files the message carries (#Q3939), in the `chat-attachments`
+     * bucket. No column default: one on D1 is a table rebuild.
+     */
+    attachments: z.array(z.uuid()).optional(),
   }),
   indexes: [{ columns: ["roomId", "id"] }, { columns: ["authorId"] }],
 });

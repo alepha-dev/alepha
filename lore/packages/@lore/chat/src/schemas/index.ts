@@ -14,6 +14,10 @@ export {
   type ChatMessageResource,
   chatMessageResourceSchema,
 } from "../api/schemas/chatMessageResourceSchema.ts";
+export {
+  type ChatReactionEmoji,
+  chatReactionSchema,
+} from "../api/schemas/chatReactionSchema.ts";
 export { chatRoomMemberResourceSchema } from "../api/schemas/chatRoomMemberResourceSchema.ts";
 export { chatRoomNameSchema } from "../api/schemas/chatRoomNameSchema.ts";
 export {

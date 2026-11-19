@@ -1,7 +1,7 @@
 import { Button, cn, Textarea } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { ArrowUp, Bot } from "lucide-react";
+import { ArrowUp, Bot, Paperclip, X } from "lucide-react";
 import {
   type KeyboardEvent,
   useId,
@@ -27,13 +27,26 @@ export interface ChatMentionCandidate {
   agent?: boolean;
 }
 
+/**
+ * A file uploaded for the next message, before it is sent.
+ */
+export interface ChatPendingFile {
+  id: string;
+  name: string;
+}
+
 export interface ChatComposerProps {
   room: ChatRoomResource;
   candidates: ChatMentionCandidate[];
   /**
    * Resolves `true` when the message was sent, and the composer empties.
    */
-  onSend: (body: string) => Promise<boolean>;
+  onSend: (body: string, attachments: string[]) => Promise<boolean>;
+  /**
+   * Uploads one file for the next message; `undefined` when it failed (the
+   * toast says why).
+   */
+  onUpload: (file: File) => Promise<ChatPendingFile | undefined>;
 }
 
 /**
@@ -61,6 +74,22 @@ const ChatComposer = (props: ChatComposerProps) => {
     { start: number; query: string } | undefined
   >(undefined);
   const [active, setActive] = useState(0);
+  const [pending, setPending] = useState<ChatPendingFile[]>([]);
+  const [uploading, setUploading] = useState(0);
+  const picker = useRef<HTMLInputElement>(null);
+
+  /**
+   * Picked, pasted or dropped: each file is uploaded now, sent with the
+   * next message.
+   */
+  const attach = async (files: File[]) => {
+    for (const file of files) {
+      setUploading((count) => count + 1);
+      const uploaded = await props.onUpload(file);
+      setUploading((count) => count - 1);
+      if (uploaded) setPending((held) => [...held, uploaded]);
+    }
+  };
 
   const options = mention
     ? props.candidates
@@ -109,11 +138,17 @@ const ChatComposer = (props: ChatComposerProps) => {
 
   const send = async () => {
     const body = value.trim();
-    if (!body || busy) return;
+    if ((!body && pending.length === 0) || busy || uploading > 0) return;
     setBusy(true);
-    const sent = await props.onSend(body);
+    const sent = await props.onSend(
+      body,
+      pending.map((file) => file.id),
+    );
     setBusy(false);
-    if (sent) setValue("");
+    if (sent) {
+      setValue("");
+      setPending([]);
+    }
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -146,12 +181,65 @@ const ChatComposer = (props: ChatComposerProps) => {
 
   return (
     <form
-      className="relative flex items-end gap-2 border-t p-3"
+      className="relative flex flex-wrap items-end gap-2 border-t p-3"
       onSubmit={(event) => {
         event.preventDefault();
         void send();
       }}
     >
+      {(pending.length > 0 || uploading > 0) && (
+        <ul
+          className="flex w-full flex-wrap gap-1.5"
+          aria-label={tr("chat.composer.files")}
+          data-testid="chat-pending-files"
+        >
+          {pending.map((file) => (
+            <li
+              key={file.id}
+              className="bg-muted flex items-center gap-1 rounded-md px-2 py-0.5 text-xs"
+            >
+              {file.name}
+              <button
+                type="button"
+                aria-label={tr("chat.composer.removeFile", {
+                  args: [file.name],
+                })}
+                onClick={() =>
+                  setPending((held) => held.filter((it) => it.id !== file.id))
+                }
+              >
+                <X className="size-3" />
+              </button>
+            </li>
+          ))}
+          {uploading > 0 && (
+            <li className="text-muted-foreground text-xs">
+              {tr("chat.composer.uploading")}
+            </li>
+          )}
+        </ul>
+      )}
+      <input
+        ref={picker}
+        type="file"
+        multiple
+        hidden
+        data-testid="chat-file-input"
+        onChange={(event) => {
+          const files = [...(event.target.files ?? [])];
+          event.target.value = "";
+          void attach(files);
+        }}
+      />
+      <Button
+        type="button"
+        variant="minimal"
+        size="icon"
+        aria-label={tr("chat.composer.attach")}
+        onClick={() => picker.current?.click()}
+      >
+        <Paperclip className="size-4" />
+      </Button>
       {open && (
         <div
           id={listId}
@@ -212,14 +300,34 @@ const ChatComposer = (props: ChatComposerProps) => {
           track(event.currentTarget.value, event.currentTarget.selectionStart)
         }
         onBlur={() => setMention(undefined)}
+        // Dropped on the text, as pasted: the files join the next message.
+        onDragOver={(event) => {
+          if (event.dataTransfer.types.includes("Files"))
+            event.preventDefault();
+        }}
+        onDrop={(event) => {
+          if (event.dataTransfer.files.length === 0) return;
+          event.preventDefault();
+          void attach([...event.dataTransfer.files]);
+        }}
+        onPaste={(event) => {
+          const files = [...event.clipboardData.files];
+          if (files.length === 0) return;
+          event.preventDefault();
+          void attach(files);
+        }}
         onKeyDown={onKeyDown}
-        className="max-h-48 min-h-9 resize-none"
+        className="max-h-48 min-h-9 flex-1 resize-none"
       />
       <Button
         type="submit"
         size="icon"
         aria-label={tr("chat.composer.send")}
-        disabled={busy || value.trim().length === 0}
+        disabled={
+          busy ||
+          uploading > 0 ||
+          (value.trim().length === 0 && pending.length === 0)
+        }
       >
         <ArrowUp className="size-4" />
       </Button>

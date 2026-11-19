@@ -730,6 +730,12 @@ export default {
   "chat.composer.label": "Message",
   "chat.composer.placeholder": "Message #$1",
   "chat.composer.send": "Send",
+  "chat.message.files": "Files",
+  "chat.message.react": "Add a reaction",
+  "chat.composer.files": "Files to send",
+  "chat.composer.removeFile": "Remove $1",
+  "chat.composer.uploading": "Uploading…",
+  "chat.composer.attach": "Attach files",
   "chat.room.new.title": "New room",
   "chat.room.new.description":
     "An open room is for everyone in the project; a private room is for the people you invite.",

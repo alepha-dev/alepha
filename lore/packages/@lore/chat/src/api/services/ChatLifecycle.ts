@@ -1,11 +1,14 @@
 import { ProjectDeletionService } from "@lore/core/api";
 import { $hook, $inject } from "alepha";
+import { FileService } from "alepha/api/files";
 import { $repository } from "alepha/orm";
 
 import { chatMentions } from "../entities/chatMentions.ts";
 import { chatMessages } from "../entities/chatMessages.ts";
+import { chatReactions } from "../entities/chatReactions.ts";
 import { chatRoomMembers } from "../entities/chatRoomMembers.ts";
 import { chatRooms } from "../entities/chatRooms.ts";
+import { ChatBuckets } from "./ChatBuckets.ts";
 
 /**
  * What happens to chat when a project or an account goes (#E161, #Q3954).
@@ -37,6 +40,8 @@ export class ChatLifecycle {
   protected readonly members = $repository(chatRoomMembers);
   protected readonly messages = $repository(chatMessages);
   protected readonly mentions = $repository(chatMentions);
+  protected readonly reactions = $repository(chatReactions);
+  protected readonly files = $inject(FileService);
 
   constructor() {
     this.deletion.registerStep({
@@ -62,6 +67,18 @@ export class ChatLifecycle {
     });
     const roomIds = rooms.map((room) => room.id);
     if (roomIds.length > 0) {
+      // The files first: once the messages are gone nothing lists them.
+      const carrying = await this.messages.findMany({
+        where: { roomId: { inArray: roomIds } },
+        columns: ["attachments"],
+      });
+      const fileIds = carrying.flatMap((it) => it.attachments ?? []);
+      if (fileIds.length > 0) {
+        await this.files.deleteFiles(fileIds, {
+          bucket: ChatBuckets.ATTACHMENT_BUCKET,
+        });
+      }
+      await this.reactions.deleteMany({ roomId: { inArray: roomIds } });
       await this.mentions.deleteMany({ roomId: { inArray: roomIds } });
       await this.members.deleteMany({ roomId: { inArray: roomIds } });
       await this.messages.deleteMany({ roomId: { inArray: roomIds } });
@@ -71,6 +88,7 @@ export class ChatLifecycle {
 
   public async deleteAccount(userId: string): Promise<void> {
     await this.mentions.deleteMany({ userId: { eq: userId } });
+    await this.reactions.deleteMany({ userId: { eq: userId } });
     await this.members.deleteMany({ userId: { eq: userId } });
     await this.messages.updateMany(
       { authorId: { eq: userId } },

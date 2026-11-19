@@ -136,6 +136,36 @@ test.describe("Chat", () => {
       ).toBeVisible({ timeout: 15_000 });
       await expect(member.page.getByText("please look again")).toHaveCount(0);
 
+      // A reaction from the member shows under the owner's message, live.
+      const hello = member.page
+        .getByTestId("chat-message")
+        .filter({ hasText: "Hello from the owner" });
+      await hello.hover();
+      await hello.getByRole("button", { name: "Add a reaction" }).click();
+      await member.page.getByRole("button", { name: "👍" }).click();
+      await expect(
+        page
+          .getByTestId("chat-message")
+          .filter({ hasText: "Hello from the owner" })
+          .getByTestId("chat-reactions"),
+      ).toContainText("👍 1", { timeout: 15_000 });
+
+      // A file, picked and sent with no text, opens for the other member.
+      await page.getByTestId("chat-file-input").setInputFiles({
+        name: "notes.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.from("release notes"),
+      });
+      await expect(page.getByTestId("chat-pending-files")).toContainText(
+        "notes.txt",
+      );
+      await composer.press("Enter");
+      const link = member.page.getByRole("link", { name: "notes.txt" });
+      await expect(link).toBeVisible({ timeout: 15_000 });
+      const href = await link.getAttribute("href");
+      const served = await member.page.request.get(href!);
+      expect(served.status()).toBe(200);
+
       // A phone shows the list and the conversation as two screens.
       await member.page.setViewportSize({ width: 390, height: 800 });
       await member.page.goto(`/${slug}/chat`);
