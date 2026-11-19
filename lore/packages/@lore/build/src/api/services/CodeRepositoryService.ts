@@ -146,6 +146,7 @@ export class CodeRepositoryService {
       slug: row.slug,
       defaultBranch: row.defaultBranch,
       cloneUrl: this.cloneUrl(projectSlug, row.slug, base),
+      backend: this.backend.kind,
       createdAt: row.createdAt,
     };
   }

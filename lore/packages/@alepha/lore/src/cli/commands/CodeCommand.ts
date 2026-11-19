@@ -5,6 +5,7 @@ import { $client } from "alepha/server/links";
 import { ShellProvider } from "alepha/system";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
+import { LoreCodeImport } from "../services/LoreCodeImport.ts";
 import { LoreGitCredentials } from "../services/LoreGitCredentials.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
@@ -30,6 +31,7 @@ export class CodeCommand {
   protected readonly render = $inject(LoreOutput);
   protected readonly credentials = $inject(LoreGitCredentials);
   protected readonly shell = $inject(ShellProvider);
+  protected readonly importer = $inject(LoreCodeImport);
 
   /**
    * ⚠️ Declared after `client`: a field initializer reading a field declared
@@ -183,10 +185,81 @@ export class CodeCommand {
     },
   });
 
+  public readonly import = $command({
+    name: "import",
+    description:
+      "Push this checkout into a new or empty Lore repository, in slices a large history needs; resumable",
+    args: z
+      .text({
+        title: "repo",
+        description:
+          "The repository. Defaults to the one named like the project; created when absent.",
+      })
+      .optional(),
+    flags: z.object({
+      ...CodeCommand.PROJECT_FLAG,
+      branch: z
+        .text({
+          description:
+            "The local branch that becomes the default one. Defaults to the checked-out branch.",
+        })
+        .optional(),
+      "max-objects": z
+        .integer()
+        .describe("New objects per push, 40000 by default")
+        .optional(),
+      "max-mb": z
+        .integer()
+        .describe("Packed MiB per push, 60 by default")
+        .optional(),
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const { project, projectId } = await this.projects.named(
+          flags.project,
+          context,
+        );
+        const source =
+          flags.branch ??
+          (
+            await this.shell.run(["git", "symbolic-ref", "--short", "HEAD"], {
+              root,
+              capture: true,
+            })
+          ).trim();
+        const slug = args ?? project;
+        const { repositories } = await this.api.listCodeRepositories({
+          params: { projectId },
+        });
+        const repository =
+          repositories.find((it) => it.slug === slug) ??
+          (await this.api.createCodeRepository({
+            params: { projectId },
+            body: { slug, defaultBranch: source },
+          }));
+        await this.credentials.install(this.client.hostname());
+        const result = await this.importer.run({
+          root,
+          url: repository.cloneUrl,
+          source,
+          branch: repository.defaultBranch,
+          sliced: repository.backend === "artifacts",
+          maxObjects: flags["max-objects"],
+          maxBytes: flags["max-mb"] ? flags["max-mb"] * 1024 * 1024 : undefined,
+          log: (line) => print(line),
+        });
+        print(
+          `Imported ${source} as ${repository.defaultBranch} (${result.head.slice(0, 9)}) into ${repository.cloneUrl}, in ${result.pushes} pushes.`,
+        );
+      });
+    },
+  });
+
   public readonly code = $command({
     name: "code",
     description: "A project's git repositories on Lore",
-    children: [this.repo, this.remote],
+    children: [this.repo, this.remote, this.import],
     handler: async ({ help }) => {
       help();
     },

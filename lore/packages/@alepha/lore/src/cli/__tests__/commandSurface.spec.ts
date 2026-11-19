@@ -148,7 +148,7 @@ describe("the Lore CLI command surface", () => {
       subscription: ["list", "set"],
       channel: ["list", "add", "update", "delete", "rotate"],
       threshold: ["get", "set"],
-      code: ["repo", "remote"],
+      code: ["repo", "remote", "import"],
       inbox: ["list", "read"],
       notifications: ["get", "set"],
       deploy: ["status", "rollback"],

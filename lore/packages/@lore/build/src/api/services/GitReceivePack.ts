@@ -49,12 +49,130 @@ export class GitReceivePack {
       }
       buffer = this.concat(buffer, value);
     }
+    if (!parsed.capabilities.includes("push-options")) {
+      return {
+        commands: parsed.commands,
+        capabilities: parsed.capabilities,
+        pushOptions: parsed.pushOptions,
+        body: this.replay(buffer, reader),
+      };
+    }
+    // Lore advertised `push-options` itself (see `advertisePushOptions`), so
+    // the backend never did: it gets the commands without the capability and
+    // without the options section, which Lore keeps.
+    const capabilities = parsed.capabilities.filter(
+      (it) => it !== "push-options",
+    );
+    const head = this.concat(
+      ...parsed.commands.map((command, index) =>
+        this.pkt(
+          `${command.oldId} ${command.newId} ${command.ref}${index === 0 ? `\0${capabilities.join(" ")}` : ""}\n`,
+        ),
+      ),
+      this.flush(),
+      buffer.slice(parsed.headEnd),
+    );
     return {
       commands: parsed.commands,
-      capabilities: parsed.capabilities,
+      capabilities,
       pushOptions: parsed.pushOptions,
-      body: this.replay(buffer, reader),
+      body: this.replay(head, reader),
     };
+  }
+
+  /**
+   * A receive-pack advertisement with `push-options` among its capabilities.
+   *
+   * Lore reads push options itself (`lore code import` marks its pushes
+   * `lore-import`), whatever the backend says: Artifacts may not advertise
+   * them, and a git client refuses to send an option the server did not
+   * offer. `inspect` takes them out again before the backend sees the push.
+   */
+  public advertisePushOptions(
+    advertisement: ReadableStream<Uint8Array>,
+  ): ReadableStream<Uint8Array> {
+    const reader = advertisement.getReader();
+    const decoder = new TextDecoder();
+    let buffer: Uint8Array = new Uint8Array(0);
+    let done = false;
+    let rewritten = false;
+    return new ReadableStream<Uint8Array>({
+      pull: async (controller) => {
+        if (rewritten) {
+          const next = await reader.read();
+          if (next.done) controller.close();
+          else controller.enqueue(next.value);
+          return;
+        }
+        // Read until the first ref line is whole: after the `# service=`
+        // line and its flush, when they are there.
+        for (;;) {
+          const at = this.firstRefLine(buffer);
+          if (at || done) {
+            rewritten = true;
+            if (!at) {
+              if (buffer.length) controller.enqueue(buffer);
+              controller.close();
+              return;
+            }
+            const line = decoder.decode(buffer.slice(at.start + 4, at.end));
+            const nul = line.indexOf("\0");
+            let updated = line;
+            if (nul !== -1) {
+              const caps = line
+                .slice(nul + 1)
+                .replace(/\n$/, "")
+                .split(" ");
+              if (!caps.includes("push-options")) {
+                updated = `${line.slice(0, nul + 1)}${[...caps.filter(Boolean), "push-options"].join(" ")}\n`;
+              }
+            }
+            controller.enqueue(
+              this.concat(
+                buffer.slice(0, at.start),
+                this.pkt(updated),
+                buffer.slice(at.end),
+              ),
+            );
+            return;
+          }
+          const next = await reader.read();
+          if (next.done) done = true;
+          else buffer = this.concat(buffer, next.value);
+        }
+      },
+      cancel: (reason) => reader.cancel(reason),
+    });
+  }
+
+  /**
+   * Where the first ref line of an advertisement sits in the buffer, once
+   * it is whole.
+   */
+  protected firstRefLine(
+    buffer: Uint8Array,
+  ): { start: number; end: number } | undefined {
+    const decoder = new TextDecoder();
+    let offset = 0;
+    for (;;) {
+      if (offset + 4 > buffer.length) return undefined;
+      const length = Number.parseInt(
+        decoder.decode(buffer.slice(offset, offset + 4)),
+        16,
+      );
+      if (Number.isNaN(length)) return undefined;
+      if (length === 0) {
+        offset += 4;
+        continue;
+      }
+      if (offset + length > buffer.length) return undefined;
+      const payload = decoder.decode(buffer.slice(offset + 4, offset + length));
+      if (payload.startsWith("# service=")) {
+        offset += length;
+        continue;
+      }
+      return { start: offset, end: offset + length };
+    }
   }
 
   /**
@@ -123,6 +241,7 @@ export class GitReceivePack {
     commands: GitRefCommand[];
     capabilities: string[];
     pushOptions: string[];
+    headEnd: number;
   } {
     const decoder = new TextDecoder();
     const commands: GitRefCommand[] = [];
@@ -132,14 +251,26 @@ export class GitReceivePack {
     let section: "commands" | "options" = "commands";
     for (;;) {
       if (offset + 4 > buffer.length) {
-        return { complete: ended, commands, capabilities, pushOptions };
+        return {
+          complete: ended,
+          commands,
+          capabilities,
+          pushOptions,
+          headEnd: offset,
+        };
       }
       const length = Number.parseInt(
         decoder.decode(buffer.slice(offset, offset + 4)),
         16,
       );
       if (Number.isNaN(length)) {
-        return { complete: true, commands, capabilities, pushOptions };
+        return {
+          complete: true,
+          commands,
+          capabilities,
+          pushOptions,
+          headEnd: offset,
+        };
       }
       if (length === 0) {
         offset += 4;
@@ -147,10 +278,22 @@ export class GitReceivePack {
           section = "options";
           continue;
         }
-        return { complete: true, commands, capabilities, pushOptions };
+        return {
+          complete: true,
+          commands,
+          capabilities,
+          pushOptions,
+          headEnd: offset,
+        };
       }
       if (offset + length > buffer.length) {
-        return { complete: ended, commands, capabilities, pushOptions };
+        return {
+          complete: ended,
+          commands,
+          capabilities,
+          pushOptions,
+          headEnd: offset,
+        };
       }
       const line = decoder
         .decode(buffer.slice(offset + 4, offset + length))

@@ -179,6 +179,13 @@ export class GitHttpController {
     if (service === "git-receive-pack" && body) {
       const inspected = await this.receivePack.inspect(body);
       body = inspected.body;
+      if (inspected.pushOptions.includes("lore-import")) {
+        // `lore code import` (#Q3935): links no commit to a quest (#Q3945).
+        this.log.debug("Import push", {
+          repository: repository.id,
+          refs: inspected.commands.map((command) => command.ref),
+        });
+      }
       const refusal = await this.refusalOf(
         repository.backendRef,
         repository.defaultBranch,
@@ -217,6 +224,14 @@ export class GitHttpController {
       reply.setHeader("content-type", response.contentType);
     }
     reply.setHeader("cache-control", "no-cache, max-age=0, must-revalidate");
+    if (
+      call.advertise &&
+      service === "git-receive-pack" &&
+      response.status === 200 &&
+      typeof response.body !== "string"
+    ) {
+      return this.receivePack.advertisePushOptions(response.body) as StreamLike;
+    }
     return response.body as string | StreamLike;
   }
 

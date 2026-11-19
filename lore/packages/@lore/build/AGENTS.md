@@ -43,6 +43,11 @@ The pillar is **Build**: the package `@lore/build`, its modules `LoreBuildApi` a
 - `code_repo_list|create|delete` (`CodeTools`) are `lore code repo list|create|delete`, on the same actions; create and delete answer 403 to every token (no `code:admin`).
 - The CLI is git's credential helper (`LoreGitCredentials`, `lore git-credential`): `lore login`, `lore clone` and `lore code remote --add` install it per host behind an empty `helper =` entry, so a keychain helper never stores a short-lived token. `apps/e2e/cli/code.e2e.spec.ts` proves it from a clean HOME with a storing helper configured.
 
+## Import (#Q3935)
+
+- `lore code import` (`LoreCodeImport` in `@alepha/lore`) slices on Artifacts (the repository answers `backend: "artifacts"`) and pushes in one go on a local backend. A slice is at most 40,000 new objects and 60 MiB, found by counting candidate ranges (`rev-list --count --objects`, `--disk-usage`), never by pushing; a refusal as too big halves the budget; a merge over the budget alone goes through `refs/lore-import/<n>` first. Measured on this repository's `main` against a local bare remote: 12 pushes, 16 s, HEAD matching.
+- Every import push carries the push option `lore-import`. Lore advertises `push-options` on every receive-pack advertisement and strips the options before the backend sees the push (`GitReceivePack`), so the marker works on Artifacts whatever it advertises.
+
 ## Quality (moved from Ship, #E162)
 
 - **A push is never gated**: `QualityController.pushQualityRun` answers whatever the switches say (`capability-gate.spec.ts`). What `build` gates is the Reports tab (`BuildShell`), the tiles (`BuildDashboardMetrics`, `QualityNumericCatalog`), the event `coverage.dropped` (`BuildProjectEvents`) and the `quality` permission group.

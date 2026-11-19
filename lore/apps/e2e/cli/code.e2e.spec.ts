@@ -257,6 +257,33 @@ describe("a Lore repository from plain git and the lore CLI", () => {
     expect(existsSync(stored) ? readFileSync(stored, "utf8") : "").toBe("");
   });
 
+  it("imports a checkout into a new repository, branches and tags with it", async () => {
+    const source = join(home, "existing");
+    git(["init", "--quiet", "-b", "main", source]);
+    for (const name of ["one", "two", "three"]) {
+      writeFileSync(join(source, `${name}.txt`), `${name}\n`);
+      git(["add", "-A"], source);
+      git(["commit", "--quiet", "-m", name], source);
+    }
+    git(["tag", "v1.0.0"], source);
+    git(["branch", "docs", "HEAD~1"], source);
+
+    const imported = await lore(["code", "import", "imported"], source);
+    expect(imported.code).toBe(0);
+    expect(imported.out).toMatch(/Imported main as main/);
+
+    const cloned = await lore(["clone", `${slug}/imported`, "imported"]);
+    expect(cloned.code).toBe(0);
+    const clone = join(home, "imported");
+    expect(git(["rev-parse", "HEAD"], clone)).toBe(
+      git(["rev-parse", "HEAD"], source),
+    );
+    expect(git(["tag", "--list"], clone)).toBe("v1.0.0");
+    expect(git(["ls-remote", "--heads", "origin", "docs"], clone)).toMatch(
+      /refs\/heads\/docs/,
+    );
+  });
+
   it("refuses a push past the default branch's deletion", async () => {
     const source = join(home, "source");
     let refused = "";

@@ -15,5 +15,11 @@ export const codeRepositorySchema = z.object({
    * `/<project>.git` for the repository named like its project.
    */
   cloneUrl: z.text({ maxLength: 2048 }),
+  /**
+   * Where the repository lives: `artifacts` (Cloudflare, which caps a push
+   * at unpack, so `lore code import` slices) or `local` (bare repositories
+   * on disk, no cap).
+   */
+  backend: z.enum(["artifacts", "local"]),
   createdAt: z.datetime(),
 });
