@@ -270,6 +270,36 @@ describe("git smart HTTP", () => {
     expect(await response.text()).toMatch(/refs\/heads\/main/);
   });
 
+  it("offers push-options and takes an import's push option, keeping it from the backend", async ({
+    expect,
+  }) => {
+    const { owner, cloneUrl } = await aProject();
+    const advertisement = await fetch(
+      `${cloneUrl}/info/refs?service=git-receive-pack`,
+      { headers: { authorization: `Basic ${btoa(`x:${owner.key}`)}` } },
+    );
+    expect(await advertisement.text()).toMatch(/push-options/);
+    const source = await aCheckout();
+
+    await git(
+      [
+        "push",
+        "--quiet",
+        "--push-option=lore-import",
+        withKey(cloneUrl, owner.key),
+        "main",
+      ],
+      source,
+    );
+    await git(["clone", "--quiet", withKey(cloneUrl, owner.key), "imported"]);
+
+    const { stdout } = await git(
+      ["log", "--oneline"],
+      join(ctx.work, "imported"),
+    );
+    expect(stdout).toMatch(/first/);
+  });
+
   it("refuses to delete the default branch, saying why", async ({ expect }) => {
     const { owner, cloneUrl } = await aProject();
     const source = await aCheckout();

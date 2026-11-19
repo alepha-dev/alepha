@@ -409,17 +409,26 @@ A project with **Build** on holds git repositories on Lore. Clone and push
 with plain git over HTTPS: the `lore` CLI answers git's credential requests,
 so nobody copies a token by hand.
 
-| Command                               | What it does                                                                                                |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `lore clone <project>[/<repo>] [dir]` | Clone a repository. Without `/<repo>`, the one named like the project, or the project's only one.           |
-| `lore code repo list`                 | The project's repositories, with their clone URLs.                                                          |
-| `lore code repo create <name>`        | Create an empty repository. `--default-branch` names the branch, `main` by default.                         |
-| `lore code repo delete <name>`        | Delete a repository and everything in it.                                                                   |
-| `lore code remote`                    | Print a repository's clone URL; `--add` adds it as a remote (`--name`, `lore` by default) of this checkout. |
-| `lore git-credential`                 | The credential helper git calls. Not for typing.                                                            |
+| Command                               | What it does                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lore clone <project>[/<repo>] [dir]` | Clone a repository. Without `/<repo>`, the one named like the project, or the project's only one.                                                                               |
+| `lore code repo list`                 | The project's repositories, with their clone URLs.                                                                                                                              |
+| `lore code repo create <name>`        | Create an empty repository. `--default-branch` names the branch, `main` by default.                                                                                             |
+| `lore code repo delete <name>`        | Delete a repository and everything in it.                                                                                                                                       |
+| `lore code remote`                    | Print a repository's clone URL; `--add` adds it as a remote (`--name`, `lore` by default) of this checkout.                                                                     |
+| `lore code import [<repo>]`           | Push this checkout into a new or empty repository: the default branch, then the other branches and the tags. `--branch` picks the local branch, the checked-out one by default. |
+| `lore git-credential`                 | The credential helper git calls. Not for typing.                                                                                                                                |
 
 A clone URL is `https://<instance>/<project>/<repo>.git`, or
 `https://<instance>/<project>.git` for the repository named like its project.
+
+`lore code import` is how an existing repository moves to Lore, from any
+checkout: no access to the old host is needed. On Lore's cloud a large
+history goes in by several pushes of at most 40,000 new objects each, and the
+command stops before pushing anything if a file is over 32 MiB. Run it again
+after an interruption: it reads what the repository already holds and
+carries on. A self-hosted Lore takes everything in one push. Imported commits
+are never linked to quests.
 
 `lore login`, `lore clone` and `lore code remote --add` install the helper for
 the instance in your global git config, behind an empty `helper` entry, so a
