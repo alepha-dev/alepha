@@ -1375,6 +1375,25 @@ describe("the worker-side Cloudflare adapter", () => {
       });
     });
 
+    it("binds the Artifacts namespace a config declares, in the API's names", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployConfig(fs, {
+        artifacts: [{ binding: "ARTIFACTS", namespace: "lore" }],
+      });
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.bindings).toContainEqual({
+        type: "artifacts",
+        name: "ARTIFACTS",
+        namespace: "lore",
+      });
+    });
+
     it("refuses a key it cannot send, by name, before uploading anything", async ({
       expect,
     }) => {

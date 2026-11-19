@@ -1307,6 +1307,16 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
         id: entry.id,
       });
     }
+    // Cloudflare Artifacts, git repositories as a binding (Lore's Build
+    // pillar). wrangler names the key `binding`; the API names it `name`. The
+    // namespace needs no provisioning: binding one is enough for it to exist.
+    for (const entry of config.artifacts ?? []) {
+      bindings.push({
+        type: "artifacts",
+        name: entry.binding,
+        namespace: entry.namespace,
+      });
+    }
     // ⚠️ wrangler carries `send_email` on its own, and this upload does not:
     // an app with `AlephaEmailCloudflare` deployed through Lore would lose
     // `env.SEND_EMAIL` and fail every send behind a green deploy. The address
@@ -1370,6 +1380,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     "ai",
     "services",
     "hyperdrive",
+    "artifacts",
     "durable_objects",
     "migrations",
     "exports",
@@ -1733,6 +1744,10 @@ interface WranglerConfig extends DurableObjectLifecycleConfig {
    * writes it.
    */
   hyperdrive?: Array<{ binding: string; id: string }>;
+  /**
+   * Cloudflare Artifacts namespaces, in wrangler's shape.
+   */
+  artifacts?: Array<{ binding: string; namespace: string }>;
   migrations?: Array<Record<string, unknown>>;
   observability?: Record<string, unknown>;
   placement?: Record<string, unknown>;

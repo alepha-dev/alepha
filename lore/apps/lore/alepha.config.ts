@@ -177,6 +177,16 @@ export default defineConfig({
          */
         placement: { mode: "smart" },
         /**
+         * Cloudflare Artifacts: the git repositories of Build (#E162). One
+         * namespace per Lore instance, named like the Worker; each repository
+         * in it is named by id (`<projectId>-<repoId>`), never by slug, since
+         * a deleted name cannot be reused for a while.
+         *
+         * Only the Worker has it: `alepha dev`, the specs and the Docker image
+         * run on Node, where `LocalGitBackend` keeps bare repositories on disk.
+         */
+        artifacts: [{ binding: "ARTIFACTS", namespace: "lore-production" }],
+        /**
          * D1 read replicas (#Q2403): reads go through the Sessions API so a
          * replica near the request can serve them, and the bookmark rides in
          * the `alepha_d1_bookmark` cookie so a user reads their own writes.
