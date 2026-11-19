@@ -34,7 +34,9 @@ import { useChatFeed } from "../hooks/useChatFeed.ts";
 import { useRoomMessages } from "../hooks/useRoomMessages.ts";
 import type { ChatMentionCandidate } from "./ChatComposer.tsx";
 import Conversation from "./Conversation.tsx";
+import NewRoomDialog from "./NewRoomDialog.tsx";
 import RoomList from "./RoomList.tsx";
+import RoomMembersPanel from "./RoomMembersPanel.tsx";
 
 /**
  * The Chat page (#E161, #Q3929), layout C of the mockup: the room inbox on
@@ -127,7 +129,11 @@ const ChatPage = () => {
   useChatFeed({
     onFrame: (frame: ChatServerFrame) => {
       conversation.apply(frame);
-      if (frame.projectId === projectId) refreshLists();
+      if (frame.projectId !== projectId) return;
+      refreshLists();
+      if (frame.type === "room.changed") {
+        queries.invalidate(["chat-room-members", frame.roomId]);
+      }
     },
     onResync: () => {
       refreshLists();
@@ -247,8 +253,15 @@ const ChatPage = () => {
   const dateTime = useInject(DateTimeProvider);
   const [now] = useState(() => dateTime.nowMillis());
 
+  const [creating, setCreating] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const canManage = !!project && canInProject(project, "chat:manage");
+
   const list = (
     <RoomList
+      onCreate={
+        roomsApi.createChatRoom.can() ? () => setCreating(true) : undefined
+      }
       rooms={rooms}
       unread={unread}
       selectedId={room?.id}
@@ -269,7 +282,11 @@ const ChatPage = () => {
       hasMore={conversation.hasMore}
       loading={conversation.loading}
       canWrite={messagesApi.sendChatMessage.can()}
-      canManage={!!project && canInProject(project, "chat:manage")}
+      canManage={canManage}
+      rooms={rooms}
+      onOpenRoom={open}
+      panelOpen={panelOpen}
+      onTogglePanel={() => setPanelOpen((value) => !value)}
       candidates={candidates}
       onEdit={async (message, body) =>
         (await editMessage.run(message, body)).ok
@@ -290,14 +307,50 @@ const ChatPage = () => {
     </div>
   );
 
+  const panel =
+    room && panelOpen ? (
+      <RoomMembersPanel
+        room={room}
+        projectId={projectId}
+        me={me}
+        canManage={canManage}
+        users={users}
+        members={memberPage?.items ?? []}
+        onClose={() => setPanelOpen(false)}
+        onRenamed={(renamed) => open(renamed)}
+      />
+    ) : undefined;
+
+  const dialog = (
+    <NewRoomDialog
+      open={creating}
+      projectId={projectId}
+      onOpenChange={setCreating}
+      onCreated={(created) => open(created)}
+    />
+  );
+
   if (isMobile) {
-    return <div className="h-full min-h-0">{room ? right : list}</div>;
+    return (
+      <div className="h-full min-h-0">
+        {panel ?? (room ? right : list)}
+        {dialog}
+      </div>
+    );
   }
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[18rem_1fr]">
+    <div
+      className={
+        panel
+          ? "grid h-full min-h-0 grid-cols-[18rem_1fr_18rem]"
+          : "grid h-full min-h-0 grid-cols-[18rem_1fr]"
+      }
+    >
       <div className="min-h-0 border-r">{list}</div>
       <div className="min-h-0">{right}</div>
+      {panel}
+      {dialog}
     </div>
   );
 };

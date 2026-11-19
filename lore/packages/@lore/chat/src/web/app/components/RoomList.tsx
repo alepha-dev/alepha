@@ -1,6 +1,7 @@
-import { cn } from "@alepha/ui";
+import { Button, cn } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import type { ChatRoomResource } from "../../../schemas/index.ts";
@@ -17,6 +18,10 @@ export interface RoomListProps {
   selectedId?: string;
   now: number;
   onOpen: (room: ChatRoomResource) => void;
+  /**
+   * The `+` above the list, when the reader may create a room.
+   */
+  onCreate?: () => void;
 }
 
 const FILTERS: ChatRoomFilter[] = ["all", "unread", "private"];
@@ -72,6 +77,18 @@ const RoomList = (props: RoomListProps) => {
             {tr(FILTER_LABELS[key])}
           </button>
         ))}
+        {props.onCreate && (
+          <Button
+            variant="minimal"
+            size="icon-xs"
+            className="ml-auto"
+            aria-label={tr("chat.room.new.title")}
+            data-testid="chat-new-room"
+            onClick={props.onCreate}
+          >
+            <Plus className="size-3.5" />
+          </Button>
+        )}
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto p-1">
         {active.map((room) => (

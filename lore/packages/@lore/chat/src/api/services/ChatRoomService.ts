@@ -3,7 +3,7 @@ import {
   ProjectRoster,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import {
@@ -20,6 +20,8 @@ import {
   CHAT_PREVIEW_LENGTH,
   type ChatRoomResource,
 } from "../schemas/chatRoomResourceSchema.ts";
+import { ChatAudience } from "./ChatAudience.ts";
+import { ChatLive } from "./ChatLive.ts";
 
 /**
  * The room model of Chat (#E161, #Q3925), and its one privacy rule: a private
@@ -51,6 +53,7 @@ export class ChatRoomService {
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly roster = $inject(ProjectRoster);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly alepha = $inject(Alepha);
 
   constructor() {
     // `general`, once, when chat is turned on: in the wizard or in Settings.
@@ -189,6 +192,7 @@ export class ChatRoomService {
     });
     // The creator is the first member, of an open room as of a private one.
     await this.members.create({ roomId: room.id, userId });
+    await this.changed(room);
     return room;
   }
 
@@ -204,7 +208,9 @@ export class ChatRoomService {
       return room;
     }
     await this.assertNameFree(projectId, name);
-    return this.rooms.updateById(room.id, { name });
+    const renamed = await this.rooms.updateById(room.id, { name });
+    await this.changed(renamed);
+    return renamed;
   }
 
   public async setArchived(
@@ -215,9 +221,11 @@ export class ChatRoomService {
   ): Promise<ChatRoom> {
     const room = await this.visibleRoom(projectId, roomId, userId);
     await this.assertManages(room, userId);
-    return this.rooms.updateById(room.id, {
+    const updated = await this.rooms.updateById(room.id, {
       archivedAt: archived ? this.dateTime.nowISOString() : null,
     } as never);
+    await this.changed(updated);
+    return updated;
   }
 
   public async join(
@@ -232,6 +240,7 @@ export class ChatRoomService {
     }
     if (!(await this.membershipOf(room.id, userId))) {
       await this.members.create({ roomId: room.id, userId });
+      await this.changed(room);
     }
     return room;
   }
@@ -246,6 +255,8 @@ export class ChatRoomService {
       roomId: { eq: room.id },
       userId: { eq: userId },
     });
+    // The one who left is told too: their list drops the private room.
+    await this.changed(room, [userId]);
   }
 
   public async invite(
@@ -267,6 +278,7 @@ export class ChatRoomService {
     }
     if (!(await this.membershipOf(room.id, inviteeId))) {
       await this.members.create({ roomId: room.id, userId: inviteeId });
+      await this.changed(room);
     }
   }
 
@@ -286,6 +298,21 @@ export class ChatRoomService {
     await this.members.deleteMany({
       roomId: { eq: room.id },
       userId: { eq: memberId },
+    });
+    await this.changed(room, [memberId]);
+  }
+
+  /**
+   * Tell the people who see the room, and `also` those who just stopped
+   * seeing it, that its list entry or its members changed: their pages
+   * read the room list again. A hint, as every frame.
+   */
+  protected async changed(room: ChatRoom, also: string[] = []): Promise<void> {
+    const audience = await this.alepha.inject(ChatAudience).of(room);
+    await this.alepha.inject(ChatLive).send([...audience, ...also], {
+      type: "room.changed",
+      projectId: room.projectId,
+      roomId: room.id,
     });
   }
 
