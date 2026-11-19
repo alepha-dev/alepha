@@ -151,6 +151,70 @@ test.describe("Chat", () => {
       await member.ctx.close();
     }
   });
+
+  test("a private room is seen by its members only, and an invite brings it to the member live", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(180_000);
+    await registerAndVerify(
+      page,
+      `chat-private-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const { slug } = await createProjectViaWizard(page, "Chat private", {
+      capabilities: ["chat"],
+    });
+    const member = await newUserContext(browser, baseURL!, "chat-invitee");
+    try {
+      await inviteAndAccept(page, member, slug);
+      await page.goto(`/${slug}/chat`);
+      await member.page.goto(`/${slug}/chat`);
+      const secretRow = (side: Page) =>
+        side.locator('[data-testid="chat-room-row"][data-room="secret"]');
+
+      // The + above the list: a name, and private.
+      await page.getByTestId("chat-new-room").click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByLabel("Name").fill("secret");
+      await dialog.getByLabel("Private", { exact: true }).first().click();
+      await dialog.getByRole("button", { name: "Create room" }).click();
+      await page.waitForURL(`**/${slug}/chat/secret`);
+      await expect(secretRow(page)).toBeVisible();
+
+      // Not a member: the room does not exist for them.
+      await expect(
+        member.page.locator(
+          '[data-testid="chat-room-row"][data-room="general"]',
+        ),
+      ).toBeVisible();
+      await expect(secretRow(member.page)).toHaveCount(0);
+
+      // The members panel invites them, and their list shows it at once.
+      await page.getByTestId("chat-room-members-toggle").click();
+      const panel = page.getByTestId("chat-room-panel");
+      await panel.getByRole("combobox", { name: "Invite a member" }).click();
+      await page.getByRole("option").first().click();
+      await panel.getByRole("button", { name: "Invite" }).click();
+      await expect(
+        panel.getByTestId("chat-room-members").locator("li"),
+      ).toHaveCount(2);
+      await expect(secretRow(member.page)).toBeVisible({ timeout: 15_000 });
+
+      // Removed, it is gone from their list as quickly.
+      await panel.getByRole("button", { name: "Remove" }).click();
+      await expect(secretRow(member.page)).toHaveCount(0, { timeout: 15_000 });
+
+      // The room name opens the jump list, which lists only what one can see.
+      await member.page.getByTestId("chat-room-jump").click();
+      const jump = member.page.getByTestId("chat-room-jump-list");
+      await expect(jump.getByRole("button", { name: "general" })).toBeVisible();
+      await expect(jump.getByRole("button", { name: "secret" })).toHaveCount(0);
+    } finally {
+      await member.ctx.close();
+    }
+  });
 });
 
 /**

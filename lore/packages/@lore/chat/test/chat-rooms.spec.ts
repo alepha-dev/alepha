@@ -1,3 +1,4 @@
+import { ResourceRegistry } from "@lore/core/api";
 import { createTestMemberByProjectId } from "@lore/core/testing";
 import { SchemaValidationError } from "alepha";
 import { HttpError } from "alepha/server";
@@ -267,5 +268,18 @@ describe("chat rooms", () => {
       { user: kit.owner },
     );
     expect(members.data.items.map((it) => it.userId)).toEqual([kit.owner.id]);
+  });
+
+  it("adds no source to the spotlight search, which never learns who asks", async ({
+    expect,
+  }) => {
+    // Core's search sources get the project and the needle, never the user,
+    // and the same search is an agent tool: a room source there would list
+    // private rooms to anyone (#Q3955). Rooms are found by the jump list.
+    const kinds = kit.alepha.inject(ResourceRegistry).all();
+
+    expect(
+      kinds.filter((kind) => kind.kind.startsWith("chat") || kind.search),
+    ).toEqual([]);
   });
 });

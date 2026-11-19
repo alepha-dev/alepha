@@ -6,7 +6,7 @@ import {
   type ProjectUser,
 } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { ArrowLeft, Hash, Lock } from "lucide-react";
+import { ArrowLeft, Users } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 import type {
@@ -15,6 +15,7 @@ import type {
 } from "../../../schemas/index.ts";
 import ChatComposer, { type ChatMentionCandidate } from "./ChatComposer.tsx";
 import ChatMessageRow from "./ChatMessageRow.tsx";
+import RoomJumpList from "./RoomJumpList.tsx";
 
 /**
  * Two messages by the same author this close together share one header.
@@ -52,6 +53,13 @@ export interface ConversationProps {
    */
   onSend: (body: string) => Promise<boolean>;
   /**
+   * Every room the reader can see, for the jump list.
+   */
+  rooms: ChatRoomResource[];
+  onOpenRoom: (room: ChatRoomResource) => void;
+  panelOpen: boolean;
+  onTogglePanel: () => void;
+  /**
    * The phone layout's way back to the room list.
    */
   onBack?: () => void;
@@ -64,7 +72,6 @@ export interface ConversationProps {
 const Conversation = (props: ConversationProps) => {
   const { tr } = useI18n<I18n, "en">();
   const { room } = props;
-  const Icon = room.private ? Lock : Hash;
   const scroller = useRef<HTMLDivElement>(null);
   const top = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
@@ -172,19 +179,34 @@ const Conversation = (props: ConversationProps) => {
             <ArrowLeft className="size-4" />
           </Button>
         )}
-        <Icon className="text-muted-foreground size-4" />
-        <h1 className="min-w-0 flex-1 truncate font-medium">{room.name}</h1>
-        <div className="flex -space-x-2" aria-label={tr("chat.room.members")}>
-          {props.members.slice(0, 5).map((id) => (
-            <UserAvatar
-              key={id}
-              public
-              user={userById.get(id)}
-              alt={displayName(userById.get(id))}
-              className="ring-background size-6 ring-2"
-            />
-          ))}
-        </div>
+        <RoomJumpList
+          room={room}
+          rooms={props.rooms}
+          onOpen={props.onOpenRoom}
+        />
+        <div className="flex-1" />
+        <Button
+          variant="minimal"
+          className="gap-1 px-1.5"
+          aria-pressed={props.panelOpen}
+          data-testid="chat-room-members-toggle"
+          onClick={props.onTogglePanel}
+        >
+          <span className="sr-only">{tr("chat.room.members")}</span>
+          {/* Faces, not words: the button's name is the line above. */}
+          <span className="flex -space-x-2" aria-hidden="true">
+            {props.members.slice(0, 5).map((id) => (
+              <UserAvatar
+                key={id}
+                public
+                user={userById.get(id)}
+                alt=""
+                className="ring-background size-6 ring-2"
+              />
+            ))}
+          </span>
+          <Users className="text-muted-foreground size-4" />
+        </Button>
       </header>
       <div
         ref={scroller}
