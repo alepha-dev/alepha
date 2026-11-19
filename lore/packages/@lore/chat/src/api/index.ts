@@ -12,6 +12,7 @@ import { ChatBuckets } from "./services/ChatBuckets.ts";
 import { ChatFileAccess } from "./services/ChatFileAccess.ts";
 import { ChatLifecycle } from "./services/ChatLifecycle.ts";
 import { ChatLive } from "./services/ChatLive.ts";
+import { ChatMentionNotifier } from "./services/ChatMentionNotifier.ts";
 import { ChatMentionParser } from "./services/ChatMentionParser.ts";
 import { ChatMessageService } from "./services/ChatMessageService.ts";
 import { ChatResponderRegistry } from "./services/ChatResponderRegistry.ts";
@@ -49,6 +50,7 @@ export const LoreChatApi = $module({
     ChatLive,
     ChatMentionParser,
     ChatMessageService,
+    ChatMentionNotifier,
     ChatTyping,
     ChatResponderRegistry,
     ChatAgentRunner,
@@ -76,6 +78,7 @@ export {
 } from "./services/ChatResponderRegistry.ts";
 export { ChatLifecycle } from "./services/ChatLifecycle.ts";
 export { ChatLive } from "./services/ChatLive.ts";
+export { ChatMentionNotifier } from "./services/ChatMentionNotifier.ts";
 export { ChatMessageService } from "./services/ChatMessageService.ts";
 export { ChatTyping } from "./services/ChatTyping.ts";
 export { ChatRoomService } from "./services/ChatRoomService.ts";
