@@ -1,0 +1,692 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "4e60fe92-d29d-4d0f-9a0a-da2ab113e4d1",
+  "prevIds": ["6cea6d2b-e597-4a20-8b58-d521e513dd18"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "chat_mentions"],
+      "writes": [
+        "s|tbl|public.chat_mentions",
+        "n|tbl|public.chat_mentions",
+        "e|tbl|public.chat_mentions",
+        "n|rel|public.chat_mentions",
+        "n|type|public.chat_mentions",
+        "n|rel|public.chat_mentions_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "chat_messages"],
+      "writes": [
+        "s|tbl|public.chat_messages",
+        "n|tbl|public.chat_messages",
+        "e|tbl|public.chat_messages",
+        "n|rel|public.chat_messages",
+        "n|type|public.chat_messages",
+        "n|rel|public.chat_messages_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_mentions",
+        "chat_mentions_user_id_room_id_message_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_mentions_user_id_room_id_message_id_idx",
+        "n|idx|public.chat_mentions_user_id_room_id_message_id_idx",
+        "e|idx|public.chat_mentions_user_id_room_id_message_id_idx",
+        "n|rel|public.chat_mentions_user_id_room_id_message_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_mentions",
+        "n|sch|public",
+        "n|col|public.chat_mentions.user_id",
+        "n|col|public.chat_mentions.room_id",
+        "n|col|public.chat_mentions.message_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_mentions",
+        "chat_mentions_message_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_mentions_message_id_idx",
+        "n|idx|public.chat_mentions_message_id_idx",
+        "e|idx|public.chat_mentions_message_id_idx",
+        "n|rel|public.chat_mentions_message_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_mentions",
+        "n|sch|public",
+        "n|col|public.chat_mentions.message_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_messages",
+        "chat_messages_room_id_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_messages_room_id_id_idx",
+        "n|idx|public.chat_messages_room_id_id_idx",
+        "e|idx|public.chat_messages_room_id_id_idx",
+        "n|rel|public.chat_messages_room_id_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_messages",
+        "n|sch|public",
+        "n|col|public.chat_messages.room_id",
+        "n|col|public.chat_messages.id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "chat_messages",
+        "chat_messages_author_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.chat_messages_author_id_idx",
+        "n|idx|public.chat_messages_author_id_idx",
+        "e|idx|public.chat_messages_author_id_idx",
+        "n|rel|public.chat_messages_author_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.chat_messages",
+        "n|sch|public",
+        "n|col|public.chat_messages.author_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_mentions"],
+      "writes": [
+        "s|fk|public.chat_mentions.chat_mentions_message_id_chat_messages_id_fkey",
+        "n|fk|public.chat_mentions.chat_mentions_message_id_chat_messages_id_fkey",
+        "e|fk|public.chat_mentions.chat_mentions_message_id_chat_messages_id_fkey",
+        "n|con|public.chat_mentions.chat_mentions_message_id_chat_messages_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_mentions",
+        "n|sch|public",
+        "n|tbl|public.chat_messages",
+        "n|sch|public",
+        "n|col|public.chat_mentions.message_id",
+        "n|col|public.chat_messages.id",
+        "e|uniqueness|public.chat_messages.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_mentions"],
+      "writes": [
+        "s|fk|public.chat_mentions.chat_mentions_room_id_chat_rooms_id_fkey",
+        "n|fk|public.chat_mentions.chat_mentions_room_id_chat_rooms_id_fkey",
+        "e|fk|public.chat_mentions.chat_mentions_room_id_chat_rooms_id_fkey",
+        "n|con|public.chat_mentions.chat_mentions_room_id_chat_rooms_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_mentions",
+        "n|sch|public",
+        "n|tbl|public.chat_rooms",
+        "n|sch|public",
+        "n|col|public.chat_mentions.room_id",
+        "n|col|public.chat_rooms.id",
+        "e|uniqueness|public.chat_rooms.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_mentions"],
+      "writes": [
+        "s|fk|public.chat_mentions.chat_mentions_user_id_users_id_fkey",
+        "n|fk|public.chat_mentions.chat_mentions_user_id_users_id_fkey",
+        "e|fk|public.chat_mentions.chat_mentions_user_id_users_id_fkey",
+        "n|con|public.chat_mentions.chat_mentions_user_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_mentions",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.chat_mentions.user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_messages"],
+      "writes": [
+        "s|fk|public.chat_messages.chat_messages_room_id_chat_rooms_id_fkey",
+        "n|fk|public.chat_messages.chat_messages_room_id_chat_rooms_id_fkey",
+        "e|fk|public.chat_messages.chat_messages_room_id_chat_rooms_id_fkey",
+        "n|con|public.chat_messages.chat_messages_room_id_chat_rooms_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_messages",
+        "n|sch|public",
+        "n|tbl|public.chat_rooms",
+        "n|sch|public",
+        "n|col|public.chat_messages.room_id",
+        "n|col|public.chat_rooms.id",
+        "e|uniqueness|public.chat_rooms.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "chat_messages"],
+      "writes": [
+        "s|fk|public.chat_messages.chat_messages_author_id_users_id_fkey",
+        "n|fk|public.chat_messages.chat_messages_author_id_users_id_fkey",
+        "e|fk|public.chat_messages.chat_messages_author_id_users_id_fkey",
+        "n|con|public.chat_messages.chat_messages_author_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.chat_messages",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.chat_messages.author_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "chat_mentions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "chat_messages",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "message_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "room_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "agent",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "room_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "author_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "agent",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "body",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "references",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 1,
+        "default": "'{}'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "edited_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "deleted_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "ai_message_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "chat_mentions_user_id_room_id_message_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "room_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "message_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "chat_mentions_message_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "message_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "chat_messages_room_id_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "room_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "chat_messages_author_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "author_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "chat_mentions_message_id_chat_messages_id_fkey",
+        "nameExplicit": false,
+        "columns": ["message_id"],
+        "schemaTo": "public",
+        "tableTo": "chat_messages",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "chat_mentions_room_id_chat_rooms_id_fkey",
+        "nameExplicit": false,
+        "columns": ["room_id"],
+        "schemaTo": "public",
+        "tableTo": "chat_rooms",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "chat_mentions_user_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": ["user_id"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "chat_messages_room_id_chat_rooms_id_fkey",
+        "nameExplicit": false,
+        "columns": ["room_id"],
+        "schemaTo": "public",
+        "tableTo": "chat_rooms",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "chat_messages_author_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": ["author_id"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_mentions",
+        "name": "chat_mentions_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "chat_messages_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

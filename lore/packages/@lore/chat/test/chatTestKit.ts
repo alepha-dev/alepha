@@ -1,4 +1,8 @@
-import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
+import {
+  ProjectCapabilityController,
+  ProjectController,
+  ResourceRegistry,
+} from "@lore/core/api";
 import { createTestMemberByProjectId } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -8,7 +12,8 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 
-import { LoreChatApi } from "../src/api/index.ts";
+import { ChatLive, LoreChatApi } from "../src/api/index.ts";
+import type { ChatServerFrame } from "../src/api/schemas/chatServerFrameSchema.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -21,6 +26,25 @@ export interface ChatTestUser {
   id: string;
   roles: string[];
   username: string;
+}
+
+/**
+ * The socket's sender, recording each frame and who it was addressed to
+ * instead of sending it: that list is the privacy rule, and the same on Node
+ * and on Workers, since both deliver exactly to the members named.
+ */
+export class RecordingChatLive extends ChatLive {
+  public readonly frames: Array<{
+    roomIds: string[];
+    message: ChatServerFrame;
+  }> = [];
+
+  public override async send(
+    userIds: string[],
+    frame: ChatServerFrame,
+  ): Promise<void> {
+    this.frames.push({ roomIds: [...new Set(userIds)], message: frame });
+  }
 }
 
 /**
@@ -39,7 +63,24 @@ export class ChatTestKit {
     alepha.with(AlephaEmail);
     alepha.with(AlephaApiUsers);
     alepha.with(AlephaFake);
+    // Before the module that resolves it.
+    alepha.with({ provide: ChatLive, use: RecordingChatLive });
     alepha.with(LoreChatApi);
+    // Plan and Remember own `#Q` and `#F`; chat depends on core only, so
+    // the kit stands in for the two kinds a message may reference.
+    const resources = alepha.inject(ResourceRegistry);
+    resources.register({
+      kind: "quest",
+      letter: "Q",
+      order: 0,
+      permission: "quest:read",
+    });
+    resources.register({
+      kind: "folio",
+      letter: "F",
+      order: 1,
+      permission: "folio:read",
+    });
     await alepha.start();
     const kit = new ChatTestKit(alepha);
     await kit.cast();

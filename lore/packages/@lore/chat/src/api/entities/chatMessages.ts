@@ -1,0 +1,56 @@
+import { type Infer, z } from "alepha";
+import { users } from "alepha/api/users";
+import { $entity, db } from "alepha/orm";
+
+import { chatRooms } from "./chatRooms.ts";
+
+/**
+ * One message of a room (#E161, #Q3926).
+ *
+ * Written by a member (`authorId`) or by an agent (`agent`, the responder's
+ * name, `lore`). An agent's message also carries `aiMessageId`, the
+ * framework's `ai_messages` row its text mirrors: `ai_*` stays the run log
+ * (budget, rate limit, paused calls, audit, retention), and the room keeps a
+ * copy of the answer.
+ *
+ * A deleted message keeps its row and loses its body, so the conversation
+ * does not shift and a reply still has something to point at. The id is a
+ * UUIDv7, ordered by time: the list pages backwards by it, and a member's
+ * read state is the newest id they read.
+ */
+export const chatMessages = $entity({
+  name: "chat_messages",
+  schema: z.object({
+    id: db.primaryKey(z.uuid()),
+    createdAt: db.createdAt(),
+    roomId: db.ref(z.uuid(), () => chatRooms.cols.id, {
+      onDelete: "cascade",
+    }),
+    authorId: db.ref(z.uuid().optional(), () => users.cols.id, {
+      onDelete: "set null",
+    }),
+    agent: z.text({ maxLength: 40 }).optional(),
+    /**
+     * Markdown, capped by {@link chatMessageBodySchema}. Empty once deleted.
+     */
+    body: z.text({ size: "rich" }),
+    /**
+     * The `#Q12`, `[[#F7]]` references the body names, parsed at write in
+     * the grammar `ResourceLinkService` reads (`Q12`, `F7`). Kept on the
+     * message, never in core's link graph: a backlink from a quest to a
+     * private room's message would show it to every reader of the quest.
+     */
+    references: db.default(z.array(z.text({ maxLength: 20 })), []),
+    editedAt: z.datetime().optional(),
+    deletedAt: z.datetime().optional(),
+    /**
+     * The `ai_messages` row an agent message mirrors. No foreign key: the
+     * framework's retention purges `ai_*` on its own schedule, and the room
+     * keeps its copy.
+     */
+    aiMessageId: z.uuid().optional(),
+  }),
+  indexes: [{ columns: ["roomId", "id"] }, { columns: ["authorId"] }],
+});
+
+export type ChatMessage = Infer<typeof chatMessages.schema>;
