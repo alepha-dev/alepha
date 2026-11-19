@@ -73,9 +73,32 @@ const PersonasPage = () => {
   useSyncRequirementsCount("useCases", useCases.data);
   if (!project) return null;
 
-  const rows = (personas.data ?? []).filter(
-    (it) => kind === "all" || it.kind === kind,
-  );
+  const all = personas.data ?? [];
+  const rows = all.filter((it) => kind === "all" || it.kind === kind);
+  // Each tab's count, from the list already loaded (#Q3961): one request
+  // for the page, never one per tab. Absent while it loads.
+  const countOf = (value: typeof kind) =>
+    personas.data
+      ? value === "all"
+        ? all.length
+        : all.filter((it) => it.kind === value).length
+      : undefined;
+  const count = (value: typeof kind) => {
+    const n = countOf(value);
+    // The space keeps the tab's accessible name "Human 17", not "Human17";
+    // a flex row ignores it in layout.
+    return n === undefined ? null : (
+      <>
+        {" "}
+        <span
+          className="text-muted-foreground tabular-nums"
+          data-testid={`persona-filter-count-${value}`}
+        >
+          {n}
+        </span>
+      </>
+    );
+  };
   const canWrite = canInProject(project, "persona:write");
   const EmptyIcon = kind === "all" ? UsersRound : PERSONA_KIND_ICONS[kind];
   const cases = useCases.data ?? [];
@@ -101,6 +124,7 @@ const PersonasPage = () => {
                 <span className="flex items-center gap-1.5">
                   <UsersRound className="size-3.5" />
                   {tr("requirements.persona.filter.all")}
+                  {count("all")}
                 </span>
               ),
             },
@@ -112,6 +136,7 @@ const PersonasPage = () => {
                   <span className="flex items-center gap-1.5">
                     <Icon className="size-3.5" />
                     {tr(PERSONA_KIND_LABEL_KEYS[value])}
+                    {count(value)}
                   </span>
                 ),
               };
