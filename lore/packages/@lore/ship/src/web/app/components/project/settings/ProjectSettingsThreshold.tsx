@@ -1,13 +1,12 @@
 import { Button, CardContent } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { SettingsSection } from "@alepha/ui/settings";
+import type { ProjectThresholdController } from "@lore/core/api";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-
-import type { ProjectThresholdController } from "../../../../../api/controllers/ProjectThresholdController.ts";
 
 export interface ProjectSettingsThresholdProps {
   /**

@@ -15,7 +15,7 @@ import {
   QualityJobs,
   QualityService,
 } from "../src/api/index.ts";
-import { LoreShipApi } from "../src/api/index.ts";
+import { LoreBuildApi } from "../src/api/index.ts";
 import { qualityRuns, type QualityRunPush } from "../src/schemas/index.ts";
 import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
@@ -71,7 +71,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreShipApi);
+  alepha.with(LoreBuildApi);
   alepha.with(TestRows);
 
   await alepha.start();
@@ -122,19 +122,20 @@ describe("quality runs", () => {
   });
 
   /**
-   * `quality` was a project flag and is not one any more: Quality joins the
-   * Ship baseline, so what these cases used to say with `{ quality: true }`
-   * they now say by giving the project the Ship capability. The push path is
+   * `quality` was a project flag and is not one any more: Quality joined the
+   * Ship baseline, then moved to Build (#E162), so what these cases used to
+   * say with `{ quality: true }` they now say by giving the project the Build
+   * capability. The push path is
    * unaffected either way - a CI credential is never gated on a switch in the
    * UI, which is the rule this file exists to hold.
    */
-  const aProject = async (apps = false) => {
+  const aProject = async (build = false) => {
     const owner = await createTestUser(ctx);
     const project = await ctx.projectController.createProject.fetch(
       {
         body: {
           title: `Quality ${crypto.randomUUID().slice(0, 8)}`,
-          capabilities: apps ? [{ key: "ship" as const }] : [],
+          capabilities: build ? [{ key: "build" as const }] : [],
         },
       },
       { user: owner },
@@ -210,8 +211,8 @@ describe("quality runs", () => {
    * ⚠️ The two cases that used to live here are gone with the flag they
    * guarded: `features.quality` was optional, and absent on every project
    * that predated the module, so both asked which way ABSENT read. Quality has
-   * no switch now - it joined the Ship baseline, and its Reports tab appears
-   * once a run exists. `reportsTabs.spec.ts` asks that question instead.
+   * no switch of its own now - it is Build's (#E162), and its Reports tab
+   * appears with Build. `reportsTabs.spec.ts` asks that question instead.
    *
    * The `features` column itself keeps its `quality` key forever: dropping a
    * column from `projects` is the D1 rebuild that cascade-wipes its children.

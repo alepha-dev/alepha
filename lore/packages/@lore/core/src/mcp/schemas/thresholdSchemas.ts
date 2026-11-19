@@ -1,5 +1,6 @@
-import { projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
+
+import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * `threshold_set` (#Q3914): either threshold, or both; `null` clears one.

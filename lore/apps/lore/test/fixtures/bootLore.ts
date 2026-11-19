@@ -1,5 +1,6 @@
 import { LoreBuildApi } from "@lore/build/api";
 import { LoreBuildMcp } from "@lore/build/mcp";
+import { BuildRouter, LoreBuildWeb } from "@lore/build/web";
 import { LoreCoreApi } from "@lore/core/api";
 import { LoreCoreMcp } from "@lore/core/mcp";
 import { CoreRouter, LoreAccountSections, LoreCoreWeb } from "@lore/core/web";
@@ -39,6 +40,7 @@ export type LoreRouter = CoreRouter &
   WorkRouter &
   RequirementsRouter &
   KnowledgeRouter &
+  BuildRouter &
   DeployRouter;
 
 /**
@@ -77,6 +79,7 @@ export const bootLore = (
       .with(LoreCoreWeb)
       .with(LorePlanWeb)
       .with(LoreRememberWeb)
+      .with(LoreBuildWeb)
       .with(LoreShipWeb)
       .with(LorePlanRequirementsWeb);
   }
@@ -84,6 +87,7 @@ export const bootLore = (
     alepha.inject(WorkRouter);
     alepha.inject(RequirementsRouter);
     alepha.inject(KnowledgeRouter);
+    alepha.inject(BuildRouter);
     alepha.inject(DeployRouter);
     alepha.inject(LoreAccountSections);
     alepha.inject(WorkAccountSections);

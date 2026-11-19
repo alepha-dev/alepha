@@ -9,6 +9,7 @@ import { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
 import { LoreMcpIdentity } from "./services/LoreMcpIdentity.ts";
 import { NotificationTools } from "./tools/NotificationTools.ts";
 import { ProjectTools } from "./tools/ProjectTools.ts";
+import { ThresholdTools } from "./tools/ThresholdTools.ts";
 
 /**
  * The MCP tools and resources of `@lore/core`, the glue: projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, the dashboard, reports, agent prompts and the web shell.
@@ -33,6 +34,9 @@ export const LoreCoreMcp = $module({
     McpCallTimings,
     ProjectTools,
     NotificationTools,
+    // The alert thresholds (#Q3914), core's since #E162: coverage is Build's,
+    // open errors Ship's.
+    ThresholdTools,
     ProjectResources,
     AttachmentContentService,
     AttachmentPushCommand,
@@ -54,3 +58,4 @@ export {
 export { ProjectTools } from "./tools/ProjectTools.ts";
 
 export { NotificationTools } from "./tools/NotificationTools.ts";
+export { ThresholdTools } from "./tools/ThresholdTools.ts";

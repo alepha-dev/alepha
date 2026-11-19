@@ -259,7 +259,8 @@ layouts, for anyone who may change the project.
 
 | Preset              | What it shows                                                       |
 | ------------------- | ------------------------------------------------------------------- |
-| **Apps and vitals** | Health, visitors, errors, uptime and quality of the project's apps. |
+| **Apps and vitals** | Health, visitors, errors and uptime of the project's apps.          |
+| **Code quality**    | Line coverage over time, the latest coverage and the failing tests. |
 | **Requirements**    | Coverage, what is left to cover, use case and persona health.       |
 | **Triage**          | What waits on someone: feedback, errors, held quests, the feed.     |
 | **Delivery**        | Where the next releases stand, and the epics and quests in flight.  |

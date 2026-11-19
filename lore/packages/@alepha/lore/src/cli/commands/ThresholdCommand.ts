@@ -1,4 +1,4 @@
-import type { ProjectThresholdController } from "@lore/ship/api";
+import type { ProjectThresholdController } from "@lore/core/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $client } from "alepha/server/links";

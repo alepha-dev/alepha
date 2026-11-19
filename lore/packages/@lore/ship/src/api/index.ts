@@ -21,9 +21,6 @@ import { LiveQuestController } from "./controllers/LiveQuestController.ts";
 import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
 import { ProjectHostController } from "./controllers/ProjectHostController.ts";
-import { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
-import { QualityController } from "./controllers/QualityController.ts";
-import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
@@ -38,7 +35,6 @@ import { HostCredentialJobs } from "./jobs/HostCredentialJobs.ts";
 import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
 import { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 import { ProjectErrorJobs } from "./jobs/ProjectErrorJobs.ts";
-import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { UptimeJobs } from "./jobs/UptimeJobs.ts";
 import { UptimeRetentionJobs } from "./jobs/UptimeRetentionJobs.ts";
@@ -57,6 +53,7 @@ import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DeployAppsDashboardMetrics } from "./services/DeployAppsDashboardMetrics.ts";
 import { DeployAttentionSources } from "./services/DeployAttentionSources.ts";
 import { DeployBuckets } from "./services/DeployBuckets.ts";
+import { DeployBuiltTags } from "./services/DeployBuiltTags.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { DeployedBuildService } from "./services/DeployedBuildService.ts";
@@ -70,6 +67,7 @@ import { DeployRegistry } from "./services/DeployRegistry.ts";
 import { DeployReportsSummary } from "./services/DeployReportsSummary.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
+import { ErrorThreshold } from "./services/ErrorThreshold.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
 import { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
 import { HostCloudflareService } from "./services/HostCloudflareService.ts";
@@ -86,13 +84,7 @@ import { OpenErrorsMetric } from "./services/OpenErrorsMetric.ts";
 import { ProjectDeliveryReportService } from "./services/ProjectDeliveryReportService.ts";
 import { ProjectErrorQuestHandBack } from "./services/ProjectErrorQuestHandBack.ts";
 import { ProjectErrorRuleService } from "./services/ProjectErrorRuleService.ts";
-import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
 import { ProjectReliabilityReportService } from "./services/ProjectReliabilityReportService.ts";
-import { ProjectThresholds } from "./services/ProjectThresholds.ts";
-import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
-import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
-import { QualityService } from "./services/QualityService.ts";
-import { QualityTrendMetric } from "./services/QualityTrendMetric.ts";
 import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { RunErrorService } from "./services/RunErrorService.ts";
@@ -114,7 +106,7 @@ import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 import { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTransport.ts";
 
 /**
- * The server half of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and hosts.
+ * The server half of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors), deployments and hosts. Quality is `@lore/build`'s since #E162.
  *
  * It depends on `@lore/core` only: a feature that spans two modules goes through a core registry or a core link, never through an import of another feature module (`check:conventions`).
  *
@@ -142,10 +134,11 @@ export const LoreShipApi = $module({
     // Ship's project events, in the core catalog (#Q3889); listed because
     // nothing injects them.
     ShipProjectEvents,
-    // The coverage and open-errors thresholds (#Q3894): the hourly check
-    // registers itself, so the class is listed.
-    ProjectThresholds,
-    ProjectThresholdController,
+    // The open-errors threshold (#Q3894): its hourly check registers itself,
+    // so the class is listed. The row is core's, coverage Build's (#E162).
+    ErrorThreshold,
+    // The tags Build's Quality report marks on its curve (#E162).
+    DeployBuiltTags,
     // The errors a use case run opens and resolves (#E153), written by
     // Plan's Requirements.
     RunErrorService,
@@ -173,9 +166,6 @@ export const LoreShipApi = $module({
     ErrorTrendMetric,
     HostsMetric,
     UptimeMetric,
-    QualityTrendMetric,
-    QualityNumericCatalog,
-    QualityNumericMetrics,
     DeployProjectCounts,
     ProjectErrorJobs,
     UptimeRetentionJobs,
@@ -183,12 +173,10 @@ export const LoreShipApi = $module({
     UptimeHttpProber,
     UptimeSocketProber,
     SigilJobs,
-    QualityJobs,
     HostCommandJobs,
     HostCredentialJobs,
     HostExpiryJobs,
     HostOfflineJobs,
-    QualityService,
     ArtifactTarReader,
     ArtifactDetailService,
     ArtifactService,
@@ -279,10 +267,7 @@ export const LoreShipApi = $module({
     WebSocketHostCommandTransport,
     DeliveryReportsController,
     ProjectDeliveryReportService,
-    ProjectQualityReportService,
     ProjectReliabilityReportService,
-    QualityController,
-    QualityReportsController,
     ArtifactController,
     AppController,
     AppSecretController,
@@ -326,8 +311,6 @@ export { HostSocketController } from "./controllers/HostSocketController.ts";
 export { InsightsController } from "./controllers/InsightsController.ts";
 export { ProjectHostController } from "./controllers/ProjectHostController.ts";
 export { DeliveryReportsController } from "./controllers/DeliveryReportsController.ts";
-export { QualityController } from "./controllers/QualityController.ts";
-export { QualityReportsController } from "./controllers/QualityReportsController.ts";
 export { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 export { SigilController } from "./controllers/SigilController.ts";
 export { StackController } from "./controllers/StackController.ts";
@@ -340,7 +323,6 @@ export { CommitQuestSetService } from "./services/CommitQuestSetService.ts";
 export { LiveQuestService } from "./services/LiveQuestService.ts";
 export { QuestBitmap } from "./services/QuestBitmap.ts";
 export { DeployJobs } from "./jobs/DeployJobs.ts";
-export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
 export { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
 export { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
@@ -379,7 +361,6 @@ export { HostTokenService } from "./services/HostTokenService.ts";
 export { ImageRegistryClient } from "./services/ImageRegistryClient.ts";
 export { LoreAnalyticsStore } from "./services/LoreAnalyticsStore.ts";
 export { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
-export { QualityService } from "./services/QualityService.ts";
 export { RegistryTransport } from "./services/RegistryTransport.ts";
 export { RollbackService } from "./services/RollbackService.ts";
 export {
@@ -408,5 +389,4 @@ export { MonitorController } from "./controllers/MonitorController.ts";
 export { CredentialSealService } from "@lore/core/api";
 
 export { RunErrorService } from "./services/RunErrorService.ts";
-export { ProjectThresholds } from "./services/ProjectThresholds.ts";
-export { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
+export { ErrorThreshold } from "./services/ErrorThreshold.ts";

@@ -11,7 +11,7 @@ import { type Infer, z } from "alepha";
  * - `build` is its code: git repositories and Quality (#E162). Off for
  *   every project by default. What it holds is named `code`: permissions
  *   `code:*`, `lore code`, tables `code_*`.
- * - `ship` is its software: instances, artifacts, quality, and with the
+ * - `ship` is its software: instances, artifacts, and with the
  *   `track` option sigils, analytics, vitals and errors.
  *
  * Feedback (the public request form, the triage inbox, feedback comments) was

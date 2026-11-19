@@ -1,13 +1,13 @@
-import { ProjectTools } from "@lore/core/mcp";
-import { projectParamsSchema } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
 import { ProjectThresholdController } from "../../api/controllers/ProjectThresholdController.ts";
+import { projectParamsSchema } from "../schemas/projectParamsSchema.ts";
 import {
   thresholdResultSchema,
   thresholdSetParamsSchema,
 } from "../schemas/thresholdSchemas.ts";
+import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * The coverage and open-errors thresholds over MCP (#Q3914), on the actions

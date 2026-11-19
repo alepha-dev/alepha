@@ -1,4 +1,4 @@
-import { $ownsProject } from "@lore/core/api";
+import { $ownsProject, ProjectThresholds } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 
@@ -6,7 +6,7 @@ import type { QualityRun } from "../entities/qualityRuns.ts";
 import { qualityOverviewSchema } from "../schemas/qualityOverviewSchema.ts";
 import { qualityRunPushSchema } from "../schemas/qualityRunPushSchema.ts";
 import { qualityRunSchema } from "../schemas/qualityRunSchema.ts";
-import { ProjectThresholds } from "../services/ProjectThresholds.ts";
+import { CoverageThreshold } from "../services/CoverageThreshold.ts";
 import { QualityService } from "../services/QualityService.ts";
 
 /**
@@ -30,7 +30,7 @@ import { QualityService } from "../services/QualityService.ts";
  */
 export class QualityController {
   protected readonly quality = $inject(QualityService);
-  protected readonly thresholds = $inject(ProjectThresholds);
+  protected readonly coverage = $inject(CoverageThreshold);
 
   /**
    * Declared above the actions on purpose: a `use: [...]` entry reading
@@ -57,9 +57,9 @@ export class QualityController {
    * oversight. A push refused because someone flipped a switch in the UI turns
    * a build red for a reason that has nothing to do with the build, and the
    * person who flipped it would never connect the two. Artifact push and sigil
-   * ingest hold the same rule, and it is why Quality lost its own switch and
-   * joined the Ship baseline: the tab self-hides until a run exists, so there
-   * was never anything for the switch to decide.
+   * ingest hold the same rule. The `build` capability (#E162) gates the tab,
+   * the tiles, the event and the permission group, never this push: a CI job
+   * keeps pushing while somebody turns Build off and on.
    *
    * A failed push exits non-zero on the CLI side. The safety is where the
    * command runs: the push step is `continue-on-error` and gates no deploy, so
@@ -90,7 +90,7 @@ export class QualityController {
         tests: body.tests,
         durationMs: body.durationMs,
       });
-      await this.thresholds.onCoverage(
+      await this.coverage.onCoverage(
         params.projectId,
         {
           branch: body.branch,

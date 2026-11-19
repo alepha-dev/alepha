@@ -3,13 +3,12 @@ import { $module } from "alepha";
 
 import { DeployAppsDashboardMetrics } from "../api/services/DeployAppsDashboardMetrics.ts";
 import { DeployDashboardMetrics } from "../api/services/DeployDashboardMetrics.ts";
-import { QualityNumericCatalog } from "../api/services/QualityNumericCatalog.ts";
 import { DeployRouter } from "./app/DeployRouter.ts";
 import { DeployProjectLoader } from "./app/loaders/DeployProjectLoader.ts";
 import { DeployShell } from "./app/shell/DeployShell.ts";
 
 /**
- * The browser-safe half of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and hosts: its pages, atoms and
+ * The browser-safe half of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors), deployments and hosts: its pages, atoms and
  * dictionaries.
  *
  * Registered by BOTH entries, `main.server.ts` and `main.browser.ts`: the
@@ -38,7 +37,6 @@ export const LoreShipWeb = $module({
     alepha.inject(DeployShell);
     alepha.inject(DeployDashboardMetrics);
     alepha.inject(DeployAppsDashboardMetrics);
-    alepha.inject(QualityNumericCatalog);
   },
 });
 

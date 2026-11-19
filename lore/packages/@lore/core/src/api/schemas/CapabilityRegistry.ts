@@ -168,8 +168,8 @@ export interface CapabilityDescriptor {
  * and activity kind belong to no capability, and each event, selector and
  * preset declares the capability it needs.
  * Reports is Core too, and its tabs declare a capability the way dashboard
- * cards do, because Quality is Ship baseline and Members is derived from a
- * core table: a Ship-only project needs Reports to reach its own Quality tab.
+ * cards do, because Quality is Build's and Members is derived from a core
+ * table: a Build-only project needs Reports to reach its own Quality tab.
  *
  * Shaped after `DashboardMetricCatalog`, and for the same reason: a registry a
  * surface reads is one place to add a capability, where a hand-written `if`
@@ -506,7 +506,9 @@ export class CapabilityRegistry {
     {
       // Build, the fourth pillar (#E162): the code a project holds, its git
       // repositories, between planning and shipping. Off by default, and off
-      // hides and never deletes. What it holds keeps the name `code`.
+      // hides and never deletes. What it holds keeps the name `code`. Quality
+      // moved in from Ship: a quality PUSH is accepted whatever the switches
+      // say; its tab, tiles, event and permissions follow `build`.
       key: "build",
       name: "Build",
       labelKey: "project.capability.build.label",
@@ -516,8 +518,18 @@ export class CapabilityRegistry {
       mcpTools: [],
       searchKinds: [],
       activityKinds: [],
-      dashboardCards: [],
-      permissionGroups: ["code"],
+      dashboardCards: [
+        "qualityTrend",
+        "quality.coverage.lines",
+        "quality.coverage.statements",
+        "quality.coverage.functions",
+        "quality.coverage.branches",
+        "quality.tests.total",
+        "quality.tests.passed",
+        "quality.tests.failed",
+        "quality.tests.skipped",
+      ],
+      permissionGroups: ["code", "quality"],
     },
     {
       key: "ship",
@@ -590,18 +602,9 @@ export class CapabilityRegistry {
         // The apps tiles of #E77 (#Q2657).
         "appHealth",
         "errorTrend",
-        "qualityTrend",
         // The machines and the monitors (#Q3781).
         "hosts",
         "uptime",
-        "quality.coverage.lines",
-        "quality.coverage.statements",
-        "quality.coverage.functions",
-        "quality.coverage.branches",
-        "quality.tests.total",
-        "quality.tests.passed",
-        "quality.tests.failed",
-        "quality.tests.skipped",
       ],
       permissionGroups: [
         "app",
@@ -611,7 +614,6 @@ export class CapabilityRegistry {
         "deploy",
         "artifact",
         "error",
-        "quality",
         "sigil",
         "host",
       ],

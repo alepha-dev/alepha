@@ -4164,7 +4164,10 @@ export default {
   "dashboard.preset.confirm.action": "Apply preset",
   "dashboard.preset.appVitals": "Apps and vitals",
   "dashboard.preset.appVitals.description":
-    "Health, visitors, errors, uptime and quality of the project's apps.",
+    "Health, visitors, errors and uptime of the project's apps.",
+  "dashboard.preset.codeQuality": "Code quality",
+  "dashboard.preset.codeQuality.description":
+    "Line coverage over time, the latest coverage and the failing tests.",
   "dashboard.preset.requirements": "Requirements",
   "dashboard.preset.requirements.description":
     "Coverage, what is left to cover, and use case and persona health.",
@@ -4175,6 +4178,7 @@ export default {
   "dashboard.preset.delivery.description":
     "Where the next releases stand, and the epics and quests in flight.",
   "dashboard.preset.needs.ship": "Turn on Ship to use it",
+  "dashboard.preset.needs.build": "Turn on Build to use it",
   "dashboard.preset.needs.plan": "Turn on Plan to use it",
   "dashboard.preset.needs.plan.requirements":
     "Turn on Plan's Requirements option to use it",

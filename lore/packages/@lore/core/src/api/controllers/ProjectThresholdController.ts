@@ -1,12 +1,14 @@
-import { $ownsProject, ProjectRecipients } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $action, ForbiddenError } from "alepha/server";
 
 import { projectThresholdsSchema } from "../schemas/projectThresholdsSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
+import { ProjectRecipients } from "../services/ProjectRecipients.ts";
 import { ProjectThresholds } from "../services/ProjectThresholds.ts";
 
 /**
- * The coverage and open-errors thresholds (#Q3894). Reading needs a
+ * The coverage and open-errors thresholds (#Q3894), in core since #E162:
+ * coverage is Build's, open errors Ship's. Reading needs a
  * membership; setting coverage needs `app:manage`, setting the errors one
  * `error:triage`.
  */

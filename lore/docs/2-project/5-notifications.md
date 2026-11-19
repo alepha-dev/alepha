@@ -72,7 +72,7 @@ to are still recorded, and an agent can read the recent ones (see
 | Apps     | Deploy failed, Deploy succeeded                                                        | Ship, with **Deploy**    |
 | Monitors | Monitor down, Monitor recovered                                                        | Ship, with **Uptime**    |
 | Hosts    | Host token stopped working, Host past its time to live, Host offline, Host back online | Ship                     |
-| Quality  | Coverage under its threshold                                                           | Ship                     |
+| Quality  | Coverage under its threshold                                                           | Build                    |
 | Errors   | Open errors over their threshold                                                       | Ship                     |
 
 An event whose capability or option is off in the project shows as

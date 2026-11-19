@@ -20,7 +20,6 @@ import { hosts } from "../entities/hosts.ts";
 import { monitors } from "../entities/monitors.ts";
 import { projectErrorIgnoreRules } from "../entities/projectErrorIgnoreRules.ts";
 import { projectErrors } from "../entities/projectErrors.ts";
-import { qualityRuns } from "../entities/qualityRuns.ts";
 import { registryCredentials } from "../entities/registryCredentials.ts";
 import { sigils } from "../entities/sigils.ts";
 import { stackDeployments } from "../entities/stackDeployments.ts";
@@ -43,8 +42,8 @@ import { HostService } from "./HostService.ts";
  * A unique key the target already holds is refused for what a row IS (a
  * deployed copy, a sigil, a stack, an error), and the target's row kept
  * for what only describes the project or repeats it: a host it already
- * borrows, a registry it already logs in to, a day of coverage on a branch
- * it already measured, a build it was pushed too.
+ * borrows, a registry it already logs in to, a build it was pushed too.
+ * Quality runs are Build's step since #E162.
  */
 export class DeployProjectMerge {
   protected readonly merge = $inject(ProjectMergeService);
@@ -111,12 +110,6 @@ export class DeployProjectMerge {
       kind: "registry credential",
       entity: registryCredentials,
       keys: ["host"],
-      onCollision: "keepTarget",
-    },
-    {
-      kind: "quality run",
-      entity: qualityRuns,
-      keys: ["branch", "day"],
       onCollision: "keepTarget",
     },
   ];

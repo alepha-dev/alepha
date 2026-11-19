@@ -1,9 +1,8 @@
 import { DiscordTransport, MemoryDiscordTransport } from "@alepha/discord";
 import { ProjectChannelService, projectEvents } from "@lore/core/api";
-import { NotificationTools } from "@lore/core/mcp";
+import { NotificationTools, ThresholdTools } from "@lore/core/mcp";
 import { createPresetRanks } from "@lore/core/testing";
 import { QuestTools } from "@lore/plan/mcp";
-import { ThresholdTools } from "@lore/ship/mcp";
 import { Alepha } from "alepha";
 import { JobQueueProvider } from "alepha/api/jobs";
 import { notificationInboxEntity } from "alepha/api/notifications";

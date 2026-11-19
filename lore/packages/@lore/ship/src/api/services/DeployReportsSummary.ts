@@ -8,7 +8,6 @@ import { deployments } from "../entities/deployments.ts";
 import { monitorIncidents } from "../entities/monitorIncidents.ts";
 import { monitors } from "../entities/monitors.ts";
 import { projectErrors } from "../entities/projectErrors.ts";
-import { qualityRuns } from "../entities/qualityRuns.ts";
 
 /**
  * Apps' lines of the Reports Summary tab (#Q2999).
@@ -23,7 +22,6 @@ export class DeployReportsSummary {
   protected readonly projectErrors = $repository(projectErrors);
   protected readonly monitors = $repository(monitors);
   protected readonly incidents = $repository(monitorIncidents);
-  protected readonly quality = $repository(qualityRuns);
   protected readonly dt = $inject(DateTimeProvider);
 
   constructor() {
@@ -39,25 +37,23 @@ export class DeployReportsSummary {
       ...(query.to ? { lte: query.to } : {}),
     };
     const period = query.from || query.to ? { createdAt: within } : {};
-    const [finished, succeeded, openErrors, coverage, uptime] =
-      await Promise.all([
-        this.deployments.count({
-          projectId: { eq: projectId },
-          status: { inArray: ["succeeded", "failed"] },
-          ...period,
-        }),
-        this.deployments.count({
-          projectId: { eq: projectId },
-          status: { eq: "succeeded" },
-          ...period,
-        }),
-        this.projectErrors.count({
-          projectId: { eq: projectId },
-          status: { eq: "open" },
-        }),
-        this.coverage(projectId, query),
-        this.uptime(projectId, query),
-      ]);
+    const [finished, succeeded, openErrors, uptime] = await Promise.all([
+      this.deployments.count({
+        projectId: { eq: projectId },
+        status: { inArray: ["succeeded", "failed"] },
+        ...period,
+      }),
+      this.deployments.count({
+        projectId: { eq: projectId },
+        status: { eq: "succeeded" },
+        ...period,
+      }),
+      this.projectErrors.count({
+        projectId: { eq: projectId },
+        status: { eq: "open" },
+      }),
+      this.uptime(projectId, query),
+    ]);
 
     const tab = "reportsDelivery";
     return [
@@ -97,44 +93,7 @@ export class DeployReportsSummary {
               tab,
             },
           ]),
-      ...(coverage === undefined
-        ? []
-        : [
-            {
-              key: "coverage",
-              value: coverage,
-              format: "percent" as const,
-              upIsGood: true,
-              tab,
-            },
-          ]),
     ];
-  }
-
-  /**
-   * Line coverage of the latest run in the period.
-   */
-  protected async coverage(
-    projectId: number,
-    query: ReportsQuery,
-  ): Promise<number | undefined> {
-    const [latest] = await this.quality.findMany({
-      where: {
-        projectId: { eq: projectId },
-        ...(query.from || query.to
-          ? {
-              day: {
-                ...(query.from ? { gte: query.from.slice(0, 10) } : {}),
-                ...(query.to ? { lte: query.to.slice(0, 10) } : {}),
-              },
-            }
-          : {}),
-      },
-      orderBy: { column: "day", direction: "desc" },
-      limit: 1,
-      columns: ["coverageLines"],
-    });
-    return latest?.coverageLines;
   }
 
   /**

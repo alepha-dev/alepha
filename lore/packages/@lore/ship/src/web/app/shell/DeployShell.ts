@@ -33,7 +33,8 @@ import { errorTriagePromptDefault } from "../prompts/errorTriagePrompt.ts";
  * `ProjectShellRegistry` (#E75, #Q2624): the Apps, Artifacts and Errors
  * entries, the Apps settings section, New app, the instance breadcrumb, the
  * instances in the palette, the Artifacts tab on a release, the error
- * triage prompt, the dashboard's app picker, and the Quality tab of Reports.
+ * triage prompt, the dashboard's app picker, and the Delivery tab of Reports.
+ * The Quality tab is Build's since #E162.
  */
 export class DeployShell {
   protected readonly shell = $inject(ProjectShellRegistry);
@@ -68,7 +69,7 @@ export class DeployShell {
         icon: AppWindow,
         group: "ops",
         order: 10,
-        // ⚠️ BASELINE, with no option. Instances, artifacts and quality are
+        // ⚠️ BASELINE, with no option. Instances and artifacts are
         // there whenever Apps is on; `track` adds telemetry to them. Gating
         // this entry on `track` would leave a project that deploys elsewhere
         // with no way to reach the copies it has recorded.
@@ -330,15 +331,6 @@ export class DeployShell {
       order: 9.8,
       needs: "ship",
       filters: ["period", "grain"],
-    });
-    // Quality is its own tab again (#Q3070), right after Delivery. It shows
-    // for every Apps project, with the push command until CI sends a run.
-    this.reports.register({
-      route: "reportsQuality",
-      labelKey: "project.reports.nav.quality",
-      order: 9.85,
-      needs: "ship",
-      filters: ["period", "branch"],
     });
   }
 }

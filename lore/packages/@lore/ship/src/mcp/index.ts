@@ -10,10 +10,9 @@ import { MonitorTools } from "./tools/MonitorTools.ts";
 import { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
 import { SigilTools } from "./tools/SigilTools.ts";
 import { StackTools } from "./tools/StackTools.ts";
-import { ThresholdTools } from "./tools/ThresholdTools.ts";
 
 /**
- * The MCP tools and resources of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and hosts.
+ * The MCP tools and resources of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors), deployments and hosts.
  *
  * Registered by `apps/lore/src/main.server.ts` beside `LoreShipApi`.
  *
@@ -36,7 +35,6 @@ export const LoreShipMcp = $module({
     // Uptime monitors for agents (#Q3591).
     MonitorTools,
     // The coverage and open-errors thresholds (#Q3914).
-    ThresholdTools,
   ],
 });
 
@@ -51,4 +49,3 @@ export { InsightsTools } from "./tools/InsightsTools.ts";
 export { MonitorTools } from "./tools/MonitorTools.ts";
 export { SigilTools } from "./tools/SigilTools.ts";
 export { StackTools } from "./tools/StackTools.ts";
-export { ThresholdTools } from "./tools/ThresholdTools.ts";

@@ -1,10 +1,12 @@
-import { projects } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { projects } from "./projects.ts";
+
 /**
- * A project's two alert thresholds (#Q3894): line coverage on `main`, set in
- * Ship's settings (Quality), and open errors, set in Errors' settings.
+ * A project's two alert thresholds (#Q3894): line coverage on `main` (Build's
+ * Quality), and open errors (Ship's Errors), both set in Ship's settings. In
+ * core since #E162, so both pillars read it.
  *
  * A row of its own, keyed by the project: `project_capabilities.options`
  * holds switches only, and a column on `projects` is a parent table the
