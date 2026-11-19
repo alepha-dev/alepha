@@ -8,8 +8,9 @@ import { projects } from "../entities/projects.ts";
 import { DefaultRankService } from "../services/DefaultRankService.ts";
 
 /**
- * Backfills the default ranks, `admin` and `viewer`, into projects created
- * before every project started with them (#Q3661).
+ * Backfills the seeded rank, `viewer`, into projects created before every
+ * project started with it (#Q3661), and drops the stale Admin snapshots so
+ * they follow the default (#Q3920).
  *
  * A nightly sweep rather than a migration: a rank is written through
  * `RankService.save`, which a SQL migration cannot call, and the sweep also
@@ -54,16 +55,20 @@ export class DefaultRankJobs {
   public readonly seedDefaultRanks = $job({
     name: "ranks.seed-defaults",
     description:
-      "Adds the Admin and Viewer ranks to projects that lack them; an existing rank is never changed.",
+      "Adds the Viewer rank to projects that lack it, and lets the Admin snapshots stored before 2026-11-20 follow the default again; an edited rank is never changed.",
     cron: "0 3 * * *",
     timeout: [2, "minutes"],
     // A failed daily tick has otherwise lost a day: `retry` puts it on the
     // outbox, which the sweep picks up within `sweepCron`.
     retry: { retries: 2 },
     handler: async () => {
+      const dropped = await this.defaults.dropStaleAdmins();
+      if (dropped) {
+        this.log.info("admin snapshots now follow the default", { dropped });
+      }
       const held = await this.definitions.findMany({
         where: {
-          key: { inArray: [...DefaultRankService.DEFAULT_KEYS] },
+          key: { inArray: [...DefaultRankService.SEEDED_KEYS] },
         },
         columns: ["organizationId", "key"],
       });
@@ -73,7 +78,7 @@ export class DefaultRankJobs {
         const keys = seen.get(row.organizationId) ?? new Set<string>();
         keys.add(row.key);
         seen.set(row.organizationId, keys);
-        if (keys.size === DefaultRankService.DEFAULT_KEYS.length) {
+        if (keys.size === DefaultRankService.SEEDED_KEYS.length) {
           complete.add(row.organizationId);
         }
       }

@@ -13,6 +13,23 @@ export const organizationConfigAtom = $atom({
      * the owner's, which are always `*`.
      */
     builtinRanks: z.array(z.string()).optional(),
+    /**
+     * Ranks every organization holds with no stored row, the way `member`
+     * does: until somebody edits one, its permissions are read from here at
+     * every read, so a permission the application declares later reaches
+     * it. Editing one stores a row, which wins from then on; resetting it
+     * deletes the row. A key here is built in, listed in `builtinRanks` or
+     * not.
+     */
+    defaultRanks: z
+      .array(
+        z.object({
+          key: z.string(),
+          name: z.string(),
+          permissions: z.array(z.string()),
+        }),
+      )
+      .optional(),
     invitationExpirationDays: z.integer().min(1).max(90),
     maxPendingInvitationsPerOrganization: z.integer().min(1).max(500),
     maxPendingInvitationsPerInviter: z.integer().min(1).max(1000),

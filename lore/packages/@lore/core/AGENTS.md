@@ -348,11 +348,19 @@ member and viewer** (#Q3661, epic #E151, reversing #Q2511; built in since
 #Q3736): each can be renamed and none can be deleted
 (`LoreRankBounds.BUILTIN_RANKS`, the framework's
 `organizationConfigAtom.builtinRanks`). Admin holds every permission but
-`project:delete`, whatever the project's capabilities. `createProject`
-seeds `admin` and `viewer` under those stable keys after the capability rows
-(`DefaultRankService`), and the nightly `ranks.seed-defaults` job
-(`DefaultRankJobs`) adds either one to a project that lacks it, never changing
-an existing rank. A seeded rank is found by key and never by name.
+`project:delete`, whatever the project's capabilities.
+
+⚠️ **Admin has no row until somebody edits it** (#Q3920). Like Member, it is
+read from the code (`organizationConfigAtom.defaultRanks`), so a permission
+declared later reaches every Admin nobody edited. It was a stored snapshot
+until then, and the Requirements permissions of #E153 reached no existing
+Admin. Editing it stores a row that wins from then on; **Reset to default** in
+Ranks deletes the row (`RankService.reset`). `createProject` seeds `viewer`
+alone after the capability rows (`DefaultRankService`), because its preset is
+narrowed by capability, and the nightly `ranks.seed-defaults` job
+(`DefaultRankJobs`) adds it to a project that lacks it, never changing an
+existing rank, and drops the Admin rows that are only stale snapshots
+(`dropStaleAdmins`). A seeded rank is found by key and never by name.
 
 - **There is no Contributor preset.** The built-in Member covers it. A
   project that holds a rank keyed `contributor` keeps it as a custom rank.

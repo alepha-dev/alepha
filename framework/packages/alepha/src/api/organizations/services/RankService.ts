@@ -78,9 +78,22 @@ export class RankService {
           builtin: true,
           editable: true,
           renamable: true,
+          defaultPermissions: config.memberPermissions,
         },
       ],
     ]);
+    for (const preset of config.defaultRanks ?? []) {
+      if (byKey.has(preset.key)) continue;
+      byKey.set(preset.key, {
+        key: preset.key,
+        name: preset.name,
+        permissions: preset.permissions,
+        builtin: true,
+        editable: true,
+        renamable: true,
+        defaultPermissions: preset.permissions,
+      });
+    }
 
     for (const row of rows) {
       const declared = byKey.get(row.key);
@@ -98,9 +111,63 @@ export class RankService {
         builtin: row.builtin || builtins.has(row.key),
         editable,
         renamable: editable,
+        ...(declared?.defaultPermissions
+          ? { defaultPermissions: declared.defaultPermissions }
+          : {}),
       });
     }
     return [...byKey.values()];
+  }
+
+  /**
+   * The permissions a rank holds when nobody edited it: `member`'s and the
+   * application's `defaultRanks`. Undefined for any other rank.
+   */
+  public defaultPermissionsOf(key: string): string[] | undefined {
+    const config = this.alepha.store.get(organizationConfigAtom);
+    if (key === "member") return config.memberPermissions;
+    return config.defaultRanks?.find((preset) => preset.key === key)
+      ?.permissions;
+  }
+
+  /**
+   * Put a rank back on its default: its stored row is deleted, so it reads
+   * the application's default again, a permission declared later included.
+   * A name it was renamed to goes with the row.
+   *
+   * The writer must hold both what the rank holds now and what its default
+   * grants, as for {@link save}: a reset is a rewrite of the rank.
+   */
+  public async reset(
+    organizationId: string,
+    key: string,
+    writer: UserAccountToken,
+  ): Promise<void> {
+    const defaults = this.defaultPermissionsOf(key);
+    if (!defaults) {
+      throw new BadRequestError(`"${key}" has no default to reset to`);
+    }
+    const existing = await this.definitionOf(organizationId, key);
+    if (!existing) return;
+    await this.assertWithinWriterSet(
+      organizationId,
+      existing.permissions,
+      writer,
+      `"${existing.name}" holds permissions you do not`,
+    );
+    await this.assertWithinWriterSet(organizationId, defaults, writer);
+    await this.assertNoSelfLockout(
+      organizationId,
+      { key, permissions: defaults },
+      writer,
+    );
+    await this.alepha.events.emit("organization:rank:save:before", {
+      organizationId,
+      key,
+      permissions: defaults,
+      writer,
+    });
+    await this.definitions.deleteById(existing.id);
   }
 
   /**
@@ -108,10 +175,12 @@ export class RankService {
    * application lists in `organizationConfigAtom.builtinRanks`.
    */
   public builtinKeys(): Set<string> {
+    const config = this.alepha.store.get(organizationConfigAtom);
     return new Set([
       "owner",
       "member",
-      ...(this.alepha.store.get(organizationConfigAtom).builtinRanks ?? []),
+      ...(config.builtinRanks ?? []),
+      ...(config.defaultRanks ?? []).map((preset) => preset.key),
     ]);
   }
 
@@ -608,6 +677,11 @@ export interface Rank {
    * in storage, the owner included.
    */
   renamable: boolean;
+  /**
+   * What it holds when nobody edited it, for `member` and the application's
+   * default ranks.
+   */
+  defaultPermissions?: string[];
 }
 
 export interface RankRows {

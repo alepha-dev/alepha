@@ -90,6 +90,7 @@ const setup = async (
     countDefinitions?: boolean;
     guard?: boolean;
     builtinRanks?: string[];
+    defaultRanks?: Array<{ key: string; name: string; permissions: string[] }>;
   } = {},
 ) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
@@ -112,6 +113,7 @@ const setup = async (
     maxPendingInvitationsPerInviter: 100,
     invitationPurgeDays: 90,
     builtinRanks: options.builtinRanks,
+    defaultRanks: options.defaultRanks,
   });
   await alepha.start();
 
@@ -167,8 +169,110 @@ describe("alepha/api/organizations - RankService", () => {
         builtin: true,
         editable: true,
         renamable: true,
+        defaultPermissions: ["organization:read"],
       },
     ]);
+  });
+
+  it("reads a default rank with no row from the config, so a permission declared later reaches it", async ({
+    expect,
+  }) => {
+    const defaults = { key: "admin", name: "Admin", permissions: [ORG_READ] };
+    const ctx = await setup({ defaultRanks: [defaults] });
+    const { id } = ctx.organization;
+
+    expect(
+      (await ctx.ranks.ranksOf(id)).find((rank) => rank.key === "admin"),
+    ).toEqual({
+      key: "admin",
+      name: "Admin",
+      permissions: [ORG_READ],
+      builtin: true,
+      editable: true,
+      renamable: true,
+      defaultPermissions: [ORG_READ],
+    });
+
+    // The application declares one more permission: no row to migrate.
+    ctx.alepha.store.set(organizationConfigAtom, {
+      ...ctx.alepha.store.get(organizationConfigAtom),
+      defaultRanks: [{ ...defaults, permissions: [ORG_READ, "quest:write"] }],
+    });
+    expect(await ctx.ranks.permissionsOf(id, "admin")).toEqual([
+      ORG_READ,
+      "quest:write",
+    ]);
+    await expect(ctx.ranks.delete(id, "admin", ctx.owner)).rejects.toThrow(
+      "A built-in rank cannot be deleted",
+    );
+  });
+
+  it("keeps an edited default rank, and resets it to its default", async ({
+    expect,
+  }) => {
+    const ctx = await setup({
+      guard: true,
+      defaultRanks: [
+        { key: "admin", name: "Admin", permissions: [ORG_READ, "quest:write"] },
+      ],
+    });
+    const { id } = ctx.organization;
+
+    await ctx.ranks.save(
+      id,
+      { key: "admin", name: "Staff", permissions: [ORG_READ] },
+      ctx.owner,
+    );
+    expect(
+      (await ctx.ranks.ranksOf(id)).find((rank) => rank.key === "admin"),
+    ).toMatchObject({
+      name: "Staff",
+      permissions: [ORG_READ],
+      defaultPermissions: [ORG_READ, "quest:write"],
+    });
+
+    await ctx.ranks.reset(id, "admin", ctx.owner);
+    expect(
+      (await ctx.ranks.ranksOf(id)).find((rank) => rank.key === "admin"),
+    ).toMatchObject({
+      name: "Admin",
+      permissions: [ORG_READ, "quest:write"],
+    });
+    expect(ctx.alepha.inject(LockedRankGuard).seen).toContain("save admin");
+
+    await expect(ctx.ranks.reset(id, "nope", ctx.owner)).rejects.toThrow(
+      "has no default to reset to",
+    );
+  });
+
+  it("refuses a reset by a writer who does not hold the default", async ({
+    expect,
+  }) => {
+    const ctx = await setup({
+      defaultRanks: [
+        { key: "admin", name: "Admin", permissions: [ORG_READ, "quest:write"] },
+      ],
+    });
+    const { id } = ctx.organization;
+    await ctx.ranks.save(
+      id,
+      {
+        key: "manager",
+        name: "Manager",
+        permissions: [ORG_READ, "rank:manage"],
+      },
+      ctx.owner,
+    );
+    await ctx.ranks.save(
+      id,
+      { key: "admin", name: "Admin", permissions: [ORG_READ] },
+      ctx.owner,
+    );
+    await ctx.ranks.assign(id, ctx.member.id, "manager", ctx.owner);
+
+    await expect(ctx.ranks.reset(id, "admin", ctx.member)).rejects.toThrow(
+      "quest:write",
+    );
   });
 
   it("renames the owner and keeps its permissions at *", async ({ expect }) => {
