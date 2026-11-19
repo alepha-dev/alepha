@@ -162,6 +162,10 @@ describe("AdminHosts", () => {
     expect(
       screen.getAllByTestId("host-last-seen").map((it) => it.textContent),
     ).toEqual(["never", "N/A"]);
+    // The type is a neutral tag pill, as an uncoloured quest tag (#Q3941).
+    const types = screen.getAllByTestId("host-type");
+    expect(types.map((it) => it.textContent)).toEqual(["bay", "cloudflare"]);
+    expect(types[0].className).toContain("bg-muted");
   });
 
   /**
