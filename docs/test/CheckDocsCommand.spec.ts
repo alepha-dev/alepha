@@ -80,7 +80,7 @@ describe("CheckDocsCommand", () => {
     it("should refuse a page the generator writes for the first time", async () => {
       // #Q2357: an export made the generator emit `$pageNav.md`, and the page
       // existed in CI only. Untracked is how that page looks in a checkout
-      // that has just run `yarn copy`.
+      // that has just run `yarn gen`.
       const { check, shell } = boot();
       shell.outputs.set(
         untracked,

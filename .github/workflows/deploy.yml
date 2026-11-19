@@ -268,8 +268,8 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Prepare
-        run: yarn copy
+      - name: Generate Docs
+        run: yarn gen
 
       # Copy `ui/production`, Worker `alepha-ui-production` (#Q2778).
       - name: Deploy
@@ -308,8 +308,8 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Prepare
-        run: yarn copy
+      - name: Generate Docs
+        run: yarn gen
 
       # A demo: its data is disposable. Secrets come from the `shop-production`
       # environment; `deploy` reads each key the build manifest declares from

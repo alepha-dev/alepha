@@ -266,10 +266,10 @@ jobs:
       - name: Clean
         run: yarn clean
 
-      # `yarn copy` runs the docs' `gen:tree`, which builds alepha.dev's
+      # `yarn gen` runs the docs' `gen:tree`, which builds alepha.dev's
       # changelog page from the published Lore releases (#Q3638).
-      - name: Prepare
-        run: yarn copy
+      - name: Generate Docs
+        run: yarn gen
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 

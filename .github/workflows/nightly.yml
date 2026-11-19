@@ -109,8 +109,8 @@ jobs:
       - name: Clean
         run: yarn clean
 
-      - name: Prepare
-        run: yarn copy
+      - name: Generate Docs
+        run: yarn gen
 
       # ⚠️ `--coverage` is not only coverage. `TestCommand.reportArgs()` puts
       # six flags behind that one boolean, and two of them are the JSON test
@@ -139,7 +139,7 @@ jobs:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
   # Lore's suite runs on SQLite, so it needs none of the services above, and
-  # no `yarn copy`: Lore has no generators.
+  # no `yarn gen`: Lore has no generators.
   lore:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -234,9 +234,6 @@ jobs:
 
       - name: Clean
         run: yarn clean
-
-      - name: Prepare
-        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
 
       # The tarball carries `dist/`.
       - name: Build Project

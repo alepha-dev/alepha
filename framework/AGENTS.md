@@ -32,9 +32,9 @@ It still lands through a pull request, on a branch of its own: run only the chec
 
 ### Verifying
 
-- `yarn v` (`yarn alepha verify`) is the **inner loop, not the gate**: install, `yarn copy` (generators, then lint), then typecheck and the four `check:*` audits in parallel, then `test`, `test:bun` and `test:broker` (the MQTT contract on Mosquitto). About 3 minutes. **It cannot catch a build failure, an SSR regression, or anything an e2e covers.**
+- `yarn v` (`yarn alepha verify`) is the **inner loop, not the gate**: install, `yarn gen` (the docs generators), `yarn lint`, then typecheck and the four `check:*` audits in parallel, then `test`, `test:bun` and `test:broker` (the MQTT contract on Mosquitto). About 3 minutes. **It cannot catch a build failure, an SSR regression, or anything an e2e covers.**
   - Needs Docker running (postgres, redis, versitygw, mosquitto).
-  - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn copy` regenerates `docs/2-reference`, `docs/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any that differs from the index. A JSDoc change is a two-part commit: review the pages, stage them, run again.
+  - ⚠️ **It rewrites the generated docs, and fails until you stage them.** `yarn gen` regenerates `docs/2-reference`, `docs/3-packages` and every public package's `README.md` from the JSDoc, and `check:docs` refuses any that differs from the index. A JSDoc change is a two-part commit: review the pages, stage them, run again.
   - One run per machine across every worktree: a second `yarn v` queues, since both test lanes drive the one postgres on 15432. `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
   - Skip it when it has nothing to read: nothing for a `.gitignore` line, `yarn oxfmt <file>` for markdown prose, plus `yarn check:docs` when the file is a guide or a README with code samples.
 - **The pull request's CI run** is the real gate: `checks`, `test` (x6), `e2e-apps` and `e2e-cli`, in parallel, summed up by `gate (framework)`. There is no full local pipeline. A re-push cancels the previous run. A branch with no pull request runs nothing.
@@ -45,7 +45,7 @@ It still lands through a pull request, on a branch of its own: run only the chec
 
 ### Workspace checks
 
-`yarn check:deps` (depcheck), `check:migrations`, `check:docs` (`../docs/scripts/check-docs.ts`, run in the docs workspace: doc code samples against the source, generated pages against the index, meaningful only after `yarn copy`) and `check:conventions` (`scripts/check-conventions.ts`). The first three fan out to every workspace exposing the script. ⚠️ A root fan-out script must keep at least one workspace exposing it: with none left, `yarn workspaces foreach -Apt run <name>` runs the root's own script, which calls itself, and the recursion filled 48 GB of memory in seconds when `check:i18n` lost its last workspace (#E72). It was removed then; remove the root script with the last workspace that needs it. A new cross-app check follows the same shape: workspace script, root aggregator, and a line in the `verify` command in `scripts/commands.ts`.
+`yarn check:deps` (depcheck), `check:migrations`, `check:docs` (`../docs/scripts/check-docs.ts`, run in the docs workspace: doc code samples against the source, generated pages against the index, meaningful only after `yarn gen`) and `check:conventions` (`scripts/check-conventions.ts`). The first three fan out to every workspace exposing the script. ⚠️ A root fan-out script must keep at least one workspace exposing it: with none left, `yarn workspaces foreach -Apt run <name>` runs the root's own script, which calls itself, and the recursion filled 48 GB of memory in seconds when `check:i18n` lost its last workspace (#E72). It was removed then; remove the root script with the last workspace that needs it. A new cross-app check follows the same shape: workspace script, root aggregator, and a line in the `verify` command in `scripts/commands.ts`.
 
 ### One artifact, N runtimes
 
@@ -80,7 +80,7 @@ Retired framework names fail immediately and name their replacement.
 
 This folder is the framework. Lore (`../lore`) and Bay (`../bay`) sit beside it in the same repository since 2026-10-25 (#Q2765, see the root `AGENTS.md`), with workflows of their own. Every path in this file is relative to `framework/`.
 
-`main` auto-deploys the showcase (`apps/ui`) and the shop example to Cloudflare with no human gate: every push to `main` starts **Deploy** (`deploy.yml`), which ships them after Lore's own deploy, whatever the commit touched; the merge queue's **Verify** (`verify.yml`) ran on that commit first. The docs site lives in `../docs` since #Q2766 and deploys the same way (target `docs`) and from **Release**: its framework section is always built from the latest release tag, so `main` never publishes an unreleased API. `yarn copy` and `check:docs` here still run the site's generators, which write this folder's `docs/`. A deploy replaced while waiting by a newer push leaves that commit undeployed; the newer one ships both.
+`main` auto-deploys the showcase (`apps/ui`) and the shop example to Cloudflare with no human gate: every push to `main` starts **Deploy** (`deploy.yml`), which ships them after Lore's own deploy, whatever the commit touched; the merge queue's **Verify** (`verify.yml`) ran on that commit first. The docs site lives in `../docs` since #Q2766 and deploys the same way (target `docs`) and from **Release**: its framework section is always built from the latest release tag, so `main` never publishes an unreleased API. `yarn gen` and `check:docs` here still run the site's generators, which write this folder's `docs/`. A deploy replaced while waiting by a newer push leaves that commit undeployed; the newer one ships both.
 
 ### Lore MCP: the planning memory
 
