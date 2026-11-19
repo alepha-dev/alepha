@@ -434,8 +434,9 @@ are never linked to quests.
 `lore login`, `lore clone` and `lore code remote --add` install the helper for
 the instance in your global git config, behind an empty `helper` entry, so a
 system keychain never keeps a token that lives a few minutes. With
-`LORE_API_KEY` set (CI), the helper answers with the key. Creating and
-deleting a repository need an Admin's API key: a `lore login` cannot do it.
+`LORE_API_KEY` set (CI), the helper answers with the key. Only a project
+Admin creates or deletes a repository, with a `lore login` or an Admin's API
+key.
 
 ## Apps and deploys
 

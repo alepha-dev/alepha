@@ -10,7 +10,7 @@ The pillar is **Build**: the package `@lore/build`, its modules `LoreBuildApi` a
 
 - `code:read` (clone, fetch, list) is in every default rank, Viewer included.
 - `code:write` (push) is in the Member default: a member may push.
-- `code:admin` (create and delete a repository) is an Admin's, and never a token's: `LoreOAuthScopes.PARTIAL_GROUPS` gives an MCP or CLI token `code:read` and `code:write` only, so a repository is deleted with a signed-in session or an API key.
+- `code:admin` (create and delete a repository) is an Admin's. A `lore login` holds it (`LoreOAuthScopes.CLI_ONLY_PERMISSIONS`, #Q3965); an MCP token never does (`PARTIAL_GROUPS` gives it `code:read` and `code:write` only).
 
 ## Layout
 
@@ -40,7 +40,7 @@ The pillar is **Build**: the package `@lore/build`, its modules `LoreBuildApi` a
 
 ## CLI and MCP (#Q3934)
 
-- `code_repo_list|create|delete` (`CodeTools`) are `lore code repo list|create|delete`, on the same actions; create and delete answer 403 to every token (no `code:admin`).
+- `code_repo_list|create|delete` (`CodeTools`) are `lore code repo list|create|delete`, on the same actions; create and delete answer 403 to every MCP token (no `code:admin`), and work from the CLI.
 - The CLI is git's credential helper (`LoreGitCredentials`, `lore git-credential`): `lore login`, `lore clone` and `lore code remote --add` install it per host behind an empty `helper =` entry, so a keychain helper never stores a short-lived token. `apps/e2e/cli/code.e2e.spec.ts` proves it from a clean HOME with a storing helper configured.
 
 ## Import (#Q3935)
