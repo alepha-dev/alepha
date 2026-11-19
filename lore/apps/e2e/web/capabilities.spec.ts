@@ -253,16 +253,15 @@ test.describe("Project capabilities", () => {
     await expect(
       page.locator(`a[href="/${slug}/reports/backlog"]`),
     ).toHaveCount(0);
-    // Quality is Ship baseline, and its tab shows the push command until a
-    // run exists (#Q3070).
+    // Quality is Build's since #E162: a Ship-only project shows no Quality
+    // tab, not even its empty state.
     await expect(
       page.locator(`a[href="/${slug}/reports/quality"]`),
-    ).toBeVisible();
+    ).toHaveCount(0);
 
-    // ⚠️ Quality has no switch, and this is why a Ship-only project needs
-    // Reports to stay Core: pushed by CI under a CI credential, its tab is the
-    // one thing a Ship-only project reads there besides Members. If Reports
-    // had stayed under Work, the entry would have taken this with it.
+    // ⚠️ But a quality PUSH is accepted whatever the switches say: pushed by
+    // CI under a CI credential, it must never turn a build red because
+    // somebody turned Build off.
     const pushed = await page.evaluate(
       async ({ projectId }) => {
         const r = await fetch(`/api/projects/${projectId}/quality/runs`, {
@@ -288,6 +287,8 @@ test.describe("Project capabilities", () => {
     );
     expect(pushed).toBe(true);
 
+    // Turning Build on brings the tab back with what CI pushed.
+    await setCapability(page, id, "build", { enabled: true });
     await page.goto(`/${slug}/reports/quality`);
     await expect(page).toHaveURL(/\/reports\/quality/);
     await expect(page.getByText("Coverage over time")).toBeVisible({

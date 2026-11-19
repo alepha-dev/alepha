@@ -32,6 +32,7 @@ import { ProjectMergeController } from "./controllers/ProjectMergeController.ts"
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportController } from "./controllers/ProjectReportController.ts";
+import { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
 import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
 import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
@@ -94,6 +95,7 @@ import { ProjectRecipients } from "./services/ProjectRecipients.ts";
 import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
+import { ProjectThresholds } from "./services/ProjectThresholds.ts";
 import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
 import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
@@ -214,6 +216,10 @@ export const LoreCoreApi = $module({
     ProjectEventDeliveryJobs,
     ProjectEventNotifications,
     ProjectRecipients,
+    // The alert thresholds (#Q3894), core's since #E162: Build checks
+    // coverage, Ship open errors.
+    ProjectThresholds,
+    ProjectThresholdController,
     SubscriptionService,
     SubscriptionController,
     // The hourly job and its registry of checks (#Q3893).
@@ -539,6 +545,24 @@ export { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
 export { ProjectEventDelivery } from "./services/ProjectEventDelivery.ts";
 export { ProjectEventNotifications } from "./notifications/ProjectEventNotifications.ts";
 export { ProjectRecipients } from "./services/ProjectRecipients.ts";
+export {
+  type BuiltTag,
+  BuiltTagRegistry,
+  type BuiltTagSource,
+} from "./services/BuiltTagRegistry.ts";
+export {
+  ProjectThresholds,
+  type ThresholdArmed,
+} from "./services/ProjectThresholds.ts";
+export { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
+export {
+  type ProjectThreshold,
+  projectThresholds,
+} from "./entities/projectThresholds.ts";
+export {
+  type ProjectThresholdsBody,
+  projectThresholdsSchema,
+} from "./schemas/projectThresholdsSchema.ts";
 export { SubscriptionService } from "./services/SubscriptionService.ts";
 export { SubscriptionController } from "./controllers/SubscriptionController.ts";
 export { ProjectEventController } from "./controllers/ProjectEventController.ts";

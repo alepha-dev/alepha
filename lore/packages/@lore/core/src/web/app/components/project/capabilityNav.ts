@@ -122,7 +122,7 @@ export const navGroupsWithSettings = <T>(
  * The dashboard is the project's landing page and Activity sits under it;
  * both say something whatever else is turned off, which is what makes them
  * Core. Reports is Core because its TABS declare capabilities - Quality
- * is Ship baseline and Members comes from a core table, so a Ship-only
+ * is Build's (#E162) and Members comes from a core table, so a Build-only
  * project would lose its Quality tab along with the Reports entry.
  */
 export const CORE_NAV: CapabilityNavEntry[] = [

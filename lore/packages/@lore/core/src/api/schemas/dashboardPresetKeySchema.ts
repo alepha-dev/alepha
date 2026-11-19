@@ -5,7 +5,7 @@ import { type Infer, z } from "alepha";
  * `DashboardPresetCatalog`.
  */
 export const dashboardPresetKeySchema = z
-  .enum(["appVitals", "requirements", "triage", "delivery"])
+  .enum(["appVitals", "codeQuality", "requirements", "triage", "delivery"])
   .meta({ mode: "text" });
 
 export type DashboardPresetKey = Infer<typeof dashboardPresetKeySchema>;

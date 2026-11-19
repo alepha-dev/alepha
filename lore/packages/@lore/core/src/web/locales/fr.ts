@@ -4192,7 +4192,10 @@ export default {
   "dashboard.preset.confirm.action": "Appliquer le modèle",
   "dashboard.preset.appVitals": "Applications et indicateurs",
   "dashboard.preset.appVitals.description":
-    "Santé, visiteurs, erreurs, disponibilité et qualité des applications du projet.",
+    "Santé, visiteurs, erreurs et disponibilité des applications du projet.",
+  "dashboard.preset.codeQuality": "Qualité du code",
+  "dashboard.preset.codeQuality.description":
+    "La couverture des lignes dans le temps, la dernière couverture et les tests en échec.",
   "dashboard.preset.requirements": "Exigences",
   "dashboard.preset.requirements.description":
     "Couverture, ce qui reste à couvrir, et santé des cas d'usage et des personas.",
@@ -4203,6 +4206,7 @@ export default {
   "dashboard.preset.delivery.description":
     "Où en sont les prochaines versions, et les épopées et quêtes en cours.",
   "dashboard.preset.needs.ship": "Activez Ship pour l'utiliser",
+  "dashboard.preset.needs.build": "Activez Build pour l'utiliser",
   "dashboard.preset.needs.plan": "Activez Plan pour l'utiliser",
   "dashboard.preset.needs.plan.requirements":
     "Activez l'option Exigences de Plan pour l'utiliser",

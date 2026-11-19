@@ -3,6 +3,7 @@ import { AlephaSigil, SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreBuildApi } from "@lore/build/api";
 import { LoreBuildMcp } from "@lore/build/mcp";
+import { LoreBuildWeb } from "@lore/build/web";
 import { LoreCoreApi } from "@lore/core/api";
 import {
   LoreFileAccessProvider,
@@ -229,6 +230,7 @@ alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 alepha.with(LoreCoreWeb);
 alepha.with(LorePlanWeb);
 alepha.with(LoreRememberWeb);
+alepha.with(LoreBuildWeb);
 alepha.with(LoreShipWeb);
 alepha.with(LorePlanRequirementsWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.

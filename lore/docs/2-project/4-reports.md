@@ -25,7 +25,7 @@ off still has Summary and Team. See
 | **Support**   | Support   | Feedback from intake to shipped                                             |
 | **Knowledge** | Knowledge | Folio activity, stale pages, orphans, the link graph                        |
 | **Delivery**  | Apps      | The four DORA keys and reliability: errors, errors, uptime                  |
-| **Quality**   | Apps      | Coverage and tests CI pushed, by branch, against a target, per release tag  |
+| **Quality**   | Build     | Coverage and tests CI pushed, by branch, against a target, per release tag  |
 | **Team**      | -         | Load and contribution per member, how work arrives, agents                  |
 
 Start with **Summary**. Each of its lines links to the tab that explains it,

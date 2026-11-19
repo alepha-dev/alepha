@@ -1,8 +1,8 @@
+import { BuiltTagRegistry } from "@lore/core/api";
 import { projects, type ReportsQuery } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { artifacts } from "../entities/artifacts.ts";
 import type { QualityRun } from "../entities/qualityRuns.ts";
 import type { QualityReport } from "../schemas/qualityReportSchema.ts";
 import { QualityService } from "./QualityService.ts";
@@ -12,7 +12,7 @@ import { QualityService } from "./QualityService.ts";
  */
 export class ProjectQualityReportService {
   protected readonly quality = $inject(QualityService);
-  protected readonly artifacts = $repository(artifacts);
+  protected readonly builtTags = $inject(BuiltTagRegistry);
   protected readonly projects = $repository(projects);
 
   /**
@@ -28,10 +28,8 @@ export class ProjectQualityReportService {
     const [all, project, built] = await Promise.all([
       this.quality.findSeries(projectId, this.seriesLimit),
       this.projects.getOne({ where: { id: { eq: projectId } } }),
-      this.artifacts.findMany({
-        where: { projectId: { eq: projectId } },
-        columns: ["tag", "commitSha"],
-      }),
+      // Ship's artifacts, through core (#E162): none without Ship.
+      this.builtTags.tagsOf(projectId),
     ]);
 
     const branches = [...new Set(all.map((run) => run.branch))];

@@ -17,7 +17,7 @@ It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and 
 | `@lore/ship`              | Lore as Vercel      | apps, telemetry, deployments, hosts                                                                                                                                                      |
 | `@lore/plan-requirements` | Plan's Requirements | personas, use cases, requirements and their runs (#E153): an option of Plan, in a package of its own because it reaches Ship and Remember                                                |
 
-Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first (`@lore/build` has no `./web` and no `LoreBuildWeb` yet: it draws no page, #E162); the entries are the only place they meet. Scenario specs boot them the same way, through `bootLore()` in `apps/lore/test/fixtures/bootLore.ts`. `./web` is registered by BOTH entries.
+Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first; the entries are the only place they meet. Scenario specs boot them the same way, through `bootLore()` in `apps/lore/test/fixtures/bootLore.ts`. `./web` is registered by BOTH entries.
 
 ⚠️ **The rule** (`check:conventions`, graph table in `scripts/lore-package-graph.ts`):
 

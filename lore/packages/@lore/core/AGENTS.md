@@ -78,14 +78,16 @@ The browser side follows the same rule: core's web code (`ProjectView`, the edit
 ## Capabilities: what a project DOES
 
 Since epic #36 (2026-09-06) a project is not a quest tracker with extras. It is
-a container that composes three **capabilities**, Lore's pillars since #E143,
+a container that composes four **capabilities**, Lore's pillars since #E143
+(Build joined with #E162),
 picked in the creation wizard and switched in Settings ▸ General ▸ Capabilities:
 
 | capability | what it brings                                                                                                                                        |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `plan`     | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` / `feedback` |
 | `remember` | folios, their directories and attachments - no option since #Q3704                                                                                    |
-| `ship`     | deployed copies, sigils, errors, artifacts, quality, deploys - options `track` / `deploy` / `uptime` / `stacks`                                       |
+| `build`    | git repositories (`code:*`) and Quality - no option                                                                                                   |
+| `ship`     | deployed copies, sigils, errors, artifacts, deploys - options `track` / `deploy` / `uptime` / `stacks`                                                |
 
 A pillar is not a thing: an app is still an app and a deploy is still a deploy.
 The keys were `work`, `knowledge`, `apps` and `support` until #E143, which

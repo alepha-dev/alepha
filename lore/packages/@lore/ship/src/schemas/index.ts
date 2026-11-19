@@ -1,5 +1,5 @@
 /**
- * The browser-safe schemas of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors, quality), deployments and hosts.
+ * The browser-safe schemas of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors), deployments and hosts.
  *
  * What another package, a browser page or an end-to-end spec may import as a
  * runtime value. Nothing here reaches a server-only module.
@@ -20,7 +20,6 @@ export { hostEvents } from "../api/entities/hostEvents.ts";
 export { hostInventories } from "../api/entities/hostInventories.ts";
 export { hostProjects } from "../api/entities/hostProjects.ts";
 export { type Host, hosts } from "../api/entities/hosts.ts";
-export { qualityRuns } from "../api/entities/qualityRuns.ts";
 export { registryCredentials } from "../api/entities/registryCredentials.ts";
 export type { RegistryCredentialResource } from "../api/schemas/registryCredentialResourceSchema.ts";
 export { sigilErrorGroups } from "../api/entities/sigilErrorGroups.ts";
@@ -70,7 +69,6 @@ export {
 } from "../api/schemas/hostServerFrameSchema.ts";
 export type { HostStatsFrame } from "../api/schemas/hostStatsFrameSchema.ts";
 export { insightsDimensionResourceSchema } from "../api/schemas/insightsDimensionResourceSchema.ts";
-export type { QualityRunPush } from "../api/schemas/qualityRunPushSchema.ts";
 
 // The dashboard metrics' declarative half: both runtimes register it.
 export { DeployDashboardMetrics } from "../api/services/DeployDashboardMetrics.ts";

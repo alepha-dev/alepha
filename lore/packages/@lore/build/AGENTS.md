@@ -14,7 +14,20 @@ The pillar is **Build**: the package `@lore/build`, its modules `LoreBuildApi` a
 
 ## Layout
 
-`api/`, `mcp/`, `schemas/` and `testing/`, as the other packages. There is no `web/`: the epic draws no page for code.
+`api/`, `mcp/`, `web/`, `schemas/` and `testing/`, as the other packages. `web/` holds Quality's existing pages only (the Reports Quality tab, moved from Ship): #E162 draws no page for code.
+
+## Routes
+
+| Path                            | Route name       | Page (lazy)                                 | Notes                                                                                                                                                                                                    |
+| ------------------------------- | ---------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/:projectSlug/reports/quality` | `reportsQuality` | `project/reports/ReportsQuality.client.tsx` | Coverage and test totals pushed by CI (#Q3070), moved from Ship with its name and URL. The only Reports tab whose data is INGESTED, hence its empty state. Shown with `build`; reads `getReportsQuality` |
+
+## Quality (moved from Ship, #E162)
+
+- **A push is never gated**: `QualityController.pushQualityRun` answers whatever the switches say (`capability-gate.spec.ts`). What `build` gates is the Reports tab (`BuildShell`), the tiles (`BuildDashboardMetrics`, `QualityNumericCatalog`), the event `coverage.dropped` (`BuildProjectEvents`) and the `quality` permission group.
+- **Thresholds are core's** (`ProjectThresholds`, `project_thresholds`): Build checks coverage on a push on `main` (`CoverageThreshold`), Ship open errors hourly. The coverage target and alert stay on Ship's settings page.
+- **Tags on the curve** come from Ship's artifacts through core's `BuiltTagRegistry`, which Ship fills (`DeployBuiltTags`).
+- Build's own merge step moves `quality_runs` (`BuildProjectMerge`) and its summary line is coverage (`BuildReportsSummary`).
 
 ## Tests
 

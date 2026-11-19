@@ -1,8 +1,8 @@
+import { QualityController } from "@lore/build/api";
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { QuestController } from "@lore/plan/api";
 import { QuestTools } from "@lore/plan/mcp";
 import { FolioController } from "@lore/remember/api";
-import { QualityController } from "@lore/ship/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -228,10 +228,11 @@ describe("the capability gate", () => {
       ctx.projectApi.createProject({ body: { title: "CiPush" } }),
     );
 
-    // No capabilities at all, and CI still gets its 200. A switch in the UI
-    // must never be able to turn someone's build red — the same rule artifact
-    // push and sigil ingest already hold, and the reason Quality has no
-    // switch of its own any more.
+    // No capabilities at all, Build off included, and CI still gets its 200.
+    // A switch in the UI must never be able to turn someone's build red - the
+    // same rule artifact push and sigil ingest already hold. What `build`
+    // gates is the tab, the tiles, the event and the permission group, never
+    // the push (#E162).
     const pushed = await ctx.asUser(ctx.owner.id, () =>
       ctx.qualityApi.pushQualityRun({
         params: { projectId: project.id },

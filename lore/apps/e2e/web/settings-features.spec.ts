@@ -12,8 +12,8 @@ import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
  * `waitForResponse` BEFORE the click, or reload and look again.
  *
  * The Quality case that used to live here is gone with the switch it drove:
- * Quality joined the Ship baseline, and its Reports tab self-hides until a run
- * exists rather than waiting on a flag.
+ * Quality joined the Ship baseline, then moved to Build (#E162), whose
+ * capability shows its Reports tab.
  */
 test.describe("Project settings — capabilities", () => {
   test("an option toggled off leaves the sidebar, and stays off across a reload", async ({

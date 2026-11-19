@@ -1,3 +1,4 @@
+import { qualityRuns } from "@lore/build/schemas";
 import {
   DashboardMetricRegistry,
   ProjectDashboardController,
@@ -7,7 +8,6 @@ import { ReadCounter } from "@lore/core/testing";
 import {
   appInstances,
   deployments,
-  qualityRuns,
   sigils,
   sigilUniquesDaily,
 } from "@lore/ship/schemas";

@@ -113,6 +113,7 @@
     "vitest": "^5.1.0"
   },
   "peerDependencies": {
+    "@lore/build": "*",
     "@lore/core": "*",
     "@lore/plan": "*",
     "@lore/plan-requirements": "*",
@@ -124,6 +125,9 @@
     "react-dom": "*"
   },
   "peerDependenciesMeta": {
+    "@lore/build": {
+      "optional": true
+    },
     "@lore/core": {
       "optional": true
     },

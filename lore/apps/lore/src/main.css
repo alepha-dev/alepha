@@ -11,6 +11,7 @@
 @source "../../../packages/@lore/core/src/web";
 @source "../../../packages/@lore/plan/src/web";
 @source "../../../packages/@lore/remember/src/web";
+@source "../../../packages/@lore/build/src/web";
 @source "../../../packages/@lore/ship/src/web";
 @source "../../../packages/@lore/plan-requirements/src/web";
 

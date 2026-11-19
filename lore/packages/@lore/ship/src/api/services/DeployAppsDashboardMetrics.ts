@@ -4,12 +4,12 @@ import { $inject } from "alepha";
 import { appHealthFiltersSchema } from "../schemas/appHealthFiltersSchema.ts";
 import { errorTrendFiltersSchema } from "../schemas/errorTrendFiltersSchema.ts";
 import { hostsCardFiltersSchema } from "../schemas/hostsCardFiltersSchema.ts";
-import { qualityTrendFiltersSchema } from "../schemas/qualityTrendFiltersSchema.ts";
 import { uptimeCardFiltersSchema } from "../schemas/uptimeCardFiltersSchema.ts";
 
 /**
- * Deploy's apps tiles of #E77 (#Q2657): per-copy health, the error trend
- * with its deployments, and coverage; then hosts and uptime (#Q3781). Declarative and browser-safe, like
+ * Deploy's apps tiles of #E77 (#Q2657): per-copy health and the error trend
+ * with its deployments; then hosts and uptime (#Q3781). Coverage is Build's
+ * since #E162. Declarative and browser-safe, like
  * `DeployDashboardMetrics`; project boards only.
  */
 export class DeployAppsDashboardMetrics {
@@ -57,25 +57,6 @@ export class DeployAppsDashboardMetrics {
         target.projectSlug
           ? {
               route: "projectErrors",
-              params: { projectSlug: target.projectSlug },
-            }
-          : undefined,
-    });
-    this.catalog.register({
-      ...common,
-      key: "qualityTrend",
-      requires: "quality:read",
-      order: 83,
-      labelKey: "dashboard.metric.qualityTrend",
-      hintKey: "dashboard.metric.qualityTrend.hint",
-      icon: "shield-check",
-      presentation: "trend",
-      filters: qualityTrendFiltersSchema,
-      needs: { capability: "ship" },
-      link: (_scope, target) =>
-        target.projectSlug
-          ? {
-              route: "reportsQuality",
               params: { projectSlug: target.projectSlug },
             }
           : undefined,

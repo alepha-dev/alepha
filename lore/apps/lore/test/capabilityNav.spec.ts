@@ -112,8 +112,8 @@ describe("the sidebar, derived from capabilities", () => {
     // it renders its empty state, which is a true thing to read.
     //
     // Activity says something whatever else is turned off, and Reports is
-    // Core because its TABS declare capabilities - a Ship-only project
-    // reaches Quality through it.
+    // Core because its TABS declare capabilities - a Build-only project
+    // reaches Quality through it (#E162).
     expect(routes).toEqual([
       "projectDashboard",
       "projectActivity",

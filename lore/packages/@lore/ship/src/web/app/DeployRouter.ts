@@ -20,7 +20,6 @@ import type { AppController } from "../../api/controllers/AppController.ts";
 import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
 import type { MonitorController } from "../../api/controllers/MonitorController.ts";
 import type { ProjectHostController } from "../../api/controllers/ProjectHostController.ts";
-import type { QualityReportsController } from "../../api/controllers/QualityReportsController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
 import { currentHostAtom } from "./atoms/currentHostAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
@@ -31,7 +30,7 @@ import { appInsightsFiltersSchema } from "./components/project/apps/appInsightsF
 export { ANALYTICS_DIMENSIONS };
 
 /**
- * Deploy's pages (#E75): apps and their tabs, artifacts, errors, the Bay console, Reports' Quality tab and the Apps and Hosts settings tabs.
+ * Deploy's pages (#E75): apps and their tabs, artifacts, errors, the Bay console and the Apps and Hosts settings tabs.
  * Each page mounts under core with `$pageProject` or `parent:`, so no
  * router names another module's page.
  */
@@ -39,7 +38,6 @@ export class DeployRouter {
   core = $inject(CoreRouter);
   alepha = $inject(Alepha);
   deliveryApi = $client<DeliveryReportsController>();
-  qualityApi = $client<QualityReportsController>();
   reportsUrl = $inject(ReportsUrlQuery);
   reportsTabs = $inject(ReportsTabRegistry);
   appApi = $client<AppController>();
@@ -837,7 +835,7 @@ export class DeployRouter {
 
   /**
    * DORA metrics, errors, errors and uptime (#Q3008). Quality is its own tab,
-   * `reportsQuality` below (#Q3070).
+   * Build's `reportsQuality` (#Q3070, #E162).
    */
   reportsDelivery = $page({
     parent: this.core.projectReports,
@@ -855,33 +853,6 @@ export class DeployRouter {
         query: this.reportsUrl.toQuery(
           query,
           this.reportsTabs.honours("reportsDelivery"),
-        ),
-      }),
-    }),
-  });
-
-  /**
-   * Coverage and test totals pushed by CI, a tab of its own (#Q3070) after a
-   * day as the last section of Delivery (#Q3010). The one Reports tab whose
-   * data is INGESTED rather than derived, hence its empty state.
-   */
-  reportsQuality = $page({
-    parent: this.core.projectReports,
-    name: "reportsQuality",
-    prefetch: true,
-    path: "/quality",
-    schema: { query: reportsUrlSchema },
-    lazy: () =>
-      import("./components/project/reports/ReportsQuality.client.tsx"),
-    loader: async ({ query }) => ({
-      url: query,
-      quality: await this.qualityApi.getReportsQuality({
-        params: {
-          id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-        },
-        query: this.reportsUrl.toQuery(
-          query,
-          this.reportsTabs.honours("reportsQuality"),
         ),
       }),
     }),

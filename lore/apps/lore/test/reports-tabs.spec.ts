@@ -1,3 +1,4 @@
+import { BuildShell } from "@lore/build/web";
 import { projectFixture } from "@lore/core/testing";
 import { ReportsTabRegistry } from "@lore/core/web";
 import { WorkShell } from "@lore/plan/web";
@@ -6,11 +7,12 @@ import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
 /**
- * The tabs as Work and Deploy register them (#E75, #Q2611).
+ * The tabs as Plan, Build and Ship register them (#E75, #Q2611, #E162).
  */
 const registry = (() => {
   const alepha = Alepha.create();
   alepha.inject(WorkShell);
+  alepha.inject(BuildShell);
   alepha.inject(DeployShell);
   const tabs = alepha.inject(ReportsTabRegistry);
   // Core's own tab, which `CoreRouter` registers.
@@ -32,8 +34,9 @@ const registry = (() => {
  *
  * ⚠️ Quality has no switch. It was gated on `features.quality`, an optional
  * key absent from every project that predated the module, and the case that
- * mattered was which way ABSENT read. It is Ship baseline now, and shows the
- * push command until CI sends a run (#Q3070).
+ * mattered was which way ABSENT read. It was Ship baseline, and is Build's
+ * since #E162: it shows the push command until CI sends a run (#Q3070), and a
+ * project without Build shows no Quality tab at all.
  */
 describe("reportsTabs", () => {
   it("declares the filters of each tab, and honours none on an unknown tab", () => {
@@ -44,7 +47,7 @@ describe("reportsTabs", () => {
     expect(registry.honours("nowhere")).toEqual([]);
   });
 
-  const names = (capabilities: Array<"plan" | "remember" | "ship">) =>
+  const names = (capabilities: Array<"plan" | "remember" | "build" | "ship">) =>
     registry.tabs(projectFixture({ capabilities })).map((tab) => tab.route);
 
   it("gives a Plan project its tabs, plus Team", () => {
@@ -79,18 +82,27 @@ describe("reportsTabs", () => {
     expect(names([])).toEqual(["reportsSummary", "reportsTeam"]);
   });
 
-  it("keeps Delivery and Quality for a Ship-only project", () => {
+  it("keeps Delivery for a Ship-only project, and no Quality (#E162)", () => {
     // The case that decided Reports is Core rather than Work: this project
-    // has no quests at all and still needs to reach what CI pushed.
+    // has no quests at all and still needs to reach its deploys. Quality is
+    // Build's: not even its empty state shows here.
     expect(names(["ship"])).toEqual([
       "reportsSummary",
       "reportsDelivery",
+      "reportsTeam",
+    ]);
+  });
+
+  it("gives a Build-only project its Quality tab", () => {
+    // What CI pushed is reached with no quest and no app.
+    expect(names(["build"])).toEqual([
+      "reportsSummary",
       "reportsQuality",
       "reportsTeam",
     ]);
   });
 
-  it("hides Delivery and Quality when Apps is off", () => {
+  it("hides Delivery and Quality when Ship and Build are off", () => {
     expect(names(["plan"])).not.toContain("reportsDelivery");
     expect(names(["plan"])).not.toContain("reportsQuality");
   });

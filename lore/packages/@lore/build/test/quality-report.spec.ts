@@ -1,3 +1,4 @@
+import { BuiltTagRegistry } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AnalyticsProvider, OrmAnalyticsProvider } from "alepha/api/analytics";
@@ -5,19 +6,17 @@ import { UserService } from "alepha/api/users";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { describe, it } from "vitest";
 
-import { artifacts } from "../src/api/entities/artifacts.ts";
 import { qualityRuns } from "../src/api/entities/qualityRuns.ts";
-import { LoreShipApi } from "../src/api/index.ts";
+import { LoreBuildApi } from "../src/api/index.ts";
 import { ProjectQualityReportService } from "../src/api/services/ProjectQualityReportService.ts";
 
 class Repositories {
   projects = $repository(projects);
   runs = $repository(qualityRuns);
-  artifacts = $repository(artifacts);
 }
 
 /**
- * Quality as a section of the Delivery tab (#Q3010).
+ * Quality as a section of the Delivery tab (#Q3010), Build's since #E162.
  */
 describe("ProjectQualityReportService", () => {
   const setup = async () => {
@@ -26,7 +25,7 @@ describe("ProjectQualityReportService", () => {
     })
       .with({ provide: AnalyticsProvider, use: OrmAnalyticsProvider })
       .with(AlephaOrm)
-      .with(LoreShipApi);
+      .with(LoreBuildApi);
     const repos = alepha.inject(Repositories);
     await alepha.start();
     const owner = await alepha
@@ -114,14 +113,14 @@ describe("ProjectQualityReportService", () => {
     try {
       await ctx.run("2026-06-01", "main", 60, "abcdef1234");
       await ctx.run("2026-06-02", "main", 70, "abcdef1234");
-      await ctx.repos.artifacts.create({
-        projectId: ctx.project.id,
-        app: "web",
-        tag: "1.0.0",
-        runtime: "node",
-        sha256: "0".repeat(64),
-        commitSha: "abcdef1",
-      });
+      // Ship's artifacts reach Build through core; this is that source.
+      ctx.alepha
+        .inject(BuiltTagRegistry)
+        .register(async (projectId) =>
+          projectId === ctx.project.id
+            ? [{ tag: "1.0.0", commitSha: "abcdef1" }]
+            : [],
+        );
 
       const data = await report(ctx.alepha, ctx.project.id, {});
 
