@@ -350,11 +350,15 @@ export const projectActivityParamsSchema = projectParamsSchema.extend({
     .describe(
       "Return everything that happened strictly after this instant. Pass the `until` of your previous call, or the time your last session ended. There is no window limit any more: this reads an indexed event table rather than deriving events from six range scans, so a `since` of any age is answered directly. What bounds how far back you can see is retention, not the query.",
     ),
+  // 100, the action's own page cap (`pageQuerySchema.size`): 200 here was
+  // refused by the action it calls (#Q3964).
   limit: z
     .integer()
     .min(1)
-    .max(200)
-    .describe("Maximum events to return (default: 100).")
+    .max(100)
+    .describe(
+      "Maximum events to return (default and maximum: 100). For more, pass the `until` of the answer as the next call's `since`.",
+    )
     .optional(),
   includeOwn: z
     .boolean()

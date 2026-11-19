@@ -177,6 +177,25 @@ describe("Lore MCP: project_activity", () => {
     expect(pairs(shown)).toContain("quest:comment");
   });
 
+  it("takes as many events as the action it calls, and says to page past them (#Q3964)", async ({
+    expect,
+  }) => {
+    const { projectTools, project, call } = await setup();
+    const limit = (projectTools.project_activity as any).options.schema.params
+      .shape.limit;
+
+    // The action's page cap (`pageQuerySchema.size`) is 100: a tool that
+    // advertised 200 was refused by it.
+    expect(limit.unwrap().maxValue).toBe(100);
+    await expect(
+      call(projectTools.project_activity, {
+        project: project.id,
+        since: "2026-01-01T00:00:00.000Z",
+        limit: 100,
+      }),
+    ).resolves.toMatchObject({ events: expect.any(Array) });
+  });
+
   it("ignores anything older than since", async () => {
     const { questTools, projectTools, project, call, dt, MATE } = await setup();
 
