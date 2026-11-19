@@ -139,6 +139,14 @@ describe("lore channel, threshold, inbox, notifications and quest reminder", () 
             categories: ["mentions", "notifications"],
           }),
         ),
+        updateMyNotificationPreferences: record(
+          "updateMyNotificationPreferences",
+          (request) => ({
+            emailEnabled: request.body.emailEnabled ?? false,
+            mutedCategories: request.body.mutedCategories ?? ["mentions"],
+            categories: ["mentions", "notifications"],
+          }),
+        ),
       },
     });
     Object.assign(quests as unknown as Record<string, unknown>, {
@@ -271,5 +279,27 @@ describe("lore channel, threshold, inbox, notifications and quest reminder", () 
     await run(inbox.preferencesGet, "");
     expect(printed.join("\n")).toContain("Email: off");
     expect(printed.join("\n")).toMatch(/muted\s+mentions/);
+  });
+
+  it("changes the caller's preferences, merging mutes with what is muted, and refuses an unknown kind", async ({
+    expect,
+  }) => {
+    const { run, sent, inbox } = create();
+    await run(
+      inbox.preferencesSet,
+      "--email on --mute notifications --unmute mentions",
+    );
+    expect(
+      sent.filter(([name]) => name === "updateMyNotificationPreferences"),
+    ).toEqual([
+      [
+        "updateMyNotificationPreferences",
+        { body: { emailEnabled: true, mutedCategories: ["notifications"] } },
+      ],
+    ]);
+    await expect(run(inbox.preferencesSet, "--mute nope")).rejects.toThrow(
+      /Unknown kind: nope/,
+    );
+    await expect(run(inbox.preferencesSet, "")).rejects.toThrow(/--email/);
   });
 });

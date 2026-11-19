@@ -299,7 +299,8 @@ you in every project.
 To stop one project's notifications rather than a kind, pause or stop the
 subscription on that project's **Settings ▸ Notifications**.
 
-Only you, signed in, can change these: an API key or a connected app cannot.
+Only you can change these: signed in, or with `lore notifications set` after
+`lore login`. An API key or a connected app cannot.
 
 ## From an agent
 
@@ -328,8 +329,9 @@ echo "$WEBHOOK_URL" | lore channel add --kind webhook --name ci-alerts --url-std
 
 A webhook's signing secret is printed once, by `lore channel add` and `lore
 channel rotate`. A channel's URL and secret never go through an agent's tool,
-so a credential stays out of a model's context. Your preferences are read with
-`lore notifications get`, and changed signed in, in the browser. See
+so a credential stays out of a model's context. `lore notifications get` and
+`lore notifications set` read and change your own preferences, with the
+account `lore login` signed in; an API key is refused. See
 [CLI](/lore/docs/reference-cli).
 
 ## Next

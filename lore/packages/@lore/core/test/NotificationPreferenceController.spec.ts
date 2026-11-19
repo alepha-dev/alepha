@@ -56,7 +56,7 @@ describe("NotificationPreferenceController under an API key", () => {
         { body: { emailEnabled: false } },
         { user: key },
       ),
-    ).rejects.toThrow("requires a signed-in session");
+    ).rejects.toThrow(/needs a signed-in session or `lore login`.*api-key/);
 
     const read = await controller.getMyNotificationPreferences.run(
       {},

@@ -1,8 +1,8 @@
 import { $inject, Alepha } from "alepha";
 import { $notification } from "alepha/api/notifications";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
-import { $action } from "alepha/server";
+import { $secure, type UserAccountToken } from "alepha/security";
+import { $action, ForbiddenError } from "alepha/server";
 
 import { notificationPreferences } from "../entities/notificationPreferences.ts";
 import { notificationPreferenceResourceSchema } from "../schemas/notificationPreferenceResourceSchema.ts";
@@ -47,14 +47,19 @@ export class NotificationPreferenceController {
   updateMyNotificationPreferences = $action({
     method: "PATCH",
     path: "/users/me/notification-preferences",
-    // Every non-GET route under `/users/me` refuses a machine credential.
-    use: [$secure({ sessionOnly: true })],
+    // Every other non-GET route under `/users/me` refuses a machine
+    // credential (`sessionOnly`). This one also takes `lore login`'s token
+    // (#Q3914): the owner wants every Lore feature driven from the CLI, and
+    // that token is the person, who approved it in the browser. An API key
+    // and any other connected app are still refused, in `cliOrSession`.
+    use: [$secure()],
     description: "Update the caller's own notification preferences",
     schema: {
       body: updateNotificationPreferenceBodySchema,
       response: notificationPreferenceResourceSchema,
     },
     handler: async ({ body, user }) => {
+      this.cliOrSession(user);
       const existing = await this.prefs.findOne({
         where: { userId: { eq: user.id } },
       });
@@ -85,6 +90,31 @@ export class NotificationPreferenceController {
       };
     },
   });
+
+  /**
+   * The `lore` CLI's OAuth client, as `lore login` names it in the device
+   * flow (`LoreClientService.CLIENT_ID`).
+   */
+  public static readonly CLI_CLIENT_ID = "alepha-cli";
+
+  /**
+   * A signed-in session, or the token `lore login` got from a device flow
+   * the person approved. Refuses every other machine credential: an API key
+   * may be scripted by anyone holding it, and a connected app acts for
+   * itself, not as the person.
+   */
+  protected cliOrSession(user: UserAccountToken): void {
+    const credential = user.credential;
+    if (!credential) return;
+    if (
+      credential.type === "oauth" &&
+      credential.clientId === NotificationPreferenceController.CLI_CLIENT_ID
+    )
+      return;
+    throw new ForbiddenError(
+      `Changing your notification preferences needs a signed-in session or \`lore login\`, and this request was authenticated by a machine credential (${credential.type})`,
+    );
+  }
 
   /**
    * The categories a person may switch off.
