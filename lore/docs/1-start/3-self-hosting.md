@@ -213,6 +213,23 @@ docker run --rm -v lore:/data -v "$PWD:/backup" alpine \
 Restoring is the same command in reverse, into an empty volume, with the
 container stopped.
 
+### Git repositories, nightly
+
+Every night at 03:00 Lore also writes each git repository as a bundle into its
+object storage, one file per night that saw a push, the last seven kept. A
+bundle is one file that `git clone` reads, so restoring a repository needs no
+running Lore:
+
+```bash
+git clone code-backup.bundle restored
+cd restored && lore code import <repo>
+```
+
+⚠️ **Without `S3_*`, those bundles live under `/data` too**, on the same disk
+as the repositories they copy: they guard against a bad push, not against
+losing the disk. Point the object storage at another machine, or copy the
+volume off it as above.
+
 ⚠️ **`/data/.app_secret` seals every secret Lore stores**: the environment
 variables of every app instance, registry credentials, and the `APP_SECRET` of
 every app running on a Bay machine, which Lore keeps so that a rebuilt machine

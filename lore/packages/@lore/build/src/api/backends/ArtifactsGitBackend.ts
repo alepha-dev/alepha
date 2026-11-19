@@ -5,6 +5,7 @@ import {
   GitBackend,
   type GitBackendToken,
   type GitCommit,
+  type GitRefTip,
   type GitRepositoryInfo,
   type GitRpcRequest,
   type GitRpcResponse,
@@ -156,6 +157,189 @@ export class ArtifactsGitBackend extends GitBackend {
       if (entries.length < page) break;
     }
     return [];
+  }
+
+  /**
+   * The upload-pack advertisement, protocol v0, read for its ref lines.
+   */
+  public async refs(ref: string): Promise<GitRefTip[]> {
+    const token = await this.token(ref, "read");
+    if (!token) return [];
+    const response = await this.fetchUpstream(
+      `${token.remote}/info/refs?service=git-upload-pack`,
+      { headers: { authorization: `Basic ${btoa(`x:${token.token}`)}` } },
+    );
+    if (!response.ok) {
+      throw new AlephaError(
+        `The advertisement of ${ref} answered ${response.status}`,
+      );
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return ArtifactsGitBackend.advertisedRefs(bytes);
+  }
+
+  /**
+   * A full fetch over smart HTTP, as a clone makes, written as a bundle
+   * (#Q3946): protocol v0, `want` every tip, `done`, and none of the
+   * `side-band` capabilities, so the answer is `NAK` then the bare packfile.
+   * The packfile streams through: the Worker never holds it.
+   */
+  public async bundle(
+    ref: string,
+    refs: GitRefTip[],
+  ): Promise<ReadableStream<Uint8Array>> {
+    const token = await this.token(ref, "read");
+    if (!token) throw new AlephaError(`No repository ${ref} to bundle`);
+    const wants = [...new Set(refs.map((tip) => tip.sha))];
+    const pkt = (line: string) =>
+      `${(line.length + 4).toString(16).padStart(4, "0")}${line}`;
+    const request = [
+      ...wants.map((sha, index) =>
+        pkt(`want ${sha}${index === 0 ? " ofs-delta agent=lore" : ""}\n`),
+      ),
+      "0000",
+      pkt("done\n"),
+    ].join("");
+    const response = await this.fetchUpstream(
+      `${token.remote}/git-upload-pack`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Basic ${btoa(`x:${token.token}`)}`,
+          "content-type": "application/x-git-upload-pack-request",
+          accept: "application/x-git-upload-pack-result",
+        },
+        body: request,
+      },
+    );
+    if (!response.ok || !response.body) {
+      throw new AlephaError(`The fetch of ${ref} answered ${response.status}`);
+    }
+    return ArtifactsGitBackend.packAfterNak(
+      GitBackend.bundleHeader(refs),
+      response.body,
+    );
+  }
+
+  /**
+   * The `<sha> <name>` lines of a v0 advertisement: branches, tags and
+   * `HEAD`, never a peeled `^{}` entry.
+   */
+  public static advertisedRefs(bytes: Uint8Array): GitRefTip[] {
+    const decoder = new TextDecoder();
+    const tips: GitRefTip[] = [];
+    let offset = 0;
+    while (offset + 4 <= bytes.length) {
+      const length = Number.parseInt(
+        decoder.decode(bytes.slice(offset, offset + 4)),
+        16,
+      );
+      if (Number.isNaN(length)) break;
+      if (length < 4) {
+        offset += 4;
+        continue;
+      }
+      const line = decoder
+        .decode(bytes.slice(offset + 4, offset + length))
+        .split("\0")[0]!
+        .replace(/\n$/, "");
+      offset += length;
+      const match = /^([0-9a-f]{40}) (\S+)$/.exec(line);
+      if (!match) continue;
+      const [, sha, name] = match as unknown as [string, string, string];
+      if (/^0+$/.test(sha) || name.endsWith("^{}")) continue;
+      if (name === "HEAD" || /^refs\/(heads|tags)\//.test(name)) {
+        tips.push({ sha, name });
+      }
+    }
+    return tips;
+  }
+
+  /**
+   * `header`, then the response's packfile: the pkt-lines before it
+   * (`NAK`, `ACK`) are dropped, up to the `PACK` signature, and so is the
+   * flush (`0000`) Artifacts writes after it, which `git index-pack` reads
+   * as junk. The last four bytes are held back until the end for that.
+   */
+  public static packAfterNak(
+    header: Uint8Array,
+    body: ReadableStream<Uint8Array>,
+  ): ReadableStream<Uint8Array> {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer: Uint8Array = new Uint8Array(0);
+    let started = false;
+    let tail: Uint8Array = new Uint8Array(0);
+    const concat = (a: Uint8Array, b: Uint8Array) => {
+      const joined = new Uint8Array(a.length + b.length);
+      joined.set(a);
+      joined.set(b, a.length);
+      return joined;
+    };
+    /**
+     * Emit all but the last four bytes seen so far.
+     */
+    const emit = (
+      controller: ReadableStreamDefaultController<Uint8Array>,
+      chunk: Uint8Array,
+    ) => {
+      const all = concat(tail, chunk);
+      const cut = Math.max(all.length - 4, 0);
+      if (cut > 0) controller.enqueue(all.slice(0, cut));
+      tail = all.slice(cut);
+    };
+    return new ReadableStream<Uint8Array>({
+      start: (controller) => controller.enqueue(header),
+      pull: async (controller) => {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) {
+            if (!started) {
+              controller.error(
+                new AlephaError("The fetch answered no packfile"),
+              );
+              return;
+            }
+            if (decoder.decode(tail) !== "0000" && tail.length) {
+              controller.enqueue(tail);
+            }
+            controller.close();
+            return;
+          }
+          if (started) {
+            emit(controller, value);
+            return;
+          }
+          buffer = concat(buffer, value);
+          let offset = 0;
+          while (offset + 4 <= buffer.length) {
+            if (decoder.decode(buffer.slice(offset, offset + 4)) === "PACK") {
+              started = true;
+              emit(controller, buffer.slice(offset));
+              buffer = new Uint8Array(0);
+              return;
+            }
+            const length = Number.parseInt(
+              decoder.decode(buffer.slice(offset, offset + 4)),
+              16,
+            );
+            if (Number.isNaN(length)) {
+              controller.error(
+                new AlephaError(
+                  "The fetch answered something else than a pack",
+                ),
+              );
+              return;
+            }
+            const size = length < 4 ? 4 : length;
+            if (offset + size > buffer.length) break;
+            offset += size;
+          }
+          buffer = buffer.slice(offset);
+        }
+      },
+      cancel: (reason) => reader.cancel(reason),
+    });
   }
 
   /**

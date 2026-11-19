@@ -68,6 +68,33 @@ export abstract class GitBackend {
   ): Promise<GitCommit[]>;
 
   /**
+   * Every branch and tag tip, plus `HEAD` when it resolves (#Q3946): what a
+   * backup bundles, and what tells an unchanged repository from one that
+   * moved. Empty for an empty repository.
+   */
+  public abstract refs(ref: string): Promise<GitRefTip[]>;
+
+  /**
+   * The whole repository as a git bundle (v2): a header naming `refs`, then
+   * one packfile holding everything they reach (#Q3946). `git clone
+   * <file>.bundle` reads it back.
+   */
+  public abstract bundle(
+    ref: string,
+    refs: GitRefTip[],
+  ): Promise<ReadableStream<Uint8Array>>;
+
+  /**
+   * A bundle's header: the signature, a line per ref, a blank line. The
+   * packfile follows.
+   */
+  public static bundleHeader(refs: GitRefTip[]): Uint8Array {
+    return new TextEncoder().encode(
+      `# v2 git bundle\n${refs.map((tip) => `${tip.sha} ${tip.name}\n`).join("")}\n`,
+    );
+  }
+
+  /**
    * Answer one smart HTTP request for a repository: the ref advertisement
    * (`info/refs`) or an RPC (`git-upload-pack`, `git-receive-pack`). The
    * caller has authenticated, authorized and decompressed already.
@@ -102,6 +129,14 @@ export interface GitRpcRequest {
    * Aborted when the client goes away: a spawned `git` is killed with it.
    */
   signal?: AbortSignal;
+}
+
+export interface GitRefTip {
+  sha: string;
+  /**
+   * `HEAD`, `refs/heads/<name>` or `refs/tags/<name>`.
+   */
+  name: string;
 }
 
 export interface GitCommit {
