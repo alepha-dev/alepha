@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@alepha/lore": "workspace:*",
+    "@axe-core/playwright": "^4.14.0",
     "@lore/plan": "workspace:*",
     "@lore/ship": "workspace:*",
     "@playwright/test": "^1.65.1",
