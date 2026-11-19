@@ -1135,6 +1135,35 @@ describe("BuildCloudflareTask", () => {
       });
 
       /**
+       * `admit` reads the session cookie only for an upgrade whose `Origin`
+       * is this host (cross-site WebSocket hijacking). The entry forwarded
+       * `authorization` and `cookie` alone, so every browser upgrade on
+       * Workers was anonymous and a `$secure` socket refused it.
+       */
+      it("forwards the origin and host a cookie upgrade is checked against", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/chat"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        const content = fs.getFileContent(ENTRY) ?? "";
+        const admit = content.slice(
+          content.indexOf("wsProvider.admit(endpoint,"),
+          content.indexOf('ip: request.headers.get("cf-connecting-ip")'),
+        );
+        expect(admit).toContain(
+          'origin: request.headers.get("origin") || undefined',
+        );
+        expect(admit).toContain(
+          'host: request.headers.get("host") || undefined',
+        );
+        expect(admit).toContain(
+          'cookie: request.headers.get("cookie") || undefined',
+        );
+      });
+
+      /**
        * A `$room` registers on the provider's room registry, not the
        * `$websocket` endpoint registry  -  `getEndpoint(path)` returns
        * `undefined` for a room-only path, which silently skipped the 401

@@ -69,4 +69,65 @@ describe("WebSocketClient reconnect", () => {
     await alepha.stop();
     await new Promise((resolve) => server.close(() => resolve(undefined)));
   });
+
+  /**
+   * The default gives up after ten attempts three seconds apart, so a tab
+   * left open through a thirty-second outage never came back. With
+   * `maxReconnectAttempts: -1` it retries forever, `maxReconnectInterval`
+   * keeps those retries cheap, and `onConnect` firing again is how the page
+   * learns it missed frames and must refetch.
+   */
+  it("comes back after more failed attempts than the default cap, and says so through onConnect", async () => {
+    const listen = (port = 0) =>
+      new Promise<WebSocketServer>((resolve) => {
+        const created = new WebSocketServer({ port });
+        created.once("listening", () => resolve(created));
+      });
+    let server = await listen();
+    const port = (server.address() as { port: number }).port;
+
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+    class Channels {
+      chat = $channel({
+        path: "/ws/chat",
+        schema: {
+          in: z.object({ text: z.string() }),
+          out: z.object({ text: z.string() }),
+        },
+      });
+    }
+    const channels = alepha.inject(Channels);
+    const client = alepha.inject(WebSocketClient);
+    await alepha.start();
+
+    let connects = 0;
+    const unsubscribe = client.subscribe("a", channels.chat, () => {}, {
+      url: `ws://127.0.0.1:${port}/ws/chat`,
+      reconnectInterval: 10,
+      maxReconnectInterval: 40,
+      maxReconnectAttempts: -1,
+      onConnect: () => {
+        connects++;
+      },
+    });
+    await sleep(200);
+    expect(connects).toBe(1);
+
+    // Down long enough for well over ten failed attempts.
+    for (const ws of server.clients) ws.terminate();
+    await new Promise((resolve) => server.close(() => resolve(undefined)));
+    await sleep(800);
+    const connection = client.getConnection(channels.chat);
+    expect(connection?.isConnected).toBe(false);
+
+    server = await listen(port);
+    await sleep(300);
+
+    expect(connection?.isConnected).toBe(true);
+    expect(connects).toBe(2);
+
+    unsubscribe();
+    await alepha.stop();
+    await new Promise((resolve) => server.close(() => resolve(undefined)));
+  });
 });

@@ -246,6 +246,9 @@ export abstract class WebSocketServerProvider {
    *   is what the worker entry did before this method existed; on a `secure`
    *   endpoint anonymous is a refusal anyway.
    *
+   * On the session path (`use` or `secure`), the endpoint's `canJoin` then
+   * checks every room the URL names against the user just resolved.
+   *
    * One method rather than two call sites agreeing, because the Node upgrade
    * and the generated Cloudflare worker entry both have to make exactly this
    * decision, and the worker entry reaches this provider by string injection,
@@ -270,7 +273,8 @@ export abstract class WebSocketServerProvider {
     }
 
     if (endpoint?.use?.length) {
-      return await this.admitThrough(endpoint.use, handshake);
+      const admission = await this.admitThrough(endpoint.use, handshake);
+      return await this.admitRooms(endpoint, handshake, admission);
     }
 
     let userId: string | undefined;
@@ -282,7 +286,75 @@ export abstract class WebSocketServerProvider {
     if (endpoint?.secure && !userId) {
       return { accepted: false };
     }
-    return { accepted: true, userId };
+    return await this.admitRooms(endpoint, handshake, {
+      accepted: true,
+      userId,
+    });
+  }
+
+  /**
+   * Ask the endpoint's `canJoin` about every room the handshake names, once
+   * the session has decided who is connecting.
+   *
+   * `secure` and `use` say WHO may connect; they never looked at the room,
+   * so a signed-in user could join any room id they typed. A private room
+   * needs both answers, and only the endpoint knows who belongs where. A
+   * `false` for any room refuses the whole handshake with a 403, the same
+   * answer for a room that does not exist and one the user is not in.
+   */
+  protected async admitRooms(
+    endpoint: WebSocketAdmissionOptions | undefined,
+    handshake: WebSocketHandshake,
+    admission: WebSocketAdmissionResult,
+  ): Promise<WebSocketAdmissionResult> {
+    if (!admission.accepted || !endpoint?.canJoin) {
+      return admission;
+    }
+    const url = new URL(handshake.url, "http://localhost");
+    for (const roomId of this.extractRoomIds(url)) {
+      const allowed = await endpoint.canJoin({
+        userId: admission.userId,
+        roomId,
+        handshake,
+      });
+      if (!allowed) {
+        return { accepted: false, status: 403 };
+      }
+    }
+    return admission;
+  }
+
+  /**
+   * The rooms an upgrade URL asks for: every `?roomId=`, then the
+   * comma-separated `?roomIds=`, or `default` when it names none.
+   *
+   * On the base class because admission reads them on both engines, before
+   * the engine-specific connection code does.
+   */
+  protected extractRoomIds(url: URL): string[] {
+    const roomIds: string[] = [];
+
+    // Check for roomId parameter (can be multiple)
+    const roomIdParams = url.searchParams.getAll("roomId");
+    roomIds.push(...roomIdParams);
+
+    // Check for roomIds parameter (comma-separated)
+    const roomIdsParam = url.searchParams.get("roomIds");
+    if (roomIdsParam) {
+      roomIds.push(
+        ...roomIdsParam
+          .split(",")
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0),
+      );
+    }
+
+    // Default room if none specified
+    if (roomIds.length === 0) {
+      roomIds.push("default");
+    }
+
+    return roomIds;
   }
 
   /**
@@ -344,6 +416,13 @@ export abstract class WebSocketServerProvider {
         `WebSocket endpoint ${path} declares both authorize and $secure. ` +
           "An endpoint has one way in: authorize decides the handshake itself, " +
           "$secure asks alepha/security. Keep one.",
+      );
+    }
+    if (options.authorize && options.canJoin) {
+      throw new AlephaError(
+        `WebSocket endpoint ${path} declares both authorize and canJoin. ` +
+          "authorize already names the room a credential lands in; canJoin " +
+          "checks the room a signed-in user asks for. Keep one.",
       );
     }
   }

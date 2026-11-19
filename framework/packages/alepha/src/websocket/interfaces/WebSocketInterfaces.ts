@@ -119,7 +119,34 @@ export interface WebSocketAdmissionOptions {
   authorize?: WebSocketAuthorize;
   secure?: boolean;
   use?: readonly Middleware[];
+  canJoin?: WebSocketCanJoin;
 }
+
+/**
+ * The room check of an endpoint whose connections belong to people.
+ *
+ * Runs on the session path only (`use` or `secure`), after the user is
+ * resolved, once for every room the upgrade URL names, on Node and in the
+ * generated Cloudflare worker entry alike. `false` refuses the handshake
+ * with a 403. A throw propagates, and the caller answers 503.
+ *
+ * `secure` alone says a user is signed in, never which rooms are theirs: a
+ * room id is the client's choice, so a private room needs this check too.
+ * Declaring it together with `authorize` is refused at registration, since
+ * `authorize` names the room itself.
+ */
+export type WebSocketCanJoin = (params: {
+  /**
+   * The user the session resolved, or `undefined` on an endpoint that lets
+   * anonymous connections in.
+   */
+  userId?: string;
+  /**
+   * One room the URL asks for (`default` when it names none).
+   */
+  roomId: string;
+  handshake: WebSocketHandshake;
+}) => Promise<boolean> | boolean;
 
 /**
  * What {@link WebSocketServerProvider.admit} decides. A `roomId` is present
@@ -214,6 +241,12 @@ export interface WebSocketPrimitiveOptions<
    * way in.
    */
   authorize?: WebSocketAuthorize;
+
+  /**
+   * Decide, once the session is known, whether the user may join the room
+   * the URL asks for. See {@link WebSocketCanJoin}.
+   */
+  canJoin?: WebSocketCanJoin;
 
   /**
    * Limit number of connections per user (if authenticated)

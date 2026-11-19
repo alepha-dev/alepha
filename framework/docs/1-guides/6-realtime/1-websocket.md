@@ -265,7 +265,9 @@ function Chat() {
 
 `useRoom` returns `{ send, isConnected, isConnecting, isError, error, reconnect, disconnect }`. On the server (SSR), it no-ops safely. `send` called while the socket is down does not throw: the message is queued, up to 1000 with the oldest dropped first, and flushed once the connection opens. A message that fails the schema throws either way.
 
-Besides `roomId`, `channel` and `handler`, `useRoom` takes `url`, `autoReconnect`, `reconnectInterval`, `maxReconnectAttempts` and the callbacks `onConnect`, `onDisconnect` and `onError`.
+Besides `roomId`, `channel` and `handler`, `useRoom` takes `url`, `autoReconnect`, `reconnectInterval`, `maxReconnectAttempts`, `maxReconnectInterval` and the callbacks `onConnect`, `onDisconnect` and `onError`.
+
+A client gives up after `maxReconnectAttempts` failed attempts (ten by default, three seconds apart), so a page left open through a longer outage stays offline. A page that must come back sets `maxReconnectAttempts: -1`, and `maxReconnectInterval` to double the wait from `reconnectInterval` up to that ceiling, which keeps a tab retrying for an hour from costing the server a handshake every few seconds. `onConnect` fires on every connection, the first and each one after a drop: frames sent while the socket was down are lost, so that is where a page refetches what it shows.
 
 The connection URL is resolved in this order:
 
@@ -302,6 +304,23 @@ Identity is resolved from the WebSocket handshake through `alepha/security`'s us
 - An API key (with the realm's `apiKeys` feature on) can travel as the `?api_key=` query parameter, since it can't go in an `Authorization` header. There is no query parameter for a JWT: a non-browser client that can set headers sends `Authorization: Bearer ...` on the handshake instead.
 
 The middlewares run on the upgrade request, before the socket exists. An unauthenticated handshake is refused with `401`, and a user without a role or permission `$secure` asks for (`use: [$secure({ roles: ["moderator"] })]`) with `403`. This works identically on both the Node and Cloudflare providers.
+
+### Checking the room, not only the user
+
+`$secure` says WHO is connecting; it never looks at the room. A room id is the client's choice, so a signed-in user could join any room they can name. When rooms belong to people (a private conversation, a user's own feed), add `canJoin`, which runs after the session resolved the user, once for every room the URL names:
+
+```typescript
+feed = $websocket({
+  channel: this.channels.feed,
+  use: [$secure()],
+  canJoin: ({ userId, roomId }) => roomId === userId,
+  handler: async () => {},
+});
+```
+
+`false` refuses the handshake with a `403`, the same answer for a room that does not exist and one the user is not in. It runs before the socket exists, on Node and on Cloudflare alike. Declaring it together with `authorize` is refused at registration, since `authorize` names the room itself.
+
+A check at the handshake does not follow a membership that changes later: a socket admitted to a room keeps it until it closes, and on Cloudflare `closeConnection()` cannot close it from outside the room's Durable Object. When membership can be withdrawn while connected, give each user a room of their own (as above) and let the server choose the recipients of every `emit({ roomIds })`: a user removed from a group is simply no longer named.
 
 **What `maxConnectionsPerUser` counts differs by engine.** On Node the server holds every connection, so the cap is per endpoint: three connections total, whichever rooms they joined. On Cloudflare a Durable Object IS one room and only knows its own sockets, so the cap is per room: the same user may hold three in each room they join. Counting across rooms would put a second coordinator object on the path of every upgrade, which is a real cost for a limit that exists to stop one user opening tabs without end. Both engines refuse the same way, closing the socket with code `1008` and the reason `Max connections per user exceeded`, so a client cannot tell them apart. An unauthenticated connection is never capped on either, since there is no identity to count against.
 

@@ -53,6 +53,15 @@ export interface WebSocketClientOptions {
   autoReconnect?: boolean;
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
+  /**
+   * Grow the wait between attempts, doubling from `reconnectInterval` up to
+   * this many milliseconds. Unset, every attempt waits `reconnectInterval`.
+   *
+   * For a client that retries forever (`maxReconnectAttempts: -1`): a tab
+   * left open through an outage then costs the server one handshake every
+   * `maxReconnectInterval`, not one every few seconds.
+   */
+  maxReconnectInterval?: number;
 }
 
 export class WebSocketChannelConnection<
@@ -494,10 +503,15 @@ export class WebSocketChannelConnection<
       this.options.maxReconnectAttempts ??
       this.env.WEBSOCKET_MAX_RECONNECT_ATTEMPTS ??
       10;
-    const reconnectInterval =
+    const baseInterval =
       this.options.reconnectInterval ??
       this.env.WEBSOCKET_RECONNECT_INTERVAL ??
       3000;
+    const ceiling = this.options.maxReconnectInterval;
+    const reconnectInterval =
+      ceiling && ceiling > baseInterval
+        ? Math.min(baseInterval * 2 ** this.reconnectAttempts, ceiling)
+        : baseInterval;
 
     if (maxAttempts !== -1 && this.reconnectAttempts >= maxAttempts) {
       this.log.warn("Max reconnection attempts reached", {
@@ -617,6 +631,7 @@ export class WebSocketClient {
       autoReconnect?: boolean;
       reconnectInterval?: number;
       maxReconnectAttempts?: number;
+      maxReconnectInterval?: number;
       onConnect?: () => void;
       onDisconnect?: () => void;
       onError?: (error: Error) => void;
@@ -646,6 +661,7 @@ export class WebSocketClient {
             autoReconnect: options.autoReconnect,
             reconnectInterval: options.reconnectInterval,
             maxReconnectAttempts: options.maxReconnectAttempts,
+            maxReconnectInterval: options.maxReconnectInterval,
           },
           this.env,
         ],
