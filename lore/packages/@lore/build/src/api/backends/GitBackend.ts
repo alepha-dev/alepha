@@ -55,6 +55,48 @@ export abstract class GitBackend {
     ref: string,
     scope: GitTokenScope,
   ): Promise<GitBackendToken | undefined>;
+
+  /**
+   * Answer one smart HTTP request for a repository: the ref advertisement
+   * (`info/refs`) or an RPC (`git-upload-pack`, `git-receive-pack`). The
+   * caller has authenticated, authorized and decompressed already.
+   */
+  public abstract serve(
+    ref: string,
+    rpc: GitRpcRequest,
+  ): Promise<GitRpcResponse>;
+}
+
+/**
+ * The two services of git smart HTTP.
+ */
+export type GitService = "git-upload-pack" | "git-receive-pack";
+
+export interface GitRpcRequest {
+  service: GitService;
+  /**
+   * `info/refs?service=...`, the advertisement, rather than the RPC.
+   */
+  advertise: boolean;
+  /**
+   * The RPC's request body, never gzipped: the route inflates it first.
+   */
+  body?: ReadableStream<Uint8Array>;
+  /**
+   * The `Git-Protocol` header, validated (`version=2`, ...).
+   */
+  gitProtocol?: string;
+  userAgent?: string;
+  /**
+   * Aborted when the client goes away: a spawned `git` is killed with it.
+   */
+  signal?: AbortSignal;
+}
+
+export interface GitRpcResponse {
+  status: number;
+  contentType?: string;
+  body: ReadableStream<Uint8Array> | string;
 }
 
 /**

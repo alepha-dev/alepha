@@ -5,6 +5,8 @@ import {
   GitBackend,
   type GitBackendToken,
   type GitRepositoryInfo,
+  type GitRpcRequest,
+  type GitRpcResponse,
   type GitTokenScope,
 } from "./GitBackend.ts";
 
@@ -126,6 +128,56 @@ export class ArtifactsGitBackend extends GitBackend {
     } finally {
       repo[Symbol.dispose]?.();
     }
+  }
+
+  /**
+   * Proxy the request to the repository's Artifacts remote with a cached
+   * repo-scoped token, streaming both bodies: the Worker holds no pack in
+   * memory and spends 0 to 4 ms of CPU per request (folio #F1527).
+   */
+  public async serve(ref: string, rpc: GitRpcRequest): Promise<GitRpcResponse> {
+    const scope = rpc.service === "git-receive-pack" ? "write" : "read";
+    const token = await this.token(ref, scope);
+    if (!token) {
+      return { status: 404, body: "Repository not found\n" };
+    }
+    const url = rpc.advertise
+      ? `${token.remote}/info/refs?service=${rpc.service}`
+      : `${token.remote}/${rpc.service}`;
+    const headers: Record<string, string> = {
+      authorization: `Basic ${btoa(`x:${token.token}`)}`,
+    };
+    if (rpc.gitProtocol) headers["git-protocol"] = rpc.gitProtocol;
+    if (rpc.userAgent) headers["user-agent"] = rpc.userAgent;
+    if (!rpc.advertise) {
+      headers["content-type"] = `application/x-${rpc.service}-request`;
+      headers.accept = `application/x-${rpc.service}-result`;
+    }
+    const upstream = await this.fetchUpstream(url, {
+      method: rpc.advertise ? "GET" : "POST",
+      headers,
+      body: rpc.advertise ? undefined : rpc.body,
+      signal: rpc.signal,
+      // A streamed request body needs it on Node; workerd ignores it.
+      duplex: "half",
+    } as RequestInit);
+    if (upstream.status === 401 || upstream.status === 403) {
+      // A cached token Artifacts no longer takes: forget it, so the retry
+      // git makes mints a fresh one.
+      this.tokens.delete(`${ref}:${scope}`);
+    }
+    return {
+      status: upstream.status,
+      contentType: upstream.headers.get("content-type") ?? undefined,
+      body: upstream.body ?? "",
+    };
+  }
+
+  /**
+   * The upstream call, on its own so a spec can substitute it.
+   */
+  protected fetchUpstream(url: string, init: RequestInit): Promise<Response> {
+    return fetch(url, init);
   }
 
   /**

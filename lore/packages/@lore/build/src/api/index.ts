@@ -5,6 +5,7 @@ import { ArtifactsGitBackend } from "./backends/ArtifactsGitBackend.ts";
 import { GitBackend } from "./backends/GitBackend.ts";
 import { LocalGitBackend } from "./backends/LocalGitBackend.ts";
 import { CodeRepositoryController } from "./controllers/CodeRepositoryController.ts";
+import { GitHttpController } from "./controllers/GitHttpController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
@@ -15,6 +16,8 @@ import { BuildProjectMerge } from "./services/BuildProjectMerge.ts";
 import { BuildReportsSummary } from "./services/BuildReportsSummary.ts";
 import { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
 import { CoverageThreshold } from "./services/CoverageThreshold.ts";
+import { GitAccessService } from "./services/GitAccessService.ts";
+import { GitReceivePack } from "./services/GitReceivePack.ts";
 import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
 import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
@@ -63,6 +66,10 @@ export const LoreBuildApi = $module({
     // chosen per runtime in `register`.
     CodeRepositoryService,
     CodeRepositoryController,
+    // git smart HTTP on `.git` URLs (#Q3932).
+    GitReceivePack,
+    GitAccessService,
+    GitHttpController,
   ],
   register: (alepha) => {
     // Artifacts on the Worker, bare repositories on disk everywhere else
@@ -85,13 +92,19 @@ export { GitBackend } from "./backends/GitBackend.ts";
 export type {
   GitBackendToken,
   GitRepositoryInfo,
+  GitRpcRequest,
+  GitRpcResponse,
+  GitService,
   GitTokenScope,
 } from "./backends/GitBackend.ts";
 export { LocalGitBackend } from "./backends/LocalGitBackend.ts";
 export { CodeRepositoryController } from "./controllers/CodeRepositoryController.ts";
+export { GitHttpController } from "./controllers/GitHttpController.ts";
 export { QualityController } from "./controllers/QualityController.ts";
 export { QualityReportsController } from "./controllers/QualityReportsController.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
+export { GitAccessService } from "./services/GitAccessService.ts";
+export { GitReceivePack } from "./services/GitReceivePack.ts";
 export { CoverageThreshold } from "./services/CoverageThreshold.ts";
 export { QualityService } from "./services/QualityService.ts";
