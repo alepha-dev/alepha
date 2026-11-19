@@ -93,7 +93,9 @@ version, and the **Deploy** tab lists, on each run, the quests it put live
 
 **Behind** counts the project's completed quests that have at least one
 recorded commit and whose commit is not in the history of the commit the copy
-runs. A quest closed with no commit never counts. What a copy runs is read
+runs. A quest closed with no commit never counts, and neither does one
+completed before the copy first deployed a commit: the copy was never waiting
+for it. What a copy runs is read
 from the commit its newest successful deployment shipped, as Lore recorded it
 when that build was pushed
 ([What a push records](/lore/docs/ship-artifacts#what-a-push-records)).

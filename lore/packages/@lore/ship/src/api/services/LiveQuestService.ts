@@ -2,8 +2,10 @@ import {
   type LiveQuestInstance,
   LiveQuestRegistry,
   type ProjectLiveness,
+  type RecordedQuestCommits,
 } from "@lore/core/api";
 import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
@@ -52,6 +54,7 @@ export class LiveQuestService {
   protected readonly builds = $inject(DeployedBuildService);
   protected readonly sets = $inject(CommitQuestSetService);
   protected readonly registry = $inject(LiveQuestRegistry);
+  protected readonly dt = $inject(DateTimeProvider);
 
   constructor() {
     this.registry.registerReader({
@@ -238,8 +241,11 @@ export class LiveQuestService {
     let behind: number[] | undefined;
     if (state.merged) {
       const merged = state.merged;
+      const first = (await this.firstCommitRuns([instanceId])).get(instanceId);
       behind = (await this.registry.recordedCommits(projectId))
-        .filter((quest) => quest.completed && !merged.has(quest.number))
+        .filter(
+          (quest) => this.owedSince(quest, first) && !merged.has(quest.number),
+        )
         .map((quest) => quest.number)
         .sort((a, b) => a - b);
     }
@@ -260,6 +266,12 @@ export class LiveQuestService {
    * recorded commits, whatever the number of rows (#Q2682 timed out doing
    * otherwise). Only copies whose commit has a complete whole-history set
    * are in the map: an unknown or partial one has no count, never zero.
+   *
+   * ⚠️ Only quests completed since the copy first deployed a commit count
+   * ({@link owedSince}). A quest whose recorded sha is in no history at all,
+   * from a repository since merged into this one or a rewritten branch, was
+   * otherwise behind on every copy for ever: 142 of them on a project whose
+   * copies all ran the tip of `main`, which drowned any real count.
    */
   public async behindCounts(
     projectId: number,
@@ -271,15 +283,72 @@ export class LiveQuestService {
     if (known.length === 0) {
       return new Map();
     }
-    const done = (await this.registry.recordedCommits(projectId))
-      .filter((quest) => quest.completed)
-      .map((quest) => quest.number);
-    return new Map(
-      known.map((state) => [
-        state.instanceId,
-        done.filter((n) => !state.merged?.has(n)).length,
-      ]),
+    const first = await this.firstCommitRuns(
+      known.map((state) => state.instanceId),
     );
+    const done = (await this.registry.recordedCommits(projectId)).filter(
+      (quest) => quest.completed,
+    );
+    return new Map(
+      known.map((state) => {
+        const since = first.get(state.instanceId);
+        return [
+          state.instanceId,
+          done.filter(
+            (quest) =>
+              this.owedSince(quest, since) && !state.merged?.has(quest.number),
+          ).length,
+        ];
+      }),
+    );
+  }
+
+  /**
+   * Whether a copy can be behind on a quest at all: the quest is completed,
+   * and not before the copy first deployed a commit. What was done before
+   * that is not something this copy was ever waiting for. A quest with no
+   * completion time counts, as does every quest on a copy with no such run.
+   */
+  protected owedSince(
+    quest: RecordedQuestCommits,
+    since: number | undefined,
+  ): boolean {
+    if (!quest.completed) {
+      return false;
+    }
+    if (since === undefined || !quest.completedAt) {
+      return true;
+    }
+    return this.dt.of(quest.completedAt).valueOf() >= since;
+  }
+
+  /**
+   * When each copy's oldest succeeded deployment of a known commit was
+   * created, as an instant: one grouped read, whatever the number of copies.
+   */
+  protected async firstCommitRuns(
+    instanceIds: string[],
+  ): Promise<Map<string, number>> {
+    if (instanceIds.length === 0) {
+      return new Map();
+    }
+    const oldest = await this.runs.aggregate({
+      select: { instanceId: true, createdAt: { min: true } },
+      where: {
+        instanceId: { inArray: instanceIds },
+        status: { eq: "succeeded" },
+        commitSha: { isNotNull: true },
+      },
+      groupBy: ["instanceId"],
+    });
+    const first = new Map<string, number>();
+    for (const row of oldest) {
+      if (row.createdAt.min) {
+        // An aggregate's `min` comes back in the driver's own format.
+        first.set(row.instanceId, this.dt.of(row.createdAt.min).valueOf());
+      }
+    }
+    return first;
   }
 
   /**
