@@ -1,13 +1,16 @@
 import { type Infer, z } from "alepha";
 
 /**
- * The capabilities a project composes, named after Lore's three pillars
- * (#E143): Plan, Remember, Ship.
+ * The capabilities a project composes, named after Lore's four pillars
+ * (#E143, #E162): Plan, Remember, Build, Ship.
  *
  * - `plan` is the project's process: quests, epics, releases, areas, the
  *   board, the roadmap.
  * - `remember` is its memory: folios, directories, links, revisions,
  *   attachments.
+ * - `build` is its code: git repositories and Quality (#E162). Off for
+ *   every project by default. What it holds is named `code`: permissions
+ *   `code:*`, `lore code`, tables `code_*`.
  * - `ship` is its software: instances, artifacts, quality, and with the
  *   `track` option sigils, analytics, vitals and errors.
  *
@@ -40,7 +43,7 @@ import { type Infer, z } from "alepha";
  * compiles Lore api files without the alias, which is green in `apps/lore` and
  * red at the root.
  */
-export const CAPABILITY_KEYS = ["plan", "remember", "ship"] as const;
+export const CAPABILITY_KEYS = ["plan", "remember", "build", "ship"] as const;
 
 export const capabilityKeySchema = z
   .enum(CAPABILITY_KEYS)

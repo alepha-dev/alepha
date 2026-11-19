@@ -255,6 +255,7 @@ export default defineConfig({
         "../../packages/@lore/core/src",
         "../../packages/@lore/plan/src",
         "../../packages/@lore/remember/src",
+        "../../packages/@lore/build/src",
         "../../packages/@lore/ship/src",
         "../../packages/@lore/plan-requirements/src",
         "../../../framework/packages/@alepha/ui/src",

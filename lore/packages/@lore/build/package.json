@@ -1,0 +1,27 @@
+{
+  "name": "@lore/build",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./api": "./src/api/index.ts",
+    "./mcp": "./src/mcp/index.ts",
+    "./schemas": "./src/schemas/index.ts",
+    "./testing": "./src/testing/index.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test"
+  },
+  "dependencies": {
+    "@lore/core": "workspace:*",
+    "alepha": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "vitest": "^5.1.0"
+  }
+}

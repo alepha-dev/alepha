@@ -1131,6 +1131,9 @@ export default {
   "project.capability.remember.label": "Se souvenir",
   "project.capability.remember.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
+  "project.capability.build.label": "Construire",
+  "project.capability.build.description":
+    "Des dépôts git, et la qualité de leur code.",
   "project.capability.ship.label": "Livrer",
   "project.capability.ship.description":
     "Des applications et leurs déploiements, analytique, erreurs, Web Vitals.",
@@ -4443,6 +4446,10 @@ export default {
   "permission.group.area": "Domaines",
   "permission.area.read": "Lire les domaines",
   "permission.area.manage": "Renommer, fusionner et supprimer des domaines",
+  "permission.group.code": "Code",
+  "permission.code.read": "Cloner et récupérer les dépôts",
+  "permission.code.write": "Pousser vers les dépôts",
+  "permission.code.admin": "Créer et supprimer des dépôts",
   "permission.group.folio": "Folios",
   "permission.folio.read": "Lire les folios",
   "permission.folio.write": "Écrire folios, dossiers et pièces jointes",

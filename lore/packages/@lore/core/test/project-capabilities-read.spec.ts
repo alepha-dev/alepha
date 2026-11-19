@@ -103,10 +103,11 @@ describe("CapabilityRegistry", () => {
     await ctx.alepha.stop();
   });
 
-  it("declares the three capabilities, in wizard order", ({ expect }) => {
+  it("declares the four capabilities, in wizard order", ({ expect }) => {
     expect(ctx.registry.all().map((c) => c.key)).toEqual([
       "plan",
       "remember",
+      "build",
       "ship",
     ]);
     // The enum is the list, so a key without a descriptor cannot hide.

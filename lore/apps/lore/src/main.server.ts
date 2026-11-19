@@ -1,6 +1,8 @@
 import { DiscordTransport, MemoryDiscordTransport } from "@alepha/discord";
 import { AlephaSigil, SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
+import { LoreBuildApi } from "@lore/build/api";
+import { LoreBuildMcp } from "@lore/build/mcp";
 import { LoreCoreApi } from "@lore/core/api";
 import {
   LoreFileAccessProvider,
@@ -193,12 +195,15 @@ alepha.with({
 alepha.with(LoreCoreApi);
 alepha.with(LorePlanApi);
 alepha.with(LoreRememberApi);
+// Build, the fourth pillar (#E162), between Remember and Ship.
+alepha.with(LoreBuildApi);
 alepha.with(LoreShipApi);
-// Plan's Requirements (#E153), after the four it builds on.
+// Plan's Requirements (#E153), after the pillars it builds on.
 alepha.with(LorePlanRequirementsApi);
 alepha.with(LoreCoreMcp);
 alepha.with(LorePlanMcp);
 alepha.with(LoreRememberMcp);
+alepha.with(LoreBuildMcp);
 alepha.with(LoreShipMcp);
 alepha.with(LorePlanRequirementsMcp);
 
