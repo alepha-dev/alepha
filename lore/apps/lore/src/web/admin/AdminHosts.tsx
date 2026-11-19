@@ -251,13 +251,28 @@ export const AdminHosts = () => {
           },
           lastSeenAt: {
             label: "Last seen",
-            cell: (host) => (
-              <span className="text-muted-foreground text-xs">
-                {host.lastSeenAt
-                  ? l(host.lastSeenAt, { date: "lll" })
-                  : "never"}
-              </span>
-            ),
+            // A cloudflare host is an account credential: it never connects,
+            // so it has no last-seen by nature, and "never" would read as a
+            // fault (#Q3943). A bay host that never connected keeps it.
+            cell: (host) =>
+              host.type === "cloudflare" ? (
+                <span
+                  className="text-muted-foreground text-xs"
+                  title="A Cloudflare account does not connect"
+                  data-testid="host-last-seen"
+                >
+                  N/A
+                </span>
+              ) : (
+                <span
+                  className="text-muted-foreground text-xs"
+                  data-testid="host-last-seen"
+                >
+                  {host.lastSeenAt
+                    ? l(host.lastSeenAt, { date: "lll" })
+                    : "never"}
+                </span>
+              ),
           },
           createdAt: {
             label: "Created",

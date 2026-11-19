@@ -2875,6 +2875,8 @@ export default {
   "hosts.deploys.allowed": "deploys allowed",
   "hosts.deploys.statsOnly": "stats only",
   "hosts.neverSeen": "never connected",
+  "hosts.lastSeen.notApplicable": "N/A",
+  "hosts.lastSeen.notApplicableHint": "A Cloudflare account does not connect",
   "hosts.add.title": "Add a host to $1",
   "hosts.add.description":
     "Pick one of your own hosts, or create a new one here.",
