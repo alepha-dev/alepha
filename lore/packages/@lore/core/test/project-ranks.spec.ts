@@ -154,6 +154,7 @@ describe("Lore's rank resource", () => {
       "remember",
       "build",
       "ship",
+      "chat",
     ]);
     // Two presets since #Q3661: Member, a built-in, covers Contributor.
     expect(everything.map((it) => it.key)).toEqual(["admin", "viewer"]);

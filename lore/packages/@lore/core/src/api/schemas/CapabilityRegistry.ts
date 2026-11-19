@@ -150,7 +150,8 @@ export interface CapabilityDescriptor {
 }
 
 /**
- * The four capabilities a project composes, Lore's pillars, declared once.
+ * The capabilities a project composes, Lore's four pillars and Chat
+ * (#E161), declared once.
  *
  * A **capability** is a product surface a project turns on: it owns nav
  * entries, routes, entities, MCP tools, a settings page, dashboard cards,
@@ -619,6 +620,24 @@ export class CapabilityRegistry {
         "sigil",
         "host",
       ],
+    },
+    {
+      // Chat (#E161): project rooms, members talking to each other and to
+      // the agent. Neither on nor off by default: the creator chooses it in
+      // the wizard, and a project that existed before it starts without it.
+      key: "chat",
+      name: "Chat",
+      labelKey: "project.capability.chat.label",
+      descriptionKey: "project.capability.chat.description",
+      preselectedCapability: false,
+      options: [],
+      mcpTools: [],
+      // Rooms stay out of the spotlight in V1: a search source never sees
+      // the user, and a private room must not exist for a non-member.
+      searchKinds: [],
+      activityKinds: [],
+      dashboardCards: [],
+      permissionGroups: ["chat"],
     },
   ];
 

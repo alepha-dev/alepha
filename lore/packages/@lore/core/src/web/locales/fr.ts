@@ -611,6 +611,10 @@ export default {
   "project.menu.create": "Créer",
   "project.menu.dashboard": "Tableau de bord",
   "project.menu.activity": "Activité",
+  "project.menu.chat": "Discussion",
+  "chat.page.empty.title": "Aucun salon pour l'instant",
+  "chat.page.empty.description":
+    "Les salons de ce projet apparaîtront ici, à commencer par general.",
   "project.menu.quests": "Quêtes",
   "project.menu.reports": "Rapports",
   "project.menu.artifacts": "Artefacts",
@@ -1140,6 +1144,9 @@ export default {
   "project.capability.ship.label": "Livrer",
   "project.capability.ship.description":
     "Des applications et leurs déploiements, analytique, erreurs, Web Vitals.",
+  "project.capability.chat.label": "Discussion",
+  "project.capability.chat.description":
+    "Des salons où les membres échangent entre eux et interrogent l'agent Lore.",
   "project.capability.ship.option.track.label": "Surveiller les applications",
   "project.capability.ship.option.track.description":
     "Analytique, Web Vitals et erreurs. Chaque application reçoit un sigil.",
@@ -4503,6 +4510,12 @@ export default {
   "permission.requirement.read": "Lire les exigences",
   "permission.requirement.write":
     "Créer, modifier et supprimer des exigences, et fixer leur version",
+  "permission.group.chat": "Discussion",
+  "permission.chat.read": "Lire les salons ouverts et ceux dont on est membre",
+  "permission.chat.write":
+    "Écrire dans les salons, en créer et rejoindre les salons ouverts",
+  "permission.chat.manage":
+    "Renommer et archiver tout salon, supprimer tout message",
   "folios.wikilink.broken.requirementNotFound":
     "Aucune exigence ne correspond à cette référence.",
   "project.settings.nav.ranks": "Rangs",

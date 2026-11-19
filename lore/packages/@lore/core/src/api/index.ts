@@ -449,6 +449,10 @@ export {
   ProjectCapabilityGuards,
 } from "./services/ProjectCapabilityGuards.ts";
 export {
+  type ProjectCapabilityHook,
+  ProjectCapabilityHooks,
+} from "./services/ProjectCapabilityHooks.ts";
+export {
   ActivityChannel,
   type ActivityChannelValue,
 } from "./services/ActivityChannel.ts";

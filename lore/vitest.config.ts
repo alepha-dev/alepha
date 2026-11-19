@@ -3,6 +3,7 @@ import { defineConfig } from "vitest/config";
 import { projects as lore } from "./apps/lore/vitest.config.ts";
 import { projects as loreSdk } from "./packages/@alepha/lore/vitest.config.ts";
 import { projects as loreBuild } from "./packages/@lore/build/vitest.config.ts";
+import { projects as loreChat } from "./packages/@lore/chat/vitest.config.ts";
 import { projects as loreCore } from "./packages/@lore/core/vitest.config.ts";
 import { projects as lorePlanRequirements } from "./packages/@lore/plan-requirements/vitest.config.ts";
 import { projects as lorePlan } from "./packages/@lore/plan/vitest.config.ts";
@@ -33,6 +34,7 @@ export default defineConfig({
       ...lorePlanRequirements,
       ...loreRemember,
       ...loreBuild,
+      ...loreChat,
       ...loreShip,
     ],
   },

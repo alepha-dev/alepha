@@ -4,6 +4,9 @@ import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreBuildApi } from "@lore/build/api";
 import { LoreBuildMcp } from "@lore/build/mcp";
 import { LoreBuildWeb } from "@lore/build/web";
+import { LoreChatApi } from "@lore/chat/api";
+import { LoreChatMcp } from "@lore/chat/mcp";
+import { LoreChatWeb } from "@lore/chat/web";
 import { LoreCoreApi } from "@lore/core/api";
 import {
   LoreFileAccessProvider,
@@ -201,12 +204,15 @@ alepha.with(LoreBuildApi);
 alepha.with(LoreShipApi);
 // Plan's Requirements (#E153), after the pillars it builds on.
 alepha.with(LorePlanRequirementsApi);
+// Chat (#E161): core only, so its place after the pillars is a reading order.
+alepha.with(LoreChatApi);
 alepha.with(LoreCoreMcp);
 alepha.with(LorePlanMcp);
 alepha.with(LoreRememberMcp);
 alepha.with(LoreBuildMcp);
 alepha.with(LoreShipMcp);
 alepha.with(LorePlanRequirementsMcp);
+alepha.with(LoreChatMcp);
 
 // The in-app assistant (#E120), after every module: its tools are theirs.
 // Always registered, so its tables are in every schema; `AI_ASSISTANT_ENABLED`
@@ -233,6 +239,7 @@ alepha.with(LoreRememberWeb);
 alepha.with(LoreBuildWeb);
 alepha.with(LoreShipWeb);
 alepha.with(LorePlanRequirementsWeb);
+alepha.with(LoreChatWeb);
 // The assistant's header toggle and dock (#E120), on core's shell registry.
 alepha.with(LoreAssistantWeb);
 alepha.with(AlephaSigil);

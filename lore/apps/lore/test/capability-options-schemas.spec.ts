@@ -1,4 +1,5 @@
 import { buildCapabilityOptionsSchema } from "@lore/build/schemas";
+import { chatCapabilityOptionsSchema } from "@lore/chat/schemas";
 import { CapabilityRegistry } from "@lore/core/schemas";
 import { planCapabilityOptionsSchema } from "@lore/plan/schemas";
 import { rememberCapabilityOptionsSchema } from "@lore/remember/schemas";
@@ -19,6 +20,7 @@ describe("capability options schemas", () => {
     remember: rememberCapabilityOptionsSchema,
     build: buildCapabilityOptionsSchema,
     ship: shipCapabilityOptionsSchema,
+    chat: chatCapabilityOptionsSchema,
   };
 
   it("has a module schema for every capability", ({ expect }) => {

@@ -62,6 +62,7 @@ import { AssignedWorkRegistry } from "../services/AssignedWorkRegistry.ts";
 import { CoreBuckets } from "../services/CoreBuckets.ts";
 import { DefaultRankService } from "../services/DefaultRankService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { ProjectCapabilityHooks } from "../services/ProjectCapabilityHooks.ts";
 import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
@@ -143,6 +144,7 @@ export class ProjectController {
   projectPermissions = $inject(ProjectPermissions);
   ranks = $inject(RankService);
   defaultRanks = $inject(DefaultRankService);
+  capabilityHooks = $inject(ProjectCapabilityHooks);
   protected readonly readers = $inject(ProjectReaderPermissions);
 
   /**
@@ -439,6 +441,12 @@ export class ProjectController {
           { projectId, error },
         );
       });
+
+      // What each module does once its capability is on (#E161): Chat's
+      // `general` room. Best effort, after the ranks: a hook may read them.
+      for (const row of rows) {
+        await this.capabilityHooks.enabled(projectId, row.key, user.id);
+      }
 
       await this.audits.project.logSuccess("create", {
         ...this.audits.actor(user),

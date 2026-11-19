@@ -8,6 +8,7 @@ const exports = {
   remember: ["api", "mcp", "web", "schemas"],
   ship: ["api", "mcp", "web", "schemas"],
   "plan-requirements": ["api", "mcp", "web", "schemas", "testing"],
+  chat: ["api", "mcp", "web", "schemas"],
 };
 
 const graph = new LorePackageGraph(exports);

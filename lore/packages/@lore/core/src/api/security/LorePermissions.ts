@@ -116,6 +116,9 @@ export class LorePermissions {
     "usecase:write",
     "requirement:read",
     "requirement:write",
+    // Chat (#E161): every member reads and writes the rooms they can see.
+    "chat:read",
+    "chat:write",
   ];
 
   /**
@@ -155,6 +158,8 @@ export class LorePermissions {
     "subscription:manage",
     // Validating a use case (#E153): the owner's and the Admin's, grantable.
     "usecase:validate",
+    // Any room, any message (#E161).
+    "chat:manage",
   ];
 
   /**
@@ -647,5 +652,33 @@ export class LorePermissions {
     group: "usecase",
     name: "validate",
     label: "permission.usecase.validate",
+  });
+
+  // ---------------------------------------------------------------------------
+  // Chat (#E161): project rooms. Claimed by the `chat` capability in
+  // `CapabilityRegistry.permissionGroups`. A Viewer reads open rooms, a
+  // Member writes, an Admin manages any room.
+  // ---------------------------------------------------------------------------
+
+  chatRead = $permission({
+    group: "chat",
+    name: "read",
+    label: "permission.chat.read",
+    groupLabel: "permission.group.chat",
+    groupOrder: 41,
+  });
+  chatWrite = $permission({
+    group: "chat",
+    name: "write",
+    label: "permission.chat.write",
+  });
+  /**
+   * Rename, archive and delete any room, and delete any message. A room's
+   * creator does the first two on their own room without it.
+   */
+  chatManage = $permission({
+    group: "chat",
+    name: "manage",
+    label: "permission.chat.manage",
   });
 }
