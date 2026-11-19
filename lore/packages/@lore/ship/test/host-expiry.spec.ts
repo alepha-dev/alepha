@@ -1,4 +1,4 @@
-import { AutomationPersistence } from "@lore/core/api";
+import { projectEvents } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -20,6 +20,13 @@ import { DeployTestEntities } from "../src/testing/index.ts";
 
 class HostRepositories {
   hosts = $repository(hosts);
+}
+
+/**
+ * The project events (#Q3889), what a host source records.
+ */
+class ProjectEventRows {
+  events = $repository(projectEvents);
 }
 
 /**
@@ -54,6 +61,7 @@ describe("host expiry", () => {
     alepha.with(AlephaApiUsers);
     alepha.with(LoreShipApi);
     entities = alepha.inject(DeployTestEntities);
+    alepha.inject(ProjectEventRows);
     repos = alepha.inject(HostRepositories);
     await alepha.start();
     controller = alepha.inject(HostController);
@@ -117,17 +125,15 @@ describe("host expiry", () => {
     // Raised as host.expired in the home project (#Q3627): nobody is
     // emailed directly any more.
     const events = () =>
-      alepha.inject(AutomationPersistence).events.findMany({
+      alepha.inject(ProjectEventRows).events.findMany({
         where: { name: "host.expired" },
       });
     const [event] = await events();
     expect(event.projectId).toBe(minted.projectId);
-    expect(event.payload.fields).toMatchObject({ host: "tmp-2", kind: "bay" });
+    expect(event.fields).toMatchObject({ host: "tmp-2", kind: "bay" });
     // The link opens the console under the host's home project: hosts
     // have no account page since #E126.
-    expect(String(event.payload.fields.url)).toMatch(
-      /^\/[a-z0-9-]+\/hosts\/tmp-2$/,
-    );
+    expect(String(event.fields.url)).toMatch(/^\/[a-z0-9-]+\/hosts\/tmp-2$/);
     expect(mail.records).toHaveLength(0);
 
     // Extending re-arms; once that expiry passes too, one more.

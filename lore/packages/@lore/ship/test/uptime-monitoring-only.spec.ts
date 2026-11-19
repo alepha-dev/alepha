@@ -41,7 +41,7 @@ class MemoryProber extends UptimeProber {
  * Monitoring only (#Q3597): a project whose one capability is Apps, with
  * Track and Deploy off and Monitor apps on. No sigil, no app instance, no
  * deploy, no Work: monitors and their history still work. Alerts are
- * automations since #Q3612, so with no rule nothing is mailed.
+ * subscriptions (#Q3890), so with none nothing is mailed.
  */
 describe("A monitoring-only project", () => {
   const containers: Alepha[] = [];

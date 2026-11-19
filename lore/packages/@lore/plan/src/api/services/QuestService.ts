@@ -1,9 +1,4 @@
-import {
-  ProjectLimits,
-  AutomationBatchRepository,
-  AutomationMutationContext,
-  LoreAudits,
-} from "@lore/core/api";
+import { ProjectLimits, LoreAudits } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
@@ -105,10 +100,6 @@ export interface CreateQuestInput {
  * those tables in the ORM/migration graph — same pattern as `SigilService`.
  */
 export class QuestService {
-  protected readonly automationMutations = $inject(AutomationMutationContext);
-  protected readonly automationRows = $inject(
-    AutomationBatchRepository.of(quests),
-  );
   protected readonly audits = $inject(LoreAudits);
   protected readonly questEvents = $inject(QuestEventSources);
 
@@ -189,7 +180,7 @@ export class QuestService {
    * in the numbers.
    */
   /**
-   * Read-only capacity preflight, also used by automation previews.
+   * Read-only capacity preflight.
    */
   public async assertCapacity(projectId: number): Promise<number> {
     const maxQuestsPerProject = await this.limits.maxQuestsPerProject();
@@ -253,25 +244,6 @@ export class QuestService {
       createdBy: input.createdBy,
       history: [],
     };
-    return this.automationMutations.create(
-      {
-        repository: this.automationRows,
-        data,
-        identity: (row) => ({
-          projectId: Number(row.projectId),
-          shortId: Number(row.shortId),
-        }),
-        audit: {
-          type: "quest",
-          action: "create",
-          ...this.audits.resource(
-            "quest",
-            { projectId: input.projectId, shortId, title: input.title },
-            this.automationMutations.current?.user,
-          ),
-        },
-      },
-      () => this.questEvents.create(data, input.createdBy),
-    );
+    return this.questEvents.create(data, input.createdBy);
   }
 }

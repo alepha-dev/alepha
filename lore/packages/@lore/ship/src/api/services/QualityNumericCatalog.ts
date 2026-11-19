@@ -70,38 +70,6 @@ export class QualityNumericCatalog {
         filters: qualityNumericFiltersSchema,
         requires: "quality:read",
         needs: { capability: "ship" },
-        automation: {
-          kind: "number",
-          requires: "quality:read",
-          slots: {
-            branch: {
-              kind: "text",
-              required: false,
-              default: "main",
-              max: 200,
-            },
-          },
-          fields: {
-            branch: "text",
-            day: "text",
-            previous_day: "text",
-            commit_sha: "text",
-            previous_commit_sha: "text",
-            updated_at: "text",
-            previous_updated_at: "text",
-            previous: "number",
-          },
-          operators: [
-            "eq",
-            "ne",
-            "lt",
-            "lte",
-            "gt",
-            "gte",
-            "crossesAbove",
-            ...(key.startsWith("quality.coverage.") ? ["delta" as const] : []),
-          ],
-        },
         link: (_scope, target) =>
           target.projectSlug
             ? {

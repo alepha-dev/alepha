@@ -1,8 +1,6 @@
 import { type Infer, z } from "alepha";
 import { $entity, db, sql } from "alepha/orm";
 
-import { automationRunSnapshotSchema } from "../schemas/automationRunSnapshotSchema.ts";
-import { automationSafeFieldsSchema } from "../schemas/automationSafeFieldsSchema.ts";
 import { automations } from "./automations.ts";
 import { projects } from "./projects.ts";
 
@@ -10,6 +8,11 @@ import { projects } from "./projects.ts";
  * Run IDs intentionally have no FK: 30-day detail pruning must never remove
  * 90-day occurrence or effect receipts. Recipient pages are separate rows,
  * never an unbounded roster JSON value in a run snapshot.
+ */
+/**
+ * ⚠️ Kept until #Q3902 drops the table: nothing reads or writes it since
+ * #Q3896 deleted the automation engine. Its columns keep their storage
+ * shape, so no migration is generated before the drop.
  */
 export const automationReceipts = $entity({
   name: "automation_receipts",
@@ -59,8 +62,8 @@ export const automationReceipts = $entity({
       .regex(/^[a-f0-9]{64}$/)
       .optional(),
     mode: z.enum(["atomic", "external"]).meta({ mode: "text" }).optional(),
-    snapshot: automationRunSnapshotSchema.optional(),
-    result: automationSafeFieldsSchema.optional(),
+    snapshot: z.record(z.string(), z.any()).optional(),
+    result: z.record(z.string(), z.any()).optional(),
     recipientUserId: z.uuid().optional(),
     // A channel instance id, up to 64 characters since #Q3613.
     recipientChannel: z.string().max(64).optional(),

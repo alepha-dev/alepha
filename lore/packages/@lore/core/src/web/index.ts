@@ -11,7 +11,6 @@ import { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.ts";
 import { projectPromptsAtom } from "./app/atoms/projectPromptsAtom.ts";
 import { userProjectsAtom } from "./app/atoms/userProjectsAtom.ts";
-import { AutomationRouter } from "./app/AutomationRouter.ts";
 import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.tsx";
 import { LoreAccountSections } from "./app/components/account/LoreAccountSections.ts";
 import { CoreRouter } from "./app/CoreRouter.ts";
@@ -74,7 +73,6 @@ export const LoreCoreWeb = $module({
     // registration today, and it returns nothing the caller reads, so a
     // build list can declare a pure router without creating it (#Q3417).
     alepha.with(CoreRouter);
-    alepha.with(AutomationRouter);
     // The account dialog and Lore's sections of it (#E140): no route, the
     // dialog is drawn by the layout's `DialogProvider`.
     alepha.with(AccountDialog);
@@ -326,8 +324,6 @@ export {
 export type { MarkdownEditorMode } from "./app/components/shared/markdown-editor/MarkdownEditorInner.client.tsx";
 export { default as LazyProjectActivityPage } from "./app/components/project/activity/LazyProjectActivityPage.tsx";
 
-export { AutomationRouter } from "./app/AutomationRouter.ts";
-
 /**
  * Core's routers in the app's router registry, so `useRouter()` and `<Link>`
  * are typed against their pages (#Q3187). Each package registers its own:
@@ -338,6 +334,5 @@ declare module "alepha/react/router" {
   interface Routers {
     loreCore: CoreRouter;
     loreCoreProject: ProjectRouter;
-    loreCoreAutomation: AutomationRouter;
   }
 }

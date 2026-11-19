@@ -8,7 +8,6 @@ import {
   ActivityChannel,
   type ActivityChannelValue,
 } from "./ActivityChannel.ts";
-import { AutomationMutationContext } from "./AutomationMutationContext.ts";
 
 /**
  * The framework's audit log, plus the rate point that goes with it (#E65).
@@ -68,17 +67,6 @@ export class LoreAuditService extends AuditService {
     options: Omit<CreateAudit, "type" | "action"> = {},
   ): Promise<AuditEntity | undefined> {
     try {
-      const native = this.alepha.has(AutomationMutationContext)
-        ? this.alepha
-            .inject(AutomationMutationContext)
-            .consumeAudit(type, action, options)
-        : undefined;
-      if (native) {
-        if (native.activity) {
-          await this.recordActivity(native.activity, "automation");
-        }
-        return undefined;
-      }
       return await super.record(type, action, options);
     } catch (error) {
       this.logger.error(
@@ -103,16 +91,6 @@ export class LoreAuditService extends AuditService {
     const entry = await super.create(data);
     await this.recordActivity(entry);
     return entry;
-  }
-
-  public nativeActivity(
-    entry: Pick<
-      AuditEntity,
-      "scopeType" | "scopeId" | "type" | "action" | "userId"
-    >,
-  ): Promise<void> {
-    // Only an automation's write comes through here.
-    return this.recordActivity(entry, "automation");
   }
 
   /**

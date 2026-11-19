@@ -7,7 +7,6 @@ import { ProjectResources } from "./resources/ProjectResources.ts";
 import { AttachmentContentService } from "./services/AttachmentContentService.ts";
 import { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
 import { LoreMcpIdentity } from "./services/LoreMcpIdentity.ts";
-import { AutomationTools } from "./tools/AutomationTools.ts";
 import { NotificationTools } from "./tools/NotificationTools.ts";
 import { ProjectTools } from "./tools/ProjectTools.ts";
 
@@ -33,7 +32,6 @@ export const LoreCoreMcp = $module({
     // the same reason: nothing injects it.
     McpCallTimings,
     ProjectTools,
-    AutomationTools,
     NotificationTools,
     ProjectResources,
     AttachmentContentService,
@@ -55,5 +53,4 @@ export {
 } from "./services/ProjectContextRegistry.ts";
 export { ProjectTools } from "./tools/ProjectTools.ts";
 
-export { AutomationTools } from "./tools/AutomationTools.ts";
 export { NotificationTools } from "./tools/NotificationTools.ts";

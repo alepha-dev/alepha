@@ -56,10 +56,6 @@ import { CommitQuestSetService } from "./services/CommitQuestSetService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DeployAppsDashboardMetrics } from "./services/DeployAppsDashboardMetrics.ts";
 import { DeployAttentionSources } from "./services/DeployAttentionSources.ts";
-import { DeployAutomationEventSubjects } from "./services/DeployAutomationEventSubjects.ts";
-import { DeployAutomationNumericPresets } from "./services/DeployAutomationNumericPresets.ts";
-import { DeployAutomationPresets } from "./services/DeployAutomationPresets.ts";
-import { DeployAutomationReferences } from "./services/DeployAutomationReferences.ts";
 import { DeployBuckets } from "./services/DeployBuckets.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
@@ -76,9 +72,6 @@ import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
 import { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
-import { HostAutomationEventSubjects } from "./services/HostAutomationEventSubjects.ts";
-import { HostAutomationPresets } from "./services/HostAutomationPresets.ts";
-import { HostAutomationReferences } from "./services/HostAutomationReferences.ts";
 import { HostCloudflareService } from "./services/HostCloudflareService.ts";
 import { HostCommandService } from "./services/HostCommandService.ts";
 import { HostCommandTransport } from "./services/HostCommandTransport.ts";
@@ -115,9 +108,6 @@ import { StackService } from "./services/StackService.ts";
 import { StackTargets } from "./services/StackTargets.ts";
 import { StackVariableService } from "./services/StackVariableService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
-import { UptimeAutomationEventSubjects } from "./services/UptimeAutomationEventSubjects.ts";
-import { UptimeAutomationPresets } from "./services/UptimeAutomationPresets.ts";
-import { UptimeAutomationReferences } from "./services/UptimeAutomationReferences.ts";
 import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
 import { UptimeMetric } from "./services/UptimeMetric.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
@@ -163,14 +153,6 @@ export const LoreShipApi = $module({
     // by name, and the controllers that use one stay pure (#Q3404).
     DeployBuckets,
     DeployReportsSummary,
-    DeployAutomationEventSubjects,
-    DeployAutomationReferences,
-    UptimeAutomationEventSubjects,
-    UptimeAutomationPresets,
-    HostAutomationEventSubjects,
-    HostAutomationPresets,
-    HostAutomationReferences,
-    UptimeAutomationReferences,
     DeployDashboardMetrics,
     ProjectErrorQuestHandBack,
     DeployDashboard,
@@ -194,8 +176,6 @@ export const LoreShipApi = $module({
     QualityTrendMetric,
     QualityNumericCatalog,
     QualityNumericMetrics,
-    DeployAutomationNumericPresets,
-    DeployAutomationPresets,
     DeployProjectCounts,
     ProjectErrorJobs,
     UptimeRetentionJobs,

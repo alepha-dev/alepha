@@ -137,7 +137,7 @@ export class HostCredentialJobs {
       }
       // A valid token that failed raised `host.credential_invalid` in the
       // same write (`HostCloudflareService.recheck`, #Q3627): telling people
-      // is an automation's job now.
+      // is the subscriptions' job (#Q3890).
       if (check.outcome === "failed" && wasValid)
         this.log.info("A host credential went invalid", { slug: host.slug });
     },

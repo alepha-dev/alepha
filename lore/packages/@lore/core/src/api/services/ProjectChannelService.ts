@@ -23,7 +23,6 @@ import {
 } from "../entities/notificationChannels.ts";
 import type { ProjectChannelCreated } from "../schemas/projectChannelCreatedSchema.ts";
 import type { ProjectChannelResource } from "../schemas/projectChannelResourceSchema.ts";
-import { AutomationChannelRemoval } from "./AutomationChannelRemoval.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 import { ProjectRecipients } from "./ProjectRecipients.ts";
 
@@ -38,9 +37,7 @@ import { ProjectRecipients } from "./ProjectRecipients.ts";
  * snapshot or receipt carries it.
  *
  * Reads need `subscription:read`, writes `subscription:manage` (#Q3891);
- * `automation:read` and `automation:manage` keep working until #Q3896
- * removes them. Deleting a channel deletes its subscriptions, and still
- * strips it from the automation engine's rules.
+ * Deleting a channel deletes its subscriptions.
  */
 export class ProjectChannelService {
   protected readonly log = $logger();
@@ -50,7 +47,6 @@ export class ProjectChannelService {
   protected readonly seal = $inject(CredentialSealService);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly transport = $inject(DiscordTransport);
-  protected readonly removal = $inject(AutomationChannelRemoval);
   protected readonly endpoints = $inject(WebhookEndpointService);
   protected readonly policy = $inject(WebhookDestinationPolicy);
 
@@ -243,12 +239,10 @@ export class ProjectChannelService {
         scope: ProjectChannelService.scope(projectId),
         userId: user.id,
       });
-    await this.removal.remove(projectId, row.id);
   }
 
   /**
-   * `subscription:<level>`, or until #Q3896 the `automation:` permission of
-   * the same level.
+   * `subscription:<level>`.
    */
   protected async assert(
     projectId: number,
@@ -265,10 +259,7 @@ export class ProjectChannelService {
     level: "read" | "manage",
   ): Promise<boolean> {
     const held = await this.recipients.of(projectId, user);
-    return (
-      held.includes(`subscription:${level}`) ||
-      held.includes(`automation:${level}`)
-    );
+    return held.includes(`subscription:${level}`);
   }
 
   /**

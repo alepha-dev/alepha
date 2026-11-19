@@ -2,7 +2,7 @@ import { $atom, z } from "alepha";
 
 /**
  * The leaf a project page names for itself once its own read has answered
- * (#Q3408): an automation's title, a run's status, a drill-down's dimension.
+ * (#Q3408): a monitor's name, a deploy's status, a drill-down's dimension.
  *
  * Written by `usePageCrumb`, read by `ProjectTrail`, which appends it when
  * `routeName` is the page open. Keyed by route rather than cleared on time,

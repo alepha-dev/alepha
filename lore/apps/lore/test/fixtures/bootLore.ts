@@ -1,11 +1,6 @@
 import { LoreCoreApi } from "@lore/core/api";
 import { LoreCoreMcp } from "@lore/core/mcp";
-import {
-  AutomationRouter,
-  CoreRouter,
-  LoreAccountSections,
-  LoreCoreWeb,
-} from "@lore/core/web";
+import { CoreRouter, LoreAccountSections, LoreCoreWeb } from "@lore/core/web";
 import { LorePlanRequirementsApi } from "@lore/plan-requirements/api";
 import { LorePlanRequirementsMcp } from "@lore/plan-requirements/mcp";
 import {
@@ -39,7 +34,6 @@ export type LoreLayer = "api" | "mcp" | "web" | "routes";
  * core's pages and each module's, mounted under them with `parent:`.
  */
 export type LoreRouter = CoreRouter &
-  AutomationRouter &
   WorkRouter &
   RequirementsRouter &
   KnowledgeRouter &
@@ -83,7 +77,6 @@ export const bootLore = (
       .with(LorePlanRequirementsWeb);
   }
   if (layers.includes("routes")) {
-    alepha.inject(AutomationRouter);
     alepha.inject(WorkRouter);
     alepha.inject(RequirementsRouter);
     alepha.inject(KnowledgeRouter);

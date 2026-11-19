@@ -3,17 +3,17 @@ import { describe, it } from "vitest";
 import { navGroupsWithSettings } from "../src/web/app/components/project/capabilityNav.ts";
 
 /**
- * Settings and the config band read as one group (#Q2936): Automations, the
- * last config entry, sits directly above Settings with no separator.
+ * Settings and the config band read as one group (#Q2936): the last config
+ * entry sits directly above Settings with no separator.
  */
 describe("navGroupsWithSettings", () => {
   it("should put Settings in the config band's group", ({ expect }) => {
     const groups = navGroupsWithSettings(
-      [["activity"], ["quests"], ["folios"], ["apps"], ["automations"]],
+      [["activity"], ["quests"], ["folios"], ["apps"], ["notifications"]],
       "settings",
     );
 
-    expect(groups.at(-1)).toEqual({ items: ["automations", "settings"] });
+    expect(groups.at(-1)).toEqual({ items: ["notifications", "settings"] });
     expect(groups).toHaveLength(5);
   });
 

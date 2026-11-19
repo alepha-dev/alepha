@@ -74,12 +74,6 @@ import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 import { WorkAssignedWork } from "./services/WorkAssignedWork.ts";
 import { WorkAttentionSources } from "./services/WorkAttentionSources.ts";
-import { WorkAutomationActions } from "./services/WorkAutomationActions.ts";
-import { WorkAutomationCollections } from "./services/WorkAutomationCollections.ts";
-import { WorkAutomationEventSubjects } from "./services/WorkAutomationEventSubjects.ts";
-import { WorkAutomationPresets } from "./services/WorkAutomationPresets.ts";
-import { WorkAutomationReferences } from "./services/WorkAutomationReferences.ts";
-import { WorkAutomationSelections } from "./services/WorkAutomationSelections.ts";
 import { WorkBuckets } from "./services/WorkBuckets.ts";
 import { WorkDashboard } from "./services/WorkDashboard.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
@@ -115,13 +109,7 @@ export const LorePlanApi = $module({
     // Plan's project events, in the core catalog (#Q3889); listed because
     // nothing injects them.
     WorkProjectEvents,
-    WorkAutomationPresets,
-    WorkAutomationEventSubjects,
-    WorkAutomationActions,
     QuestEditAccess,
-    WorkAutomationReferences,
-    WorkAutomationCollections,
-    WorkAutomationSelections,
     // The dashboard metrics' declarative half, which the resolvers and the
     // scope proof read on the server (the browser gets it from
     // `LorePlanWeb`).

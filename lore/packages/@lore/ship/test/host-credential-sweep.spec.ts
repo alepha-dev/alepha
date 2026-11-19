@@ -1,4 +1,4 @@
-import { AutomationPersistence } from "@lore/core/api";
+import { projectEvents } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -57,6 +57,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(LoreShipApi);
 
   const entities = alepha.inject(DeployTestEntities);
+  alepha.inject(ProjectEventRows);
   const repos = alepha.inject(HostRepositories);
   await alepha.start();
 
@@ -71,6 +72,13 @@ const setup = async (): Promise<TestContext> => {
     repos,
   };
 };
+
+/**
+ * The project events (#Q3889), what a host source records.
+ */
+class ProjectEventRows {
+  events = $repository(projectEvents);
+}
 
 /**
  * Poll until `predicate` holds, or throw.
@@ -154,7 +162,7 @@ describe("The nightly cloudflare credential sweep", () => {
     const host = await seed("cf-flip");
     const seededAt = (await rowOf(host.id)).credentialCheckedAt;
     const events = () =>
-      ctx.alepha.inject(AutomationPersistence).events.findMany({
+      ctx.alepha.inject(ProjectEventRows).events.findMany({
         where: { name: "host.credential_invalid" },
       });
 
@@ -179,14 +187,14 @@ describe("The nightly cloudflare credential sweep", () => {
     expect(flipped.credentialError).toContain("D1: Edit");
     const [event] = await events();
     expect(event.projectId).toBe(host.projectId);
-    expect(event.payload.fields).toMatchObject({
+    expect(event.fields).toMatchObject({
       host_id: host.id,
       host: "cf-flip",
       kind: "cloudflare",
     });
     // The token itself never reaches the event, nor does the check's text.
-    expect(JSON.stringify(event.payload)).not.toContain(TOKEN);
-    expect(JSON.stringify(event.payload)).not.toContain("D1: Edit");
+    expect(JSON.stringify(event.fields)).not.toContain(TOKEN);
+    expect(JSON.stringify(event.fields)).not.toContain("D1: Edit");
     // Nobody is emailed directly any more (#Q3627).
     expect(ctx.mail.records).toHaveLength(0);
 

@@ -7,7 +7,7 @@ import { ForbiddenError } from "alepha/server";
 import type { Quest } from "../entities/quests.ts";
 
 /**
- * The shared authorship alternative, including a no-op automation request.
+ * The shared authorship alternative.
  */
 export class QuestEditAccess {
   protected readonly ranks = $inject(RankService);

@@ -26,7 +26,6 @@ export class LoreActivityPermissions {
     folio: "folio:read",
     feedback: "feedback:read",
     member: "member:read",
-    automation: "automation:read",
     app: "app:read",
     sigil: "app:read",
     monitor: "app:read",

@@ -164,8 +164,8 @@ export class UptimeJobs {
         error,
       );
     }
-    // Alerts are automations since #Q3612: the incident's write recorded
-    // `monitor.down` / `monitor.up` (#Q3610), and the Uptime bells' rules
+    // Alerts are notifications (#Q3890): the incident's write recorded
+    // `monitor.down` / `monitor.up`, and the Uptime bells' subscriptions
     // notify from there.
     try {
       await this.activity.handle(transition);

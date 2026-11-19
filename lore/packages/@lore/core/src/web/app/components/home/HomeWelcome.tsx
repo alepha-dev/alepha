@@ -1,5 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
-import { Bot, Server, Workflow } from "lucide-react";
+import { BellRing, Bot, Server } from "lucide-react";
 
 import type { I18n } from "../../services/I18n.ts";
 import LoreLogoAnimated from "../shared/LoreLogoAnimated.tsx";
@@ -22,7 +22,7 @@ export interface HomeWelcomeProps {
  * It is ruled like the board (`HomeBoard`): two rails down the full height
  * at the gutters, a line under the header and one above the footer. The
  * pillars are a band ruled rail to rail; under them, a thinner band of three
- * small features that are not modules (agents, automations, self-hosting),
+ * small features that are not modules (agents, notifications, self-hosting),
  * each linking to its guide, as each pillar does; and the column lines run on down to the footer. On a phone the pillars stack and the button moves to a bar
  * pinned to the bottom of the screen.
  */
@@ -95,10 +95,10 @@ const HomeWelcome = (props: HomeWelcomeProps) => {
                 href={`${HomeWelcome.docs}/docs/agents-connecting`}
               />
               <HomeWelcomeFeature
-                icon={Workflow}
-                title={tr("home.feature.automations.title")}
-                description={tr("home.feature.automations.description")}
-                href={`${HomeWelcome.docs}/docs/plan-automations`}
+                icon={BellRing}
+                title={tr("home.feature.notifications.title")}
+                description={tr("home.feature.notifications.description")}
+                href={`${HomeWelcome.docs}/docs/project-notifications`}
               />
               <HomeWelcomeFeature
                 icon={Server}

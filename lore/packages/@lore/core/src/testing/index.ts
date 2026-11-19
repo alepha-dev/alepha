@@ -33,7 +33,6 @@ export {
   createTestProject,
 } from "./entities.ts";
 
-export { automationLine, type AutomationLineSpec } from "./automationLine.ts";
 export { createPresetRanks, LEGACY_CONTRIBUTOR } from "./presetRanks.ts";
 export { ReadCounter } from "./ReadCounter.ts";
 export { TripCounter } from "./TripCounter.ts";

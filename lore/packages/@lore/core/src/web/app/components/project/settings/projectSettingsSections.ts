@@ -1,10 +1,4 @@
-import {
-  BellRing,
-  type LucideIcon,
-  Settings2,
-  Users,
-  Workflow,
-} from "lucide-react";
+import { BellRing, type LucideIcon, Settings2, Users } from "lucide-react";
 
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "../../../../../api/schemas/projectResourceSchema.ts";
@@ -62,18 +56,17 @@ export interface SettingsSectionDef {
   key: string;
   /**
    * Position in the Settings group, ascending: General 10, Members 20,
-   * Automations 25, Notifications 26, then each capability's section as its
-   * module registers it.
+   * Notifications 26, then each capability's section as its module
+   * registers it.
    */
   order: number;
   /**
-   * The section's name in the Settings group: General, Members, Automations,
-   * then a verb per capability (Plan, Remember, Ship).
+   * The section's name in the Settings group: General, Members,
+   * Notifications, then a verb per capability (Plan, Remember, Ship).
    */
   labelKey:
     | "project.settings.nav.general"
     | "project.settings.nav.members"
-    | "project.settings.nav.automations"
     | "project.settings.nav.notifications"
     | "project.settings.nav.plan"
     | "project.settings.nav.remember"
@@ -136,31 +129,6 @@ export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
         labelKey: "project.settings.nav.ranks",
         requires: "rank:manage",
         fullWidth: true,
-      },
-    ],
-  },
-  {
-    // Core since #Q3629: every project has Automations, whatever its
-    // capabilities. It is project configuration, so a Settings section after
-    // Members rather than an entry of its own in the sidebar. Its pages keep
-    // their own layout; the section only lists them and lights while one is
-    // open.
-    key: "automations",
-    order: 25,
-    labelKey: "project.settings.nav.automations",
-    icon: Workflow,
-    tabs: [
-      {
-        route: "projectAutomations",
-        labelKey: "project.settings.tab.automations",
-        requires: "automation:read",
-        alsoOn: [
-          "projectAutomationGallery",
-          "projectAutomationNew",
-          "projectAutomationDetail",
-          "projectAutomationVariables",
-          "projectAutomationRun",
-        ],
       },
     ],
   },

@@ -20,18 +20,6 @@ export class DeployDashboardMetrics {
     this.catalog.register({
       key: "openErrors",
       requires: "error:read",
-      automation: {
-        kind: "number",
-        requires: "error:read",
-        slots: {
-          status: {
-            kind: "text",
-            required: false,
-            values: ["open", "all"],
-            default: "open",
-          },
-        },
-      },
       order: 60,
       /**
        * On project boards too since #Q2650: a project that watches its apps
@@ -63,18 +51,6 @@ export class DeployDashboardMetrics {
     this.catalog.register({
       key: "uniqueVisitors",
       requires: "app:read",
-      automation: {
-        kind: "number",
-        requires: "app:read",
-        slots: {
-          period: {
-            kind: "text",
-            required: false,
-            values: ["yesterday"],
-            default: "yesterday",
-          },
-        },
-      },
       order: 80,
       /**
        * On project boards too since #Q2650: a project that watches its apps

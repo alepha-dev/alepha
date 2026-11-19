@@ -24,7 +24,7 @@ import { afterEach, describe, it } from "vitest";
  * A detail page ends its breadcrumb trail with itself (#Q3408), where three
  * of them used to carry a back link in their body instead: a host's
  * console ("All hosts"), an area's settings page ("Back to areas") and
- * the automation gallery ("Back to automations"). The trail above them
+ * a page's own back link. The trail above them
  * (Project > section) comes from `ProjectView`; these are the leaves the
  * modules contribute, read the way `ProjectView` reads them.
  */
@@ -250,15 +250,15 @@ describe("the leaf crumb of a detail page", () => {
     const { alepha } = await setup();
     const trail = alepha.inject(ProjectTrail);
     alepha.store.set(pageCrumbAtom, {
-      routeName: "projectAutomationDetail",
-      label: "Notify on deploy",
+      routeName: "projectSettingsNotificationChannels",
+      label: "Webhook to CI",
     });
 
-    expect(trail.title("projectAutomationDetail", {})).toMatch(
-      / › Notify on deploy$/,
+    expect(trail.title("projectSettingsNotificationChannels", {})).toMatch(
+      / › Webhook to CI$/,
     );
-    expect(trail.title("projectAutomations", {})).not.toContain(
-      "Notify on deploy",
+    expect(trail.title("projectSettingsNotifications", {})).not.toContain(
+      "Webhook to CI",
     );
   });
 });

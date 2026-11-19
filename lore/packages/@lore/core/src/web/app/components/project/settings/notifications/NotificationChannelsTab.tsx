@@ -147,9 +147,7 @@ const NotificationChannelsTab = (props: NotificationChannelsTabProps) => {
   );
   const values = useFormValues(form);
   if (!project) return null;
-  const canManage =
-    canInProject(project, "subscription:manage") ||
-    canInProject(project, "automation:manage");
+  const canManage = canInProject(project, "subscription:manage");
   const busy = save.loading || remove.loading || rotate.loading;
   const webhook = (editing ? editing.kind : values.kind) === "webhook";
 

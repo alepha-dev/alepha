@@ -32,10 +32,10 @@ import {
   ReleaseContentService,
 } from "../services/ReleaseContentService.ts";
 import { ReleasePublishGuards } from "../services/ReleasePublishGuards.ts";
-import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
+import { WorkEventSources } from "../services/WorkEventSources.ts";
 
 export class ReleaseController {
-  protected readonly automationSources = $inject(WorkAutomationSources);
+  protected readonly eventSources = $inject(WorkEventSources);
   protected readonly publishGuards = $inject(ReleasePublishGuards);
   releases = $repository(releases);
   quests = $repository(quests);
@@ -404,7 +404,7 @@ export class ReleaseController {
       const { markdown, groups } = this.renderChangelog(withTitle, contents);
       const progress = this.contents.progressOf(release, contents);
 
-      const published = await this.automationSources.publish(
+      const published = await this.eventSources.publish(
         release,
         {
           releasedAt: this.dt.nowISOString(),

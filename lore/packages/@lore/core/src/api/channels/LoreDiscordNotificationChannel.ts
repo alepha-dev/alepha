@@ -11,8 +11,7 @@ import { ProjectChannelService } from "../services/ProjectChannelService.ts";
 /**
  * Posts a notification to one of a project's Discord channels (#Q3615,
  * #Q3891): a project event a channel is subscribed to, rendered by its
- * `lore:project-event:discord` template, or the automation engine's own
- * until #Q3896.
+ * `lore:project-event:discord` template.
  *
  * The notification names the channel by id (`variables.channelId`), and the
  * project is its scope. At send time the channel's webhook URL is

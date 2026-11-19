@@ -8,7 +8,6 @@ import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import { type Host, hosts } from "../entities/hosts.ts";
-import { HostAutomationEventSubjects } from "../services/HostAutomationEventSubjects.ts";
 import { HostEventFields } from "../services/HostEventFields.ts";
 import { HostService } from "../services/HostService.ts";
 import { ShipProjectEvents } from "../services/ShipProjectEvents.ts";
@@ -151,17 +150,14 @@ export class HostOfflineJobs {
         data,
         {
           projectId: host.projectId,
-          identity: `host:${host.id}:${kind}:${since}`,
           resourceId: host.id,
           name: `host.${kind}`,
-          ...HostAutomationEventSubjects.source(
-            this.fields.build(
-              await this.projects.getById(host.projectId),
-              host,
-              kind,
-              since,
-            ),
+          subjectId: host.id,
+          fields: this.fields.build(
+            await this.projects.getById(host.projectId),
+            host,
             kind,
+            since,
           ),
         },
       );

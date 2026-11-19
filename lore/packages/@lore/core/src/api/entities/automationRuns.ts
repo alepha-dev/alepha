@@ -1,11 +1,14 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-import { automationRunSnapshotSchema } from "../schemas/automationRunSnapshotSchema.ts";
-import { automationRunStatusSchema } from "../schemas/automationRunStatusSchema.ts";
 import { automations } from "./automations.ts";
 import { projects } from "./projects.ts";
 
+/**
+ * ⚠️ Kept until #Q3902 drops the table: nothing reads or writes it since
+ * #Q3896 deleted the automation engine. Its columns keep their storage
+ * shape, so no migration is generated before the drop.
+ */
 export const automationRuns = $entity({
   name: "automation_runs",
   schema: z.object({
@@ -25,9 +28,19 @@ export const automationRuns = $entity({
      */
     sourceNode: z.string().max(64).optional(),
     triggeredAt: z.datetime(),
-    status: automationRunStatusSchema.meta({ mode: "text" }),
+    status: z
+      .enum([
+        "running",
+        "succeeded",
+        "skipped",
+        "refused",
+        "partial",
+        "failed",
+        "unknown",
+      ])
+      .meta({ mode: "text" }),
     reason: z.string().max(1024).optional(),
-    snapshot: automationRunSnapshotSchema,
+    snapshot: z.record(z.string(), z.any()),
     createdAt: db.createdAt(),
     finishedAt: z.datetime().optional(),
   }),

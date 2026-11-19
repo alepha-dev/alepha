@@ -335,7 +335,7 @@ const ProjectApps = () => {
         // Keyed per project: `env` values are project-specific, so one
         // project's stored column layout has no business on another's list.
         persist={{ filters: false }}
-        // Uptime alerts are automations since #Q3611: this bell covers every
+        // Uptime alerts are subscriptions (#Q3892): this bell covers every
         // monitor of the project, down and recovered, and is independent of
         // each monitor's own bell (it binds no scope).
         toolbar={

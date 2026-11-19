@@ -57,7 +57,7 @@ export class ProjectRankPresets {
 
   /**
    * Viewer reads and writes nothing: every `:read` a project grants, the
-   * member list, apps, errors, hosts, automations and feedback included
+   * member list, apps, errors, hosts, subscriptions and feedback included
    * (#Q3833). It is the rank an admin gives to someone they invited, so it
    * is trusted with what any member reads. Narrowed to the enabled
    * capabilities like every preset.

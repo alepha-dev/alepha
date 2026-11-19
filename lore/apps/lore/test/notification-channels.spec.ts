@@ -1,14 +1,12 @@
 import { DiscordTransport, MemoryDiscordTransport } from "@alepha/discord";
 import {
-  AutomationPersistence,
-  AutomationService,
   ProjectChannelController,
   ProjectChannelService,
   ProjectEventDelivery,
   SubscriptionController,
   eventSubscriptions,
 } from "@lore/core/api";
-import { automationLine, createPresetRanks } from "@lore/core/testing";
+import { createPresetRanks } from "@lore/core/testing";
 import { DeployRegistry } from "@lore/ship/api";
 import { appInstances, deployments } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
@@ -44,7 +42,7 @@ class Rows extends TestEntityRepositories {
 const WEBHOOK = "https://discord.com/api/webhooks/1234567890/abcDEF-ghi_JKL";
 
 /**
- * Channels leave automations (#Q3891): a subscription targets a member or a
+ * Notification channels (#Q3891): a subscription targets a member or a
  * project's channel, and a Discord channel receives the event's fixed
  * message, muted.
  */
@@ -204,32 +202,9 @@ describe("Notification channels", () => {
     );
   });
 
-  it("deletes a channel's subscriptions with it, and still strips it from the engine's rules", async ({
-    expect,
-  }) => {
+  it("deletes a channel's subscriptions with it", async ({ expect }) => {
     const created = await channel();
     await subscribe(owner, { event: "deploy.failed", channelId: created.id });
-    const rule = await alepha
-      .inject(AutomationService)
-      .create(project.id, owner, {
-        title: "To Discord",
-        enabled: true,
-        rule: automationLine({
-          trigger: { kind: "event", event: "deploy.failed" },
-          select: null,
-          guard: null,
-          actions: [
-            {
-              kind: "notify",
-              channels: [created.id, "inbox"],
-              recipient: owner.id,
-              category: "automations",
-              title: "Failed",
-              text: "{{app}}",
-            },
-          ],
-        }),
-      });
     await alepha
       .inject(ProjectChannelController)
       .deleteProjectChannel.fetch(
@@ -237,13 +212,9 @@ describe("Notification channels", () => {
         { user: owner },
       );
     expect(await rows.subscriptions.count({ projectId: project.id })).toBe(0);
-    const stored = await alepha
-      .inject(AutomationPersistence)
-      .rules.getById(rule.id);
-    expect(JSON.stringify(stored.rule)).not.toContain(created.id);
   });
 
-  it("allows a channel write with subscription:manage, and with automation:manage until it is removed", async ({
+  it("allows a channel write with subscription:manage only", async ({
     expect,
   }) => {
     await expect(
@@ -251,24 +222,21 @@ describe("Notification channels", () => {
         .inject(ProjectChannelService)
         .add(project.id, member, { name: "mine", url: WEBHOOK }),
     ).rejects.toThrow(/subscription:manage/);
-    const ranks = alepha.inject(RankService);
-    for (const [grant, name] of [
-      ["subscription:manage", "first"],
-      ["automation:manage", "second"],
-    ] as const) {
-      const key = `ops-${name}`;
-      await alepha.context.run(() =>
-        ranks.save(
-          project.organizationId!,
-          { key, name: key, permissions: ["project:read", grant] },
-          { id: owner.id },
-        ),
-      );
-      await createTestMember(alepha, project, member.id, { rank: key });
-      const added = await alepha
-        .inject(ProjectChannelService)
-        .add(project.id, member, { name, url: WEBHOOK });
-      expect(added.name).toBe(name);
-    }
+    await alepha.context.run(() =>
+      alepha.inject(RankService).save(
+        project.organizationId!,
+        {
+          key: "ops",
+          name: "ops",
+          permissions: ["project:read", "subscription:manage"],
+        },
+        { id: owner.id },
+      ),
+    );
+    await createTestMember(alepha, project, member.id, { rank: "ops" });
+    const added = await alepha
+      .inject(ProjectChannelService)
+      .add(project.id, member, { name: "first", url: WEBHOOK });
+    expect(added.name).toBe("first");
   });
 });

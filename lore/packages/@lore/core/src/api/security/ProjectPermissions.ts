@@ -64,10 +64,9 @@ export class ProjectPermissions {
      * answer that ignores them. The bypass itself lives upstream; this is
      * only about not paying for it.
      *
-     * ⚠️ Automations are the exception (#Q3022): the API refuses the bypass
-     * for them, on purpose, so `automation:*` is what the caller holds as a
-     * member. Notifications follow the same rule (`subscription:*`, #Q3890). `AutomationAccess` recomputes the same way, and outside the
-     * project there is nothing to recompute, so this stays free.
+     * ⚠️ Notifications are the exception (#Q3890, after automations' #Q3022):
+     * the bypass is refused for them, on purpose, so `subscription:*` is what
+     * the caller holds as a member.
      */
     if (user.ownership === false) {
       const permissions = this.effective.resolve({
@@ -80,9 +79,7 @@ export class ProjectPermissions {
         : [];
       return {
         permissions: permissions.filter(
-          (it) =>
-            !(it.startsWith("automation:") || it.startsWith("subscription:")) ||
-            asMember.includes(it),
+          (it) => !it.startsWith("subscription:") || asMember.includes(it),
         ),
       };
     }

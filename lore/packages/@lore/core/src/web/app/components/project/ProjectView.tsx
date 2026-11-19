@@ -93,12 +93,7 @@ const ProjectView = () => {
   //   Work      Quests, Kanban, Epics, Feedback, Errors
   //   Record    Folios, Releases, Reports
   //   Ops       Apps, Artifacts, Uptime
-  //   Config    Automations
   //   Settings
-  //
-  // Config is what configures the project without being Settings: an
-  // automation is set up once and runs on its own, so it sits last, directly
-  // above Settings, rather than among the daily work surfaces (#Q2678).
   //
   // Work is ordered chosen-then-arrived: Quests and Epics are what you put in,
   // Feedback and Errors turn up on their own and need a verdict. They share

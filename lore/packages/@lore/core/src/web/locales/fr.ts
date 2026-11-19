@@ -4,193 +4,33 @@ import { uiFr } from "@alepha/ui/i18n/fr";
  * Lore's French, over `@alepha/ui`'s: a key both declare reads Lore's.
  */
 export default {
-  "automation.test.counts": "Sélectionnés : $1. Correspondances : $2.",
-  "automation.test.total": "Éléments possibles : $1.",
-  "automation.test.lowerBound": "Au moins $1 éléments possibles.",
-  "automation.test.guardMatched": "Condition remplie.",
-  "automation.test.guardNotMatched": "Condition non remplie.",
-  "automation.test.value": "Valeur actuelle : $1.",
-  "automation.test.previous": "Valeur précédente : $1.",
-  "automation.test.omitted":
-    "Cette prévisualisation omet $1 actions en raison de sa limite de taille.",
-  "automation.test.actionCapped": "Le texte de cette action a été limité.",
-
-  "automation.setup.invalidValue": "Choisissez ou saisissez une valeur.",
-  "automation.setup.cancel": "Annuler",
-  "automation.setup.enableDescription":
-    "Désactivée. Testez-la ci-dessous, puis activez-la : Lore revérifie alors vos permissions et ses entrées.",
-  "automation.gallery.none":
-    "Aucun modèle ne convient encore à ce projet : les modèles dépendent de ses capacités, de vos permissions et des canaux de notification configurés.",
-  "automation.sharing.source": "Source de : $1",
-  "automation.sharing.literal": "Cette règle seulement",
-  "automation.sharing.existing": "Variable partagée",
-  "automation.sharing.create": "Nouvelle variable partagée",
-  "automation.sharing.variable": "Variable partagée pour $1",
-  "automation.sharing.key": "Clé de la nouvelle variable",
-  "automation.sharing.createDescription":
-    "Crée une nouvelle variable lors de l’enregistrement. Les clés existantes ne sont jamais remplacées.",
-  "automation.sharing.chooseVariable":
-    "Choisissez une variable disponible du type attendu.",
-  "automation.sharing.validKey":
-    "Commencez par une lettre, puis utilisez des lettres, chiffres ou tirets bas, avec 64 caractères maximum.",
-  "automation.sharing.manageRequired":
-    "La création de variables partagées nécessite l’autorisation de gérer les automatisations.",
-  "automation.sharing.approvedVersion": "Utilisation de $1, version $2.",
-  "automation.sharing.useCurrent": "Utiliser la version actuelle",
-  "automation.test.title": "Essai",
-  "automation.test.description":
-    "Exécutez la règle sur les données actuelles pour voir ce qu'elle sélectionnerait et les messages exacts qu'elle enverrait. Rien n'est écrit.",
-  "automation.test.subject": "Élément source",
-  "automation.test.subjectDescription":
-    "Choisissez un élément de ce projet pour prévisualiser l’événement. Cet élément ne sera pas modifié.",
-  "automation.test.subjectRequired":
-    "Choisissez un élément source de ce projet.",
-  "automation.test.run": "Lancer l'essai",
-  "automation.test.result": "Résultat de la prévisualisation",
-  "automation.test.at": "Prévisualisation évaluée le $1.",
-  "automation.test.planned": "Actions prévues : $1.",
-  "automation.test.disclaimer":
-    "Prévisualisation uniquement. Aucune action, aucun message et aucun changement de référence n’ont été enregistrés.",
-
-  "automation.run.queued": "En attente",
-  "automation.column.name": "Nom",
-  "automation.column.author": "Auteur",
-  "automation.column.trigger": "Déclencheur",
-  "automation.column.state": "État",
-  "automation.column.lastRun": "Dernière exécution",
-  "automation.list.empty": "Aucune automatisation pour le moment",
-  "automation.list.emptyDescription":
-    "Une automatisation prévient des personnes ou met à jour le projet quand quelque chose arrive, ou selon un horaire. Partez d'un modèle.",
-  "automation.list.noMatch": "Aucune automatisation correspondante",
-  "automation.list.noMatchDescription":
-    "Essayez un autre nom ou effacez le filtre d’état.",
-  "automation.gallery.description":
-    "Partez d'un modèle. Créer et activer le lance tout de suite ; Enregistrer comme brouillon le garde désactivé pour le tester d'abord.",
-  "automation.enable": "Activer",
-  "automation.disable": "Désactiver",
-  "automation.delete": "Supprimer",
-  "automation.delete.title": "Supprimer l’automatisation ?",
-  "automation.delete.description":
-    "Supprimer $1 ? Les tâches en attente seront arrêtées. L’historique conservé reste disponible.",
-  "automation.redacted": "Accès à la source indisponible",
-  "automation.reviewRequired": "Approbation de l’auteur requise",
-  "automation.run.running": "En cours",
-  "automation.run.succeeded": "Terminée",
-  "automation.run.skipped": "Ignorée",
-  "automation.run.refused": "Refusée",
-  "automation.run.partial": "Partiellement terminée",
-  "automation.run.failed": "Échec",
-  "automation.run.unknown": "Résultat inconnu",
-  "automation.run.capped": "Sélection limitée ou incomplète",
-  "automation.run.noData": "Aucune donnée de comparaison",
-  "automation.run.none": "Aucune exécution",
-  "automation.event.feedbackCreated": "Nouveau retour",
-  "automation.event.releasePublished": "Version publiée",
-  "automation.event.epicCompleted": "Épopée terminée",
-  "automation.event.deployFailed": "Déploiement en échec",
-  "automation.event.deploySucceeded": "Déploiement réussi",
-  "automation.event.hostCredentialInvalid": "Jeton d'hôte invalide",
-  "automation.event.hostExpired": "Hôte expiré",
-  "automation.event.hostOffline": "Hôte hors ligne",
-  "automation.event.hostOnline": "Hôte de retour en ligne",
-  "automation.event.monitorDown": "Moniteur en panne",
-  "automation.event.monitorUp": "Moniteur rétabli",
-  "automation.event.questCompleted": "Quête terminée",
-
-  "automation.setup.recipient": "Destinataire",
-  "automation.setup.channel": "Canal",
-  "automation.setup.tag": "Étiquette",
-  "automation.channel.inbox": "Boîte de réception",
-  "automation.channel.email": "E-mail",
-  "automation.preset.feedback-created.title": "Nouveau retour",
-  "automation.preset.feedback-created.description":
-    "Notifier un membre lors de la création d’un retour, avec sa description et un lien vers lui, sans divulguer les coordonnées de son auteur.",
-  "automation.preset.weekly-report-digest.title": "Rapport hebdomadaire",
-  "automation.preset.weekly-report-digest.description":
-    "Envoie le résumé des rapports des sept derniers jours à un membre, chaque lundi à 08:00 UTC. Il peut s'en désabonner dans ses réglages de notification.",
-  "automation.source.reports.summary":
-    "Le résumé des rapports des sept derniers jours",
-  "automation.preset.tagged-quest-digest.title":
-    "Récapitulatif nocturne des quêtes",
-  "automation.preset.tagged-quest-digest.description":
-    "Envoyer à 00:00 UTC un récapitulatif des quêtes ouvertes portant une étiquette choisie. Aucun message si la liste est vide.",
-  "automation.preset.epic-completed.title": "Epic terminé",
-  "automation.preset.epic-completed.description":
-    "Notifier un membre lorsqu’un epic en cours se termine automatiquement.",
-  "automation.setup.threshold": "Seuil",
-  "automation.setup.branch": "Branche",
-  "automation.preset.coverage-regression.title": "Baisse de couverture",
-  "automation.preset.coverage-regression.description":
-    "Comparer la couverture des lignes des deux dernières journées UTC entièrement écoulées à 00:10 UTC. Alerter uniquement si la baisse dépasse le seuil en points de pourcentage.",
-  "automation.preset.error-crossing.title":
-    "Dépassement du seuil des erreurs ouvertes",
-  "automation.preset.error-crossing.description":
-    "Mesurer le nombre total d’erreurs ouvertes toutes les cinq minutes. Le premier relevé fixe une référence ; un retour au seuil ou en dessous réarme l’alerte.",
-  "automation.setup.folio": "Folio",
-  "automation.setup.app": "Application",
-  "automation.setup.channels": "Canaux",
-  "automation.setup.host": "Hôte",
-  "automation.setup.monitor": "Moniteur",
-  "automation.preset.release-to-folio.title":
-    "Publier les notes de version dans un folio",
-  "automation.preset.release-to-folio.description":
-    "Ajouter le changelog publié à un folio choisi, puis notifier un membre. Chaque publication est ajoutée une seule fois.",
-  "automation.preset.quest-reminders.title": "Rappels de quête",
-  "automation.preset.quest-reminders.description":
-    "Toutes les heures, rappelle à la personne assignée chaque quête dont le rappel est dû, à l'intervalle choisi sur la quête.",
   "uptime.alertsByBell":
-    "Les alertes sont des automatisations : activez la cloche sur la page du moniteur, ou sur Applications pour tous les moniteurs.",
-  "automation.preset.release-published.title": "Version publiée",
-  "automation.preset.release-published.description":
-    "Avertit un membre quand une version est publiée, avec son tag, son titre, son nombre de quêtes et un lien.",
+    "Les alertes sont des notifications : activez la cloche sur la page du moniteur, ou sur Applications pour tous les moniteurs.",
   "uptime.subscription.label":
     "M'avertir quand ce moniteur tombe ou se rétablit",
   "uptime.subscription.description":
-    "Une règle à votre nom vous avertira quand une panne de ce moniteur est confirmée, puis quand il se rétablit. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+    "Vous serez notifié dans l'application quand une panne de ce moniteur est confirmée, puis quand il se rétablit. Réglez-le dans Paramètres > Notifications.",
   "uptime.subscription.offDescription":
     "Vous ne serez plus averti des pannes et rétablissements de ce moniteur.",
   "uptime.subscription.allLabel":
     "M'avertir quand un moniteur tombe ou se rétablit",
   "uptime.subscription.allDescription":
-    "Une règle à votre nom vous avertira quand une panne est confirmée sur n'importe quel moniteur de ce projet, puis quand il se rétablit. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+    "Vous serez notifié dans l'application quand une panne est confirmée sur n'importe quel moniteur de ce projet, puis quand il se rétablit. Réglez-le dans Paramètres > Notifications.",
   "uptime.subscription.allOffDescription":
     "Vous ne serez plus averti des pannes et rétablissements de ce projet.",
-  "automation.preset.monitor-down.title": "Moniteur en panne",
-  "automation.preset.monitor-down.description":
-    "Avertit un membre quand une panne d'un moniteur est confirmée, avec son adresse, la cause et l'erreur.",
-  "automation.preset.monitor-up.title": "Moniteur rétabli",
-  "automation.preset.monitor-up.description":
-    "Avertit un membre quand un moniteur se rétablit après une panne, avec sa durée.",
   "hosts.subscription.label":
     "M'avertir quand cet hôte demande une intervention",
   "hosts.subscription.description":
-    "Une règle à votre nom vous avertira quand cet hôte dépasse sa durée de vie, se déconnecte ou revient en ligne, ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+    "Vous serez notifié dans l'application quand cet hôte dépasse sa durée de vie, se déconnecte ou revient en ligne, ou que son jeton Cloudflare cesse de fonctionner. Réglez-le dans Paramètres > Notifications.",
   "hosts.subscription.offDescription":
     "Vous ne serez plus averti au sujet de cet hôte.",
   "hosts.subscription.allLabel":
     "M'avertir quand un hôte demande une intervention",
   "hosts.subscription.allDescription":
-    "Une règle à votre nom vous avertira quand un hôte de ce projet dépasse sa durée de vie, se déconnecte ou revient en ligne, ou que son jeton Cloudflare cesse de fonctionner. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+    "Vous serez notifié dans l'application quand un hôte de ce projet dépasse sa durée de vie, se déconnecte ou revient en ligne, ou que son jeton Cloudflare cesse de fonctionner. Réglez-le dans Paramètres > Notifications.",
   "hosts.subscription.allOffDescription":
     "Vous ne serez plus averti au sujet des hôtes de ce projet.",
-  "automation.preset.host-credential-invalid.title": "Jeton d'hôte invalide",
-  "automation.preset.host-credential-invalid.description":
-    "Avertit un membre quand la vérification nocturne constate que le jeton Cloudflare d'un hôte ne fonctionne plus. Les déploiements par cet hôte sont refusés tant qu'il n'est pas remplacé.",
-  "automation.preset.host-expired.title": "Hôte expiré",
-  "automation.preset.host-expired.description":
-    "Avertit un membre quand un hôte jetable dépasse sa durée de vie. Lore n'arrête et ne supprime rien.",
-  "automation.preset.host-offline.title": "Hôte hors ligne",
-  "automation.preset.host-offline.description":
-    "Avertit un membre quand un hôte Bay ne donne plus signe de vie depuis cinq minutes. Un redémarrage qui se reconnecte avant ne déclenche rien.",
-  "automation.preset.host-online.title": "Hôte de retour en ligne",
-  "automation.preset.host-online.description":
-    "Avertit un membre quand un hôte Bay signalé hors ligne se reconnecte.",
   "project.settings.tab.notificationChannels": "Canaux",
-  "automation.preset.deploy-failed.title": "Échec du déploiement",
-  "automation.preset.deploy-failed.description":
-    "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",
-  "automation.previous": "Précédent",
-  "automation.next": "Suivant",
 
   "project.settings.nav.notifications": "Notifications",
   "project.settings.tab.notifications": "Qui est notifié",
@@ -302,16 +142,6 @@ export default {
   "permission.subscription.read": "Voir qui est notifié de quoi",
   "permission.subscription.manage":
     "Notifier d'autres membres et gérer les canaux du projet",
-  "permission.group.automation": "Automatisations",
-  "permission.automation.read": "Consulter les automatisations",
-  "permission.automation.write":
-    "Créer et modifier ses propres automatisations",
-  "permission.automation.manage":
-    "Gérer les variables partagées et désactiver ou supprimer toute automatisation",
-  "automation.state.disabled": "Désactivée",
-  "automation.state.active": "Active",
-  "automation.state.paused": "En pause",
-  "automation.state.broken": "Invalide",
 
   ...uiFr,
   "language.en": "English",
@@ -365,9 +195,9 @@ export default {
   "home.feature.agents.title": "Agents",
   "home.feature.agents.description":
     "Vos agents IA travaillent dans Lore via MCP et la CLI, avec vos permissions.",
-  "home.feature.automations.title": "Automatisations",
-  "home.feature.automations.description":
-    "Des règles qui agissent sur un événement, ou selon un calendrier.",
+  "home.feature.notifications.title": "Notifications",
+  "home.feature.notifications.description":
+    "Prévenez les bonnes personnes quand quelque chose change : une version, un déploiement échoué, un hôte hors ligne, dans l'application, par e-mail, sur Discord ou par webhook.",
   "home.feature.selfHost.title": "Auto-hébergement",
   "home.feature.selfHost.description":
     "Open source, et tourne partout à partir d’une seule image Docker.",
@@ -1216,7 +1046,6 @@ export default {
   "project.settings.general.title": "Projet",
   "project.settings.nav.general": "Général",
   "project.settings.nav.members": "Membres",
-  "project.settings.nav.automations": "Automatisations",
   "project.settings.nav.plan": "Planifier",
   "project.settings.nav.remember": "Mémoriser",
   "project.settings.nav.ship": "Livrer",
@@ -1227,7 +1056,6 @@ export default {
   "project.settings.tab.errors": "Erreurs",
   "project.settings.tab.board": "Tableau",
   "project.settings.tab.prompts": "Invites pour agents",
-  "project.settings.tab.automations": "Automatisations",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
@@ -1358,19 +1186,6 @@ export default {
   "reports.team.heatmap.definition":
     "Écritures par jour de la semaine et par heure, en UTC, sur les 30 derniers jours de la période au plus : l'activité plus ancienne est conservée par jour.",
   "reports.team.heatmap.cell": "$1 $2:00, $3 écritures",
-  "reports.team.automations.title": "Automatisations",
-  "reports.team.automations.definition":
-    "Comment les automatisations du projet se sont exécutées sur la période. Le détail des exécutions est conservé 30 jours.",
-  "reports.team.automations.success": "Taux de réussite",
-  "reports.team.automations.success.definition":
-    "Exécutions terminées qui ont réussi. Celles en file, en cours ou ignorées sont exclues.",
-  "reports.team.automations.duration": "Durée médiane",
-  "reports.team.automations.duration.definition":
-    "Du déclenchement à la fin de l'exécution, sur les exécutions terminées.",
-  "reports.team.automations.broken": "Cassées",
-  "reports.team.automations.broken.definition":
-    "Règles qui ont perdu une dépendance et ne peuvent plus s'exécuter tant qu'elle n'est pas revenue.",
-  "reports.team.automations.runs": "exécutions",
   "reports.team.mcp.title": "Outils MCP",
   "reports.team.mcp.definition":
     "Appels d'outils ayant résolu ce projet sur la période. Un appel refusé avant un contrôle de permission n'appartient à aucun projet : il n'apparaît pas ici.",
@@ -1390,14 +1205,6 @@ export default {
   "reports.team.day.4": "ven.",
   "reports.team.day.5": "sam.",
   "reports.team.day.6": "dim.",
-  "reports.team.run.queued": "En file",
-  "reports.team.run.running": "En cours",
-  "reports.team.run.succeeded": "Réussie",
-  "reports.team.run.skipped": "Ignorée",
-  "reports.team.run.refused": "Refusée",
-  "reports.team.run.partial": "Partielle",
-  "reports.team.run.failed": "Échouée",
-  "reports.team.run.unknown": "Inconnue",
   "reports.quality.section.coverage": "Couverture",
   "reports.quality.section.tests": "Tests",
   "reports.quality.section.coverageOverTime": "Couverture dans le temps",
@@ -3155,12 +2962,12 @@ export default {
   "feedback.back": "Retour",
   "release.subscription.label": "M'avertir à chaque version publiée",
   "release.subscription.description":
-    "Une règle à votre nom vous avertira de chaque version publiée dans ce projet. Vous pouvez la modifier, la suspendre ou la supprimer depuis la page Automatisations.",
+    "Vous serez notifié dans l'application de chaque version publiée dans ce projet. Réglez-le dans Paramètres > Notifications.",
   "release.subscription.offDescription":
     "Vous ne serez plus averti quand une version est publiée.",
   "feedback.subscription.label": "Me notifier des nouveaux retours",
   "feedback.subscription.description":
-    "Une règle vous notifiera de chaque nouveau retour dans ce projet.",
+    "Vous serez notifié dans l'application de chaque nouveau retour dans ce projet.",
   "feedback.subscription.offDescription":
     "Vous ne serez plus notifié des nouveaux retours dans ce projet.",
   "feedback.filter.pending": "En attente",
@@ -3188,9 +2995,9 @@ export default {
   "account.notifications.categories": "Types de message",
   "account.notifications.categories.description":
     "Ces réglages valent pour les deux canaux.",
-  "account.notifications.category.automations": "Automatisations",
-  "account.notifications.category.automations.description":
-    "Messages des règles automatiques des projets.",
+  "account.notifications.category.notifications": "Notifications de projet",
+  "account.notifications.category.notifications.description":
+    "Ce dont vous avez choisi d'être notifié dans un projet, ou qu'un responsable a choisi pour vous.",
   "account.notifications.category.feedback": "Vos demandes",
   "account.notifications.category.feedback.description":
     "Quand un projet accepte, refuse ou répond à une demande que vous avez envoyée.",
@@ -3200,9 +3007,6 @@ export default {
   "account.notifications.category.mentions": "Mentions",
   "account.notifications.category.mentions.description":
     "Quelqu'un écrit votre nom dans un commentaire de quête ou de retour.",
-  "account.notifications.category.releases": "Versions",
-  "account.notifications.category.releases.description":
-    "Un projet dont vous êtes membre publie une version.",
   "account.notifications.category.tasks": "Rappels de quête",
   "account.notifications.category.tasks.description":
     "Rappels sur une quête que vous avez acceptée et pas terminée.",
@@ -4652,192 +4456,6 @@ export default {
   "folios.wikilink.broken.requirementNotFound":
     "Aucune exigence ne correspond à cette référence.",
   "project.settings.nav.ranks": "Rangs",
-  "automation.editor.loading": "Chargement...",
-  "automation.editor.value": "Valeur",
-  "automation.editor.action": "Action $1",
-  "automation.editor.removeAction": "Retirer l’action",
-  "automation.editor.save": "Enregistrer les modifications",
-  "automation.editor.binding": "Variable ou champ de l'événement",
-  "automation.editor.templates": "Noms de modèle disponibles :",
-  "automation.variables.title": "Variables partagées",
-  "automation.variables.description":
-    "Des valeurs que plusieurs automatisations peuvent partager, comme un destinataire ou un seuil. En modifier une demande aux autres auteurs de revoir leurs automatisations.",
-  "automation.variables.referenced": "Variables partagées utilisées",
-  "automation.variables.create": "Créer une variable partagée",
-  "automation.variables.key": "Clé de la variable",
-  "automation.variables.kind": "Type de valeur",
-  "automation.variables.version": "Version $1",
-  "automation.variables.confirmTitle": "Modifier cette valeur partagée ?",
-  "automation.variables.warning":
-    "L’enregistrement valide vos règles. Les règles d’autres auteurs sont suspendues et nécessitent une approbation explicite avant d’utiliser la nouvelle valeur. Leur auteur est conservé.",
-  "automation.variables.usedBy": "Utilisée par",
-  "automation.variables.updated": "Validée et mise à jour",
-  "automation.variables.deleteTitle": "Supprimer la variable inutilisée ?",
-  "automation.variables.deleteDescription":
-    "Seules les variables inutilisées peuvent être supprimées. Une variable liée à une règle sera refusée même si la liaison apparaît pendant l’ouverture de cette fenêtre.",
-  "automation.history.title": "Historique des exécutions",
-  "automation.history.detail": "Détails de l’exécution",
-  "automation.history.retention":
-    "Les détails sont conservés 30 jours. Les identités de déduplication restent 90 jours.",
-  "automation.history.replay":
-    "Les données expirées ne peuvent pas être rejouées ni prévisualisées. Un nouveau test prospectif utilise les données actuelles sans produire d’effets.",
-  "automation.history.refresh": "Actualiser la livraison",
-  "automation.history.rule": "Ouvrir l'automatisation",
-  "automation.history.snapshot":
-    "Règle figée, données autorisées et versions des variables",
-  "automation.history.effects": "Résultats par action",
-  "automation.history.deliveries": "Reçus de notification actuels",
-  "automation.history.delivery": "Reçu de livraison",
-  "automation.history.deliveryMeaning":
-    "En file signifie que l’envoi est enregistré. La livraison dans la boîte est confirmée par sa création. Un e-mail envoyé signifie son acceptation par le transport. Les effets inconnus nécessitent une vérification et ne sont jamais renvoyés aveuglément.",
-  "automation.history.lastAttempt": "Dernière tentative",
-  "automation.history.receipt": "Reçu",
-  "automation.history.message": "Message du transport",
-  "automation.variables.kind.text": "Texte",
-  "automation.variables.kind.number": "Nombre",
-  "automation.variables.kind.member": "Membre du projet",
-  "automation.variables.kind.folio": "Folio",
-  "automation.variables.kind.release": "Version",
-  "automation.variables.kind.channel": "Canal",
-  "automation.effect.pending": "En attente",
-  "automation.effect.running": "En cours",
-  "automation.effect.succeeded": "Réussie",
-  "automation.effect.skipped": "Ignorée",
-  "automation.effect.refused": "Refusée",
-  "automation.effect.failed": "Échouée",
-  "automation.effect.unknown": "Inconnue, vérification requise",
-  "automation.effect.queued": "En file, livraison en attente",
-  "automation.test.source": "Partir de",
-  "automation.test.unvalidated":
-    "Connu seulement quand l'exécution est réelle, non vérifié ici : $1",
-  "automation.effect.not_reached":
-    "Non atteinte : une étape précédente a échoué",
-  "automation.edit": "Modifier",
-  "automation.editor.conflictTitle":
-    "Cette automatisation a changé depuis son ouverture",
-  "automation.editor.conflict":
-    "L'enregistrement a été refusé et votre brouillon est conservé. Recharger affiche l'automatisation enregistrée et abandonne ce brouillon.",
-  "automation.editor.reload": "Abandonner le brouillon et recharger",
-  "automation.test.saveToTest": "Enregistrer pour tester",
-  "automation.outline.condition.field": "Champ",
-  "automation.outline.condition.operator": "Comparaison",
-  "automation.outline.placeholders.lacking": "absent de $1",
-  "automation.preset.openInEditor": "Ouvrir dans l'éditeur",
-  "automation.preset.addToDraft": "Ajouter à l'automatisation",
-  "automation.gallery.scratch": "Partir de zéro",
-  "automation.outline.when": "Quand",
-  "automation.outline.onlyIf": "Seulement si",
-  "automation.outline.then": "Alors",
-  "automation.outline.do": "Faire",
-  "automation.outline.otherwise": "Sinon",
-  "automation.outline.anyOf": "l'un de ces événements se produit",
-  "automation.outline.or": " ou ",
-  "automation.outline.if": "si $1 $2 $3",
-  "automation.outline.notTaken": "Non pris",
-  "automation.outline.started": "A lancé cette exécution",
-  "automation.outline.true": "Vrai",
-  "automation.outline.false": "Faux",
-  "automation.outline.ran": "Exécutée",
-  "automation.outline.notReached": "Non atteinte",
-  "automation.outline.off": "Désactivé",
-  "automation.outline.switch": "$1 : activé ou désactivé",
-  "automation.outline.more": "+$1 de plus",
-  "automation.outline.noAction": "Aucune action pour l'instant",
-  "automation.outline.nothingSet": "Rien à régler",
-  "automation.outline.editor": "Éditeur d'automatisation",
-  "automation.outline.undo": "Annuler",
-  "automation.outline.redo": "Rétablir",
-  "automation.outline.test": "Tester",
-  "automation.outline.leave.title": "Quitter sans enregistrer ?",
-  "automation.outline.leave.description":
-    "Vos modifications de cette automatisation ne sont pas enregistrées.",
-  "automation.outline.leave.confirm": "Quitter",
-  "automation.outline.choose": "Choisissez ce qui la déclenche",
-  "automation.outline.chooseHint":
-    "Un événement de ce projet, ou une planification. Vous pourrez ajouter d'autres événements ensuite.",
-  "automation.outline.chooseEvent": "Choisir un événement",
-  "automation.outline.quickStart": "Ou partir de",
-  "automation.outline.addBlock":
-    "Ajouter un autre événement avec ses propres actions",
-  "automation.outline.addEvent": "Ajouter un événement",
-  "automation.outline.addCondition": "Ajouter une condition",
-  "automation.outline.addAction": "Ajouter une action",
-  "automation.outline.addStep": "Ajouter une étape après celle-ci",
-  "automation.outline.removeEvent": "Retirer cet événement",
-  "automation.outline.removeBlock": "Retirer cet événement et ses actions",
-  "automation.outline.removeCondition": "Retirer la condition",
-  "automation.outline.removeCondition.title": "Retirer la condition ?",
-  "automation.outline.removeCondition.description":
-    "Les actions de Sinon sont retirées avec elle. Les actions de Alors restent et s'exécutent à chaque fois.",
-  "automation.outline.fold": "Replier sur une ligne",
-  "automation.outline.scheduleAlone":
-    "Une planification fonctionne seule : elle ne prend aucun autre événement ni aucun autre bloc.",
-  "automation.outline.eventFirst":
-    "Ajoutez d'abord une action ; d'autres événements pourront ensuite la partager.",
-  "automation.outline.schedule": "Selon une planification (UTC)",
-  "automation.outline.cron": "Planification (cron à cinq champs, UTC)",
-  "automation.outline.reads": "Ce qu'elle lit",
-  "automation.outline.placeholders": "Insérer dans le dernier champ",
-  "automation.outline.from.event": "de l'événement",
-  "automation.outline.from.step": "de « $1 » plus haut",
-  "automation.outline.unavailable": "Non disponible dans ce projet",
-  "automation.outline.unavailable.sources":
-    "Une automatisation compte au plus $1 événements",
-  "automation.outline.unavailable.actions": "Un bloc compte au plus $1 actions",
-  "automation.outline.unavailable.nodes":
-    "Une automatisation compte au plus $1 étapes",
-  "automation.outline.unavailable.schedule":
-    "Une planification fonctionne seule : elle ne partage pas une automatisation avec des événements",
-  "automation.outline.mergeDescription":
-    "Remplissez le modèle : il arrive comme un bloc de plus dans ce brouillon, enregistré avec lui.",
-  "automation.outline.group.feedback": "Retours",
-  "automation.outline.group.quests": "Quêtes",
-  "automation.outline.group.epics": "Épopées",
-  "automation.outline.group.releases": "Versions",
-  "automation.outline.group.deploys": "Déploiements",
-  "automation.outline.group.monitors": "Moniteurs",
-  "automation.outline.group.hosts": "Hôtes",
-  "automation.outline.group.presets": "Depuis un modèle",
-  "automation.outline.newDescription":
-    "Choisissez ce qui la déclenche et ce qu'elle fait. Elle est créée désactivée à l'enregistrement, puis testée et activée sur sa page.",
-  "automation.outline.words.title": "En clair",
-  "automation.outline.words.empty":
-    "Rien pour l'instant. Cela se remplit au fil de la construction.",
-  "automation.outline.words.block": "Quand $1$2 : $3.",
-  "automation.outline.words.onlyIf": ", seulement si $1 $2 $3",
-  "automation.outline.words.otherwise": "Sinon : $1.",
-  "automation.outline.words.then": ", puis ",
-  "automation.outline.words.and": " ; et ",
-  "automation.outline.words.nothing": "rien pour l'instant",
-  "automation.outline.check.title": "Avant d'enregistrer",
-  "automation.outline.check.none": "Plus rien à remplir",
-  "automation.outline.check.toFill": "À remplir : $1",
-  "automation.outline.check.name": "Donnez un nom à l'automatisation",
-  "automation.outline.check.field": "Champ",
-  "automation.outline.check.value": "Valeur",
-  "automation.outline.how.title": "Comment elle s'exécute",
-  "automation.outline.how.independent":
-    "Les actions numérotées sont indépendantes : l'échec de l'une n'arrête pas les autres.",
-  "automation.outline.how.stops":
-    "Une étape qui en suit une autre ne s'exécute que si celle-ci a réussi, et peut utiliser ce qu'elle a produit ; une étape en échec n'arrête que ce qui la suit.",
-  "automation.outline.how.decided":
-    "La condition est décidée avant que quoi que ce soit ne se produise.",
-  "automation.outline.withCondition": "avec une condition",
-  "automation.outline.notOutline.title": "Créée avec l'ancien éditeur",
-  "automation.outline.notOutline.description":
-    "Cette automatisation a une forme que le plan ne sait pas montrer : elle s'est arrêtée à son exécution suivante. Recréez-la comme une nouvelle automatisation, puis supprimez celle-ci.",
-  "automation.trigger.off": "$1 désactivée(s)",
-  "automation.history.step": "Étape $1",
-  "automation.delivery.queued": "En file",
-  "automation.delivery.unknown": "Inconnue",
-  "automation.delivery.sent": "Envoyée",
-  "automation.delivery.delivered": "Livrée",
-  "automation.delivery.deferred": "Différée",
-  "automation.delivery.bounced": "Rejetée",
-  "automation.delivery.complained": "Plainte",
-  "automation.delivery.failed": "Échouée",
-  "automation.delivery.rejected": "Refusée",
-  "automation.delivery.skipped": "Ignorée",
   "uptime.since": "Depuis $1",
   "uptime.certExpiry": "Le certificat expire le $1",
   "uptime.chartTitle": "Latence moyenne",
@@ -4914,86 +4532,6 @@ export default {
   "uptime.bucketNote":
     "La disponibilité utilise des tranches horaires, dont l’heure en cours.",
   "uptime.staleAfter": "Silence maximal (secondes)",
-  "automation.guide": "Fonctionnement des automatisations",
-  "automation.audience.recipients": "Destinataires",
-  "automation.audience.member": "Un membre du projet",
-  "automation.audience.roster":
-    "Membres actuels sauf l’auteur de la publication",
-  "automation.audience.preview":
-    "$1 membres destinataires (auteur de la publication exclu) : ",
-  "automation.new": "Nouvelle automatisation",
-  "automation.filter.allStates": "Tous les états",
-  "automation.gallery.backToPresets": "Tous les modèles",
-  "automation.schedule.minutes": "Toutes les $1 minutes",
-  "automation.schedule.daily": "Tous les jours à $1 UTC",
-  "automation.schedule.cron": "$1 (cron UTC)",
-  "automation.setup.enableOrDraft":
-    "Créer et activer la met en marche tout de suite. Enregistrer comme brouillon la laisse désactivée : sa page permet de la tester, puis de l'activer.",
-  "automation.preset.createAndEnable": "Créer et activer",
-  "automation.preset.saveDraft": "Enregistrer comme brouillon",
-  "automation.disabledNotice.title":
-    "Désactivée : cette automatisation ne fait rien tant qu'elle n'est pas activée.",
-  "automation.editor.fixed": "Valeur fixe",
-  "automation.history.triggered": "Déclenchée le $1",
-  "automation.variables.empty":
-    "Aucune variable partagée pour l'instant. Chaque automatisation garde ses propres valeurs, sauf si vous en partagez une ici.",
-  "automation.variables.unused":
-    "Aucune automatisation n'utilise cette variable.",
-  "automation.source.feedback.created": "Nouveau retour",
-  "automation.source.release.published": "Version publiée",
-  "automation.source.epic.completed": "Épopée terminée",
-  "automation.source.quest.completed": "Quête terminée",
-  "automation.source.deploy.failed": "Déploiement échoué",
-  "automation.source.deploy.succeeded": "Déploiement réussi",
-  "automation.source.host.credential_invalid": "Jeton d'hôte invalide",
-  "automation.source.host.expired": "Hôte expiré",
-  "automation.source.host.offline": "Hôte hors ligne",
-  "automation.source.host.online": "Hôte de retour en ligne",
-  "automation.source.monitor.down": "Moniteur en panne",
-  "automation.source.monitor.up": "Moniteur rétabli",
-  "automation.source.quests.open": "Quêtes ouvertes, une exécution chacune",
-  "automation.source.quests.tagged":
-    "Quêtes ouvertes avec une étiquette, en un seul résumé",
-  "automation.source.quests.remindersDue": "Rappels de quête à envoyer",
-  "automation.source.activeQuests": "Quêtes actives (nombre)",
-  "automation.source.heldQuests": "Quêtes en attente (nombre)",
-  "automation.source.openErrors": "Fléaux ouverts (nombre)",
-  "automation.source.untriagedFeedback": "Retours non triés (nombre)",
-  "automation.source.uniqueVisitors": "Visiteurs uniques",
-  "automation.source.quality.coverage.lines": "Couverture des lignes (%)",
-  "automation.source.quality.coverage.statements":
-    "Couverture des instructions (%)",
-  "automation.source.quality.coverage.functions":
-    "Couverture des fonctions (%)",
-  "automation.source.quality.coverage.branches": "Couverture des branches (%)",
-  "automation.source.quality.tests.total": "Tests exécutés",
-  "automation.source.quality.tests.passed": "Tests réussis",
-  "automation.source.quality.tests.failed": "Tests échoués",
-  "automation.source.quality.tests.skipped": "Tests ignorés",
-  "automation.action.notify": "Envoyer une notification",
-  "automation.action.appendFolio": "Ajouter à un folio",
-  "automation.action.createQuest": "Créer une quête",
-  "automation.action.assignRelease": "Affecter la quête à une version",
-  "automation.action.addTag": "Étiqueter la quête",
-  "automation.operator.eq": "égal à",
-  "automation.operator.ne": "différent de",
-  "automation.operator.lt": "inférieur à",
-  "automation.operator.lte": "au plus",
-  "automation.operator.gt": "supérieur à",
-  "automation.operator.gte": "au moins",
-  "automation.operator.delta": "baisse de plus de",
-  "automation.operator.crossesAbove": "dépasse",
-  "automation.setup.title": "Titre",
-  "automation.setup.text": "Message",
-  "automation.setup.category": "Catégorie de notification",
-  "automation.setup.description": "Description",
-  "automation.setup.area": "Domaine",
-  "automation.setup.quest": "Quête",
-  "automation.setup.release": "Version",
-  "automation.setup.statuses": "Statuts",
-  "automation.setup.status": "Statut",
-  "automation.setup.period": "Période",
-  "automation.sharing.share": "Partager avec d'autres automatisations",
   "stacks.title": "Stacks",
   "stacks.description":
     "Des applications et des services déployés ensemble depuis un compose.yml, une copie par environnement.",

@@ -30,7 +30,7 @@ import {
  *   the one the merged project keeps.
  * - `rename`: the source row keeps its data under a free name, `alerts (2)`,
  *   and the rename is reported. For a single text key that only labels the
- *   row, such as an automation channel's name (#Q3614).
+ *   row, such as a notification channel's name (#Q3614).
  */
 export class ProjectMergeTables {
   protected readonly repositories = $inject(RepositoryProvider);

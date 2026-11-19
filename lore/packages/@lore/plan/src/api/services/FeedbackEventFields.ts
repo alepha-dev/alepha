@@ -1,8 +1,7 @@
 import { formatReference } from "@lore/core/web";
 
 /**
- * What a `feedback.created` automation reads beyond the title, built once for
- * the live event and for a test run on an existing report (#Q3541): the
+ * What a `feedback.created` event carries beyond the title (#Q3541): the
  * reference (`#P94`), the description cut for a notification, and the report
  * itself rather than the inbox (`?feedback=` opens it).
  */

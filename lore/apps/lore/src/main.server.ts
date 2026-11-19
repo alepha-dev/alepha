@@ -3,7 +3,6 @@ import { AlephaSigil, SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreCoreApi } from "@lore/core/api";
 import {
-  AutomationNotificationSender,
   LoreFileAccessProvider,
   LoreInboxRecipientProvider,
   LoreNotificationPreferences,
@@ -35,7 +34,6 @@ import { jobConfig } from "alepha/api/jobs";
 import {
   NotificationInboxRecipientProvider,
   NotificationPreferenceProvider,
-  NotificationSenderService,
 } from "alepha/api/notifications";
 import { oauthOptions } from "alepha/api/oauth";
 import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
@@ -107,8 +105,8 @@ if (alepha.env.TURNSTILE_SITE_KEY) {
 
 // The e2e server posts to no real Discord (#Q3616): with
 // DISCORD_TRANSPORT=memory a channel's test post and every delivery stay in
-// memory, so Settings > Automations > Channels saves without discord.com and
-// a rule's run records the post. Before `LoreCoreApi`, whose binding is
+// memory, so Settings > Notifications > Channels saves without discord.com and
+// a delivery records the post. Before `LoreCoreApi`, whose binding is
 // optional so this one wins.
 if (alepha.env.DISCORD_TRANSPORT === "memory") {
   alepha.with({ provide: DiscordTransport, use: MemoryDiscordTransport });
@@ -187,12 +185,6 @@ alepha.with({
 alepha.with({
   provide: NotificationPreferenceProvider,
   use: LoreNotificationPreferences,
-});
-
-// Deferred automation notifications retain current-author and recipient gates.
-alepha.with({
-  provide: NotificationSenderService,
-  use: AutomationNotificationSender,
 });
 
 // The `@lore/*` modules, core first. Every entry-level substitution above

@@ -22,8 +22,8 @@ import { LoreCoreApi } from "../src/api/index.ts";
  * The first six describe the CONTAINER rather than a surface inside it. A
  * project with every capability switched off still has members, still gets
  * renamed, still has ranks to edit and still shows its Reports page.
- * `automation` is Core since #Q3629, like the dashboard: every project has
- * automations, and each event and preset declares the capability it needs.
+ * `subscription` is Core (#Q3890), like the dashboard: every project has
+ * notifications, and each event declares the capability it needs.
  */
 const ALWAYS_SHOWN = [
   "project",
@@ -32,8 +32,7 @@ const ALWAYS_SHOWN = [
   "capability",
   "invitation",
   "stats",
-  "automation",
-  // Notifications are Core, like automations (#Q3890).
+  // Notifications are Core (#Q3890).
   "subscription",
 ];
 

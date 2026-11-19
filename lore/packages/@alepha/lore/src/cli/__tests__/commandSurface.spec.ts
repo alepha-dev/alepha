@@ -65,7 +65,6 @@ describe("the Lore CLI command surface", () => {
       "apps",
       "artifacts",
       "attachments",
-      "automation",
       "criterion",
       "deploy",
       "directory",
@@ -135,19 +134,6 @@ describe("the Lore CLI command surface", () => {
       apps: ["build", "deploy", "redeploy", "destroy", "instance"],
       artifacts: ["push", "push-image", "list", "get"],
       attachments: ["push"],
-      automation: [
-        "list",
-        "get",
-        "create",
-        "update",
-        "delete",
-        "runs",
-        "catalog",
-        "test",
-        "source",
-        "variable",
-        "channel",
-      ],
       error: ["list", "resolve", "forward"],
       event: ["catalog", "list"],
       subscription: ["list", "set"],
@@ -339,9 +325,7 @@ describe("the Lore CLI command surface", () => {
   });
 
   /**
-   * By parent, for the reason `build` is below: `automation_test` is
-   * `lore automation test`, by the naming rule, and a leaked `alepha test` is
-   * top-level.
+   * A leaked `alepha test` would be top-level.
    */
   it("carries no top-level `test`, which is the framework's", () => {
     const cli = setup();
@@ -349,12 +333,6 @@ describe("the Lore CLI command surface", () => {
     expect(
       cli.testGetTopLevelCommands().map((command) => command.name),
     ).not.toContain("test");
-    expect(
-      cli
-        .testGetTopLevelCommands()
-        .find((command) => command.name === "automation")
-        ?.children.map((child) => child.name),
-    ).toContain("test");
   });
 
   it("carries no top-level `build`, which is the framework's", () => {

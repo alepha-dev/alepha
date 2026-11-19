@@ -167,7 +167,6 @@ describe("Lore's rank resource", () => {
       "member:read",
       "stats:read",
       "folio:read",
-      "automation:read",
       "subscription:read",
     ]);
 
@@ -190,7 +189,7 @@ describe("Lore's rank resource", () => {
     );
 
     // Viewer is every `:read` and nothing else (#Q3833): the member list,
-    // automations, apps, errors, hosts, reports and feedback included.
+    // subscriptions, apps, errors, hosts, reports and feedback included.
     const viewer = everything.find((it) => it.key === "viewer")!;
     expect([...viewer.permissions].sort()).toEqual(
       [...LorePermissions.MEMBER_DEFAULT, ...LorePermissions.OWNER_TODAY]
@@ -199,7 +198,7 @@ describe("Lore's rank resource", () => {
         )
         .sort(),
     );
-    for (const read of ["member:read", "automation:read", "feedback:read"]) {
+    for (const read of ["member:read", "subscription:read", "feedback:read"]) {
       expect(viewer.permissions).toContain(read);
     }
     expect(LoreViewerAllowlist.isReadOnly(viewer.permissions)).toBe(true);
@@ -472,14 +471,13 @@ describe("Lore's rank resource", () => {
     const admin = items.find((it) => it.key === "admin")!;
     expect(admin.permissions).toContain("folio:write");
     expect(admin.permissions).toContain("quest:create");
-    // Viewer reads Core's own groups (members, stats, automations) and the
+    // Viewer reads Core's own groups (members, stats, subscriptions) and the
     // one capability's folios, nothing of a capability that is off.
     expect(items.find((it) => it.key === "viewer")?.permissions).toEqual([
       "project:read",
       "member:read",
       "stats:read",
       "folio:read",
-      "automation:read",
       "subscription:read",
     ]);
     // The floor survives every narrowing.

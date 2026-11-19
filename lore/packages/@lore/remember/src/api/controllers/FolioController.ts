@@ -1,8 +1,6 @@
 import {
   type ResourceRef,
   $ownsProject,
-  AutomationBatchRepository,
-  AutomationMutationContext,
   BestEffort,
   BoundParameters,
   LoreAudits,
@@ -85,11 +83,6 @@ type FolioListColumn =
   | "content";
 
 export class FolioController {
-  protected readonly automationMutations = $inject(AutomationMutationContext);
-  protected readonly automationRows = $inject(
-    AutomationBatchRepository.of(folios),
-  );
-
   folios = $repository(folios);
   protected readonly directories = $repository(folioDirectories);
   /**
@@ -1377,9 +1370,6 @@ export class FolioController {
 
       const purged = isProtected !== existing.protected;
       let plan: RevisionPlan | undefined;
-      let nativeRevision:
-        | ReturnType<FolioHistoryService["nativeRevision"]>
-        | undefined;
       let updated: Folio;
       try {
         // 2. Crossing the protection boundary invalidates every stored
@@ -1426,7 +1416,6 @@ export class FolioController {
                 user.id,
                 action,
                 existing.content,
-                this.automationMutations.current?.action.kind === "appendFolio",
               );
 
         // 4. The row, against the version this request read: a write that
@@ -1446,24 +1435,7 @@ export class FolioController {
             ? ""
             : buildFolioSearchText({ title, summary, content }),
         };
-        nativeRevision = plan?.deferred
-          ? this.historyService.nativeRevision(updated, user.id, plan)
-          : undefined;
-        await this.automationMutations.save(
-          {
-            repository: this.automationRows,
-            entity: updated,
-            audit: {
-              type: "folio",
-              action: "update",
-              ...this.audits.resource("folio", updated, user, {
-                change: plan?.action,
-              }),
-            },
-            ...nativeRevision,
-          },
-          () => this.folios.save(updated),
-        );
+        await this.folios.save(updated);
       } catch (error) {
         if (renamed) {
           await this.bestEffort.run(
@@ -1504,15 +1476,11 @@ export class FolioController {
           : undefined,
         revisionPlan
           ? this.bestEffort.run("updateFolio: revision failed", () =>
-              nativeRevision
-                ? this.historyService
-                    .trim(updated.id)
-                    .then(() => ({ created: nativeRevision!.created }))
-                : this.historyService.recordRevision(
-                    updated,
-                    user.id,
-                    revisionPlan,
-                  ),
+              this.historyService.recordRevision(
+                updated,
+                user.id,
+                revisionPlan,
+              ),
             )
           : undefined,
         // See `folioSavedSchema` for why the purge is an equal partner here
@@ -1641,18 +1609,7 @@ export class FolioController {
           title,
           directoryId: (parentId ?? null) as string | undefined,
         };
-        await this.automationMutations.save(
-          {
-            repository: this.automationRows,
-            entity: updated,
-            audit: {
-              type: "folio",
-              action: "update",
-              ...this.audits.resource("folio", updated, user, {}),
-            },
-          },
-          () => this.folios.save(updated),
-        );
+        await this.folios.save(updated);
         moved.folios.push({ id: updated.id, title, directoryId: parentId });
       }
       return moved;

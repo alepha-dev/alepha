@@ -8,7 +8,6 @@ import { AppInstanceCommand } from "./commands/AppInstanceCommand.ts";
 import { AppsCommand } from "./commands/AppsCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
-import { AutomationCommand } from "./commands/AutomationCommand.ts";
 import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
 import { EpicCommand } from "./commands/EpicCommand.ts";
@@ -127,7 +126,6 @@ export const AlephaLoreCli = $module({
     ErrorCommand,
     EventCommand,
     SubscriptionCommand,
-    AutomationCommand,
     QualityCommand,
     AppInstanceCommand,
     DeployCommand,

@@ -1,9 +1,8 @@
-import { AutomationBatchRepository } from "@lore/core/api";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 
 import { folioHistoryAtom } from "../atoms/folioHistoryAtom.ts";
 import {
@@ -56,11 +55,6 @@ export interface RevisionPlan {
    * {@link FolioHistoryService.recordRevision} reads nothing (#Q2637).
    */
   first?: boolean;
-  deferred?: {
-    head?: FolioRevision;
-    live: Array<{ id: string }>;
-    previousContent: string | undefined;
-  };
 }
 
 interface RevisionInput {
@@ -86,9 +80,6 @@ interface RevisionInput {
  */
 export class FolioHistoryService {
   protected readonly revisions = $repository(folioRevisions);
-  protected readonly batch = $inject(
-    AutomationBatchRepository.of(folioRevisions),
-  );
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
@@ -238,7 +229,6 @@ export class FolioHistoryService {
     byUserId: string,
     action: RevisionAction,
     previousContent: string | undefined,
-    defer = false,
   ): Promise<RevisionPlan> {
     // A revert always gets its own row, in BOTH directions. Blocking only
     // the "fold into a revert" side was a bug: the revert's own write would
@@ -247,18 +237,6 @@ export class FolioHistoryService {
     // happened at all.
     // The open revision and the live rows in one step (#Q2637): neither
     // read needs the other, only the fill below needs both.
-    if (defer) {
-      const [head, live] = await Promise.all([
-        this.latestRevision(folioId),
-        this.liveRevisionIds(folioId),
-      ]);
-      return {
-        action,
-        open:
-          action === "revert" ? undefined : this.openRevision(head, byUserId),
-        deferred: { head, live, previousContent },
-      };
-    }
     const [open, live] = await Promise.all([
       action === "revert"
         ? undefined
@@ -370,71 +348,6 @@ export class FolioHistoryService {
         id: { inArray: nonPinned.slice(cap).map((revision) => revision.id) },
       });
   }
-  /**
-   * The normal revision decision, committed with an automation's folio CAS.
-   * No pre-edit body is materialized until that guarded batch can commit.
-   */
-  public nativeRevision(folio: Folio, byUserId: string, plan: RevisionPlan) {
-    if (!plan.deferred)
-      throw new AlephaError("Native revision requires a deferred preparation");
-    const { head, live, previousContent } = plan.deferred;
-    const ids = live
-      .map((revision) => revision.id)
-      .filter((id) => id !== plan.open?.id);
-    if (ids.length && previousContent === undefined)
-      throw new AlephaError("A live revision requires its previous content");
-    const before = ids.length
-      ? [
-          this.batch.updateStatement(
-            { id: { inArray: ids } },
-            { contentSnapshot: previousContent!, snapshotIsLive: false },
-            { returning: false },
-          ),
-        ]
-      : [];
-    const id =
-      plan.open?.id ?? this.crypto.randomUUIDv7(this.dateTime.nowMillis());
-    const after = [
-      plan.open
-        ? this.batch.updateStatement(
-            { id, folioId: folio.id },
-            this.revisionData(folio),
-          )
-        : this.batch.insertStatement({
-            id,
-            ...this.revisionData(folio),
-            folioId: folio.id,
-            byUserId,
-            action: plan.action,
-            pinned: false,
-          }),
-    ];
-    // The head is still the head as it was read: unchanged, and no
-    // revision ordered after it by (at, id).
-    const condition = head
-      ? sql`EXISTS ${this.revisions.subquery({
-          id: head.id,
-          folioId: folio.id,
-          at: head.at,
-          pinned: head.pinned,
-          snapshotIsLive: head.snapshotIsLive,
-        })} AND NOT EXISTS ${this.revisions.subquery({
-          folioId: folio.id,
-          or: [
-            { at: { gt: head.at } },
-            { at: { eq: head.at }, id: { gt: head.id } },
-          ],
-        })}`
-      : sql`NOT EXISTS ${this.revisions.subquery({ folioId: folio.id })}`;
-    return {
-      before,
-      after,
-      condition,
-      created: !plan.open,
-      changedTables: ["folio_revisions"],
-    };
-  }
-
   /**
    * Fill in every live revision of a folio but `keep` with the body the
    * folio held before the write in progress.

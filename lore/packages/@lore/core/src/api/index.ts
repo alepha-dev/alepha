@@ -7,8 +7,6 @@ import {
 import { AuditService } from "alepha/api/audits";
 import { filesOptions } from "alepha/api/files";
 import { AlephaApiJobsQueue } from "alepha/api/jobs";
-import { JobService } from "alepha/api/jobs";
-import { NotificationSenderService } from "alepha/api/notifications";
 import {
   AlephaApiOrganizations,
   organizationConfigAtom,
@@ -20,7 +18,6 @@ import { DatabaseProvider, DatabaseUrlParser } from "alepha/orm";
 import { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
-import { AutomationController } from "./controllers/AutomationController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
@@ -43,15 +40,10 @@ import { UserDockController } from "./controllers/UserDockController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { UserDockHooks } from "./hooks/UserDockHooks.ts";
-import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
-import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
-import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
 import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
 import { HourlyJobs } from "./jobs/HourlyJobs.ts";
 import { ProjectEventDeliveryJobs } from "./jobs/ProjectEventDeliveryJobs.ts";
 import { ProjectEventJobs } from "./jobs/ProjectEventJobs.ts";
-import { AutomationAttentionNotifications } from "./notifications/AutomationAttentionNotifications.ts";
-import { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
@@ -69,40 +61,6 @@ import { LoreRankBounds } from "./security/LoreRankBounds.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
-import { AutomationApprovalFence } from "./services/AutomationApprovalFence.ts";
-import { AutomationAttentionNotifier } from "./services/AutomationAttentionNotifier.ts";
-import { AutomationAudience } from "./services/AutomationAudience.ts";
-import { AutomationAuthority } from "./services/AutomationAuthority.ts";
-import { AutomationCatalog } from "./services/AutomationCatalog.ts";
-import { AutomationChannelRemoval } from "./services/AutomationChannelRemoval.ts";
-import { AutomationClaims } from "./services/AutomationClaims.ts";
-import { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
-import { AutomationDependencies } from "./services/AutomationDependencies.ts";
-import { AutomationDomainActions } from "./services/AutomationDomainActions.ts";
-import { AutomationEvaluator } from "./services/AutomationEvaluator.ts";
-import { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
-import { AutomationEvents } from "./services/AutomationEvents.ts";
-import { AutomationEventSubjects } from "./services/AutomationEventSubjects.ts";
-import { AutomationHealth } from "./services/AutomationHealth.ts";
-import { AutomationJobService } from "./services/AutomationJobService.ts";
-import { AutomationMutationAudit } from "./services/AutomationMutationAudit.ts";
-import { AutomationMutationContext } from "./services/AutomationMutationContext.ts";
-import { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
-import { AutomationOAuthAuthority } from "./services/AutomationOAuthAuthority.ts";
-import { AutomationOrigin } from "./services/AutomationOrigin.ts";
-import { AutomationPersistence } from "./services/AutomationPersistence.ts";
-import { AutomationProjectDeletion } from "./services/AutomationProjectDeletion.ts";
-import { AutomationRoster } from "./services/AutomationRoster.ts";
-import { AutomationRosterWorker } from "./services/AutomationRosterWorker.ts";
-import { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
-import { AutomationSchedules } from "./services/AutomationSchedules.ts";
-import { AutomationSelections } from "./services/AutomationSelections.ts";
-import { AutomationService } from "./services/AutomationService.ts";
-import { AutomationTemplateRenderer } from "./services/AutomationTemplateRenderer.ts";
-import { AutomationVariables } from "./services/AutomationVariables.ts";
-import { AutomationVariableService } from "./services/AutomationVariableService.ts";
-import { AutomationWorker } from "./services/AutomationWorker.ts";
-import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
 import { CoreProjectMerge } from "./services/CoreProjectMerge.ts";
@@ -120,7 +78,6 @@ import { McpProjectScope } from "./services/McpProjectScope.ts";
 import { MomentumMetric } from "./services/MomentumMetric.ts";
 import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
 import { NoteMetric } from "./services/NoteMetric.ts";
-import { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
 import { ProjectChannelService } from "./services/ProjectChannelService.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectDashboardPresets } from "./services/ProjectDashboardPresets.ts";
@@ -137,10 +94,10 @@ import { ProjectRecipients } from "./services/ProjectRecipients.ts";
 import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
-import { ReportsDigest } from "./services/ReportsDigest.ts";
 import { ReportsSummaryRegistry } from "./services/ReportsSummaryRegistry.ts";
 import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
+import { RetiredTables } from "./services/RetiredTables.ts";
 import { SubscriptionService } from "./services/SubscriptionService.ts";
 import { UserDockService } from "./services/UserDockService.ts";
 
@@ -239,43 +196,16 @@ export const LoreCoreApi = $module({
     OrganizationHooks,
     // Keeps Viewer inside its allowlist while a project is open; nothing
     // injects it.
-    AutomationPersistence,
     // Registers its project deletion step; nothing injects it.
-    AutomationProjectDeletion,
     // Registers core's project merge step (#Q2782); nothing injects it.
     CoreProjectMerge,
-    AutomationAudience,
-    AutomationRosterWorker,
-
-    AutomationOrigin,
-    CoreAutomationReferences,
-    AutomationCatalog,
-    AutomationVariables,
-    AutomationAuthority,
-    AutomationOAuthAuthority,
-    AutomationService,
-    AutomationController,
     ProjectChannelController,
-    AutomationVariableService,
-    AutomationMutationAudit,
-    AutomationApprovalFence,
-    AutomationDependencies,
-    AutomationChannelRemoval,
-    // Registers the configured channels as automation channel instances
-    // (#Q3614); nothing else may inject it before a rule is evaluated.
+    // Registers the configured channels as notification channel instances
+    // (#Q3614); nothing else may inject it before an event is delivered.
     ProjectChannelService,
     // The `discord` notification channel: listed, not merely injected,
     // since the notification registry finds only instantiated channels.
     LoreDiscordNotificationChannel,
-    AutomationHealth,
-    AutomationEventSubjects,
-    AutomationEvaluator,
-    AutomationWorker,
-    AutomationWorkerJobs,
-    AutomationMutationContext,
-    AutomationDomainActions,
-    AutomationRunEvidence,
-    AutomationEvidenceJobs,
     ProjectEventJobs,
     ProjectEventCatalog,
     ProjectEvents,
@@ -287,6 +217,9 @@ export const LoreCoreApi = $module({
     ProjectRecipients,
     SubscriptionService,
     SubscriptionController,
+    // The five tables the automation engine wrote, kept in the schema
+    // until #Q3902 drops them (#Q3896).
+    RetiredTables,
     // The hourly job and its registry of checks (#Q3893).
     HourlyChecks,
     HourlyJobs,
@@ -297,22 +230,10 @@ export const LoreCoreApi = $module({
     ProjectEventReader,
     // The nightly backfill of the Admin and Viewer ranks; nothing injects it.
     DefaultRankJobs,
-    AutomationDispatchJobs,
-    AutomationSchedules,
-    AutomationSelections,
-    AutomationClaims,
-    AutomationEvents,
-    AutomationEventDispatch,
-    AutomationRoster,
-    AutomationContextBuilder,
-    AutomationTemplateRenderer,
     InvitationNotifications,
     // The inbox half: two templates, and the one HTML escaper the four
     // notification classes share.
     LoreInboxNotifications,
-    AutomationNotificationTemplates,
-    AutomationAttentionNotifications,
-    AutomationAttentionNotifier,
     NotificationHtmlEscaper,
     // Who is in a project, as one read, for everything that writes to
     // people. One question, not two.
@@ -333,12 +254,10 @@ export const LoreCoreApi = $module({
     McpProjectScope,
     ProjectLimits,
     ProjectAnalyticsController,
-    ProjectAutomationReport,
     ProjectReportController,
     ProjectReportRegistry,
     ReportStatistics,
     ReportsSummaryController,
-    ReportsDigest,
     ReportsSummaryRegistry,
     // The dashboard: the membership gate every card scope goes through, and
     // card storage. The declarative registry (`DashboardMetricCatalog`) is
@@ -398,16 +317,6 @@ export const LoreCoreApi = $module({
       optional: true,
       provide: DiscordTransport,
       use: HttpDiscordTransport,
-    });
-    alepha.with({
-      optional: true,
-      provide: NotificationSenderService,
-      use: AutomationNotificationSender,
-    });
-    alepha.with({
-      optional: true,
-      provide: JobService,
-      use: AutomationJobService,
     });
     if (
       new DatabaseUrlParser().kind(
@@ -585,93 +494,25 @@ export {
 export { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 export { ResourceLinkService } from "./services/ResourceLinkService.ts";
 export { ProjectAnalytics } from "./entities/projectAnalytics.ts";
-export { ReportsDigest } from "./services/ReportsDigest.ts";
 export { ProjectAnalyticsController } from "./controllers/ProjectAnalyticsController.ts";
-export { ProjectAutomationReport } from "./services/ProjectAutomationReport.ts";
 export { ProjectReportController } from "./controllers/ProjectReportController.ts";
 export {
   type ProjectReportSection,
   ProjectReportRegistry,
 } from "./services/ProjectReportRegistry.ts";
 
-export { AutomationReferences } from "./services/AutomationReferences.ts";
-
-export { AutomationCatalog } from "./services/AutomationCatalog.ts";
-export { AutomationPersistence } from "./services/AutomationPersistence.ts";
-
-export { AutomationVariables } from "./services/AutomationVariables.ts";
-
-export { AutomationAuthority } from "./services/AutomationAuthority.ts";
-export { AutomationAccess } from "./services/AutomationAccess.ts";
-
-export { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
-
 export { LoreDatabase } from "./services/LoreDatabase.ts";
 export { LorePrimaryD1Provider } from "./providers/LorePrimaryD1Provider.ts";
 
-export { AutomationClaims } from "./services/AutomationClaims.ts";
-export { AutomationEvents } from "./services/AutomationEvents.ts";
-export { AutomationRoster } from "./services/AutomationRoster.ts";
 export { GuardedBatch } from "./services/GuardedBatch.ts";
-export { AutomationDispatchRegistry } from "./services/AutomationDispatchRegistry.ts";
-
-export { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
-export type { AutomationRenderContext } from "./services/AutomationContextBuilder.ts";
-export { AutomationTemplateRenderer } from "./services/AutomationTemplateRenderer.ts";
-export type {
-  AutomationRenderedAction,
-  AutomationRenderTarget,
-} from "./services/AutomationTemplateRenderer.ts";
-export { AutomationCollections } from "./services/AutomationCollections.ts";
-export type { AutomationCollectionFormatInput } from "./services/AutomationCollections.ts";
 
 export { SourceRepository } from "./services/SourceRepository.ts";
-export { AutomationOrigin } from "./services/AutomationOrigin.ts";
 
-export { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
-
-export { AutomationSchedules } from "./services/AutomationSchedules.ts";
-export {
-  AutomationSelections,
-  type AutomationSelected,
-  type AutomationSelectionHandler,
-  type AutomationSelectionPage,
-} from "./services/AutomationSelections.ts";
-
-export {
-  AutomationGuards,
-  type AutomationGuardInput,
-  type AutomationGuardResult,
-} from "./services/AutomationGuards.ts";
-
-export { AutomationNotifications } from "./services/AutomationNotifications.ts";
-export { AutomationNotificationOutbox } from "./services/AutomationNotificationOutbox.ts";
-export { AutomationAttentionNotifications } from "./notifications/AutomationAttentionNotifications.ts";
-export { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
-export { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
-
-export {
-  AutomationChannels,
-  type AutomationChannelAdapter,
-  type AutomationChannelInstance,
-  type AutomationChannelInstanceSource,
-} from "./services/AutomationChannels.ts";
-export { AutomationChannelRemoval } from "./services/AutomationChannelRemoval.ts";
 export { ProjectChannelService } from "./services/ProjectChannelService.ts";
 export { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";
 export { ProjectChannelController } from "./controllers/ProjectChannelController.ts";
 export { CredentialSealService } from "./services/CredentialSealService.ts";
 
-export {
-  AutomationMutationContext,
-  type AutomationMutationState,
-} from "./services/AutomationMutationContext.ts";
-export {
-  AutomationDomainActions,
-  type AutomationDomainAction,
-  type AutomationDomainHandler,
-} from "./services/AutomationDomainActions.ts";
-export { AutomationBatchRepository } from "./services/AutomationBatchRepository.ts";
 export { BatchRepository } from "./services/BatchRepository.ts";
 export {
   ProjectEventCatalog,
@@ -706,48 +547,3 @@ export {
 } from "./entities/eventSubscriptions.ts";
 export { projectEvents, type ProjectEvent } from "./entities/projectEvents.ts";
 export { batchGuards, type BatchGuard } from "./entities/batchGuards.ts";
-
-export {
-  AutomationHealth,
-  type AutomationHealthDecision,
-} from "./services/AutomationHealth.ts";
-export {
-  AutomationDependencies,
-  AutomationDependencyError,
-} from "./services/AutomationDependencies.ts";
-
-export {
-  AutomationEventSubjects,
-  type AutomationEventSubjectHandler,
-} from "./services/AutomationEventSubjects.ts";
-
-export {
-  AutomationEvaluator,
-  type AutomationEvaluation,
-  type AutomationPlannedOperation,
-} from "./services/AutomationEvaluator.ts";
-
-export { AutomationWorker } from "./services/AutomationWorker.ts";
-export { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
-
-export { AutomationApprovalFence } from "./services/AutomationApprovalFence.ts";
-
-export { AutomationService } from "./services/AutomationService.ts";
-export { AutomationVariableService } from "./services/AutomationVariableService.ts";
-
-export { AutomationController } from "./controllers/AutomationController.ts";
-
-export { AutomationConfigurationWrites } from "./services/AutomationConfigurationWrites.ts";
-
-export {
-  AutomationPresetRegistry,
-  type AutomationPresetValues,
-  type AutomationPresetBindings,
-} from "./services/AutomationPresetRegistry.ts";
-export { AutomationPresetService } from "./services/AutomationPresetService.ts";
-export { AutomationSubscriptionService } from "./services/AutomationSubscriptionService.ts";
-
-export { AutomationSetupOptions } from "./services/AutomationSetupOptions.ts";
-
-export { AutomationAudience } from "./services/AutomationAudience.ts";
-export { AutomationRosterWorker } from "./services/AutomationRosterWorker.ts";

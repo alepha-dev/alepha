@@ -4,7 +4,7 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { type Deployment, deployments } from "../entities/deployments.ts";
-import { DeployAutomationSources } from "./DeployAutomationSources.ts";
+import { DeployEventSources } from "./DeployEventSources.ts";
 
 /**
  * One line of a deploy's log.
@@ -44,7 +44,7 @@ export class DeployRegistry {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly rows = $repository(deployments);
-  protected readonly automationSources = $inject(DeployAutomationSources);
+  protected readonly eventSources = $inject(DeployEventSources);
 
   /**
    * How many lines one deploy's log keeps.
@@ -289,18 +289,15 @@ export class DeployRegistry {
     if (!deploymentId) return false;
     try {
       if (values.status === "succeeded" || values.status === "failed")
-        return await this.automationSources.terminal(deploymentId, values);
+        return await this.eventSources.terminal(deploymentId, values);
       await this.rows.updateById(deploymentId, values);
       return true;
     } catch (error) {
-      this.log.warn(
-        "Could not record a deploy status and its automation event",
-        {
-          deploymentId,
-          requestedStatus: values.status,
-          error,
-        },
-      );
+      this.log.warn("Could not record a deploy status and its event", {
+        deploymentId,
+        requestedStatus: values.status,
+        error,
+      });
       return false;
     }
   }
