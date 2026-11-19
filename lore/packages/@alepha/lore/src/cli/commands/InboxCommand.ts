@@ -14,7 +14,9 @@ import {
 
 /**
  * `lore inbox` and `lore notifications` (#Q3914): the caller's own inbox,
- * what the bell shows, and the caller's own notification preferences.
+ * what the bell shows, and the caller's own notification preferences. A
+ * preference is changed with `lore login`'s token or a session; an API key
+ * is refused by the server.
  *
  * Neither reads `LORE_PROJECT`: the inbox spans every project, and narrows
  * to one only when `--project` names it.
@@ -164,11 +166,71 @@ export class InboxCommand {
     },
   });
 
+  public readonly preferencesSet = $command({
+    name: "set",
+    description:
+      "Turn email on or off, or mute and unmute kinds of message, for you in every project",
+    flags: z.object({
+      email: z
+        .enum(["on", "off"])
+        .describe("on or off: everything mailed to you, security mail aside.")
+        .optional(),
+      mute: z
+        .text({
+          description:
+            "Kinds of message to mute, comma separated (lore notifications get lists them).",
+        })
+        .optional(),
+      unmute: z
+        .text({ description: "Kinds of message to unmute, comma separated." })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      if (!flags.email && !flags.mute && !flags.unmute)
+        throw new UsageError("Give --email, --mute or --unmute");
+      const list = (raw?: string) =>
+        (raw ?? "")
+          .split(",")
+          .map((it) => it.trim())
+          .filter(Boolean);
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const current = await this.preferenceApi.getMyNotificationPreferences(
+          {},
+        );
+        const unknown = [...list(flags.mute), ...list(flags.unmute)].filter(
+          (it) => !(current.categories ?? []).includes(it),
+        );
+        if (unknown.length)
+          throw new UsageError(
+            `Unknown kind: ${unknown.join(", ")}. Kinds: ${(current.categories ?? []).join(", ")}`,
+          );
+        const muted = new Set(current.mutedCategories);
+        for (const it of list(flags.mute)) muted.add(it);
+        for (const it of list(flags.unmute)) muted.delete(it);
+        const prefs = await this.preferenceApi.updateMyNotificationPreferences({
+          body: {
+            ...(flags.email ? { emailEnabled: flags.email === "on" } : {}),
+            ...(flags.mute || flags.unmute
+              ? { mutedCategories: [...muted] }
+              : {}),
+          },
+        });
+        if (flags.output === "json") this.render.json(print, prefs);
+        else
+          print(
+            `Email: ${prefs.emailEnabled ? "on" : "off"}; muted: ${prefs.mutedCategories.join(", ") || "nothing"}`,
+          );
+      });
+    },
+  });
+
   public readonly notifications = $command({
     name: "notifications",
     description:
-      "Your own notification preferences, in every project; changing them is done signed in, in the browser",
-    children: [this.preferencesGet],
+      "Your own notification preferences, in every project: read and change them",
+    children: [this.preferencesGet, this.preferencesSet],
     handler: async ({ help }) => {
       help();
     },

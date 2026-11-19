@@ -55,11 +55,12 @@ const setup = async () => {
     email: "Member@Example.com",
   });
 
-  const asUser = <R>(fn: () => R): R =>
+  const asUser = <R>(fn: () => R, credential?: any): R =>
     alepha.context.run(() => {
       alepha.store.set(currentUserAtom, {
         id: user.id,
         roles: ["user"],
+        ...(credential ? { credential } : {}),
       });
       return fn();
     });
@@ -277,6 +278,31 @@ describe("Lore's notification preferences", () => {
     );
 
     expect(after.mutedCategories).toEqual(["notifications"]);
+
+    await ctx.alepha.stop();
+  });
+
+  it("takes `lore login`'s token and refuses an API key or another connected app", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const write = (credential: unknown) =>
+      ctx.asUser(
+        () =>
+          ctx.controller.updateMyNotificationPreferences({
+            body: { emailEnabled: false },
+          }),
+        credential,
+      );
+
+    const viaCli = await write({ type: "oauth", clientId: "alepha-cli" });
+    expect(viaCli.emailEnabled).toBe(false);
+    await expect(write({ type: "api-key", id: "k1" })).rejects.toThrow(
+      /lore login.*api-key/,
+    );
+    await expect(
+      write({ type: "oauth", clientId: "some-connected-app" }),
+    ).rejects.toThrow(/machine credential \(oauth\)/);
 
     await ctx.alepha.stop();
   });
