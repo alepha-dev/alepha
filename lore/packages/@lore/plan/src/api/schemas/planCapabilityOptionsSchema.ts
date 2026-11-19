@@ -12,8 +12,7 @@ import { type Infer, z } from "alepha";
  * triage inbox, a capability of its own (Support) until #E143 folded it in.
  * `requirements` is personas, use cases and requirements (#E153), whose code
  * lives in `@lore/plan-requirements` and registers under Plan.
- * Automations are not an option: they are part of Plan wherever Plan is on
- * (#Q3594).
+ * Quest reminders are the `reminder` option (#Q3893).
  *
  * ⚠️ **`releases` is what `features.milestones` became.** That key could never
  * be fixed in place: renaming a required key inside `projects.features` leaves

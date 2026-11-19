@@ -319,17 +319,11 @@ describe("a rank holding the Viewer allowlist", () => {
   });
 
   describe("what the allowlist leaves out", () => {
-    it("refuses automations, errors and apps through MCP", async ({
-      expect,
-    }) => {
+    it("refuses errors and apps through MCP", async ({ expect }) => {
       const viewer = await ctx.seat("viewer", "peek");
       const token = await ctx.tokenOf(viewer);
 
-      for (const tool of [
-        "automation_list",
-        "error_list",
-        "app_instance_list",
-      ]) {
+      for (const tool of ["error_list", "app_instance_list"]) {
         const result = await ctx.mcp(token, tool, { project: ctx.projectId });
         expect(result.refused, tool).toBe(true);
         expect(result.text, tool).toMatch(/:read/);

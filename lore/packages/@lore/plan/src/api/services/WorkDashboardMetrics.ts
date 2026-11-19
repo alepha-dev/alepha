@@ -24,18 +24,6 @@ export class WorkDashboardMetrics {
     this.catalog.register({
       key: "activeQuests",
       requires: "quest:read",
-      automation: {
-        kind: "number",
-        requires: "quest:read",
-        slots: {
-          statuses: {
-            kind: "textArray",
-            required: false,
-            values: ["todo", "in_progress"],
-            default: ["todo", "in_progress"],
-          },
-        },
-      },
       order: 10,
       /**
        * ⚠️ On BOTH boards, and the project half is what makes `heldQuests`
@@ -74,7 +62,6 @@ export class WorkDashboardMetrics {
     this.catalog.register({
       key: "heldQuests",
       requires: "quest:read",
-      automation: { kind: "number", requires: "quest:read", slots: {} },
       order: 20,
       /**
        * Project only. A held count across every project the reader belongs to
@@ -221,18 +208,6 @@ export class WorkDashboardMetrics {
     this.catalog.register({
       key: "untriagedFeedback",
       requires: "feedback:read",
-      automation: {
-        kind: "number",
-        requires: "feedback:read",
-        slots: {
-          status: {
-            kind: "text",
-            required: false,
-            values: ["pending", "all"],
-            default: "pending",
-          },
-        },
-      },
       order: 70,
       /**
        * On project boards too since #Q2650: a project that watches its apps

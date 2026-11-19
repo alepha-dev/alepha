@@ -164,7 +164,7 @@ export interface CapabilityDescriptor {
  * Everything not claimed below is **Core** and always on: project identity,
  * members, areas' storage, settings, and the three surfaces that *compose*
  * capabilities - the dashboard, the activity feed and the command palette.
- * Automations are Core as well (#Q3629): their pages, permissions, MCP tools
+ * Notifications are Core as well (#Q3892): their pages, permissions, MCP tools
  * and activity kind belong to no capability, and each event, selector and
  * preset declares the capability it needs.
  * Reports is Core too, and its tabs declare a capability the way dashboard
@@ -264,14 +264,12 @@ export class CapabilityRegistry {
           preselected: false,
           requires: "requirements",
         },
-        // Automations were an option here until #Q3594, and a baseline of
-        // Plan until #Q3629: they are Core now. A stored `automations` key is
-        // stripped on read by the lax options schema and dropped on the row's
-        // next write.
+        // A stored `automations` key (an option until #Q3594, removed with
+        // automations in #Q3896) is stripped on read by the lax options
+        // schema and dropped on the row's next write.
       ],
-      // The `automation_*` tools are Core since #Q3629: automations are
-      // owned by no capability, like the dashboard, and each event, selector
-      // and preset is gated by its own `needs` instead.
+      // The notification tools are Core (#Q3895): owned by no capability,
+      // like the dashboard, and each event is gated by its own `needs`.
       mcpTools: [
         "quest_list",
         "quest_get",

@@ -17,7 +17,6 @@ import {
 import { type Monitor, monitors } from "../entities/monitors.ts";
 import type { ProbeResult } from "../schemas/probeResultSchema.ts";
 import { ShipProjectEvents } from "./ShipProjectEvents.ts";
-import { UptimeAutomationEventSubjects } from "./UptimeAutomationEventSubjects.ts";
 import { UptimeEventFields } from "./UptimeEventFields.ts";
 
 export interface UptimeTransition {
@@ -133,17 +132,14 @@ export class UptimeStateService {
       { openKey: monitor.id },
       {
         projectId: monitor.projectId,
-        identity: `monitor:${incident.id}:down`,
         resourceId: incident.id,
         name: "monitor.down",
         subjectId: monitor.id,
-        ...this.eventFields(
-          this.fields.build(
-            await this.projects.getById(monitor.projectId),
-            monitor,
-            incident,
-            "down",
-          ),
+        fields: this.fields.build(
+          await this.projects.getById(monitor.projectId),
+          monitor,
+          incident,
+          "down",
         ),
       },
     );
@@ -171,31 +167,17 @@ export class UptimeStateService {
       },
       {
         projectId: monitor.projectId,
-        identity: `monitor:${open.id}:up`,
         resourceId: open.id,
         name: "monitor.up",
         subjectId: monitor.id,
-        ...this.eventFields(
-          this.fields.build(
-            await this.projects.getById(monitor.projectId),
-            monitor,
-            closed,
-            "up",
-          ),
+        fields: this.fields.build(
+          await this.projects.getById(monitor.projectId),
+          monitor,
+          closed,
+          "up",
         ),
       },
     );
-  }
-
-  /**
-   * The automation engine's fields and the project event's (#Q3889): the
-   * same data, with the engine's sentence as its title.
-   */
-  protected eventFields(data: Record<string, unknown>) {
-    return {
-      fields: UptimeAutomationEventSubjects.automation(data),
-      projectFields: data,
-    };
   }
 
   protected async reconcile(

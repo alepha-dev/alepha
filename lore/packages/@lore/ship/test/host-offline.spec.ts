@@ -1,4 +1,4 @@
-import { AutomationPersistence, projectEvents } from "@lore/core/api";
+import { projectEvents } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -17,6 +17,13 @@ import { DeployTestEntities } from "../src/testing/index.ts";
 class HostRepositories {
   hosts = $repository(hosts);
   projectEvents = $repository(projectEvents);
+}
+
+/**
+ * The project events (#Q3889), what a host source records.
+ */
+class ProjectEventRows {
+  events = $repository(projectEvents);
 }
 
 /**
@@ -49,6 +56,7 @@ describe("host offline", () => {
     alepha.with(AlephaApiUsers);
     alepha.with(LoreShipApi);
     entities = alepha.inject(DeployTestEntities);
+    alepha.inject(ProjectEventRows);
     repos = alepha.inject(HostRepositories);
     await alepha.start();
     dateTime = alepha.inject(DateTimeProvider);
@@ -71,7 +79,7 @@ describe("host offline", () => {
     new Date(dateTime.nowMillis() - minutes * 60_000).toISOString();
 
   const events = (name: "host.offline" | "host.online") =>
-    alepha.inject(AutomationPersistence).events.findMany({ where: { name } });
+    alepha.inject(ProjectEventRows).events.findMany({ where: { name } });
 
   it("raises host.offline once past the grace period, and host.online once it is back", async ({
     expect,
@@ -91,11 +99,11 @@ describe("host offline", () => {
     expect(await sweep.sweep()).toEqual({ offline: 0, online: 0 });
     const [offline] = await events("host.offline");
     expect(offline.projectId).toBe(host.projectId);
-    expect(offline.payload.fields).toMatchObject({
+    expect(offline.fields).toMatchObject({
       host: "ci-box",
       kind: "bay",
       since: ago(6),
-      title: "ci-box is offline",
+      title: "ci-box",
     });
 
     // The machine dials back in, as `HostSocketController.claim` stamps it.
@@ -108,10 +116,10 @@ describe("host offline", () => {
     expect(await sweep.sweep()).toEqual({ offline: 0, online: 1 });
     expect(await sweep.sweep()).toEqual({ offline: 0, online: 0 });
     const [online] = await events("host.online");
-    expect(online.payload.fields).toMatchObject({
+    expect(online.fields).toMatchObject({
       host: "ci-box",
-      since: offline.payload.fields.since,
-      title: "ci-box is back online",
+      since: offline.fields.since,
+      title: "ci-box",
     });
     expect((await repos.hosts.findById(host.id))?.offlineSince).toBeUndefined();
 
@@ -191,7 +199,7 @@ describe("host offline", () => {
 
     expect(await sweep.sweep()).toEqual({ offline: 1, online: 0 });
     const [event] = await events("host.offline");
-    expect(event.payload.fields).toMatchObject({
+    expect(event.fields).toMatchObject({
       host: "silent",
       since: ago(60),
     });

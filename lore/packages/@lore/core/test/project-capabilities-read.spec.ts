@@ -162,8 +162,7 @@ describe("CapabilityRegistry", () => {
     // Releases was on by default before this epic, with a board that is
     // now always there: a way to look at quests is not a reason to have
     // them. Apps keeps its one, because the capability's own label says
-    // "watch". Automations is on since #Q3563: a project had none until an
-    // owner found the switch.
+    // "watch".
     expect(ctx.registry.preselectedOptionsOf("plan")).toEqual({
       epics: false,
       releases: false,

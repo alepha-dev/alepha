@@ -75,7 +75,7 @@ export class ProjectTrail {
     // A settings page adds its section, "Project › Settings › Plan", since
     // the sidebar group is the only other thing naming it (#Q2565).
     const activeSettings = this.shell.findSettingsTab(routeName);
-    // Automations pages already carry their own "Automations" crumb.
+    // A page whose own crumb already names its section gets no second one.
     if (
       activeSettings &&
       crumbs.at(-1)?.label !== tr(activeSettings.section.labelKey)

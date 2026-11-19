@@ -34,7 +34,6 @@ const ReportsTeam = (props: ReportsTeamProps) => {
   const known = team.channels
     .filter((row) => row.channel !== "unknown")
     .reduce((sum, row) => sum + row.count, 0);
-  const { automations } = team;
   const hours = Array.from({ length: 24 }, (_, hour) => String(hour));
   const agents = team.channels.find((row) => row.channel === "mcp")?.count ?? 0;
 
@@ -198,53 +197,6 @@ const ReportsTeam = (props: ReportsTeamProps) => {
             })
           }
         />
-      </ReportsSection>
-
-      <ReportsSection
-        title={tr("reports.team.automations.title")}
-        definition={tr("reports.team.automations.definition")}
-        csv={{ filename: "automation-runs", rows: automations.runs }}
-      >
-        <ReportsKpiRow
-          kpis={[
-            {
-              label: tr("reports.team.automations.success"),
-              definition: tr("reports.team.automations.success.definition"),
-              value: share(automations.succeeded, automations.finished),
-            },
-            {
-              label: tr("reports.team.automations.duration"),
-              definition: tr("reports.team.automations.duration.definition"),
-              value: automations.finished
-                ? `${Math.round(automations.medianSeconds)}s`
-                : "-",
-              hint: tr("reports.overview.kpi.cycleTimeHint", {
-                args: [`${Math.round(automations.p85Seconds)}s`],
-              }),
-            },
-            {
-              label: tr("reports.team.automations.broken"),
-              definition: tr("reports.team.automations.broken.definition"),
-              value: automations.broken.length,
-            },
-          ]}
-        />
-        <ReportsHistogram
-          buckets={automations.runs.map((row) => ({
-            label: tr(`reports.team.run.${row.status}`),
-            count: row.count,
-          }))}
-          countLabel={tr("reports.team.automations.runs")}
-        />
-        {automations.broken.length > 0 && (
-          <ul className="mt-2 text-sm" data-testid="reports-team-broken">
-            {automations.broken.map((rule) => (
-              <li key={rule.id} className="truncate py-1">
-                {rule.title}
-              </li>
-            ))}
-          </ul>
-        )}
       </ReportsSection>
 
       <ReportsSection

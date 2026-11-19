@@ -1,4 +1,4 @@
-import { ProjectAnalytics, ProjectAutomationReport } from "@lore/core/api";
+import { ProjectAnalytics } from "@lore/core/api";
 import type { ReportsQuery, ReportsTeam } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -22,7 +22,6 @@ export class ProjectTeamReportService {
   protected readonly reports = $inject(ProjectReportsService);
   protected readonly datasets = $inject(ProjectAnalytics);
   protected readonly dt = $inject(DateTimeProvider);
-  protected readonly automations = $inject(ProjectAutomationReport);
 
   /**
    * The figure an activity point feeds, by `type:action`.
@@ -44,28 +43,26 @@ export class ProjectTeamReportService {
     const since = query.from?.slice(0, 10) ?? "2000-01-01";
     const until = query.to ? { until: query.to.slice(0, 10) } : {};
     const project = String(projectId);
-    const [people, scope, activity, heatmap, mcp, automations] =
-      await Promise.all([
-        this.reports.membersOf(projectId),
-        this.reports.scopeOf(projectId, query),
-        this.datasets.activity.query({
-          // An analytics query always has a lower bound: "all" is all it keeps.
-          since,
-          ...until,
-          where: { project },
-          groupBy: ["actor", "type", "action", "channel"],
-          select: { count: "sum" },
-        }),
-        this.heatmap(project, since, until),
-        this.datasets.mcpCalls.query({
-          since,
-          ...until,
-          where: { project },
-          groupBy: ["tool", "outcome"],
-          select: { count: "sum" },
-        }),
-        this.automations.read(projectId, query),
-      ]);
+    const [people, scope, activity, heatmap, mcp] = await Promise.all([
+      this.reports.membersOf(projectId),
+      this.reports.scopeOf(projectId, query),
+      this.datasets.activity.query({
+        // An analytics query always has a lower bound: "all" is all it keeps.
+        since,
+        ...until,
+        where: { project },
+        groupBy: ["actor", "type", "action", "channel"],
+        select: { count: "sum" },
+      }),
+      this.heatmap(project, since, until),
+      this.datasets.mcpCalls.query({
+        since,
+        ...until,
+        where: { project },
+        groupBy: ["tool", "outcome"],
+        select: { count: "sum" },
+      }),
+    ]);
     const open = await this.quests.findMany({
       where: {
         ...scope,
@@ -135,7 +132,6 @@ export class ProjectTeamReportService {
         .map(([channel, count]) => ({ channel, count }))
         .toSorted((a, b) => b.count - a.count),
       heatmap,
-      automations,
       mcp: this.mcpTools(mcp.rows),
       estimated: activity.estimated === true || mcp.estimated === true,
     };

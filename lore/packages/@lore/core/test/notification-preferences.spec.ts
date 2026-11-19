@@ -227,17 +227,17 @@ describe("Lore's notification preferences", () => {
     // Read from the container's own registry, not from the admin-gated
     // catalogue endpoint.
     expect(initial.categories).toContain("mentions");
-    expect(initial.categories).toContain("releases");
+    expect(initial.categories).toContain("notifications");
     // `critical` templates are excluded: `security` is the password reset.
     expect(initial.categories).not.toContain("security");
 
     const updated = await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
-        body: { emailEnabled: false, mutedCategories: ["releases"] },
+        body: { emailEnabled: false, mutedCategories: ["notifications"] },
       }),
     );
     expect(updated.emailEnabled).toBe(false);
-    expect(updated.mutedCategories).toEqual(["releases"]);
+    expect(updated.mutedCategories).toEqual(["notifications"]);
 
     // And the gate now agrees with the page.
     expect(await ask(ctx, {})).toBe(false);
@@ -252,7 +252,7 @@ describe("Lore's notification preferences", () => {
 
     await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
-        body: { mutedCategories: ["releases"] },
+        body: { mutedCategories: ["notifications"] },
       }),
     );
     const after = await ctx.asUser(() =>
@@ -262,7 +262,7 @@ describe("Lore's notification preferences", () => {
     );
 
     expect(after.emailEnabled).toBe(false);
-    expect(after.mutedCategories).toEqual(["releases"]);
+    expect(after.mutedCategories).toEqual(["notifications"]);
 
     await ctx.alepha.stop();
   });
@@ -272,11 +272,11 @@ describe("Lore's notification preferences", () => {
 
     const after = await ctx.asUser(() =>
       ctx.controller.updateMyNotificationPreferences({
-        body: { mutedCategories: ["releases", "made-up"] },
+        body: { mutedCategories: ["notifications", "made-up"] },
       }),
     );
 
-    expect(after.mutedCategories).toEqual(["releases"]);
+    expect(after.mutedCategories).toEqual(["notifications"]);
 
     await ctx.alepha.stop();
   });

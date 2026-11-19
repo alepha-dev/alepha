@@ -471,8 +471,7 @@ export class CoreRouter {
    * the page makes (the ranks, the catalogue, the presets) is `rank:manage`,
    * so without the guard a member who typed the URL got the editor's chrome,
    * a live "Create rank" button, an empty matrix and a 403 toast per read.
-   * The server refuses every write either way; this answers 404 instead, as
-   * the Automations pages do for a rank that cannot open them.
+   * The server refuses every write either way; this answers 404 instead.
    */
   projectSettingsRanks = $pageProjectSettings({
     name: "projectSettingsRanks",

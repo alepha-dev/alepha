@@ -99,6 +99,4 @@ export const LEGACY_CONTRIBUTOR: string[] = [
   "quality:push",
   "host:read",
   "feedback:read",
-  "automation:read",
-  "automation:write",
 ];

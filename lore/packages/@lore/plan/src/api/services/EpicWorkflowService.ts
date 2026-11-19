@@ -13,7 +13,7 @@ import { workRelations } from "../relations/workRelations.ts";
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { DefaultReleaseService } from "./DefaultReleaseService.ts";
 import { ReleaseCascadeService } from "./ReleaseCascadeService.ts";
-import { WorkAutomationSources } from "./WorkAutomationSources.ts";
+import { WorkEventSources } from "./WorkEventSources.ts";
 
 /**
  * The action a caller is about to take on a quest, as the word the refusal
@@ -85,7 +85,7 @@ export type EpicPlanEdit =
  * (`EpicController.shelveEpic`, through `QuestShelvingService`).
  */
 export class EpicWorkflowService {
-  protected readonly automationSources = $inject(WorkAutomationSources);
+  protected readonly eventSources = $inject(WorkEventSources);
   protected readonly epics = $repository(epics);
   protected readonly epicsWith = $repository(workRelations, "epics");
   protected readonly quests = $repository(quests);
@@ -526,7 +526,7 @@ export class EpicWorkflowService {
    */
   protected async finish(epic: Epic, project?: Project): Promise<boolean> {
     try {
-      await this.automationSources.completeEpic(
+      await this.eventSources.completeEpic(
         epic,
         {
           id: { eq: epic.id },

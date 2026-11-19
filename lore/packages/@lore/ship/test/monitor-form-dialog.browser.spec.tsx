@@ -50,7 +50,7 @@ describe("Monitor form dialog", () => {
   it("draws no alert settings, and marks only the required fields", async ({
     expect,
   }) => {
-    // Alerts are automations since #Q3612: the form has no recipients or
+    // Alerts are subscriptions (#Q3892): the form has no recipients or
     // email switch. #Q2679: required fields carry the marker by schema, and
     // no label says "(optional)".
     const alepha = await boot();

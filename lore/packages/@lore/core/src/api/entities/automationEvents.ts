@@ -1,9 +1,13 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-import { automationEventPayloadSchema } from "../schemas/automationEventPayloadSchema.ts";
 import { projects } from "./projects.ts";
 
+/**
+ * ⚠️ Kept until #Q3902 drops the table: nothing reads or writes it since
+ * #Q3896 deleted the automation engine. Its columns keep their storage
+ * shape, so no migration is generated before the drop.
+ */
 export const automationEvents = $entity({
   name: "automation_events",
   schema: z.object({
@@ -31,7 +35,7 @@ export const automationEvents = $entity({
       .meta({ mode: "text" }),
     occurredAt: z.datetime(),
     replayUntil: z.datetime(),
-    payload: automationEventPayloadSchema,
+    payload: z.record(z.string(), z.any()),
     cursor: z.string().max(255).optional(),
     attempts: db.default(z.integer().nonnegative(), 0),
     leaseToken: z.uuid().optional(),

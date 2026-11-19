@@ -5,11 +5,6 @@ import {
 } from "alepha/api/organizations";
 import { $repository, type SQLLike } from "alepha/orm";
 
-import { automationEvents } from "../entities/automationEvents.ts";
-import { automationReceipts } from "../entities/automationReceipts.ts";
-import { automationRuns } from "../entities/automationRuns.ts";
-import { automations } from "../entities/automations.ts";
-import { automationVariables } from "../entities/automationVariables.ts";
 import { eventSubscriptions } from "../entities/eventSubscriptions.ts";
 import { notificationChannels } from "../entities/notificationChannels.ts";
 import { projectCapabilities } from "../entities/projectCapabilities.ts";
@@ -30,14 +25,14 @@ import {
 
 /**
  * Core's step of a project merge (#E94, #Q2782): the rows that describe the
- * project itself, and its automations.
+ * project itself, its events, who is notified of them, and its channels.
  *
  * - **Capabilities and prompts**: the target keeps its own; a capability or
  *   a customised prompt it lacks comes over, so the merged project does
  *   everything both did.
- * - **Automations** move whole, every table keyed by the project with them.
- *   A shared variable the target already has is a conflict: two rules
- *   depending on one key is a person's call.
+ * - **Events, subscriptions and channels** move (#Q3889, #Q3890): a
+ *   subscription the target already has joins it, a channel name it already
+ *   uses gets a free one.
  * - **Members**: a source member who is not a target member joins the
  *   target's organization. Their rank comes too when the target defines
  *   it; `owner` never does, since ownership is transferred and never
@@ -77,30 +72,10 @@ export class CoreProjectMerge {
       keys: ["key"],
       onCollision: "keepTarget",
     },
-    { kind: "automation", entity: automations },
-    {
-      kind: "automation variable",
-      entity: automationVariables,
-      keys: ["key"],
-      onCollision: "refuse",
-    },
-    {
-      kind: "automation event",
-      entity: automationEvents,
-      keys: ["identity"],
-      onCollision: "refuse",
-    },
-    {
-      kind: "automation receipt",
-      entity: automationReceipts,
-      keys: ["identity"],
-      onCollision: "refuse",
-    },
-    { kind: "automation run", entity: automationRuns },
     // A configured channel moves with its sealed URL; a name the target
     // already uses gets a free one (#Q3614).
     {
-      kind: "automation channel",
+      kind: "notification channel",
       entity: notificationChannels,
       keys: ["name"],
       onCollision: "rename",

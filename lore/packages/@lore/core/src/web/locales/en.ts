@@ -1,187 +1,29 @@
 export default {
-  "automation.test.counts": "Selected: $1. Matched: $2.",
-  "automation.test.total": "Candidates: $1.",
-  "automation.test.lowerBound": "At least $1 candidates.",
-  "automation.test.guardMatched": "Condition matched.",
-  "automation.test.guardNotMatched": "Condition did not match.",
-  "automation.test.value": "Current value: $1.",
-  "automation.test.previous": "Previous value: $1.",
-  "automation.test.omitted":
-    "This preview omits $1 actions because of its size limit.",
-  "automation.test.actionCapped": "This action’s text was capped.",
-
-  "automation.setup.invalidValue": "Choose or enter a value.",
-  "automation.setup.cancel": "Cancel",
-  "automation.setup.enableDescription":
-    "Disabled. Test it below, then enable it: Lore checks your permissions and its inputs again at that moment.",
-  "automation.gallery.none":
-    "No preset fits this project yet: presets depend on its capabilities, your permissions and the notification channels set up.",
-  "automation.sharing.source": "$1 comes from",
-  "automation.sharing.literal": "Only this rule",
-  "automation.sharing.existing": "Shared variable",
-  "automation.sharing.create": "New shared variable",
-  "automation.sharing.variable": "$1 shared variable",
-  "automation.sharing.key": "New variable key",
-  "automation.sharing.createDescription":
-    "Creates a new variable when you save. Existing keys are never replaced.",
-  "automation.sharing.chooseVariable":
-    "Choose an available variable of the matching type.",
-  "automation.sharing.validKey":
-    "Use a letter first, then letters, numbers or underscores, up to 64 characters.",
-  "automation.sharing.manageRequired":
-    "Creating shared variables requires automation management permission.",
-  "automation.sharing.approvedVersion": "Using $1, version $2.",
-  "automation.sharing.useCurrent": "Use current version",
-  "automation.test.title": "Test run",
-  "automation.test.description":
-    "Run the rule against current data to see what it would select and the exact messages it would send. Nothing is written.",
-  "automation.test.subject": "Source record",
-  "automation.test.subjectDescription":
-    "Choose a record from this project to preview the event. The record will not change.",
-  "automation.test.subjectRequired":
-    "Choose a source record from this project.",
-  "automation.test.run": "Run test",
-  "automation.test.result": "Preview result",
-  "automation.test.at": "Preview evaluated at $1.",
-  "automation.test.planned": "Planned actions: $1.",
-  "automation.test.disclaimer":
-    "Preview only. No actions, messages or baseline changes were saved.",
-
-  "automation.run.queued": "Queued",
-  "automation.column.name": "Name",
-  "automation.column.author": "Author",
-  "automation.column.trigger": "Trigger",
-  "automation.column.state": "State",
-  "automation.column.lastRun": "Last run",
-  "automation.list.empty": "No automations yet",
-  "automation.list.emptyDescription":
-    "An automation notifies people or updates the project when something happens, or on a schedule. Start from a preset.",
-  "automation.list.noMatch": "No matching automations",
-  "automation.list.noMatchDescription":
-    "Try another name or clear the state filter.",
-  "automation.gallery.description":
-    "Start from a preset. Create and enable runs it right away; Save as draft keeps it off so you can test it first.",
-  "automation.enable": "Enable",
-  "automation.disable": "Disable",
-  "automation.delete": "Delete",
-  "automation.delete.title": "Delete automation?",
-  "automation.delete.description":
-    "Delete $1? Queued work will stop. Retained run history remains available.",
-  "automation.redacted": "Source access unavailable",
-  "automation.reviewRequired": "Author approval required",
-  "automation.run.running": "Running",
-  "automation.run.succeeded": "Succeeded",
-  "automation.run.skipped": "Skipped",
-  "automation.run.refused": "Refused",
-  "automation.run.partial": "Partially completed",
-  "automation.run.failed": "Failed",
-  "automation.run.unknown": "Outcome unknown",
-  "automation.run.capped": "Capped or incomplete selection",
-  "automation.run.noData": "No comparison data",
-  "automation.run.none": "No runs yet",
-  "automation.event.feedbackCreated": "New feedback",
-  "automation.event.releasePublished": "Release published",
-  "automation.event.epicCompleted": "Epic completed",
-  "automation.event.deployFailed": "Deployment failed",
-  "automation.event.deploySucceeded": "Deployment succeeded",
-  "automation.event.hostCredentialInvalid": "Host token invalid",
-  "automation.event.hostExpired": "Host past its TTL",
-  "automation.event.hostOffline": "Host offline",
-  "automation.event.hostOnline": "Host back online",
-  "automation.event.monitorDown": "Monitor down",
-  "automation.event.monitorUp": "Monitor recovered",
-  "automation.event.questCompleted": "Quest completed",
-
-  "automation.setup.recipient": "Recipient",
-  "automation.setup.channel": "Channel",
-  "automation.setup.tag": "Tag",
-  "automation.channel.inbox": "Inbox",
-  "automation.channel.email": "Email",
-  "automation.preset.feedback-created.title": "New feedback",
-  "automation.preset.feedback-created.description":
-    "Notify one member when feedback is created, with its description and a link to the report. Reporter contact details are excluded.",
-  "automation.preset.weekly-report-digest.title": "Weekly report",
-  "automation.preset.weekly-report-digest.description":
-    "Send the Reports summary of the last seven days to one member, every Monday at 08:00 UTC. They opt out in their notification settings.",
-  "automation.source.reports.summary":
-    "The Reports summary of the last seven days",
-  "automation.preset.tagged-quest-digest.title": "Nightly tagged quests",
-  "automation.preset.tagged-quest-digest.description":
-    "Send one digest of open quests with a chosen tag at 00:00 UTC. Empty digests are skipped.",
-  "automation.preset.epic-completed.title": "Epic completed",
-  "automation.preset.epic-completed.description":
-    "Notify one member when an in-progress epic automatically completes.",
-  "automation.setup.threshold": "Threshold",
-  "automation.setup.branch": "Branch",
-  "automation.preset.coverage-regression.title": "Coverage regression",
-  "automation.preset.coverage-regression.description":
-    "Compare line coverage for the two fully closed UTC days at 00:10 UTC. Alert only when the drop exceeds the threshold in percentage points.",
-  "automation.preset.error-crossing.title": "Open errors cross a threshold",
-  "automation.preset.error-crossing.description":
-    "Sample aggregate open errors every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
-  "automation.setup.folio": "Folio",
-  "automation.setup.app": "App",
-  "automation.setup.channels": "Channels",
-  "automation.setup.host": "Host",
-  "automation.setup.monitor": "Monitor",
-  "automation.preset.release-to-folio.title":
-    "Publish release notes to a folio",
-  "automation.preset.release-to-folio.description":
-    "Append the frozen published changelog to a chosen folio, then notify one member. Each publication appends once.",
-  "automation.preset.quest-reminders.title": "Quest reminders",
-  "automation.preset.quest-reminders.description":
-    "Every hour, remind each quest's assignee of a quest whose reminder is due, at the interval set on the quest.",
   "uptime.alertsByBell":
-    "Alerts are automations: turn on the bell on the monitor's page, or on Apps for every monitor.",
-  "automation.preset.release-published.title": "Release published",
-  "automation.preset.release-published.description":
-    "Notify one member when a release is published, with its tag, title, number of quests and a link.",
+    "Alerts are notifications: turn on the bell on the monitor's page, or on Apps for every monitor.",
   "uptime.subscription.label":
     "Notify me when this monitor goes down or recovers",
   "uptime.subscription.description":
-    "A rule of your own will notify you when this monitor's outage is confirmed, and again when it recovers. You can edit, pause or delete it on the Automations page.",
+    "You will be notified in the app when this monitor's outage is confirmed, and again when it recovers. Change how on Settings > Notifications.",
   "uptime.subscription.offDescription":
     "You will no longer be notified of this monitor's outages and recoveries.",
   "uptime.subscription.allLabel":
     "Notify me when any monitor goes down or recovers",
   "uptime.subscription.allDescription":
-    "A rule of your own will notify you when any monitor of this project has a confirmed outage, and again when it recovers. You can edit, pause or delete it on the Automations page.",
+    "You will be notified in the app when any monitor of this project has a confirmed outage, and again when it recovers. Change how on Settings > Notifications.",
   "uptime.subscription.allOffDescription":
     "You will no longer be notified of this project's outages and recoveries.",
-  "automation.preset.monitor-down.title": "Monitor down",
-  "automation.preset.monitor-down.description":
-    "Notify one member when a monitor's outage is confirmed, with its address, the cause and the error.",
-  "automation.preset.monitor-up.title": "Monitor recovered",
-  "automation.preset.monitor-up.description":
-    "Notify one member when a monitor recovers from an outage, with how long it lasted.",
   "hosts.subscription.label": "Notify me when this host needs attention",
   "hosts.subscription.description":
-    "A rule of your own will notify you when this host passes its TTL, goes offline or comes back, or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
+    "You will be notified in the app when this host passes its TTL, goes offline or comes back, or its Cloudflare token stops working. Change how on Settings > Notifications.",
   "hosts.subscription.offDescription":
     "You will no longer be notified about this host.",
   "hosts.subscription.allLabel": "Notify me when any host needs attention",
   "hosts.subscription.allDescription":
-    "A rule of your own will notify you when any host of this project passes its TTL, goes offline or comes back, or its Cloudflare token stops working. You can edit, pause or delete it on the Automations page.",
+    "You will be notified in the app when any host of this project passes its TTL, goes offline or comes back, or its Cloudflare token stops working. Change how on Settings > Notifications.",
   "hosts.subscription.allOffDescription":
     "You will no longer be notified about this project's hosts.",
-  "automation.preset.host-credential-invalid.title": "Host token invalid",
-  "automation.preset.host-credential-invalid.description":
-    "Notify one member when the nightly check finds a Cloudflare host's token no longer works. Deploys through it are refused until it is replaced.",
-  "automation.preset.host-expired.title": "Host past its TTL",
-  "automation.preset.host-expired.description":
-    "Notify one member when a throwaway host passes its time to live. Lore stops and deletes nothing.",
-  "automation.preset.host-offline.title": "Host offline",
-  "automation.preset.host-offline.description":
-    "Notify one member when a Bay host has stopped reporting for five minutes. A restart that reconnects sooner raises nothing.",
-  "automation.preset.host-online.title": "Host back online",
-  "automation.preset.host-online.description":
-    "Notify one member when a Bay host reported offline reconnects.",
   "project.settings.tab.notificationChannels": "Channels",
-  "automation.preset.deploy-failed.title": "Deployment failed",
-  "automation.preset.deploy-failed.description":
-    "Notify one member when a deployment of the chosen app records a failure, in any environment. Raw logs are excluded.",
-  "automation.previous": "Previous",
-  "automation.next": "Next",
 
   "project.settings.nav.notifications": "Notifications",
   "project.settings.tab.notifications": "Who is notified",
@@ -292,15 +134,6 @@ export default {
   "permission.subscription.read": "See who is notified of what",
   "permission.subscription.manage":
     "Notify other members and manage the project's channels",
-  "permission.group.automation": "Automations",
-  "permission.automation.read": "Read automations",
-  "permission.automation.write": "Create and edit your own automations",
-  "permission.automation.manage":
-    "Manage shared variables and disable or delete any automation",
-  "automation.state.disabled": "Disabled",
-  "automation.state.active": "Active",
-  "automation.state.paused": "Paused",
-  "automation.state.broken": "Broken",
 
   en: "English",
   fr: "Français",
@@ -356,9 +189,9 @@ export default {
   "home.feature.agents.title": "Agents",
   "home.feature.agents.description":
     "Your AI agents work in Lore over MCP and the CLI, with your permissions.",
-  "home.feature.automations.title": "Automations",
-  "home.feature.automations.description":
-    "Rules that act when something happens, or on a schedule.",
+  "home.feature.notifications.title": "Notifications",
+  "home.feature.notifications.description":
+    "Tell the right people when something changes: a release, a failed deploy, a host gone offline, in the app, by email, on Discord or through a webhook.",
   "home.feature.selfHost.title": "Self-hosting",
   "home.feature.selfHost.description":
     "Open source, and runs anywhere from one Docker image.",
@@ -1225,7 +1058,6 @@ export default {
   // inside each (#Q2565).
   "project.settings.nav.general": "General",
   "project.settings.nav.members": "Members",
-  "project.settings.nav.automations": "Automations",
   "project.settings.nav.plan": "Plan",
   "project.settings.nav.remember": "Remember",
   "project.settings.nav.ship": "Ship",
@@ -1236,7 +1068,6 @@ export default {
   "project.settings.tab.errors": "Errors",
   "project.settings.tab.board": "Board",
   "project.settings.tab.prompts": "Agent prompts",
-  "project.settings.tab.automations": "Automations",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
@@ -1370,19 +1201,6 @@ export default {
   "reports.team.heatmap.definition":
     "Writes per weekday and hour, in UTC, over the last 30 days of the period at most: older activity is kept per day.",
   "reports.team.heatmap.cell": "$1 $2:00, $3 writes",
-  "reports.team.automations.title": "Automations",
-  "reports.team.automations.definition":
-    "How the project's automations ran in the period. Run detail is kept 30 days.",
-  "reports.team.automations.success": "Success rate",
-  "reports.team.automations.success.definition":
-    "Finished runs that succeeded. Queued, running and skipped runs are left out.",
-  "reports.team.automations.duration": "Median duration",
-  "reports.team.automations.duration.definition":
-    "From the trigger to the end of the run, over finished runs.",
-  "reports.team.automations.broken": "Broken",
-  "reports.team.automations.broken.definition":
-    "Rules that lost something they depend on and cannot run until it comes back.",
-  "reports.team.automations.runs": "runs",
   "reports.team.mcp.title": "MCP tools",
   "reports.team.mcp.definition":
     "Tool calls that resolved this project, in the period. A call refused before a permission check belongs to no project, so it is not here.",
@@ -1401,14 +1219,6 @@ export default {
   "reports.team.day.4": "Fri",
   "reports.team.day.5": "Sat",
   "reports.team.day.6": "Sun",
-  "reports.team.run.queued": "Queued",
-  "reports.team.run.running": "Running",
-  "reports.team.run.succeeded": "Succeeded",
-  "reports.team.run.skipped": "Skipped",
-  "reports.team.run.refused": "Refused",
-  "reports.team.run.partial": "Partial",
-  "reports.team.run.failed": "Failed",
-  "reports.team.run.unknown": "Unknown",
   "reports.quality.section.coverage": "Coverage",
   "reports.quality.section.tests": "Tests",
   "reports.quality.section.coverageOverTime": "Coverage over time",
@@ -3145,12 +2955,12 @@ export default {
   "feedback.back": "Back",
   "release.subscription.label": "Notify me when a release is published",
   "release.subscription.description":
-    "A rule of your own will notify you of every release published in this project. You can edit, pause or delete it on the Automations page.",
+    "You will be notified in the app of every release published in this project. Change how on Settings > Notifications.",
   "release.subscription.offDescription":
     "You will no longer be notified when a release is published.",
   "feedback.subscription.label": "Notify me of new feedback",
   "feedback.subscription.description":
-    "A rule will notify you of every new feedback in this project.",
+    "You will be notified in the app of every new feedback in this project.",
   "feedback.subscription.offDescription":
     "You will no longer be notified of new feedback in this project.",
   "feedback.filter.pending": "Pending",
@@ -3178,9 +2988,9 @@ export default {
     "These apply to both channels.",
   // ⚠️ Read by `categoryLabel`, which derives the key from the category a
   // template registers. A category with no key here renders as its raw name.
-  "account.notifications.category.automations": "Automations",
-  "account.notifications.category.automations.description":
-    "Messages from project automation rules.",
+  "account.notifications.category.notifications": "Project notifications",
+  "account.notifications.category.notifications.description":
+    "What you chose to be notified of in a project, or a manager chose for you.",
   "account.notifications.category.feedback": "Your reports",
   "account.notifications.category.feedback.description":
     "When a project accepts, rejects or answers a report you submitted.",
@@ -3190,9 +3000,6 @@ export default {
   "account.notifications.category.mentions": "Mentions",
   "account.notifications.category.mentions.description":
     "Somebody writes your name in a quest or feedback comment.",
-  "account.notifications.category.releases": "Releases",
-  "account.notifications.category.releases.description":
-    "A project you belong to publishes a release.",
   "account.notifications.category.tasks": "Quest reminders",
   "account.notifications.category.tasks.description":
     "Nudges about a quest you accepted and have not finished.",
@@ -4629,189 +4436,6 @@ export default {
   "folios.wikilink.broken.requirementNotFound":
     "No requirement matches this reference.",
   "project.settings.nav.ranks": "Ranks",
-  "automation.editor.loading": "Loading automation...",
-  "automation.editor.value": "Value",
-  "automation.editor.action": "Action $1",
-  "automation.editor.removeAction": "Remove action",
-  "automation.editor.save": "Save changes",
-  "automation.editor.binding": "Variable or event field",
-  "automation.editor.templates": "Available template names:",
-  "automation.variables.title": "Shared variables",
-  "automation.variables.description":
-    "Values several automations can share, such as a recipient or a threshold. Changing one asks the other authors to review their automations.",
-  "automation.variables.referenced": "Referenced shared variables",
-  "automation.variables.create": "Create shared variable",
-  "automation.variables.key": "Variable key",
-  "automation.variables.kind": "Value type",
-  "automation.variables.version": "Version $1",
-  "automation.variables.confirmTitle": "Change this shared value?",
-  "automation.variables.warning":
-    "Saving validates rules you authored. Other authors’ rules pause and require explicit approval before using the new value. Their author is preserved.",
-  "automation.variables.usedBy": "Used by",
-  "automation.variables.updated": "Validated and updated",
-  "automation.variables.deleteTitle": "Delete unused variable?",
-  "automation.variables.deleteDescription":
-    "Only unused variables can be deleted. A referenced variable is refused even if another rule binds it while this dialog is open.",
-  "automation.history.title": "Run history",
-  "automation.history.detail": "Run evidence",
-  "automation.history.retention":
-    "Detailed snapshots are retained for 30 days. Deduplication identities remain for 90 days.",
-  "automation.history.replay":
-    "Expired evidence cannot be replayed or previewed. A new prospective Test uses current data and creates no effects.",
-  "automation.history.refresh": "Refresh delivery status",
-  "automation.history.rule": "Open automation",
-  "automation.history.snapshot":
-    "Frozen rule, safe inputs and variable versions",
-  "automation.history.effects": "Per-action outcomes",
-  "automation.history.deliveries": "Live notification receipts",
-  "automation.history.delivery": "Delivery receipt",
-  "automation.history.deliveryMeaning":
-    "Queued means enqueue committed. Inbox delivery is confirmed when its row exists. Email sent means transport acceptance. Unknown effects require review and are never blindly resent.",
-  "automation.history.lastAttempt": "Last attempt",
-  "automation.history.receipt": "Receipt",
-  "automation.history.message": "Transport message",
-  "automation.variables.kind.text": "Text",
-  "automation.variables.kind.number": "Number",
-  "automation.variables.kind.member": "Project member",
-  "automation.variables.kind.folio": "Folio",
-  "automation.variables.kind.release": "Release",
-  "automation.variables.kind.channel": "Channel",
-  "automation.effect.pending": "Pending",
-  "automation.effect.running": "Running",
-  "automation.effect.succeeded": "Succeeded",
-  "automation.effect.skipped": "Skipped",
-  "automation.effect.refused": "Refused",
-  "automation.effect.failed": "Failed",
-  "automation.effect.unknown": "Unknown, review required",
-  "automation.effect.queued": "Queued, awaiting delivery",
-  "automation.test.source": "Start from",
-  "automation.test.unvalidated":
-    "Known only when the run is real, not checked here: $1",
-  "automation.effect.not_reached": "Not reached: an earlier step failed",
-  "automation.edit": "Edit",
-  "automation.editor.conflictTitle":
-    "This automation changed since you opened it",
-  "automation.editor.conflict":
-    "The save was refused and your draft is kept. Reloading shows the saved automation and discards this draft.",
-  "automation.editor.reload": "Discard draft and reload",
-  "automation.test.saveToTest": "Save to test",
-  "automation.outline.condition.field": "Field",
-  "automation.outline.condition.operator": "Comparison",
-  "automation.outline.placeholders.lacking": "not given by $1",
-  "automation.preset.openInEditor": "Open in editor",
-  "automation.preset.addToDraft": "Add to the automation",
-  "automation.gallery.scratch": "Start from scratch",
-  "automation.outline.when": "When",
-  "automation.outline.onlyIf": "Only if",
-  "automation.outline.then": "Then",
-  "automation.outline.do": "Do",
-  "automation.outline.otherwise": "Otherwise",
-  "automation.outline.anyOf": "any of these happens",
-  "automation.outline.or": " or ",
-  "automation.outline.if": "if $1 $2 $3",
-  "automation.outline.notTaken": "Not taken",
-  "automation.outline.started": "Started this run",
-  "automation.outline.true": "True",
-  "automation.outline.false": "False",
-  "automation.outline.ran": "Ran",
-  "automation.outline.notReached": "Not reached",
-  "automation.outline.off": "Off",
-  "automation.outline.switch": "$1: on or off",
-  "automation.outline.more": "+$1 more",
-  "automation.outline.noAction": "No action yet",
-  "automation.outline.nothingSet": "Nothing to set",
-  "automation.outline.editor": "Automation editor",
-  "automation.outline.undo": "Undo",
-  "automation.outline.redo": "Redo",
-  "automation.outline.test": "Test",
-  "automation.outline.leave.title": "Leave without saving?",
-  "automation.outline.leave.description":
-    "Your changes to this automation are not saved.",
-  "automation.outline.leave.confirm": "Leave",
-  "automation.outline.choose": "Choose what starts it",
-  "automation.outline.chooseHint":
-    "An event in this project, or a schedule. You can add more events later.",
-  "automation.outline.chooseEvent": "Choose an event",
-  "automation.outline.quickStart": "Or start from",
-  "automation.outline.addBlock": "Add another event with its own actions",
-  "automation.outline.addEvent": "Add an event",
-  "automation.outline.addCondition": "Add a condition",
-  "automation.outline.addAction": "Add an action",
-  "automation.outline.addStep": "Add a step after this one",
-  "automation.outline.removeEvent": "Remove this event",
-  "automation.outline.removeBlock": "Remove this event and its actions",
-  "automation.outline.removeCondition": "Remove the condition",
-  "automation.outline.removeCondition.title": "Remove the condition?",
-  "automation.outline.removeCondition.description":
-    "The actions under Otherwise are removed with it. The actions under Then stay and run every time.",
-  "automation.outline.fold": "Fold back to one line",
-  "automation.outline.scheduleAlone":
-    "A schedule runs alone: it takes no other event and no other block.",
-  "automation.outline.eventFirst":
-    "Add an action first; then more events can share it.",
-  "automation.outline.schedule": "On a schedule (UTC)",
-  "automation.outline.cron": "Schedule (five-field cron, UTC)",
-  "automation.outline.reads": "What it reads",
-  "automation.outline.placeholders": "Insert into the last field",
-  "automation.outline.from.event": "from the event",
-  "automation.outline.from.step": 'from "$1" above',
-  "automation.outline.unavailable": "Not available in this project",
-  "automation.outline.unavailable.sources":
-    "An automation holds at most $1 events",
-  "automation.outline.unavailable.actions": "A block holds at most $1 actions",
-  "automation.outline.unavailable.nodes":
-    "An automation holds at most $1 steps",
-  "automation.outline.unavailable.schedule":
-    "A schedule runs alone: it cannot share an automation with events",
-  "automation.outline.mergeDescription":
-    "Fill in the preset: it arrives as one more block of this draft, saved with it.",
-  "automation.outline.group.feedback": "Feedback",
-  "automation.outline.group.quests": "Quests",
-  "automation.outline.group.epics": "Epics",
-  "automation.outline.group.releases": "Releases",
-  "automation.outline.group.deploys": "Deploys",
-  "automation.outline.group.monitors": "Monitors",
-  "automation.outline.group.hosts": "Hosts",
-  "automation.outline.group.presets": "From a preset",
-  "automation.outline.newDescription":
-    "Choose what starts it and what it does. It is created disabled when you save, then tested and enabled on its page.",
-  "automation.outline.words.title": "In plain words",
-  "automation.outline.words.empty": "Nothing yet. It fills in as you build.",
-  "automation.outline.words.block": "When $1$2: $3.",
-  "automation.outline.words.onlyIf": ", only if $1 $2 $3",
-  "automation.outline.words.otherwise": "Otherwise: $1.",
-  "automation.outline.words.then": ", then ",
-  "automation.outline.words.and": "; and ",
-  "automation.outline.words.nothing": "nothing yet",
-  "automation.outline.check.title": "Before you save",
-  "automation.outline.check.none": "Nothing left to fill",
-  "automation.outline.check.toFill": "To fill: $1",
-  "automation.outline.check.name": "Give the automation a name",
-  "automation.outline.check.field": "Field",
-  "automation.outline.check.value": "Value",
-  "automation.outline.how.title": "How it runs",
-  "automation.outline.how.independent":
-    "Numbered actions are independent: one failing does not stop the others.",
-  "automation.outline.how.stops":
-    "A step after another runs only if that one succeeded, and may use what it produced; a failed step stops only what follows it.",
-  "automation.outline.how.decided":
-    "The condition is decided before anything happens.",
-  "automation.outline.withCondition": "with a condition",
-  "automation.outline.notOutline.title": "Built with the previous editor",
-  "automation.outline.notOutline.description":
-    "This automation has a shape the outline cannot show, so it stopped at its next run. Rebuild it as a new automation, then delete this one.",
-  "automation.trigger.off": "$1 switched off",
-  "automation.history.step": "Step $1",
-  "automation.delivery.queued": "Queued",
-  "automation.delivery.unknown": "Unknown",
-  "automation.delivery.sent": "Sent",
-  "automation.delivery.delivered": "Delivered",
-  "automation.delivery.deferred": "Deferred",
-  "automation.delivery.bounced": "Bounced",
-  "automation.delivery.complained": "Complaint",
-  "automation.delivery.failed": "Failed",
-  "automation.delivery.rejected": "Rejected",
-  "automation.delivery.skipped": "Skipped",
   "uptime.since": "Since $1",
   "uptime.certExpiry": "Certificate expires $1",
   "uptime.chartTitle": "Mean latency",
@@ -4887,80 +4511,6 @@ export default {
   "uptime.bucketNote":
     "Uptime uses hourly buckets, including the current partial hour.",
   "uptime.staleAfter": "Stale after (seconds)",
-  "automation.guide": "How automations work",
-  "automation.audience.recipients": "Recipients",
-  "automation.audience.member": "One project member",
-  "automation.audience.roster": "Current roster except publisher",
-  "automation.audience.preview": "$1 roster recipients (publisher excluded): ",
-  "automation.new": "New automation",
-  "automation.filter.allStates": "All states",
-  "automation.gallery.backToPresets": "All presets",
-  "automation.schedule.minutes": "Every $1 minutes",
-  "automation.schedule.daily": "Daily at $1 UTC",
-  "automation.schedule.cron": "$1 (UTC cron)",
-  "automation.setup.enableOrDraft":
-    "Create and enable turns it on now. Save as draft keeps it off: its page lets you test it, then enable it.",
-  "automation.preset.createAndEnable": "Create and enable",
-  "automation.preset.saveDraft": "Save as draft",
-  "automation.disabledNotice.title":
-    "Disabled: this automation does nothing until it is enabled.",
-  "automation.editor.fixed": "Fixed value",
-  "automation.history.triggered": "Triggered $1",
-  "automation.variables.empty":
-    "No shared variable yet. Each automation keeps its own values unless you share one here.",
-  "automation.variables.unused": "No automation uses this variable.",
-  "automation.source.feedback.created": "New feedback",
-  "automation.source.release.published": "Release published",
-  "automation.source.epic.completed": "Epic completed",
-  "automation.source.quest.completed": "Quest completed",
-  "automation.source.deploy.failed": "Deployment failed",
-  "automation.source.deploy.succeeded": "Deployment succeeded",
-  "automation.source.host.credential_invalid": "Host token invalid",
-  "automation.source.host.expired": "Host past its TTL",
-  "automation.source.host.offline": "Host offline",
-  "automation.source.host.online": "Host back online",
-  "automation.source.monitor.down": "Monitor down",
-  "automation.source.monitor.up": "Monitor recovered",
-  "automation.source.quests.open": "Open quests, one run each",
-  "automation.source.quests.tagged": "Open quests with a tag, as one digest",
-  "automation.source.quests.remindersDue": "Quest reminders due",
-  "automation.source.activeQuests": "Active quests (count)",
-  "automation.source.heldQuests": "Held quests (count)",
-  "automation.source.openErrors": "Open errors (count)",
-  "automation.source.untriagedFeedback": "Untriaged feedback (count)",
-  "automation.source.uniqueVisitors": "Unique visitors",
-  "automation.source.quality.coverage.lines": "Line coverage (%)",
-  "automation.source.quality.coverage.statements": "Statement coverage (%)",
-  "automation.source.quality.coverage.functions": "Function coverage (%)",
-  "automation.source.quality.coverage.branches": "Branch coverage (%)",
-  "automation.source.quality.tests.total": "Tests run",
-  "automation.source.quality.tests.passed": "Tests passed",
-  "automation.source.quality.tests.failed": "Tests failed",
-  "automation.source.quality.tests.skipped": "Tests skipped",
-  "automation.action.notify": "Send a notification",
-  "automation.action.appendFolio": "Append to a folio",
-  "automation.action.createQuest": "Create a quest",
-  "automation.action.assignRelease": "Assign the quest to a release",
-  "automation.action.addTag": "Tag the quest",
-  "automation.operator.eq": "equals",
-  "automation.operator.ne": "differs from",
-  "automation.operator.lt": "is below",
-  "automation.operator.lte": "is at most",
-  "automation.operator.gt": "is above",
-  "automation.operator.gte": "is at least",
-  "automation.operator.delta": "drops by more than",
-  "automation.operator.crossesAbove": "rises above",
-  "automation.setup.title": "Title",
-  "automation.setup.text": "Message",
-  "automation.setup.category": "Notification category",
-  "automation.setup.description": "Description",
-  "automation.setup.area": "Area",
-  "automation.setup.quest": "Quest",
-  "automation.setup.release": "Release",
-  "automation.setup.statuses": "Statuses",
-  "automation.setup.status": "Status",
-  "automation.setup.period": "Period",
-  "automation.sharing.share": "Share with other automations",
   "stacks.title": "Stacks",
   "stacks.description":
     "Apps and services deployed together from one compose.yml, one copy per environment.",

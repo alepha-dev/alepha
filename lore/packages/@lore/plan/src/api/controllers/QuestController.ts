@@ -1,7 +1,5 @@
 import {
   $ownsProject,
-  AutomationBatchRepository,
-  AutomationMutationContext,
   BestEffort,
   BoundParameters,
   LoreAudits,
@@ -83,8 +81,8 @@ import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
 import { QuestShelvingService } from "../services/QuestShelvingService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
-import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
 import { WorkBuckets } from "../services/WorkBuckets.ts";
+import { WorkEventSources } from "../services/WorkEventSources.ts";
 
 /**
  * What `questListWhere` reads of the quest list's query.
@@ -108,13 +106,9 @@ interface QuestListQuery {
 }
 
 export class QuestController {
-  protected readonly automationMutations = $inject(AutomationMutationContext);
-  protected readonly automationRows = $inject(
-    AutomationBatchRepository.of(quests),
-  );
   protected readonly editAccess = $inject(QuestEditAccess);
 
-  protected readonly automationSources = $inject(WorkAutomationSources);
+  protected readonly eventSources = $inject(WorkEventSources);
   /**
    * What `updateQuestById` still accepts once a quest is completed.
    *
@@ -2661,9 +2655,8 @@ export class QuestController {
    * Only the assignee can set their own reminder — it's a per-user
    * nudge, not a project-wide notification. `interval: null` clears
    * any existing reminder; passing a preset schedules the next send
-   * at `now + REMINDER_INTERVAL_MS[interval]`, and the project's Quest
-   * reminders automation (#Q3626) sends it and advances from there. Without
-   * that automation nothing is sent.
+   * at `now + REMINDER_INTERVAL_MS[interval]`, and the hourly reminder
+   * check (#Q3893) sends it and advances from there.
    */
   setQuestReminder = $action({
     method: "POST",
@@ -2977,7 +2970,7 @@ export class QuestController {
         );
       }
 
-      await this.automationSources.completeQuest(
+      await this.eventSources.completeQuest(
         quest,
         this.owned.authority<Project>(),
       );
@@ -3368,20 +3361,7 @@ export class QuestController {
           (updated as Record<string, unknown>)[key] = value;
         }
       }
-      await this.automationMutations.save(
-        {
-          repository: this.automationRows,
-          entity: updated,
-          audit: {
-            type: "quest",
-            action: "update",
-            ...this.audits.resource("quest", updated, user, {
-              fields: changes.map((change) => change.field),
-            }),
-          },
-        },
-        () => this.quests.save(updated),
-      );
+      await this.quests.save(updated);
       // The tail, concurrently (#Q2637), both best effort: a failure of one
       // leaves the other written, and the quest saved either way. The link
       // sync runs only when the text it reads changed, and a failed one

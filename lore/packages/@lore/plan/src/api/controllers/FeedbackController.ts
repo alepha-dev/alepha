@@ -39,8 +39,8 @@ import {
 } from "../schemas/myFeedbackResourceSchema.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
-import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
 import { WorkBuckets } from "../services/WorkBuckets.ts";
+import { WorkEventSources } from "../services/WorkEventSources.ts";
 
 /**
  * A feedback row carrying the relations a resource needs, as `include`
@@ -65,7 +65,7 @@ type MyFeedbackWithRelations = FeedbackWithRelations & {
  * the in-app request form after a one-tap Google login.
  */
 export class FeedbackController {
-  protected readonly automationSources = $inject(WorkAutomationSources);
+  protected readonly eventSources = $inject(WorkEventSources);
   protected feedback = $repository(feedback);
   /**
    * The same table, with `include`. Reads that need a feedback row's
@@ -176,7 +176,7 @@ export class FeedbackController {
 
       const shortId = await this.feedbackShortId.next(String(params.projectId));
 
-      const created = await this.automationSources.submit({
+      const created = await this.eventSources.submit({
         projectId: params.projectId,
         shortId,
         reporterUserId: user.id,

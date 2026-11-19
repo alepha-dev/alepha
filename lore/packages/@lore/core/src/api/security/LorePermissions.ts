@@ -144,9 +144,6 @@ export class LorePermissions {
     "host:update",
     "host:delete",
     "feedback:triage",
-    "automation:read",
-    "automation:write",
-    "automation:manage",
     // Notifications (#Q3890): who is told of what. A member subscribes and
     // mutes themselves with neither.
     "subscription:read",
@@ -184,24 +181,6 @@ export class LorePermissions {
     group: "subscription",
     name: "manage",
     label: "permission.subscription.manage",
-  });
-
-  automationRead = $permission({
-    group: "automation",
-    name: "read",
-    label: "permission.automation.read",
-    groupLabel: "permission.group.automation",
-    groupOrder: 20,
-  });
-  automationWrite = $permission({
-    group: "automation",
-    name: "write",
-    label: "permission.automation.write",
-  });
-  automationManage = $permission({
-    group: "automation",
-    name: "manage",
-    label: "permission.automation.manage",
   });
 
   projectRead = $permission({

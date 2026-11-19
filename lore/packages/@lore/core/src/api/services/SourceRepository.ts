@@ -2,9 +2,6 @@ import { $inject, type Infer, type ZObject, z } from "alepha";
 import { type EntityPrimitive, Repository, type SQLLike } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
-import type { AutomationEvent } from "../entities/automationEvents.ts";
-import { AutomationEvents } from "./AutomationEvents.ts";
-import { AutomationOrigin } from "./AutomationOrigin.ts";
 import { BatchRepository } from "./BatchRepository.ts";
 import { GuardedBatch } from "./GuardedBatch.ts";
 import { LoreDatabase } from "./LoreDatabase.ts";
@@ -15,19 +12,16 @@ import { ProjectEvents } from "./ProjectEvents.ts";
  * its event, in one guarded batch, or neither (#Q3899).
  *
  * Reuses the repository codec, predicates, version bump, cache and lifecycle
- * hooks while committing its one prepared statement with the durable event:
- * the project event of #Q3889, and the automation event while the automation
- * engine still reads one.
+ * hooks while committing its one prepared statement with the project event
+ * (#Q3889) and, when someone is subscribed, its delivery job (#Q3890).
  */
 export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
   protected static readonly sources = new WeakMap<
     EntityPrimitive<any>,
     unknown
   >();
-  protected readonly events = $inject(AutomationEvents);
   protected readonly atomic = $inject(GuardedBatch);
   protected readonly database = $inject(LoreDatabase);
-  protected readonly origin = $inject(AutomationOrigin);
   protected readonly projectEvents = $inject(ProjectEvents);
 
   public static override of<S extends ZObject>(
@@ -140,35 +134,25 @@ export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
     mutation: SQLLike,
     numbers?: Record<string, SQLLike>,
   ): Promise<Record<string, unknown>[] | undefined> {
-    const computed = { ...event.numbers, ...numbers };
     const recorded = await this.projectEvents.emit({
       projectId: event.projectId,
       name: event.name,
       subjectId: event.subjectId,
-      fields: { ...event.fields, ...event.projectFields },
-      numbers: computed,
+      fields: event.fields,
+      numbers: { ...event.numbers, ...numbers },
     });
     let rows: Record<string, unknown>[] | undefined;
-    let committed = true;
-    if (this.origin.current || !this.events.handles(event.name))
+    try {
       rows = (
         await this.atomic.guarded(condition, [mutation, ...recorded.statements])
       )[1];
-    else {
-      const result = await this.events.transition({
-        ...event,
-        name: event.name as AutomationEvent["name"],
-        condition,
-        mutation,
-        changedTables: [this.tableName],
-        numbers: computed,
-        statements: recorded.statements,
-      });
-      rows = result.rows;
-      // A transition already recorded commits nothing, its job row included.
-      committed = result.committed;
+    } catch (error) {
+      // A false guard is a lost transition, which `result` reports as a
+      // conflict; a driver failure stays a failure.
+      if (await this.atomic.holds(condition)) throw error;
+      return undefined;
     }
-    if (committed) await recorded.committed();
+    await recorded.committed();
     return rows;
   }
   protected result(rows: Record<string, unknown>[] | undefined): Infer<T> {
@@ -179,10 +163,8 @@ export class SourceRepository<T extends ZObject> extends BatchRepository<T> {
 }
 export interface SourceEvent {
   projectId: number;
-  identity: string;
   /**
-   * The project event's name (`ProjectEventCatalog`). The automation event of
-   * the same name is recorded too while the engine handles that name.
+   * The project event's name (`ProjectEventCatalog`).
    */
   name: string;
   /**
@@ -190,11 +172,6 @@ export interface SourceEvent {
    */
   subjectId?: string | number;
   fields: Record<string, unknown>;
-  /**
-   * Fields the project event stores instead of the automation event's, where
-   * the two differ (a host's name, not a sentence about it).
-   */
-  projectFields?: Record<string, unknown>;
   resourceId?: string | number;
   generatedIdField?: string;
   numbers?: Record<string, SQLLike>;

@@ -234,7 +234,7 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
                 disabled={loading}
               />
             )}
-            {/* Alerts are automations since #Q3612: the monitor's bell. */}
+            {/* Alerts are subscriptions (#Q3892): the monitor's bell. */}
             <p className="text-muted-foreground border-t pt-4 text-sm">
               {tr("uptime.alertsByBell")}
             </p>

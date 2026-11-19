@@ -283,7 +283,7 @@ export class DeployRouter {
 
   /**
    * A monitor's old address, kept for every link that names it (activity,
-   * alerts, automations): it opens the owning app's Uptime tab (#Q3677).
+   * alerts, notifications): it opens the owning app's Uptime tab (#Q3677).
    */
   projectMonitor = $pageProject({
     name: "projectMonitor",

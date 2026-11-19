@@ -149,7 +149,7 @@ export class MonitorTools {
   monitor_update = $tool({
     title: "Update an uptime monitor",
     description:
-      "Change a monitor's settings. Only the fields passed change; `expect` is replaced whole when passed. Alerts are automations: the monitor's bell, or a Monitor down / Monitor recovered rule. Changing the target or the kind does not reset its history. Needs `app:manage` and the Ship capability's `uptime` option.",
+      "Change a monitor's settings. Only the fields passed change; `expect` is replaced whole when passed. Alerts are notifications: the monitor's bell, or a `monitor.down` / `monitor.up` subscription. Changing the target or the kind does not reset its history. Needs `app:manage` and the Ship capability's `uptime` option.",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
       params: monitorUpdateParamsSchema,

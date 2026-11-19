@@ -1,12 +1,5 @@
 import { $hook, $inject } from "alepha";
 import { NotificationInboxService } from "alepha/api/notifications";
-import { $repository, DbCacheProvider } from "alepha/orm";
-import { ConflictError } from "alepha/server";
-
-import { automationReceipts } from "../entities/automationReceipts.ts";
-import { automationRuns } from "../entities/automationRuns.ts";
-import { automations } from "../entities/automations.ts";
-import { LoreDatabase } from "../services/LoreDatabase.ts";
 
 /**
  * Refuses to delete an account that still owns projects.
@@ -50,11 +43,6 @@ import { LoreDatabase } from "../services/LoreDatabase.ts";
  * read filters it out — nothing can `assertOwner` on a row nothing returns.
  */
 export class UserDeletionHook {
-  protected readonly automations = $repository(automations);
-  protected readonly receipts = $repository(automationReceipts);
-  protected readonly runs = $repository(automationRuns);
-  protected readonly database = $inject(LoreDatabase);
-  protected readonly cache = $inject(DbCacheProvider);
   protected readonly inbox = $inject(NotificationInboxService);
 
   /**
@@ -81,56 +69,7 @@ export class UserDeletionHook {
       // The organizations module registered its ownership refusal before
       // this application hook, so reaching this handler means deletion will
       // proceed and inbox cleanup cannot run for a refused account.
-      // Live rules refuse: each one still runs as this author, and deleting
-      // it is a decision for its project, made on its Automations page.
-      // Refuse before any purge or inbox cleanup, so a refused deletion is
-      // inert.
-      const live = await this.automations.count({ authorUserId: userId });
-      if (live > 0) {
-        throw new ConflictError(
-          `Delete your ${live} authored automation(s) from each project's Automations page, then delete your account`,
-        );
-      }
-      await this.purgeDeletedAutomations(userId);
       await this.inbox.deleteForUser(userId);
     },
   });
-
-  /**
-   * Hard-deletes the author's soft-deleted rules, which nothing else ever
-   * removes, so their restrictive author foreign key stops blocking the
-   * account. Their runs and receipts reference the rules with
-   * `ON DELETE RESTRICT` too, so the children go first, in one native
-   * batch: either the whole history goes or none of it does.
-   */
-  protected async purgeDeletedAutomations(userId: string): Promise<void> {
-    const deleted = await this.automations.findOne(
-      { where: { authorUserId: userId, deletedAt: { isNotNull: true } } },
-      { force: true },
-    );
-    if (!deleted) return;
-    // Hard deletes of the author's deleted rules and what hangs off them,
-    // with no RETURNING: the caches go below, table by table.
-    const deletedRules = {
-      authorUserId: userId,
-      deletedAt: { isNotNull: true },
-    };
-    const rules = () =>
-      this.automations.subquery(deletedRules, "id", { force: true });
-    const quiet = { events: false };
-    await this.database.batch([
-      this.receipts.deleteStatement(
-        { automationId: { inArray: rules() } },
-        quiet,
-      ),
-      this.runs.deleteStatement({ automationId: { inArray: rules() } }, quiet),
-      this.automations.deleteStatement(deletedRules, { ...quiet, force: true }),
-    ]);
-    for (const table of [
-      "automation_receipts",
-      "automation_runs",
-      "automations",
-    ])
-      await this.cache.invalidateTable(table);
-  }
 }

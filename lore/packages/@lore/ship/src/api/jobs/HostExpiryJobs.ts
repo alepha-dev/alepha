@@ -8,7 +8,6 @@ import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import { hosts } from "../entities/hosts.ts";
-import { HostAutomationEventSubjects } from "../services/HostAutomationEventSubjects.ts";
 import { HostEventFields } from "../services/HostEventFields.ts";
 import { ShipProjectEvents } from "../services/ShipProjectEvents.ts";
 
@@ -49,7 +48,7 @@ export class HostExpiryJobs {
   /**
    * Claim every host that became overdue since the last sweep, each in one
    * write that raises `host.expired` in its home project (#Q3627): telling
-   * people is an automation's job now. The claim (`notifiedOverdueAt`) is
+   * people is the subscriptions' job. The claim (`notifiedOverdueAt`) is
    * the once-per-occurrence guard, so a host is raised once until its TTL is
    * extended and it expires again. Returns how many were claimed.
    */
@@ -68,17 +67,14 @@ export class HostExpiryJobs {
           { notifiedOverdueAt: now },
           {
             projectId: host.projectId,
-            identity: `host:${host.id}:expired:${since}`,
             resourceId: host.id,
             name: "host.expired",
-            ...HostAutomationEventSubjects.source(
-              this.fields.build(
-                await this.projects.getById(host.projectId),
-                host,
-                "expired",
-                since,
-              ),
+            subjectId: host.id,
+            fields: this.fields.build(
+              await this.projects.getById(host.projectId),
+              host,
               "expired",
+              since,
             ),
           },
         );

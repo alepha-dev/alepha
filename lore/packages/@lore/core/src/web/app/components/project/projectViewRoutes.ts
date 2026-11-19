@@ -104,14 +104,6 @@ export const ROUTES_FULL_WIDTH = new Set([
   // width the way it did beside the quest log it replaced.
   "projectQuests",
   "projectQuest",
-  "projectAutomations",
-  // Every page under Automations draws its own bordered header and scrolling
-  // body (`AutomationPage`), as Uptime's monitor page does.
-  "projectAutomationGallery",
-  "projectAutomationNew",
-  "projectAutomationDetail",
-  "projectAutomationVariables",
-  "projectAutomationRun",
   "projectEpics",
   "projectEpic",
   "projectReleases",
@@ -196,7 +188,6 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectArtifacts"
   | "projectStacks"
   | "projectReleases"
-  | "projectAutomations"
   | "projectSettingsHosts"
   | "projectRequirements"
   | "projectUseCases"
@@ -215,11 +206,6 @@ export const SECTION_HREF_ROUTES: Record<
   projectPersona: "projectPersonas",
   projectUseCase: "projectUseCases",
   projectRequirementsTestBook: "projectRequirements",
-  projectAutomationGallery: "projectAutomations",
-  projectAutomationNew: "projectAutomations",
-  projectAutomationDetail: "projectAutomations",
-  projectAutomationVariables: "projectAutomations",
-  projectAutomationRun: "projectAutomations",
   // A monitor belongs to an app (#Q3657): its crumb climbs to Apps.
   projectMonitor: "projectApps",
   // A stack environment's crumb climbs back to the Stacks list (#E79).
@@ -259,14 +245,6 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // leaf with no detail route under it, so its crumb is the open page and
   // stays inert, the same reading as `projectQuests` on the list itself.
   projectActivity: "project.menu.activity",
-  projectAutomations: "project.settings.nav.automations",
-  // Every page under Automations reads "Automations" and links back to the
-  // list, as an app's tabs do with Apps: the page names itself in its header.
-  projectAutomationGallery: "project.settings.nav.automations",
-  projectAutomationNew: "project.settings.nav.automations",
-  projectAutomationDetail: "project.settings.nav.automations",
-  projectAutomationVariables: "project.settings.nav.automations",
-  projectAutomationRun: "project.settings.nav.automations",
   projectQuests: "project.menu.quests",
   // The layout both Quests tabs render under.
   projectQuestsLayout: "project.menu.quests",

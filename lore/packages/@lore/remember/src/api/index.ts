@@ -29,8 +29,6 @@ import { FolioRecentlyDeleted } from "./services/FolioRecentlyDeleted.ts";
  */ import { FoliosByDirectoryMetric } from "./services/FoliosByDirectoryMetric.ts";
 import { FoliosThisMonthMetric } from "./services/FoliosThisMonthMetric.ts";
 import { FolioTableService } from "./services/FolioTableService.ts";
-import { KnowledgeAutomationActions } from "./services/KnowledgeAutomationActions.ts";
-import { KnowledgeAutomationReferences } from "./services/KnowledgeAutomationReferences.ts";
 import { KnowledgeBuckets } from "./services/KnowledgeBuckets.ts";
 import { KnowledgeDashboard } from "./services/KnowledgeDashboard.ts";
 import { KnowledgeDashboardMetrics } from "./services/KnowledgeDashboardMetrics.ts";
@@ -52,8 +50,6 @@ export const LoreRememberApi = $module({
     KnowledgeReportsController,
     ProjectKnowledgeReportService,
     KnowledgeReportsSummary,
-    KnowledgeAutomationActions,
-    KnowledgeAutomationReferences,
     FolioNameService,
     FolioDirectoryService,
     FolioAttachmentService,

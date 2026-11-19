@@ -10,7 +10,7 @@ import { QualityNumericCatalog } from "./QualityNumericCatalog.ts";
 import { QualityService } from "./QualityService.ts";
 
 /**
- * The dashboard resolver is also the automation resolver. Exact closed UTC
+ * The dashboard resolver for quality metrics. Exact closed UTC
  * dates and their provenance travel together; missing data never becomes zero.
  */
 export class QualityNumericMetrics {

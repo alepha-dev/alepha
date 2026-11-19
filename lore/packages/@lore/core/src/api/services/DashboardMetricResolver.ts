@@ -27,7 +27,7 @@ export interface DashboardResolvable {
   /**
    * The reads this board resolution shares between its metrics (#Q3490):
    * one share for every entry of one `resolveOn` call. Optional because a
-   * resolver called outside a board (a spec, an automation) has nothing to
+   * resolver called outside a board (a spec, a threshold check) has nothing to
    * share with, and reads directly.
    */
   reads?: DashboardReadShare;

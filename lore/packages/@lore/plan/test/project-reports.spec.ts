@@ -894,7 +894,7 @@ describe("ProjectReportsController", () => {
       expect(data.mcp).toEqual([
         { tool: "quest_get", ok: 1, refused: 1, error: 0 },
       ]);
-      expect(data.automations).toMatchObject({ runs: [], broken: [] });
+      expect(data).not.toHaveProperty("automations");
     });
 
     it("pins the explorer to the project, and refuses a stranger", async ({

@@ -96,7 +96,7 @@ test.describe("Uptime healthchecks", () => {
     const name = dialog.getByRole("textbox", { name: "Name", exact: true });
     await expect(name).toHaveValue("web production");
     await name.fill("Web probe");
-    // Alerts are automations since #Q3612: the form has no recipients.
+    // Alerts are notifications (#Q3892): the form has no recipients.
     await expect(
       dialog.getByRole("textbox", { name: "Recipients", exact: true }),
     ).toHaveCount(0);

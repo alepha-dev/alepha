@@ -7,7 +7,6 @@ import { ConflictError } from "alepha/server";
 
 import { type Host, hosts } from "../entities/hosts.ts";
 import { CloudflareProbeService } from "./CloudflareProbeService.ts";
-import { HostAutomationEventSubjects } from "./HostAutomationEventSubjects.ts";
 import { HostEventFields } from "./HostEventFields.ts";
 import { ShipProjectEvents } from "./ShipProjectEvents.ts";
 
@@ -332,17 +331,14 @@ export class HostCloudflareService {
           patch,
           {
             projectId: host.projectId,
-            identity: `host:${host.id}:credential_invalid:${checkedAt}`,
             resourceId: host.id,
             name: "host.credential_invalid",
-            ...HostAutomationEventSubjects.source(
-              this.fields.build(
-                await this.projects.getById(host.projectId),
-                host,
-                "credential_invalid",
-                checkedAt,
-              ),
+            subjectId: host.id,
+            fields: this.fields.build(
+              await this.projects.getById(host.projectId),
+              host,
               "credential_invalid",
+              checkedAt,
             ),
           },
         );

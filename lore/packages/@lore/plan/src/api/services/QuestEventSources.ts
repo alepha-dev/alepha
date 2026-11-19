@@ -32,7 +32,6 @@ export class QuestEventSources {
       {
         projectId: data.projectId,
         name: "quest.created",
-        identity: `quest:${data.projectId}:${data.shortId}:created`,
         subjectId: data.shortId,
         generatedIdField: "quest_id",
         fields: {
@@ -51,7 +50,6 @@ export class QuestEventSources {
     await this.sources.sourceSave(quest, {
       projectId: quest.projectId,
       name: "quest.assigned",
-      identity: `quest:${quest.id}:assigned:${quest.version}`,
       subjectId: quest.shortId,
       fields: {
         ...this.common(project, quest),
@@ -69,7 +67,6 @@ export class QuestEventSources {
     await this.sources.sourceSave(quest, {
       projectId: quest.projectId,
       name: "quest.held",
-      identity: `quest:${quest.id}:held:${quest.version}`,
       subjectId: quest.shortId,
       fields: {
         ...this.common(project, quest),

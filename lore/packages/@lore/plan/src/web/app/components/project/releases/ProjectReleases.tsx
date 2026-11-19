@@ -365,8 +365,8 @@ const ProjectReleases = () => {
         }}
         refreshSignal={reload}
         filters={{ fields: filterFields }}
-        // Release mail is an automation since #Q3625: the bell subscribes its
-        // viewer to the Release published preset.
+        // Release mail is a subscription (#Q3892): the bell subscribes its
+        // viewer to `release.published`.
         toolbar={
           <SubscriptionBell
             events={["release.published"]}

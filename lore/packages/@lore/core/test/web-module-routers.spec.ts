@@ -1,9 +1,4 @@
-import {
-  AutomationRouter,
-  CoreRouter,
-  LoreAccountSections,
-  LoreCoreWeb,
-} from "@lore/core/web";
+import { CoreRouter, LoreAccountSections, LoreCoreWeb } from "@lore/core/web";
 import { Alepha } from "alepha";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
@@ -27,7 +22,6 @@ describe("LoreCoreWeb's routers", () => {
     alepha.inject(CoreRouter);
 
     expect(alepha.has(LoreCoreWeb)).toBe(false);
-    expect(alepha.has(AutomationRouter)).toBe(false);
     expect(alepha.has(LoreAccountSections)).toBe(false);
   });
 
@@ -37,7 +31,7 @@ describe("LoreCoreWeb's routers", () => {
     });
     alepha.with(LoreCoreWeb);
 
-    for (const router of [CoreRouter, AutomationRouter, LoreAccountSections]) {
+    for (const router of [CoreRouter, LoreAccountSections]) {
       expect(alepha.has(router), router.name).toBe(true);
     }
   });
