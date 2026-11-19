@@ -25,10 +25,14 @@ import type { OAuthScope } from "alepha/api/oauth";
  *   They stay two entries because the device approval page must name the
  *   terminal rather than Claude.
  * - **`openid` reaches nothing.** It says who you are.
- * - **`code` is reached in part** (#E162 decision 7): a token may clone and
- *   push (`code:read`, `code:write`), never create or delete a repository
- *   (`code:admin`). That is done in the API with a signed-in session or an
- *   API key.
+ * - **`code` is reached in part by `mcp`** (#E162 decision 7): an agent's
+ *   connection may clone and push (`code:read`, `code:write`), never create
+ *   or delete a repository (`code:admin`).
+ * - **`cli` reaches all of `code`** (#Q3965, the owner on 2026-11-19): a
+ *   repository is created from a terminal with a `lore login`, with no API
+ *   key minted in the browser first. The login still acts within its user's
+ *   roles, so only a project Admin creates or deletes one. `cli` may do more
+ *   than `mcp`, never the reverse.
  *
  * ## Left out on purpose
  *
@@ -88,7 +92,8 @@ export class LoreOAuthScopes {
    * is refused to a token.
    */
   public static readonly PARTIAL_GROUPS: Record<string, string[]> = {
-    // Clone and push, never create or delete a repository (#E162).
+    // Clone and push; only `cli` creates or deletes a repository
+    // (CLI_ONLY_PERMISSIONS).
     code: ["code:read", "code:write"],
   };
 
@@ -103,6 +108,12 @@ export class LoreOAuthScopes {
     // replaces them, so connected project clients do not receive them.
     "organization",
   ];
+
+  /**
+   * Permissions `cli` holds on top of the member ones, and `mcp` does not.
+   * Each must belong to a group in {@link PARTIAL_GROUPS}.
+   */
+  public static readonly CLI_ONLY_PERMISSIONS: string[] = ["code:admin"];
 
   /**
    * The member groups as the patterns a scope declaration takes.
@@ -136,8 +147,11 @@ export class LoreOAuthScopes {
     cli: {
       label: "Your account, from the terminal",
       description:
-        "What the lore command does as you: push builds and reports, deploy your apps, and read or manage the projects you are a member of.",
-      permissions: LoreOAuthScopes.MEMBER_PERMISSIONS,
+        "What the lore command does as you: push builds and reports, deploy your apps, create and push git repositories, and read or manage the projects you are a member of.",
+      permissions: [
+        ...LoreOAuthScopes.MEMBER_PERMISSIONS,
+        ...LoreOAuthScopes.CLI_ONLY_PERMISSIONS,
+      ],
     },
     openid: {
       label: "Who you are",

@@ -2199,7 +2199,7 @@ export const docsCorpus: DocsSection[] = [
     guide: "MCP tools",
     section: "Code",
     url: "https://alepha.dev/lore/docs/reference-mcp-tools#code",
-    text: "A project's git repositories, when Build is on. Code itself goes through git:\nclone with `lore clone`, which sets up the credentials.\n\n| Tool               | What it does                                                              |\n| ------------------ | ------------------------------------------------------------------------- |\n| `code_repo_list`   | The project's repositories, with their clone URLs.                        |\n| `code_repo_create` | Create an empty repository. An agent's connection cannot: use an API key. |\n| `code_repo_delete` | Delete a repository. An agent's connection cannot: use an API key.        |",
+    text: "A project's git repositories, when Build is on. Code itself goes through git:\nclone with `lore clone`, which sets up the credentials.\n\n| Tool               | What it does                                                                           |\n| ------------------ | -------------------------------------------------------------------------------------- |\n| `code_repo_list`   | The project's repositories, with their clone URLs.                                     |\n| `code_repo_create` | Create an empty repository. An agent's connection cannot: run `lore code repo create`. |\n| `code_repo_delete` | Delete a repository. An agent's connection cannot: run `lore code repo delete`.        |",
   },
   {
     guide: "MCP tools",

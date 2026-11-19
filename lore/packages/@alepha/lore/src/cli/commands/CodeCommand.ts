@@ -20,9 +20,8 @@ import {
  * `lore git-credential`, the helper git calls.
  *
  * Each `lore code repo` verb has its MCP tool (`code_repo_*`) and calls the
- * same action. Creating and deleting need `code:admin`, which no login token
- * carries: with a `lore login` they answer 403, and `LORE_API_KEY` set to an
- * Admin's key does them.
+ * same action. Creating and deleting need `code:admin`, a project Admin's: a
+ * `lore login` carries it (the `cli` scope), an MCP token does not.
  */
 export class CodeCommand {
   protected readonly client = $inject(LoreClientService);
@@ -78,8 +77,7 @@ export class CodeCommand {
 
   public readonly create = $command({
     name: "create",
-    description:
-      "Create an empty git repository (needs code:admin: an Admin's API key, not a login)",
+    description: "Create an empty git repository (project Admins only)",
     args: z.text({
       title: "slug",
       description: "The repository's name, [a-z0-9-]",
@@ -116,7 +114,7 @@ export class CodeCommand {
   public readonly delete = $command({
     name: "delete",
     description:
-      "Delete a git repository and everything in it (needs code:admin: an Admin's API key, not a login)",
+      "Delete a git repository and everything in it (project Admins only)",
     args: z.text({ title: "slug", description: "The repository to delete" }),
     flags: z.object({ ...CodeCommand.PROJECT_FLAG }),
     handler: async ({ args, flags, print }) => {

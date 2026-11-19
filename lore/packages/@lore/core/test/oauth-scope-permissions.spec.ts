@@ -103,13 +103,25 @@ describe("Lore's OAuth scopes", () => {
     ).toEqual([]);
   });
 
-  it("lets a token clone and push, never create or delete a repository (#E162)", ({
+  it("lets both tokens clone and push, and only a CLI login create or delete a repository", ({
     expect,
   }) => {
     for (const scope of ["mcp", "cli"]) {
       expect(reaches(scope, "code:read"), scope).toBe(true);
       expect(reaches(scope, "code:write"), scope).toBe(true);
-      expect(reaches(scope, "code:admin"), scope).toBe(false);
+    }
+    expect(reaches("cli", "code:admin")).toBe(true);
+    expect(reaches("mcp", "code:admin")).toBe(false);
+  });
+
+  it("gives cli extra permissions only inside a partial group", ({
+    expect,
+  }) => {
+    for (const permission of LoreOAuthScopes.CLI_ONLY_PERMISSIONS) {
+      expect(permissions, permission).toContain(permission);
+      expect(Object.keys(LoreOAuthScopes.PARTIAL_GROUPS)).toContain(
+        groupOf(permission),
+      );
     }
   });
 

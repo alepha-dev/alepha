@@ -17,8 +17,9 @@ import {
  * repo list|create|delete` calls, and never more (the parity rule).
  *
  * An MCP token never holds `code:admin` (`LoreOAuthScopes.PARTIAL_GROUPS`),
- * so `code_repo_create` and `code_repo_delete` answer 403 to every token:
- * they exist so an agent learns that, and with an API key they work.
+ * so `code_repo_create` and `code_repo_delete` answer 403 to every MCP
+ * token: they exist so an agent learns to run `lore code repo create` with a
+ * `lore login` instead, and with an API key they work.
  */
 export class CodeTools {
   protected readonly repositories = $inject(CodeRepositoryController);
@@ -45,7 +46,7 @@ export class CodeTools {
   code_repo_create = $tool({
     title: "Create a git repository",
     description:
-      "Create an empty git repository in the project (Build must be on). Needs `code:admin`, which no OAuth token carries: over MCP it answers 403, and an API key or a signed-in session creates it.",
+      "Create an empty git repository in the project (Build must be on). Needs `code:admin`, which no MCP token carries: over MCP it answers 403, and `lore code repo create` with a `lore login` (as a project Admin) or an API key creates it.",
     annotations: { readOnlyHint: false, idempotentHint: false },
     schema: {
       params: codeRepoCreateParamsSchema,
@@ -71,7 +72,7 @@ export class CodeTools {
   code_repo_delete = $tool({
     title: "Delete a git repository",
     description:
-      "Delete a git repository and everything in it, for good. Needs `code:admin`, which no OAuth token carries: over MCP it answers 403, and an API key or a signed-in session deletes it.",
+      "Delete a git repository and everything in it, for good. Needs `code:admin`, which no MCP token carries: over MCP it answers 403, and `lore code repo delete` with a `lore login` (as a project Admin) or an API key deletes it.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: codeRepoDeleteParamsSchema,

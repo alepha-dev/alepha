@@ -19,9 +19,9 @@ import { CodeRepositoryService } from "../services/CodeRepositoryService.ts";
  * ## Who may do what
  *
  * Listing is `code:read`; creating and deleting are `code:admin`, an Admin's
- * permission that no OAuth token carries (`LoreOAuthScopes.PARTIAL_GROUPS`),
- * so a CLI login or an MCP client is refused with 403 and a repository is
- * deleted with a signed-in session or an API key. Both writes need the
+ * permission. A `lore login` holds it (`LoreOAuthScopes.CLI_ONLY_PERMISSIONS`)
+ * and an MCP client does not, so over MCP both answer 403 and a repository
+ * is created from the CLI, a signed-in session or an API key. Both writes need the
  * `build` capability (400 without); the read stays open, as every read of
  * existing data does.
  */
@@ -87,7 +87,7 @@ export class CodeRepositoryController {
     method: "DELETE",
     path: "/projects/:projectId/code/repos/:slug",
     description:
-      "Delete a git repository and everything in it. Needs code:admin, which no CLI login or MCP token holds: use a signed-in session or an API key.",
+      "Delete a git repository and everything in it. Needs code:admin: a project Admin's lore login, signed-in session or API key. An MCP token never holds it.",
     schema: {
       params: z.object({
         projectId: z.integer(),
