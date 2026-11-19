@@ -91,6 +91,14 @@ export const PermissionMatrixGroupRows = (
             // inside it says the answer is settled.
             const closed = locked && !checked;
 
+            // Changed from the column's default. A locked row and a read-only
+            // column hold what they hold by rule, so they never differ.
+            const differs =
+              column.defaults !== undefined &&
+              !column.readOnly &&
+              !permission.lock &&
+              checked !== column.defaults.includes(permission.name);
+
             const box = (
               <Checkbox
                 checked={checked}
@@ -139,8 +147,18 @@ export const PermissionMatrixGroupRows = (
             return (
               <TableCell
                 key={column.key}
-                className="border-border/60 border-s pe-2! text-center"
+                className="border-border/60 relative border-s pe-2! text-center"
               >
+                {/* Decorative: the column header says how many cells differ,
+                    in words. Beside the box, never on it, so the box keeps
+                    its size and its tick. */}
+                {differs && (
+                  <span
+                    aria-hidden
+                    data-slot="permission-differs"
+                    className="bg-warning absolute top-1/2 left-1/2 ms-4 size-1.5 -translate-y-1/2 rounded-full"
+                  />
+                )}
                 {closed ? (
                   // The real checkbox underneath, with the padlock laid over
                   // it, rather than a lock-shaped thing of its own: the box,

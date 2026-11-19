@@ -72,6 +72,32 @@ export class OrganizationRankController {
       ),
   });
 
+  /**
+   * Put `member` or a default rank back on its default: its stored row is
+   * deleted, so a permission the application declares later reaches it.
+   */
+  public readonly resetOrganizationRank = $action({
+    method: "POST",
+    path: "/organizations/:organizationId/ranks/:key/reset",
+    use: [
+      $ownsOrganization({
+        param: "organizationId",
+        requires: "rank:manage",
+      }),
+    ],
+    schema: {
+      params: z.object({
+        organizationId: z.uuid(),
+        key: z.text({ minLength: 1, maxLength: 64 }),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params, user }) => {
+      await this.ranks.reset(params.organizationId, params.key, user);
+      return { ok: true };
+    },
+  });
+
   public readonly deleteOrganizationRank = $action({
     method: "DELETE",
     path: "/organizations/:organizationId/ranks/:key",
