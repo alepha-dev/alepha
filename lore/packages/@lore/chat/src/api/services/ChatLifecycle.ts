@@ -61,10 +61,16 @@ export class ChatLifecycle {
   });
 
   public async deleteProject(projectId: number): Promise<void> {
-    const rooms = await this.rooms.findMany({
-      where: { projectId: { eq: projectId } },
-      columns: ["id"],
-    });
+    await this.deleteRooms({ projectId: { eq: projectId } });
+  }
+
+  /**
+   * Rooms and everything hanging off them, children first.
+   */
+  protected async deleteRooms(
+    where: { projectId: { eq: number } } | { personalOf: { eq: string } },
+  ): Promise<void> {
+    const rooms = await this.rooms.findMany({ where, columns: ["id"] });
     const roomIds = rooms.map((room) => room.id);
     if (roomIds.length > 0) {
       // The files first: once the messages are gone nothing lists them.
@@ -83,10 +89,14 @@ export class ChatLifecycle {
       await this.members.deleteMany({ roomId: { inArray: roomIds } });
       await this.messages.deleteMany({ roomId: { inArray: roomIds } });
     }
-    await this.rooms.deleteMany({ projectId: { eq: projectId } });
+    if (roomIds.length > 0) {
+      await this.rooms.deleteMany({ id: { inArray: roomIds } });
+    }
   }
 
   public async deleteAccount(userId: string): Promise<void> {
+    // Their own rooms with an agent are theirs alone: they go with them.
+    await this.deleteRooms({ personalOf: { eq: userId } });
     await this.mentions.deleteMany({ userId: { eq: userId } });
     await this.reactions.deleteMany({ userId: { eq: userId } });
     await this.members.deleteMany({ userId: { eq: userId } });

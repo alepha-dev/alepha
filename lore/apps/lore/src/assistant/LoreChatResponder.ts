@@ -58,6 +58,8 @@ export class LoreChatResponder {
     this.registry.register({
       name: LoreChatResponder.NAME,
       label: "Lore",
+      // The member's own room with Lore replaces the dock (#Q3942).
+      personal: true,
       respond: (request) => this.respond(request),
       resume: (decision) => this.resume(decision),
     });

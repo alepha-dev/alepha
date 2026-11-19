@@ -31,7 +31,6 @@ describe("the assistant's context", () => {
     expect(system).toContain("pass that id as `project` to every tool");
     expect(system).toContain("say it is not in this project and stop");
     expect(system).toContain("`contentLanguage`, English when it is absent");
-    expect(system).toContain("ask which project they mean");
     await alepha.stop();
   });
 
@@ -77,7 +76,9 @@ describe("the assistant's context", () => {
     await alepha.stop();
   });
 
-  it("offers project_list alone off a project page", async ({ expect }) => {
+  // Outside a project there is no assistant since it answers in a chat
+  // room (#Q3942): a turn there is offered nothing.
+  it("offers no tool off a project page", async ({ expect }) => {
     const { alepha, controller, signIn, read, ai } = await bootAssistant({
       enabled: "1",
     });
@@ -93,13 +94,13 @@ describe("the assistant's context", () => {
         },
       }),
     );
-    expect(ai.last!.tools?.map((t) => t.name)).toEqual(["project_list"]);
+    expect(ai.last!.tools ?? []).toEqual([]);
 
     ai.script([{ type: "text", text: "Which project?" }]);
     await read(
       await controller.chat.fetch({ headers, body: { message: "hello" } }),
     );
-    expect(ai.last!.tools?.map((t) => t.name)).toEqual(["project_list"]);
+    expect(ai.last!.tools ?? []).toEqual([]);
     await alepha.stop();
   });
 });

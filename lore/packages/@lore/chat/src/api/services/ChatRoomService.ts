@@ -206,6 +206,32 @@ export class ChatRoomService {
     return room;
   }
 
+  /**
+   * The member's own room with `agent` in this project, created on first
+   * open (#Q3942): private, its only member the member, every message a
+   * prompt.
+   */
+  public async personalRoom(
+    projectId: number,
+    userId: string,
+    agent: string,
+  ): Promise<ChatRoom> {
+    const found = await this.rooms.findOne({
+      where: { projectId: { eq: projectId }, personalOf: { eq: userId } },
+    });
+    if (found) return found;
+    const room = await this.rooms.create({
+      projectId,
+      name: `${agent}-${userId.slice(0, 8)}`,
+      private: true,
+      createdBy: userId,
+      personalOf: userId,
+      agent,
+    });
+    await this.members.create({ roomId: room.id, userId });
+    return room;
+  }
+
   public async rename(
     projectId: number,
     roomId: string,
@@ -279,6 +305,11 @@ export class ChatRoomService {
     if (!room.private) {
       throw new BadRequestError(
         "An open room needs no invite: every project member can join it",
+      );
+    }
+    if (room.personalOf) {
+      throw new ConflictError(
+        "A personal room is its member's alone: nobody is invited in",
       );
     }
     // Somebody who cannot read chat in this project cannot be put in a room:
@@ -418,6 +449,8 @@ export class ChatRoomService {
       memberCount,
       joined: !!mine,
       ...(mine ? { notifyLevel: mine.notifyLevel } : {}),
+      ...(room.personalOf ? { personal: true } : {}),
+      ...(room.agent ? { agent: room.agent } : {}),
     };
   }
 }

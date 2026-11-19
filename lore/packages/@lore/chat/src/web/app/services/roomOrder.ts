@@ -58,6 +58,9 @@ export const orderRooms = (
   });
 
   const sorted = [...kept].sort((a, b) => {
+    // The reader's own room with the agent is pinned on top (#Q3942).
+    const byPersonal = Number(!!b.personal) - Number(!!a.personal);
+    if (byPersonal !== 0) return byPersonal;
     const byUnread = Number(unreadOf(b) > 0) - Number(unreadOf(a) > 0);
     if (byUnread !== 0) return byUnread;
     const byActivity = lastActivityOf(b).localeCompare(lastActivityOf(a));
@@ -67,6 +70,7 @@ export const orderRooms = (
 
   const isQuiet = (room: ChatRoomResource) =>
     room.id !== options.selectedId &&
+    !room.personal &&
     unreadOf(room) === 0 &&
     (!!room.archivedAt ||
       options.now - Date.parse(lastActivityOf(room)) > QUIET_AFTER_MS);

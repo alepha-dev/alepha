@@ -286,4 +286,86 @@ describe("@lore in a chat room", () => {
     expect(answer?.agentRun?.status).toBe("failed");
     expect(answer?.body).toContain("Lore could not finish");
   });
+
+  describe("the personal room (#Q3942)", () => {
+    const open = (
+      ctx: Awaited<ReturnType<typeof boot>>,
+      user: { id: string },
+    ) =>
+      ctx.alepha
+        .inject(ChatRoomController)
+        .openChatPersonalRoom.fetch(
+          { params: { projectId: ctx.project.id } },
+          { user: user as never },
+        );
+
+    it("is one private room per member, where every message is a prompt and nobody is invited", async ({
+      expect,
+    }) => {
+      const ctx = await boot();
+      const first = (await open(ctx, ctx.owner.user)).data;
+      const again = (await open(ctx, ctx.owner.user)).data;
+      expect(again.id).toBe(first.id);
+      expect(first).toMatchObject({
+        private: true,
+        personal: true,
+        agent: "lore",
+      });
+
+      ctx.ai.script([{ type: "text", text: "Here you go." }]);
+      await ctx.messages.sendChatMessage.fetch(
+        {
+          params: { projectId: ctx.project.id, roomId: first.id },
+          body: { body: "what is open?" },
+        },
+        { user: ctx.owner.user as never },
+      );
+      await ctx.runner.settled();
+      const page = await ctx.messages.listChatMessages.fetch(
+        { params: { projectId: ctx.project.id, roomId: first.id }, query: {} },
+        { user: ctx.owner.user as never },
+      );
+      expect(page.data.items[0]).toMatchObject({
+        agent: "lore",
+        body: "Here you go.",
+      });
+      // The same in-project tools as the dock had: the run is in a project.
+      const tools = (ctx.ai.requests[0] as { tools?: Array<{ name: string }> })
+        .tools;
+      expect(tools?.map((tool) => tool.name)).toContain("quest_list");
+
+      const invite = await ctx.alepha
+        .inject(ChatRoomController)
+        .inviteChatRoomMember.fetch(
+          {
+            params: { projectId: ctx.project.id, roomId: first.id },
+            body: { userId: ctx.member.id },
+          },
+          { user: ctx.owner.user as never },
+        )
+        .catch((error) => error);
+      expect(invite.status).toBe(409);
+
+      // Nobody else sees it.
+      const theirs = await ctx.alepha
+        .inject(ChatRoomController)
+        .listChatRooms.fetch(
+          { params: { projectId: ctx.project.id } },
+          { user: ctx.member.user as never },
+        );
+      expect(theirs.data.items.map((it) => it.id)).not.toContain(first.id);
+    });
+
+    it("does not exist with AI off, and an existing one takes no new prompt", async ({
+      expect,
+    }) => {
+      const on = await boot();
+      const room = (await open(on, on.owner.user)).data;
+      expect(room.personal).toBe(true);
+
+      const off = await boot("0");
+      const refused = await open(off, off.owner.user).catch((error) => error);
+      expect(refused.status).toBe(404);
+    });
+  });
 });

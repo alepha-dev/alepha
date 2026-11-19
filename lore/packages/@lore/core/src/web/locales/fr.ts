@@ -639,6 +639,10 @@ export default {
   "chat.composer.label": "Message",
   "chat.composer.placeholder": "Message dans #$1",
   "chat.composer.send": "Envoyer",
+  "chat.rooms.personal": "Lore",
+  "chat.room.personalEmpty":
+    "Seulement vous et Lore. Chaque message ici est une demande.",
+  "assistant.room.open": "Demander à Lore",
   "chat.agent.tag": "agent",
   "chat.agent.thinking": "Réflexion en cours…",
   "chat.agent.waitingFor": "En attente de la décision de $1.",
@@ -4913,42 +4917,8 @@ export default {
   "backup.events": "Événements",
   "backup.noEvents": "Aucun événement de sauvegarde pour l'instant.",
   // The in-app assistant (#E120): its header toggle, dock and tool steps.
-  "assistant.open": "Assistant",
-  "assistant.title": "Assistant Lore",
-  "assistant.help": "Ce que l'assistant sait faire",
-  "assistant.suggest.open": "Qu'est-ce qui reste ouvert dans ce projet ?",
-  "assistant.suggest.epic": "Que manque-t-il encore à l'epic en cours ?",
-  "assistant.suggest.file": "Créer une quête pour ...",
-  "assistant.suggest.reports.week":
-    "Qu’est-ce qui a changé dans ce projet cette semaine ?",
-  "assistant.suggest.reports.slow":
-    "Quels domaines ralentissent, et pourquoi ?",
-  "assistant.suggest.reports.summary":
-    "Résume ces rapports pour un point d’avancement",
-  "assistant.suggest.quest.left": "Que reste-t-il à faire sur cette quête ?",
-  "assistant.suggest.quest.discussion": "Résume la discussion de cette quête",
-  "assistant.suggest.quest.dependencies":
-    "De quoi dépend cette quête, et est-elle prête ?",
-  "assistant.suggest.epic.lack": "Que manque-t-il encore à cette épopée ?",
-  "assistant.suggest.epic.blocked":
-    "Quelles quêtes de cette épopée sont bloquées ou en attente ?",
-  "assistant.suggest.epic.next": "Quelle quête de cette épopée faire ensuite ?",
-  "assistant.suggest.feedback.pending":
-    "Quels retours attendent encore d’être triés ?",
-  "assistant.suggest.feedback.group":
-    "Regroupe les retours en attente par sujet",
-  "assistant.suggest.feedback.file":
-    "Crée une quête pour le problème le plus signalé",
-  "assistant.suggest.apps.deploys":
-    "Quels déploiements ont échoué récemment, et pourquoi ?",
-  "assistant.suggest.apps.errors":
-    "Quelles applications signalent le plus d’erreurs ?",
-  "assistant.suggest.apps.silent":
-    "Quelles applications ont cessé de rapporter ?",
   "assistant.tool.failed": "Échec : $1",
   "assistant.tool.denied": "Annulé : $1",
-  "assistant.tool.project_list.running": "Liste de vos projets",
-  "assistant.tool.project_list.done": "Projets listés",
   "assistant.tool.project_info.running": "Lecture du projet",
   "assistant.tool.project_info.done": "Projet lu",
   "assistant.tool.quest_list.running": "Liste des quêtes",

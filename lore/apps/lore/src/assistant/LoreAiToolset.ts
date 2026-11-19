@@ -52,18 +52,9 @@ export class LoreAiToolset {
    * resolved here, the first time the assistant or its access check asks.
    */
   protected built?: {
-    offProject: LoreAiTool[];
     inProject: LoreAiTool[];
     writes: LoreAiTool[];
   };
-
-  /**
-   * Offered off a project page, where nothing project-scoped can be: Lore's
-   * search and every list take a project.
-   */
-  public get offProject(): LoreAiTool[] {
-    return this.tables().offProject;
-  }
 
   /**
    * Offered inside a project, each when the user's effective permissions in
@@ -114,10 +105,6 @@ export class LoreAiToolset {
     const feedbackController = this.alepha.inject(FeedbackController);
     const commentController = this.alepha.inject(QuestCommentController);
     const docsController = this.alepha.inject(LoreAiDocsController);
-
-    const offProject: LoreAiTool[] = [
-      { tool: projectTools.project_list, permissions: [] },
-    ];
 
     const inProject: LoreAiTool[] = [
       {
@@ -220,7 +207,7 @@ export class LoreAiToolset {
       },
     ];
 
-    return { offProject, inProject, writes };
+    return { inProject, writes };
   }
 
   /**
@@ -234,9 +221,9 @@ export class LoreAiToolset {
    * Every tool, in declaration order: what `$ai({ tools })` takes.
    */
   public get tools(): Array<ToolPrimitive<any> | ActionPrimitive<any>> {
-    return [...this.offProject, ...this.projectScoped].map(
-      (entry) => entry.tool,
-    );
+    // Every run is in a project since the assistant answers in a chat room
+    // (#Q3942): there is no off-project table any more.
+    return this.projectScoped.map((entry) => entry.tool);
   }
 
   /**

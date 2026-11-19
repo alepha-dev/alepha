@@ -8,7 +8,7 @@ import {
 } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { ChevronDown, Hash, Lock } from "lucide-react";
+import { Bot, ChevronDown, Hash, Lock } from "lucide-react";
 import { type KeyboardEvent, useState } from "react";
 
 import type { ChatRoomResource } from "../../../schemas/index.ts";
@@ -33,7 +33,9 @@ const RoomJumpList = (props: RoomJumpListProps) => {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [active, setActive] = useState(0);
-  const Icon = props.room.private ? Lock : Hash;
+  const Icon = props.room.personal ? Bot : props.room.private ? Lock : Hash;
+  const titleOf = (room: ChatRoomResource) =>
+    room.personal ? tr("chat.rooms.personal") : room.name;
 
   const matches = props.rooms.filter((room) =>
     room.name.includes(filter.trim().toLowerCase()),
@@ -72,7 +74,7 @@ const RoomJumpList = (props: RoomJumpListProps) => {
         }
       >
         <Icon className="text-muted-foreground size-4" />
-        <h1 className="truncate font-medium">{props.room.name}</h1>
+        <h1 className="truncate font-medium">{titleOf(props.room)}</h1>
         <ChevronDown className="text-muted-foreground size-3.5" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-2">
@@ -105,7 +107,7 @@ const RoomJumpList = (props: RoomJumpListProps) => {
                 ) : (
                   <Hash className="text-muted-foreground size-3.5" />
                 )}
-                {room.name}
+                {titleOf(room)}
               </button>
             </li>
           ))}

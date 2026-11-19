@@ -6,6 +6,7 @@ import {
   ChatLifecycle,
   ChatMessageController,
   ChatRoomController,
+  ChatRoomService,
 } from "../src/api/index.ts";
 import { ChatRows, ChatTestKit } from "./chatTestKit.ts";
 
@@ -146,7 +147,12 @@ describe("chat lifecycle", () => {
     const mentioned = { userId: { eq: kit.member.id } };
     expect(await rows.mentions.count(mentioned)).toBe(1);
 
+    const personal = await kit.alepha
+      .inject(ChatRoomService)
+      .personalRoom(kit.projectId, kit.member.id, "lore");
     await kit.alepha.inject(UserService).deleteUser(kit.member.id);
+    // Their own room with the agent goes with them (#Q3942).
+    expect(await rows.rooms.count({ id: { eq: personal.id } })).toBe(0);
 
     expect(await rows.messages.count()).toBe(before);
     const theirs = (
