@@ -178,9 +178,18 @@ export const AdminHosts = () => {
               </span>
             ),
           },
+          // The tag pill of the quests pages (#Q3941): every tag chip is
+          // `<Badge variant="tint">` in its tone (`tagTone` in @lore/plan),
+          // and a type has no colour of its own, so `neutral`, as an
+          // uncoloured tag is. The State badges beside it are statuses, not
+          // tags, and keep their own look.
           type: {
             label: "Type",
-            cell: (host) => <Badge variant="outline">{host.type}</Badge>,
+            cell: (host) => (
+              <Badge variant="tint" tone="neutral" data-testid="host-type">
+                {host.type}
+              </Badge>
+            ),
           },
           project: {
             label: "Project",
