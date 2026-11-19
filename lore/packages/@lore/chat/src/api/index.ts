@@ -1,6 +1,11 @@
 import { LoreCoreApi } from "@lore/core/api";
 import { $module } from "alepha";
 
+import { ChatRoomController } from "./controllers/ChatRoomController.ts";
+import { ChatRoomHooks } from "./hooks/ChatRoomHooks.ts";
+import { ChatRoomMerge } from "./services/ChatRoomMerge.ts";
+import { ChatRoomService } from "./services/ChatRoomService.ts";
+
 /**
  * The server half of `@lore/chat` (#E161): project rooms, where members talk
  * to each other and to the Lore agent.
@@ -18,5 +23,10 @@ import { $module } from "alepha";
 export const LoreChatApi = $module({
   name: "lore.chat.api",
   imports: [LoreCoreApi],
-  services: [],
+  services: [ChatRoomService, ChatRoomHooks, ChatRoomMerge, ChatRoomController],
 });
+
+export { ChatRoomController } from "./controllers/ChatRoomController.ts";
+export { chatRoomMembers } from "./entities/chatRoomMembers.ts";
+export { type ChatRoom, chatRooms } from "./entities/chatRooms.ts";
+export { ChatRoomService } from "./services/ChatRoomService.ts";
