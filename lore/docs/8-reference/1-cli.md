@@ -351,6 +351,19 @@ A measure takes `--metric-kind` (`vital`, `availability`, `latency` or `api`),
 `--metric-env` and `--metric-window-days`. Run evidence is pushed with
 `lore attachments push --run <id> [--criterion C2 | --step 3] <file>`.
 
+## Chat
+
+A project's chat rooms, for a script or a coding agent that reports into a
+room. A private room you are not in does not exist here, as in the app.
+`@name` in a message notifies that member; `@lore` asks the Lore agent,
+which answers in the room with your rights.
+
+| Command                                | What it does                                                          | Flags                                         |
+| -------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------- |
+| `lore chat room list`                  | The rooms you can see, open and private, with what is unread in each. |                                               |
+| `lore chat message list <room>`        | A room's latest messages, newest first.                               | `--before <message id>`, `--limit` (1 to 100) |
+| `lore chat message send <room> <text>` | Post a message as you.                                                |                                               |
+
 ## Notifications
 
 Who is told when something changes in a project, and your own inbox. A

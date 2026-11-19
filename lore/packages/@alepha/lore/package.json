@@ -114,6 +114,7 @@
   },
   "peerDependencies": {
     "@lore/build": "*",
+    "@lore/chat": "*",
     "@lore/core": "*",
     "@lore/plan": "*",
     "@lore/plan-requirements": "*",
@@ -126,6 +127,9 @@
   },
   "peerDependenciesMeta": {
     "@lore/build": {
+      "optional": true
+    },
+    "@lore/chat": {
       "optional": true
     },
     "@lore/core": {

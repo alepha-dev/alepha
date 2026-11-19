@@ -1,6 +1,8 @@
 import { LoreCoreMcp } from "@lore/core/mcp";
 import { $module } from "alepha";
 
+import { ChatTools } from "./tools/ChatTools.ts";
+
 /**
  * The MCP tools of `@lore/chat` (#E161).
  *
@@ -12,5 +14,8 @@ export const LoreChatMcp = $module({
   name: "lore.chat.mcp",
   // Core first: booting this module alone boots what it depends on.
   imports: [LoreCoreMcp],
-  services: [],
+  // `chat_*`, each paired with a `lore chat ...` command (#Q3933).
+  services: [ChatTools],
 });
+
+export { ChatTools } from "./tools/ChatTools.ts";

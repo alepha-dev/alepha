@@ -10,6 +10,7 @@ import { AreaCommand } from "./commands/AreaCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
 import { ChannelCommand } from "./commands/ChannelCommand.ts";
+import { ChatCommand } from "./commands/ChatCommand.ts";
 import { CodeCommand } from "./commands/CodeCommand.ts";
 import { DeployCommand } from "./commands/DeployCommand.ts";
 import { DirectoryCommand } from "./commands/DirectoryCommand.ts";
@@ -125,6 +126,7 @@ export const AlephaLoreCli = $module({
     QuestCommand,
     EpicCommand,
     AreaCommand,
+    ChatCommand,
     PersonaCommand,
     UseCaseCommand,
     RequirementCommand,

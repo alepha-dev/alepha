@@ -1,4 +1,4 @@
-import { Alepha, type ZObject, type ZType } from "alepha";
+import { Alepha, type ZObject, type ZType, z } from "alepha";
 import {
   AlephaCommand,
   CliProvider,
@@ -82,10 +82,14 @@ describe("lore -h and lore help", () => {
 
     const untitled = cli.commands
       .filter((command: CommandPrimitive) => command.options.args)
-      .filter(
-        (command: CommandPrimitive) =>
-          !cli.testSchemaMeta(command.options.args as ZType).title,
-      )
+      .filter((command: CommandPrimitive) => {
+        const args = command.options.args as ZType;
+        // A tuple of positionals is titled item by item: `<room> <text>`.
+        const items = z.schema.items(args);
+        return items.length > 0
+          ? !items.every((item) => cli.testSchemaMeta(item as ZType).title)
+          : !cli.testSchemaMeta(args).title;
+      })
       .map(
         (command: CommandPrimitive) =>
           `lore ${cli.testGetCommandPath(command)}`,

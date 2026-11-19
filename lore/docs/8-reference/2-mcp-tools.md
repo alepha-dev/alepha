@@ -202,6 +202,18 @@ and [Traceability](/lore/docs/plan-traceability).
 | `requirement_coverage`                                           | Readiness, failing Musts and the coverage gaps, for a release or the project.    |
 | `criterion_verify_link`                                          | Say which requirement a criterion verifies.                                      |
 
+## Chat
+
+A project's chat rooms. A private room you are not in does not exist for
+these tools. A sent `@lore` starts the agent with your rights, under the
+same limits as the app.
+
+| Tool                | What it does                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| `chat_room_list`    | The rooms you can see, with how many messages and mentions of you are unread in each. |
+| `chat_message_list` | A room's latest messages, newest first, paged with `before`.                          |
+| `chat_message_send` | Post a message in a room, as you.                                                     |
+
 ## Notifications
 
 Who is told when something changes in a project, and your own inbox. A

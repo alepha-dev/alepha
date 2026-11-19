@@ -66,6 +66,9 @@ const POSITIONAL = new Set([
   "section",
   "host",
   "slug",
+  // `lore chat message list <room>` and `send <room> <text>` (#Q3933).
+  "room",
+  "body",
 ]);
 
 /**
