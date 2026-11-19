@@ -448,14 +448,6 @@ jobs:
       - name: Build Packages
         run: yarn alepha package:docs && yarn workspaces foreach -Wpt --include '{alepha,create-alepha,@alepha/*}' run build
 
-      # `cli.e2e.spec.ts` serves the node build under Deno and fails without
-      # it, on purpose: a skipped test is how a green run lies. Only the
-      # current Deno is supported, hence `v2.x` rather than a pin.
-      - name: Setup Deno
-        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
-        with:
-          deno-version: v2.x
-
       # `image.e2e.spec.ts` builds, runs and pushes a scaffolded project's
       # images with `alepha image` (#Q3361), on the runner's Docker.
       - name: Run CLI E2E Tests

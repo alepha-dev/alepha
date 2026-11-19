@@ -22,7 +22,6 @@ playwright-report
 **/.env.*
 !**/.env.example
 
-deno.lock
 .e2e-tmp
 docs/plans
 docs/superpowers

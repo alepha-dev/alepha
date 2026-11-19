@@ -239,12 +239,6 @@ jobs:
       - name: Build Project
         run: yarn build
 
-      # The spec serves the node build under Deno and fails without it.
-      - name: Setup Deno
-        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
-        with:
-          deno-version: v2.x
-
       - name: Run CLI E2E Tests on Windows
         timeout-minutes: 45
         run: yarn w e2e-cli test src/cli.e2e.spec.ts
