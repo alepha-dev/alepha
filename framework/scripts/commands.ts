@@ -89,7 +89,7 @@ export class AlephaCommands {
    *
    * What survives is worth about three minutes, measured: ~146s of it is
    * `yarn test`, and lint plus the six parallel audits are under 30s
-   * together. `copy` in front of the lint adds ~20s of generators (#Q2358).
+   * together. `gen` in front of the lint adds ~20s of generators (#Q2358).
    * It catches a typo, a bad import, a broken unit test, a missing i18n key,
    * a JSDoc that breaks a docs rule. It cannot catch a build failure, an SSR
    * regression or anything an e2e covers, and it is not supposed to.
@@ -162,10 +162,9 @@ export class AlephaCommands {
 
       // `gen`, then `lint`, before anything reads the tree: the order CI's
       // `checks` job has always used. `gen` runs the docs generators
-      // (`gen:docs`, `gen:tree`) and nothing else; it was `copy` until #Q3913,
-      // which also fanned out to every workspace's own `copy` and linted.
+      // (`gen:docs`, `gen:tree`) and nothing else (#Q3913).
       //
-      // The regeneration went first as a bare `lint` until #Q2358, on the grounds that this
+      // The first step was a bare `lint` until #Q2358, on the grounds that this
       // lane had nothing generated to format. It did: the reference pages are
       // tracked, and `check:docs` below scans them. Without a regeneration it
       // scanned whatever the checkout generated last, while CI scanned pages
