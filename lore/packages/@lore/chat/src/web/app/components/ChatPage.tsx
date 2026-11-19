@@ -1,5 +1,12 @@
 import { useIsMobile } from "@alepha/ui";
-import { currentProjectAtom, type I18n, useProjectUsers } from "@lore/core/web";
+import {
+  canInProject,
+  currentProjectAtom,
+  displayName,
+  type I18n,
+  mentionHandle,
+  useProjectUsers,
+} from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   useAction,
@@ -19,11 +26,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessageController } from "../../../api/controllers/ChatMessageController.ts";
 import type { ChatRoomController } from "../../../api/controllers/ChatRoomController.ts";
 import type {
+  ChatMessageResource,
   ChatRoomResource,
   ChatServerFrame,
 } from "../../../schemas/index.ts";
 import { useChatFeed } from "../hooks/useChatFeed.ts";
 import { useRoomMessages } from "../hooks/useRoomMessages.ts";
+import type { ChatMentionCandidate } from "./ChatComposer.tsx";
 import Conversation from "./Conversation.tsx";
 import RoomList from "./RoomList.tsx";
 
@@ -185,6 +194,56 @@ const ChatPage = () => {
   const send = async (body: string): Promise<boolean> =>
     room ? (await sendMessage.run(room.id, body)).ok : false;
 
+  const editMessage = useAction<
+    [message: ChatMessageResource, body: string],
+    void
+  >(
+    {
+      handler: async (_context, message, body) => {
+        const updated = await messagesApi.editChatMessage({
+          params: { projectId, roomId: message.roomId, messageId: message.id },
+          body: { body },
+        });
+        conversation.add(updated);
+      },
+    },
+    [messagesApi, projectId, conversation.add],
+  );
+
+  const deleteMessage = useAction<[message: ChatMessageResource], void>(
+    {
+      handler: async (_context, message) => {
+        await messagesApi.deleteChatMessage({
+          params: { projectId, roomId: message.roomId, messageId: message.id },
+        });
+        conversation.apply({
+          type: "message.deleted",
+          projectId,
+          roomId: message.roomId,
+          messageId: message.id,
+        });
+        refreshLists();
+      },
+    },
+    [messagesApi, projectId, conversation.apply, refreshLists],
+  );
+
+  // Who `@` offers: the members of a private room, everyone who reads an
+  // open one; never the writer. Agents join with the agent quest.
+  const candidates: ChatMentionCandidate[] = room?.private
+    ? (memberPage?.items ?? [])
+        .filter((member) => member.userId !== me && member.name)
+        .map((member) => ({
+          handle: member.name!,
+          label: member.label ?? member.name!,
+        }))
+    : users
+        .filter((user) => user.id !== me)
+        .map((user) => ({
+          handle: mentionHandle(user),
+          label: displayName(user),
+        }));
+
   const dateTime = useInject(DateTimeProvider);
   const [now] = useState(() => dateTime.nowMillis());
 
@@ -210,6 +269,14 @@ const ChatPage = () => {
       hasMore={conversation.hasMore}
       loading={conversation.loading}
       canWrite={messagesApi.sendChatMessage.can()}
+      canManage={!!project && canInProject(project, "chat:manage")}
+      candidates={candidates}
+      onEdit={async (message, body) =>
+        (await editMessage.run(message, body)).ok
+      }
+      onDelete={async (message) => {
+        await deleteMessage.run(message);
+      }}
       onLoadOlder={conversation.loadOlder}
       onSend={send}
       onBack={isMobile ? () => open() : undefined}

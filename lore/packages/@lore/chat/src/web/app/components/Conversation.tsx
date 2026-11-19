@@ -1,27 +1,20 @@
-import { Button, cn, TimeAgo, UserAvatar } from "@alepha/ui";
+import { Button, UserAvatar } from "@alepha/ui";
 import {
   displayName,
   type I18n,
-  LoreViewer,
   mentionHandle,
   type ProjectUser,
 } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowLeft, Hash, Lock } from "lucide-react";
-import {
-  type ReactNode,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 import type {
   ChatMessageResource,
   ChatRoomResource,
 } from "../../../schemas/index.ts";
-import { chatMarkdown } from "../services/chatMarkdown.ts";
-import ChatComposer from "./ChatComposer.tsx";
+import ChatComposer, { type ChatMentionCandidate } from "./ChatComposer.tsx";
+import ChatMessageRow from "./ChatMessageRow.tsx";
 
 /**
  * Two messages by the same author this close together share one header.
@@ -39,6 +32,20 @@ export interface ConversationProps {
   hasMore: boolean;
   loading: boolean;
   canWrite: boolean;
+  /**
+   * `chat:manage`: deletes anyone's message.
+   */
+  canManage: boolean;
+  /**
+   * What the composer's `@` popup offers: who can see the room, agents
+   * first.
+   */
+  candidates: ChatMentionCandidate[];
+  /**
+   * Resolves `true` when the edit was saved.
+   */
+  onEdit: (message: ChatMessageResource, body: string) => Promise<boolean>;
+  onDelete: (message: ChatMessageResource) => Promise<void>;
   onLoadOlder: () => void;
   /**
    * Resolves `true` when the message was sent, and the composer empties.
@@ -119,77 +126,32 @@ const Conversation = (props: ConversationProps) => {
         )
       : tr("chat.message.removedMember"));
 
-  const rows: ReactNode[] = [];
-  props.messages.forEach((message, index) => {
+  const rows = props.messages.map((message, index) => {
     const previous = props.messages[index - 1];
-    const sameAuthor =
+    const continued =
       !!previous &&
       !previous.deletedAt &&
       (previous.authorId ?? previous.agent) ===
         (message.authorId ?? message.agent) &&
       Date.parse(message.createdAt) - Date.parse(previous.createdAt) <
         GROUP_WITHIN_MS;
-    const mine = !!props.me && message.mentions.includes(props.me);
-    rows.push(
-      <li
+    const own = !!props.me && message.authorId === props.me;
+    return (
+      <ChatMessageRow
         key={message.id}
-        data-testid="chat-message"
-        data-mentions-me={mine ? "true" : undefined}
-        className={cn(
-          "flex gap-3 px-4",
-          sameAuthor ? "pt-0.5" : "pt-3",
-          mine && "bg-amber-500/10",
-        )}
-      >
-        <div className="w-8 shrink-0">
-          {!sameAuthor && (
-            <UserAvatar
-              public
-              user={
-                message.authorId ? userById.get(message.authorId) : undefined
-              }
-              alt=""
-              className="size-8"
-            />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          {!sameAuthor && (
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm font-semibold">{authorOf(message)}</span>
-              <TimeAgo
-                value={message.createdAt}
-                className="text-muted-foreground text-xs"
-              />
-            </div>
-          )}
-          {message.deletedAt ? (
-            <p className="text-muted-foreground text-sm italic">
-              {tr("chat.message.deleted")}
-            </p>
-          ) : (
-            <div className="text-sm">
-              <LoreViewer
-                element={{
-                  kind: "chat",
-                  projectId: props.projectId,
-                  projectSlug: props.projectSlug,
-                  id: message.id,
-                }}
-                content={chatMarkdown(message.body, {
-                  projectSlug: props.projectSlug,
-                  members: handles,
-                })}
-              />
-              {message.editedAt && (
-                <span className="text-muted-foreground text-xs">
-                  {tr("chat.message.edited")}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </li>,
+        message={message}
+        author={authorOf(message)}
+        user={message.authorId ? userById.get(message.authorId) : undefined}
+        continued={continued}
+        mentionsMe={!!props.me && message.mentions.includes(props.me)}
+        projectId={props.projectId}
+        projectSlug={props.projectSlug}
+        handles={handles}
+        canEdit={own && props.canWrite && !room.archivedAt}
+        canDelete={own || props.canManage}
+        onEdit={(body) => props.onEdit(message, body)}
+        onDelete={() => props.onDelete(message)}
+      />
     );
   });
 
@@ -245,14 +207,21 @@ const Conversation = (props: ConversationProps) => {
             {tr("chat.room.empty")}
           </p>
         )}
-        <ul>{rows}</ul>
+        {/* A log: a screen reader announces each new message politely. */}
+        <div role="log" aria-label={tr("chat.room.messages")}>
+          <ul>{rows}</ul>
+        </div>
       </div>
       {room.archivedAt ? (
         <p className="text-muted-foreground border-t p-3 text-center text-sm">
           {tr("chat.room.archivedNotice")}
         </p>
       ) : props.canWrite ? (
-        <ChatComposer room={room} onSend={props.onSend} />
+        <ChatComposer
+          room={room}
+          candidates={props.candidates}
+          onSend={props.onSend}
+        />
       ) : (
         <p className="text-muted-foreground border-t p-3 text-center text-sm">
           {tr("chat.room.readOnly")}

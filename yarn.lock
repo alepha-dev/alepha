@@ -5486,6 +5486,7 @@ __metadata:
   resolution: "e2e@workspace:lore/apps/e2e"
   dependencies:
     "@alepha/lore": "workspace:*"
+    "@axe-core/playwright": "npm:^4.14.0"
     "@lore/plan": "workspace:*"
     "@lore/ship": "workspace:*"
     "@playwright/test": "npm:^1.65.1"

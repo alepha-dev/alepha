@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { scanPageAccessibility } from "alepha/testing/playwright";
 
 import { expect, test } from "./_fixtures.ts";
 import {
@@ -79,6 +80,61 @@ test.describe("Chat", () => {
       );
       await expect(row).toContainText("first line");
       await expect(row.getByText(/unread/)).toHaveCount(0);
+
+      // The @ popup: the member is offered, arrows and Enter insert them.
+      const handle = member.email.split("@")[0]!;
+      await composer.click();
+      await composer.pressSequentially(`ping @${handle.slice(0, 8)}`);
+      const popup = page.getByRole("listbox");
+      await expect(popup).toBeVisible();
+      await expect(composer).toHaveAttribute("aria-expanded", "true");
+      expect(
+        await scanPageAccessibility(page, {
+          include: ['[data-testid="chat-conversation"]'],
+        }),
+      ).toEqual([]);
+      await composer.press("Enter");
+      await expect(popup).toHaveCount(0);
+      await expect(composer).toHaveValue(`ping @${handle} `);
+      await composer.pressSequentially("please look");
+      await composer.press("Enter");
+      const pinged = member.page
+        .getByTestId("chat-message")
+        .filter({ hasText: "please look" });
+      await expect(pinged).toHaveAttribute("data-mentions-me", "true", {
+        timeout: 15_000,
+      });
+
+      // Edit, from the message's menu, by keyboard: live for the member.
+      const mine = page
+        .getByTestId("chat-message")
+        .filter({ hasText: "please look" });
+      await mine.hover();
+      await mine.getByRole("button", { name: "Message actions" }).focus();
+      await page.keyboard.press("Enter");
+      await page.getByRole("menuitem", { name: "Edit" }).click();
+      const editor = page.getByRole("textbox", { name: "Edit message" });
+      await expect(editor).toBeFocused();
+      await editor.fill("please look again");
+      await editor.press("Enter");
+      await expect(
+        member.page
+          .getByTestId("chat-message")
+          .filter({ hasText: "please look again" }),
+      ).toContainText("(edited)", { timeout: 15_000 });
+
+      // Delete: the row stays, its words go, for everyone.
+      const edited = page
+        .getByTestId("chat-message")
+        .filter({ hasText: "please look again" });
+      await edited.hover();
+      await edited.getByRole("button", { name: "Message actions" }).click();
+      await page.getByRole("menuitem", { name: "Delete" }).click();
+      await page.getByRole("button", { name: "Delete" }).last().click();
+      await expect(
+        member.page.getByText("This message was deleted."),
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(member.page.getByText("please look again")).toHaveCount(0);
 
       // A phone shows the list and the conversation as two screens.
       await member.page.setViewportSize({ width: 390, height: 800 });
