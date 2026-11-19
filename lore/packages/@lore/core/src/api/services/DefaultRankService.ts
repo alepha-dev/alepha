@@ -1,18 +1,23 @@
 import { $inject, Alepha } from "alepha";
 import {
   organizationMembers,
+  organizationRanks,
   RankService,
   type RankWriter,
 } from "alepha/api/organizations";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
+import { SecurityProvider } from "alepha/security";
 
 import { ProjectRankPresets } from "../security/ProjectRankPresets.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
- * Gives a project the default ranks it lacks: `admin` and `viewer`, beside
- * the `owner` and `member` built-ins (#Q3661, epic #E151).
+ * Gives a project the default ranks it lacks: `viewer`, beside the `owner`
+ * and `member` built-ins (#Q3661, epic #E151). `admin` is no longer seeded
+ * (#Q3920): the framework reads it from `organizationConfigAtom.defaultRanks`
+ * until somebody edits it, so it is always held, and a permission declared
+ * later reaches it.
  *
  * Called by `createProject` and by the nightly backfill in
  * `DefaultRankJobs`. A rank is added only when no rank holds its KEY, so
@@ -33,11 +38,36 @@ export class DefaultRankService {
   protected readonly presets = $inject(ProjectRankPresets);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly members = $repository(organizationMembers);
+  protected readonly definitions = $repository(organizationRanks);
+  protected readonly securityProvider = $inject(SecurityProvider);
 
   /**
-   * The rank keys every project holds once seeded.
+   * The rank keys stored as rows, which the nightly sweep looks for.
    */
-  public static readonly DEFAULT_KEYS = ["admin", "viewer"] as const;
+  public static readonly SEEDED_KEYS = ["viewer"] as const;
+
+  /**
+   * The permissions declared after #Q3736 seeded every Admin as a stored
+   * snapshot (2026-11-15), which no such snapshot could hold: personas, use
+   * cases and requirements (#E153), subscriptions (#Q3890).
+   */
+  public static readonly ADMIN_LATE_PERMISSIONS = [
+    "persona:read",
+    "persona:write",
+    "usecase:read",
+    "usecase:write",
+    "usecase:validate",
+    "requirement:read",
+    "requirement:write",
+    "subscription:read",
+    "subscription:manage",
+  ];
+
+  /**
+   * Admin rows written before this instant may be snapshots; any later write
+   * is somebody's edit, kept whatever it holds.
+   */
+  public static readonly ADMIN_SNAPSHOT_CUTOFF = "2026-11-20T00:00:00.000Z";
 
   /**
    * Add the default ranks this project lacks, written as `writer`. Answers
@@ -106,6 +136,16 @@ export class DefaultRankService {
 
         for (const preset of this.presets.presetsFor(enabled)) {
           const existing = held.find((rank) => rank.key === preset.key);
+          if (this.ranks.defaultPermissionsOf(preset.key)) {
+            // A default rank: its row goes, so it follows the code (#Q3920).
+            await this.ranks.reset(
+              organizationId,
+              preset.key,
+              DefaultRankService.SYSTEM_WRITER as never,
+            );
+            result.rewritten.push(preset.key);
+            continue;
+          }
           await this.ranks.save(
             organizationId,
             {
@@ -161,6 +201,47 @@ export class DefaultRankService {
     "administrateur",
     "administrateurs",
   ];
+
+  /**
+   * Delete the stored Admin rows that are only stale snapshots, so they read
+   * the default again (#Q3920). Answers how many went.
+   *
+   * A snapshot was written before {@link ADMIN_SNAPSHOT_CUTOFF}, lacks
+   * nothing of the Admin default but {@link ADMIN_LATE_PERMISSIONS}, and
+   * holds nothing beyond it but permissions the application no longer
+   * declares (the automations' of #Q3896). A row somebody narrowed on
+   * purpose fails the second test and is kept, as is anything written since.
+   */
+  public async dropStaleAdmins(): Promise<number> {
+    const declared = new Set(
+      this.securityProvider
+        .getPermissions()
+        .map((permission) =>
+          permission.group
+            ? `${permission.group}:${permission.name}`
+            : permission.name,
+        ),
+    );
+    const preset = new Set(ProjectRankPresets.ADMIN);
+    const late = new Set(DefaultRankService.ADMIN_LATE_PERMISSIONS);
+    const cutoff = new Date(DefaultRankService.ADMIN_SNAPSHOT_CUTOFF).getTime();
+    const rows = await this.definitions.findMany({
+      where: { key: { eq: "admin" } },
+    });
+    let dropped = 0;
+    for (const row of rows) {
+      if (new Date(row.updatedAt).getTime() >= cutoff) continue;
+      const held = new Set(row.permissions);
+      const lacks = [...preset].filter((it) => !held.has(it));
+      const beyond = row.permissions.filter(
+        (it) => !preset.has(it) && declared.has(it),
+      );
+      if (beyond.length || lacks.some((it) => !late.has(it))) continue;
+      await this.definitions.deleteById(row.id);
+      dropped += 1;
+    }
+    return dropped;
+  }
 
   /**
    * {@link seed} for a project outside any request, as its owner, in a

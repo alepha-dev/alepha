@@ -86,10 +86,11 @@ describe("Lore's rank resource", () => {
     const project = await createTestProject(ctx.alepha);
 
     // ⚠️ The acceptance criterion of the whole epic, as one assertion. A
-    // fixture project stores ZERO definition rows, so both ranks come from
-    // code and `member` is what a NULL `members.rank` column reads as.
+    // fixture project stores ZERO definition rows, so every rank comes from
+    // code (Admin too since #Q3920) and `member` is what a NULL
+    // `members.rank` column reads as.
     const ranks = await ctx.ranks.ranksOf(project.organizationId!);
-    expect(ranks.map((it) => it.key)).toEqual(["owner", "member"]);
+    expect(ranks.map((it) => it.key)).toEqual(["owner", "member", "admin"]);
 
     const member = await ctx.ranks.permissionsOf(
       project.organizationId!,
@@ -342,8 +343,9 @@ describe("Lore's rank resource", () => {
       ranks.map((it) => it.key).sort((a, b) => a.localeCompare(b)),
     ).toEqual(["admin", "member", "owner", "viewer"]);
     const admin = ranks.find((it) => it.key === "admin")!;
-    // The stored name stays, the permissions are the preset's.
-    expect(admin.name).toBe("Staff");
+    // Admin is a default rank (#Q3920): its row goes, name and all, and it
+    // reads the preset again.
+    expect(admin.name).toBe("Admin");
     expect(admin.permissions).toEqual(ProjectRankPresets.ADMIN);
     expect(ranks.find((it) => it.key === "viewer")?.name).toBe("Viewer");
 
@@ -360,7 +362,7 @@ describe("Lore's rank resource", () => {
     expect(await rankOf(contributor.id)).toBeNull();
   });
 
-  it("backfills admin and viewer where missing, and leaves a stored viewer as it is", async ({
+  it("backfills viewer where missing, holds admin with no row, and leaves a stored viewer as it is", async ({
     expect,
   }) => {
     // A project from before #Q3833: owner and member only, plus the narrow
@@ -381,8 +383,12 @@ describe("Lore's rank resource", () => {
       .inject(DefaultRankService)
       .backfill(project.id);
 
-    expect(added).toEqual(["admin"]);
+    // Admin needs no row: the framework reads it from the code (#Q3920).
+    expect(added).toEqual([]);
     const ranks = await ctx.ranks.ranksOf(organizationId);
+    expect(ranks.find((it) => it.key === "admin")?.permissions).toEqual(
+      ProjectRankPresets.ADMIN,
+    );
     expect(ranks.find((it) => it.key === "viewer")?.permissions).toEqual(
       narrow,
     );
@@ -390,6 +396,59 @@ describe("Lore's rank resource", () => {
     expect(
       await ctx.alepha.inject(DefaultRankService).backfill(project.id),
     ).toEqual([]);
+  });
+
+  it("lets a stale Admin snapshot follow the default, and keeps a narrowed or recent one", async ({
+    expect,
+  }) => {
+    const late = DefaultRankService.ADMIN_LATE_PERMISSIONS;
+    const snapshot = ProjectRankPresets.ADMIN.filter(
+      (it) => !late.includes(it),
+    );
+    const before = "2026-11-16T10:00:00.000Z";
+    const write = async (permissions: string[], updatedAt: string) => {
+      const project = await createTestProject(ctx.alepha, {
+        capabilities: [{ key: "plan", options: {} }],
+      });
+      const organizationId = project.organizationId!;
+      await ctx.repos.organizationRanks.create({
+        organizationId,
+        key: "admin",
+        name: "Admin",
+        // A permission the automations declared, gone since #Q3896.
+        permissions: [...permissions, "automation:manage"],
+        createdAt: updatedAt,
+        updatedAt,
+      } as never);
+      return organizationId;
+    };
+    const stale = await write(snapshot, before);
+    const narrowed = await write(
+      snapshot.filter((it) => it !== "member:manage"),
+      before,
+    );
+    const recent = await write(snapshot, "2026-11-21T10:00:00.000Z");
+
+    expect(
+      await ctx.alepha.inject(DefaultRankService).dropStaleAdmins(),
+    ).toBeGreaterThanOrEqual(1);
+
+    const adminOf = async (organizationId: string) =>
+      (
+        await ctx.repos.organizationRanks.findMany({
+          where: {
+            organizationId: { eq: organizationId },
+            key: { eq: "admin" },
+          },
+        })
+      ).length;
+    expect(await adminOf(stale)).toBe(0);
+    expect(await adminOf(narrowed)).toBe(1);
+    expect(await adminOf(recent)).toBe(1);
+    expect(
+      (await ctx.ranks.ranksOf(stale)).find((it) => it.key === "admin")
+        ?.permissions,
+    ).toEqual(ProjectRankPresets.ADMIN);
   });
 
   it("lets an owner tune the built-in member rank, and reads it back", async ({

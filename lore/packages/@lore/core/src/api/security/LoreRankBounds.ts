@@ -36,8 +36,9 @@ export class LoreRankBounds {
 
   /**
    * The ranks every project holds, renamable and never deleted (#Q3736):
-   * `owner` and `member` are the framework's own built-ins, `admin` and
-   * `viewer` are seeded by `DefaultRankService` under these stable keys.
+   * `owner` and `member` are the framework's own built-ins, `admin` is read
+   * from the code until edited (`organizationConfigAtom.defaultRanks`,
+   * #Q3920), and `viewer` is seeded by `DefaultRankService` under its key.
    */
   public static readonly BUILTIN_RANKS = [
     "owner",

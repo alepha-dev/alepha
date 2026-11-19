@@ -342,6 +342,17 @@ export const LoreCoreApi = $module({
       ownerOnly: LoreRankBounds.NEVER_GRANTED,
       // Every project holds these four, renamable and never deleted (#Q3736).
       builtinRanks: [...LoreRankBounds.BUILTIN_RANKS],
+      // Admin is read from the code until somebody edits it, like Member, so
+      // a permission declared later reaches every Admin nobody touched
+      // (#Q3920). Viewer stays a seeded row: its default is narrowed per
+      // project by capability.
+      defaultRanks: [
+        {
+          key: "admin",
+          name: ProjectRankPresets.NAMES.admin,
+          permissions: ProjectRankPresets.ADMIN,
+        },
+      ],
     });
     alepha.store.set(filesOptions, {
       ...alepha.store.get(filesOptions),
