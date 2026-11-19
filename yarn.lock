@@ -149,6 +149,7 @@ __metadata:
     vitest: "npm:^5.1.0"
   peerDependencies:
     "@lore/build": "*"
+    "@lore/chat": "*"
     "@lore/core": "*"
     "@lore/plan": "*"
     "@lore/plan-requirements": "*"
@@ -160,6 +161,8 @@ __metadata:
     react-dom: "*"
   peerDependenciesMeta:
     "@lore/build":
+      optional: true
+    "@lore/chat":
       optional: true
     "@lore/core":
       optional: true

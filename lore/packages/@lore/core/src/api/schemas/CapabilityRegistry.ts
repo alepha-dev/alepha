@@ -631,7 +631,7 @@ export class CapabilityRegistry {
       descriptionKey: "project.capability.chat.description",
       preselectedCapability: false,
       options: [],
-      mcpTools: [],
+      mcpTools: ["chat_room_list", "chat_message_list", "chat_message_send"],
       // Rooms stay out of the spotlight in V1: a search source never sees
       // the user, and a private room must not exist for a non-member.
       searchKinds: [],

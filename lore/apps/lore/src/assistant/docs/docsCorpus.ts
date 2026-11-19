@@ -2125,6 +2125,12 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "The lore CLI",
+    section: "Chat",
+    url: "https://alepha.dev/lore/docs/reference-cli#chat",
+    text: "A project's chat rooms, for a script or a coding agent that reports into a\nroom. A private room you are not in does not exist here, as in the app.\n`@name` in a message notifies that member; `@lore` asks the Lore agent,\nwhich answers in the room with your rights.\n\n| Command                                | What it does                                                          | Flags                                         |\n| -------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------- |\n| `lore chat room list`                  | The rooms you can see, open and private, with what is unread in each. |                                               |\n| `lore chat message list <room>`        | A room's latest messages, newest first.                               | `--before <message id>`, `--limit` (1 to 100) |\n| `lore chat message send <room> <text>` | Post a message as you.                                                |                                               |",
+  },
+  {
+    guide: "The lore CLI",
     section: "Notifications",
     url: "https://alepha.dev/lore/docs/reference-cli#notifications",
     text: "Who is told when something changes in a project, and your own inbox. A\nchannel's URL is its credential: `lore channel` reads it from stdin with\n`--url-stdin`, never from a flag, so it does not land in a shell history, and\nprints a webhook's signing secret once. See\n[Notifications](/lore/docs/project-notifications).\n\n| Command                      | What it does                                                                                      | Flags                                                                                |\n| ---------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |\n| `lore event catalog`         | The events this project can emit, with what each needs and why an unavailable one is so.          |                                                                                      |\n| `lore event list`            | The recent events, newest first, to check that one fired.                                         | `--name`, `--subject`, `--limit` (1 to 100), `--offset`                              |\n| ...",
@@ -2266,6 +2272,12 @@ export const docsCorpus: DocsSection[] = [
     section: "Personas, use cases and requirements",
     url: "https://alepha.dev/lore/docs/reference-mcp-tools#personas-use-cases-and-requirements",
     text: "See [Personas](/lore/docs/plan-personas), [Use cases](/lore/docs/plan-use-cases),\n[Requirements](/lore/docs/plan-requirements), [Verify and runs](/lore/docs/plan-verify)\nand [Traceability](/lore/docs/plan-traceability).\n\n| Tool                                                             | What it does                                                                     |\n| ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |\n| `persona_list`, `persona_get`                                    | A project's personas, and one with its discussion.                               |\n| `persona_create`, `persona_update`, `persona_delete`             | Write a persona.                                                                 |\n| `persona_comment_add`                                            | Comment on a persona.                                                            |\n| `usecase_list`, `usecase_get`                                    | A project's use cases, and one with its scenario, criteria and covering epics.   |\n| `usecase_create`, `usecase_update`, `usecase_delete`             ...",
+  },
+  {
+    guide: "MCP tools",
+    section: "Chat",
+    url: "https://alepha.dev/lore/docs/reference-mcp-tools#chat",
+    text: "A project's chat rooms. A private room you are not in does not exist for\nthese tools. A sent `@lore` starts the agent with your rights, under the\nsame limits as the app.\n\n| Tool                | What it does                                                                          |\n| ------------------- | ------------------------------------------------------------------------------------- |\n| `chat_room_list`    | The rooms you can see, with how many messages and mentions of you are unread in each. |\n| `chat_message_list` | A room's latest messages, newest first, paged with `before`.                          |\n| `chat_message_send` | Post a message in a room, as you.                                                     |",
   },
   {
     guide: "MCP tools",
