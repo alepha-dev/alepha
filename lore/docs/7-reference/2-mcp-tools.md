@@ -223,6 +223,17 @@ calls. See [Notifications](/lore/docs/project-notifications).
 | `inbox_list`        | Your inbox, newest first, across every project unless one is named.                                             |
 | `inbox_read`        | Mark one message read by `id`, or all of them with `all`.                                                       |
 
+## Code
+
+A project's git repositories, when Build is on. Code itself goes through git:
+clone with `lore clone`, which sets up the credentials.
+
+| Tool               | What it does                                                              |
+| ------------------ | ------------------------------------------------------------------------- |
+| `code_repo_list`   | The project's repositories, with their clone URLs.                        |
+| `code_repo_create` | Create an empty repository. An agent's connection cannot: use an API key. |
+| `code_repo_delete` | Delete a repository. An agent's connection cannot: use an API key.        |
+
 ## Apps and telemetry
 
 See [Apps and instances](/lore/docs/ship-instances) and

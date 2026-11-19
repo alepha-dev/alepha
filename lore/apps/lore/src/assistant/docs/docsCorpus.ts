@@ -2065,6 +2065,12 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "The lore CLI",
+    section: "Code",
+    url: "https://alepha.dev/lore/docs/reference-cli#code",
+    text: "A project with **Build** on holds git repositories on Lore. Clone and push\nwith plain git over HTTPS: the `lore` CLI answers git's credential requests,\nso nobody copies a token by hand.\n\n| Command                               | What it does                                                                                                |\n| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |\n| `lore clone <project>[/<repo>] [dir]` | Clone a repository. Without `/<repo>`, the one named like the project, or the project's only one.           |\n| `lore code repo list`                 | The project's repositories, with their clone URLs.                                                          |\n| `lore code repo create <name>`        | Create an empty repository. `--default-branch` names the branch, `main` by default.                         |\n| `lore code repo delete <name>`        | Delete a repository and everything in it.                                                                   |\n| `lore code remote`                    | Print a repository's clone URL; `--add` adds it as a remote...",
+  },
+  {
+    guide: "The lore CLI",
     section: "Apps and deploys",
     url: "https://alepha.dev/lore/docs/reference-cli#apps-and-deploys",
     text: "These commands build and deploy the app in the current directory, which has to\nbe an app built with the Alepha framework. A [stack](#stacks) deploys any\nCompose file.\n\n| Command                | What it does                                                                                                                        | Flags                                                                |\n| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |\n| `lore apps build`      | Build this app for one or more deploy targets.                                                                                      | `--target` (several separated by commas), `--env`, `--tag`, `--app`  |\n| `lore deploy`          | Deploy this app onto one of its environments. Without `--tag` it builds, pushes and deploys; with one it deploys that stored build. | `--tag`, `--env`, `--app`, `--sigil` / `--no-sigil`, `--domain`      |\n| `lore apps deploy`     | The same command as `lore deploy`.                                           ...",
@@ -2188,6 +2194,12 @@ export const docsCorpus: DocsSection[] = [
     section: "Notifications",
     url: "https://alepha.dev/lore/docs/reference-mcp-tools#notifications",
     text: 'Who is told when something changes in a project, and your own inbox. A\nchannel is added, and its URL or signing secret changed, with `lore channel`\nonly, so a webhook or Discord URL never travels through a tool. Lore runs\nno schedules and no multi-step reactions: for those, use a scheduled agent\nsession over MCP, or subscribe a webhook channel and react in whatever it\ncalls. See [Notifications](/lore/docs/project-notifications).\n\n| Tool                | What it does                                                                                                    |\n| ------------------- | --------------------------------------------------------------------------------------------------------------- |\n| `event_catalog`     | The events this project can emit: their fields, the capability each needs, and why an unavailable one is so.    |\n| `event_list`        | The recent events, newest first, by name or subject, for "did it fire?". Only those you may read.               |\n| `subscription_list` | Who is notified of what, on which channel, and the project\'s channels by id, kind and name.                     |\n| `subscription_set`  | Notify a member (you by default) or a channel of an ...',
+  },
+  {
+    guide: "MCP tools",
+    section: "Code",
+    url: "https://alepha.dev/lore/docs/reference-mcp-tools#code",
+    text: "A project's git repositories, when Build is on. Code itself goes through git:\nclone with `lore clone`, which sets up the credentials.\n\n| Tool               | What it does                                                              |\n| ------------------ | ------------------------------------------------------------------------- |\n| `code_repo_list`   | The project's repositories, with their clone URLs.                        |\n| `code_repo_create` | Create an empty repository. An agent's connection cannot: use an API key. |\n| `code_repo_delete` | Delete a repository. An agent's connection cannot: use an API key.        |",
   },
   {
     guide: "MCP tools",

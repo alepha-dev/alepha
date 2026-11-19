@@ -403,6 +403,30 @@ project's **Quality** report. It reads `coverage/coverage-summary.json` and
 `coverage/test-results.json`, the two files `alepha test --coverage` writes.
 `--branch` files the run under another branch than the checked-out one.
 
+## Code
+
+A project with **Build** on holds git repositories on Lore. Clone and push
+with plain git over HTTPS: the `lore` CLI answers git's credential requests,
+so nobody copies a token by hand.
+
+| Command                               | What it does                                                                                                |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `lore clone <project>[/<repo>] [dir]` | Clone a repository. Without `/<repo>`, the one named like the project, or the project's only one.           |
+| `lore code repo list`                 | The project's repositories, with their clone URLs.                                                          |
+| `lore code repo create <name>`        | Create an empty repository. `--default-branch` names the branch, `main` by default.                         |
+| `lore code repo delete <name>`        | Delete a repository and everything in it.                                                                   |
+| `lore code remote`                    | Print a repository's clone URL; `--add` adds it as a remote (`--name`, `lore` by default) of this checkout. |
+| `lore git-credential`                 | The credential helper git calls. Not for typing.                                                            |
+
+A clone URL is `https://<instance>/<project>/<repo>.git`, or
+`https://<instance>/<project>.git` for the repository named like its project.
+
+`lore login`, `lore clone` and `lore code remote --add` install the helper for
+the instance in your global git config, behind an empty `helper` entry, so a
+system keychain never keeps a token that lives a few minutes. With
+`LORE_API_KEY` set (CI), the helper answers with the key. Creating and
+deleting a repository need an Admin's API key: a `lore login` cannot do it.
+
 ## Apps and deploys
 
 These commands build and deploy the app in the current directory, which has to

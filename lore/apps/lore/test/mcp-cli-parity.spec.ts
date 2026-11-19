@@ -65,6 +65,7 @@ const POSITIONAL = new Set([
   "service",
   "section",
   "host",
+  "slug",
 ]);
 
 /**
