@@ -606,6 +606,7 @@ jobs:
             packages/@lore/plan/test/WorkAutomationSelections.spec.ts
             packages/@lore/plan/test/release-default.spec.ts
             packages/@lore/plan/test/quest-count.spec.ts
+            packages/@lore/chat/test/chat-
 
   lore-e2e:
     if: contains(fromJSON('["all", "lore"]'), inputs.product || 'all')
