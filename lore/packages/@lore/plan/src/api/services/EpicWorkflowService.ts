@@ -613,14 +613,16 @@ export class EpicWorkflowService {
    * Move a `shelved` epic back, AFTER its quests are unshelved, so a failure
    * halfway leaves it `shelved` with the rest still marked for a retry.
    *
-   * The target is the epic description's rule (folio #1365): `in_progress`
-   * when `startedAt` is set, since that is exactly "one of its quests had
-   * started" and is never cleared, and `ready` otherwise. Back in progress,
+   * The target is the rule of folio #1365: `in_progress` when `startedAt` is
+   * set, since that is exactly "one of its quests had started" and is never
+   * cleared, and `draft` otherwise (#Q3949): a plan back from the shelf is
+   * reviewed again before its quests are workable, so it is marked ready by
+   * hand, as a new plan is. Back in progress,
    * it completes on the spot when nothing is left open, as
    * {@link completeIfResolved} would have.
    */
   async unshelve(epic: Epic, user: UserAccountToken): Promise<Epic> {
-    const to = epic.startedAt ? "in_progress" : "ready";
+    const to = epic.startedAt ? "in_progress" : "draft";
 
     let updated: Epic;
     try {

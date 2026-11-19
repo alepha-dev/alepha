@@ -510,7 +510,7 @@ export class EpicTools {
    */
   epic_unshelve = $tool({
     description:
-      "Bring a shelved epic back with ONLY the quests epic_shelve set aside, as to do and unassigned; a quest that was shelved on its own before stays shelved. The epic returns to 'in_progress' if work on it had started, else to 'ready' (a shelved draft comes back ready). Refused unless the epic is 'shelved'. Returns how many quests were brought back.",
+      "Bring a shelved epic back with ONLY the quests epic_shelve set aside, as to do and unassigned; a quest that was shelved on its own before stays shelved. The epic returns to 'in_progress' if work on it had started, else to 'draft' (a shelved ready epic comes back a draft too): a plan back from the shelf is reviewed again, then marked ready with epic_set_status before its quests can be accepted. Refused unless the epic is 'shelved'. Returns how many quests were brought back.",
     title: "Unshelve epic",
     annotations: { readOnlyHint: false },
     schema: {

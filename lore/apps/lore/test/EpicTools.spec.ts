@@ -472,7 +472,7 @@ describe("Lore MCP — epics", () => {
         project: project.id,
         number: epic.number,
       });
-      expect(back).toMatchObject({ status: "ready", movedQuests: 1 });
+      expect(back).toMatchObject({ status: "draft", movedQuests: 1 });
       expect((await repos.quests.getById(quest.id)).shelvedAt).toBeUndefined();
     });
 

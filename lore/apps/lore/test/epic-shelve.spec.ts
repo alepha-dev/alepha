@@ -174,7 +174,9 @@ describe("shelveEpic and unshelveEpic", () => {
     );
   });
 
-  it("returns an epic that never started to ready", async ({ expect }) => {
+  it("returns an epic that never started to draft (#Q3949)", async ({
+    expect,
+  }) => {
     const { user, epic } = await seed("ready");
     await ctx.controller.shelveEpic({ params: { id: epic.id } }, { user });
 
@@ -183,12 +185,10 @@ describe("shelveEpic and unshelveEpic", () => {
       { user },
     );
 
-    expect(result.status).toBe("ready");
+    expect(result.status).toBe("draft");
   });
 
-  it("shelves a draft epic and brings it back ready, as the epic description says", async ({
-    expect,
-  }) => {
+  it("shelves a draft epic and brings it back a draft", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
     const epic = await createTestEpic(ctx.alepha, project, { status: "draft" });
@@ -204,7 +204,7 @@ describe("shelveEpic and unshelveEpic", () => {
       { params: { id: epic.id } },
       { user },
     );
-    expect(back.status).toBe("ready");
+    expect(back.status).toBe("draft");
   });
 
   it("finishes a shelve that failed halfway when called again", async ({

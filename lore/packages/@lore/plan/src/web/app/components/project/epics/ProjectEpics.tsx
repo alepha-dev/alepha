@@ -256,7 +256,7 @@ const ProjectEpics = () => {
         ctx.optimistic.patch(epic, {
           ...epic,
           // The server's own rule: back to in progress if it ever started.
-          status: epic.startedAt ? "in_progress" : "ready",
+          status: epic.startedAt ? "in_progress" : "draft",
         }),
       commit: () => epicApi.unshelveEpic({ params: { id: epic.id } }),
       undo: () => epicApi.shelveEpic({ params: { id: epic.id } }),
@@ -484,7 +484,7 @@ const ProjectEpics = () => {
       ctx.optimistic.patch(epic, {
         ...epic,
         // The server's own rule: back to in progress if it ever started.
-        status: epic.startedAt ? "in_progress" : "ready",
+        status: epic.startedAt ? "in_progress" : "draft",
       }),
     );
     void undoable.run({
