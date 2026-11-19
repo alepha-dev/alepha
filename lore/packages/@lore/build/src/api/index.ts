@@ -8,6 +8,7 @@ import { CodeRepositoryController } from "./controllers/CodeRepositoryController
 import { GitHttpController } from "./controllers/GitHttpController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
+import { CodeBackupJobs } from "./jobs/CodeBackupJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { BuildDashboardMetrics } from "./services/BuildDashboardMetrics.ts";
 import { BuildProjectDeletion } from "./services/BuildProjectDeletion.ts";
@@ -72,6 +73,8 @@ export const LoreBuildApi = $module({
     GitAccessService,
     // A push's commits on the quests they name, and its activity row (#Q3945).
     CodePushRecorder,
+    // Every repository as a bundle in the storage, nightly (#Q3946).
+    CodeBackupJobs,
     GitHttpController,
   ],
   register: (alepha) => {
@@ -110,5 +113,6 @@ export { CodeRepositoryService } from "./services/CodeRepositoryService.ts";
 export { GitAccessService } from "./services/GitAccessService.ts";
 export { GitReceivePack } from "./services/GitReceivePack.ts";
 export { CodePushRecorder } from "./services/CodePushRecorder.ts";
+export { CodeBackupJobs } from "./jobs/CodeBackupJobs.ts";
 export { CoverageThreshold } from "./services/CoverageThreshold.ts";
 export { QualityService } from "./services/QualityService.ts";

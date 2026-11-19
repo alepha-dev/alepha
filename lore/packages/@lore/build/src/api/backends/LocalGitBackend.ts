@@ -5,6 +5,7 @@ import {
   GitBackend,
   type GitBackendToken,
   type GitCommit,
+  type GitRefTip,
   type GitRepositoryInfo,
   type GitRpcRequest,
   type GitRpcResponse,
@@ -150,6 +151,69 @@ export class LocalGitBackend extends GitBackend {
         };
       });
     return commits.length > range.limit ? [] : commits;
+  }
+
+  public async refs(ref: string): Promise<GitRefTip[]> {
+    const path = this.pathOf(ref);
+    const out = await this.git([
+      "--git-dir",
+      path,
+      "for-each-ref",
+      "--format=%(objectname) %(refname)",
+      "refs/heads",
+      "refs/tags",
+    ]);
+    const tips = out
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [sha = "", name = ""] = line.split(" ");
+        return { sha, name };
+      });
+    if (tips.length === 0) return [];
+    const head = await this.git([
+      "--git-dir",
+      path,
+      "rev-parse",
+      "--verify",
+      "--quiet",
+      "HEAD",
+    ]).catch(() => "");
+    return head.trim() ? [{ sha: head.trim(), name: "HEAD" }, ...tips] : tips;
+  }
+
+  /**
+   * `git bundle create - --all`, streamed from the child's stdout.
+   */
+  public async bundle(ref: string): Promise<ReadableStream<Uint8Array>> {
+    const { spawn } = await import("node:child_process");
+    const { Readable } = await import("node:stream");
+    const child = spawn(
+      "git",
+      [
+        "--git-dir",
+        this.pathOf(ref),
+        "bundle",
+        "create",
+        "--quiet",
+        "-",
+        "--all",
+      ],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    let stderr = "";
+    child.stderr.on("data", (chunk) => (stderr += chunk));
+    child.on("close", (code) => {
+      if (code) {
+        this.log.warn(`git bundle exited ${code}`, {
+          ref,
+          stderr: stderr.slice(0, 2000),
+        });
+      }
+    });
+    return Readable.toWeb(
+      child.stdout,
+    ) as unknown as ReadableStream<Uint8Array>;
   }
 
   /**

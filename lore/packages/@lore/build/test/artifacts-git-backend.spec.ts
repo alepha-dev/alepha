@@ -115,6 +115,35 @@ describe("ArtifactsGitBackend", () => {
     expect(notOnChain).toEqual([]);
   });
 
+  it("keeps the packfile alone behind the header: NAK before, Artifacts' flush after (#Q3946)", async ({
+    expect,
+  }) => {
+    const encode = (text: string) => new TextEncoder().encode(text);
+    const pack = new Uint8Array([...encode("PACK"), 0, 0, 0, 2, 9, 9, 9]);
+    const chunks = [
+      encode("0008NA"),
+      encode("K\n"),
+      pack.slice(0, 5),
+      pack.slice(5),
+      encode("0000"),
+    ];
+    const body = new ReadableStream<Uint8Array>({
+      pull: (controller) => {
+        const next = chunks.shift();
+        if (next) controller.enqueue(next);
+        else controller.close();
+      },
+    });
+
+    const out = new Uint8Array(
+      await new Response(
+        ArtifactsGitBackend.packAfterNak(encode("HEADER\n"), body),
+      ).arrayBuffer(),
+    );
+
+    expect([...out]).toEqual([...encode("HEADER\n"), ...pack]);
+  });
+
   it("names a repository by ids, never by slug", ({ expect }) => {
     const { backend } = setup();
     expect(backend.refFor({ projectId: 7, repoId: "a-b" })).toBe("7-a-b");
