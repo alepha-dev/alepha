@@ -4,9 +4,11 @@ import { DateTimeProvider } from "alepha/datetime";
 import { ClientOnly, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
+import { ShieldUser } from "lucide-react";
 
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
 import VerifyMenu from "../verify/VerifyMenu.tsx";
+import { alephaRoleLabel } from "./alephaRoleLabel.ts";
 import PersonaAvatar from "./PersonaAvatar.tsx";
 import type { PersonaCoverage } from "./personaCoverage.ts";
 import {
@@ -47,6 +49,12 @@ const PersonaCard = (props: PersonaCardProps) => {
     .map((line) => line.replace(/^[-*#>\s]+/, "").trim())
     .find(Boolean);
 
+  // A role identifier reads as a badge under the kind, a sentence as plain
+  // text under the goal (#Q3960).
+  const alephaRole = persona.alephaRole
+    ? alephaRoleLabel(persona.alephaRole)
+    : undefined;
+
   const total = coverage?.useCases ?? 0;
   const tone = !coverage?.lastRanAt
     ? "text-muted-foreground"
@@ -84,22 +92,40 @@ const PersonaCard = (props: PersonaCardProps) => {
               </div>
             ) : null}
           </div>
-          <Badge variant="tint" tone={PERSONA_KIND_TONES[persona.kind]}>
-            <KindIcon className="size-3" />
-            {tr(PERSONA_KIND_LABEL_KEYS[persona.kind])}
-          </Badge>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <Badge variant="tint" tone={PERSONA_KIND_TONES[persona.kind]}>
+              <KindIcon className="size-3" />
+              {tr(PERSONA_KIND_LABEL_KEYS[persona.kind])}
+            </Badge>
+            {alephaRole?.kind === "badge" ? (
+              <Badge
+                variant="outline"
+                title={persona.alephaRole}
+                data-testid="persona-alepha-role"
+              >
+                <ShieldUser className="size-3" />
+                {alephaRole.label}
+              </Badge>
+            ) : null}
+          </div>
         </div>
         {goal ? (
           <blockquote className="text-muted-foreground border-l-2 pl-3 text-sm italic">
             {goal}
           </blockquote>
         ) : null}
-        {persona.alephaRole ? (
-          <code className="bg-muted self-start rounded px-1.5 py-0.5 font-mono text-xs">
-            {tr("requirements.persona.card.role", {
-              args: [persona.alephaRole],
-            })}
-          </code>
+        {alephaRole?.kind === "text" ? (
+          <p
+            className="text-muted-foreground flex items-start gap-1.5 text-xs break-words"
+            data-testid="persona-alepha-role"
+          >
+            <ShieldUser className="mt-0.5 size-3 shrink-0" />
+            <span>
+              {tr("requirements.persona.card.role", {
+                args: [alephaRole.text],
+              })}
+            </span>
+          </p>
         ) : null}
         <div className="mt-auto grid grid-cols-3 gap-2">
           {(

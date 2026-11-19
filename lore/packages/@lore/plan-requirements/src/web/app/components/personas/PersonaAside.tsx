@@ -7,6 +7,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { UseCaseController } from "../../../../api/controllers/UseCaseController.ts";
 import type { PersonaResource } from "../../../../api/schemas/personaResourceSchema.ts";
 import type { UseCaseResource } from "../../../../api/schemas/useCaseResourceSchema.ts";
+import AlephaRoleValue from "./AlephaRoleValue.tsx";
 import PersonaAvatar from "./PersonaAvatar.tsx";
 import { personaCoverage } from "./personaCoverage.ts";
 import {
@@ -66,9 +67,7 @@ const PersonaAside = (props: PersonaAsideProps) => {
       ? [
           {
             label: tr("requirements.persona.field.alephaRole"),
-            value: (
-              <code className="font-mono text-xs">{persona.alephaRole}</code>
-            ),
+            value: <AlephaRoleValue role={persona.alephaRole} />,
           },
         ]
       : []),
