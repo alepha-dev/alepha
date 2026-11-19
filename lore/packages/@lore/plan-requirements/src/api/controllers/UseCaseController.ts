@@ -1,6 +1,7 @@
 import {
   $ownsProject,
   BestEffort,
+  BoundParameters,
   LoreAudits,
   LoreInboxNotifications,
   ProjectRoster,
@@ -54,6 +55,7 @@ export class UseCaseController {
   protected readonly ranks = $inject(RankService);
   protected readonly templates = $inject(LoreInboxNotifications);
   protected readonly dt = $inject(DateTimeProvider);
+  protected readonly bound = $inject(BoundParameters);
 
   /**
    * ⚠️ `$sequence` keys its counter on this PROPERTY NAME.
@@ -428,14 +430,20 @@ export class UseCaseController {
         ) ?? [];
       if (covered.length === 0) return [];
       const numberOf = new Map(covered.map((epic) => [epic.id, epic.number]));
-      const rows = await this.quests.findMany({
-        where: {
-          projectId: { eq: params.projectId },
-          epicId: { inArray: covered.map((epic) => epic.id) },
-          shelvedAt: { isNull: true },
-        },
-        orderBy: [{ column: "shortId", direction: "asc" }],
-      });
+      // Batched under D1's bind limit (#Q3959), then sorted whole.
+      const rows = (
+        await this.bound.collect(
+          covered.map((epic) => epic.id),
+          (batch) =>
+            this.quests.findMany({
+              where: {
+                projectId: { eq: params.projectId },
+                epicId: { inArray: batch },
+                shelvedAt: { isNull: true },
+              },
+            }),
+        )
+      ).sort((a, b) => a.shortId - b.shortId);
       return rows.map((quest) => ({
         shortId: quest.shortId,
         title: quest.title,

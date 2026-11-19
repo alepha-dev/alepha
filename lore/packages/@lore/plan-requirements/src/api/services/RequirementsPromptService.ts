@@ -1,4 +1,4 @@
-import { ProjectSecurityService } from "@lore/core/api";
+import { BoundParameters, ProjectSecurityService } from "@lore/core/api";
 import {
   type AgentPromptScenarioSubject,
   type Project,
@@ -42,6 +42,7 @@ export class RequirementsPromptService {
   protected readonly quests = $repository(quests);
   protected readonly scenario = $inject(UseCaseService);
   protected readonly security = $inject(ProjectSecurityService);
+  protected readonly bound = $inject(BoundParameters);
 
   public async render(input: {
     project: Project;
@@ -98,16 +99,15 @@ export class RequirementsPromptService {
         const verifying = await this.criteria.findMany({
           where: { requirementId: { eq: row.id } },
         });
-        const cases = verifying.length
-          ? await this.useCases.findMany({
-              where: {
-                id: {
-                  inArray: [...new Set(verifying.map((it) => it.useCaseId))],
-                },
-              },
+        // Batched under D1's bind limit (#Q3959).
+        const cases = await this.bound.collect(
+          [...new Set(verifying.map((it) => it.useCaseId))],
+          (batch) =>
+            this.useCases.findMany({
+              where: { id: { inArray: batch } },
               columns: ["id", "number"],
-            })
-          : [];
+            }),
+        );
         ref = `S${row.number}`;
         subject = {
           project: input.project.title,

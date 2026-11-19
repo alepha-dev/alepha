@@ -1,4 +1,8 @@
-import { ProjectSecurityService, ResourceLinkService } from "@lore/core/api";
+import {
+  BoundParameters,
+  ProjectSecurityService,
+  ResourceLinkService,
+} from "@lore/core/api";
 import { epics, quests, releases } from "@lore/plan/schemas";
 import { projectErrors } from "@lore/ship/schemas";
 import { $inject } from "alepha";
@@ -41,6 +45,7 @@ export class RequirementCoverageService {
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly requirementService = $inject(RequirementService);
   protected readonly useCaseService = $inject(UseCaseService);
+  protected readonly bound = $inject(BoundParameters);
 
   protected async resources(projectId: number): Promise<RequirementResource[]> {
     return await this.requirementService.toResources(
@@ -195,19 +200,21 @@ export class RequirementCoverageService {
     const caseNumbers = [
       ...new Set(resource.criteria.map((it) => it.useCaseNumber)),
     ];
-    const caseRows = caseNumbers.length
-      ? await this.useCases.findMany({
-          where: {
-            projectId: { eq: row.projectId },
-            number: { inArray: caseNumbers },
-          },
-        })
-      : [];
+    // Batched under D1's bind limit (#Q3959).
+    const caseRows = await this.bound.collect(caseNumbers, (batch) =>
+      this.useCases.findMany({
+        where: {
+          projectId: { eq: row.projectId },
+          number: { inArray: batch },
+        },
+      }),
+    );
     const caseResources = await this.useCaseService.toResources(caseRows);
     const epicIds = resource.coveringEpics.map((it) => it.id);
-    const questRows = epicIds.length
-      ? await this.quests.findMany({
-          where: { epicId: { inArray: epicIds } },
+    const questRows = (
+      await this.bound.collect(epicIds, (batch) =>
+        this.quests.findMany({
+          where: { epicId: { inArray: batch } },
           columns: [
             "id",
             "shortId",
@@ -216,9 +223,9 @@ export class RequirementCoverageService {
             "epicId",
             "commits",
           ],
-          orderBy: [{ column: "shortId", direction: "asc" }],
-        })
-      : [];
+        }),
+      )
+    ).sort((a, b) => a.shortId - b.shortId);
     const commits = questRows.flatMap((it) => it.commits ?? []);
     const fingerprints = resource.criteria
       .map((c) => {
@@ -226,15 +233,16 @@ export class RequirementCoverageService {
         return uc ? `usecase:${uc.id}:${c.key}` : undefined;
       })
       .filter((it): it is string => !!it);
-    const errorRows = fingerprints.length
-      ? await this.errors.findMany({
+    const errorRows = (
+      await this.bound.collect(fingerprints, (batch) =>
+        this.errors.findMany({
           where: {
             projectId: { eq: row.projectId },
-            fingerprint: { inArray: fingerprints },
+            fingerprint: { inArray: batch },
           },
-          orderBy: [{ column: "lastSeenAt", direction: "desc" }],
-        })
-      : [];
+        }),
+      )
+    ).sort((a, b) => String(b.lastSeenAt).localeCompare(String(a.lastSeenAt)));
     return {
       useCases: caseResources.map((uc) => ({
         number: uc.number,
