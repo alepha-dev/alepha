@@ -29,6 +29,18 @@ export const chatMessageResourceSchema = z.object({
    * The files it carries (#Q3939), served by `/api/files/:id` to whoever
    * may read the room.
    */
+  /**
+   * An agent's answer: running, paused on a write its mentioner decides,
+   * done or failed (#Q3930).
+   */
+  agentRun: z
+    .object({
+      status: z.enum(["running", "paused", "done", "failed"]),
+      mentionerId: z.uuid(),
+      tool: z.text().optional(),
+      input: z.record(z.text(), z.any()).optional(),
+    })
+    .optional(),
   attachments: z.array(
     z.object({
       id: z.uuid(),

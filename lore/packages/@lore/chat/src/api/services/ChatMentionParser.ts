@@ -22,15 +22,23 @@ export class ChatMentionParser {
   public parse(
     body: string,
     roster: ProjectRosterEntry[],
-  ): { userIds: string[]; references: string[] } {
+    agents: string[] = [],
+  ): { userIds: string[]; agents: string[]; references: string[] } {
     const prose = this.withoutCode(body);
 
     const byHandle = new Map(
       roster.map((entry) => [entry.name.toLowerCase(), entry.userId]),
     );
     const userIds: string[] = [];
+    const named: string[] = [];
+    const agentNames = new Set(agents.map((name) => name.toLowerCase()));
     for (const match of prose.matchAll(/(^|[^\w@])@([\w.-]+)/g)) {
       const handle = match[2]!.replace(/[.-]+$/, "").toLowerCase();
+      // An agent's name wins over a member's: `@lore` is the agent.
+      if (agentNames.has(handle)) {
+        if (!named.includes(handle)) named.push(handle);
+        continue;
+      }
       const userId = byHandle.get(handle);
       if (userId && !userIds.includes(userId)) {
         userIds.push(userId);
@@ -51,7 +59,7 @@ export class ChatMentionParser {
       add(`#${match[2]!.toUpperCase()}${match[3]}`);
     }
 
-    return { userIds, references };
+    return { userIds, agents: named, references };
   }
 
   /**

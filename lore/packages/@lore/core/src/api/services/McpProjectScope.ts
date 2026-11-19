@@ -1,4 +1,5 @@
 import { $hook, $inject, Alepha } from "alepha";
+import { ForbiddenError } from "alepha/server";
 
 /**
  * The project an MCP tool call actually resolved (#Q3012), for `mcp_calls`.
@@ -36,8 +37,30 @@ export class McpProjectScope {
       McpProjectScope.KEY,
     );
     if (holder) {
+      // A pinned run reads one project, whatever the model asked for
+      // (#Q3930): a tool resolving any other is refused before it runs.
+      if (holder.pinned !== undefined && holder.pinned !== projectId) {
+        throw new ForbiddenError(
+          `This run belongs to project ${holder.pinned}: it cannot reach project ${projectId}`,
+        );
+      }
       holder.project = projectId;
     }
+  }
+
+  /**
+   * Run `work` held to one project (#E161, #Q3930): every tool gate that
+   * resolves a project (`$ownsProject`, `ProjectTools`) refuses any other.
+   *
+   * What an agent answering in a chat room runs under: other members' text
+   * is model input there, so the room's project is enforced in code rather
+   * than asked for in the prompt. `work` must do all its awaiting inside:
+   * the pin is the async context it runs in.
+   */
+  public pinned<R>(projectId: number, work: () => R): R {
+    return this.alepha.context.run(work, {
+      [McpProjectScope.KEY]: { pinned: projectId } satisfies McpProjectHolder,
+    });
   }
 
   current(): string {
@@ -50,4 +73,8 @@ export class McpProjectScope {
 
 interface McpProjectHolder {
   project?: number;
+  /**
+   * The only project a pinned run may resolve.
+   */
+  pinned?: number;
 }

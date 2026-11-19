@@ -14,6 +14,7 @@ import { LoreAiStatusController } from "./LoreAiStatusController.ts";
 import { LoreAiSwitch } from "./LoreAiSwitch.ts";
 import { LoreAiToolAccess } from "./LoreAiToolAccess.ts";
 import { LoreAiToolset } from "./LoreAiToolset.ts";
+import { LoreChatResponder } from "./LoreChatResponder.ts";
 
 export { LoreAiAssistant } from "./LoreAiAssistant.ts";
 export { LoreAiAudits } from "./LoreAiAudits.ts";
@@ -26,6 +27,7 @@ export { LoreAiStatusController } from "./LoreAiStatusController.ts";
 export { LoreAiSwitch } from "./LoreAiSwitch.ts";
 export { LoreAiToolAccess } from "./LoreAiToolAccess.ts";
 export { type LoreAiTool, LoreAiToolset } from "./LoreAiToolset.ts";
+export { LoreChatResponder } from "./LoreChatResponder.ts";
 
 /**
  * Lore's in-app assistant, the server half (#E120): `alepha/api/ai` on
@@ -68,5 +70,8 @@ export const LoreAssistant = $module({
     LoreAiAssistant,
     LoreAiAudits,
     LoreAiStatusController,
+    // `@lore` in a chat room (#Q3930), registered on chat's responders
+    // when AI is on.
+    LoreChatResponder,
   ],
 });

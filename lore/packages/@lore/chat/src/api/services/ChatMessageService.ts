@@ -1,9 +1,10 @@
 import { ProjectRoster, ProjectSecurityService } from "@lore/core/api";
-import { $inject, z } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { $rateLimit } from "alepha/rate-limit";
+import type { UserAccountToken } from "alepha/security";
 import {
   BadRequestError,
   ConflictError,
@@ -18,10 +19,12 @@ import { chatReactions } from "../entities/chatReactions.ts";
 import { chatRoomMembers } from "../entities/chatRoomMembers.ts";
 import { type ChatRoom, chatRooms } from "../entities/chatRooms.ts";
 import type { ChatMessageResource } from "../schemas/chatMessageResourceSchema.ts";
+import { ChatAgentRunner } from "./ChatAgentRunner.ts";
 import { ChatAudience } from "./ChatAudience.ts";
 import { ChatBuckets } from "./ChatBuckets.ts";
 import { ChatLive } from "./ChatLive.ts";
 import { ChatMentionParser } from "./ChatMentionParser.ts";
+import { ChatResponderRegistry } from "./ChatResponderRegistry.ts";
 import { ChatRoomService } from "./ChatRoomService.ts";
 
 /**
@@ -47,6 +50,7 @@ export class ChatMessageService {
   protected readonly mentions = $repository(chatMentions);
   protected readonly reactions = $repository(chatReactions);
   protected readonly files = $inject(FileService);
+  protected readonly alepha = $inject(Alepha);
   protected readonly roomMembers = $repository(chatRoomMembers);
   protected readonly roomRows = $repository(chatRooms);
   protected readonly rooms = $inject(ChatRoomService);
@@ -76,6 +80,7 @@ export class ChatMessageService {
     userId: string,
     body: string,
     attachments: string[] = [],
+    user?: UserAccountToken,
   ): Promise<{ message: ChatMessageResource; mentioned: string[] }> {
     const room = await this.rooms.visibleRoom(projectId, roomId, userId);
     this.assertOpenForWrites(room);
@@ -104,6 +109,13 @@ export class ChatMessageService {
       ...(attachments.length ? { attachments } : {}),
     });
     await this.writeMentions(message, parsed.userIds);
+    for (const agent of parsed.agents) {
+      await this.mentions.create({
+        messageId: message.id,
+        roomId: message.roomId,
+        agent,
+      });
+    }
     // The author has read what they wrote.
     await this.markRead(projectId, roomId, userId, message.id);
 
@@ -114,6 +126,13 @@ export class ChatMessageService {
       roomId: room.id,
       message: resource!,
     });
+    // `@lore` asks the agent, as the member who wrote it (#Q3930). Only a
+    // member's message starts a run: an agent's never reaches `send`.
+    if (user && parsed.agents.length > 0) {
+      await this.alepha
+        .inject(ChatAgentRunner)
+        .start(room, message, user, parsed.agents[0]!);
+    }
     return { message: resource!, mentioned: parsed.userIds };
   }
 
@@ -457,6 +476,18 @@ export class ChatMessageService {
       references: message.references ?? [],
       ...(message.editedAt ? { editedAt: message.editedAt } : {}),
       ...(message.deletedAt ? { deletedAt: message.deletedAt } : {}),
+      ...(message.agentRun
+        ? {
+            agentRun: {
+              status: message.agentRun.status,
+              mentionerId: message.agentRun.mentionerId,
+              ...(message.agentRun.tool ? { tool: message.agentRun.tool } : {}),
+              ...(message.agentRun.input
+                ? { input: message.agentRun.input }
+                : {}),
+            },
+          }
+        : {}),
       mentions: message.deletedAt ? [] : extras.mentions,
       reactions: message.deletedAt ? [] : extras.reactions,
       attachments: message.deletedAt ? [] : extras.attachments,
@@ -468,7 +499,11 @@ export class ChatMessageService {
     const roster = (await this.roster.of(room.projectId)).filter((it) =>
       audience.has(it.userId),
     );
-    return this.parser.parse(body, roster);
+    return this.parser.parse(
+      body,
+      roster,
+      this.alepha.inject(ChatResponderRegistry).names(),
+    );
   }
 
   protected async writeMentions(

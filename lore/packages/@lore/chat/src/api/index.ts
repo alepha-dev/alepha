@@ -6,6 +6,7 @@ import { ChatMessageController } from "./controllers/ChatMessageController.ts";
 import { ChatRoomController } from "./controllers/ChatRoomController.ts";
 import { ChatSocketController } from "./controllers/ChatSocketController.ts";
 import { ChatRoomHooks } from "./hooks/ChatRoomHooks.ts";
+import { ChatAgentRunner } from "./services/ChatAgentRunner.ts";
 import { ChatAudience } from "./services/ChatAudience.ts";
 import { ChatBuckets } from "./services/ChatBuckets.ts";
 import { ChatFileAccess } from "./services/ChatFileAccess.ts";
@@ -13,6 +14,7 @@ import { ChatLifecycle } from "./services/ChatLifecycle.ts";
 import { ChatLive } from "./services/ChatLive.ts";
 import { ChatMentionParser } from "./services/ChatMentionParser.ts";
 import { ChatMessageService } from "./services/ChatMessageService.ts";
+import { ChatResponderRegistry } from "./services/ChatResponderRegistry.ts";
 import { ChatRoomMerge } from "./services/ChatRoomMerge.ts";
 import { ChatRoomService } from "./services/ChatRoomService.ts";
 import { ChatTyping } from "./services/ChatTyping.ts";
@@ -48,6 +50,8 @@ export const LoreChatApi = $module({
     ChatMentionParser,
     ChatMessageService,
     ChatTyping,
+    ChatResponderRegistry,
+    ChatAgentRunner,
     ChatMessageController,
   ],
 });
@@ -61,7 +65,15 @@ export { type ChatReaction, chatReactions } from "./entities/chatReactions.ts";
 export { ChatBuckets } from "./services/ChatBuckets.ts";
 export { chatRoomMembers } from "./entities/chatRoomMembers.ts";
 export { type ChatRoom, chatRooms } from "./entities/chatRooms.ts";
+export { ChatAgentRunner } from "./services/ChatAgentRunner.ts";
 export { ChatAudience } from "./services/ChatAudience.ts";
+export {
+  type ChatAgentDecision,
+  type ChatAgentEvent,
+  type ChatAgentRequest,
+  type ChatResponder,
+  ChatResponderRegistry,
+} from "./services/ChatResponderRegistry.ts";
 export { ChatLifecycle } from "./services/ChatLifecycle.ts";
 export { ChatLive } from "./services/ChatLive.ts";
 export { ChatMessageService } from "./services/ChatMessageService.ts";

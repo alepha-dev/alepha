@@ -1,0 +1,68 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f35cea27-acae-4801-ad44-211293134777",
+  "prevIds": ["787769a5-731e-45ea-92c0-b4db8cc240a5"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "chat_messages", "agent_run"],
+      "writes": [
+        "s|col|public.chat_messages.agent_run",
+        "n|col|public.chat_messages.agent_run",
+        "e|col|public.chat_messages.agent_run"
+      ],
+      "reads": ["n|tbl|public.chat_messages", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "chat_room_members",
+        "ai_conversation_id"
+      ],
+      "writes": [
+        "s|col|public.chat_room_members.ai_conversation_id",
+        "n|col|public.chat_room_members.ai_conversation_id",
+        "e|col|public.chat_room_members.ai_conversation_id"
+      ],
+      "reads": ["n|tbl|public.chat_room_members", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_messages",
+        "name": "agent_run",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "chat_room_members",
+        "name": "ai_conversation_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

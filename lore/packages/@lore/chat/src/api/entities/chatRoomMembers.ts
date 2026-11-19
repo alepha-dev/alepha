@@ -34,6 +34,11 @@ export const chatRoomMembers = $entity({
       z.enum(["mentions", "muted"]).meta({ mode: "text" }),
       "mentions",
     ),
+    /**
+     * The `ai_conversations` row this member's runs in this room continue
+     * (#Q3930): one run log per room and mentioner.
+     */
+    aiConversationId: z.uuid().optional(),
   }),
   indexes: [
     { columns: ["roomId", "userId"], unique: true },
